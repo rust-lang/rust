@@ -377,10 +377,18 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             external_providers.lint_mod = |_, _| {};
             //let old_typeck = local_providers.typeck_tables_of;
             local_providers.typeck_tables_of = move |tcx, def_id| {
+                // Closures' tables come from their outermost function,
+                // as they are part of the same "inference environment".
+                // This avoids emitting errors for the parent twice (see similar code in `typeck_tables_of_with_fallback`)
+                let outer_def_id = tcx.closure_base_def_id(def_id.to_def_id()).expect_local();
+                if outer_def_id != def_id {
+                    return tcx.typeck_tables_of(outer_def_id);
+                }
+
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
-                EmitIgnoredResolutionErrors::new(&tcx.sess).visit_body(body);
+                EmitIgnoredResolutionErrors::new(&tcx.sess, hir).visit_body(body);
                 rustc_typeck::check::typeck_tables_of(tcx, def_id)
                 //DEFAULT_TYPECK.with(|typeck| typeck(tcx, def_id))
             };
@@ -600,22 +608,24 @@ thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(rustc_middle::ty::TyCtxt<'tcx>
 /// the name resolution pass may find errors that are never emitted.
 /// If typeck is called after this happens, then we'll get an ICE:
 /// 'Res::Error found but not reported'. To avoid this, emit the errors now.
-struct EmitIgnoredResolutionErrors<'a> {
+struct EmitIgnoredResolutionErrors<'a, 'hir> {
     session: &'a Session,
+    hir_map: Map<'hir>,
 }
 
-impl<'a> EmitIgnoredResolutionErrors<'a> {
-    fn new(session: &'a Session) -> Self {
-        Self { session }
+impl<'a, 'hir> EmitIgnoredResolutionErrors<'a, 'hir> {
+    fn new(session: &'a Session, hir_map: Map<'hir>) -> Self {
+        Self { session, hir_map }
     }
 }
 
-impl<'a> Visitor<'a> for EmitIgnoredResolutionErrors<'_> {
-    type Map = Map<'a>;
+impl<'hir> Visitor<'hir> for EmitIgnoredResolutionErrors<'_, 'hir> {
+    type Map = Map<'hir>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        // If we visit nested bodies, then we will report errors twice for e.g. nested closures
-        NestedVisitorMap::None
+        // We need to recurse into nested closures,
+        // since those will fallback to the parent for type checking.
+        NestedVisitorMap::OnlyBodies(self.hir_map)
     }
 
     fn visit_path(&mut self, path: &'v Path<'v>, _id: HirId) {
