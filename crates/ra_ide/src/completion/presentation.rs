@@ -491,7 +491,7 @@ mod tests {
             }
         }
 
-        let mut completions = get_all_completion_items(ra_fixture, &CompletionConfig::default());
+        let mut completions = get_all_completion_items(CompletionConfig::default(), ra_fixture);
         completions.sort_by_key(|it| (Reverse(it.score()), it.label().to_string()));
         let actual = completions
             .into_iter()
@@ -835,6 +835,7 @@ fn bar(s: &S) {
     fn suppress_arg_snippets() {
         mark::check!(suppress_arg_snippets);
         check_edit_with_config(
+            CompletionConfig { add_call_argument_snippets: false, ..CompletionConfig::default() },
             "with_args",
             r#"
 fn with_args(x: i32, y: String) {}
@@ -844,7 +845,6 @@ fn main() { with_<|> }
 fn with_args(x: i32, y: String) {}
 fn main() { with_args($0) }
 "#,
-            &CompletionConfig { add_call_argument_snippets: false, ..CompletionConfig::default() },
         );
     }
 

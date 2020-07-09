@@ -258,7 +258,6 @@ mod tests {
 
     use expect::{expect_file, ExpectFile};
 
-    // TODO: inlay hints config order
     fn check(diagnostics_json: &str, expect: ExpectFile) {
         check_with_config(DiagnosticsConfig::default(), diagnostics_json, expect)
     }
