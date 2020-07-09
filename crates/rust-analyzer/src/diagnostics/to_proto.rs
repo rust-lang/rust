@@ -125,7 +125,7 @@ fn map_rust_child_diagnostic(
 
 #[derive(Debug)]
 pub(crate) struct MappedRustDiagnostic {
-    pub(crate) location: lsp_types::Location,
+    pub(crate) url: lsp_types::Url,
     pub(crate) diagnostic: lsp_types::Diagnostic,
     pub(crate) fixes: Vec<lsp_ext::CodeAction>,
 }
@@ -246,7 +246,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 tags: if tags.is_empty() { None } else { Some(tags.clone()) },
             };
 
-            MappedRustDiagnostic { location, diagnostic, fixes: fixes.clone() }
+            MappedRustDiagnostic { url: location.uri, diagnostic, fixes: fixes.clone() }
         })
         .collect()
 }

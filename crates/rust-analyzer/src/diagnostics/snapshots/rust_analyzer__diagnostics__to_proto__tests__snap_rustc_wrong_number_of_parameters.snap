@@ -4,19 +4,7 @@ expression: diag
 ---
 [
     MappedRustDiagnostic {
-        location: Location {
-            uri: "file:///test/compiler/ty/select.rs",
-            range: Range {
-                start: Position {
-                    line: 103,
-                    character: 17,
-                },
-                end: Position {
-                    line: 103,
-                    character: 29,
-                },
-            },
-        },
+        url: "file:///test/compiler/ty/select.rs",
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {

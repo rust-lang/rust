@@ -238,7 +238,7 @@ impl GlobalState {
                         &workspace_root,
                     );
                     for diag in diagnostics {
-                        match url_to_file_id(&self.vfs.read().0, &diag.location.uri) {
+                        match url_to_file_id(&self.vfs.read().0, &diag.url) {
                             Ok(file_id) => self.diagnostics.add_check_diagnostic(
                                 file_id,
                                 diag.diagnostic,
