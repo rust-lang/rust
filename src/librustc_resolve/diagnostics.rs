@@ -898,44 +898,42 @@ impl<'a> Resolver<'a> {
         suggestion: Option<TypoSuggestion>,
         span: Span,
     ) -> bool {
-        if let Some(suggestion) = suggestion {
+        let suggestion = match suggestion {
+            None => return false,
             // We shouldn't suggest underscore.
-            if suggestion.candidate == kw::Underscore {
-                return false;
-            }
-
-            let msg = format!(
-                "{} {} with a similar name exists",
-                suggestion.res.article(),
-                suggestion.res.descr()
-            );
-            err.span_suggestion(
-                span,
-                &msg,
-                suggestion.candidate.to_string(),
-                Applicability::MaybeIncorrect,
-            );
-            let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
-                LOCAL_CRATE => self.opt_span(def_id),
-                _ => Some(
-                    self.session
-                        .source_map()
-                        .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
+            Some(suggestion) if suggestion.candidate == kw::Underscore => return false,
+            Some(suggestion) => suggestion,
+        };
+        let msg = format!(
+            "{} {} with a similar name exists",
+            suggestion.res.article(),
+            suggestion.res.descr()
+        );
+        err.span_suggestion(
+            span,
+            &msg,
+            suggestion.candidate.to_string(),
+            Applicability::MaybeIncorrect,
+        );
+        let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
+            LOCAL_CRATE => self.opt_span(def_id),
+            _ => Some(
+                self.session
+                    .source_map()
+                    .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
+            ),
+        });
+        if let Some(span) = def_span {
+            err.span_label(
+                self.session.source_map().guess_head_span(span),
+                &format!(
+                    "similarly named {} `{}` defined here",
+                    suggestion.res.descr(),
+                    suggestion.candidate.as_str(),
                 ),
-            });
-            if let Some(span) = def_span {
-                err.span_label(
-                    self.session.source_map().guess_head_span(span),
-                    &format!(
-                        "similarly named {} `{}` defined here",
-                        suggestion.res.descr(),
-                        suggestion.candidate.as_str(),
-                    ),
-                );
-            }
-            return true;
+            );
         }
-        false
+        true
     }
 
     fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
