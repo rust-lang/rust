@@ -18,7 +18,7 @@ pub fn target() -> Result<Target, String> {
         linker_is_gnu: true,
         max_atomic_width: Some(128),
         panic_strategy: PanicStrategy::Abort,
-        abi_blacklist: super::arm_base::abi_blacklist(),
+        unsupported_abis: super::arm_base::unsupported_abis(),
         ..Default::default()
     };
     Ok(Target {

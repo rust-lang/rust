@@ -41,7 +41,7 @@ pub fn opts() -> TargetOptions {
         // Similarly, one almost always never wants to use relocatable code because of the extra
         // costs it involves.
         relocation_model: RelocModel::Static,
-        abi_blacklist: super::arm_base::abi_blacklist(),
+        unsupported_abis: super::arm_base::unsupported_abis(),
         // When this section is added a volatile load to its start address is also generated. This
         // volatile load is a footgun as it can end up loading an invalid memory address, depending
         // on how the user set up their linker scripts. This section adds pretty printer for stuff

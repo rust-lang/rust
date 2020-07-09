@@ -842,14 +842,14 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         report_error(self, ns);
                     }
                     Some(LexicalScopeBinding::Item(binding)) => {
-                        let orig_blacklisted_binding =
-                            replace(&mut self.r.blacklisted_binding, Some(binding));
+                        let orig_unusable_binding =
+                            replace(&mut self.r.unusable_binding, Some(binding));
                         if let Some(LexicalScopeBinding::Res(..)) = self
                             .resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span)
                         {
                             report_error(self, ns);
                         }
-                        self.r.blacklisted_binding = orig_blacklisted_binding;
+                        self.r.unusable_binding = orig_unusable_binding;
                     }
                     None => {}
                 }
