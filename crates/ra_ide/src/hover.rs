@@ -9,16 +9,15 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use stdx::format_to;
+use test_utils::mark;
 
 use crate::{
-    display::{
-        macro_label, rust_code_markup, rust_code_markup_with_doc, ShortLabel, ToNav, TryToNav,
-    },
+    display::{macro_label, ShortLabel, ToNav, TryToNav},
     markup::Markup,
     runnables::runnable,
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable,
 };
-use test_utils::mark;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
@@ -92,8 +91,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     };
     if let Some(definition) = definition {
-        if let Some(text) = hover_for_definition(db, definition) {
-            res.markup = text.into();
+        if let Some(markup) = hover_for_definition(db, definition) {
+            res.markup = markup;
             if let Some(action) = show_implementations_action(db, definition) {
                 res.actions.push(action);
             }
@@ -126,7 +125,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         }
     };
 
-    res.markup = rust_code_markup(&ty.display(db)).into();
+    res.markup = Markup::fenced_block(&ty.display(db));
     let range = sema.original_range(&node).range;
     Some(RangeInfo::new(range, res))
 }
@@ -223,15 +222,28 @@ fn goto_type_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     }
 }
 
-fn hover_text(
+fn hover_markup(
     docs: Option<String>,
     desc: Option<String>,
     mod_path: Option<String>,
-) -> Option<String> {
-    if let Some(desc) = desc {
-        Some(rust_code_markup_with_doc(&desc, docs.as_deref(), mod_path.as_deref()))
-    } else {
-        docs
+) -> Option<Markup> {
+    match desc {
+        Some(desc) => {
+            let mut buf = String::new();
+
+            if let Some(mod_path) = mod_path {
+                if !mod_path.is_empty() {
+                    format_to!(buf, "```rust\n{}\n```\n\n", mod_path);
+                }
+            }
+            format_to!(buf, "```rust\n{}\n```", desc);
+
+            if let Some(doc) = docs {
+                format_to!(buf, "\n___\n\n{}", doc);
+            }
+            Some(buf.into())
+        }
+        None => docs.map(Markup::from),
     }
 }
 
@@ -268,20 +280,20 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     def.module(db).map(|module| render_path(db, module, definition_owner_name(db, def)))
 }
 
-fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<String> {
+fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     return match def {
         Definition::Macro(it) => {
             let src = it.source(db);
             let docs = Documentation::from_ast(&src.value).map(Into::into);
-            hover_text(docs, Some(macro_label(&src.value)), mod_path)
+            hover_markup(docs, Some(macro_label(&src.value)), mod_path)
         }
         Definition::Field(it) => {
             let src = it.source(db);
             match src.value {
                 FieldSource::Named(it) => {
                     let docs = Documentation::from_ast(&it).map(Into::into);
-                    hover_text(docs, it.short_label(), mod_path)
+                    hover_markup(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             }
@@ -290,7 +302,7 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<String> {
             ModuleDef::Module(it) => match it.definition_source(db).value {
                 ModuleSource::Module(it) => {
                     let docs = Documentation::from_ast(&it).map(Into::into);
-                    hover_text(docs, it.short_label(), mod_path)
+                    hover_markup(docs, it.short_label(), mod_path)
                 }
                 _ => None,
             },
@@ -303,23 +315,23 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<String> {
             ModuleDef::Static(it) => from_def_source(db, it, mod_path),
             ModuleDef::Trait(it) => from_def_source(db, it, mod_path),
             ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
-            ModuleDef::BuiltinType(it) => Some(it.to_string()),
+            ModuleDef::BuiltinType(it) => return Some(it.to_string().into()),
         },
-        Definition::Local(it) => Some(rust_code_markup(&it.ty(db).display(db))),
+        Definition::Local(it) => return Some(Markup::fenced_block(&it.ty(db).display(db))),
         Definition::TypeParam(_) | Definition::SelfType(_) => {
             // FIXME: Hover for generic param
             None
         }
     };
 
-    fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<String>
+    fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>
     where
         D: HasSource<Ast = A>,
         A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel + ast::AttrsOwner,
     {
         let src = def.source(db);
         let docs = Documentation::from_ast(&src.value).map(Into::into);
-        hover_text(docs, src.value.short_label(), mod_path)
+        hover_markup(docs, src.value.short_label(), mod_path)
     }
 }
 

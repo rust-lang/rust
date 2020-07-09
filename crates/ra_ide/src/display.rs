@@ -6,13 +6,10 @@ mod navigation_target;
 mod structure;
 mod short_label;
 
-use std::fmt::Display;
-
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner, NameOwner, TypeParamsOwner},
     SyntaxKind::{ATTR, COMMENT},
 };
-use stdx::format_to;
 
 pub use function_signature::FunctionSignature;
 pub use navigation_target::NavigationTarget;
@@ -68,30 +65,4 @@ pub(crate) fn macro_label(node: &ast::MacroCall) -> String {
     let name = node.name().map(|name| name.syntax().text().to_string()).unwrap_or_default();
     let vis = if node.has_atom_attr("macro_export") { "#[macro_export]\n" } else { "" };
     format!("{}macro_rules! {}", vis, name)
-}
-
-pub(crate) fn rust_code_markup(code: &impl Display) -> String {
-    rust_code_markup_with_doc(code, None, None)
-}
-
-pub(crate) fn rust_code_markup_with_doc(
-    code: &impl Display,
-    doc: Option<&str>,
-    mod_path: Option<&str>,
-) -> String {
-    let mut buf = String::new();
-
-    if let Some(mod_path) = mod_path {
-        if !mod_path.is_empty() {
-            format_to!(buf, "```rust\n{}\n```\n\n", mod_path);
-        }
-    }
-    format_to!(buf, "```rust\n{}\n```", code);
-
-    if let Some(doc) = doc {
-        format_to!(buf, "\n___");
-        format_to!(buf, "\n\n{}", doc);
-    }
-
-    buf
 }
