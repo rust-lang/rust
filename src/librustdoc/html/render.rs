@@ -1291,6 +1291,7 @@ fn settings(root_path: &str, suffix: &str) -> String {
         ("auto-hide-method-docs", "Auto-hide item methods' documentation", false).into(),
         ("auto-hide-trait-implementations", "Auto-hide trait implementations documentation", true)
             .into(),
+        ("auto-collapse-implementors", "Auto-collapse implementors", true).into(),
         ("go-to-only-result", "Directly go to item in search if there is only one result", false)
             .into(),
         ("line-numbers", "Show line numbers on code examples", false).into(),
