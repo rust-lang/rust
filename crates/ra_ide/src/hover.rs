@@ -73,20 +73,6 @@ pub struct HoverResult {
     pub actions: Vec<HoverAction>,
 }
 
-impl HoverResult {
-    pub fn new() -> HoverResult {
-        Self::default()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.markup.is_empty()
-    }
-
-    fn push_action(&mut self, action: HoverAction) {
-        self.actions.push(action);
-    }
-}
-
 // Feature: Hover
 //
 // Shows additional information, like type of an expression or documentation for definition when "focusing" code.
@@ -97,7 +83,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     let token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(token);
 
-    let mut res = HoverResult::new();
+    let mut res = HoverResult::default();
 
     let node = token.parent();
     let definition = match_ast! {
@@ -111,17 +97,17 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         if let Some(text) = hover_for_definition(db, definition) {
             res.markup.push_section(&text);
         }
-        if !res.is_empty() {
+        if !res.markup.is_empty() {
             if let Some(action) = show_implementations_action(db, definition) {
-                res.push_action(action);
+                res.actions.push(action);
             }
 
             if let Some(action) = runnable_action(&sema, definition, position.file_id) {
-                res.push_action(action);
+                res.actions.push(action);
             }
 
             if let Some(action) = goto_type_action(db, definition) {
-                res.push_action(action);
+                res.actions.push(action);
             }
 
             let range = sema.original_range(&node).range;
