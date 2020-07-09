@@ -679,15 +679,15 @@ impl Session {
         let found_negative = requested_features.clone().any(|r| r == "-crt-static");
         let found_positive = requested_features.clone().any(|r| r == "+crt-static");
 
-        if found_positive || found_negative {
-            found_positive
-        } else if crate_type == Some(CrateType::ProcMacro)
+        if crate_type == Some(CrateType::ProcMacro)
             || crate_type == None && self.opts.crate_types.contains(&CrateType::ProcMacro)
         {
             // FIXME: When crate_type is not available,
             // we use compiler options to determine the crate_type.
             // We can't check `#![crate_type = "proc-macro"]` here.
             false
+        } else if found_positive || found_negative {
+            found_positive
         } else {
             self.target.target.options.crt_static_default
         }
