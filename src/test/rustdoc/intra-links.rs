@@ -46,6 +46,8 @@ macro_rules! this_macro {
     () => {};
 }
 
+// @has intra_links/struct.ThisType.html '//a/@href' '../intra_links/macro.this_macro.html'
+/// another link to [`this_macro!()`]
 pub struct ThisType;
 
 impl ThisType {
@@ -70,7 +72,7 @@ pub trait SoAmbiguous {}
 pub fn SoAmbiguous() {}
 
 
-// @has - '//a/@href' '../intra_links/struct.ThisType.html'
+// @has intra_links/struct.SomeOtherType.html '//a/@href' '../intra_links/struct.ThisType.html'
 // @has - '//a/@href' '../intra_links/struct.ThisType.html#method.this_method'
 // @has - '//a/@href' '../intra_links/enum.ThisEnum.html'
 // @has - '//a/@href' '../intra_links/enum.ThisEnum.html#variant.ThisVariant'
