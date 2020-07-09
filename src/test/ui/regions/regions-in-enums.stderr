@@ -6,7 +6,7 @@ LL | enum No0 {
 LL |     X5(&'foo usize)
    |         ^^^^ undeclared lifetime
    |
-   = help: if you want to use in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-in-enums.rs:17:9
@@ -16,7 +16,7 @@ LL | enum No1 {
 LL |     X6(&'a usize)
    |         ^^ undeclared lifetime
    |
-   = help: if you want to use in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error: aborting due to 2 previous errors
 

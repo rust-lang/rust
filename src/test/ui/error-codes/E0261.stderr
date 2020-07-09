@@ -6,7 +6,7 @@ LL | fn foo(x: &'a str) { }
    |       |
    |       help: consider introducing lifetime `'a` here: `<'a>`
    |
-   = help: if you want to use in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/E0261.rs:5:9
@@ -16,7 +16,7 @@ LL | struct Foo {
 LL |     x: &'a str,
    |         ^^ undeclared lifetime
    |
-   = help: if you want to use in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error: aborting due to 2 previous errors
 

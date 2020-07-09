@@ -1091,7 +1091,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             && suggests_in_band
         {
             err.help(
-                "if you want to use in-band lifetime bindings, \
+                "if you want to experiment with in-band lifetime bindings, \
                     add `#![feature(in_band_lifetimes)]` to the crate attributes",
             );
         }
