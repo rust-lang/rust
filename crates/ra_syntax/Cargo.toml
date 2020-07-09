@@ -31,4 +31,5 @@ serde = { version = "1.0.106", features = ["derive"] }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
+expect = { path = "../expect" }
 walkdir = "2.3.1"
