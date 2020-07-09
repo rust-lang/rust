@@ -157,18 +157,23 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             return Some(());
         }
 
+        let is_method_call;
         let (callee, args) = match expr {
             Expr::Call { callee, args } => {
+                is_method_call = false;
                 let callee = &self.infer.type_of_expr[*callee];
                 let (callable, _) = callee.as_callable()?;
                 let callee = match callable {
                     CallableDef::FunctionId(func) => func,
+
+                    // FIXME: Handle tuple struct/variant constructor calls.
                     _ => return None,
                 };
 
                 (callee, args.clone())
             }
             Expr::MethodCall { receiver, args, .. } => {
+                is_method_call = true;
                 let callee = self.infer.method_resolution(call_id)?;
                 let mut args = args.clone();
                 args.insert(0, *receiver);
@@ -182,15 +187,19 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let params = ast.value.param_list()?;
 
         let mut param_count = params.params().count();
+        let mut arg_count = args.len();
+
         if params.self_param().is_some() {
             param_count += 1;
         }
-        let arg_count = args.len();
 
         if arg_count != param_count {
-            let (_, source_map): (Arc<Body>, Arc<BodySourceMap>) =
-                db.body_with_source_map(self.func.into());
+            let (_, source_map) = db.body_with_source_map(self.func.into());
             if let Ok(source_ptr) = source_map.expr_syntax(call_id) {
+                if is_method_call {
+                    param_count -= 1;
+                    arg_count -= 1;
+                }
                 self.sink.push(MismatchedArgCount {
                     file: source_ptr.file_id,
                     call_expr: source_ptr.value,
