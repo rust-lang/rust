@@ -33,7 +33,7 @@
           ((_0 as Some).0: u8) = move _4;  // scope 1 at $DIR/simplify-arm.rs:11:20: 11:27
           discriminant(_0) = 1;            // scope 1 at $DIR/simplify-arm.rs:11:20: 11:27
           StorageDead(_4);                 // scope 1 at $DIR/simplify-arm.rs:11:26: 11:27
-          StorageDead(_3);                 // scope 0 at $DIR/simplify-arm.rs:11:27: 11:28
+          StorageDead(_3);                 // scope 0 at $DIR/simplify-arm.rs:11:26: 11:27
           goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:10:5: 13:6
       }
   

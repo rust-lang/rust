@@ -43,7 +43,7 @@ fn unwrap(_1: std::option::Option<T>) -> T {
         StorageLive(_3);                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
         _3 = move ((_1 as Some).0: T);   // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
         _0 = move _3;                    // scope 1 at $DIR/no-drop-for-inactive-variant.rs:9:20: 9:21
-        StorageDead(_3);                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:21: 9:22
+        StorageDead(_3);                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:20: 9:21
         _6 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
         return;                          // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:2: 12:2
     }
