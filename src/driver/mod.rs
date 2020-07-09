@@ -1,6 +1,5 @@
 use std::any::Any;
 
-use rustc_hir::HirId;
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
 
@@ -32,7 +31,6 @@ pub(crate) fn codegen_crate(
 
 fn codegen_mono_items<'tcx>(
     cx: &mut crate::CodegenCx<'tcx, impl Backend + 'static>,
-    global_asm: &mut Vec<HirId>,
     mono_items: Vec<(MonoItem<'tcx>, (RLinkage, Visibility))>,
 ) {
     cx.tcx.sess.time("predefine functions", || {
@@ -51,13 +49,12 @@ fn codegen_mono_items<'tcx>(
 
     for (mono_item, (linkage, visibility)) in mono_items {
         let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
-        trans_mono_item(cx, global_asm, mono_item, linkage);
+        trans_mono_item(cx, mono_item, linkage);
     }
 }
 
 fn trans_mono_item<'tcx, B: Backend + 'static>(
     cx: &mut crate::CodegenCx<'tcx, B>,
-    global_asm: &mut Vec<HirId>,
     mono_item: MonoItem<'tcx>,
     linkage: Linkage,
 ) {
@@ -94,7 +91,13 @@ fn trans_mono_item<'tcx, B: Backend + 'static>(
             crate::constant::codegen_static(&mut cx.constants_cx, def_id);
         }
         MonoItem::GlobalAsm(hir_id) => {
-            global_asm.push(hir_id);
+            let item = tcx.hir().expect_item(hir_id);
+            if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
+                cx.global_asm.push_str(&*asm.as_str());
+                cx.global_asm.push_str("\n\n");
+            } else {
+                bug!("Expected GlobalAsm found {:?}", item);
+            }
         }
     }
 }

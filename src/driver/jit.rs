@@ -54,15 +54,13 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>) -> ! {
 
     let mut cx = crate::CodegenCx::new(tcx, jit_module, false);
 
-    let (mut jit_module, _debug, mut unwind_context) = super::time(tcx, "codegen mono items", || {
-        let mut global_asm = Vec::new();
-        super::codegen_mono_items(&mut cx, &mut global_asm, mono_items);
-        for hir_id in global_asm {
-            let item = tcx.hir().expect_item(hir_id);
-            tcx.sess.span_err(item.span, "Global asm is not supported in JIT mode");
-        }
+    let (mut jit_module, global_asm, _debug, mut unwind_context) = super::time(tcx, "codegen mono items", || {
+        super::codegen_mono_items(&mut cx, mono_items);
         tcx.sess.time("finalize CodegenCx", || cx.finalize())
     });
+    if !global_asm.is_empty() {
+        tcx.sess.fatal("Global asm is not supported in JIT mode");
+    }
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut unwind_context);
     crate::allocator::codegen(tcx, &mut jit_module, &mut unwind_context);
 
