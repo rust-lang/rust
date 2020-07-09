@@ -4054,6 +4054,10 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         _ => None,
                     })
                 {
+                    let deref_mut = v
+                        .iter()
+                        .filter(|i| i.inner_impl().trait_.is_some())
+                        .any(|i| i.inner_impl().trait_.def_id() == c.deref_mut_trait_did);
                     let inner_impl = target
                         .def_id()
                         .or(target
@@ -4074,7 +4078,9 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         let mut ret = impls
                             .iter()
                             .filter(|i| i.inner_impl().trait_.is_none())
-                            .flat_map(|i| get_methods(i.inner_impl(), true, &mut used_links, true))
+                            .flat_map(|i| {
+                                get_methods(i.inner_impl(), true, &mut used_links, deref_mut)
+                            })
                             .collect::<Vec<_>>();
                         // We want links' order to be reproducible so we don't use unstable sort.
                         ret.sort();
