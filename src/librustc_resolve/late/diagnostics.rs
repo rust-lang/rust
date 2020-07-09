@@ -168,9 +168,9 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         if ["this", "my"].contains(&&*item_str.as_str())
             && self.self_value_is_available(path[0].ident.span, span)
         {
-            err.span_suggestion(
+            err.span_suggestion_short(
                 span,
-                "did you mean",
+                "you might have meant to use `self` here instead",
                 "self".to_string(),
                 Applicability::MaybeIncorrect,
             );
