@@ -7,6 +7,5 @@
 - [Documentation tests](documentation-tests.md)
 - [Lints](lints.md)
 - [Passes](passes.md)
-- [Intra-doc links](intra-doc-links.md)
 - [Advanced Features](advanced-features.md)
 - [Unstable features](unstable-features.md)
