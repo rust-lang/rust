@@ -900,7 +900,7 @@ impl fmt::Debug for StderrLock<'_> {
 ///         
 /// }
 /// ```
-pub fn inputln(prompt: &str) -> String {
+pub fn input_prompt(prompt: &str) -> String {
     stdout()
         .write(prompt.as_bytes())
         .unwrap();
