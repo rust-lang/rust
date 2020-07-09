@@ -102,18 +102,13 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     let node = token.parent();
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => {
-                classify_name_ref(&sema, &name_ref).map(|d| d.definition())
-            },
-            ast::Name(name) => {
-                classify_name(&sema, &name).map(|d| d.definition())
-            },
+            ast::NameRef(name_ref) => classify_name_ref(&sema, &name_ref).map(|d| d.definition()),
+            ast::Name(name) => classify_name(&sema, &name).map(|d| d.definition()),
             _ => None,
         }
     };
     if let Some(definition) = definition {
-        let range = sema.original_range(&node).range;
-        if let Some(text) = hover_text_from_name_kind(db, definition) {
+        if let Some(text) = hover_for_definition(db, definition) {
             res.markup.push_section(&text);
         }
         if !res.is_empty() {
@@ -129,6 +124,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 res.push_action(action);
             }
 
+            let range = sema.original_range(&node).range;
             return Some(RangeInfo::new(range, res));
         }
     }
@@ -139,20 +135,14 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 
     let ty = match_ast! {
         match node {
-            ast::MacroCall(_it) => {
-                // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
-                // (e.g expanding a builtin macro). So we give up here.
-                return None;
-            },
-            ast::Expr(it) => {
-                sema.type_of_expr(&it)
-            },
-            ast::Pat(it) => {
-                sema.type_of_pat(&it)
-            },
-            _ => None,
+            ast::Expr(it) => sema.type_of_expr(&it)?,
+            ast::Pat(it) => sema.type_of_pat(&it)?,
+            // If this node is a MACRO_CALL, it means that `descend_into_macros` failed to resolve.
+            // (e.g expanding a builtin macro). So we give up here.
+            ast::MacroCall(_it) => return None,
+            _ => return None,
         }
-    }?;
+    };
 
     res.markup.push_section(&rust_code_markup(&ty.display(db)));
     let range = sema.original_range(&node).range;
@@ -300,7 +290,7 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     def.module(db).map(|module| determine_mod_path(db, module, definition_owner_name(db, def)))
 }
 
-fn hover_text_from_name_kind(db: &RootDatabase, def: Definition) -> Option<String> {
+fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<String> {
     let mod_path = definition_mod_path(db, &def);
     return match def {
         Definition::Macro(it) => {
