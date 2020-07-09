@@ -5,6 +5,7 @@ extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_session;
+extern crate rustc_errors;
 
 use std::convert::TryFrom;
 use std::env;
@@ -13,7 +14,8 @@ use std::str::FromStr;
 use hex::FromHexError;
 use log::debug;
 
-use rustc_session::CtfeBacktrace;
+use rustc_session::{CtfeBacktrace, config::ErrorOutputType};
+use rustc_errors::emitter::{HumanReadableErrorType, ColorConfig};
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
@@ -32,7 +34,12 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
         queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             init_late_loggers(tcx);
-            let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect("no main function found!");
+            let (entry_def_id, _) = if let Some((entry_def, x)) = tcx.entry_fn(LOCAL_CRATE) {
+                (entry_def, x)
+            } else {
+                let output_ty = ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(ColorConfig::Auto));
+                rustc_session::early_error(output_ty, "miri can only run programs that have a main function");
+            };
             let mut config = self.miri_config.clone();
 
             // Add filename to `miri` arguments.
