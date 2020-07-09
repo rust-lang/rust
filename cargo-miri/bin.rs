@@ -257,21 +257,9 @@ fn setup(subcommand: MiriCommand) {
 
     // Determine where the rust sources are located.  `XARGO_RUST_SRC` env var trumps everything.
     let rust_src = match std::env::var_os("XARGO_RUST_SRC") {
-        Some(val) => {
-            let path = PathBuf::from(val);
-            let path = path.canonicalize().unwrap_or(path);
-
-            // On Windows, this produces a path starting with `\\?\`, which xargo cannot deal with.
-            // Strip that prefix; the resulting path should still be valid.
-            #[cfg(windows)]
-            let path = {
-                let str = path.into_os_string().into_string()
-                    .expect("non-unicode paths are currently not supported");
-                let str = str.strip_prefix(r"\\?\").map(String::from).unwrap_or(str);
-                PathBuf::from(str)
-            };
-
-            path
+        Some(path) => {
+            // Make path absolute, but not via `canonicalize` (which does not work very well on Windows).
+            env::current_dir().unwrap().join(path)
         }
         None => {
             // Check for `rust-src` rustup component.
