@@ -277,6 +277,15 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
         return;
     }
 
+    if tcx.sess.target.target.options.is_like_osx || tcx.sess.target.target.options.is_like_windows {
+        if global_asm.contains("__rust_probestack") {
+            return;
+        }
+
+        // FIXME fix linker error on macOS
+        tcx.sess.fatal("global_asm! is not yet supported on macOS and Windows");
+    }
+
     let assembler = crate::toolchain::get_toolchain_binary(tcx.sess, "as");
     let linker = crate::toolchain::get_toolchain_binary(tcx.sess, "ld");
 
