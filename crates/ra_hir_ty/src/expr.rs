@@ -386,3 +386,132 @@ pub fn record_pattern_missing_fields(
     }
     Some((variant_def, missed_fields, exhaustive))
 }
+
+#[cfg(test)]
+mod tests {
+    use insta::assert_snapshot;
+    use ra_db::fixture::WithFixture;
+
+    use crate::{diagnostics::MismatchedArgCount, test_db::TestDB};
+
+    fn check_diagnostic_message(ra_fixture: &str) -> String {
+        TestDB::with_single_file(ra_fixture).0.diagnostic::<MismatchedArgCount>().0
+    }
+
+    fn check_no_diagnostic(ra_fixture: &str) {
+        let (s, diagnostic_count) =
+            TestDB::with_single_file(ra_fixture).0.diagnostic::<MismatchedArgCount>();
+
+        assert_eq!(0, diagnostic_count, "expected no diagnostic, found one: {}", s);
+    }
+
+    #[test]
+    fn simple_free_fn_zero() {
+        assert_snapshot!(check_diagnostic_message(
+            r"
+            fn zero() {}
+
+            fn f() {
+                zero(1);
+            }
+            "
+        ),
+        @"\"zero(1)\": Expected 0 arguments, found 1\n");
+
+        check_no_diagnostic(
+            r"
+            fn zero() {}
+
+            fn f() {
+                zero();
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn simple_free_fn_one() {
+        assert_snapshot!(check_diagnostic_message(
+            r"
+            fn one(arg: u8) {}
+
+            fn f() {
+                one();
+            }
+            "
+        ),
+        @"\"one()\": Expected 1 argument, found 0\n");
+
+        check_no_diagnostic(
+            r"
+            fn one(arg: u8) {}
+
+            fn f() {
+                one(1);
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn method_as_fn() {
+        assert_snapshot!(check_diagnostic_message(
+            r"
+            struct S;
+            impl S {
+                fn method(&self) {}
+            }
+
+            fn f() {
+                S::method();
+            }
+            "
+        ),
+        @"\"S::method()\": Expected 1 argument, found 0\n");
+
+        check_no_diagnostic(
+            r"
+            struct S;
+            impl S {
+                fn method(&self) {}
+            }
+
+            fn f() {
+                S::method(&S);
+                S.method();
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn method_with_arg() {
+        assert_snapshot!(check_diagnostic_message(
+            r"
+            struct S;
+            impl S {
+                fn method(&self, arg: u8) {}
+            }
+
+            fn f() {
+                S.method();
+            }
+            "
+        ),
+        @"\"S.method()\": Expected 1 argument, found 0\n");
+
+        check_no_diagnostic(
+            r"
+            struct S;
+            impl S {
+                fn method(&self, arg: u8) {}
+            }
+
+            fn f() {
+                S::method(&S, 0);
+                S.method(1);
+            }
+            ",
+        );
+    }
+}
