@@ -256,13 +256,23 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 mod tests {
     use super::*;
 
-    fn parse_diagnostic(val: &str) -> flycheck::Diagnostic {
-        serde_json::from_str::<flycheck::Diagnostic>(val).unwrap()
+    use expect::{expect_file, ExpectFile};
+
+    // TODO: inlay hints config order
+    fn check(diagnostics_json: &str, expect: ExpectFile) {
+        check_with_config(DiagnosticsConfig::default(), diagnostics_json, expect)
+    }
+
+    fn check_with_config(config: DiagnosticsConfig, diagnostics_json: &str, expect: ExpectFile) {
+        let diagnostic: flycheck::Diagnostic = serde_json::from_str(diagnostics_json).unwrap();
+        let workspace_root = Path::new("/test/");
+        let actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root);
+        expect.assert_debug_eq(&actual)
     }
 
     #[test]
-    fn snap_rustc_incompatible_type_for_trait() {
-        let diag = parse_diagnostic(
+    fn rustc_incompatible_type_for_trait() {
+        check(
             r##"{
                 "message": "method `next` has an incompatible type for trait",
                 "code": {
@@ -306,16 +316,13 @@ mod tests {
                 "rendered": "error[E0053]: method `next` has an incompatible type for trait\n  --> compiler/ty/list_iter.rs:52:5\n   |\n52 |     fn next(&self) -> Option<&'list ty::Ref<M>> {\n   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability\n   |\n   = note: expected type `fn(&mut ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&ty::Ref<M>>`\n              found type `fn(&ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&'list ty::Ref<M>>`\n\n"
             }
             "##,
+            expect_file!["crates/rust-analyzer/test_data/rustc_incompatible_type_for_trait.txt"],
         );
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 
     #[test]
-    fn snap_rustc_unused_variable() {
-        let diag = parse_diagnostic(
+    fn rustc_unused_variable() {
+        check(
             r##"{
     "message": "unused variable: `foo`",
     "code": {
@@ -388,17 +395,18 @@ mod tests {
     ],
     "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
     }"##,
+            expect_file!["crates/rust-analyzer/test_data/rustc_unused_variable.txt"],
         );
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 
     #[test]
     #[cfg(not(windows))]
-    fn snap_rustc_unused_variable_as_info() {
-        let diag = parse_diagnostic(
+    fn rustc_unused_variable_as_info() {
+        check_with_config(
+            DiagnosticsConfig {
+                warnings_as_info: vec!["unused_variables".to_string()],
+                ..DiagnosticsConfig::default()
+            },
             r##"{
     "message": "unused variable: `foo`",
     "code": {
@@ -471,22 +479,18 @@ mod tests {
     ],
     "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
     }"##,
+            expect_file!["crates/rust-analyzer/test_data/rustc_unused_variable_as_info.txt"],
         );
-
-        let config = DiagnosticsConfig {
-            warnings_as_info: vec!["unused_variables".to_string()],
-            ..DiagnosticsConfig::default()
-        };
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&config, &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 
     #[test]
     #[cfg(not(windows))]
-    fn snap_rustc_unused_variable_as_hint() {
-        let diag = parse_diagnostic(
+    fn rustc_unused_variable_as_hint() {
+        check_with_config(
+            DiagnosticsConfig {
+                warnings_as_hint: vec!["unused_variables".to_string()],
+                ..DiagnosticsConfig::default()
+            },
             r##"{
     "message": "unused variable: `foo`",
     "code": {
@@ -559,21 +563,13 @@ mod tests {
     ],
     "rendered": "warning: unused variable: `foo`\n   --> driver/subcommand/repl.rs:291:9\n    |\n291 |     let foo = 42;\n    |         ^^^ help: consider prefixing with an underscore: `_foo`\n    |\n    = note: #[warn(unused_variables)] on by default\n\n"
     }"##,
+            expect_file!["crates/rust-analyzer/test_data/rustc_unused_variable_as_hint.txt"],
         );
-
-        let config = DiagnosticsConfig {
-            warnings_as_hint: vec!["unused_variables".to_string()],
-            ..DiagnosticsConfig::default()
-        };
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&config, &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 
     #[test]
-    fn snap_rustc_wrong_number_of_parameters() {
-        let diag = parse_diagnostic(
+    fn rustc_wrong_number_of_parameters() {
+        check(
             r##"{
     "message": "this function takes 2 parameters but 3 parameters were supplied",
     "code": {
@@ -688,16 +684,13 @@ mod tests {
     "children": [],
     "rendered": "error[E0061]: this function takes 2 parameters but 3 parameters were supplied\n   --> compiler/ty/select.rs:104:18\n    |\n104 |               self.add_evidence(target_fixed, evidence_fixed, false);\n    |                    ^^^^^^^^^^^^ expected 2 parameters\n...\n219 | /     pub fn add_evidence(\n220 | |         &mut self,\n221 | |         target_poly: &ty::Ref<ty::Poly>,\n222 | |         evidence_poly: &ty::Ref<ty::Poly>,\n...   |\n230 | |         }\n231 | |     }\n    | |_____- defined here\n\n"
     }"##,
+            expect_file!["crates/rust-analyzer/test_data/rustc_wrong_number_of_parameters.txt"],
         );
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 
     #[test]
-    fn snap_clippy_pass_by_ref() {
-        let diag = parse_diagnostic(
+    fn clippy_pass_by_ref() {
+        check(
             r##"{
     "message": "this argument is passed by reference, but would be more efficient if passed by value",
     "code": {
@@ -808,16 +801,13 @@ mod tests {
     ],
     "rendered": "warning: this argument is passed by reference, but would be more efficient if passed by value\n  --> compiler/mir/tagset.rs:42:24\n   |\n42 |     pub fn is_disjoint(&self, other: Self) -> bool {\n   |                        ^^^^^ help: consider passing by value instead: `self`\n   |\nnote: lint level defined here\n  --> compiler/lib.rs:1:9\n   |\n1  | #![warn(clippy::all)]\n   |         ^^^^^^^^^^^\n   = note: #[warn(clippy::trivially_copy_pass_by_ref)] implied by #[warn(clippy::all)]\n   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref\n\n"
     }"##,
+            expect_file!["crates/rust-analyzer/test_data/clippy_pass_by_ref.txt"],
         );
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 
     #[test]
-    fn snap_rustc_mismatched_type() {
-        let diag = parse_diagnostic(
+    fn rustc_mismatched_type() {
+        check(
             r##"{
     "message": "mismatched types",
     "code": {
@@ -851,16 +841,13 @@ mod tests {
     "children": [],
     "rendered": "error[E0308]: mismatched types\n  --> runtime/compiler_support.rs:48:65\n   |\n48 |     let layout = alloc::Layout::from_size_align_unchecked(size, align);\n   |                                                                 ^^^^^ expected usize, found u32\n\n"
     }"##,
+            expect_file!["crates/rust-analyzer/test_data/rustc_mismatched_type.txt"],
         );
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 
     #[test]
-    fn snap_handles_macro_location() {
-        let diag = parse_diagnostic(
+    fn handles_macro_location() {
+        check(
             r##"{
     "rendered": "error[E0277]: can't compare `{integer}` with `&str`\n --> src/main.rs:2:5\n  |\n2 |     assert_eq!(1, \"love\");\n  |     ^^^^^^^^^^^^^^^^^^^^^^ no implementation for `{integer} == &str`\n  |\n  = help: the trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`\n  = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)\n\n",
     "children": [
@@ -1122,16 +1109,13 @@ mod tests {
         }
     ]
     }"##,
+            expect_file!["crates/rust-analyzer/test_data/handles_macro_location.txt"],
         );
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 
     #[test]
-    fn snap_macro_compiler_error() {
-        let diag = parse_diagnostic(
+    fn macro_compiler_error() {
+        check(
             r##"{
         "rendered": "error: Please register your known path in the path module\n   --> crates/ra_hir_def/src/path.rs:265:9\n    |\n265 |         compile_error!(\"Please register your known path in the path module\")\n    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    | \n   ::: crates/ra_hir_def/src/data.rs:80:16\n    |\n80  |     let path = path![std::future::Future];\n    |                -------------------------- in this macro invocation\n\n",
         "children": [],
@@ -1351,16 +1335,13 @@ mod tests {
         ]
     }
             "##,
+            expect_file!["crates/rust-analyzer/test_data/macro_compiler_error.txt"],
         );
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 
     #[test]
     fn snap_multi_line_fix() {
-        let diag = parse_diagnostic(
+        check(
             r##"{
                 "rendered": "warning: returning the result of a let binding from a block\n --> src/main.rs:4:5\n  |\n3 |     let a = (0..10).collect();\n  |     -------------------------- unnecessary let binding\n4 |     a\n  |     ^\n  |\n  = note: `#[warn(clippy::let_and_return)]` on by default\n  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return\nhelp: return the expression directly\n  |\n3 |     \n4 |     (0..10).collect()\n  |\n\n",
                 "children": [
@@ -1484,10 +1465,7 @@ mod tests {
                 ]
             }
             "##,
+            expect_file!["crates/rust-analyzer/test_data/snap_multi_line_fix.txt"],
         );
-
-        let workspace_root = Path::new("/test/");
-        let diag = map_rust_diagnostic_to_lsp(&DiagnosticsConfig::default(), &diag, workspace_root);
-        insta::assert_debug_snapshot!(diag);
     }
 }

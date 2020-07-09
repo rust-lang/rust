@@ -1,7 +1,3 @@
----
-source: crates/rust-analyzer/src/diagnostics/to_proto.rs
-expression: diag
----
 [
     MappedRustDiagnostic {
         url: "file:///test/compiler/mir/tagset.rs",

@@ -1,46 +1,46 @@
----
-source: crates/rust-analyzer/src/diagnostics/to_proto.rs
-expression: diag
----
 [
     MappedRustDiagnostic {
-        url: "file:///test/crates/ra_hir_def/src/data.rs",
+        url: "file:///test/compiler/ty/select.rs",
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
-                    line: 79,
-                    character: 15,
+                    line: 103,
+                    character: 17,
                 },
                 end: Position {
-                    line: 79,
-                    character: 41,
+                    line: 103,
+                    character: 29,
                 },
             },
             severity: Some(
                 Error,
             ),
-            code: None,
+            code: Some(
+                String(
+                    "E0061",
+                ),
+            ),
             source: Some(
                 "rustc",
             ),
-            message: "Please register your known path in the path module",
+            message: "this function takes 2 parameters but 3 parameters were supplied\nexpected 2 parameters",
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
                         location: Location {
-                            uri: "file:///test/crates/ra_hir_def/src/path.rs",
+                            uri: "file:///test/compiler/ty/select.rs",
                             range: Range {
                                 start: Position {
-                                    line: 264,
-                                    character: 8,
+                                    line: 218,
+                                    character: 4,
                                 },
                                 end: Position {
-                                    line: 264,
-                                    character: 76,
+                                    line: 230,
+                                    character: 5,
                                 },
                             },
                         },
-                        message: "Error originated from macro here",
+                        message: "defined here",
                     },
                 ],
             ),

@@ -1,50 +1,42 @@
----
-source: crates/rust-analyzer/src/diagnostics/to_proto.rs
-expression: diag
----
 [
     MappedRustDiagnostic {
-        url: "file:///test/compiler/ty/select.rs",
+        url: "file:///test/crates/ra_hir_def/src/data.rs",
         diagnostic: Diagnostic {
             range: Range {
                 start: Position {
-                    line: 103,
-                    character: 17,
+                    line: 79,
+                    character: 15,
                 },
                 end: Position {
-                    line: 103,
-                    character: 29,
+                    line: 79,
+                    character: 41,
                 },
             },
             severity: Some(
                 Error,
             ),
-            code: Some(
-                String(
-                    "E0061",
-                ),
-            ),
+            code: None,
             source: Some(
                 "rustc",
             ),
-            message: "this function takes 2 parameters but 3 parameters were supplied\nexpected 2 parameters",
+            message: "Please register your known path in the path module",
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
                         location: Location {
-                            uri: "file:///test/compiler/ty/select.rs",
+                            uri: "file:///test/crates/ra_hir_def/src/path.rs",
                             range: Range {
                                 start: Position {
-                                    line: 218,
-                                    character: 4,
+                                    line: 264,
+                                    character: 8,
                                 },
                                 end: Position {
-                                    line: 230,
-                                    character: 5,
+                                    line: 264,
+                                    character: 76,
                                 },
                             },
                         },
-                        message: "defined here",
+                        message: "Error originated from macro here",
                     },
                 ],
             ),

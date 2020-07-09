@@ -1438,7 +1438,6 @@ dependencies = [
  "expect",
  "flycheck",
  "globset",
- "insta",
  "itertools",
  "jod-thread",
  "log",
