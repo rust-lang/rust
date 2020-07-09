@@ -792,6 +792,6 @@ fn contains_illegal_self_type_reference<'tcx>(
     })
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { object_safety_violations, ..*providers };
 }

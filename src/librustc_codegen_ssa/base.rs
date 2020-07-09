@@ -853,7 +853,7 @@ impl CrateInfo {
     }
 }
 
-pub fn provide_both(providers: &mut Providers<'_>) {
+pub fn provide_both(providers: &mut Providers) {
     providers.backend_optimization_level = |tcx, cratenum| {
         let for_speed = match tcx.sess.opts.optimize {
             // If globally no optimisation is done, #[optimize] has no effect.

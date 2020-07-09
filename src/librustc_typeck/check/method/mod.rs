@@ -28,7 +28,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 use self::probe::{IsSuggestion, ProbeScope};
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     suggest::provide(providers);
     probe::provide(providers);
 }

@@ -36,7 +36,7 @@ fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     );
 }
 
-pub(crate) fn provide(providers: &mut Providers<'_>) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_loops, ..*providers };
 }
 

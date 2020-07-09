@@ -1292,7 +1292,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
     traits
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     providers.all_traits = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         &tcx.arena.alloc(compute_all_traits(tcx))[..]

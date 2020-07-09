@@ -118,7 +118,7 @@ fn collect_all<'tcx>(tcx: TyCtxt<'tcx>) -> FxHashMap<Symbol, DefId> {
     collector
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.diagnostic_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         collect(tcx)

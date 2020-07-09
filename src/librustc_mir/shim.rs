@@ -23,7 +23,7 @@ use crate::util::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle
 use crate::util::expand_aggregate;
 use crate::util::patch::MirPatch;
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 

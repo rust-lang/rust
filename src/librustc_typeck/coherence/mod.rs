@@ -151,7 +151,7 @@ fn enforce_empty_impls_for_marker_traits(
     struct_span_err!(tcx.sess, span, E0715, "impls for marker traits cannot contain items").emit();
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     use self::builtin::coerce_unsized_info;
     use self::inherent_impls::{crate_inherent_impls, inherent_impls};
     use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;

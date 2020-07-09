@@ -183,6 +183,6 @@ fn adt_drop_tys(tcx: TyCtxt<'_>, def_id: DefId) -> Result<&ty::List<Ty<'_>>, Alw
     res.map(|components| tcx.intern_type_list(&components))
 }
 
-pub(crate) fn provide(providers: &mut ty::query::Providers<'_>) {
+pub(crate) fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { needs_drop_raw, adt_drop_tys, ..*providers };
 }

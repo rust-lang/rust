@@ -1067,6 +1067,6 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.def_kind = |tcx, def_id| tcx.hir().def_kind(def_id.expect_local());
 }

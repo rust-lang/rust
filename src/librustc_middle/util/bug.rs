@@ -47,6 +47,6 @@ pub fn trigger_delay_span_bug(tcx: TyCtxt<'_>, key: rustc_hir::def_id::DefId) {
     );
 }
 
-pub fn provide(providers: &mut crate::ty::query::Providers<'_>) {
+pub fn provide(providers: &mut crate::ty::query::Providers) {
     *providers = crate::ty::query::Providers { trigger_delay_span_bug, ..*providers };
 }
