@@ -5,7 +5,7 @@ use crate::io::prelude::*;
 use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
-use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
+use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter, Write};
 use crate::sync::{Arc, Mutex, MutexGuard, Once};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -870,6 +870,43 @@ impl fmt::Debug for StderrLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("StderrLock { .. }")
     }
+}
+
+/// Locks the current handle and reads a line of input, returning a `String` containing
+/// the input.
+/// 
+/// If you need more explicit control over
+/// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
+///
+/// [`Stdin::lock`]: struct.Stdin.html#method.lock
+/// [`Stdout::lock`]: struct.Stdout.html#method.lock
+/// 
+/// ### Note: Windows Portability Consideration
+/// When operating in a console, the Windows implementation of this stream does not support
+/// non-UTF-8 byte sequences. Attempting to read and write bytes that are not valid UTF-8 will 
+/// return an error.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::io::input;
+///
+/// fn main() {
+///     let user_input = input("Please enter some text: ");
+///         
+///     println!("You typed: {}", get);
+///         
+/// }
+/// ```
+pub fn input(message:&str) -> String {
+    print!("{}", message);
+    let mut input = String::new();
+    let _ = stdout().flush();
+    stdin().read_line(&mut input).expect("RUST ERROR HELP");
+    if ['\n','\r'].contains(&input.chars().next_back().unwrap()) {
+        input.pop();
+    }
+    return input;
 }
 
 /// Resets the thread-local stderr handle to the specified writer
