@@ -719,7 +719,7 @@ pub fn prepare_outputs(
     Ok(outputs)
 }
 
-pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
+pub fn default_provide(providers: &mut ty::query::Providers) {
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
@@ -740,7 +740,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_codegen_ssa::provide(providers);
 }
 
-pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
+pub fn default_provide_extern(providers: &mut ty::query::Providers) {
     rustc_metadata::provide_extern(providers);
     rustc_codegen_ssa::provide_extern(providers);
 }

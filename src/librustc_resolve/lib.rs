@@ -3102,6 +3102,6 @@ impl CrateLint {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     late::lifetimes::provide(providers);
 }

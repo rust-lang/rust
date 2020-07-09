@@ -241,11 +241,11 @@ impl CodegenBackend for LlvmCodegenBackend {
         Box::new(metadata::LlvmMetadataLoader)
     }
 
-    fn provide(&self, providers: &mut ty::query::Providers<'_>) {
+    fn provide(&self, providers: &mut ty::query::Providers) {
         attributes::provide(providers);
     }
 
-    fn provide_extern(&self, providers: &mut ty::query::Providers<'_>) {
+    fn provide_extern(&self, providers: &mut ty::query::Providers) {
         attributes::provide_extern(providers);
     }
 

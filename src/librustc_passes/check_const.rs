@@ -62,7 +62,7 @@ fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut vis.as_deep_visitor());
 }
 
-pub(crate) fn provide(providers: &mut Providers<'_>) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_const_bodies, ..*providers };
 }
 

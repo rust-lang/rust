@@ -135,7 +135,7 @@ fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
     collector.lib_features
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.get_lib_features = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         collect(tcx)

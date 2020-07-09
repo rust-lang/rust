@@ -217,6 +217,6 @@ pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<(LocalDefId, EntryFnType)> {
     tcx.entry_fn(LOCAL_CRATE)
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers { entry_fn, ..*providers };
 }

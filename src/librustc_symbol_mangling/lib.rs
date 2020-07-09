@@ -126,7 +126,7 @@ pub fn symbol_name_for_instance_in_crate(
     compute_symbol_name(tcx, instance, || instantiating_crate)
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
 }
 

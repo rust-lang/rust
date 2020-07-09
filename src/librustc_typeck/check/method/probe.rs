@@ -440,7 +440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     providers.method_autoderef_steps = method_autoderef_steps;
 }
 

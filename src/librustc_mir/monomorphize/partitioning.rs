@@ -880,9 +880,9 @@ where
 }
 
 fn collect_and_partition_mono_items(
-    tcx: TyCtxt<'_>,
+    tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
-) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'_>]) {
+) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
@@ -994,7 +994,7 @@ fn collect_and_partition_mono_items(
     (tcx.arena.alloc(mono_items), codegen_units)
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
 
     providers.is_codegened_item = |tcx, def_id| {

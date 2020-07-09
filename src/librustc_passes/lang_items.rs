@@ -205,7 +205,7 @@ fn collect(tcx: TyCtxt<'_>) -> LanguageItems {
     items
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         collect(tcx)

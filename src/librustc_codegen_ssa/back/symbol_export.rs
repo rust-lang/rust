@@ -161,9 +161,9 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
 }
 
 fn exported_symbols_provider_local(
-    tcx: TyCtxt<'_>,
+    tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
-) -> &'tcx [(ExportedSymbol<'_>, SymbolExportLevel)] {
+) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
@@ -366,7 +366,7 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> b
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.reachable_non_generics = reachable_non_generics_provider;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
     providers.exported_symbols = exported_symbols_provider_local;
@@ -375,7 +375,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.upstream_drop_glue_for = upstream_drop_glue_for_provider;
 }
 
-pub fn provide_extern(providers: &mut Providers<'_>) {
+pub fn provide_extern(providers: &mut Providers) {
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
 }

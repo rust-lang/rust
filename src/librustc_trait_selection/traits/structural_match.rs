@@ -271,7 +271,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.has_structural_eq_impls = |tcx, ty| {
         tcx.infer_ctxt().enter(|infcx| {
             let cause = ObligationCause::dummy();
