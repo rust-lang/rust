@@ -1149,10 +1149,12 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, new_len: usize) {
-        if new_len <= self.len() {
-            assert!(self.is_char_boundary(new_len));
-            self.vec.truncate(new_len)
+        if new_len >= self.len() {
+            return;
         }
+
+        assert!(self.is_char_boundary(new_len));
+        self.vec.truncate(new_len)
     }
 
     /// Removes the last character from the string buffer and returns it.
