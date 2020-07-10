@@ -560,7 +560,7 @@ impl Rewrite for ast::GenericParam {
             _ => (),
         }
 
-        if let rustc_ast::ast::GenericParamKind::Const { ref ty } = &self.kind {
+        if let rustc_ast::ast::GenericParamKind::Const { ref ty, .. } = &self.kind {
             result.push_str("const ");
             result.push_str(rewrite_ident(context, self.ident));
             result.push_str(": ");
