@@ -126,7 +126,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         let mut flags = vec![];
         flags.push((
-            sym::item_context,
+            sym::ItemContext,
             self.describe_enclosure(obligation.cause.body_id).map(|s| s.to_owned()),
         ));
 
