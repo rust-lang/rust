@@ -54,105 +54,98 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mock_analysis::analysis_and_position;
+    use ra_db::FileRange;
 
-    fn check_goto(ra_fixture: &str, expected: &str) {
-        let (analysis, pos) = analysis_and_position(ra_fixture);
+    use crate::mock_analysis::MockAnalysis;
 
-        let mut navs = analysis.goto_type_definition(pos).unwrap().unwrap().info;
+    fn check(ra_fixture: &str) {
+        let (mock, position) = MockAnalysis::with_files_and_position(ra_fixture);
+        let (expected, data) = mock.annotation();
+        assert!(data.is_empty());
+        let analysis = mock.analysis();
+
+        let mut navs = analysis.goto_type_definition(position).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);
         let nav = navs.pop().unwrap();
-        nav.assert_match(expected);
+        assert_eq!(expected, FileRange { file_id: nav.file_id(), range: nav.range() });
     }
 
     #[test]
     fn goto_type_definition_works_simple() {
-        check_goto(
-            r"
-            //- /lib.rs
-            struct Foo;
-            fn foo() {
-                let f: Foo;
-                f<|>
-            }
-            ",
-            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
+        check(
+            r#"
+struct Foo;
+     //^^^
+fn foo() {
+    let f: Foo; f<|>
+}
+"#,
         );
     }
 
     #[test]
     fn goto_type_definition_works_simple_ref() {
-        check_goto(
-            r"
-            //- /lib.rs
-            struct Foo;
-            fn foo() {
-                let f: &Foo;
-                f<|>
-            }
-            ",
-            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
+        check(
+            r#"
+struct Foo;
+     //^^^
+fn foo() {
+    let f: &Foo; f<|>
+}
+"#,
         );
     }
 
     #[test]
     fn goto_type_definition_works_through_macro() {
-        check_goto(
-            r"
-            //- /lib.rs
-            macro_rules! id {
-                ($($tt:tt)*) => { $($tt)* }
-            }
-            struct Foo {}
-            id! {
-                fn bar() {
-                    let f<|> = Foo {};
-                }
-            }
-            ",
-            "Foo STRUCT_DEF FileId(1) 52..65 59..62",
+        check(
+            r#"
+macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
+struct Foo {}
+     //^^^
+id! {
+    fn bar() { let f<|> = Foo {}; }
+}
+"#,
         );
     }
 
     #[test]
     fn goto_type_definition_for_param() {
-        check_goto(
-            r"
-            //- /lib.rs
-            struct Foo;
-            fn foo(<|>f: Foo) {}
-            ",
-            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
+        check(
+            r#"
+struct Foo;
+     //^^^
+fn foo(<|>f: Foo) {}
+"#,
         );
     }
 
     #[test]
     fn goto_type_definition_for_tuple_field() {
-        check_goto(
-            r"
-            //- /lib.rs
-            struct Foo;
-            struct Bar(Foo);
-            fn foo() {
-                let bar = Bar(Foo);
-                bar.<|>0;
-            }
-            ",
-            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
+        check(
+            r#"
+struct Foo;
+     //^^^
+struct Bar(Foo);
+fn foo() {
+    let bar = Bar(Foo);
+    bar.<|>0;
+}
+"#,
         );
     }
 
     #[test]
     fn goto_def_for_self_param() {
-        check_goto(
+        check(
             r#"
 struct Foo;
+     //^^^
 impl Foo {
-   //^^^
     fn f(&self<|>) {}
 }
 "#,
-            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
         )
     }
 }
