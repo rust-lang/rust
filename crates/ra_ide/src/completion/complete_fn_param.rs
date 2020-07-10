@@ -47,6 +47,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         })
         .for_each(|(label, lookup)| {
             CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label)
+                .kind(crate::CompletionItemKind::Binding)
                 .lookup_by(lookup)
                 .add_to(acc)
         });
@@ -56,11 +57,11 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 mod tests {
     use expect::{expect, Expect};
 
-    use crate::completion::{test_utils::do_completion, CompletionKind};
+    use crate::completion::{test_utils::completion_list, CompletionKind};
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let actual = do_completion(ra_fixture, CompletionKind::Magic);
-        expect.assert_debug_eq(&actual);
+        let actual = completion_list(ra_fixture, CompletionKind::Magic);
+        expect.assert_eq(&actual);
     }
 
     #[test]
@@ -72,15 +73,7 @@ fn bar(file_id: FileId) {}
 fn baz(file<|>) {}
 "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "file_id: FileId",
-                        source_range: 61..65,
-                        delete: 61..65,
-                        insert: "file_id: FileId",
-                        lookup: "file_id",
-                    },
-                ]
+                bn file_id: FileId
             "#]],
         );
     }
@@ -94,15 +87,7 @@ fn bar(file_id: FileId) {}
 fn baz(file<|>, x: i32) {}
 "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "file_id: FileId",
-                        source_range: 61..65,
-                        delete: 61..65,
-                        insert: "file_id: FileId",
-                        lookup: "file_id",
-                    },
-                ]
+                bn file_id: FileId
             "#]],
         );
     }
@@ -119,15 +104,7 @@ pub(crate) trait SourceRoot {
 }
 "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "file_id: FileId",
-                        source_range: 208..212,
-                        delete: 208..212,
-                        insert: "file_id: FileId",
-                        lookup: "file_id",
-                    },
-                ]
+                bn file_id: FileId
             "#]],
         );
     }
