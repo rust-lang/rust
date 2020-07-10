@@ -885,7 +885,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// This function is not the recommended solution to get user input, it should
 /// only be used for simple actions. If you require more explicit control over
 /// getting user input, see the [`Stdin::read_line`] method.
-/// 
+///
 /// [`Stdin::read_line`]: struct.Stdin.html#method.read_line
 ///
 /// # Examples
@@ -895,9 +895,9 @@ impl fmt::Debug for StderrLock<'_> {
 ///
 /// fn main() {
 ///     let user_input = input_prompt("Please enter some text: ");
-///         
+///
 ///     println!("You typed: {}", user_input);
-///         
+///
 /// }
 /// ```
 #[unstable(
@@ -916,12 +916,12 @@ pub fn input_prompt(prompt: &str) -> String {
 /// capturing input.
 ///
 /// [`input_prompt`]: #method.input_prompt
-/// 
+///
 /// ### Note: Safety and Usage
 /// This function is not the recommended solution to get user input, it should
 /// only be used for simple actions. If you require more explicit control over
 /// getting user input, see the [`Stdin::read_line`] method.
-/// 
+///
 /// [`Stdin::read_line`]: struct.Stdin.html#method.read_line
 ///
 /// # Examples
@@ -931,11 +931,11 @@ pub fn input_prompt(prompt: &str) -> String {
 ///
 /// fn main() {
 ///     print!("Please enter some text: ");
-///     
+///
 ///     let user_input = input();
-///     
+///
 ///     println!("You typed: {}", user_input);
-///     
+///
 /// }
 /// ```
 #[unstable(
