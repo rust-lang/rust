@@ -467,10 +467,10 @@ impl GlobalState {
                             (Some(err), _) => {
                                 log::error!("failed to fetch the server settings: {:?}", err)
                             }
-                            (None, Some(configs)) => {
-                                if let Some(new_config) = configs.get(0) {
+                            (None, Some(mut configs)) => {
+                                if let Some(json) = configs.get_mut(0) {
                                     let mut config = this.config.clone();
-                                    config.update(&new_config);
+                                    config.update(json.take());
                                     this.update_configuration(config);
                                 }
                             }

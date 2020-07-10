@@ -111,14 +111,8 @@ pub struct NotificationsConfig {
 
 #[derive(Debug, Clone)]
 pub enum RustfmtConfig {
-    Rustfmt {
-        extra_args: Vec<String>,
-    },
-    #[allow(unused)]
-    CustomCommand {
-        command: String,
-        args: Vec<String>,
-    },
+    Rustfmt { extra_args: Vec<String> },
+    CustomCommand { command: String, args: Vec<String> },
 }
 
 #[derive(Debug, Clone, Default)]
@@ -178,146 +172,110 @@ impl Config {
         }
     }
 
-    #[rustfmt::skip]
-    pub fn update(&mut self, value: &serde_json::Value) {
-        log::info!("Config::update({:#})", value);
+    pub fn update(&mut self, json: serde_json::Value) {
+        log::info!("Config::update({:#})", json);
+        let data = ConfigData::from_json(json);
 
-        let client_caps = self.client_caps.clone();
-        let linked_projects = self.linked_projects.clone();
-        *self = Config::new(self.root_path.clone());
-        self.client_caps = client_caps;
-        self.linked_projects = linked_projects;
-
-        set(value, "/withSysroot", &mut self.with_sysroot);
-        set(value, "/diagnostics/enable", &mut self.publish_diagnostics);
-        set(value, "/diagnostics/warningsAsInfo", &mut self.diagnostics.warnings_as_info);
-        set(value, "/diagnostics/warningsAsHint", &mut self.diagnostics.warnings_as_hint);
-        set(value, "/lruCapacity", &mut self.lru_capacity);
-        self.files.watcher = match get(value, "/files/watcher") {
-            Some("client") => FilesWatcher::Client,
-            Some("notify") | _ => FilesWatcher::Notify
+        self.with_sysroot = data.withSysroot;
+        self.publish_diagnostics = data.diagnostics_enable;
+        self.diagnostics = DiagnosticsConfig {
+            warnings_as_info: data.diagnostics_warningsAsInfo,
+            warnings_as_hint: data.diagnostics_warningsAsHint,
         };
-        set(value, "/notifications/cargoTomlNotFound", &mut self.notifications.cargo_toml_not_found);
+        self.lru_capacity = data.lruCapacity;
+        self.files.watcher = match data.files_watcher.as_str() {
+            "notify" => FilesWatcher::Notify,
+            "client" | _ => FilesWatcher::Client,
+        };
+        self.notifications =
+            NotificationsConfig { cargo_toml_not_found: data.notifications_cargoTomlNotFound };
+        self.cargo = CargoConfig {
+            no_default_features: data.cargo_noDefaultFeatures,
+            all_features: data.cargo_allFeatures,
+            features: data.cargo_features.clone(),
+            load_out_dirs_from_check: data.cargo_loadOutDirsFromCheck,
+            target: data.cargo_target,
+        };
 
-        set(value, "/cargo/noDefaultFeatures", &mut self.cargo.no_default_features);
-        set(value, "/cargo/allFeatures", &mut self.cargo.all_features);
-        set(value, "/cargo/features", &mut self.cargo.features);
-        set(value, "/cargo/loadOutDirsFromCheck", &mut self.cargo.load_out_dirs_from_check);
-        set(value, "/cargo/target", &mut self.cargo.target);
+        self.proc_macro_srv = if data.procMacro_enable {
+            std::env::current_exe().ok().map(|path| (path, vec!["proc-macro".into()]))
+        } else {
+            None
+        };
 
-        match get(value, "/procMacro/enable") {
-            Some(true) => {
-                if let Ok(path) = std::env::current_exe() {
-                    self.proc_macro_srv = Some((path, vec!["proc-macro".into()]));
-                }
-            }
-            _ => self.proc_macro_srv = None,
-        }
-
-        match get::<Vec<String>>(value, "/rustfmt/overrideCommand") {
+        self.rustfmt = match data.rustfmt_overrideCommand {
             Some(mut args) if !args.is_empty() => {
                 let command = args.remove(0);
-                self.rustfmt = RustfmtConfig::CustomCommand {
-                    command,
-                    args,
-                }
+                RustfmtConfig::CustomCommand { command, args }
             }
-            _ => {
-                if let RustfmtConfig::Rustfmt { extra_args } = &mut self.rustfmt {
-                    set(value, "/rustfmt/extraArgs", extra_args);
-                }
-            }
+            Some(_) | None => RustfmtConfig::Rustfmt { extra_args: data.rustfmt_extraArgs },
         };
 
-        if let Some(false) = get(value, "/checkOnSave/enable") {
-            // check is disabled
-            self.flycheck = None;
-        } else {
-            // check is enabled
-            match get::<Vec<String>>(value, "/checkOnSave/overrideCommand") {
-                // first see if the user has completely overridden the command
+        self.flycheck = if data.checkOnSave_enable {
+            let flycheck_config = match data.checkOnSave_overrideCommand {
                 Some(mut args) if !args.is_empty() => {
                     let command = args.remove(0);
-                    self.flycheck = Some(FlycheckConfig::CustomCommand {
-                        command,
-                        args,
-                    });
+                    FlycheckConfig::CustomCommand { command, args }
                 }
-                // otherwise configure command customizations
-                _ => {
-                    if let Some(FlycheckConfig::CargoCommand { command, extra_args, all_targets, all_features, features })
-                        = &mut self.flycheck
-                    {
-                        set(value, "/checkOnSave/extraArgs", extra_args);
-                        set(value, "/checkOnSave/command", command);
-                        set(value, "/checkOnSave/allTargets", all_targets);
-                        *all_features = get(value, "/checkOnSave/allFeatures").unwrap_or(self.cargo.all_features);
-                        *features = get(value, "/checkOnSave/features").unwrap_or(self.cargo.features.clone());
-                    }
-                }
+                Some(_) | None => FlycheckConfig::CargoCommand {
+                    command: data.checkOnSave_command,
+                    all_targets: data.checkOnSave_allTargets,
+                    all_features: data.checkOnSave_allFeatures.unwrap_or(data.cargo_allFeatures),
+                    features: data.checkOnSave_features.unwrap_or(data.cargo_features),
+                    extra_args: data.checkOnSave_extraArgs,
+                },
             };
-        }
-
-        set(value, "/inlayHints/typeHints", &mut self.inlay_hints.type_hints);
-        set(value, "/inlayHints/parameterHints", &mut self.inlay_hints.parameter_hints);
-        set(value, "/inlayHints/chainingHints", &mut self.inlay_hints.chaining_hints);
-        set(value, "/inlayHints/maxLength", &mut self.inlay_hints.max_length);
-        set(value, "/completion/postfix/enable", &mut self.completion.enable_postfix_completions);
-        set(value, "/completion/addCallParenthesis", &mut self.completion.add_call_parenthesis);
-        set(value, "/completion/addCallArgumentSnippets", &mut self.completion.add_call_argument_snippets);
-        set(value, "/callInfo/full", &mut self.call_info_full);
-
-        let mut lens_enabled = true;
-        set(value, "/lens/enable", &mut lens_enabled);
-        if lens_enabled {
-            set(value, "/lens/run", &mut self.lens.run);
-            set(value, "/lens/debug", &mut self.lens.debug);
-            set(value, "/lens/implementations", &mut self.lens.implementations);
+            Some(flycheck_config)
         } else {
-            self.lens = LensConfig::NO_LENS;
-        }
+            None
+        };
 
-        if let Some(linked_projects) = get::<Vec<ManifestOrProjectJson>>(value, "/linkedProjects") {
-            if !linked_projects.is_empty() {
-                self.linked_projects.clear();
-                for linked_project in linked_projects {
-                    let linked_project = match linked_project {
-                        ManifestOrProjectJson::Manifest(it) => {
-                            let path = self.root_path.join(it);
-                            match ProjectManifest::from_manifest_file(path) {
-                                Ok(it) => it.into(),
-                                Err(_) => continue,
-                            }
+        self.inlay_hints = InlayHintsConfig {
+            type_hints: data.inlayHints_typeHints,
+            parameter_hints: data.inlayHints_parameterHints,
+            chaining_hints: data.inlayHints_chainingHints,
+            max_length: data.inlayHints_maxLength,
+        };
+
+        self.completion.enable_postfix_completions = data.completion_postfix_enable;
+        self.completion.add_call_parenthesis = data.completion_addCallParenthesis;
+        self.completion.add_call_argument_snippets = data.completion_addCallArgumentSnippets;
+
+        self.call_info_full = data.callInfo_full;
+
+        self.lens = LensConfig {
+            run: data.lens_enable && data.lens_run,
+            debug: data.lens_enable && data.lens_debug,
+            implementations: data.lens_enable && data.lens_implementations,
+        };
+
+        if !data.linkedProjects.is_empty() {
+            self.linked_projects.clear();
+            for linked_project in data.linkedProjects {
+                let linked_project = match linked_project {
+                    ManifestOrProjectJson::Manifest(it) => {
+                        let path = self.root_path.join(it);
+                        match ProjectManifest::from_manifest_file(path) {
+                            Ok(it) => it.into(),
+                            Err(_) => continue,
                         }
-                        ManifestOrProjectJson::ProjectJson(it) => ProjectJson::new(&self.root_path, it).into(),
-                    };
-                    self.linked_projects.push(linked_project);
-                }
+                    }
+                    ManifestOrProjectJson::ProjectJson(it) => {
+                        ProjectJson::new(&self.root_path, it).into()
+                    }
+                };
+                self.linked_projects.push(linked_project);
             }
         }
 
-        let mut use_hover_actions = false;
-        set(value, "/hoverActions/enable", &mut use_hover_actions);
-        if use_hover_actions {
-            set(value, "/hoverActions/implementations", &mut self.hover.implementations);
-            set(value, "/hoverActions/run", &mut self.hover.run);
-            set(value, "/hoverActions/debug", &mut self.hover.debug);
-            set(value, "/hoverActions/gotoTypeDef", &mut self.hover.goto_type_def);
-        } else {
-            self.hover = HoverConfig::NO_ACTIONS;
-        }
+        self.hover = HoverConfig {
+            implementations: data.hoverActions_enable && data.hoverActions_implementations,
+            run: data.hoverActions_enable && data.hoverActions_run,
+            debug: data.hoverActions_enable && data.hoverActions_debug,
+            goto_type_def: data.hoverActions_enable && data.hoverActions_gotoTypeDef,
+        };
 
         log::info!("Config::update() = {:#?}", self);
-
-        fn get<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str) -> Option<T> {
-            value.pointer(pointer).and_then(|it| T::deserialize(it).ok())
-        }
-
-        fn set<'a, T: Deserialize<'a>>(value: &'a serde_json::Value, pointer: &str, slot: &mut T) {
-            if let Some(new_value) = get(value, pointer) {
-                *slot = new_value
-            }
-        }
     }
 
     pub fn update_caps(&mut self, caps: &ClientCapabilities) {
@@ -379,4 +337,81 @@ impl Config {
 enum ManifestOrProjectJson {
     Manifest(PathBuf),
     ProjectJson(ProjectJsonData),
+}
+
+macro_rules! config_data {
+    (struct $name:ident { $($field:ident: $ty:ty = $default:expr,)*}) => {
+        #[allow(non_snake_case)]
+        struct $name { $($field: $ty,)* }
+        impl $name {
+            fn from_json(mut json: serde_json::Value) -> $name {
+                $name {$(
+                    $field: {
+                        let pointer = stringify!($field).replace('_', "/");
+                        let pointer = format!("/{}", pointer);
+                        json.pointer_mut(&pointer)
+                            .and_then(|it| serde_json::from_value(it.take()).ok())
+                            .unwrap_or($default)
+                    },
+                )*}
+            }
+        }
+
+    };
+}
+
+config_data! {
+    struct ConfigData {
+        callInfo_full: bool = true,
+
+        cargo_allFeatures: bool          = false,
+        cargo_features: Vec<String>      = Vec::new(),
+        cargo_loadOutDirsFromCheck: bool = false,
+        cargo_noDefaultFeatures: bool    = false,
+        cargo_target: Option<String>     = None,
+
+        checkOnSave_allFeatures: Option<bool>            = None,
+        checkOnSave_allTargets: bool                     = true,
+        checkOnSave_command: String                      = "check".into(),
+        checkOnSave_enable: bool                         = false,
+        checkOnSave_extraArgs: Vec<String>               = Vec::new(),
+        checkOnSave_features: Option<Vec<String>>        = None,
+        checkOnSave_overrideCommand: Option<Vec<String>> = None,
+
+        completion_addCallArgumentSnippets: bool = true,
+        completion_addCallParenthesis: bool      = true,
+        completion_postfix_enable: bool          = true,
+
+        diagnostics_enable: bool                = true,
+        diagnostics_warningsAsHint: Vec<String> = Vec::new(),
+        diagnostics_warningsAsInfo: Vec<String> = Vec::new(),
+
+        files_watcher: String = "client".into(),
+
+        hoverActions_debug: bool           = true,
+        hoverActions_enable: bool          = true,
+        hoverActions_gotoTypeDef: bool     = true,
+        hoverActions_implementations: bool = true,
+        hoverActions_run: bool             = true,
+
+        inlayHints_chainingHints: bool      = true,
+        inlayHints_maxLength: Option<usize> = None,
+        inlayHints_parameterHints: bool     = true,
+        inlayHints_typeHints: bool          = true,
+
+        lens_debug: bool           = true,
+        lens_enable: bool          = true,
+        lens_implementations: bool = true,
+        lens_run: bool             = true,
+
+        linkedProjects: Vec<ManifestOrProjectJson> = Vec::new(),
+        lruCapacity: Option<usize>                 = None,
+        notifications_cargoTomlNotFound: bool      = true,
+        procMacro_enable: bool                     = false,
+
+        rustfmt_extraArgs: Vec<String>               = Vec::new(),
+        rustfmt_overrideCommand: Option<Vec<String>> = None,
+
+        withSysroot: bool = true,
+    }
 }

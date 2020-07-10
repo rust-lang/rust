@@ -120,8 +120,8 @@ fn run_server() -> Result<()> {
         };
 
         let mut config = Config::new(root_path);
-        if let Some(value) = &initialize_params.initialization_options {
-            config.update(value);
+        if let Some(json) = initialize_params.initialization_options {
+            config.update(json);
         }
         config.update_caps(&initialize_params.capabilities);
 
