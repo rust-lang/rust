@@ -18,16 +18,12 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     }
 
     let mut params = FxHashMap::default();
-    let mut me = None;
+    let me = ctx.token.ancestors().find_map(ast::FnDef::cast);
     for node in ctx.token.parent().ancestors() {
         let items = match_ast! {
             match node {
                 ast::SourceFile(it) => it.items(),
                 ast::ItemList(it) => it.items(),
-                ast::FnDef(it) => {
-                    me = Some(it);
-                    continue;
-                },
                 _ => continue,
             }
         };
@@ -43,6 +39,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
             }
         }
     }
+
     params
         .into_iter()
         .filter_map(|(label, param)| {
@@ -110,5 +107,19 @@ pub(crate) trait SourceRoot {
                 bn file_id: FileId
             "#]],
         );
+    }
+
+    #[test]
+    fn completes_param_in_inner_function() {
+        check(
+            r#"
+fn outer(text: String) {
+    fn inner(<|>)
+}
+"#,
+            expect![[r#"
+                bn text: String
+            "#]],
+        )
     }
 }
