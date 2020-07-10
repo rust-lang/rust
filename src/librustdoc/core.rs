@@ -5,13 +5,18 @@ use rustc_driver::abort_on_err;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
-use rustc_hir::def::Namespace::TypeNS;
+use rustc_hir::def::{Namespace::TypeNS, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::HirId;
+use rustc_hir::{
+    intravisit::{NestedVisitorMap, Visitor},
+    Path,
+};
 use rustc_interface::interface;
+use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::lint;
@@ -587,15 +592,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     })
 }
 
-use rustc_hir::def::Res;
-use rustc_hir::{
-    intravisit::{NestedVisitorMap, Visitor},
-    Path,
-};
-use rustc_middle::hir::map::Map;
-
-thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(rustc_middle::ty::TyCtxt<'tcx>, rustc_span::def_id::LocalDefId) -> &'tcx rustc_middle::ty::TypeckTables<'tcx> = {
-    let mut providers = rustc_middle::ty::query::Providers::default();
+thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(TyCtxt<'tcx>, LocalDefId) -> &'tcx ty::TypeckTables<'tcx> = {
+    let mut providers = ty::query::Providers::default();
     rustc_typeck::provide(&mut providers);
     providers.typeck_tables_of
 });
@@ -625,13 +623,11 @@ impl<'hir> Visitor<'hir> for EmitIgnoredResolutionErrors<'_, 'hir> {
     }
 
     fn visit_path(&mut self, path: &'v Path<'v>, _id: HirId) {
-        log::debug!("visiting path {:?}", path);
+        debug!("visiting path {:?}", path);
         if path.res == Res::Err {
             // We have less context here than in rustc_resolve,
             // so we can only emit the name and span.
             // However we can give a hint that rustc_resolve will have more info.
-            // NOTE: this is a very rare case (only 4 out of several hundred thousand crates in a crater run)
-            // NOTE: so it's ok for it to be slow
             let label = format!(
                 "could not resolve path `{}`",
                 path.segments
