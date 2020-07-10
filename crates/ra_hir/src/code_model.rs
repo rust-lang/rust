@@ -203,18 +203,18 @@ impl ModuleDef {
 
     pub fn resolver<D: DefDatabase + HirDatabase>(&self, db: &D) -> Option<Resolver> {
         Some(match self {
-            ModuleDef::Module(m) => Into::<ModuleId>::into(m.clone()).resolver(db),
-            ModuleDef::Function(f) => Into::<FunctionId>::into(f.clone()).resolver(db),
-            ModuleDef::Adt(adt) => Into::<AdtId>::into(adt.clone()).resolver(db),
+            ModuleDef::Module(m) => ModuleId::from(m.clone()).resolver(db),
+            ModuleDef::Function(f) => FunctionId::from(f.clone()).resolver(db),
+            ModuleDef::Adt(adt) => AdtId::from(adt.clone()).resolver(db),
             ModuleDef::EnumVariant(ev) => {
-                Into::<GenericDefId>::into(Into::<GenericDef>::into(ev.clone())).resolver(db)
+                GenericDefId::from(GenericDef::from(ev.clone())).resolver(db)
             }
             ModuleDef::Const(c) => {
-                Into::<GenericDefId>::into(Into::<GenericDef>::into(c.clone())).resolver(db)
+                GenericDefId::from(GenericDef::from(c.clone())).resolver(db)
             }
-            ModuleDef::Static(s) => Into::<StaticId>::into(s.clone()).resolver(db),
-            ModuleDef::Trait(t) => Into::<TraitId>::into(t.clone()).resolver(db),
-            ModuleDef::TypeAlias(t) => Into::<ModuleId>::into(t.module(db)).resolver(db),
+            ModuleDef::Static(s) => StaticId::from(s.clone()).resolver(db),
+            ModuleDef::Trait(t) => TraitId::from(t.clone()).resolver(db),
+            ModuleDef::TypeAlias(t) => ModuleId::from(t.module(db)).resolver(db),
             // FIXME: This should be a resolver relative to `std/core`
             ModuleDef::BuiltinType(_t) => None?,
         })
