@@ -61,7 +61,7 @@
           ((_2 as Foo).0: u8) = move _5;   // scope 3 at $DIR/simplify-arm-identity.rs:20:24: 20:35
           discriminant(_2) = 0;            // scope 3 at $DIR/simplify-arm-identity.rs:20:24: 20:35
           StorageDead(_5);                 // scope 3 at $DIR/simplify-arm-identity.rs:20:34: 20:35
-          StorageDead(_4);                 // scope 1 at $DIR/simplify-arm-identity.rs:20:35: 20:36
+          StorageDead(_4);                 // scope 1 at $DIR/simplify-arm-identity.rs:20:34: 20:35
           goto -> bb4;                     // scope 1 at $DIR/simplify-arm-identity.rs:19:18: 22:6
       }
   
