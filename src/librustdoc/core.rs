@@ -9,7 +9,7 @@ use rustc_hir::def::{Namespace::TypeNS, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_hir::{
-    intravisit::{NestedVisitorMap, Visitor},
+    intravisit::{self, NestedVisitorMap, Visitor},
     Path,
 };
 use rustc_interface::interface;
@@ -622,7 +622,7 @@ impl<'hir> Visitor<'hir> for EmitIgnoredResolutionErrors<'_, 'hir> {
         NestedVisitorMap::OnlyBodies(self.hir_map)
     }
 
-    fn visit_path(&mut self, path: &'v Path<'v>, _id: HirId) {
+    fn visit_path(&mut self, path: &'hir Path<'_>, _id: HirId) {
         debug!("visiting path {:?}", path);
         if path.res == Res::Err {
             // We have less context here than in rustc_resolve,
@@ -648,7 +648,10 @@ impl<'hir> Visitor<'hir> for EmitIgnoredResolutionErrors<'_, 'hir> {
             err.note("try running again with `rustc` and you may get a more detailed error");
             err.emit();
         }
-        // NOTE: this does _not_ visit the path segments
+        // We could have an outer resolution that succeeded,
+        // but with generic parameters that failed.
+        // Recurse into the segments so we catch those too.
+        intravisit::walk_path(self, path);
     }
 }
 
