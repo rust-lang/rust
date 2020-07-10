@@ -78,7 +78,7 @@ extern crate rustc_middle;
 pub mod expr_use_visitor;
 
 mod astconv;
-pub mod check;
+mod check;
 mod check_unused;
 mod coherence;
 mod collect;

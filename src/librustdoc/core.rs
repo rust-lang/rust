@@ -375,7 +375,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         override_queries: Some(|_sess, local_providers, external_providers| {
             local_providers.lint_mod = |_, _| {};
             external_providers.lint_mod = |_, _| {};
-            //let old_typeck = local_providers.typeck_tables_of;
             local_providers.typeck_tables_of = move |tcx, def_id| {
                 // Closures' tables come from their outermost function,
                 // as they are part of the same "inference environment".
@@ -389,8 +388,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
                 EmitIgnoredResolutionErrors::new(&tcx.sess, hir).visit_body(body);
-                rustc_typeck::check::typeck_tables_of(tcx, def_id)
-                //DEFAULT_TYPECK.with(|typeck| typeck(tcx, def_id))
+                DEFAULT_TYPECK.with(|typeck| typeck(tcx, def_id))
             };
         }),
         registry: rustc_driver::diagnostics_registry(),
@@ -596,13 +594,11 @@ use rustc_hir::{
 };
 use rustc_middle::hir::map::Map;
 
-/*
 thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(rustc_middle::ty::TyCtxt<'tcx>, rustc_span::def_id::LocalDefId) -> &'tcx rustc_middle::ty::TypeckTables<'tcx> = {
     let mut providers = rustc_middle::ty::query::Providers::default();
     rustc_typeck::provide(&mut providers);
     providers.typeck_tables_of
 });
-*/
 
 /// Due to https://github.com/rust-lang/rust/pull/73566,
 /// the name resolution pass may find errors that are never emitted.
