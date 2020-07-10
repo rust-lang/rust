@@ -102,8 +102,8 @@ fn match_tuple(_1: (u32, bool, std::option::Option<i32>, u32)) -> u32 {
         _0 = BitXor(move _9, move _10);  // scope 1 at $DIR/exponential-or.rs:8:83: 8:88
         StorageDead(_10);                // scope 1 at $DIR/exponential-or.rs:8:87: 8:88
         StorageDead(_9);                 // scope 1 at $DIR/exponential-or.rs:8:87: 8:88
-        StorageDead(_8);                 // scope 0 at $DIR/exponential-or.rs:8:88: 8:89
-        StorageDead(_7);                 // scope 0 at $DIR/exponential-or.rs:8:88: 8:89
+        StorageDead(_8);                 // scope 0 at $DIR/exponential-or.rs:8:87: 8:88
+        StorageDead(_7);                 // scope 0 at $DIR/exponential-or.rs:8:87: 8:88
         goto -> bb10;                    // scope 0 at $DIR/exponential-or.rs:7:5: 10:6
     }
 

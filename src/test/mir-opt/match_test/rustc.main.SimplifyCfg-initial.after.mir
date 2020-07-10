@@ -117,7 +117,7 @@ fn main() -> () {
     }
 
     bb10: {
-        StorageDead(_9);                 // scope 2 at $DIR/match_test.rs:13:24: 13:25
+        StorageDead(_9);                 // scope 2 at $DIR/match_test.rs:13:23: 13:24
         FakeRead(ForMatchGuard, _8);     // scope 2 at $DIR/match_test.rs:13:18: 13:19
         _3 = const 0_i32;                // scope 2 at $DIR/match_test.rs:13:23: 13:24
                                          // ty::Const
@@ -130,7 +130,7 @@ fn main() -> () {
     }
 
     bb11: {
-        StorageDead(_9);                 // scope 2 at $DIR/match_test.rs:13:24: 13:25
+        StorageDead(_9);                 // scope 2 at $DIR/match_test.rs:13:23: 13:24
         falseEdge -> [real: bb3, imaginary: bb6]; // scope 2 at $DIR/match_test.rs:13:18: 13:19
     }
 
