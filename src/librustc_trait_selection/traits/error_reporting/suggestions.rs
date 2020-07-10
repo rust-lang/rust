@@ -1823,9 +1823,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
-            ObligationCauseCode::SizedArgumentType => {
-                err.note("all function arguments must have a statically known size");
-                if !self.tcx.features().unsized_locals {
+            ObligationCauseCode::SizedArgumentType(sp) => {
+                if let Some(span) = sp {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        "function arguments must have a statically known size, borrowed types \
+                         always have a known size",
+                        "&".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    err.note("all function arguments must have a statically known size");
+                }
+                if tcx.sess.opts.unstable_features.is_nightly_build()
+                    && !self.tcx.features().unsized_locals
+                {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }

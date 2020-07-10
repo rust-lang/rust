@@ -215,7 +215,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Type of each variable must be `Sized`.
     VariableType(hir::HirId),
     /// Argument type must be `Sized`.
-    SizedArgumentType,
+    SizedArgumentType(Option<Span>),
     /// Return type must be `Sized`.
     SizedReturnType,
     /// Yield type must be `Sized`.
