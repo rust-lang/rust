@@ -77,39 +77,20 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         }
     }
 
-    // Forked from the original method because we don't want to descend into foreign function
-    // blocks. Such blocks are semantically invalid and the hir does not preserve them, so lowering
-    // items contained in them may be unexpected by later passes.
-    fn visit_foreign_item(&mut self, item: &'a ForeignItem) {
-        let Item { id: _, span: _, ident, ref vis, ref attrs, ref kind, tokens: _ } = *item;
-        self.visit_vis(vis);
-        self.visit_ident(ident);
-        walk_list!(self, visit_attribute, attrs);
-        match kind {
-            ForeignItemKind::Static(ty, _, expr) => {
-                self.visit_ty(ty);
-                walk_list!(self, visit_expr, expr);
+    fn visit_fn(&mut self, fk: FnKind<'a>, _: Span, _: NodeId) {
+        match fk {
+            FnKind::Fn(FnCtxt::Foreign, _, sig, _, _) => {
+                self.visit_fn_header(&sig.header);
+                visit::walk_fn_decl(self, &sig.decl);
             }
-            ForeignItemKind::Fn(_, sig, generics, body) => {
-                self.visit_generics(generics);
-                let kind = FnKind::Fn(FnCtxt::Foreign, ident, sig, vis, body.as_deref());
-                match kind {
-                    FnKind::Fn(_, _, sig, _, _) => {
-                        self.visit_fn_header(&sig.header);
-                        visit::walk_fn_decl(self, &sig.decl);
-                    }
-                    FnKind::Closure(decl, _) => {
-                        visit::walk_fn_decl(self, decl);
-                    }
-                }
+            FnKind::Fn(_, _, sig, _, body) => {
+                self.visit_fn_header(&sig.header);
+                visit::walk_fn_decl(self, &sig.decl);
+                walk_list!(self, visit_block, body);
             }
-            ForeignItemKind::TyAlias(_, generics, bounds, ty) => {
-                self.visit_generics(generics);
-                walk_list!(self, visit_param_bound, bounds);
-                walk_list!(self, visit_ty, ty);
-            }
-            ForeignItemKind::MacCall(mac) => {
-                self.visit_mac(mac);
+            FnKind::Closure(decl, body) => {
+                visit::walk_fn_decl(self, decl);
+                self.visit_expr(body);
             }
         }
     }
