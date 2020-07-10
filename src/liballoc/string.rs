@@ -67,8 +67,6 @@ use crate::vec::Vec;
 /// contents of the string. It has a close relationship with its borrowed
 /// counterpart, the primitive [`str`].
 ///
-/// [`str`]: ../../std/primitive.str.html
-///
 /// # Examples
 ///
 /// You can create a `String` from a literal string with [`String::from`]:
@@ -88,7 +86,6 @@ use crate::vec::Vec;
 /// ```
 ///
 /// [`String::from`]: #method.from
-/// [`char`]: ../../std/primitive.char.html
 /// [`push`]: #method.push
 /// [`push_str`]: #method.push_str
 ///
@@ -128,8 +125,8 @@ use crate::vec::Vec;
 /// The [`bytes`] and [`chars`] methods return iterators over the first
 /// two, respectively.
 ///
-/// [`bytes`]: #method.bytes
-/// [`chars`]: #method.chars
+/// [`bytes`]: str::bytes
+/// [`chars`]: str::chars
 ///
 /// # Deref
 ///
@@ -215,7 +212,7 @@ use crate::vec::Vec;
 /// assert_eq!(String::from("Once upon a time..."), s);
 /// ```
 ///
-/// [`as_ptr`]: #method.as_ptr
+/// [`as_ptr`]: str::as_ptr
 /// [`len`]: #method.len
 /// [`capacity`]: #method.capacity
 ///
@@ -274,9 +271,11 @@ use crate::vec::Vec;
 ///
 /// Here, there's no need to allocate more memory inside the loop.
 ///
+/// [`char`]: type@char
+/// [`str`]: ../../std/primitive.str.html
 /// [`&str`]: ../../std/primitive.str.html
-/// [`Deref`]: ../../std/ops/trait.Deref.html
-/// [`as_str()`]: struct.String.html#method.as_str
+/// [`Deref`]: core::ops::Deref
+/// [`as_str()`]: #method.as_str
 #[derive(PartialOrd, Eq, Ord)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "string_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -302,7 +301,6 @@ pub struct String {
 ///
 /// [`Utf8Error`]: ../../std/str/struct.Utf8Error.html
 /// [`std::str`]: ../../std/str/index.html
-/// [`u8`]: ../../std/primitive.u8.html
 /// [`&str`]: ../../std/primitive.str.html
 /// [`utf8_error`]: #method.utf8_error
 ///
@@ -481,13 +479,11 @@ impl String {
     ///
     /// [`from_utf8_unchecked`]: struct.String.html#method.from_utf8_unchecked
     /// [`String`]: struct.String.html
-    /// [`u8`]: ../../std/primitive.u8.html
-    /// [`Vec<u8>`]: ../../std/vec/struct.Vec.html
+    /// [`Vec<u8>`]: Vec
     /// [`&str`]: ../../std/primitive.str.html
     /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
     /// [`into_bytes`]: struct.String.html#method.into_bytes
     /// [`FromUtf8Error`]: struct.FromUtf8Error.html
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
@@ -506,9 +502,8 @@ impl String {
     /// `from_utf8_lossy()` will replace any invalid UTF-8 sequences with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD], which looks like this: �
     ///
-    /// [`u8`]: ../../std/primitive.u8.html
     /// [byteslice]: ../../std/primitive.slice.html
-    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
+    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the conversion, there is an unsafe version
@@ -523,7 +518,7 @@ impl String {
     /// it's already valid UTF-8, we don't need a new allocation. This return
     /// type allows us to handle both cases.
     ///
-    /// [`Cow<'a, str>`]: ../../std/borrow/enum.Cow.html
+    /// [`Cow<'a, str>`]: crate::borrow::Cow
     ///
     /// # Examples
     ///
@@ -583,8 +578,6 @@ impl String {
     /// Decode a UTF-16 encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
     ///
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -624,8 +617,8 @@ impl String {
     /// conversion requires a memory allocation.
     ///
     /// [`from_utf8_lossy`]: #method.from_utf8_lossy
-    /// [`Cow<'a, str>`]: ../borrow/enum.Cow.html
-    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
+    /// [`Cow<'a, str>`]: crate::borrow::Cow
+    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
     ///
     /// # Examples
     ///
@@ -1076,8 +1069,6 @@ impl String {
 
     /// Appends the given [`char`] to the end of this `String`.
     ///
-    /// [`char`]: ../../std/primitive.char.html
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1133,8 +1124,6 @@ impl String {
     ///
     /// Panics if `new_len` does not lie on a [`char`] boundary.
     ///
-    /// [`char`]: ../../std/primitive.char.html
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1158,8 +1147,6 @@ impl String {
     /// Removes the last character from the string buffer and returns it.
     ///
     /// Returns [`None`] if this `String` is empty.
-    ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1194,8 +1181,6 @@ impl String {
     ///
     /// Panics if `idx` is larger than or equal to the `String`'s length,
     /// or if it does not lie on a [`char`] boundary.
-    ///
-    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -1297,8 +1282,6 @@ impl String {
     /// Panics if `idx` is larger than the `String`'s length, or if it does not
     /// lie on a [`char`] boundary.
     ///
-    /// [`char`]: ../../std/primitive.char.html
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1345,8 +1328,6 @@ impl String {
     ///
     /// Panics if `idx` is larger than the `String`'s length, or if it does not
     /// lie on a [`char`] boundary.
-    ///
-    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -1507,8 +1488,6 @@ impl String {
     /// Panics if the starting point or end point do not lie on a [`char`]
     /// boundary, or if they're out of bounds.
     ///
-    /// [`char`]: ../../std/primitive.char.html
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1567,9 +1546,6 @@ impl String {
     /// Panics if the starting point or end point do not lie on a [`char`]
     /// boundary, or if they're out of bounds.
     ///
-    /// [`char`]: ../../std/primitive.char.html
-    /// [`Vec::splice`]: ../../std/vec/struct.Vec.html#method.splice
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1610,7 +1586,7 @@ impl String {
     ///
     /// This will drop any excess capacity.
     ///
-    /// [`Box`]: ../../std/boxed/struct.Box.html
+    /// [`Box`]: crate::boxed::Box
     /// [`str`]: ../../std/primitive.str.html
     ///
     /// # Examples
@@ -1682,7 +1658,6 @@ impl FromUtf8Error {
     ///
     /// [`Utf8Error`]: ../../std/str/struct.Utf8Error.html
     /// [`std::str`]: ../../std/str/index.html
-    /// [`u8`]: ../../std/primitive.u8.html
     /// [`&str`]: ../../std/primitive.str.html
     ///
     /// # Examples
@@ -2187,7 +2162,7 @@ impl ops::DerefMut for String {
 ///
 /// This alias exists for backwards compatibility, and may be eventually deprecated.
 ///
-/// [`Infallible`]: ../../core/convert/enum.Infallible.html
+/// [`Infallible`]: core::convert::Infallible
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 pub type ParseError = core::convert::Infallible;
 
@@ -2207,7 +2182,7 @@ impl FromStr for String {
 /// [`Display`] should be implemented instead, and you get the `ToString`
 /// implementation for free.
 ///
-/// [`Display`]: ../../std/fmt/trait.Display.html
+/// [`Display`]: crate::fmt::Display
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToString {
     /// Converts the given value to a `String`.
