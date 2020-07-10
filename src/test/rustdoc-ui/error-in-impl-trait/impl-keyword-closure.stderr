@@ -5,7 +5,7 @@ LL |     (|| error::_in::impl_trait::alias::nested::closure())()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ could not resolve path `error::_in::impl_trait::alias::nested::closure`
    |
    = note: this error was originally ignored because you are running `rustdoc`
-   = note: try running again with `rustc` and you may get a more detailed error
+   = note: try running again with `rustc` or `cargo check` and you may get a more detailed error
 
 error: aborting due to previous error
 
