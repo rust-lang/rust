@@ -1,8 +1,8 @@
 error[E0275]: overflow evaluating the requirement `RootDatabase: SourceDatabase`
-  --> $DIR/cycle-cache-err-60010.rs:27:5
+  --> $DIR/cycle-cache-err-60010.rs:27:13
    |
 LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
 
