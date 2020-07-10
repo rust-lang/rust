@@ -50,7 +50,7 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
                         Some((server, share)) => {
                             (u8_slice_as_os_str(server), u8_slice_as_os_str(share))
                         }
-                        None => (u8_slice_as_os_str(path), u8_slice_as_os_str(&[])),
+                        None => (u8_slice_as_os_str(path), OsStr::new("")),
                     };
                     return Some(VerbatimUNC(server, share));
                 } else {
