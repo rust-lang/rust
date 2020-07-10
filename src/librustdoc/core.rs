@@ -392,7 +392,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
-                EmitIgnoredResolutionErrors::new(&tcx).visit_body(body);
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
                 DEFAULT_TYPECK.with(|typeck| typeck(tcx, def_id))
             };
         }),
@@ -602,17 +602,17 @@ thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(TyCtxt<'tcx>, LocalDefId) -> &
 /// the name resolution pass may find errors that are never emitted.
 /// If typeck is called after this happens, then we'll get an ICE:
 /// 'Res::Error found but not reported'. To avoid this, emit the errors now.
-struct EmitIgnoredResolutionErrors<'a, 'tcx> {
-    tcx: &'a TyCtxt<'tcx>,
+struct EmitIgnoredResolutionErrors<'tcx> {
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> EmitIgnoredResolutionErrors<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>) -> Self {
+impl<'tcx> EmitIgnoredResolutionErrors<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx }
     }
 }
 
-impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'_, 'tcx> {
+impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
