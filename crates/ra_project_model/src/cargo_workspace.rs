@@ -155,7 +155,7 @@ impl CargoWorkspace {
         if let Some(target) = cargo_features.target.as_ref() {
             meta.other_options(vec![String::from("--filter-platform"), target.clone()]);
         }
-        let meta = meta.exec().with_context(|| {
+        let mut meta = meta.exec().with_context(|| {
             format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display())
         })?;
 
@@ -175,6 +175,7 @@ impl CargoWorkspace {
 
         let ws_members = &meta.workspace_members;
 
+        meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in meta.packages {
             let cargo_metadata::Package { id, edition, name, manifest_path, version, .. } =
                 meta_pkg;
@@ -210,7 +211,7 @@ impl CargoWorkspace {
             }
         }
         let resolve = meta.resolve.expect("metadata executed with deps");
-        for node in resolve.nodes {
+        for mut node in resolve.nodes {
             let source = match pkg_by_id.get(&node.id) {
                 Some(&src) => src,
                 // FIXME: replace this and a similar branch below with `.unwrap`, once
@@ -221,6 +222,7 @@ impl CargoWorkspace {
                     continue;
                 }
             };
+            node.deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
             for dep_node in node.deps {
                 let pkg = match pkg_by_id.get(&dep_node.pkg) {
                     Some(&pkg) => pkg,

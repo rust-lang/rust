@@ -26,6 +26,7 @@ use crate::{
     to_proto::url_from_abs_path,
     Result,
 };
+use ra_prof::profile;
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum Status {
@@ -122,6 +123,10 @@ impl GlobalState {
     }
 
     pub(crate) fn process_changes(&mut self) -> bool {
+        let _p = profile("GlobalState::process_changes");
+        let mut fs_changes = Vec::new();
+        let mut has_fs_changes = false;
+
         let change = {
             let mut change = AnalysisChange::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
@@ -130,13 +135,14 @@ impl GlobalState {
                 return false;
             }
 
-            let fs_op = changed_files.iter().any(|it| it.is_created_or_deleted());
-            if fs_op {
-                let roots = self.source_root_config.partition(&vfs);
-                change.set_roots(roots)
-            }
-
             for file in changed_files {
+                if file.is_created_or_deleted() {
+                    if let Some(path) = vfs.file_path(file.file_id).as_path() {
+                        fs_changes.push((path.to_path_buf(), file.change_kind));
+                        has_fs_changes = true;
+                    }
+                }
+
                 let text = if file.exists() {
                     let bytes = vfs.file_contents(file.file_id).to_vec();
                     match String::from_utf8(bytes).ok() {
@@ -152,10 +158,15 @@ impl GlobalState {
                 };
                 change.change_file(file.file_id, text);
             }
+            if has_fs_changes {
+                let roots = self.source_root_config.partition(&vfs);
+                change.set_roots(roots);
+            }
             change
         };
 
         self.analysis_host.apply_change(change);
+        self.maybe_refresh(&fs_changes);
         true
     }
 

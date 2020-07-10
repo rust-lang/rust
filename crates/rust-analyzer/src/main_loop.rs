@@ -22,6 +22,7 @@ use crate::{
     Result,
 };
 use ra_project_model::ProjectWorkspace;
+use vfs::ChangeKind;
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     log::info!("initial config: {:#?}", config);
@@ -197,39 +198,49 @@ impl GlobalState {
                 }
                 self.analysis_host.maybe_collect_garbage();
             }
-            Event::Vfs(task) => match task {
-                vfs::loader::Message::Loaded { files } => {
-                    let vfs = &mut self.vfs.write().0;
-                    for (path, contents) in files {
-                        let path = VfsPath::from(path);
-                        if !self.mem_docs.contains(&path) {
-                            vfs.set_file_contents(path, contents)
+            Event::Vfs(mut task) => {
+                let _p = profile("GlobalState::handle_event/vfs");
+                loop {
+                    match task {
+                        vfs::loader::Message::Loaded { files } => {
+                            let vfs = &mut self.vfs.write().0;
+                            for (path, contents) in files {
+                                let path = VfsPath::from(path);
+                                if !self.mem_docs.contains(&path) {
+                                    vfs.set_file_contents(path, contents)
+                                }
+                            }
+                        }
+                        vfs::loader::Message::Progress { n_total, n_done } => {
+                            if n_total == 0 {
+                                self.transition(Status::Invalid);
+                            } else {
+                                let state = if n_done == 0 {
+                                    self.transition(Status::Loading);
+                                    Progress::Begin
+                                } else if n_done < n_total {
+                                    Progress::Report
+                                } else {
+                                    assert_eq!(n_done, n_total);
+                                    self.transition(Status::Ready);
+                                    Progress::End
+                                };
+                                self.report_progress(
+                                    "roots scanned",
+                                    state,
+                                    Some(format!("{}/{}", n_done, n_total)),
+                                    Some(Progress::percentage(n_done, n_total)),
+                                )
+                            }
                         }
                     }
-                }
-                vfs::loader::Message::Progress { n_total, n_done } => {
-                    if n_total == 0 {
-                        self.transition(Status::Invalid);
-                    } else {
-                        let state = if n_done == 0 {
-                            self.transition(Status::Loading);
-                            Progress::Begin
-                        } else if n_done < n_total {
-                            Progress::Report
-                        } else {
-                            assert_eq!(n_done, n_total);
-                            self.transition(Status::Ready);
-                            Progress::End
-                        };
-                        self.report_progress(
-                            "roots scanned",
-                            state,
-                            Some(format!("{}/{}", n_done, n_total)),
-                            Some(Progress::percentage(n_done, n_total)),
-                        )
+                    // Coalesce many VFS event into a single loop turn
+                    task = match self.loader.receiver.try_recv() {
+                        Ok(task) => task,
+                        Err(_) => break,
                     }
                 }
-            },
+            }
             Event::Flycheck(task) => match task {
                 flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
                     let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
@@ -428,7 +439,9 @@ impl GlobalState {
                 if let Some(flycheck) = &this.flycheck {
                     flycheck.handle.update();
                 }
-                this.maybe_refresh(params.text_document.uri.as_str());
+                if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
+                    this.maybe_refresh(&[(abs_path, ChangeKind::Modify)]);
+                }
                 Ok(())
             })?
             .on::<lsp_types::notification::DidChangeConfiguration>(|this, _params| {
