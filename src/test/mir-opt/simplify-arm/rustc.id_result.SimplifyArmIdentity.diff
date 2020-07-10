@@ -29,7 +29,7 @@
           ((_0 as Err).0: i32) = move _6;  // scope 2 at $DIR/simplify-arm.rs:19:19: 19:25
           discriminant(_0) = 1;            // scope 2 at $DIR/simplify-arm.rs:19:19: 19:25
           StorageDead(_6);                 // scope 2 at $DIR/simplify-arm.rs:19:24: 19:25
-          StorageDead(_5);                 // scope 0 at $DIR/simplify-arm.rs:19:25: 19:26
+          StorageDead(_5);                 // scope 0 at $DIR/simplify-arm.rs:19:24: 19:25
           goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:17:5: 20:6
       }
   
@@ -45,7 +45,7 @@
           ((_0 as Ok).0: u8) = move _4;    // scope 1 at $DIR/simplify-arm.rs:18:18: 18:23
           discriminant(_0) = 0;            // scope 1 at $DIR/simplify-arm.rs:18:18: 18:23
           StorageDead(_4);                 // scope 1 at $DIR/simplify-arm.rs:18:22: 18:23
-          StorageDead(_3);                 // scope 0 at $DIR/simplify-arm.rs:18:23: 18:24
+          StorageDead(_3);                 // scope 0 at $DIR/simplify-arm.rs:18:22: 18:23
           goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:17:5: 20:6
       }
   
