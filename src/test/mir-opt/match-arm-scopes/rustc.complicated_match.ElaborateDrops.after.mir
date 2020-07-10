@@ -61,7 +61,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
                                          // mir::Constant
                                          // + span: $DIR/match-arm-scopes.rs:16:77: 16:78
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
-        drop(_7) -> [return: bb19, unwind: bb10]; // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
+        drop(_7) -> [return: bb19, unwind: bb10]; // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
     }
 
     bb6: {
@@ -90,9 +90,9 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
                                          // + span: $DIR/match-arm-scopes.rs:16:59: 16:60
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000003)) }
         StorageDead(_10);                // scope 0 at $DIR/match-arm-scopes.rs:16:72: 16:73
-        StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
+        StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
         goto -> bb11;                    // scope 0 at $DIR/match-arm-scopes.rs:16:52: 16:60
     }
 
@@ -109,7 +109,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb12: {
-        StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
+        StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
         StorageLive(_5);                 // scope 0 at $DIR/match-arm-scopes.rs:16:17: 16:18
         _5 = (_2.1: bool);               // scope 0 at $DIR/match-arm-scopes.rs:16:17: 16:18
         StorageLive(_7);                 // scope 0 at $DIR/match-arm-scopes.rs:16:20: 16:21
@@ -118,9 +118,9 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb13: {
-        StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
+        StorageDead(_9);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
         goto -> bb2;                     // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
     }
 
@@ -150,14 +150,14 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
                                          // + span: $DIR/match-arm-scopes.rs:16:59: 16:60
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000003)) }
         StorageDead(_13);                // scope 0 at $DIR/match-arm-scopes.rs:16:72: 16:73
-        StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
+        StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
         goto -> bb11;                    // scope 0 at $DIR/match-arm-scopes.rs:16:52: 16:60
     }
 
     bb17: {
-        StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
+        StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
         StorageLive(_5);                 // scope 0 at $DIR/match-arm-scopes.rs:16:26: 16:27
         _5 = (_2.0: bool);               // scope 0 at $DIR/match-arm-scopes.rs:16:26: 16:27
         StorageLive(_7);                 // scope 0 at $DIR/match-arm-scopes.rs:16:36: 16:37
@@ -166,17 +166,17 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb18: {
-        StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
+        StorageDead(_12);                // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
         goto -> bb3;                     // scope 0 at $DIR/match-arm-scopes.rs:16:42: 16:73
     }
 
     bb19: {
-        StorageDead(_7);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_5);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
-        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:78: 16:79
+        StorageDead(_7);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_5);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_8);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
+        StorageDead(_6);                 // scope 0 at $DIR/match-arm-scopes.rs:16:77: 16:78
         goto -> bb23;                    // scope 0 at $DIR/match-arm-scopes.rs:15:5: 18:6
     }
 
@@ -188,7 +188,7 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
                                          // mir::Constant
                                          // + span: $DIR/match-arm-scopes.rs:17:41: 17:42
                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000002)) }
-        drop(_16) -> [return: bb22, unwind: bb10]; // scope 0 at $DIR/match-arm-scopes.rs:17:42: 17:43
+        drop(_16) -> [return: bb22, unwind: bb10]; // scope 0 at $DIR/match-arm-scopes.rs:17:41: 17:42
     }
 
     bb21: {
@@ -200,8 +200,8 @@ fn complicated_match(_1: bool, _2: (bool, bool, std::string::String)) -> i32 {
     }
 
     bb22: {
-        StorageDead(_16);                // scope 0 at $DIR/match-arm-scopes.rs:17:42: 17:43
-        StorageDead(_15);                // scope 0 at $DIR/match-arm-scopes.rs:17:42: 17:43
+        StorageDead(_16);                // scope 0 at $DIR/match-arm-scopes.rs:17:41: 17:42
+        StorageDead(_15);                // scope 0 at $DIR/match-arm-scopes.rs:17:41: 17:42
         goto -> bb23;                    // scope 0 at $DIR/match-arm-scopes.rs:15:5: 18:6
     }
 
