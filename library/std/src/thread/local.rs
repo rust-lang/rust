@@ -288,7 +288,11 @@ mod lazy {
         }
 
         pub unsafe fn get(&self) -> Option<&'static T> {
-            (*self.inner.get()).as_ref()
+            // SAFETY: No reference is ever handed out to the inner cell nor
+            // mutable reference to the Option<T> inside said cell. This make it
+            // safe to hand a reference, though the lifetime of 'static
+            // is itself unsafe, making the get method unsafe.
+            unsafe { (*self.inner.get()).as_ref() }
         }
 
         pub unsafe fn initialize<F: FnOnce() -> T>(&self, init: F) -> &'static T {
@@ -297,6 +301,8 @@ mod lazy {
             let value = init();
             let ptr = self.inner.get();
 
+            // SAFETY:
+            //
             // note that this can in theory just be `*ptr = Some(value)`, but due to
             // the compiler will currently codegen that pattern with something like:
             //
@@ -309,22 +315,31 @@ mod lazy {
             // value (an aliasing violation). To avoid setting the "I'm running a
             // destructor" flag we just use `mem::replace` which should sequence the
             // operations a little differently and make this safe to call.
-            let _ = mem::replace(&mut *ptr, Some(value));
+            unsafe {
+                let _ = mem::replace(&mut *ptr, Some(value));
+            }
 
-            // After storing `Some` we want to get a reference to the contents of
-            // what we just stored. While we could use `unwrap` here and it should
-            // always work it empirically doesn't seem to always get optimized away,
-            // which means that using something like `try_with` can pull in
-            // panicking code and cause a large size bloat.
-            match *ptr {
-                Some(ref x) => x,
-                None => hint::unreachable_unchecked(),
+            // SAFETY: the *ptr operation is made safe by the `mem::replace`
+            // call above that made sure a valid value is present behind it.
+            unsafe {
+                // After storing `Some` we want to get a reference to the contents of
+                // what we just stored. While we could use `unwrap` here and it should
+                // always work it empirically doesn't seem to always get optimized away,
+                // which means that using something like `try_with` can pull in
+                // panicking code and cause a large size bloat.
+                match *ptr {
+                    Some(ref x) => x,
+                    None => hint::unreachable_unchecked(),
+                }
             }
         }
 
         #[allow(unused)]
         pub unsafe fn take(&mut self) -> Option<T> {
-            (*self.inner.get()).take()
+            // SAFETY: The other methods hand out references while taking &self.
+            // As such, calling this method when such references are still alive
+            // will fail because it takes a &mut self, conflicting with them.
+            unsafe { (*self.inner.get()).take() }
         }
     }
 }
@@ -413,9 +428,17 @@ pub mod fast {
         }
 
         pub unsafe fn get<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
-            match self.inner.get() {
-                Some(val) => Some(val),
-                None => self.try_initialize(init),
+            // SAFETY: See the definitions of `LazyKeyInner::get` and
+            // `try_initialize` for more informations.
+            //
+            // The call to `get` is made safe because no mutable references are
+            // ever handed out and the `try_initialize` is dependant on the
+            // passed `init` function.
+            unsafe {
+                match self.inner.get() {
+                    Some(val) => Some(val),
+                    None => self.try_initialize(init),
+                }
             }
         }
 
@@ -428,8 +451,10 @@ pub mod fast {
         // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
         #[inline(never)]
         unsafe fn try_initialize<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
-            if !mem::needs_drop::<T>() || self.try_register_dtor() {
-                Some(self.inner.initialize(init))
+            // SAFETY: See comment above.
+            if !mem::needs_drop::<T>() || unsafe { self.try_register_dtor() } {
+                // SAFETY: See comment above.
+                Some(unsafe { self.inner.initialize(init) })
             } else {
                 None
             }
@@ -441,8 +466,12 @@ pub mod fast {
         unsafe fn try_register_dtor(&self) -> bool {
             match self.dtor_state.get() {
                 DtorState::Unregistered => {
-                    // dtor registration happens before initialization.
-                    register_dtor(self as *const _ as *mut u8, destroy_value::<T>);
+                    // SAFETY: dtor registration happens before initialization.
+                    // Passing `self` as a pointer while using `destroy_value<T>`
+                    // is safe because the function will build a pointer to a
+                    // Key<T>, which is the type of self and so find the correct
+                    // size.
+                    unsafe { register_dtor(self as *const _ as *mut u8, destroy_value::<T>) };
                     self.dtor_state.set(DtorState::Registered);
                     true
                 }
@@ -458,13 +487,21 @@ pub mod fast {
     unsafe extern "C" fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
 
+        // SAFETY:
+        //
+        // The pointer `ptr` has been built just above and comes from
+        // `try_register_dtor` where it is originally a Key<T> coming from `self`,
+        // making it non-NUL and of the correct type.
+        //
         // Right before we run the user destructor be sure to set the
         // `Option<T>` to `None`, and `dtor_state` to `RunningOrHasRun`. This
         // causes future calls to `get` to run `try_initialize_drop` again,
         // which will now fail, and return `None`.
-        let value = (*ptr).inner.take();
-        (*ptr).dtor_state.set(DtorState::RunningOrHasRun);
-        drop(value);
+        unsafe {
+            let value = (*ptr).inner.take();
+            (*ptr).dtor_state.set(DtorState::RunningOrHasRun);
+            drop(value);
+        }
     }
 }
 
@@ -533,11 +570,15 @@ pub mod os {
                 ptr
             };
 
-            Some((*ptr).inner.initialize(init))
+            // SAFETY: ptr has been ensured as non-NUL just above an so can be
+            // dereferenced safely.
+            unsafe { Some((*ptr).inner.initialize(init)) }
         }
     }
 
     unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
+        // SAFETY:
+        //
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
         // ensure that any future calls to `get` for this thread will return
@@ -545,10 +586,12 @@ pub mod os {
         //
         // Note that to prevent an infinite loop we reset it back to null right
         // before we return from the destructor ourselves.
-        let ptr = Box::from_raw(ptr as *mut Value<T>);
-        let key = ptr.key;
-        key.os.set(1 as *mut u8);
-        drop(ptr);
-        key.os.set(ptr::null_mut());
+        unsafe {
+            let ptr = Box::from_raw(ptr as *mut Value<T>);
+            let key = ptr.key;
+            key.os.set(1 as *mut u8);
+            drop(ptr);
+            key.os.set(ptr::null_mut());
+        }
     }
 }
