@@ -22,6 +22,12 @@ pub fn is_verbatim_sep(b: u8) -> bool {
     b == b'\\'
 }
 
+// In most DOS systems, it is not possible to have more than 26 drive letters.
+// See <https://en.wikipedia.org/wiki/Drive_letter_assignment#Common_assignments>.
+pub fn is_valid_drive_letter(disk: u8) -> bool {
+    disk.is_ascii_alphabetic()
+}
+
 pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
     use crate::path::Prefix::*;
     unsafe {
@@ -52,7 +58,7 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
                     let idx = path.iter().position(|&b| b == b'\\');
                     if idx == Some(2) && path[1] == b':' {
                         let c = path[0];
-                        if c.is_ascii() && (c as char).is_alphabetic() {
+                        if is_valid_drive_letter(c) {
                             // \\?\C:\ path
                             return Some(VerbatimDisk(c.to_ascii_uppercase()));
                         }
@@ -77,7 +83,7 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
         } else if path.get(1) == Some(&b':') {
             // C:
             let c = path[0];
-            if c.is_ascii() && (c as char).is_alphabetic() {
+            if is_valid_drive_letter(c) {
                 return Some(Disk(c.to_ascii_uppercase()));
             }
         }
