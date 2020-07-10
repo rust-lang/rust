@@ -641,28 +641,22 @@ fn check_unneeded_wildcard_pattern(cx: &EarlyContext<'_>, pat: &Pat) {
             );
         }
 
-        #[allow(clippy::trivially_copy_pass_by_ref)]
-        fn is_wild<P: std::ops::Deref<Target = Pat>>(pat: &&P) -> bool {
-            if let PatKind::Wild = pat.kind {
-                true
-            } else {
-                false
-            }
-        }
-
         if let Some(rest_index) = patterns.iter().position(|pat| pat.is_rest()) {
             if let Some((left_index, left_pat)) = patterns[..rest_index]
                 .iter()
                 .rev()
-                .take_while(is_wild)
+                .take_while(|pat| matches!(pat.kind, PatKind::Wild))
                 .enumerate()
                 .last()
             {
                 span_lint(cx, left_pat.span.until(patterns[rest_index].span), left_index == 0);
             }
 
-            if let Some((right_index, right_pat)) =
-                patterns[rest_index + 1..].iter().take_while(is_wild).enumerate().last()
+            if let Some((right_index, right_pat)) = patterns[rest_index + 1..]
+                .iter()
+                .take_while(|pat| matches!(pat.kind, PatKind::Wild))
+                .enumerate()
+                .last()
             {
                 span_lint(
                     cx,

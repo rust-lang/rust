@@ -71,10 +71,11 @@ fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[ast::Attribute], sp
 fn is_executable(cx: &LateContext<'_>) -> bool {
     use rustc_session::config::CrateType;
 
-    cx.tcx.sess.crate_types().iter().any(|t: &CrateType| match t {
-        CrateType::Executable => true,
-        _ => false,
-    })
+    cx.tcx
+        .sess
+        .crate_types()
+        .iter()
+        .any(|t: &CrateType| matches!(t, CrateType::Executable))
 }
 
 declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);

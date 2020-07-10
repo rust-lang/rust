@@ -169,10 +169,8 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                 let should_check = parameters.as_ref().map_or(
                     true,
-                    |params| !params.parenthesized && !params.args.iter().any(|arg| match arg {
-                        GenericArg::Lifetime(_) => true,
-                        _ => false,
-                    })
+                    |params| !params.parenthesized
+                        &&!params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
                 );
 
                 if should_check {

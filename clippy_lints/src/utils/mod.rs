@@ -102,11 +102,7 @@ pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
 #[must_use]
 pub fn in_macro(span: Span) -> bool {
     if span.from_expansion() {
-        if let ExpnKind::Desugaring(..) = span.ctxt().outer_expn_data().kind {
-            false
-        } else {
-            true
-        }
+        !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
     } else {
         false
     }
@@ -127,10 +123,7 @@ pub fn is_present_in_source<T: LintContext>(cx: &T, span: Span) -> bool {
 
 /// Checks if given pattern is a wildcard (`_`)
 pub fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
-    match pat.kind {
-        PatKind::Wild => true,
-        _ => false,
-    }
+    matches!(pat.kind, PatKind::Wild)
 }
 
 /// Checks if type is struct, enum or union type with the given def path.

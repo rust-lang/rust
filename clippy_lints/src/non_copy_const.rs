@@ -238,10 +238,10 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
 
             let ty = if needs_check_adjustment {
                 let adjustments = cx.tables().expr_adjustments(dereferenced_expr);
-                if let Some(i) = adjustments.iter().position(|adj| match adj.kind {
-                    Adjust::Borrow(_) | Adjust::Deref(_) => true,
-                    _ => false,
-                }) {
+                if let Some(i) = adjustments
+                    .iter()
+                    .position(|adj| matches!(adj.kind, Adjust::Borrow(_) | Adjust::Deref(_)))
+                {
                     if i == 0 {
                         cx.tables().expr_ty(dereferenced_expr)
                     } else {

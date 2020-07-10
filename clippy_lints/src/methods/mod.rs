@@ -1844,10 +1844,10 @@ fn lint_expect_fun_call(
                         ty::Ref(ty::ReStatic, ..)
                     )
                 }),
-            hir::ExprKind::Path(ref p) => match cx.qpath_res(p, arg.hir_id) {
-                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _) => true,
-                _ => false,
-            },
+            hir::ExprKind::Path(ref p) => matches!(
+                cx.qpath_res(p, arg.hir_id),
+                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _)
+            ),
             _ => false,
         }
     }
@@ -2028,13 +2028,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Exp
                     .tables()
                     .expr_adjustments(arg)
                     .iter()
-                    .filter(|adj| {
-                        if let ty::adjustment::Adjust::Deref(_) = adj.kind {
-                            true
-                        } else {
-                            false
-                        }
-                    })
+                    .filter(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(_)))
                     .count();
                 let derefs: String = iter::repeat('*').take(deref_count).collect();
                 snip = Some(("try dereferencing it", format!("{}{}", derefs, snippet)));

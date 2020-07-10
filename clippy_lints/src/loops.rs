@@ -2091,17 +2091,11 @@ fn var_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<HirId> {
 }
 
 fn is_loop(expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Loop(..) => true,
-        _ => false,
-    }
+    matches!(expr.kind, ExprKind::Loop(..))
 }
 
 fn is_conditional(expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Match(..) => true,
-        _ => false,
-    }
+    matches!(expr.kind, ExprKind::Match(..))
 }
 
 fn is_nested(cx: &LateContext<'_>, match_expr: &Expr<'_>, iter_expr: &Expr<'_>) -> bool {
