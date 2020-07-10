@@ -40,9 +40,9 @@ RUN curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.6.16.tar.xz | tar 
     cp linux.config linux-5.6.16/.config && \
     cd /build/linux-5.6.16 && \
     make olddefconfig && \
-    make -j$(nproc) vmlinux
-RUN cp linux-5.6.16/vmlinux /tmp
-RUN rm -rf linux-5.6.16
+    make -j$(nproc) vmlinux && \
+    cp vmlinux /tmp && \
+    rm -rf linux-5.6.16
 
 # Compile an instance of busybox as this provides a lightweight system and init
 # binary which we will boot into. Only trick here is configuring busybox to
