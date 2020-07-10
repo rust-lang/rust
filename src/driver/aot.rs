@@ -112,20 +112,10 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
 
     let module = new_module(tcx, cgu_name.as_str().to_string());
 
-    let mut global_asm = Vec::new();
     let mut cx = crate::CodegenCx::new(tcx, module, tcx.sess.opts.debuginfo != DebugInfo::None);
-    super::codegen_mono_items(&mut cx, &mut global_asm, mono_items);
-    let (mut module, debug, mut unwind_context) = tcx.sess.time("finalize CodegenCx", || cx.finalize());
+    super::codegen_mono_items(&mut cx, mono_items);
+    let (mut module, global_asm, debug, mut unwind_context) = tcx.sess.time("finalize CodegenCx", || cx.finalize());
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context);
-
-    let global_asm = global_asm.into_iter().map(|hir_id| {
-        let item = tcx.hir().expect_item(hir_id);
-        if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
-            asm.as_str().to_string()
-        } else {
-            bug!("Expected GlobalAsm found {:?}", item);
-        }
-    }).collect::<Vec<String>>().join("\n");
 
     let codegen_result = emit_module(
         tcx,
@@ -283,7 +273,7 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
         }
 
         // FIXME fix linker error on macOS
-        tcx.sess.fatal("global_asm! is not yet supported on macOS and Windows");
+        tcx.sess.fatal("asm! and global_asm! are not yet supported on macOS and Windows");
     }
 
     let assembler = crate::toolchain::get_toolchain_binary(tcx.sess, "as");

@@ -55,6 +55,7 @@ mod constant;
 mod debuginfo;
 mod discriminant;
 mod driver;
+mod inline_asm;
 mod intrinsics;
 mod linkage;
 mod main_shim;
@@ -123,6 +124,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 struct CodegenCx<'tcx, B: Backend + 'static> {
     tcx: TyCtxt<'tcx>,
     module: Module<B>,
+    global_asm: String,
     constants_cx: ConstantCx,
     cached_context: Context,
     vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
@@ -148,6 +150,7 @@ impl<'tcx, B: Backend + 'static> CodegenCx<'tcx, B> {
         CodegenCx {
             tcx,
             module,
+            global_asm: String::new(),
             constants_cx: ConstantCx::default(),
             cached_context: Context::new(),
             vtables: FxHashMap::default(),
@@ -156,9 +159,9 @@ impl<'tcx, B: Backend + 'static> CodegenCx<'tcx, B> {
         }
     }
 
-    fn finalize(mut self) -> (Module<B>, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
+    fn finalize(mut self) -> (Module<B>, String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
         self.constants_cx.finalize(self.tcx, &mut self.module);
-        (self.module, self.debug_context, self.unwind_context)
+        (self.module, self.global_asm, self.debug_context, self.unwind_context)
     }
 }
 

@@ -76,5 +76,8 @@ function jit_calc() {
 
 * Good non-rust abi support ([several problems](https://github.com/bjorn3/rustc_codegen_cranelift/issues/10))
     * Proc macros
-* Inline assembly ([no cranelift support](https://github.com/bytecodealliance/wasmtime/issues/1041), not coming soon)
+* Inline assembly ([no cranelift support](https://github.com/bytecodealliance/wasmtime/issues/1041)
+    * On Linux there is support for invoking an external assembler for `global_asm!` and `asm!`.
+      `llvm_asm!` will remain unimplemented forever. `asm!` doesn't yet support reg classes. You
+      have to specify specific registers instead.
 * SIMD ([tracked here](https://github.com/bjorn3/rustc_codegen_cranelift/issues/171), some basic things work)
