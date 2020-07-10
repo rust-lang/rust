@@ -817,7 +817,7 @@ where
             debug!("CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
 
             for (mono_item, linkage) in cgu.items() {
-                let symbol_name = mono_item.symbol_name(tcx).name.as_str();
+                let symbol_name = mono_item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash =
                     symbol_hash_start.map(|i| &symbol_name[i..]).unwrap_or("<no hash>");

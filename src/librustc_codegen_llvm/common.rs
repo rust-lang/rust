@@ -15,7 +15,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{Allocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_span::symbol::Symbol;
+use rustc_middle::ty::SymbolName;
 use rustc_target::abi::{self, HasDataLayout, LayoutOf, Pointer, Size};
 
 use libc::{c_char, c_uint};
@@ -105,17 +105,16 @@ impl CodegenCx<'ll, 'tcx> {
         bytes_in_context(self.llcx, bytes)
     }
 
-    fn const_cstr(&self, s: Symbol, null_terminated: bool) -> &'ll Value {
+    fn const_cstr(&self, s: SymbolName<'tcx>, null_terminated: bool) -> &'ll Value {
         unsafe {
             if let Some(&llval) = self.const_cstr_cache.borrow().get(&s) {
                 return llval;
             }
 
-            let s_str = s.as_str();
             let sc = llvm::LLVMConstStringInContext(
                 self.llcx,
-                s_str.as_ptr() as *const c_char,
-                s_str.len() as c_uint,
+                s.name.as_ptr() as *const c_char,
+                s.name.len() as c_uint,
                 !null_terminated as Bool,
             );
             let sym = self.generate_local_symbol_name("str");
@@ -202,8 +201,8 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMConstReal(t, val) }
     }
 
-    fn const_str(&self, s: Symbol) -> (&'ll Value, &'ll Value) {
-        let len = s.as_str().len();
+    fn const_str(&self, s: SymbolName<'tcx>) -> (&'ll Value, &'ll Value) {
+        let len = s.name.len();
         let cs = consts::ptrcast(
             self.const_cstr(s, false),
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).llvm_type(self)),

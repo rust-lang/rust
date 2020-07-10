@@ -1,7 +1,5 @@
 use crate::ty::{self, AdtSizedConstraint, Ty, TyCtxt, TyS};
 
-use rustc_span::symbol::Symbol;
-
 pub(super) trait Value<'tcx>: Sized {
     fn from_cycle_error(tcx: TyCtxt<'tcx>) -> Self;
 }
@@ -21,9 +19,15 @@ impl<'tcx> Value<'tcx> for &'_ TyS<'_> {
     }
 }
 
-impl<'tcx> Value<'tcx> for ty::SymbolName {
-    fn from_cycle_error(_: TyCtxt<'tcx>) -> Self {
-        ty::SymbolName { name: Symbol::intern("<error>") }
+impl<'tcx> Value<'tcx> for ty::SymbolName<'_> {
+    fn from_cycle_error(tcx: TyCtxt<'tcx>) -> Self {
+        // SAFETY: This is never called when `Self` is not `SymbolName<'tcx>`.
+        // FIXME: Represent the above fact in the trait system somehow.
+        unsafe {
+            std::mem::transmute::<ty::SymbolName<'tcx>, ty::SymbolName<'_>>(ty::SymbolName::new(
+                tcx, "<error>",
+            ))
+        }
     }
 }
 

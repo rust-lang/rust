@@ -50,6 +50,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::Range;
 use std::ptr;
+use std::str;
 
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
@@ -2988,40 +2989,37 @@ pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Vec<DefId>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
-pub struct SymbolName {
-    // FIXME: we don't rely on interning or equality here - better have
-    // this be a `&'tcx str`.
-    pub name: Symbol,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+pub struct SymbolName<'tcx> {
+    /// `&str` gives a consistent ordering, which ensures reproducible builds.
+    pub name: &'tcx str,
 }
 
-impl SymbolName {
-    pub fn new(name: &str) -> SymbolName {
-        SymbolName { name: Symbol::intern(name) }
+impl<'tcx> SymbolName<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, name: &str) -> SymbolName<'tcx> {
+        SymbolName {
+            name: unsafe { str::from_utf8_unchecked(tcx.arena.alloc_slice(name.as_bytes())) },
+        }
     }
 }
 
-impl PartialOrd for SymbolName {
-    fn partial_cmp(&self, other: &SymbolName) -> Option<Ordering> {
-        self.name.as_str().partial_cmp(&other.name.as_str())
-    }
-}
-
-/// Ordering must use the chars to ensure reproducible builds.
-impl Ord for SymbolName {
-    fn cmp(&self, other: &SymbolName) -> Ordering {
-        self.name.as_str().cmp(&other.name.as_str())
-    }
-}
-
-impl fmt::Display for SymbolName {
+impl<'tcx> fmt::Display for SymbolName<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.name, fmt)
     }
 }
 
-impl fmt::Debug for SymbolName {
+impl<'tcx> fmt::Debug for SymbolName<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.name, fmt)
     }
 }
+
+impl<'tcx> rustc_serialize::UseSpecializedEncodable for SymbolName<'tcx> {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_str(self.name)
+    }
+}
+
+// The decoding takes place in `decode_symbol_name()`.
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for SymbolName<'tcx> {}

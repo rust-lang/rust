@@ -106,8 +106,6 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 
-use rustc_span::symbol::Symbol;
-
 use log::debug;
 
 mod legacy;
@@ -133,7 +131,7 @@ pub fn provide(providers: &mut Providers) {
 // The `symbol_name` query provides the symbol name for calling a given
 // instance from the local crate. In particular, it will also look up the
 // correct symbol name of instances from upstream crates.
-fn symbol_name_provider(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName {
+fn symbol_name_provider(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
     let symbol_name = compute_symbol_name(tcx, instance, || {
         // This closure determines the instantiating crate for instances that
         // need an instantiating-crate-suffix for their symbol name, in order
@@ -149,7 +147,7 @@ fn symbol_name_provider(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::Symb
         }
     });
 
-    ty::SymbolName { name: Symbol::intern(&symbol_name) }
+    ty::SymbolName::new(tcx, &symbol_name)
 }
 
 /// Computes the symbol name for the given instance. This function will call

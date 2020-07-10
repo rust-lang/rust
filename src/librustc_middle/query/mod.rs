@@ -691,7 +691,7 @@ rustc_queries! {
         /// The `symbol_name` query provides the symbol name for calling a
         /// given instance from the local crate. In particular, it will also
         /// look up the correct symbol name of instances from upstream crates.
-        query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName {
+        query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName<'tcx> {
             desc { "computing the symbol for `{}`", key }
             cache_on_disk_if { true }
         }

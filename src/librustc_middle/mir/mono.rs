@@ -68,13 +68,13 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> SymbolName {
+    pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> SymbolName<'tcx> {
         match *self {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(hir_id) => {
                 let def_id = tcx.hir().local_def_id(hir_id);
-                SymbolName { name: Symbol::intern(&format!("global_asm_{:?}", def_id)) }
+                SymbolName::new(tcx, &format!("global_asm_{:?}", def_id))
             }
         }
     }
@@ -335,9 +335,9 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey(Option<HirId>, SymbolName);
+        pub struct ItemSortKey<'tcx>(Option<HirId>, SymbolName<'tcx>);
 
-        fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey {
+        fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
                 match item {
                     MonoItem::Fn(ref instance) => {

@@ -263,6 +263,14 @@ where
 }
 
 #[inline]
+pub fn decode_symbol_name<D>(decoder: &mut D) -> Result<ty::SymbolName<'tcx>, D::Error>
+where
+    D: TyDecoder<'tcx>,
+{
+    Ok(ty::SymbolName::new(decoder.tcx(), &decoder.read_str()?))
+}
+
+#[inline]
 pub fn decode_existential_predicate_slice<D>(
     decoder: &mut D,
 ) -> Result<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>, D::Error>
@@ -501,6 +509,13 @@ macro_rules! implement_ty_decoder {
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<&'_x ty::AdtDef, Self::Error> {
                     unsafe { transmute(decode_adt_def(self)) }
+                }
+            }
+
+            impl<'_x, $($typaram),*> SpecializedDecoder<ty::SymbolName<'_x>>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(&mut self) -> Result<ty::SymbolName<'_x>, Self::Error> {
+                    unsafe { transmute(decode_symbol_name(self)) }
                 }
             }
 

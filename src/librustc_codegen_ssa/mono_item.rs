@@ -64,7 +64,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             cx.codegen_unit().name()
         );
 
-        let symbol_name = self.symbol_name(cx.tcx()).name.as_str();
+        let symbol_name = self.symbol_name(cx.tcx()).name;
 
         debug!("symbol {}", &symbol_name);
 

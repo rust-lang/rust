@@ -39,7 +39,7 @@ impl SymbolNamesTest<'tcx> {
                 let instance = Instance::mono(tcx, def_id.to_def_id());
                 let mangled = self.tcx.symbol_name(instance);
                 tcx.sess.span_err(attr.span, &format!("symbol-name({})", mangled));
-                if let Ok(demangling) = rustc_demangle::try_demangle(&mangled.name.as_str()) {
+                if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
                     tcx.sess.span_err(attr.span, &format!("demangling({})", demangling));
                     tcx.sess.span_err(attr.span, &format!("demangling-alt({:#})", demangling));
                 }
