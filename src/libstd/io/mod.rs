@@ -287,6 +287,8 @@ pub use self::stdio::{_eprint, _print};
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
+#[unstable(feature = "input", issue = "none")]
+pub use self::stdio::{input_prompt, input};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{copy, empty, repeat, sink, Empty, Repeat, Sink};
 
