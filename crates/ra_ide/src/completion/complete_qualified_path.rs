@@ -17,21 +17,20 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         return;
     }
 
-    let scope = ctx.scope();
-    let context_module = scope.module();
+    let context_module = ctx.scope.module();
 
-    let res = match scope.resolve_hir_path_qualifier(&path) {
+    let resolution = match ctx.scope.resolve_hir_path_qualifier(&path) {
         Some(res) => res,
         None => return,
     };
 
     // Add associated types on type parameters and `Self`.
-    res.assoc_type_shorthand_candidates(ctx.db, |alias| {
+    resolution.assoc_type_shorthand_candidates(ctx.db, |alias| {
         acc.add_type_alias(ctx, alias);
         None::<()>
     });
 
-    match res {
+    match resolution {
         PathResolution::Def(hir::ModuleDef::Module(module)) => {
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
@@ -68,7 +67,7 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
             let krate = ctx.krate;
             if let Some(krate) = krate {
-                let traits_in_scope = ctx.scope().traits_in_scope();
+                let traits_in_scope = ctx.scope.traits_in_scope();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
                     if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
                         return None;
@@ -113,13 +112,13 @@ pub(super) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         }
         PathResolution::TypeParam(_) | PathResolution::SelfType(_) => {
             if let Some(krate) = ctx.krate {
-                let ty = match res {
+                let ty = match resolution {
                     PathResolution::TypeParam(param) => param.ty(ctx.db),
                     PathResolution::SelfType(impl_def) => impl_def.target_ty(ctx.db),
                     _ => return,
                 };
 
-                let traits_in_scope = ctx.scope().traits_in_scope();
+                let traits_in_scope = ctx.scope.traits_in_scope();
                 let mut seen = FxHashSet::default();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
                     if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {

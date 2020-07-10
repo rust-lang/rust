@@ -13,7 +13,7 @@ pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
 
     // FIXME: ideally, we should look at the type we are matching against and
     // suggest variants + auto-imports
-    ctx.scope().process_all_names(&mut |name, res| {
+    ctx.scope.process_all_names(&mut |name, res| {
         match &res {
             hir::ScopeDef::ModuleDef(def) => match def {
                 hir::ModuleDef::Adt(hir::Adt::Enum(..))

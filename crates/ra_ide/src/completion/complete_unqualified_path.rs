@@ -25,7 +25,7 @@ pub(super) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
 
-    ctx.scope().process_all_names(&mut |name, res| {
+    ctx.scope.process_all_names(&mut |name, res| {
         if ctx.use_item_syntax.is_some() {
             if let (ScopeDef::Unknown, Some(name_ref)) = (&res, &ctx.name_ref_syntax) {
                 if name_ref.syntax().text() == name.to_string().as_str() {
@@ -42,7 +42,7 @@ fn complete_enum_variants(acc: &mut Completions, ctx: &CompletionContext, ty: &T
     if let Some(Adt::Enum(enum_data)) = ty.as_adt() {
         let variants = enum_data.variants(ctx.db);
 
-        let module = if let Some(module) = ctx.scope().module() {
+        let module = if let Some(module) = ctx.scope.module() {
             // Compute path from the completion site if available.
             module
         } else {
