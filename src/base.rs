@@ -36,6 +36,7 @@ pub(crate) fn trans_fn<'tcx, B: Backend + 'static>(
     let mut fx = FunctionCx {
         tcx,
         module: &mut cx.module,
+        global_asm: &mut cx.global_asm,
         pointer_type,
 
         instance,
@@ -307,24 +308,26 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
             TerminatorKind::InlineAsm {
                 template,
                 operands,
-                options: _,
+                options,
                 destination,
                 line_spans: _,
             } => {
-                match template {
-                    &[] => {
-                        assert_eq!(operands, &[]);
-                        match *destination {
-                            Some(destination) => {
-                                let destination_block = fx.get_block(destination);
-                                fx.bcx.ins().jump(destination_block, &[]);
-                            }
-                            None => bug!(),
-                        }
+                crate::inline_asm::codegen_inline_asm(
+                    fx,
+                    bb_data.terminator().source_info.span,
+                    template,
+                    operands,
+                    *options,
+                );
 
-                        // Black box
+                match *destination {
+                    Some(destination) => {
+                        let destination_block = fx.get_block(destination);
+                        fx.bcx.ins().jump(destination_block, &[]);
                     }
-                    _ => fx.tcx.sess.span_fatal(bb_data.terminator().source_info.span, "Inline assembly is not supported"),
+                    None => {
+                        crate::trap::trap_unreachable(fx, "[corruption] Returned from noreturn inline asm");
+                    }
                 }
             }
             TerminatorKind::Resume | TerminatorKind::Abort => {

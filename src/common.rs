@@ -254,6 +254,7 @@ pub(crate) struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     // FIXME use a reference to `CodegenCx` instead of `tcx`, `module` and `constants` and `caches`
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) module: &'clif mut Module<B>,
+    pub(crate) global_asm: &'clif mut String,
     pub(crate) pointer_type: Type, // Cached from module
 
     pub(crate) instance: Instance<'tcx>,

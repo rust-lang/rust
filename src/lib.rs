@@ -55,6 +55,7 @@ mod constant;
 mod debuginfo;
 mod discriminant;
 mod driver;
+mod inline_asm;
 mod intrinsics;
 mod linkage;
 mod main_shim;

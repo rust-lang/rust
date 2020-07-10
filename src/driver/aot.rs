@@ -273,7 +273,7 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
         }
 
         // FIXME fix linker error on macOS
-        tcx.sess.fatal("global_asm! is not yet supported on macOS and Windows");
+        tcx.sess.fatal("asm! and global_asm! are not yet supported on macOS and Windows");
     }
 
     let assembler = crate::toolchain::get_toolchain_binary(tcx.sess, "as");
