@@ -115,8 +115,7 @@ impl SourceAnalyzer {
         Some(res)
     }
 
-    // TODO: rename
-    pub(crate) fn type_of(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<Type> {
+    pub(crate) fn type_of_expr(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<Type> {
         let expr_id = self.expr_id(db, expr)?;
         let ty = self.infer.as_ref()?[expr_id].clone();
         Type::new_with_resolver(db, &self.resolver, ty)
