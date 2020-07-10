@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/adt-param-with-implicit-sized-bound.rs:25:5
+  --> $DIR/adt-param-with-implicit-sized-bound.rs:25:9
    |
 LL | struct X<T>(T);
    |          - required by this bound in `X`
@@ -7,7 +7,7 @@ LL | struct X<T>(T);
 LL | struct Struct5<T: ?Sized>{
    |                - this type parameter needs to be `std::marker::Sized`
 LL |     _t: X<T>,
-   |     ^^^^^^^^ doesn't have a size known at compile-time
+   |         ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `T`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>

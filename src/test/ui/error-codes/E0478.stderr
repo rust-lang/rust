@@ -1,8 +1,8 @@
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/E0478.rs:4:5
+  --> $DIR/E0478.rs:4:12
    |
 LL |     child: Box<dyn Wedding<'kiss> + 'SnowWhite>,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime `'SnowWhite` as defined on the struct at 3:22
   --> $DIR/E0478.rs:3:22

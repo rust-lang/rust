@@ -1,10 +1,10 @@
 error[E0310]: the parameter type `U` may not live long enough
-  --> $DIR/dont-infer-static.rs:8:5
+  --> $DIR/dont-infer-static.rs:8:10
    |
 LL | struct Foo<U> {
    |            - help: consider adding an explicit lifetime bound...: `U: 'static`
 LL |     bar: Bar<U>
-   |     ^^^^^^^^^^^ ...so that the type `U` will meet its required lifetime bounds
+   |          ^^^^^^ ...so that the type `U` will meet its required lifetime bounds
 
 error: aborting due to previous error
 
