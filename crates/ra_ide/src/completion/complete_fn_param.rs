@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! See `complete_fn_param`.
 
 use ra_syntax::{
     ast::{self, ModuleItemOwner},
@@ -18,32 +18,36 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     }
 
     let mut params = FxHashMap::default();
+    let mut me = None;
     for node in ctx.token.parent().ancestors() {
         let items = match_ast! {
             match node {
                 ast::SourceFile(it) => it.items(),
                 ast::ItemList(it) => it.items(),
+                ast::FnDef(it) => {
+                    me = Some(it);
+                    continue;
+                },
                 _ => continue,
             }
         };
         for item in items {
             if let ast::ModuleItem::FnDef(func) = item {
+                if Some(&func) == me.as_ref() {
+                    continue;
+                }
                 func.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
                     let text = param.syntax().text().to_string();
-                    params.entry(text).or_insert((0, param)).0 += 1;
+                    params.entry(text).or_insert(param);
                 })
             }
         }
     }
     params
         .into_iter()
-        .filter_map(|(label, (count, param))| {
+        .filter_map(|(label, param)| {
             let lookup = param.pat()?.syntax().text().to_string();
-            if count < 2 {
-                None
-            } else {
-                Some((label, lookup))
-            }
+            Some((label, lookup))
         })
         .for_each(|(label, lookup)| {
             CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label)
@@ -83,7 +87,6 @@ fn baz(file<|>) {}
         check(
             r#"
 fn foo(file_id: FileId) {}
-fn bar(file_id: FileId) {}
 fn baz(file<|>, x: i32) {}
 "#,
             expect![[r#"
