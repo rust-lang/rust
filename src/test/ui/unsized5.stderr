@@ -7,7 +7,6 @@ LL |     f1: X,
    |         ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -29,7 +28,6 @@ LL |     g: X,
    |        ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -48,7 +46,6 @@ LL |     f: str,
    |        ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -67,7 +64,6 @@ LL |     f: [u8],
    |        ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -88,7 +84,6 @@ LL |     V1(X, isize),
    |        ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -109,7 +104,6 @@ LL |     V2{f1: X, f: isize},
    |            ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size

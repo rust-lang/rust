@@ -8,7 +8,6 @@ LL | impl Foo<[isize]> for usize { }
    |      ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[isize]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Foo<T: ?Sized> : Sized { fn take(self, x: &T) { } } // Note: T is sized
@@ -24,7 +23,6 @@ LL | impl Foo<isize> for [usize] { }
    |      ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[usize]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error: aborting due to 2 previous errors
 
