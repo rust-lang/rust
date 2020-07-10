@@ -12,6 +12,7 @@ use crate::{
 mod future;
 mod into_future;
 mod pending;
+mod poll_fn;
 mod ready;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -24,6 +25,9 @@ pub use into_future::IntoFuture;
 pub use pending::{pending, Pending};
 #[unstable(feature = "future_readiness_fns", issue = "70921")]
 pub use ready::{ready, Ready};
+
+#[unstable(feature = "future_poll_fn", issue = "72302")]
+pub use poll_fn::{poll_fn, PollFn};
 
 /// This type is needed because:
 ///
