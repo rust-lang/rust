@@ -6,6 +6,8 @@ LL | fn f() where
 LL |     for<'a> dyn Trait1<'a>: Trait1<'a>, // OK
 LL |     (dyn for<'a> Trait1<'a>): Trait1<'a>,
    |                                      ^^ undeclared lifetime
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/where-lifetime-resolution.rs:8:52
@@ -15,6 +17,8 @@ LL | fn f() where
 ...
 LL |     for<'a> dyn for<'b> Trait2<'a, 'b>: Trait2<'a, 'b>,
    |                                                    ^^ undeclared lifetime
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error: aborting due to 2 previous errors
 
