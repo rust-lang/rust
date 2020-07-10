@@ -1346,21 +1346,30 @@ impl Symbol {
         Symbol(SymbolIndex::from_u32(n))
     }
 
+    /// Execute a given function, passing it a reference to the Interner. This
+    /// is useful outside this module only in hot code where you want to do
+    /// multiple `intern()` or `get()` calls while only locking the symbol
+    /// interner once.
+    #[inline]
+    pub fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
+        SESSION_GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
+    }
+
     /// Maps a string to its interned representation.
     pub fn intern(string: &str) -> Self {
-        with_interner(|interner| interner.intern(string))
+        Symbol::with_interner(|interner| interner.intern(string))
     }
 
     /// Access the symbol's chars. This is a slowish operation because it
     /// requires locking the symbol interner.
     pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        with_interner(|interner| f(interner.get(self)))
+        Symbol::with_interner(|interner| f(interner.get(self)))
     }
 
     /// Convert to a `SymbolStr`. This is a slowish operation because it
     /// requires locking the symbol interner.
     pub fn as_str(self) -> SymbolStr {
-        with_interner(|interner| unsafe {
+        Symbol::with_interner(|interner| unsafe {
             SymbolStr { string: std::mem::transmute::<&str, &str>(interner.get(self)) }
         })
     }
@@ -1456,8 +1465,9 @@ impl Interner {
         name
     }
 
-    // Get the symbol as a string. `Symbol::as_str()` should be used in
-    // preference to this function.
+    // Get the symbol as a string. `Symbol::as_str()` is usually preferable;
+    // this method is only useful in combination with
+    // `Symbol::with_interner()`.
     pub fn get(&self, symbol: Symbol) -> &str {
         self.strings[symbol.0.as_usize()]
     }
@@ -1571,11 +1581,6 @@ impl Ident {
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
     }
-}
-
-#[inline]
-fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.symbol_interner.lock()))
 }
 
 /// An alternative to `Symbol`, useful when the chars within the symbol need to
