@@ -15,7 +15,6 @@
 #![feature(or_patterns)]
 #![recursion_limit = "256"]
 
-pub use late::IgnoreState;
 pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
@@ -1442,13 +1441,13 @@ impl<'a> Resolver<'a> {
     }
 
     /// Entry point to crate resolution.
-    pub fn resolve_crate(&mut self, krate: &Crate, ignore_bodies: IgnoreState) {
+    pub fn resolve_crate(&mut self, krate: &Crate) {
         let _prof_timer = self.session.prof.generic_activity("resolve_crate");
 
         ImportResolver { r: self }.finalize_imports();
         self.finalize_macro_resolutions();
 
-        self.late_resolve_crate(krate, ignore_bodies);
+        self.late_resolve_crate(krate);
 
         self.check_unused(krate);
         self.report_errors(krate);

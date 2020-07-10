@@ -233,8 +233,6 @@ fn configure_and_expand_inner<'a>(
     resolver_arenas: &'a ResolverArenas<'a>,
     metadata_loader: &'a MetadataLoaderDyn,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
-    use rustc_resolve::IgnoreState;
-
     log::trace!("configure_and_expand_inner");
     pre_expansion_lint(sess, lint_store, &krate);
 
@@ -413,10 +411,7 @@ fn configure_and_expand_inner<'a>(
         println!("{}", json::as_json(&krate));
     }
 
-    // If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items.
-    let ignore_bodies =
-        if sess.opts.actually_rustdoc { IgnoreState::Ignore } else { IgnoreState::Report };
-    resolver.resolve_crate(&krate, ignore_bodies);
+    resolver.resolve_crate(&krate);
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     sess.time("complete_gated_feature_checking", || {
