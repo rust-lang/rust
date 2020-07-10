@@ -1856,26 +1856,43 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
             }
-            ObligationCauseCode::FieldSized { adt_kind: ref item, last } => match *item {
-                AdtKind::Struct => {
-                    if last {
-                        err.note(
-                            "the last field of a packed struct may only have a \
-                             dynamically sized type if it does not need drop to be run",
-                        );
-                    } else {
-                        err.note(
-                            "only the last field of a struct may have a dynamically sized type",
-                        );
+            ObligationCauseCode::FieldSized { adt_kind: ref item, last, span } => {
+                match *item {
+                    AdtKind::Struct => {
+                        if last {
+                            err.note(
+                                "the last field of a packed struct may only have a \
+                                dynamically sized type if it does not need drop to be run",
+                            );
+                        } else {
+                            err.note(
+                                "only the last field of a struct may have a dynamically sized type",
+                            );
+                        }
+                    }
+                    AdtKind::Union => {
+                        err.note("no field of a union may have a dynamically sized type");
+                    }
+                    AdtKind::Enum => {
+                        err.note("no field of an enum variant may have a dynamically sized type");
                     }
                 }
-                AdtKind::Union => {
-                    err.note("no field of a union may have a dynamically sized type");
-                }
-                AdtKind::Enum => {
-                    err.note("no field of an enum variant may have a dynamically sized type");
-                }
-            },
+                err.help("change the field's type to have a statically known size");
+                err.span_suggestion(
+                    span.shrink_to_lo(),
+                    "borrowed types always have a statically known size",
+                    "&".to_string(),
+                    Applicability::MachineApplicable,
+                );
+                err.multipart_suggestion(
+                    "heap allocated types always have a statically known size",
+                    vec![
+                        (span.shrink_to_lo(), "Box<".to_string()),
+                        (span.shrink_to_hi(), ">".to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            }
             ObligationCauseCode::ConstSized => {
                 err.note("constant expressions must have a statically known size");
             }

@@ -394,6 +394,7 @@ fn check_type_defn<'tcx, F>(
                                 Some(i) => i,
                                 None => bug!(),
                             },
+                            span: field.span,
                             last,
                         },
                     ),
@@ -1329,7 +1330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let field_ty = self.normalize_associated_types_in(field.ty.span, &field_ty);
                 let field_ty = self.resolve_vars_if_possible(&field_ty);
                 debug!("non_enum_variant: type of field {:?} is {:?}", field, field_ty);
-                AdtField { ty: field_ty, span: field.span }
+                AdtField { ty: field_ty, span: field.ty.span }
             })
             .collect();
         AdtVariant { fields, explicit_discr: None }
