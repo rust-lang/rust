@@ -436,10 +436,9 @@ impl Build {
             output(Command::new(&build.initial_rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines()
-            .filter(|x| x.starts_with("release:"))
+            .filter_map(|x| x.strip_prefix("release:"))
             .next()
             .unwrap()
-            .trim_start_matches("release:")
             .trim();
         let my_version = channel::CFG_RELEASE_NUM;
         if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
@@ -1089,10 +1088,10 @@ impl Build {
         let toml_file_name = self.src.join(&format!("src/tools/{}/Cargo.toml", package));
         let toml = t!(fs::read_to_string(&toml_file_name));
         for line in toml.lines() {
-            let prefix = "version = \"";
-            let suffix = "\"";
-            if line.starts_with(prefix) && line.ends_with(suffix) {
-                return line[prefix.len()..line.len() - suffix.len()].to_string();
+            if let Some(stripped) =
+                line.strip_prefix("version = \"").and_then(|s| s.strip_suffix("\""))
+            {
+                return stripped.to_owned();
             }
         }
 
