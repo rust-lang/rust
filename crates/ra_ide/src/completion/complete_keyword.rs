@@ -92,7 +92,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "union", "union $0 {}");
     }
 
-    if ctx.can_be_expr {
+    if ctx.is_expr {
         add_keyword(ctx, acc, "match", "match $0 {}");
         add_keyword(ctx, acc, "while", "while $0 {}");
         add_keyword(ctx, acc, "loop", "loop {$0}");
