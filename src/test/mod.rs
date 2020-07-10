@@ -694,7 +694,7 @@ fn read_significant_comments(file_name: &Path) -> HashMap<String, String> {
     reader
         .lines()
         .map(|line| line.expect("failed getting line"))
-        .take_while(|line| line_regex.is_match(line))
+        .filter(|line| line_regex.is_match(line))
         .filter_map(|line| {
             regex.captures_iter(&line).next().map(|capture| {
                 (

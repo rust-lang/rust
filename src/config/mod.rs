@@ -136,6 +136,7 @@ create_config! {
     inline_attribute_width: usize, 0, false,
         "Write an item and its attribute on the same line \
         if their combined width is below a threshold";
+    format_generated_files: bool, false, false, "Format generated files";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";
@@ -604,6 +605,7 @@ blank_lines_lower_bound = 0
 edition = "2015"
 version = "One"
 inline_attribute_width = 0
+format_generated_files = false
 merge_derives = true
 use_try_shorthand = false
 use_field_init_shorthand = false
