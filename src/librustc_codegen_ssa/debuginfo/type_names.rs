@@ -4,6 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, subst::SubstsRef, Ty, TyCtxt};
+use rustc_span::{symbol, Symbol};
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
@@ -16,13 +17,22 @@ pub fn compute_debuginfo_type_name<'tcx>(
 ) -> String {
     let mut result = String::with_capacity(64);
     let mut visited = FxHashSet::default();
-    push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited);
+
+    // This code is reasonably hot. We lock the symbol interner once here
+    // rather than on every symbol access in `push_item_name()`. That reduces
+    // the number of times that the symbol table is locked by roughly 4x, which
+    // has a measurable effect on performance.
+    Symbol::with_interner(|interner| {
+        push_debuginfo_type_name(interner, tcx, t, qualified, &mut result, &mut visited);
+    });
+
     result
 }
 
 // Pushes the name of the type as it should be stored in debuginfo on the
 // `output` String. See also compute_debuginfo_type_name().
-pub fn push_debuginfo_type_name<'tcx>(
+fn push_debuginfo_type_name<'tcx>(
+    interner: &symbol::Interner,
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
     qualified: bool,
@@ -41,10 +51,10 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Int(int_ty) => output.push_str(int_ty.name_str()),
         ty::Uint(uint_ty) => output.push_str(uint_ty.name_str()),
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
-        ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
+        ty::Foreign(def_id) => push_item_name(interner, tcx, def_id, qualified, output),
         ty::Adt(def, substs) => {
-            push_item_name(tcx, def.did, qualified, output);
-            push_type_params(tcx, substs, output, visited);
+            push_item_name(interner, tcx, def.did, qualified, output);
+            push_type_params(interner, tcx, substs, output, visited);
         }
         ty::Tuple(component_types) => {
             if cpp_like_names {
@@ -54,7 +64,14 @@ pub fn push_debuginfo_type_name<'tcx>(
             }
 
             for component_type in component_types {
-                push_debuginfo_type_name(tcx, component_type.expect_ty(), true, output, visited);
+                push_debuginfo_type_name(
+                    interner,
+                    tcx,
+                    component_type.expect_ty(),
+                    true,
+                    output,
+                    visited,
+                );
                 output.push_str(", ");
             }
             if !component_types.is_empty() {
@@ -77,7 +94,7 @@ pub fn push_debuginfo_type_name<'tcx>(
                 hir::Mutability::Mut => output.push_str("mut "),
             }
 
-            push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+            push_debuginfo_type_name(interner, tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
                 output.push('*');
@@ -89,7 +106,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             }
             output.push_str(mutbl.prefix_str());
 
-            push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+            push_debuginfo_type_name(interner, tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
                 output.push('*');
@@ -97,7 +114,7 @@ pub fn push_debuginfo_type_name<'tcx>(
         }
         ty::Array(inner_type, len) => {
             output.push('[');
-            push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+            push_debuginfo_type_name(interner, tcx, inner_type, true, output, visited);
             output.push_str(&format!("; {}", len.eval_usize(tcx, ty::ParamEnv::reveal_all())));
             output.push(']');
         }
@@ -108,7 +125,7 @@ pub fn push_debuginfo_type_name<'tcx>(
                 output.push('[');
             }
 
-            push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+            push_debuginfo_type_name(interner, tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
                 output.push('>');
@@ -120,8 +137,8 @@ pub fn push_debuginfo_type_name<'tcx>(
             if let Some(principal) = trait_data.principal() {
                 let principal = tcx
                     .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &principal);
-                push_item_name(tcx, principal.def_id, false, output);
-                push_type_params(tcx, principal.substs, output, visited);
+                push_item_name(interner, tcx, principal.def_id, false, output);
+                push_type_params(interner, tcx, principal.substs, output, visited);
             } else {
                 output.push_str("dyn '_");
             }
@@ -160,7 +177,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
-                    push_debuginfo_type_name(tcx, parameter_type, true, output, visited);
+                    push_debuginfo_type_name(interner, tcx, parameter_type, true, output, visited);
                     output.push_str(", ");
                 }
                 output.pop();
@@ -179,7 +196,7 @@ pub fn push_debuginfo_type_name<'tcx>(
 
             if !sig.output().is_unit() {
                 output.push_str(" -> ");
-                push_debuginfo_type_name(tcx, sig.output(), true, output, visited);
+                push_debuginfo_type_name(interner, tcx, sig.output(), true, output, visited);
             }
 
             // We only keep the type in 'visited'
@@ -221,15 +238,21 @@ pub fn push_debuginfo_type_name<'tcx>(
         }
     }
 
-    fn push_item_name(tcx: TyCtxt<'tcx>, def_id: DefId, qualified: bool, output: &mut String) {
+    fn push_item_name(
+        interner: &symbol::Interner,
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        qualified: bool,
+        output: &mut String,
+    ) {
         if qualified {
-            output.push_str(&tcx.crate_name(def_id.krate).as_str());
+            output.push_str(interner.get(tcx.crate_name(def_id.krate)));
             for path_element in tcx.def_path(def_id).data {
                 output.push_str("::");
-                output.push_str(&path_element.data.as_symbol().as_str());
+                output.push_str(interner.get(path_element.data.as_symbol()));
             }
         } else {
-            output.push_str(&tcx.item_name(def_id).as_str());
+            output.push_str(interner.get(tcx.item_name(def_id)));
         }
     }
 
@@ -239,6 +262,7 @@ pub fn push_debuginfo_type_name<'tcx>(
     // would be possible but with inlining and LTO we have to use the least
     // common denominator - otherwise we would run into conflicts.
     fn push_type_params<'tcx>(
+        interner: &symbol::Interner,
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         output: &mut String,
@@ -251,7 +275,7 @@ pub fn push_debuginfo_type_name<'tcx>(
         output.push('<');
 
         for type_parameter in substs.types() {
-            push_debuginfo_type_name(tcx, type_parameter, true, output, visited);
+            push_debuginfo_type_name(interner, tcx, type_parameter, true, output, visited);
             output.push_str(", ");
         }
 
