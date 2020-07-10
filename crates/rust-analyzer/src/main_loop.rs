@@ -314,19 +314,6 @@ impl GlobalState {
         Ok(())
     }
 
-    fn transition(&mut self, new_status: Status) {
-        self.status = Status::Ready;
-        if self.config.client_caps.status_notification {
-            let lsp_status = match new_status {
-                Status::Loading => lsp_ext::Status::Loading,
-                Status::Ready => lsp_ext::Status::Ready,
-                Status::Invalid => lsp_ext::Status::Invalid,
-                Status::NeedsReload => lsp_ext::Status::NeedsReload,
-            };
-            self.send_notification::<lsp_ext::StatusNotification>(lsp_status);
-        }
-    }
-
     fn on_request(&mut self, request_received: Instant, req: Request) -> Result<()> {
         self.register_request(&req, request_received);
 
@@ -441,12 +428,7 @@ impl GlobalState {
                 if let Some(flycheck) = &this.flycheck {
                     flycheck.handle.update();
                 }
-                let uri = params.text_document.uri.as_str();
-                if uri.ends_with("Cargo.toml") || uri.ends_with("Cargo.lock") {
-                    if matches!(this.status, Status::Ready | Status::Invalid) {
-                        this.transition(Status::NeedsReload);
-                    }
-                }
+                this.maybe_refresh(params.text_document.uri.as_str());
                 Ok(())
             })?
             .on::<lsp_types::notification::DidChangeConfiguration>(|this, _params| {

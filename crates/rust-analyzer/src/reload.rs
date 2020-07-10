@@ -10,7 +10,8 @@ use vfs::{file_set::FileSetConfig, AbsPath};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
-    global_state::{GlobalState, Handle},
+    global_state::{GlobalState, Handle, Status},
+    lsp_ext,
     main_loop::Task,
 };
 
@@ -24,6 +25,32 @@ impl GlobalState {
             self.fetch_workspaces()
         } else if self.config.flycheck != old_config.flycheck {
             self.reload_flycheck();
+        }
+    }
+    pub(crate) fn maybe_refresh(&mut self, saved_doc_url: &str) {
+        if !(saved_doc_url.ends_with("Cargo.toml") || saved_doc_url.ends_with("Cargo.lock")) {
+            return;
+        }
+        match self.status {
+            Status::Loading | Status::NeedsReload => return,
+            Status::Ready | Status::Invalid => (),
+        }
+        if self.config.cargo_autoreload {
+            self.fetch_workspaces();
+        } else {
+            self.transition(Status::NeedsReload);
+        }
+    }
+    pub(crate) fn transition(&mut self, new_status: Status) {
+        self.status = new_status;
+        if self.config.client_caps.status_notification {
+            let lsp_status = match new_status {
+                Status::Loading => lsp_ext::Status::Loading,
+                Status::Ready => lsp_ext::Status::Ready,
+                Status::Invalid => lsp_ext::Status::Invalid,
+                Status::NeedsReload => lsp_ext::Status::NeedsReload,
+            };
+            self.send_notification::<lsp_ext::StatusNotification>(lsp_status);
         }
     }
     pub(crate) fn fetch_workspaces(&mut self) {
@@ -53,10 +80,13 @@ impl GlobalState {
     }
     pub(crate) fn switch_workspaces(&mut self, workspaces: Vec<anyhow::Result<ProjectWorkspace>>) {
         log::info!("reloading projects: {:?}", self.config.linked_projects);
+
+        let mut has_errors = false;
         let workspaces = workspaces
             .into_iter()
             .filter_map(|res| {
                 res.map_err(|err| {
+                    has_errors = true;
                     log::error!("failed to load workspace: {:#}", err);
                     self.show_message(
                         lsp_types::MessageType::Error,
@@ -66,6 +96,14 @@ impl GlobalState {
                 .ok()
             })
             .collect::<Vec<_>>();
+
+        if &*self.workspaces == &workspaces {
+            return;
+        }
+
+        if !self.workspaces.is_empty() && has_errors {
+            return;
+        }
 
         if let FilesWatcher::Client = self.config.files.watcher {
             let registration_options = lsp_types::DidChangeWatchedFilesRegistrationOptions {

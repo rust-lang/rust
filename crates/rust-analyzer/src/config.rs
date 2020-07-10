@@ -29,6 +29,7 @@ pub struct Config {
     pub files: FilesConfig,
     pub notifications: NotificationsConfig,
 
+    pub cargo_autoreload: bool,
     pub cargo: CargoConfig,
     pub rustfmt: RustfmtConfig,
     pub flycheck: Option<FlycheckConfig>,
@@ -141,6 +142,7 @@ impl Config {
             files: FilesConfig { watcher: FilesWatcher::Notify, exclude: Vec::new() },
             notifications: NotificationsConfig { cargo_toml_not_found: true },
 
+            cargo_autoreload: true,
             cargo: CargoConfig::default(),
             rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
             flycheck: Some(FlycheckConfig::CargoCommand {
@@ -189,6 +191,7 @@ impl Config {
         };
         self.notifications =
             NotificationsConfig { cargo_toml_not_found: data.notifications_cargoTomlNotFound };
+        self.cargo_autoreload = data.cargo_autoreload;
         self.cargo = CargoConfig {
             no_default_features: data.cargo_noDefaultFeatures,
             all_features: data.cargo_allFeatures,
@@ -364,6 +367,7 @@ config_data! {
     struct ConfigData {
         callInfo_full: bool = true,
 
+        cargo_autoreload: bool           = true,
         cargo_allFeatures: bool          = false,
         cargo_features: Vec<String>      = Vec::new(),
         cargo_loadOutDirsFromCheck: bool = false,
