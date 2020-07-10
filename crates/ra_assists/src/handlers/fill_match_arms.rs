@@ -115,11 +115,19 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             let old_range = match_arm_list.syntax().text_range();
             match (first_new_arm, ctx.config.snippet_cap) {
                 (Some(first_new_arm), Some(cap)) => {
-                    let snippet = render_snippet(
-                        cap,
-                        new_arm_list.syntax(),
-                        Cursor::Before(first_new_arm.syntax()),
-                    );
+                    let extend_lifetime;
+                    let cursor = match first_new_arm
+                        .syntax()
+                        .descendants()
+                        .find_map(ast::PlaceholderPat::cast)
+                    {
+                        Some(it) => {
+                            extend_lifetime = it.syntax().clone();
+                            Cursor::Replace(&extend_lifetime)
+                        }
+                        None => Cursor::Before(first_new_arm.syntax()),
+                    };
+                    let snippet = render_snippet(cap, new_arm_list.syntax(), cursor);
                     builder.replace_snippet(cap, old_range, snippet);
                 }
                 _ => builder.replace(old_range, new_arm_list.to_string()),
@@ -291,30 +299,22 @@ mod tests {
         check_assist(
             fill_match_arms,
             r#"
-            enum A {
-                As,
-                Bs,
-                Cs(Option<i32>),
-            }
-            fn main() {
-                match A::As<|> {
-                    A::Cs(_) | A::Bs => {}
-                }
-            }
-            "#,
+enum A { As, Bs, Cs(Option<i32>) }
+fn main() {
+    match A::As<|> {
+        A::Cs(_) | A::Bs => {}
+    }
+}
+"#,
             r#"
-            enum A {
-                As,
-                Bs,
-                Cs(Option<i32>),
-            }
-            fn main() {
-                match A::As {
-                    A::Cs(_) | A::Bs => {}
-                    $0A::As => {}
-                }
-            }
-            "#,
+enum A { As, Bs, Cs(Option<i32>) }
+fn main() {
+    match A::As {
+        A::Cs(_) | A::Bs => {}
+        $0A::As => {}
+    }
+}
+"#,
         );
     }
 
@@ -323,47 +323,29 @@ mod tests {
         check_assist(
             fill_match_arms,
             r#"
-            enum A {
-                As,
-                Bs,
-                Cs,
-                Ds(String),
-                Es(B),
-            }
-            enum B {
-                Xs,
-                Ys,
-            }
-            fn main() {
-                match A::As<|> {
-                    A::Bs if 0 < 1 => {}
-                    A::Ds(_value) => { let x = 1; }
-                    A::Es(B::Xs) => (),
-                }
-            }
-            "#,
+enum A { As, Bs, Cs, Ds(String), Es(B) }
+enum B { Xs, Ys }
+fn main() {
+    match A::As<|> {
+        A::Bs if 0 < 1 => {}
+        A::Ds(_value) => { let x = 1; }
+        A::Es(B::Xs) => (),
+    }
+}
+"#,
             r#"
-            enum A {
-                As,
-                Bs,
-                Cs,
-                Ds(String),
-                Es(B),
-            }
-            enum B {
-                Xs,
-                Ys,
-            }
-            fn main() {
-                match A::As {
-                    A::Bs if 0 < 1 => {}
-                    A::Ds(_value) => { let x = 1; }
-                    A::Es(B::Xs) => (),
-                    $0A::As => {}
-                    A::Cs => {}
-                }
-            }
-            "#,
+enum A { As, Bs, Cs, Ds(String), Es(B) }
+enum B { Xs, Ys }
+fn main() {
+    match A::As {
+        A::Bs if 0 < 1 => {}
+        A::Ds(_value) => { let x = 1; }
+        A::Es(B::Xs) => (),
+        $0A::As => {}
+        A::Cs => {}
+    }
+}
+"#,
         );
     }
 
@@ -372,32 +354,24 @@ mod tests {
         check_assist(
             fill_match_arms,
             r#"
-            enum A {
-                As,
-                Bs,
-                Cs(Option<i32>),
-            }
-            fn main() {
-                match A::As<|> {
-                    A::As(_) => {}
-                    a @ A::Bs(_) => {}
-                }
-            }
-            "#,
+enum A { As, Bs, Cs(Option<i32>) }
+fn main() {
+    match A::As<|> {
+        A::As(_) => {}
+        a @ A::Bs(_) => {}
+    }
+}
+"#,
             r#"
-            enum A {
-                As,
-                Bs,
-                Cs(Option<i32>),
-            }
-            fn main() {
-                match A::As {
-                    A::As(_) => {}
-                    a @ A::Bs(_) => {}
-                    $0A::Cs(_) => {}
-                }
-            }
-            "#,
+enum A { As, Bs, Cs(Option<i32>) }
+fn main() {
+    match A::As {
+        A::As(_) => {}
+        a @ A::Bs(_) => {}
+        A::Cs(${0:_}) => {}
+    }
+}
+"#,
         );
     }
 
@@ -406,39 +380,27 @@ mod tests {
         check_assist(
             fill_match_arms,
             r#"
-            enum A {
-                As,
-                Bs,
-                Cs(String),
-                Ds(String, String),
-                Es { x: usize, y: usize }
-            }
+enum A { As, Bs, Cs(String), Ds(String, String), Es { x: usize, y: usize } }
 
-            fn main() {
-                let a = A::As;
-                match a<|> {}
-            }
-            "#,
+fn main() {
+    let a = A::As;
+    match a<|> {}
+}
+"#,
             r#"
-            enum A {
-                As,
-                Bs,
-                Cs(String),
-                Ds(String, String),
-                Es { x: usize, y: usize }
-            }
+enum A { As, Bs, Cs(String), Ds(String, String), Es { x: usize, y: usize } }
 
-            fn main() {
-                let a = A::As;
-                match a {
-                    $0A::As => {}
-                    A::Bs => {}
-                    A::Cs(_) => {}
-                    A::Ds(_, _) => {}
-                    A::Es { x, y } => {}
-                }
-            }
-            "#,
+fn main() {
+    let a = A::As;
+    match a {
+        $0A::As => {}
+        A::Bs => {}
+        A::Cs(_) => {}
+        A::Ds(_, _) => {}
+        A::Es { x, y } => {}
+    }
+}
+"#,
         );
     }
 
@@ -778,7 +740,7 @@ fn foo(opt: Option<i32>) {
             r#"
 fn foo(opt: Option<i32>) {
     match opt {
-        $0Some(_) => {}
+        Some(${0:_}) => {}
         None => {}
     }
 }
