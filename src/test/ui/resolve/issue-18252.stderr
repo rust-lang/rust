@@ -5,7 +5,7 @@ LL |     Variant { x: usize }
    |     -------------------- `Foo::Variant` defined here
 ...
 LL |     let f = Foo::Variant(42);
-   |             ^^^^^^^^^^^^ did you mean `Foo::Variant { /* fields */ }`?
+   |             ^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `Foo::Variant { x: val }`
 
 error: aborting due to previous error
 
