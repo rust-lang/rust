@@ -29,23 +29,20 @@ pub fn is_valid_drive_letter(disk: u8) -> bool {
 }
 
 pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
-    use crate::path::Prefix::*;
+    use Prefix::{DeviceNS, Disk, Verbatim, VerbatimDisk, VerbatimUNC, UNC};
     unsafe {
         // The unsafety here stems from converting between &OsStr and &[u8]
         // and back. This is safe to do because (1) we only look at ASCII
         // contents of the encoding and (2) new &OsStr values are produced
         // only from ASCII-bounded slices of existing &OsStr values.
-        let mut path = os_str_as_u8_slice(path);
+        let path = os_str_as_u8_slice(path);
 
-        if path.starts_with(br"\\") {
-            // \\
-            path = &path[2..];
-            if path.starts_with(br"?\") {
-                // \\?\
-                path = &path[2..];
-                if path.starts_with(br"UNC\") {
-                    // \\?\UNC\server\share
-                    path = &path[4..];
+        // \\
+        if let Some(path) = path.strip_prefix(br"\\") {
+            // \\?\
+            if let Some(path) = path.strip_prefix(br"?\") {
+                // \\?\UNC\server\share
+                if let Some(path) = path.strip_prefix(br"UNC\") {
                     let (server, share) = match parse_two_comps(path, is_verbatim_sep) {
                         Some((server, share)) => {
                             (u8_slice_as_os_str(server), u8_slice_as_os_str(share))
@@ -55,22 +52,23 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
                     return Some(VerbatimUNC(server, share));
                 } else {
                     // \\?\path
-                    let idx = path.iter().position(|&b| b == b'\\');
-                    if idx == Some(2) && path[1] == b':' {
-                        let c = path[0];
-                        if is_valid_drive_letter(c) {
-                            // \\?\C:\ path
+                    match path {
+                        // \\?\C:\path
+                        [c, b':', b'\\', ..] if is_valid_drive_letter(*c) => {
                             return Some(VerbatimDisk(c.to_ascii_uppercase()));
                         }
+                        // \\?\cat_pics
+                        _ => {
+                            let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
+                            let slice = &path[..idx];
+                            return Some(Verbatim(u8_slice_as_os_str(slice)));
+                        }
                     }
-                    let slice = &path[..idx.unwrap_or(path.len())];
-                    return Some(Verbatim(u8_slice_as_os_str(slice)));
                 }
-            } else if path.starts_with(b".\\") {
-                // \\.\path
-                path = &path[2..];
-                let pos = path.iter().position(|&b| b == b'\\');
-                let slice = &path[..pos.unwrap_or(path.len())];
+            } else if let Some(path) = path.strip_prefix(b".\\") {
+                // \\.\COM42
+                let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
+                let slice = &path[..idx];
                 return Some(DeviceNS(u8_slice_as_os_str(slice)));
             }
             match parse_two_comps(path, is_sep_byte) {
@@ -78,12 +76,11 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
                     // \\server\share
                     return Some(UNC(u8_slice_as_os_str(server), u8_slice_as_os_str(share)));
                 }
-                _ => (),
+                _ => {}
             }
-        } else if path.get(1) == Some(&b':') {
+        } else if let [c, b':', ..] = path {
             // C:
-            let c = path[0];
-            if is_valid_drive_letter(c) {
+            if is_valid_drive_letter(*c) {
                 return Some(Disk(c.to_ascii_uppercase()));
             }
         }
