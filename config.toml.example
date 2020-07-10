@@ -318,7 +318,9 @@
 #codegen-units-std = 1
 
 # Whether or not debug assertions are enabled for the compiler and standard
-# library.
+# library. Debug assertions control the maximum log level used by rustc. When
+# enabled calls to `trace!` and `debug!` macros are preserved in the compiled
+# binary, otherwise they are omitted.
 #
 # Defaults to rust.debug value
 #debug-assertions = false
@@ -331,7 +333,9 @@
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
-# `1` - line tables only
+# `1` - line tables only - sufficient to generate backtraces that include line
+#       information and inlined functions, set breakpoints at source code
+#       locations, and step through execution in a debugger.
 # `2` - full debug info with variable and type information
 # Can be overridden for specific subsets of Rust code (rustc, std or tools).
 # Debuginfo for tests run with compiletest is not controlled by this option
