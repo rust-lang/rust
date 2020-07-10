@@ -22,6 +22,7 @@ use crate::{
     Result,
 };
 use ra_project_model::ProjectWorkspace;
+use vfs::ChangeKind;
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     log::info!("initial config: {:#?}", config);
@@ -428,7 +429,9 @@ impl GlobalState {
                 if let Some(flycheck) = &this.flycheck {
                     flycheck.handle.update();
                 }
-                this.maybe_refresh(params.text_document.uri.as_str());
+                if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
+                    this.maybe_refresh(&[(abs_path, ChangeKind::Modify)]);
+                }
                 Ok(())
             })?
             .on::<lsp_types::notification::DidChangeConfiguration>(|this, _params| {

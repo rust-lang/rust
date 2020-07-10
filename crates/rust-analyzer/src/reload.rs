@@ -6,7 +6,7 @@ use flycheck::FlycheckHandle;
 use ra_db::{CrateGraph, SourceRoot, VfsPath};
 use ra_ide::AnalysisChange;
 use ra_project_model::{PackageRoot, ProcMacroClient, ProjectWorkspace};
-use vfs::{file_set::FileSetConfig, AbsPath};
+use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
@@ -27,8 +27,8 @@ impl GlobalState {
             self.reload_flycheck();
         }
     }
-    pub(crate) fn maybe_refresh(&mut self, saved_doc_url: &str) {
-        if !(saved_doc_url.ends_with("Cargo.toml") || saved_doc_url.ends_with("Cargo.lock")) {
+    pub(crate) fn maybe_refresh(&mut self, changes: &[(AbsPathBuf, ChangeKind)]) {
+        if !changes.iter().any(|(path, kind)| is_interesting(path, *kind)) {
             return;
         }
         match self.status {
@@ -39,6 +39,41 @@ impl GlobalState {
             self.fetch_workspaces();
         } else {
             self.transition(Status::NeedsReload);
+        }
+
+        fn is_interesting(path: &AbsPath, change_kind: ChangeKind) -> bool {
+            const IMPLICIT_TARGET_FILES: &[&str] = &["build.rs", "src/main.rs", "src/lib.rs"];
+            const IMPLICIT_TARGET_DIRS: &[&str] = &["src/bin", "examples", "tests", "benches"];
+
+            if path.ends_with("Cargo.toml") || path.ends_with("Cargo.lock") {
+                return true;
+            }
+            if change_kind == ChangeKind::Modify {
+                return false;
+            }
+            if path.extension().map(|it| it.to_str()) != Some("rs".into()) {
+                return false;
+            }
+            if IMPLICIT_TARGET_FILES.iter().any(|it| path.ends_with(it)) {
+                return true;
+            }
+            let parent = match path.parent() {
+                Some(it) => it,
+                None => return false,
+            };
+            if IMPLICIT_TARGET_DIRS.iter().any(|it| parent.ends_with(it)) {
+                return true;
+            }
+            if path.ends_with("main.rs") {
+                let grand_parent = match parent.parent() {
+                    Some(it) => it,
+                    None => return false,
+                };
+                if IMPLICIT_TARGET_DIRS.iter().any(|it| grand_parent.ends_with(it)) {
+                    return true;
+                }
+            }
+            false
         }
     }
     pub(crate) fn transition(&mut self, new_status: Status) {

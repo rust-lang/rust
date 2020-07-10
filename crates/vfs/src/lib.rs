@@ -70,7 +70,7 @@ impl ChangedFile {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub enum ChangeKind {
     Create,
     Modify,
