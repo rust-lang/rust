@@ -18,6 +18,10 @@
 // gdb-check:$4 = 3000
 // gdb-command:continue
 
+// gdb-command:info args
+// gdb-check:No arguments.
+// gdb-command:continue
+
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
@@ -38,7 +42,12 @@
 // lldbr-check:(i64) b = 3000
 // lldb-command:continue
 
+// lldb-command:frame variable
+// lldbg-check:(unsigned long) = 111 (unsigned long) = 222
+// lldbr-check:(unsigned long) = 111 (unsigned long) = 222
+// lldb-command:continue
 
+#![feature(naked_functions)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
@@ -46,6 +55,7 @@ fn main() {
 
     fun(111102, true);
     nested(2000, 3000);
+    naked(111, 222);
 
     fn nested(a: i32, b: i64) -> (i32, i64) {
         zzz(); // #break
@@ -57,6 +67,13 @@ fn fun(x: isize, y: bool) -> (isize, bool) {
     zzz(); // #break
 
     (x, y)
+}
+
+#[naked]
+fn naked(x: usize, y: usize) -> usize {
+    zzz(); // #break
+
+    x + y
 }
 
 fn zzz() { () }
