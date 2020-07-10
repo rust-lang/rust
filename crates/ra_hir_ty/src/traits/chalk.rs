@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use log::debug;
 
-use chalk_ir::{fold::shift::Shift, GenericArg, TypeName, CanonicalVarKinds};
+use chalk_ir::{fold::shift::Shift, CanonicalVarKinds, GenericArg, TypeName};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use hir_def::{
@@ -377,16 +377,13 @@ pub(crate) fn struct_datum_query(
     let variant = rust_ir::AdtVariantDatum {
         fields: Vec::new(), // FIXME add fields (only relevant for auto traits),
     };
-    let struct_datum_bound = rust_ir::AdtDatumBound {
-        variants: vec![variant],
-        where_clauses,
-    };
+    let struct_datum_bound = rust_ir::AdtDatumBound { variants: vec![variant], where_clauses };
     let struct_datum = StructDatum {
         // FIXME set ADT kind
         kind: rust_ir::AdtKind::Struct,
         id: struct_id,
         binders: make_binders(struct_datum_bound, num_params),
-        flags
+        flags,
     };
     Arc::new(struct_datum)
 }

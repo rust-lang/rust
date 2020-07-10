@@ -575,7 +575,10 @@ where
                 )
             });
         let value = self.value.to_chalk(db);
-        chalk_ir::Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
+        chalk_ir::Canonical {
+            value,
+            binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds),
+        }
     }
 
     fn from_chalk(db: &dyn HirDatabase, canonical: chalk_ir::Canonical<T::Chalk>) -> Canonical<T> {

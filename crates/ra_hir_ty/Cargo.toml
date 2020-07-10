@@ -33,3 +33,7 @@ chalk-ir = { version = "0.15.0" }
 [dev-dependencies]
 insta = "0.16.0"
 expect = { path = "../expect" }
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
+tracing-tree = { version = "0.1.3" }
