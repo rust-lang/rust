@@ -3043,7 +3043,23 @@ impl Rewrite for ast::ForeignItem {
         let span = mk_sp(self.span.lo(), self.span.hi() - BytePos(1));
 
         let item_str = match self.kind {
-            ast::ForeignItemKind::Fn(_, ref fn_sig, ref generics, _) => rewrite_fn_base(
+            ast::ForeignItemKind::Fn(defaultness, ref fn_sig, ref generics, Some(ref body)) => {
+                let mut visitor = FmtVisitor::from_context(context);
+                visitor.block_indent = shape.indent;
+                visitor.last_pos = self.span.lo();
+                let inner_attrs = inner_attributes(&self.attrs);
+                let fn_ctxt = visit::FnCtxt::Foreign;
+                visitor.visit_fn(
+                    visit::FnKind::Fn(fn_ctxt, self.ident, &fn_sig, &self.vis, Some(body)),
+                    generics,
+                    &fn_sig.decl,
+                    self.span,
+                    defaultness,
+                    Some(&inner_attrs),
+                );
+                Some(visitor.buffer.to_owned())
+            }
+            ast::ForeignItemKind::Fn(_, ref fn_sig, ref generics, None) => rewrite_fn_base(
                 context,
                 shape.indent,
                 self.ident,

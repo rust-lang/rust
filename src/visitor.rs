@@ -370,7 +370,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     // Note that this only gets called for function definitions. Required methods
     // on traits do not get handled here.
-    fn visit_fn(
+    pub(crate) fn visit_fn(
         &mut self,
         fk: visit::FnKind<'_>,
         generics: &ast::Generics,
