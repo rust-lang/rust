@@ -2,6 +2,9 @@ use crate::ffi::OsStr;
 use crate::mem;
 use crate::path::Prefix;
 
+#[cfg(test)]
+mod tests;
+
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
 
@@ -43,7 +46,7 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
             if let Some(path) = path.strip_prefix(br"?\") {
                 // \\?\UNC\server\share
                 if let Some(path) = path.strip_prefix(br"UNC\") {
-                    let (server, share) = match parse_two_comps(path, is_verbatim_sep) {
+                    let (server, share) = match get_first_two_components(path, is_verbatim_sep) {
                         Some((server, share)) => {
                             (u8_slice_as_os_str(server), u8_slice_as_os_str(share))
                         }
@@ -71,7 +74,7 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
                 let slice = &path[..idx];
                 return Some(DeviceNS(u8_slice_as_os_str(slice)));
             }
-            match parse_two_comps(path, is_sep_byte) {
+            match get_first_two_components(path, is_sep_byte) {
                 Some((server, share)) if !server.is_empty() && !share.is_empty() => {
                     // \\server\share
                     return Some(UNC(u8_slice_as_os_str(server), u8_slice_as_os_str(share)));
@@ -86,13 +89,20 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
         }
         return None;
     }
-
-    fn parse_two_comps(mut path: &[u8], f: fn(u8) -> bool) -> Option<(&[u8], &[u8])> {
-        let first = &path[..path.iter().position(|x| f(*x))?];
-        path = &path[(first.len() + 1)..];
-        let idx = path.iter().position(|x| f(*x));
-        let second = &path[..idx.unwrap_or(path.len())];
-        Some((first, second))
-    }
 }
 
+/// Returns the first two path components with predicate `f`.
+///
+/// The two components returned will be use by caller
+/// to construct `VerbatimUNC` or `UNC` Windows path prefix.
+///
+/// Returns [`None`] if there are no separators in path.
+fn get_first_two_components(path: &[u8], f: fn(u8) -> bool) -> Option<(&[u8], &[u8])> {
+    let idx = path.iter().position(|&x| f(x))?;
+    // Panic safe
+    // The max `idx+1` is `path.len()` and `path[path.len()..]` is a valid index.
+    let (first, path) = (&path[..idx], &path[idx + 1..]);
+    let idx = path.iter().position(|&x| f(x)).unwrap_or(path.len());
+    let second = &path[..idx];
+    Some((first, second))
+}
