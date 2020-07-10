@@ -906,7 +906,8 @@ pub fn input_prompt(prompt: &str) -> String {
     input()
 }
 
-/// Locks the current handle and reads a line of input,
+/// Constructs a new handle to the standard input of the current
+/// process, locks this handle and reads a line of input,
 /// returning a `String` containing the input.
 ///
 /// If you need more explicit control over
