@@ -92,20 +92,18 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "union", "union $0 {}");
     }
 
-    if ctx.block_expr_parent || ctx.is_match_arm {
+    if ctx.can_be_expr {
         add_keyword(ctx, acc, "match", "match $0 {}");
-        add_keyword(ctx, acc, "loop", "loop {$0}");
-    }
-    if ctx.block_expr_parent {
         add_keyword(ctx, acc, "while", "while $0 {}");
-    }
-    if ctx.if_is_prev || ctx.block_expr_parent {
-        add_keyword(ctx, acc, "let", "let ");
-    }
-    if ctx.if_is_prev || ctx.block_expr_parent || ctx.is_match_arm {
+        add_keyword(ctx, acc, "loop", "loop {$0}");
         add_keyword(ctx, acc, "if", "if ");
         add_keyword(ctx, acc, "if let", "if let ");
     }
+
+    if ctx.if_is_prev || ctx.block_expr_parent {
+        add_keyword(ctx, acc, "let", "let ");
+    }
+
     if ctx.after_if {
         add_keyword(ctx, acc, "else", "else {$0}");
         add_keyword(ctx, acc, "else if", "else if $0 {}");
@@ -343,9 +341,7 @@ mod tests {
         check(
             r#"
 fn quux() -> i32 {
-    match () {
-        () => <|>
-    }
+    match () { () => <|> }
 }
 "#,
             expect![[r#"
@@ -355,6 +351,7 @@ fn quux() -> i32 {
                 kw match
                 kw return
                 kw unsafe
+                kw while
             "#]],
         );
     }
@@ -522,6 +519,21 @@ pub mod future {
 "#,
             expect![[r#"
                 kw await expr.await
+            "#]],
+        )
+    }
+
+    #[test]
+    fn after_let() {
+        check(
+            r#"fn main() { let _ = <|> }"#,
+            expect![[r#"
+                kw if
+                kw if let
+                kw loop
+                kw match
+                kw return
+                kw while
             "#]],
         )
     }
