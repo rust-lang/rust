@@ -900,6 +900,7 @@ impl fmt::Debug for StderrLock<'_> {
 ///         
 /// }
 /// ```
+#[stable(feature = "input_prompt", since = "1.44.1")]
 pub fn input_prompt(prompt: &str) -> String {
     stdout()
         .write(prompt.as_bytes())
@@ -933,6 +934,7 @@ pub fn input_prompt(prompt: &str) -> String {
 ///     
 /// }
 /// ```
+#[stable(feature = "input", since = "1.44.1")]
 pub fn input() -> String {
     let mut input = String::new();
     let _ = stdout().flush();
