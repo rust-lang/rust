@@ -82,11 +82,13 @@ impl NotifyActor {
                 Event::Message(msg) => match msg {
                     Message::Config(config) => {
                         self.watcher = None;
-                        let (watcher_sender, watcher_receiver) = unbounded();
-                        let watcher = log_notify_error(Watcher::new_immediate(move |event| {
-                            watcher_sender.send(event).unwrap()
-                        }));
-                        self.watcher = watcher.map(|it| (it, watcher_receiver));
+                        if !config.watch.is_empty() {
+                            let (watcher_sender, watcher_receiver) = unbounded();
+                            let watcher = log_notify_error(Watcher::new_immediate(move |event| {
+                                watcher_sender.send(event).unwrap()
+                            }));
+                            self.watcher = watcher.map(|it| (it, watcher_receiver));
+                        }
 
                         let n_total = config.load.len();
                         self.send(loader::Message::Progress { n_total, n_done: 0 });

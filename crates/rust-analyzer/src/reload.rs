@@ -182,6 +182,7 @@ impl GlobalState {
                 }
             },
         };
+
         let watch = match self.config.files.watcher {
             FilesWatcher::Client => vec![],
             FilesWatcher::Notify => project_folders.watch,
