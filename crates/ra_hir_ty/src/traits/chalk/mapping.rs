@@ -115,8 +115,12 @@ impl ToChalk for Ty {
                 let parameters = from_chalk(db, opaque_ty.substitution);
                 Ty::Opaque(OpaqueTy { opaque_ty_id: impl_trait_id, parameters })
             }
-            chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: _, substitution }) => {
-                let parameters: Substs = from_chalk(db, substitution);
+            chalk_ir::TyData::Function(chalk_ir::Fn { num_binders, substitution }) => {
+                assert_eq!(num_binders, 0);
+                let parameters: Substs = from_chalk(
+                    db,
+                    substitution.shifted_out(&Interner).expect("fn ptr should have no binders"),
+                );
                 Ty::Apply(ApplicationTy {
                     ctor: TypeCtor::FnPtr { num_args: (parameters.len() - 1) as u16 },
                     parameters,
