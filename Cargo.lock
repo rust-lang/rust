@@ -1366,8 +1366,8 @@ checksum = "7e81a7c05f79578dbc15793d8b619db9ba32b4577003ef3af1a91c416798c58d"
 name = "installer"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "clap",
- "failure",
  "flate2",
  "lazy_static",
  "num_cpus",
