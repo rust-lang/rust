@@ -1,5 +1,5 @@
 use ra_ide_db::RootDatabase;
-use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset};
+use ra_syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 
 use crate::{display::ToNav, FilePosition, NavigationTarget, RangeInfo};
 
@@ -25,8 +25,9 @@ pub(crate) fn goto_type_definition(
     let (ty, node) = sema.ancestors_with_macros(token.parent()).find_map(|node| {
         let ty = match_ast! {
             match node {
-                ast::Expr(expr) => sema.type_of_expr(&expr)?,
-                ast::Pat(pat) => sema.type_of_pat(&pat)?,
+                ast::Expr(it) => sema.type_of_expr(&it)?,
+                ast::Pat(it) => sema.type_of_pat(&it)?,
+                ast::SelfParam(it) => sema.type_of_self(&it)?,
                 _ => return None,
             }
         };
@@ -44,7 +45,7 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
     return tokens.max_by_key(priority);
     fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {
-            IDENT | INT_NUMBER => 2,
+            IDENT | INT_NUMBER | T![self] => 2,
             kind if kind.is_trivia() => 0,
             _ => 1,
         }
@@ -139,5 +140,19 @@ mod tests {
             ",
             "Foo STRUCT_DEF FileId(1) 0..11 7..10",
         );
+    }
+
+    #[test]
+    fn goto_def_for_self_param() {
+        check_goto(
+            r#"
+struct Foo;
+impl Foo {
+   //^^^
+    fn f(&self<|>) {}
+}
+"#,
+            "Foo STRUCT_DEF FileId(1) 0..11 7..10",
+        )
     }
 }

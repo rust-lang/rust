@@ -192,6 +192,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.type_of_pat(pat)
     }
 
+    pub fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
+        self.imp.type_of_self(param)
+    }
+
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
         self.imp.resolve_method_call(call)
     }
@@ -216,6 +220,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_path(path)
     }
 
+    // TODO: id
     pub fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantId> {
         self.imp.resolve_variant(record_lit)
     }
@@ -375,6 +380,10 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
         self.analyze(pat.syntax()).type_of_pat(self.db, &pat)
+    }
+
+    pub fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
+        self.analyze(param.syntax()).type_of_self(self.db, &param)
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
