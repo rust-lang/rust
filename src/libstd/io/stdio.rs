@@ -872,61 +872,58 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
-/// Locks the current handle and reads a line of input, returning a `String` containing
-/// the input.
+/// Equivalent to the [`input`] method except that
+/// a prompt is printed before capturing input.
 ///
-/// If you need more explicit control over
-/// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
-///
-/// [`Stdin::lock`]: struct.Stdin.html#method.lock
-/// [`Stdout::lock`]: struct.Stdout.html#method.lock
-///
-/// ### Note: Safety and Usage
+/// ## Note
 /// This function is not the recommended solution to get user input, it should
 /// only be used for simple actions. If you require more explicit control over
 /// getting user input, see the [`Stdin::read_line`] method.
 ///
-/// [`Stdin::read_line`]: struct.Stdin.html#method.read_line
+/// ## Panics
+/// This function currently panics if it does not receive input,
+/// or when input is empty without newline
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::io::input_prompt;
 ///
 /// fn main() {
 ///     let user_input = input_prompt("Please enter some text: ");
 ///
 ///     println!("You typed: {}", user_input);
-///
 /// }
 /// ```
 #[unstable(
     feature = "input_prompt",
-    reason = "this function may be replaced with a more general mechanism",
+    reason = "this function may be replaced with a \
+                     more general mechanism",
     issue = "none"
 )]
 pub fn input_prompt(prompt: &str) -> String {
-    stdout()
-        .write(prompt.as_bytes())
-        .unwrap();
-    return input();
+    stdout().write(prompt.as_bytes()).unwrap();
+    input()
 }
 
-/// Equivalent to the [`input_prompt`] method except that a prompt is not printed before
-/// capturing input.
+/// Locks the current handle and reads a line of input,
+/// returning a `String` containing the input.
 ///
-/// [`input_prompt`]: #method.input_prompt
+/// If you need more explicit control over
+/// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
 ///
-/// ### Note: Safety and Usage
+/// ## Note
 /// This function is not the recommended solution to get user input, it should
 /// only be used for simple actions. If you require more explicit control over
 /// getting user input, see the [`Stdin::read_line`] method.
 ///
-/// [`Stdin::read_line`]: struct.Stdin.html#method.read_line
+/// ## Panics
+/// This function currently panics if it does not receive input,
+/// or when input is empty without newline
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::io::input;
 ///
 /// fn main() {
@@ -935,12 +932,12 @@ pub fn input_prompt(prompt: &str) -> String {
 ///     let user_input = input();
 ///
 ///     println!("You typed: {}", user_input);
-///
 /// }
 /// ```
 #[unstable(
     feature = "input",
-    reason = "this function may be replaced with a more general mechanism",
+    reason = "this function may be replaced with a \
+                     more general mechanism",
     issue = "none"
 )]
 pub fn input() -> String {
@@ -949,13 +946,13 @@ pub fn input() -> String {
     stdin()
         .read_line(&mut input)
         .expect("Failed to read from stdin");
-    if input.chars().next_back().unwrap() == '\n' {
+    if input.as_bytes()[input.len()-1] == b'\n' {
         input.pop();
     }
-    if input.chars().next_back().unwrap() == '\r' {
+    if input.as_bytes()[input.len()-1] == b'\r' {
         input.pop();
     }
-    return input;
+    input
 }
 
 /// Resets the thread-local stderr handle to the specified writer
