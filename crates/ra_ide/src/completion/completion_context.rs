@@ -54,7 +54,7 @@ pub(crate) struct CompletionContext<'a> {
     /// `true` if we are a statement or a last expr in the block.
     pub(super) can_be_stmt: bool,
     /// `true` if we expect an expression at the cursor position.
-    pub(super) can_be_expr: bool,
+    pub(super) is_expr: bool,
     /// Something is typed at the "top" level, in module or impl/trait.
     pub(super) is_new_item: bool,
     /// The receiver if this is a field or method access, i.e. writing something.<|>
@@ -129,7 +129,7 @@ impl<'a> CompletionContext<'a> {
             path_prefix: None,
             after_if: false,
             can_be_stmt: false,
-            can_be_expr: false,
+            is_expr: false,
             is_new_item: false,
             dot_receiver: None,
             is_call: false,
@@ -406,7 +406,7 @@ impl<'a> CompletionContext<'a> {
                         None
                     })
                     .unwrap_or(false);
-                self.can_be_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
+                self.is_expr = path.syntax().parent().and_then(ast::PathExpr::cast).is_some();
 
                 if let Some(off) = name_ref.syntax().text_range().start().checked_sub(2.into()) {
                     if let Some(if_expr) =
