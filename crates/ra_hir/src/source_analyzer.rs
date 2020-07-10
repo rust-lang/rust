@@ -115,7 +115,7 @@ impl SourceAnalyzer {
         Some(res)
     }
 
-    pub(crate) fn type_of(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<Type> {
+    pub(crate) fn type_of_expr(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<Type> {
         let expr_id = self.expr_id(db, expr)?;
         let ty = self.infer.as_ref()?[expr_id].clone();
         Type::new_with_resolver(db, &self.resolver, ty)
@@ -123,6 +123,17 @@ impl SourceAnalyzer {
 
     pub(crate) fn type_of_pat(&self, db: &dyn HirDatabase, pat: &ast::Pat) -> Option<Type> {
         let pat_id = self.pat_id(pat)?;
+        let ty = self.infer.as_ref()?[pat_id].clone();
+        Type::new_with_resolver(db, &self.resolver, ty)
+    }
+
+    pub(crate) fn type_of_self(
+        &self,
+        db: &dyn HirDatabase,
+        param: &ast::SelfParam,
+    ) -> Option<Type> {
+        let src = InFile { file_id: self.file_id, value: param };
+        let pat_id = self.body_source_map.as_ref()?.node_self_param(src)?;
         let ty = self.infer.as_ref()?[pat_id].clone();
         Type::new_with_resolver(db, &self.resolver, ty)
     }

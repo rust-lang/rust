@@ -302,6 +302,11 @@ impl BodySourceMap {
         self.pat_map.get(&src).cloned()
     }
 
+    pub fn node_self_param(&self, node: InFile<&ast::SelfParam>) -> Option<PatId> {
+        let src = node.map(|it| Either::Right(AstPtr::new(it)));
+        self.pat_map.get(&src).cloned()
+    }
+
     pub fn field_syntax(&self, expr: ExprId, field: usize) -> InFile<AstPtr<ast::RecordField>> {
         self.field_map[&(expr, field)].clone()
     }

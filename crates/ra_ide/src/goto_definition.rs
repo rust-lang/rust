@@ -7,7 +7,7 @@ use ra_syntax::{
     ast::{self},
     match_ast, AstNode,
     SyntaxKind::*,
-    SyntaxToken, TokenAtOffset,
+    SyntaxToken, TokenAtOffset, T,
 };
 
 use crate::{
@@ -32,9 +32,10 @@ pub(crate) fn goto_definition(
     let file = sema.parse(position.file_id).syntax().clone();
     let original_token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(original_token.clone());
+    let parent = token.parent();
 
     let nav_targets = match_ast! {
-        match (token.parent()) {
+        match parent {
             ast::NameRef(name_ref) => {
                 reference_definition(&sema, &name_ref).to_vec()
             },
@@ -57,7 +58,7 @@ fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
     return tokens.max_by_key(priority);
     fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {
-            IDENT | INT_NUMBER => 2,
+            IDENT | INT_NUMBER | T![self] => 2,
             kind if kind.is_trivia() => 0,
             _ => 1,
         }
@@ -121,7 +122,8 @@ mod tests {
             data => panic!("bad data: {}", data),
         }
 
-        let mut navs = analysis.goto_definition(position).unwrap().unwrap().info;
+        let mut navs =
+            analysis.goto_definition(position).unwrap().expect("no definition found").info;
         if navs.len() == 0 {
             panic!("unresolved reference")
         }
