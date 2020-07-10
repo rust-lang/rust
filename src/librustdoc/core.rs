@@ -645,7 +645,7 @@ impl<'hir> Visitor<'hir> for EmitIgnoredResolutionErrors<'_, 'hir> {
             );
             err.span_label(path.span, label);
             err.note("this error was originally ignored because you are running `rustdoc`");
-            err.note("try running again with `rustc` and you may get a more detailed error");
+            err.note("try running again with `rustc` or `cargo check` and you may get a more detailed error");
             err.emit();
         }
         // We could have an outer resolution that succeeded,
