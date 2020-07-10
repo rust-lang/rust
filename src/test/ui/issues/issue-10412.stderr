@@ -56,7 +56,6 @@ LL | impl<'self> Serializable<str> for &'self str {
    |             ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Serializable<'self, T: ?Sized> {

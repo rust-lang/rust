@@ -9,7 +9,6 @@ LL | |    };
    | |____^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: the yield type of a generator must have a statically known size
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
@@ -19,7 +18,6 @@ LL |    Pin::new(&mut gen).resume(());
    |                       ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error: aborting due to 2 previous errors
 

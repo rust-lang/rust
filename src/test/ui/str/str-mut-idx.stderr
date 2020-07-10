@@ -8,7 +8,6 @@ LL |     s[1..2] = bot();
    |               ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn bot<T: ?Sized>() -> T { loop {} }
@@ -21,7 +20,6 @@ LL |     s[1..2] = bot();
    |     ^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: the left-hand-side of an assignment must have a statically known size
 
 error[E0277]: the type `str` cannot be indexed by `usize`

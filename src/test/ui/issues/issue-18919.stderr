@@ -8,7 +8,6 @@ LL | enum Option<T> {
    |             - required by this bound in `Option`
    |
    = help: the trait `std::marker::Sized` is not implemented for `dyn for<'r> std::ops::Fn(&'r isize) -> isize`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: you could relax the implicit `Sized` bound on `T` if it were used through indirection like `&T` or `Box<T>`
   --> $DIR/issue-18919.rs:7:13
    |

@@ -5,7 +5,6 @@ LL |     static foo: dyn Fn() -> u32 = || -> u32 {
    |                 ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::ops::Fn() -> u32 + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error: aborting due to previous error
 
