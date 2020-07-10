@@ -6,7 +6,8 @@ use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
+use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -73,6 +74,43 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
                     visit::walk_item(this, item);
                 }
             });
+        }
+    }
+
+    // Forked from the original method because we don't want to descend into foreign function
+    // blocks. Such blocks are semantically invalid and the hir does not preserve them, so lowering
+    // items contained in them may be unexpected by later passes.
+    fn visit_foreign_item(&mut self, item: &'a ForeignItem) {
+        let Item { id: _, span: _, ident, ref vis, ref attrs, ref kind, tokens: _ } = *item;
+        self.visit_vis(vis);
+        self.visit_ident(ident);
+        walk_list!(self, visit_attribute, attrs);
+        match kind {
+            ForeignItemKind::Static(ty, _, expr) => {
+                self.visit_ty(ty);
+                walk_list!(self, visit_expr, expr);
+            }
+            ForeignItemKind::Fn(_, sig, generics, body) => {
+                self.visit_generics(generics);
+                let kind = FnKind::Fn(FnCtxt::Foreign, ident, sig, vis, body.as_deref());
+                match kind {
+                    FnKind::Fn(_, _, sig, _, _) => {
+                        self.visit_fn_header(&sig.header);
+                        visit::walk_fn_decl(self, &sig.decl);
+                    }
+                    FnKind::Closure(decl, _) => {
+                        visit::walk_fn_decl(self, decl);
+                    }
+                }
+            }
+            ForeignItemKind::TyAlias(_, generics, bounds, ty) => {
+                self.visit_generics(generics);
+                walk_list!(self, visit_param_bound, bounds);
+                walk_list!(self, visit_ty, ty);
+            }
+            ForeignItemKind::MacCall(mac) => {
+                self.visit_mac(mac);
+            }
         }
     }
 
