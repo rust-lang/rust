@@ -539,20 +539,28 @@ pub mod os {
         }
 
         pub unsafe fn get(&'static self, init: fn() -> T) -> Option<&'static T> {
-            let ptr = self.os.get() as *mut Value<T>;
+            // SAFETY: No mutable references are ever handed out meaning getting
+            // the value is ok.
+            let ptr = unsafe { self.os.get() as *mut Value<T> };
             if ptr as usize > 1 {
-                if let Some(ref value) = (*ptr).inner.get() {
+                // SAFETY: the check ensured the pointer is safe (its destructor
+                // is not running) + it is coming from a trusted source (self).
+                if let Some(ref value) = unsafe { (*ptr).inner.get() } {
                     return Some(value);
                 }
             }
-            self.try_initialize(init)
+            // SAFETY: At this point we are sure we have no value and so
+            // initializing (or trying to) is safe.
+            unsafe { self.try_initialize(init) }
         }
 
         // `try_initialize` is only called once per os thread local variable,
         // except in corner cases where thread_local dtors reference other
         // thread_local's, or it is being recursively initialized.
         unsafe fn try_initialize(&'static self, init: fn() -> T) -> Option<&'static T> {
-            let ptr = self.os.get() as *mut Value<T>;
+            // SAFETY: No mutable references are ever handed out meaning getting
+            // the value is ok.
+            let ptr = unsafe { self.os.get() as *mut Value<T> };
             if ptr as usize == 1 {
                 // destructor is running
                 return None;
@@ -563,7 +571,11 @@ pub mod os {
                 // local copy, so do that now.
                 let ptr: Box<Value<T>> = box Value { inner: LazyKeyInner::new(), key: self };
                 let ptr = Box::into_raw(ptr);
-                self.os.set(ptr as *mut u8);
+                // SAFETY: At this point we are sure there is no value inside
+                // ptr so setting it will not affect anyone else.
+                unsafe {
+                    self.os.set(ptr as *mut u8);
+                }
                 ptr
             } else {
                 // recursive initialization
