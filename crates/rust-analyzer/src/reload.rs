@@ -53,7 +53,7 @@ impl GlobalState {
             if change_kind == ChangeKind::Modify {
                 return false;
             }
-            if path.extension().map(|it| it.to_str()) != Some("rs".into()) {
+            if path.extension().unwrap_or_default() != "rs" {
                 return false;
             }
             if IMPLICIT_TARGET_FILES.iter().any(|it| path.ends_with(it)) {
