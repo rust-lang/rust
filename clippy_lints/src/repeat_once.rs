@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// - `.clone()` for `String`
     /// - `.to_vec()` for `slice`
     ///
-    /// **Why is this bad?** For example, `String.repeat(1)` is equivalent to `.clone()`. If cloning the string is the intention behind thi, `clone()` should be used.
+    /// **Why is this bad?** For example, `String.repeat(1)` is equivalent to `.clone()`. If cloning the string is the intention behind this, `clone()` should be used.
     ///
     /// **Known problems:** None.
     ///
