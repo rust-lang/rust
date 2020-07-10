@@ -195,7 +195,7 @@ fn parse_derive_input(derive_input: ast::TokenTree) -> Result<FxHashSet<String>,
 
 fn get_derive_names_in_scope(ctx: &CompletionContext) -> FxHashSet<String> {
     let mut result = FxHashSet::default();
-    ctx.scope().process_all_names(&mut |name, scope_def| {
+    ctx.scope.process_all_names(&mut |name, scope_def| {
         if let hir::ScopeDef::MacroDef(mac) = scope_def {
             if mac.is_derive_macro() {
                 result.insert(name.to_string());

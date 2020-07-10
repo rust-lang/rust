@@ -24,6 +24,7 @@ use test_utils::mark;
 #[derive(Debug)]
 pub(crate) struct CompletionContext<'a> {
     pub(super) sema: Semantics<'a, RootDatabase>,
+    pub(super) scope: SemanticsScope<'a>,
     pub(super) db: &'a RootDatabase,
     pub(super) config: &'a CompletionConfig,
     pub(super) offset: TextSize,
@@ -106,8 +107,10 @@ impl<'a> CompletionContext<'a> {
         let original_token =
             original_file.syntax().token_at_offset(position.offset).left_biased()?;
         let token = sema.descend_into_macros(original_token.clone());
+        let scope = sema.scope_at_offset(&token.parent(), position.offset);
         let mut ctx = CompletionContext {
             sema,
+            scope,
             db,
             config,
             original_token,
@@ -205,10 +208,6 @@ impl<'a> CompletionContext<'a> {
         } else {
             TextRange::empty(self.offset)
         }
-    }
-
-    pub(crate) fn scope(&self) -> SemanticsScope<'_> {
-        self.sema.scope_at_offset(&self.token.parent(), self.offset)
     }
 
     fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {

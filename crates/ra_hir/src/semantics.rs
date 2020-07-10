@@ -568,6 +568,7 @@ fn find_root(node: &SyntaxNode) -> SyntaxNode {
     node.ancestors().last().unwrap()
 }
 
+#[derive(Debug)]
 pub struct SemanticsScope<'a> {
     pub db: &'a dyn HirDatabase,
     resolver: Resolver,
