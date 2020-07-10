@@ -237,6 +237,11 @@
                     "default": true,
                     "markdownDescription": "Whether to show `can't find Cargo.toml` error message"
                 },
+                "rust-analyzer.cargo.autoreload": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Automatically refresh project info via `cargo metadata` on Cargo.toml changes"
+                },
                 "rust-analyzer.cargo.noDefaultFeatures": {
                     "type": "boolean",
                     "default": false,

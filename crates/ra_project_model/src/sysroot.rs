@@ -3,19 +3,19 @@
 use std::{convert::TryFrom, env, ops, path::Path, process::Command};
 
 use anyhow::{bail, format_err, Result};
+use paths::{AbsPath, AbsPathBuf};
 use ra_arena::{Arena, Idx};
 
 use crate::output;
-use paths::{AbsPath, AbsPathBuf};
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct Sysroot {
     crates: Arena<SysrootCrateData>,
 }
 
 pub type SysrootCrate = Idx<SysrootCrateData>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SysrootCrateData {
     pub name: String,
     pub root: AbsPathBuf,

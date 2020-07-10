@@ -24,7 +24,7 @@ use rustc_hash::FxHashMap;
 ///
 /// We use absolute paths here, `cargo metadata` guarantees to always produce
 /// abs paths.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CargoWorkspace {
     packages: Arena<PackageData>,
     targets: Arena<TargetData>,
@@ -68,7 +68,7 @@ pub type Package = Idx<PackageData>;
 
 pub type Target = Idx<TargetData>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PackageData {
     pub version: String,
     pub name: String,
@@ -83,13 +83,13 @@ pub struct PackageData {
     pub proc_macro_dylib_path: Option<AbsPathBuf>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PackageDependency {
     pub pkg: Package,
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TargetData {
     pub package: Package,
     pub name: String,
