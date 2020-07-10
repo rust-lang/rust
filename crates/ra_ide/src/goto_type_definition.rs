@@ -35,7 +35,7 @@ pub(crate) fn goto_type_definition(
         Some((ty, node))
     })?;
 
-    let adt_def = ty.autoderef(db).find_map(|ty| ty.as_adt())?;
+    let adt_def = ty.autoderef(db).filter_map(|ty| ty.as_adt()).last()?;
 
     let nav = adt_def.to_nav(db);
     Some(RangeInfo::new(node.text_range(), vec![nav]))
