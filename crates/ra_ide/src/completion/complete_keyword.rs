@@ -88,7 +88,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 
     if ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent {
         add_keyword(ctx, acc, "enum", "enum $0 {}");
-        add_keyword(ctx, acc, "struct", "struct $0 {}");
+        add_keyword(ctx, acc, "struct", "struct $0");
         add_keyword(ctx, acc, "union", "union $0 {}");
     }
 
