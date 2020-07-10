@@ -1,5 +1,4 @@
 //! See `Include`.
-
 use std::convert::TryFrom;
 
 use globset::{Glob, GlobSet, GlobSetBuilder};
