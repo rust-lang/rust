@@ -25,7 +25,7 @@ use crate::{
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, resolve_hir_path_qualifier, SourceAnalyzer},
     AssocItem, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef,
-    Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam,
+    Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 use resolver::TypeNs;
 
@@ -220,9 +220,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_path(path)
     }
 
-    // TODO: id
-    pub fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantId> {
-        self.imp.resolve_variant(record_lit)
+    pub fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantDef> {
+        self.imp.resolve_variant(record_lit).map(VariantDef::from)
     }
 
     pub fn lower_path(&self, path: &ast::Path) -> Option<Path> {
