@@ -14,9 +14,11 @@ use crate::{
     lsp_ext,
     main_loop::Task,
 };
+use ra_prof::profile;
 
 impl GlobalState {
     pub(crate) fn update_configuration(&mut self, config: Config) {
+        let _p = profile("GlobalState::update_configuration");
         let old_config = mem::replace(&mut self.config, config);
         if self.config.lru_capacity != old_config.lru_capacity {
             self.analysis_host.update_lru_capacity(old_config.lru_capacity);
@@ -114,6 +116,7 @@ impl GlobalState {
         });
     }
     pub(crate) fn switch_workspaces(&mut self, workspaces: Vec<anyhow::Result<ProjectWorkspace>>) {
+        let _p = profile("GlobalState::switch_workspaces");
         log::info!("reloading projects: {:?}", self.config.linked_projects);
 
         let mut has_errors = false;
@@ -302,6 +305,7 @@ pub(crate) struct SourceRootConfig {
 
 impl SourceRootConfig {
     pub(crate) fn partition(&self, vfs: &vfs::Vfs) -> Vec<SourceRoot> {
+        let _p = profile("SourceRootConfig::partition");
         self.fsc
             .partition(vfs)
             .into_iter()
