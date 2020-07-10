@@ -392,7 +392,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
-                EmitIgnoredResolutionErrors::new(&tcx.sess, hir).visit_body(body);
+                EmitIgnoredResolutionErrors::new(&tcx).visit_body(body);
                 DEFAULT_TYPECK.with(|typeck| typeck(tcx, def_id))
             };
         }),
@@ -602,27 +602,26 @@ thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(TyCtxt<'tcx>, LocalDefId) -> &
 /// the name resolution pass may find errors that are never emitted.
 /// If typeck is called after this happens, then we'll get an ICE:
 /// 'Res::Error found but not reported'. To avoid this, emit the errors now.
-struct EmitIgnoredResolutionErrors<'a, 'hir> {
-    session: &'a Session,
-    hir_map: Map<'hir>,
+struct EmitIgnoredResolutionErrors<'a, 'tcx> {
+    tcx: &'a TyCtxt<'tcx>,
 }
 
-impl<'a, 'hir> EmitIgnoredResolutionErrors<'a, 'hir> {
-    fn new(session: &'a Session, hir_map: Map<'hir>) -> Self {
-        Self { session, hir_map }
+impl<'a, 'tcx> EmitIgnoredResolutionErrors<'a, 'tcx> {
+    fn new(tcx: &'a TyCtxt<'tcx>) -> Self {
+        Self { tcx }
     }
 }
 
-impl<'hir> Visitor<'hir> for EmitIgnoredResolutionErrors<'_, 'hir> {
-    type Map = Map<'hir>;
+impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'_, 'tcx> {
+    type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         // We need to recurse into nested closures,
         // since those will fallback to the parent for type checking.
-        NestedVisitorMap::OnlyBodies(self.hir_map)
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
     }
 
-    fn visit_path(&mut self, path: &'hir Path<'_>, _id: HirId) {
+    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         debug!("visiting path {:?}", path);
         if path.res == Res::Err {
             // We have less context here than in rustc_resolve,
@@ -637,7 +636,7 @@ impl<'hir> Visitor<'hir> for EmitIgnoredResolutionErrors<'_, 'hir> {
                     .join("::")
             );
             let mut err = rustc_errors::struct_span_err!(
-                self.session,
+                self.tcx.sess,
                 path.span,
                 E0433,
                 "failed to resolve: {}",
