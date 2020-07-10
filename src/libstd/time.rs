@@ -241,7 +241,7 @@ impl Instant {
         // returned instead of what the OS says if the OS goes backwards.
         //
         // To hopefully mitigate the impact of this, a few platforms are
-        // whitelisted as "these at least haven't gone backwards yet".
+        // excluded as "these at least haven't gone backwards yet".
         if time::Instant::actually_monotonic() {
             return Instant(os_now);
         }

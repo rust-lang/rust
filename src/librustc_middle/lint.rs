@@ -230,8 +230,9 @@ pub fn struct_lint_level<'s, 'd>(
             err.allow_suggestions(false);
 
             // If this is a future incompatible lint it'll become a hard error, so
-            // we have to emit *something*. Also allow lints to whitelist themselves
-            // on a case-by-case basis for emission in a foreign macro.
+            // we have to emit *something*. Also, if this lint occurs in the
+            // expansion of a macro from an external crate, allow individual lints
+            // to opt-out from being reported.
             if future_incompatible.is_none() && !lint.report_in_external_macro {
                 err.cancel();
                 // Don't continue further, since we don't want to have
