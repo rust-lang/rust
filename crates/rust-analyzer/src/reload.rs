@@ -126,10 +126,12 @@ impl GlobalState {
                 res.map_err(|err| {
                     has_errors = true;
                     log::error!("failed to load workspace: {:#}", err);
-                    self.show_message(
-                        lsp_types::MessageType::Error,
-                        format!("rust-analyzer failed to load workspace: {:#}", err),
-                    );
+                    if self.workspaces.is_empty() {
+                        self.show_message(
+                            lsp_types::MessageType::Error,
+                            format!("rust-analyzer failed to load workspace: {:#}", err),
+                        );
+                    }
                 })
                 .ok()
             })
