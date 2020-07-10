@@ -20,7 +20,7 @@ There are six parts to this guide:
    properties of the code and inform later stages of the compile process (e.g., type checking).
 5. [From MIR to Binaries][p5]: How linked executable machine code is generated.
 6. [Appendices][app] at the end with useful reference information. There are a
-   few of these with different information, inluding a glossary.
+   few of these with different information, including a glossary.
 
 [p1]: ./getting-started.md
 [p1-5]: ./compiler-team.md
