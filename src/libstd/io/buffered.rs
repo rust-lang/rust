@@ -448,9 +448,6 @@ impl<R: Seek> Seek for BufReader<R> {
 /// [`flush`]: #method.flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
-    // FIXME: Can this just be W, instead of Option<W>? I don't see any code
-    // paths that lead to this being None, or that ever check if it IS none,
-    // even in drop implementations. #72925.
     inner: Option<W>,
     // FIXME: Replace this with a VecDeque. Because VecDeque is a Ring buffer,
     // this would enable BufWriter to operate without any interior copies.
