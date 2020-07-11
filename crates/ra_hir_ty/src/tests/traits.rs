@@ -1992,6 +1992,29 @@ fn test() {
 }
 
 #[test]
+fn fn_item_fn_trait() {
+    check_types(
+        r#"
+//- /main.rs
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
+
+struct S;
+
+fn foo() -> S {}
+
+fn takes_closure<U, F: FnOnce() -> U>(f: F) -> U { f() }
+
+fn test() {
+    takes_closure(foo);
+} //^^^^^^^^^^^^^^^^^^ S
+"#,
+    );
+}
+
+#[test]
 fn unselected_projection_in_trait_env_1() {
     check_types(
         r#"
