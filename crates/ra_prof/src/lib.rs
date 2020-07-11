@@ -66,7 +66,8 @@ impl Drop for Scope {
 /// 2. Build with `cpu_profiler` feature.
 /// 3. Tun the code, the *raw* output would be in the `./out.profile` file.
 /// 4. Install pprof for visualization (https://github.com/google/pprof).
-/// 5. Use something like `pprof -svg target/release/rust-analyzer ./out.profile` to see the results.
+/// 5. Bump sampling frequency to once per ms: `export CPUPROFILE_FREQUENCY=1000`
+/// 6. Use something like `pprof -svg target/release/rust-analyzer ./out.profile` to see the results.
 ///
 /// For example, here's how I run profiling on NixOS:
 ///
@@ -74,6 +75,10 @@ impl Drop for Scope {
 /// $ nix-shell -p gperftools --run \
 ///     'cargo run --release -p rust-analyzer -- parse < ~/projects/rustbench/parser.rs > /dev/null'
 /// ```
+///
+/// See this diff for how to profile completions:
+///
+/// https://github.com/rust-analyzer/rust-analyzer/pull/5306
 #[derive(Debug)]
 pub struct CpuProfiler {
     _private: (),
