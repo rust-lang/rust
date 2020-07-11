@@ -24,3 +24,18 @@ pub struct Public {
     /// [`PrivateType`]
     private_item: u32,
 }
+
+// The following cases are identical to the ones above, except that they are in a private
+// module. Thus they all fall into cases 3 and 4 and should not produce a warning.
+
+mod private {
+    pub struct Public {
+        /// [`super::PublicType`]
+        /// [`super::PrivateType`]
+        pub public_item: u32,
+
+        /// [`super::PublicType`]
+        /// [`super::PrivateType`]
+        private_item: u32,
+    }
+}
