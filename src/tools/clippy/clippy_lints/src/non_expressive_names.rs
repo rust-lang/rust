@@ -78,7 +78,7 @@ struct ExistingName {
     interned: SymbolStr,
     span: Span,
     len: usize,
-    whitelist: &'static [&'static str],
+    exemptions: &'static [&'static str],
 }
 
 struct SimilarNamesLocalVisitor<'a, 'tcx> {
@@ -117,7 +117,7 @@ impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
 // this list contains lists of names that are allowed to be similar
 // the assumption is that no name is ever contained in multiple lists.
 #[rustfmt::skip]
-const WHITELIST: &[&[&str]] = &[
+const ALLOWED_TO_BE_SIMILAR: &[&[&str]] = &[
     &["parsed", "parser"],
     &["lhs", "rhs"],
     &["tx", "rx"],
@@ -156,17 +156,17 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
 }
 
 #[must_use]
-fn get_whitelist(interned_name: &str) -> Option<&'static [&'static str]> {
-    for &allow in WHITELIST {
-        if whitelisted(interned_name, allow) {
-            return Some(allow);
+fn get_exemptions(interned_name: &str) -> Option<&'static [&'static str]> {
+    for &list in ALLOWED_TO_BE_SIMILAR {
+        if allowed_to_be_similar(interned_name, list) {
+            return Some(list);
         }
     }
     None
 }
 
 #[must_use]
-fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
+fn allowed_to_be_similar(interned_name: &str, list: &[&str]) -> bool {
     list.iter()
         .any(|&name| interned_name.starts_with(name) || interned_name.ends_with(name))
 }
@@ -212,7 +212,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             return;
         }
         for existing_name in &self.0.names {
-            if whitelisted(&interned_name, existing_name.whitelist) {
+            if allowed_to_be_similar(&interned_name, existing_name.exemptions) {
                 continue;
             }
             let mut split_at = None;
@@ -301,7 +301,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             return;
         }
         self.0.names.push(ExistingName {
-            whitelist: get_whitelist(&interned_name).unwrap_or(&[]),
+            exemptions: get_exemptions(&interned_name).unwrap_or(&[]),
             interned: interned_name,
             span: ident.span,
             len: count,

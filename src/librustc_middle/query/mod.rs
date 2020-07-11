@@ -1413,10 +1413,10 @@ rustc_queries! {
     }
 
     Other {
-        query target_features_whitelist(_: CrateNum) -> FxHashMap<String, Option<Symbol>> {
+        query supported_target_features(_: CrateNum) -> FxHashMap<String, Option<Symbol>> {
             storage(ArenaCacheSelector<'tcx>)
             eval_always
-            desc { "looking up the whitelist of target features" }
+            desc { "looking up supported target features" }
         }
 
         // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.

@@ -38,8 +38,8 @@ use std::{panic, thread};
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
 ///
-/// This is performed by checking whether a whitelisted set of
-/// features is available on the target machine, by querying LLVM.
+/// This is performed by checking whether a set of permitted features
+/// is available on the target machine, by querying LLVM.
 pub fn add_configuration(
     cfg: &mut CrateConfig,
     sess: &mut Session,
@@ -102,6 +102,8 @@ impl Write for Sink {
     }
 }
 
+/// Like a `thread::Builder::spawn` followed by a `join()`, but avoids the need
+/// for `'static` bounds.
 #[cfg(not(parallel_compiler))]
 pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: F) -> R {
     struct Ptr(*mut ());
@@ -126,7 +128,7 @@ pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: 
 }
 
 #[cfg(not(parallel_compiler))]
-pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
+pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
@@ -140,7 +142,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
     crate::callbacks::setup_callbacks();
 
-    scoped_thread(cfg, || {
+    let main_handler = move || {
         rustc_ast::with_session_globals(edition, || {
             ty::tls::GCX_PTR.set(&Lock::new(0), || {
                 if let Some(stderr) = stderr {
@@ -149,22 +151,21 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
                 f()
             })
         })
-    })
+    };
+
+    scoped_thread(cfg, main_handler)
 }
 
 #[cfg(parallel_compiler)]
-pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
+pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
-    use rayon::{ThreadBuilder, ThreadPool, ThreadPoolBuilder};
-
-    let gcx_ptr = &Lock::new(0);
     crate::callbacks::setup_callbacks();
 
-    let mut config = ThreadPoolBuilder::new()
+    let mut config = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
@@ -175,7 +176,7 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
         config = config.stack_size(size);
     }
 
-    let with_pool = move |pool: &ThreadPool| pool.install(move || f());
+    let with_pool = move |pool: &rayon::ThreadPool| pool.install(move || f());
 
     rustc_ast::with_session_globals(edition, || {
         rustc_ast::SESSION_GLOBALS.with(|ast_session_globals| {
@@ -185,13 +186,15 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
                 // span_session_globals are captured and set on the new
                 // threads. ty::tls::with_thread_locals sets up thread local
                 // callbacks from librustc_ast.
-                let main_handler = move |thread: ThreadBuilder| {
+                let main_handler = move |thread: rayon::ThreadBuilder| {
                     rustc_ast::SESSION_GLOBALS.set(ast_session_globals, || {
                         rustc_span::SESSION_GLOBALS.set(span_session_globals, || {
-                            if let Some(stderr) = stderr {
-                                io::set_panic(Some(box Sink(stderr.clone())));
-                            }
-                            ty::tls::GCX_PTR.set(gcx_ptr, || thread.run())
+                            ty::tls::GCX_PTR.set(&Lock::new(0), || {
+                                if let Some(stderr) = stderr {
+                                    io::set_panic(Some(box Sink(stderr.clone())));
+                                }
+                                thread.run()
+                            })
                         })
                     })
                 };

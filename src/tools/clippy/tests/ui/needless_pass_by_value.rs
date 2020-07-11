@@ -116,7 +116,7 @@ extern "C" fn ext(x: MaybeUninit<usize>) -> usize {
     unsafe { x.assume_init() }
 }
 
-// whitelist RangeArgument
+// exempt RangeArgument
 fn range<T: ::std::ops::RangeBounds<usize>>(range: T) {
     let _ = range.start_bound();
 }

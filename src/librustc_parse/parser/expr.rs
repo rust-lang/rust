@@ -770,10 +770,10 @@ impl<'a> Parser<'a> {
         match self.token.uninterpolate().kind {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
-                Ok(self.parse_tuple_field_access_expr(lo, base, symbol, suffix))
+                Ok(self.parse_tuple_field_access_expr(lo, base, symbol, suffix, None))
             }
-            token::Literal(token::Lit { kind: token::Float, symbol, .. }) => {
-                self.recover_field_access_by_float_lit(lo, base, symbol)
+            token::Literal(token::Lit { kind: token::Float, symbol, suffix }) => {
+                Ok(self.parse_tuple_field_access_expr_float(lo, base, symbol, suffix))
             }
             _ => {
                 self.error_unexpected_after_dot();
@@ -788,45 +788,84 @@ impl<'a> Parser<'a> {
         self.struct_span_err(self.token.span, &format!("unexpected token: `{}`", actual)).emit();
     }
 
-    fn recover_field_access_by_float_lit(
+    // We need and identifier or integer, but the next token is a float.
+    // Break the float into components to extract the identifier or integer.
+    // FIXME: With current `TokenCursor` it's hard to break tokens into more than 2
+    // parts unless those parts are processed immediately. `TokenCursor` should either
+    // support pushing "future tokens" (would be also helpful to `break_and_eat`), or
+    // we should break everything including floats into more basic proc-macro style
+    // tokens in the lexer (probably preferable).
+    fn parse_tuple_field_access_expr_float(
         &mut self,
         lo: Span,
         base: P<Expr>,
-        sym: Symbol,
-    ) -> PResult<'a, P<Expr>> {
-        self.bump();
-
-        let fstr = sym.as_str();
-        let msg = format!("unexpected token: `{}`", sym);
-
-        let mut err = self.struct_span_err(self.prev_token.span, &msg);
-        err.span_label(self.prev_token.span, "unexpected token");
-
-        if fstr.chars().all(|x| "0123456789.".contains(x)) {
-            let float = match fstr.parse::<f64>() {
-                Ok(f) => f,
-                Err(_) => {
-                    err.emit();
-                    return Ok(base);
-                }
-            };
-            let sugg = pprust::to_string(|s| {
-                s.popen();
-                s.print_expr(&base);
-                s.s.word(".");
-                s.print_usize(float.trunc() as usize);
-                s.pclose();
-                s.s.word(".");
-                s.s.word(fstr.splitn(2, '.').last().unwrap().to_string())
-            });
-            err.span_suggestion(
-                lo.to(self.prev_token.span),
-                "try parenthesizing the first index",
-                sugg,
-                Applicability::MachineApplicable,
-            );
+        float: Symbol,
+        suffix: Option<Symbol>,
+    ) -> P<Expr> {
+        #[derive(Debug)]
+        enum FloatComponent {
+            IdentLike(String),
+            Punct(char),
         }
-        Err(err)
+        use FloatComponent::*;
+
+        let mut components = Vec::new();
+        let mut ident_like = String::new();
+        for c in float.as_str().chars() {
+            if c == '_' || c.is_ascii_alphanumeric() {
+                ident_like.push(c);
+            } else if matches!(c, '.' | '+' | '-') {
+                if !ident_like.is_empty() {
+                    components.push(IdentLike(mem::take(&mut ident_like)));
+                }
+                components.push(Punct(c));
+            } else {
+                panic!("unexpected character in a float token: {:?}", c)
+            }
+        }
+        if !ident_like.is_empty() {
+            components.push(IdentLike(ident_like));
+        }
+
+        // FIXME: Make the span more precise.
+        let span = self.token.span;
+        match &*components {
+            // 1e2
+            [IdentLike(i)] => {
+                self.parse_tuple_field_access_expr(lo, base, Symbol::intern(&i), suffix, None)
+            }
+            // 1.
+            [IdentLike(i), Punct('.')] => {
+                assert!(suffix.is_none());
+                let symbol = Symbol::intern(&i);
+                self.token = Token::new(token::Ident(symbol, false), span);
+                let next_token = Token::new(token::Dot, span);
+                self.parse_tuple_field_access_expr(lo, base, symbol, None, Some(next_token))
+            }
+            // 1.2 | 1.2e3
+            [IdentLike(i1), Punct('.'), IdentLike(i2)] => {
+                let symbol1 = Symbol::intern(&i1);
+                self.token = Token::new(token::Ident(symbol1, false), span);
+                let next_token1 = Token::new(token::Dot, span);
+                let base1 =
+                    self.parse_tuple_field_access_expr(lo, base, symbol1, None, Some(next_token1));
+                let symbol2 = Symbol::intern(&i2);
+                let next_token2 = Token::new(token::Ident(symbol2, false), span);
+                self.bump_with(next_token2); // `.`
+                self.parse_tuple_field_access_expr(lo, base1, symbol2, suffix, None)
+            }
+            // 1e+ | 1e- (recovered)
+            [IdentLike(_), Punct('+' | '-')] |
+            // 1e+2 | 1e-2
+            [IdentLike(_), Punct('+' | '-'), IdentLike(_)] |
+            // 1.2e+3 | 1.2e-3
+            [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-'), IdentLike(_)] => {
+                // See the FIXME about `TokenCursor` above.
+                self.error_unexpected_after_dot();
+                base
+            }
+            _ => panic!("unexpected components in a float token: {:?}", components),
+        }
     }
 
     fn parse_tuple_field_access_expr(
@@ -835,8 +874,12 @@ impl<'a> Parser<'a> {
         base: P<Expr>,
         field: Symbol,
         suffix: Option<Symbol>,
+        next_token: Option<Token>,
     ) -> P<Expr> {
-        self.bump();
+        match next_token {
+            Some(next_token) => self.bump_with(next_token),
+            None => self.bump(),
+        }
         let span = self.prev_token.span;
         let field = ExprKind::Field(base, Ident::new(field, span));
         self.expect_no_suffix(span, "a tuple index", suffix);
@@ -1790,7 +1833,7 @@ impl<'a> Parser<'a> {
         let require_comma = classify::expr_requires_semi_to_be_stmt(&expr)
             && self.token != token::CloseDelim(token::Brace);
 
-        let hi = self.token.span;
+        let hi = self.prev_token.span;
 
         if require_comma {
             let sm = self.sess.source_map();

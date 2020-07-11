@@ -236,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tcx
                     .get_attrs(m.def_id)
                     .iter()
-                    // This special internal attribute is used to whitelist
+                    // This special internal attribute is used to permit
                     // "identity-like" conversion methods to be suggested here.
                     //
                     // FIXME (#46459 and #46460): ideally

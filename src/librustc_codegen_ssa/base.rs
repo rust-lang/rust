@@ -842,10 +842,9 @@ impl CrateInfo {
                 }
             }
 
-            // No need to look for lang items that are whitelisted and don't
-            // actually need to exist.
+            // No need to look for lang items that don't actually need to exist.
             let missing =
-                missing.iter().cloned().filter(|&l| !lang_items::whitelisted(tcx, l)).collect();
+                missing.iter().cloned().filter(|&l| lang_items::required(tcx, l)).collect();
             info.missing_lang_items.insert(cnum, missing);
         }
 

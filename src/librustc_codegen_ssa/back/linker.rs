@@ -475,9 +475,7 @@ impl<'a> Linker for GccLinker<'a> {
         self.cmd.arg("__llvm_profile_runtime");
     }
 
-    fn control_flow_guard(&mut self) {
-        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
-    }
+    fn control_flow_guard(&mut self) {}
 
     fn debuginfo(&mut self, strip: Strip) {
         match strip {
@@ -959,9 +957,7 @@ impl<'a> Linker for EmLinker<'a> {
         // noop, but maybe we need something like the gnu linker?
     }
 
-    fn control_flow_guard(&mut self) {
-        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
-    }
+    fn control_flow_guard(&mut self) {}
 
     fn debuginfo(&mut self, _strip: Strip) {
         // Preserve names or generate source maps depending on debug info
@@ -1163,9 +1159,7 @@ impl<'a> Linker for WasmLd<'a> {
         }
     }
 
-    fn control_flow_guard(&mut self) {
-        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
-    }
+    fn control_flow_guard(&mut self) {}
 
     fn no_crt_objects(&mut self) {}
 
@@ -1176,10 +1170,10 @@ impl<'a> Linker for WasmLd<'a> {
             self.cmd.arg("--export").arg(&sym);
         }
 
-        // LLD will hide these otherwise-internal symbols since our `--export`
-        // list above is a whitelist of what to export. Various bits and pieces
-        // of tooling use this, so be sure these symbols make their way out of
-        // the linker as well.
+        // LLD will hide these otherwise-internal symbols since it only exports
+        // symbols explicity passed via the `--export` flags above and hides all
+        // others. Various bits and pieces of tooling use this, so be sure these
+        // symbols make their way out of the linker as well.
         self.cmd.arg("--export=__heap_base");
         self.cmd.arg("--export=__data_end");
     }
@@ -1330,9 +1324,7 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn no_default_libraries(&mut self) {}
 
-    fn control_flow_guard(&mut self) {
-        self.sess.warn("Windows Control Flow Guard is not supported by this linker.");
-    }
+    fn control_flow_guard(&mut self) {}
 
     fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType) {}
 
