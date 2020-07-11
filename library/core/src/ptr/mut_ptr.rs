@@ -246,8 +246,8 @@ impl<T: ?Sized> *mut T {
     /// different allocated object. Note that in Rust,
     /// every (stack-allocated) variable is considered a separate allocated object.
     ///
-    /// In other words, `x.wrapping_offset(y.wrapping_offset_from(x))` is
-    /// *not* the same as `y`, and dereferencing it is undefined behavior
+    /// In other words, `x.wrapping_offset((y as usize).wrapping_sub(x as usize) / size_of::<T>())`
+    /// is *not* the same as `y`, and dereferencing it is undefined behavior
     /// unless `x` and `y` point into the same allocated object.
     ///
     /// Compared to [`offset`], this method basically delays the requirement of staying
@@ -463,7 +463,6 @@ impl<T: ?Sized> *mut T {
     /// This function is the inverse of [`offset`].
     ///
     /// [`offset`]: #method.offset-1
-    /// [`wrapping_offset_from`]: #method.wrapping_offset_from-1
     ///
     /// # Safety
     ///
@@ -496,10 +495,6 @@ impl<T: ?Sized> *mut T {
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
-    ///
-    /// Consider using [`wrapping_offset_from`] instead if these constraints are
-    /// difficult to satisfy. The only advantage of this method is that it
-    /// enables more aggressive compiler optimizations.
     ///
     /// # Panics
     ///
