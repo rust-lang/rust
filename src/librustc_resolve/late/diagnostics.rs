@@ -100,9 +100,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
-        let is_enum_variant = &|res| {
-            if let Res::Def(DefKind::Variant, _) = res { true } else { false }
-        };
+        let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
 
         // Make the base error.
         let expected = source.descr_expected();
