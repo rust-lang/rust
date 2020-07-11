@@ -12,6 +12,20 @@ fn cast() {
     assert_eq!(z, y % 256);
 }
 
+/// Test usize->ptr cast for dangling and OOB address.
+/// That is safe, and thus has to work.
+fn cast_dangling() {
+    let b = Box::new(0);
+    let x = &*b as *const i32 as usize;
+    drop(b);
+    let _val = x as *const i32;
+
+    let b = Box::new(0);
+    let mut x = &*b as *const i32 as usize;
+    x += 0x100;
+    let _val = x as *const i32;
+}
+
 fn format() {
     // Pointer string formatting! We can't check the output as it changes when libstd changes,
     // but we can make sure Miri does not error.
@@ -47,8 +61,7 @@ fn ptr_eq_dangling() {
     drop(b);
     let b = Box::new(0);
     let y = &*b as *const i32; // different allocation
-    // We cannot compare these even though both are inbounds -- they *could* be
-    // equal if memory was reused.
+    // They *could* be equal if memory was reused, but probably are not.
     assert!(x != y);
 }
 
@@ -57,27 +70,27 @@ fn ptr_eq_out_of_bounds() {
     let x = (&*b as *const i32).wrapping_sub(0x800); // out-of-bounds
     let b = Box::new(0);
     let y = &*b as *const i32; // different allocation
-    // We cannot compare these even though both allocations are live -- they *could* be
-    // equal (with the right base addresses).
+    // They *could* be equal (with the right base addresses), but probably are not.
     assert!(x != y);
 }
 
 fn ptr_eq_out_of_bounds_null() {
     let b = Box::new(0);
     let x = (&*b as *const i32).wrapping_sub(0x800); // out-of-bounds
-    // We cannot compare this with NULL. After all, this *could* be NULL (with the right base address).
+    // This *could* be NULL (with the right base address), but probably is not.
     assert!(x != std::ptr::null());
 }
 
 fn ptr_eq_integer() {
     let b = Box::new(0);
     let x = &*b as *const i32;
-    // We cannot compare this with a non-NULL integer. After all, these *could* be equal (with the right base address).
+    // These *could* be equal (with the right base address), but probably are not.
     assert!(x != 64 as *const i32);
 }
 
 fn main() {
     cast();
+    cast_dangling();
     format();
     transmute();
     ptr_bitops1();
