@@ -83,12 +83,18 @@ you use your system's LLVM ([see below][configsec]).
 
 Like `cargo`, the build system will use as many cores as possible. Sometimes
 this can cause you to run low on memory. You can use `-j` to adjust the number
-concurrent jobs.
+concurrent jobs. If a full build takes more than ~45 minutes to an hour,
+you are probably spending most of the time swapping memory in and out;
+try using `-j1`.
 
-Also, if you don't have too much free disk space, you may want to turn off
+On a slow machine, the build times for rustc are very painful. Consider using
+`./x.py check` instead of a full build and letting the automated tests run
+when you push to GitHub.
+
+If you don't have too much free disk space, you may want to turn off
 incremental compilation ([see below][configsec]). This will make
-compilation take longer, but will save a ton of space from the incremental
-caches.
+compilation take longer (especially after a rebase),
+but will save a ton of space from the incremental caches.
 
 ### Cloning
 
@@ -169,10 +175,10 @@ should still read the rest of the section:
 | Command | When to use it |
 | --- | --- |
 | `x.py check` | Quick check to see if things compile; rust-analyzer can run this automatically for you |
-| `x.py build --stage 1` | Build just the 1st stage of the compiler; this is faster than building stage 2 and usually good enough |
-| `x.py build --stage 1 --keep-stage 1` | Build the 1st stage of the compiler and skips rebuilding the library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
-| `x.py test --stage 1` | Run the test suite using the stage1 compiler (first build) |
-| `x.py test --stage 1 --keep-stage 1` | Run the test suite using the stage1 compiler (subsequent builds) |
+| `x.py build --stage 0 src/libstd` | Build only the standard library, without building the compiler |
+| `x.py build --stage 1 src/libstd` | Build just the 1st stage of the compiler, along with the standard library; this is faster than building stage 2 and usually good enough |
+| `x.py build --stage 1 --keep-stage 1 src/libstd` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
+| `x.py test --stage 1 [--keep-stage 1]` | Run the test suite using the stage1 compiler |
 | `x.py test --stage 1 --bless [--keep-stage 1]` | Run the test suite using the stage1 compiler _and_ update expected test output. |
 | `x.py build` | Do a full 2-stage build. You almost never want to do this. |
 | `x.py test` | Do a full 2-stage build and run all tests. You almost never want to do this. |
@@ -197,10 +203,10 @@ For most contributions, you only need to build stage 1, which saves a lot of tim
 
 ```sh
 # Build the compiler (stage 1)
-./x.py build --stage 1
+./x.py build --stage 1 src/libstd
 
 # Subsequent builds
-./x.py build --stage 1 --keep-stage 1
+./x.py build --stage 1 --keep-stage 1 src/libstd
 ```
 
 This will take a while, especially the first time. Be wary of accidentally
@@ -281,7 +287,7 @@ the stage-2 compiler, which of course requires a 2-stage build, described above
 
 In practice, though, you don't need to build the compiler unless you are
 planning to use a recently added nightly feature. Instead, you can just build
-stage 0 (i.e. which basically just uses the current beta compiler).
+stage 0, which uses the current beta compiler.
 
 ```sh
 ./x.py build --stage 0 src/libstd
@@ -326,7 +332,7 @@ Rustdoc has two types of tests: content tests and UI tests.
 ./x.py test --stage 1 src/test/rustdoc-ui
 
 # Both at once
-./x.py test --stage 1 src/test/rustdoc*
+./x.py test --stage 1 src/test/rustdoc src/test/rustdoc-ui
 ```
 
 ### Contributing code to other Rust projects
