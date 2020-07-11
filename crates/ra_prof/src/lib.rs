@@ -43,6 +43,7 @@ pub struct Scope {
 }
 
 impl Scope {
+    #[must_use]
     pub fn enter() -> Scope {
         let prev = IN_SCOPE.with(|slot| std::mem::replace(&mut *slot.borrow_mut(), true));
         Scope { prev }
@@ -78,6 +79,7 @@ pub struct CpuProfiler {
     _private: (),
 }
 
+#[must_use]
 pub fn cpu_profiler() -> CpuProfiler {
     #[cfg(feature = "cpu_profiler")]
     {

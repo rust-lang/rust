@@ -87,6 +87,8 @@ where
         Ok(())
     }
 }
+
+#[must_use]
 pub fn timeit(label: &'static str) -> impl Drop {
     struct Guard {
         label: &'static str,

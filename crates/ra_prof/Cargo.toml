@@ -20,3 +20,8 @@ jemalloc-ctl = { version = "0.3.3", optional = true }
 [features]
 jemalloc = [ "jemallocator", "jemalloc-ctl" ]
 cpu_profiler = []
+
+# Uncomment to enable for the whole crate graph
+# default = [ "backtrace" ]
+# default = [ "jemalloc" ]
+# default = [ "cpu_profiler" ]
