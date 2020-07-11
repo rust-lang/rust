@@ -309,6 +309,7 @@ fn semantic_token_type_and_modifiers(
         }
         HighlightTag::EnumVariant => semantic_tokens::ENUM_MEMBER,
         HighlightTag::Macro => lsp_types::SemanticTokenType::MACRO,
+        HighlightTag::ValueParam => lsp_types::SemanticTokenType::PARAMETER,
         HighlightTag::Local => lsp_types::SemanticTokenType::VARIABLE,
         HighlightTag::TypeParam => lsp_types::SemanticTokenType::TYPE_PARAMETER,
         HighlightTag::Lifetime => semantic_tokens::LIFETIME,
