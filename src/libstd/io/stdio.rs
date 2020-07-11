@@ -875,7 +875,8 @@ impl fmt::Debug for StderrLock<'_> {
 /// Equivalent to the [`input`] method except that
 /// a prompt is printed before capturing input.
 ///
-/// ## Note
+/// # Note
+///
 /// This function is not the recommended solution to get user input, it should
 /// only be used for simple actions. If you require more explicit control over
 /// getting user input, see the [`Stdin::read_line`] method.
