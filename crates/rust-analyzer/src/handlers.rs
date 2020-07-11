@@ -762,7 +762,6 @@ fn handle_fixes(
             group: None,
             kind: Some(lsp_types::code_action_kind::QUICKFIX.into()),
             edit: Some(edit),
-            command: None,
         };
         res.push(action);
     }

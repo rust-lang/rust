@@ -249,8 +249,9 @@ pub struct CodeAction {
     pub group: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub command: Option<lsp_types::Command>,
+    // We don't handle commands on the client-side
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub command: Option<lsp_types::Command>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub edit: Option<SnippetWorkspaceEdit>,
 }

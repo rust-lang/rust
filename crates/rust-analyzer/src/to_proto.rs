@@ -651,7 +651,6 @@ pub(crate) fn unresolved_code_action(
         group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
         kind: Some(code_action_kind(assist.id.1)),
         edit: None,
-        command: None,
     };
     Ok(res)
 }

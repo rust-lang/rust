@@ -39,7 +39,6 @@
                 kind: Some(
                     "quickfix",
                 ),
-                command: None,
                 edit: Some(
                     SnippetWorkspaceEdit {
                         changes: Some(
