@@ -405,8 +405,15 @@ impl<'a> InferenceContext<'a> {
                                     .subst(&a_ty.parameters)
                             })
                         }
-                        // FIXME:
-                        TypeCtor::Adt(AdtId::UnionId(_)) => None,
+                        TypeCtor::Adt(AdtId::UnionId(u)) => {
+                            self.db.union_data(u).variant_data.field(name).map(|local_id| {
+                                let field = FieldId { parent: u.into(), local_id };
+                                self.write_field_resolution(tgt_expr, field);
+                                self.db.field_types(u.into())[field.local_id]
+                                    .clone()
+                                    .subst(&a_ty.parameters)
+                            })
+                        }
                         _ => None,
                     },
                     _ => None,

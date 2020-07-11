@@ -325,6 +325,29 @@ fn test() {
 }
 
 #[test]
+fn infer_union() {
+    assert_snapshot!(
+        infer(r#"
+union MyUnion {
+    foo: u32,
+    bar: f32,
+}
+
+unsafe fn baz(u: MyUnion) {
+    let inner = u.foo;
+}
+"#),
+        @r###"
+    61..62 'u': MyUnion
+    73..99 '{     ...foo; }': ()
+    83..88 'inner': u32
+    91..92 'u': MyUnion
+    91..96 'u.foo': u32
+    "###
+    );
+}
+
+#[test]
 fn infer_refs() {
     assert_snapshot!(
         infer(r#"
