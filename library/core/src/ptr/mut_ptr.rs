@@ -474,6 +474,9 @@ impl<T: ?Sized> *mut T {
     ///   byte past the end of the same allocated object. Note that in Rust,
     ///   every (stack-allocated) variable is considered a separate allocated object.
     ///
+    /// * Both pointers must be *derived from* a pointer to the same object.
+    ///   (See below for an example.)
+    ///
     /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
@@ -517,6 +520,25 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(ptr1.offset_from(ptr2), -2);
     ///     assert_eq!(ptr1.offset(2), ptr2);
     ///     assert_eq!(ptr2.offset(-2), ptr1);
+    /// }
+    /// ```
+    ///
+    /// *Incorrect* usage:
+    ///
+    /// ```rust,no_run
+    /// #![feature(ptr_offset_from)]
+    ///
+    /// let ptr1 = Box::into_raw(Box::new(0u8));
+    /// let ptr2 = Box::into_raw(Box::new(1u8));
+    /// let diff = (ptr2 as isize).wrapping_sub(ptr1 as isize);
+    /// // Make ptr2_other an "alias" of ptr2, but derived from ptr1.
+    /// let ptr2_other = (ptr1 as *mut u8).wrapping_offset(diff);
+    /// assert_eq!(ptr2 as usize, ptr2_other as usize);
+    /// // Since ptr2_other and ptr2 are derived from pointers to different objects,
+    /// // computing their offset is undefined behavior, even though
+    /// // they point to the same address!
+    /// unsafe {
+    ///     let zero = ptr2_other.offset_from(ptr2); // Undefined Behavior
     /// }
     /// ```
     #[unstable(feature = "ptr_offset_from", issue = "41079")]
