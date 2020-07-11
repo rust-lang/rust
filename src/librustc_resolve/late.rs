@@ -1879,7 +1879,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     /// A wrapper around [`Resolver::report_error`].
     ///
-    /// This doesn't emit errors for function bodies if this is r
+    /// This doesn't emit errors for function bodies if this is rustdoc.
     fn report_error(&self, span: Span, resolution_error: ResolutionError<'_>) {
         if self.should_report_errs() {
             self.r.report_error(span, resolution_error);
