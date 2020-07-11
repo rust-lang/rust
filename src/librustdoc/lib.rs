@@ -9,7 +9,6 @@
 #![feature(nll)]
 #![feature(or_patterns)]
 #![feature(test)]
-#![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![feature(once_cell)]
