@@ -56,6 +56,12 @@ pub struct Struct5<#[unstable(feature = "unstable_default", issue = "none")] A =
 }
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub struct Struct6<#[unstable(feature = "unstable_default6", issue = "none")] T = usize> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    pub field: T,
+}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub const STRUCT1: Struct1 = Struct1 { field: 1 };
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
