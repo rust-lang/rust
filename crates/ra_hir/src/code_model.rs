@@ -33,7 +33,10 @@ use hir_ty::{
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
-use ra_syntax::ast::{self, AttrsOwner, NameOwner};
+use ra_syntax::{
+    ast::{self, AttrsOwner, NameOwner},
+    AstNode,
+};
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -955,6 +958,16 @@ pub struct Local {
 }
 
 impl Local {
+    pub fn is_param(self, db: &dyn HirDatabase) -> bool {
+        let src = self.source(db);
+        match src.value {
+            Either::Left(bind_pat) => {
+                bind_pat.syntax().ancestors().any(|it| ast::Param::can_cast(it.kind()))
+            }
+            Either::Right(_self_param) => true,
+        }
+    }
+
     // FIXME: why is this an option? It shouldn't be?
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         let body = db.body(self.parent.into());

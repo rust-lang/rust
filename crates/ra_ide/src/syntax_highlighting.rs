@@ -630,9 +630,10 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
         },
         Definition::SelfType(_) => HighlightTag::SelfType,
         Definition::TypeParam(_) => HighlightTag::TypeParam,
-        // FIXME: distinguish between locals and parameters
         Definition::Local(local) => {
-            let mut h = Highlight::new(HighlightTag::Local);
+            let tag =
+                if local.is_param(db) { HighlightTag::ValueParam } else { HighlightTag::Local };
+            let mut h = Highlight::new(tag);
             if local.is_mut(db) || local.ty(db).is_mutable_reference() {
                 h |= HighlightModifier::Mutable;
             }

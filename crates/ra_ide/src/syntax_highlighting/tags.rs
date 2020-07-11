@@ -41,6 +41,7 @@ pub enum HighlightTag {
     TypeAlias,
     TypeParam,
     Union,
+    ValueParam,
     Local,
     UnresolvedReference,
     FormatSpecifier,
@@ -95,6 +96,7 @@ impl HighlightTag {
             HighlightTag::TypeAlias => "type_alias",
             HighlightTag::TypeParam => "type_param",
             HighlightTag::Union => "union",
+            HighlightTag::ValueParam => "value_param",
             HighlightTag::Local => "variable",
             HighlightTag::UnresolvedReference => "unresolved_reference",
         }
