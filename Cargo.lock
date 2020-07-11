@@ -1267,6 +1267,7 @@ dependencies = [
  "once_cell",
  "ra_parser",
  "ra_text_edit",
+ "rayon",
  "rowan",
  "rustc-ap-rustc_lexer",
  "rustc-hash",
