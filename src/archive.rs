@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
@@ -5,12 +6,14 @@ use rustc_session::Session;
 use rustc_codegen_ssa::back::archive::{find_library, ArchiveBuilder};
 use rustc_codegen_ssa::METADATA_FILENAME;
 
+use object::{Object, SymbolKind};
+
 struct ArchiveConfig<'a> {
     sess: &'a Session,
     dst: PathBuf,
     lib_search_paths: Vec<PathBuf>,
-    use_native_ar: bool,
     use_gnu_style_archive: bool,
+    no_builtin_ranlib: bool,
 }
 
 #[derive(Debug)]
@@ -38,9 +41,9 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             sess,
             dst: output.to_path_buf(),
             lib_search_paths: archive_search_paths(sess),
-            use_native_ar: false,
-            // FIXME test for linux and System V derivatives instead
             use_gnu_style_archive: sess.target.target.options.archive_format == "gnu",
+            // FIXME fix builtin ranlib on macOS
+            no_builtin_ranlib: sess.target.target.options.is_like_osx,
         };
 
         let (src_archives, entries) = if let Some(input) = input {
@@ -141,85 +144,97 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn build(mut self) {
-        use std::process::Command;
-
-        fn add_file_using_ar(archive: &Path, file: &Path) {
-            Command::new("ar")
-                .arg("r") // add or replace file
-                .arg("-c") // silence created file message
-                .arg(archive)
-                .arg(&file)
-                .status()
-                .unwrap();
-        }
-
-        enum BuilderKind<'a> {
+        enum BuilderKind {
             Bsd(ar::Builder<File>),
             Gnu(ar::GnuBuilder<File>),
-            NativeAr(&'a Path),
         }
 
-        let mut builder = if self.config.use_native_ar {
-            BuilderKind::NativeAr(&self.config.dst)
-        } else if self.config.use_gnu_style_archive {
-            BuilderKind::Gnu(ar::GnuBuilder::new(
-                File::create(&self.config.dst).unwrap(),
-                self.entries
-                    .iter()
-                    .map(|(name, _)| name.as_bytes().to_vec())
-                    .collect(),
-            ))
-        } else {
-            BuilderKind::Bsd(ar::Builder::new(File::create(&self.config.dst).unwrap()))
-        };
+        let mut symbol_table = BTreeMap::new();
 
-        // Add all files
-        for (entry_name, entry) in self.entries.into_iter() {
-            match entry {
+        let mut entries = Vec::new();
+
+        for (entry_name, entry) in self.entries {
+            // FIXME only read the symbol table of the object files to avoid having to keep all
+            // object files in memory at once, or read them twice.
+            let data = match entry {
                 ArchiveEntry::FromArchive {
                     archive_index,
                     entry_index,
                 } => {
-                    let (ref src_archive_path, ref mut src_archive) =
+                    // FIXME read symbols from symtab
+                    use std::io::Read;
+                    let (ref _src_archive_path, ref mut src_archive) =
                         self.src_archives[archive_index];
-                    let entry = src_archive.jump_to_entry(entry_index).unwrap();
-                    let header = entry.header().clone();
+                    let mut entry = src_archive.jump_to_entry(entry_index).unwrap();
+                    let mut data = Vec::new();
+                    entry.read_to_end(&mut data).unwrap();
+                    data
 
-                    match builder {
-                        BuilderKind::Bsd(ref mut builder) => {
-                            builder.append(&header, entry).unwrap()
-                        }
-                        BuilderKind::Gnu(ref mut builder) => {
-                            builder.append(&header, entry).unwrap()
-                        }
-                        BuilderKind::NativeAr(archive_file) => {
-                            Command::new("ar")
-                                .arg("x")
-                                .arg(src_archive_path)
-                                .arg(&entry_name)
-                                .status()
-                                .unwrap();
-                            add_file_using_ar(archive_file, Path::new(&entry_name));
-                            std::fs::remove_file(entry_name).unwrap();
+                }
+                ArchiveEntry::File(file) => {
+                    std::fs::read(file).unwrap()
+                }
+            };
+
+            if !self.config.no_builtin_ranlib {
+                match object::File::parse(&data) {
+                    Ok(object) => {
+                        symbol_table.insert(entry_name.as_bytes().to_vec(), object.symbols().filter_map(|(_index, symbol)| {
+                            if symbol.is_undefined() || symbol.is_local() || symbol.kind() != SymbolKind::Data && symbol.kind() != SymbolKind::Text && symbol.kind() != SymbolKind::Tls {
+                                None
+                            } else {
+                                symbol.name().map(|name| name.as_bytes().to_vec())
+                            }
+                        }).collect::<Vec<_>>());
+                    }
+                    Err(err) => {
+                        let err = err.to_string();
+                        if err == "Unknown file magic" {
+                            // Not an object file; skip it.
+                        } else {
+                            self.config.sess.fatal(&format!("Error parsing `{}` during archive creation: {}", entry_name, err));
                         }
                     }
                 }
-                ArchiveEntry::File(file) => match builder {
-                    BuilderKind::Bsd(ref mut builder) => builder
-                        .append_file(entry_name.as_bytes(), &mut File::open(file).unwrap())
-                        .unwrap(),
-                    BuilderKind::Gnu(ref mut builder) => builder
-                        .append_file(entry_name.as_bytes(), &mut File::open(file).unwrap())
-                        .unwrap(),
-                    BuilderKind::NativeAr(archive_file) => add_file_using_ar(archive_file, &file),
-                },
+            }
+
+            entries.push((entry_name, data));
+        }
+
+        let mut builder = if self.config.use_gnu_style_archive {
+            BuilderKind::Gnu(ar::GnuBuilder::new(
+                File::create(&self.config.dst).unwrap(),
+                entries
+                    .iter()
+                    .map(|(name, _)| name.as_bytes().to_vec())
+                    .collect(),
+                ar::GnuSymbolTableFormat::Size32,
+                symbol_table,
+            ).unwrap())
+        } else {
+            BuilderKind::Bsd(ar::Builder::new(
+                File::create(&self.config.dst).unwrap(),
+                symbol_table,
+            ).unwrap())
+        };
+
+        // Add all files
+        for (entry_name, data) in entries.into_iter() {
+            let header = ar::Header::new(entry_name.into_bytes(), data.len() as u64);
+            match builder {
+                BuilderKind::Bsd(ref mut builder) => builder
+                    .append(&header, &mut &*data)
+                    .unwrap(),
+                BuilderKind::Gnu(ref mut builder) => builder
+                    .append(&header, &mut &*data)
+                    .unwrap(),
             }
         }
 
         // Finalize archive
         std::mem::drop(builder);
 
-        if self.update_symbols {
+        if self.config.no_builtin_ranlib {
             let ranlib = crate::toolchain::get_toolchain_binary(self.config.sess, "ranlib");
 
             // Run ranlib to be able to link the archive

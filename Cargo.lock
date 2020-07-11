@@ -9,8 +9,7 @@ checksum = "85bb70cc08ec97ca5450e6eba421deeea5f172c0fc61f78b5357b2a8e8be195f"
 [[package]]
 name = "ar"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "450575f58f7bee32816abbff470cbc47797397c2a81e0eaced4b98436daf52e1"
+source = "git+https://github.com/bjorn3/rust-ar.git?branch=do_not_remove_cg_clif_ranlib#de9ab0e56bf3a208381d342aa5b60f9ff2891648"
 
 [[package]]
 name = "autocfg"
