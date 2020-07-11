@@ -1,7 +1,6 @@
 fn main() {}
 
 const fn unsize(x: &[u8; 3]) -> &[u8] { x }
-//~^ ERROR unsizing casts are not allowed in const fn
 const fn closure() -> fn() { || {} }
 //~^ ERROR function pointers in const fn are unstable
 const fn closure2() {
