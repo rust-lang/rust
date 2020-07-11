@@ -14,6 +14,7 @@ use ra_db::CrateId;
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
+use test_utils::mark;
 
 pub(crate) use lower::LowerCtx;
 
@@ -42,7 +43,7 @@ pub(crate) struct Expander {
     current_file_id: HirFileId,
     ast_id_map: Arc<AstIdMap>,
     module: ModuleId,
-    recursive_limit: usize,
+    recursion_limit: usize,
 }
 
 impl CfgExpander {
@@ -81,7 +82,7 @@ impl Expander {
             current_file_id,
             ast_id_map,
             module,
-            recursive_limit: 0,
+            recursion_limit: 0,
         }
     }
 
@@ -91,7 +92,9 @@ impl Expander {
         local_scope: Option<&ItemScope>,
         macro_call: ast::MacroCall,
     ) -> Option<(Mark, T)> {
-        if self.recursive_limit > 1024 {
+        self.recursion_limit += 1;
+        if self.recursion_limit > 32 {
+            mark::hit!(your_stack_belongs_to_me);
             return None;
         }
 
@@ -118,8 +121,6 @@ impl Expander {
                     self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
                     self.current_file_id = file_id;
                     self.ast_id_map = db.ast_id_map(file_id);
-                    self.recursive_limit += 1;
-
                     return Some((mark, expr));
                 }
             }
@@ -134,7 +135,7 @@ impl Expander {
         self.cfg_expander.hygiene = Hygiene::new(db.upcast(), mark.file_id);
         self.current_file_id = mark.file_id;
         self.ast_id_map = mem::take(&mut mark.ast_id_map);
-        self.recursive_limit -= 1;
+        self.recursion_limit -= 1;
         mark.bomb.defuse();
     }
 
@@ -309,5 +310,46 @@ impl BodySourceMap {
 
     pub fn field_syntax(&self, expr: ExprId, field: usize) -> InFile<AstPtr<ast::RecordField>> {
         self.field_map[&(expr, field)].clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ra_db::{fixture::WithFixture, SourceDatabase};
+    use test_utils::mark;
+
+    use crate::ModuleDefId;
+
+    use super::*;
+
+    fn lower(ra_fixture: &str) -> Arc<Body> {
+        let (db, file_id) = crate::test_db::TestDB::with_single_file(ra_fixture);
+
+        let krate = db.crate_graph().iter().next().unwrap();
+        let def_map = db.crate_def_map(krate);
+        let module = def_map.modules_for_file(file_id).next().unwrap();
+        let module = &def_map[module];
+        let fn_def = match module.scope.declarations().next().unwrap() {
+            ModuleDefId::FunctionId(it) => it,
+            _ => panic!(),
+        };
+
+        db.body(fn_def.into())
+    }
+
+    #[test]
+    fn your_stack_belongs_to_me() {
+        mark::check!(your_stack_belongs_to_me);
+        lower(
+            r"
+macro_rules! n_nuple {
+    ($e:tt) => ();
+    ($($rest:tt)*) => {{
+        (n_nuple!($($rest)*)None,)
+    }};
+}
+fn main() { n_nuple!(1,2,3); }
+",
+        );
     }
 }
