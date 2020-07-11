@@ -271,6 +271,7 @@ impl ToChalk for TypeCtor {
             }
             TypeCtor::Never => TypeName::Never,
 
+            // FIXME convert these
             TypeCtor::Adt(_)
             | TypeCtor::Array
             | TypeCtor::FnPtr { .. }

@@ -295,13 +295,8 @@ pub enum Impl {
     /// A normal impl from an impl block.
     ImplDef(ImplId),
     /// Closure types implement the Fn traits synthetically.
+    // FIXME: implement closure support from Chalk, remove this
     ClosureFnTraitImpl(ClosureFnTraitImplData),
-    /// [T; n]: Unsize<[T]>
-    UnsizeArray,
-    /// T: Unsize<dyn Trait> where T: Trait
-    UnsizeToTraitObject(TraitId),
-    /// dyn Trait: Unsize<dyn SuperTrait> if Trait: SuperTrait
-    UnsizeToSuperTraitObject(UnsizeToSuperTraitObjectData),
 }
 /// This exists just for Chalk, because our ImplIds are only unique per module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
