@@ -132,32 +132,29 @@ impl EarlyProps {
 
         fn ignore_gdb(config: &Config, line: &str) -> bool {
             if let Some(actual_version) = config.gdb_version {
-                if line.starts_with("min-gdb-version") {
-                    let (start_ver, end_ver) = extract_gdb_version_range(line);
+                if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
+                    let (start_ver, end_ver) = extract_gdb_version_range(rest);
 
                     if start_ver != end_ver {
                         panic!("Expected single GDB version")
                     }
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    actual_version < start_ver
-                } else if line.starts_with("ignore-gdb-version") {
-                    let (min_version, max_version) = extract_gdb_version_range(line);
+                    return actual_version < start_ver;
+                } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
+                    let (min_version, max_version) = extract_gdb_version_range(rest);
 
                     if max_version < min_version {
                         panic!("Malformed GDB version range: max < min")
                     }
 
-                    actual_version >= min_version && actual_version <= max_version
-                } else {
-                    false
+                    return actual_version >= min_version && actual_version <= max_version;
                 }
-            } else {
-                false
             }
+            false
         }
 
-        // Takes a directive of the form "ignore-gdb-version <version1> [- <version2>]",
+        // Takes a directive of the form "<version1> [- <version2>]",
         // returns the numeric representation of <version1> and <version2> as
         // tuple: (<version1> as u32, <version2> as u32)
         // If the <version2> part is omitted, the second component of the tuple
