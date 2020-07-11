@@ -848,11 +848,11 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     let patch = splits.next();
 
     let major: u32 = major.parse().unwrap();
-    let (minor, patch): (u32, u32) = match minor.find(|c: char| !c.is_digit(10)) {
+    let (minor, patch): (u32, u32) = match minor.find(not_a_digit) {
         None => {
             let minor = minor.parse().unwrap();
             let patch: u32 = match patch {
-                Some(patch) => match patch.find(|c: char| !c.is_digit(10)) {
+                Some(patch) => match patch.find(not_a_digit) {
                     None => patch.parse().unwrap(),
                     Some(idx) if idx > 3 => 0,
                     Some(idx) => patch[..idx].parse().unwrap(),
@@ -898,15 +898,19 @@ fn extract_lldb_version(full_version_line: &str) -> Option<(u32, bool)> {
     if let Some(apple_ver) =
         full_version_line.strip_prefix("LLDB-").or_else(|| full_version_line.strip_prefix("lldb-"))
     {
-        if let Some(idx) = apple_ver.find(|c: char| !c.is_digit(10)) {
+        if let Some(idx) = apple_ver.find(not_a_digit) {
             let version: u32 = apple_ver[..idx].parse().unwrap();
             return Some((version, full_version_line.contains("rust-enabled")));
         }
     } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ") {
-        if let Some(idx) = lldb_ver.find(|c: char| !c.is_digit(10)) {
+        if let Some(idx) = lldb_ver.find(not_a_digit) {
             let version: u32 = lldb_ver[..idx].parse().unwrap();
             return Some((version * 100, full_version_line.contains("rust-enabled")));
         }
     }
     None
+}
+
+fn not_a_digit(c: char) -> bool {
+    !c.is_digit(10)
 }
