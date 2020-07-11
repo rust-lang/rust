@@ -49,14 +49,14 @@ const EXCEPTIONS: &[(&str, &str)] = &[
 /// these and all their dependencies *must not* be in the exception list.
 const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort", "panic_unwind"];
 
-/// Which crates to check against the whitelist?
-const WHITELIST_CRATES: &[&str] = &["rustc_middle", "rustc_codegen_llvm"];
+/// Crates whose dependencies must be explicitly permitted.
+const RESTRICTED_DEPENDENCY_CRATES: &[&str] = &["rustc_middle", "rustc_codegen_llvm"];
 
-/// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
+/// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
 ///
 /// This list is here to provide a speed-bump to adding a new dependency to
 /// rustc. Please check with the compiler team before adding an entry.
-const WHITELIST: &[&str] = &[
+const PERMITTED_DEPENDENCIES: &[&str] = &[
     "adler32",
     "aho-corasick",
     "annotate-snippets",
@@ -190,7 +190,7 @@ pub fn check(path: &Path, cargo: &Path, bad: &mut bool) {
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let metadata = t!(cmd.exec());
     check_exceptions(&metadata, bad);
-    check_whitelist(&metadata, bad);
+    check_dependencies(&metadata, bad);
     check_crate_duplicate(&metadata, bad);
 }
 
@@ -272,36 +272,37 @@ fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
     }
 }
 
-/// Checks the dependency of `WHITELIST_CRATES` at the given path. Changes `bad` to `true` if a
-/// check failed.
+/// Checks the dependency of `RESTRICTED_DEPENDENCY_CRATES` at the given path. Changes `bad` to
+/// `true` if a check failed.
 ///
-/// Specifically, this checks that the dependencies are on the `WHITELIST`.
-fn check_whitelist(metadata: &Metadata, bad: &mut bool) {
-    // Check that the WHITELIST does not have unused entries.
-    for name in WHITELIST {
+/// Specifically, this checks that the dependencies are on the `PERMITTED_DEPENDENCIES`.
+fn check_dependencies(metadata: &Metadata, bad: &mut bool) {
+    // Check that the PERMITTED_DEPENDENCIES does not have unused entries.
+    for name in PERMITTED_DEPENDENCIES {
         if !metadata.packages.iter().any(|p| p.name == *name) {
             println!(
-                "could not find whitelisted package `{}`\n\
-                Remove from WHITELIST list if it is no longer used.",
+                "could not find allowed package `{}`\n\
+                Remove from PERMITTED_DEPENDENCIES list if it is no longer used.",
                 name
             );
             *bad = true;
         }
     }
-    // Get the whitelist in a convenient form.
-    let whitelist: HashSet<_> = WHITELIST.iter().cloned().collect();
+    // Get the list in a convenient form.
+    let permitted_dependencies: HashSet<_> = PERMITTED_DEPENDENCIES.iter().cloned().collect();
 
     // Check dependencies.
     let mut visited = BTreeSet::new();
     let mut unapproved = BTreeSet::new();
-    for &krate in WHITELIST_CRATES.iter() {
+    for &krate in RESTRICTED_DEPENDENCY_CRATES.iter() {
         let pkg = pkg_from_name(metadata, krate);
-        let mut bad = check_crate_whitelist(&whitelist, metadata, &mut visited, pkg);
+        let mut bad =
+            check_crate_dependencies(&permitted_dependencies, metadata, &mut visited, pkg);
         unapproved.append(&mut bad);
     }
 
     if !unapproved.is_empty() {
-        println!("Dependencies not on the whitelist:");
+        println!("Dependencies not explicitly permitted:");
         for dep in unapproved {
             println!("* {}", dep);
         }
@@ -310,9 +311,9 @@ fn check_whitelist(metadata: &Metadata, bad: &mut bool) {
 }
 
 /// Checks the dependencies of the given crate from the given cargo metadata to see if they are on
-/// the whitelist. Returns a list of illegal dependencies.
-fn check_crate_whitelist<'a>(
-    whitelist: &'a HashSet<&'static str>,
+/// the list of permitted dependencies. Returns a list of disallowed dependencies.
+fn check_crate_dependencies<'a>(
+    permitted_dependencies: &'a HashSet<&'static str>,
     metadata: &'a Metadata,
     visited: &mut BTreeSet<&'a PackageId>,
     krate: &'a Package,
@@ -327,10 +328,10 @@ fn check_crate_whitelist<'a>(
 
     visited.insert(&krate.id);
 
-    // If this path is in-tree, we don't require it to be on the whitelist.
+    // If this path is in-tree, we don't require it to be explicitly permitted.
     if krate.source.is_some() {
-        // If this dependency is not on `WHITELIST`, add to bad set.
-        if !whitelist.contains(krate.name.as_str()) {
+        // If this dependency is not on `PERMITTED_DEPENDENCIES`, add to bad set.
+        if !permitted_dependencies.contains(krate.name.as_str()) {
             unapproved.insert(&krate.id);
         }
     }
@@ -339,7 +340,7 @@ fn check_crate_whitelist<'a>(
     let to_check = deps_of(metadata, &krate.id);
 
     for dep in to_check {
-        let mut bad = check_crate_whitelist(whitelist, metadata, visited, dep);
+        let mut bad = check_crate_dependencies(permitted_dependencies, metadata, visited, dep);
         unapproved.append(&mut bad);
     }
 

@@ -3151,7 +3151,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-const ATTRIBUTE_WHITELIST: &[Symbol] = &[
+const ALLOWED_ATTRIBUTES: &[Symbol] = &[
     sym::export_name,
     sym::lang,
     sym::link_section,
@@ -3173,7 +3173,7 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
-        if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty()) {
+        if !ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
             continue;
         }
 

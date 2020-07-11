@@ -913,7 +913,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Adt(..) = rcvr_t.kind {
                 // Try alternative arbitrary self types that could fulfill this call.
                 // FIXME: probe for all types that *could* be arbitrary self-types, not
-                // just this whitelist.
+                // just this list.
                 try_alt_rcvr(&mut err, self.tcx.mk_lang_item(rcvr_t, lang_items::OwnedBoxLangItem));
                 try_alt_rcvr(&mut err, self.tcx.mk_lang_item(rcvr_t, lang_items::PinTypeLangItem));
                 try_alt_rcvr(&mut err, self.tcx.mk_diagnostic_item(rcvr_t, sym::Arc));
@@ -1806,7 +1806,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // If this is an input value, we require its type to be fully resolved
         // at this point. This allows us to provide helpful coercions which help
-        // pass the type whitelist in a later pass.
+        // pass the type candidate list in a later pass.
         //
         // We don't require output types to be resolved at this point, which
         // allows them to be inferred based on how they are used later in the

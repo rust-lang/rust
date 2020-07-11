@@ -263,7 +263,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // Windows we end up still needing the `uwtable` attribute even if the `-C
     // panic=abort` flag is passed.
     //
-    // You can also find more info on why Windows is whitelisted here in:
+    // You can also find more info on why Windows always requires uwtables here:
     //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
     if cx.sess().must_emit_unwind_tables() {
         attributes::emit_uwtable(llfn, true);
@@ -343,14 +343,14 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.target_features_whitelist = |tcx, cnum| {
+    providers.supported_target_features = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         if tcx.sess.opts.actually_rustdoc {
             // rustdoc needs to be able to document functions that use all the features, so
-            // whitelist them all
+            // provide them all.
             llvm_util::all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
         } else {
-            llvm_util::target_feature_whitelist(tcx.sess)
+            llvm_util::supported_target_features(tcx.sess)
                 .iter()
                 .map(|&(a, b)| (a.to_string(), b))
                 .collect()

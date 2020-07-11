@@ -2150,7 +2150,7 @@ fn from_target_feature(
     tcx: TyCtxt<'_>,
     id: DefId,
     attr: &ast::Attribute,
-    whitelist: &FxHashMap<String, Option<Symbol>>,
+    supported_target_features: &FxHashMap<String, Option<Symbol>>,
     target_features: &mut Vec<Symbol>,
 ) {
     let list = match attr.meta_item_list() {
@@ -2184,8 +2184,7 @@ fn from_target_feature(
 
         // We allow comma separation to enable multiple features.
         target_features.extend(value.as_str().split(',').filter_map(|feature| {
-            // Only allow whitelisted features per platform.
-            let feature_gate = match whitelist.get(feature) {
+            let feature_gate = match supported_target_features.get(feature) {
                 Some(g) => g,
                 None => {
                     let msg =
@@ -2196,7 +2195,7 @@ fn from_target_feature(
                         format!("`{}` is not valid for this target", feature),
                     );
                     if feature.starts_with('+') {
-                        let valid = whitelist.contains_key(&feature[1..]);
+                        let valid = supported_target_features.contains_key(&feature[1..]);
                         if valid {
                             err.help("consider removing the leading `+` in the feature name");
                         }
@@ -2246,9 +2245,9 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Linkage {
 
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but whitelist them anyway and trust that
-    // the user knows what s/he's doing. Who knows, unanticipated use cases
-    // may pop up in the future.
+    // Rust code in the first place but allow them anyway and trust that the
+    // user knows what s/he's doing. Who knows, unanticipated use cases may pop
+    // up in the future.
     //
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
     // and don't have to be, LLVM treats them as no-ops.
@@ -2283,7 +2282,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
     }
 
-    let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
+    let supported_target_features = tcx.supported_target_features(LOCAL_CRATE);
 
     let mut inline_span = None;
     let mut link_ordinal_span = None;
@@ -2386,7 +2385,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     check_target_feature_trait_unsafe(tcx, local_id, attr.span);
                 }
             }
-            from_target_feature(tcx, id, attr, &whitelist, &mut codegen_fn_attrs.target_features);
+            from_target_feature(
+                tcx,
+                id,
+                attr,
+                &supported_target_features,
+                &mut codegen_fn_attrs.target_features,
+            );
         } else if attr.check_name(sym::linkage) {
             if let Some(val) = attr.value_str() {
                 codegen_fn_attrs.linkage = Some(linkage_by_name(tcx, id, &val.as_str()));
