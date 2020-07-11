@@ -8,7 +8,7 @@ LL |             |_| (),
    |             ------ not a function
 
 error[E0739]: attribute should be applied to function
-  --> $DIR/issue-68060.rs:7:13
+  --> $DIR/issue-68060.rs:8:13
    |
 LL |             #[track_caller]
    |             ^^^^^^^^^^^^^^^
