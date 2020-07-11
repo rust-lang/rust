@@ -955,11 +955,11 @@ pub fn input() -> String {
     match len {
         0 => panic!("invalid character!"),
         _ => {
-            if input.as_bytes()[input.len() - 1] == b'\n' {
+            if input.ends_with('\n') {
                 input.pop();
-            }
-            if input.as_bytes()[input.len() - 1] == b'\r' {
-                input.pop();
+                if input.ends_with('\r') {
+                    input.pop();
+                }
             }
             input
         }
