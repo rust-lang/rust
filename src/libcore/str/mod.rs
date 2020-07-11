@@ -4348,7 +4348,7 @@ impl str {
         // We can treat each byte as character here: all multibyte characters
         // start with a byte that is not in the ascii range, so we will stop
         // there already.
-        self.bytes().all(|b| b.is_ascii())
+        self.as_bytes().is_ascii()
     }
 
     /// Checks that two strings are an ASCII case-insensitive match.
