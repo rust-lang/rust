@@ -339,8 +339,6 @@ impl<T: ?Sized> *const T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(ptr_offset_from)]
-    ///
     /// let a = [0; 5];
     /// let ptr1: *const i32 = &a[1];
     /// let ptr2: *const i32 = &a[3];
@@ -355,8 +353,6 @@ impl<T: ?Sized> *const T {
     /// *Incorrect* usage:
     ///
     /// ```rust,no_run
-    /// #![feature(ptr_offset_from)]
-    ///
     /// let ptr1 = Box::into_raw(Box::new(0u8)) as *const u8;
     /// let ptr2 = Box::into_raw(Box::new(1u8)) as *const u8;
     /// let diff = (ptr2 as isize).wrapping_sub(ptr1 as isize);

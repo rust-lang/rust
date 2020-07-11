@@ -510,8 +510,6 @@ impl<T: ?Sized> *mut T {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(ptr_offset_from)]
-    ///
     /// let mut a = [0; 5];
     /// let ptr1: *mut i32 = &mut a[1];
     /// let ptr2: *mut i32 = &mut a[3];
@@ -526,8 +524,6 @@ impl<T: ?Sized> *mut T {
     /// *Incorrect* usage:
     ///
     /// ```rust,no_run
-    /// #![feature(ptr_offset_from)]
-    ///
     /// let ptr1 = Box::into_raw(Box::new(0u8));
     /// let ptr2 = Box::into_raw(Box::new(1u8));
     /// let diff = (ptr2 as isize).wrapping_sub(ptr1 as isize);
