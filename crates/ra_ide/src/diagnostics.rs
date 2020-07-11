@@ -131,7 +131,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
 
 fn missing_struct_field_fix(
     sema: &Semantics<RootDatabase>,
-    file_id: FileId,
+    usage_file_id: FileId,
     d: &hir::diagnostics::NoSuchField,
 ) -> Option<Fix> {
     let record_expr = sema.ast(d);
@@ -139,25 +139,30 @@ fn missing_struct_field_fix(
     let record_lit = ast::RecordLit::cast(record_expr.syntax().parent()?.parent()?)?;
     let def_id = sema.resolve_variant(record_lit)?;
     let module;
+    let def_file_id;
     let record_fields = match VariantDef::from(def_id) {
         VariantDef::Struct(s) => {
             module = s.module(sema.db);
             let source = s.source(sema.db);
+            def_file_id = source.file_id;
             let fields = source.value.field_def_list()?;
             record_field_def_list(fields)?
         }
         VariantDef::Union(u) => {
             module = u.module(sema.db);
             let source = u.source(sema.db);
+            def_file_id = source.file_id;
             source.value.record_field_def_list()?
         }
         VariantDef::EnumVariant(e) => {
             module = e.module(sema.db);
             let source = e.source(sema.db);
+            def_file_id = source.file_id;
             let fields = source.value.field_def_list()?;
             record_field_def_list(fields)?
         }
     };
+    let def_file_id = def_file_id.original_file(sema.db);
 
     let new_field_type = sema.type_of_expr(&record_expr.expr()?)?;
     if new_field_type.is_unknown() {
@@ -172,7 +177,11 @@ fn missing_struct_field_fix(
     let last_field_syntax = last_field.syntax();
     let indent = IndentLevel::from_node(last_field_syntax);
 
-    let mut new_field = format!("\n{}{}", indent, new_field);
+    let mut new_field = new_field.to_string();
+    if usage_file_id != def_file_id {
+        new_field = format!("pub(crate) {}", new_field);
+    }
+    new_field = format!("\n{}{}", indent, new_field);
 
     let needs_comma = !last_field_syntax.to_string().ends_with(",");
     if needs_comma {
@@ -180,7 +189,7 @@ fn missing_struct_field_fix(
     }
 
     let source_change = SourceFileEdit {
-        file_id,
+        file_id: def_file_id,
         edit: TextEdit::insert(last_field_syntax.text_range().end(), new_field),
     };
     let fix = Fix::new("Create field", source_change.into());
@@ -307,6 +316,25 @@ mod tests {
             diagnostic.range,
             file_position.offset
         );
+    }
+
+    /// Checks that a diagnostic applies to the file containing the `<|>` cursor marker
+    /// which has a fix that can apply to other files.
+    fn check_apply_diagnostic_fix_in_other_file(ra_fixture_before: &str, ra_fixture_after: &str) {
+        let ra_fixture_after = &trim_indent(ra_fixture_after);
+        let (analysis, file_pos) = analysis_and_position(ra_fixture_before);
+        let current_file_id = file_pos.file_id;
+        let diagnostic = analysis.diagnostics(current_file_id).unwrap().pop().unwrap();
+        let mut fix = diagnostic.fix.unwrap();
+        let edit = fix.source_change.source_file_edits.pop().unwrap();
+        let changed_file_id = edit.file_id;
+        let before = analysis.file_text(changed_file_id).unwrap();
+        let actual = {
+            let mut actual = before.to_string();
+            edit.edit.apply(&mut actual);
+            actual
+        };
+        assert_eq_text!(ra_fixture_after, &actual);
     }
 
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
@@ -730,6 +758,30 @@ struct Foo {
     baz: bool
 }
 ",
+        )
+    }
+
+    #[test]
+    fn test_add_field_in_other_file_from_usage() {
+        check_apply_diagnostic_fix_in_other_file(
+            r"
+            //- /main.rs
+            mod foo;
+
+            fn main() {
+                <|>foo::Foo { bar: 3, baz: false};
+            }
+            //- /foo.rs
+            struct Foo {
+                bar: i32
+            }
+            ",
+            r"
+            struct Foo {
+                bar: i32,
+                pub(crate) baz: bool
+            }
+            ",
         )
     }
 }
