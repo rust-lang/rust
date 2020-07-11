@@ -11,11 +11,11 @@ use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams, DocumentHighlight,
-    DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location, Position,
-    PrepareRenameResponse, Range, RenameParams, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, TextDocumentIdentifier,
-    Url, WorkspaceEdit,
+    CodeActionKind, CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams,
+    DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location,
+    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensParams,
+    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
+    TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
@@ -760,7 +760,7 @@ fn handle_fixes(
             title,
             id: None,
             group: None,
-            kind: Some(lsp_types::code_action_kind::QUICKFIX.into()),
+            kind: Some(CodeActionKind::QUICKFIX),
             edit: Some(edit),
         };
         res.push(action);

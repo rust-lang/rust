@@ -3,7 +3,9 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use lsp_types::request::Request;
-use lsp_types::{notification::Notification, Position, Range, TextDocumentIdentifier};
+use lsp_types::{
+    notification::Notification, CodeActionKind, Position, Range, TextDocumentIdentifier,
+};
 use serde::{Deserialize, Serialize};
 
 pub enum AnalyzerStatus {}
@@ -248,7 +250,7 @@ pub struct CodeAction {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub kind: Option<String>,
+    pub kind: Option<CodeActionKind>,
     // We don't handle commands on the client-side
     // #[serde(skip_serializing_if = "Option::is_none")]
     // pub command: Option<lsp_types::Command>,
