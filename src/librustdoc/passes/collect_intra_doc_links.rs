@@ -50,7 +50,8 @@ enum ErrorKind {
 
 struct LinkCollector<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
-    mod_ids: Vec<hir::HirId>,
+    // NOTE: this may not necessarily be a module in the current crate
+    mod_ids: Vec<DefId>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -445,17 +446,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
         use rustc_middle::ty::DefIdTree;
 
-        let item_hir_id = if item.is_mod() {
-            if let Some(def_id) = item.def_id.as_local() {
-                Some(self.cx.tcx.hir().as_local_hir_id(def_id))
-            } else {
-                debug!("attempting to fold on a non-local item: {:?}", item);
-                return self.fold_item_recur(item);
-            }
-        } else {
-            None
-        };
-
         let parent_node = if item.is_fake() {
             // FIXME: is this correct?
             None
@@ -482,13 +472,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         let current_item = match item.inner {
             ModuleItem(..) => {
                 if item.attrs.inner_docs {
-                    if item_hir_id.unwrap() != hir::CRATE_HIR_ID { item.name.clone() } else { None }
+                    if item.def_id.is_top_level_module() { item.name.clone() } else { None }
                 } else {
-                    match parent_node.or(self
-                        .mod_ids
-                        .last()
-                        .map(|&local| self.cx.tcx.hir().local_def_id(local).to_def_id()))
-                    {
+                    match parent_node.or(self.mod_ids.last().copied()) {
                         Some(parent) if !parent.is_top_level_module() => {
                             // FIXME: can we pull the parent module's name from elsewhere?
                             Some(self.cx.tcx.item_name(parent).to_string())
@@ -508,7 +494,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         };
 
         if item.is_mod() && item.attrs.inner_docs {
-            self.mod_ids.push(item_hir_id.unwrap());
+            self.mod_ids.push(item.def_id);
         }
 
         let cx = self.cx;
@@ -655,7 +641,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 // for outer comments we explicitly try and resolve against the
                 // parent_node first.
                 let base_node = if item.is_mod() && item.attrs.inner_docs {
-                    self.mod_ids.last().map(|&id| self.cx.tcx.hir().local_def_id(id).to_def_id())
+                    self.mod_ids.last().copied()
                 } else {
                     parent_node
                 };
@@ -842,7 +828,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         }
 
         if item.is_mod() && !item.attrs.inner_docs {
-            self.mod_ids.push(item_hir_id.unwrap());
+            self.mod_ids.push(item.def_id);
         }
 
         if item.is_mod() {
