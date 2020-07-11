@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Added `erase` and `remove` to `RawTable`. (#171)
+- Added `try_with_capacity` to `RawTable`. (#174)
+- Added methods that allow re-using a `RawIter` for `RawDrain`,
+  `RawIntoIter`, and `RawParIter`. (#175)
+- Added `reflect_remove` and `reflect_insert` to `RawIter`. (#175)
+
+### Changed
+- Deprecated `RawTable::erase_no_drop` in favor of `erase` and `remove`. (#176)
+
 ## [v0.8.0] - 2020-06-18
 
 ### Fixed
