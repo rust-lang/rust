@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(const_forget)]
-
 use std::mem::forget;
 
 const _: () = forget(0i32);
