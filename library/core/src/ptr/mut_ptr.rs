@@ -552,56 +552,6 @@ impl<T: ?Sized> *mut T {
         unsafe { (self as *const T).offset_from(origin) }
     }
 
-    /// Calculates the distance between two pointers. The returned value is in
-    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
-    ///
-    /// If the address different between the two pointers is not a multiple of
-    /// `mem::size_of::<T>()` then the result of the division is rounded towards
-    /// zero.
-    ///
-    /// Though this method is safe for any two pointers, note that its result
-    /// will be mostly useless if the two pointers aren't into the same allocated
-    /// object, for example if they point to two different local variables.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `T` is a zero-sized type.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(ptr_wrapping_offset_from)]
-    ///
-    /// let mut a = [0; 5];
-    /// let ptr1: *mut i32 = &mut a[1];
-    /// let ptr2: *mut i32 = &mut a[3];
-    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
-    /// assert_eq!(ptr1.wrapping_offset_from(ptr2), -2);
-    /// assert_eq!(ptr1.wrapping_offset(2), ptr2);
-    /// assert_eq!(ptr2.wrapping_offset(-2), ptr1);
-    ///
-    /// let ptr1: *mut i32 = 3 as _;
-    /// let ptr2: *mut i32 = 13 as _;
-    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
-    /// ```
-    #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
-    #[rustc_deprecated(
-        since = "1.46.0",
-        reason = "Pointer distances across allocation \
-        boundaries are not typically meaningful. \
-        Use integer subtraction if you really need this."
-    )]
-    #[inline]
-    pub fn wrapping_offset_from(self, origin: *const T) -> isize
-    where
-        T: Sized,
-    {
-        #[allow(deprecated_in_future, deprecated)]
-        (self as *const T).wrapping_offset_from(origin)
-    }
-
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
