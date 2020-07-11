@@ -951,7 +951,7 @@ pub fn input() -> String {
     let _ = stdout().flush();
     let len = stdin().read_line(&mut input).expect("Failed to read from stdin");
     match len {
-        0 => String::new(),
+        0 => panic!("invalid character!"),
         _ => {
             if input.as_bytes()[input.len() - 1] == b'\n' {
                 input.pop();
