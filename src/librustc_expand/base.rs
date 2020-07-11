@@ -735,7 +735,7 @@ pub struct SyntaxExtension {
     pub kind: SyntaxExtensionKind,
     /// Span of the macro definition.
     pub span: Span,
-    /// Whitelist of unstable features that are treated as stable inside this macro.
+    /// List of unstable features that are treated as stable inside this macro.
     pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
     /// Suppresses the `unsafe_code` lint for code produced by this macro.
     pub allow_internal_unsafe: bool,

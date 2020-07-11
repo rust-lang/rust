@@ -45,7 +45,7 @@ macro_rules! throw_validation_failure {
 /// If $e throws an error matching the pattern, throw a validation failure.
 /// Other errors are passed back to the caller, unchanged -- and if they reach the root of
 /// the visitor, we make sure only validation errors and `InvalidProgram` errors are left.
-/// This lets you use the patterns as a kind of validation whitelist, asserting which errors
+/// This lets you use the patterns as a kind of validation list, asserting which errors
 /// can possibly happen:
 ///
 /// ```
