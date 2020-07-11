@@ -118,7 +118,6 @@ fn map_rust_child_diagnostic(
                 changes: Some(edit_map),
                 document_changes: None,
             }),
-            command: None,
         })
     }
 }
