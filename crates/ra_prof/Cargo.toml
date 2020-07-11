@@ -24,4 +24,4 @@ cpu_profiler = []
 # Uncomment to enable for the whole crate graph
 # default = [ "backtrace" ]
 # default = [ "jemalloc" ]
-# default = [ "cpu_profiler" ]
+default = [ "cpu_profiler" ]

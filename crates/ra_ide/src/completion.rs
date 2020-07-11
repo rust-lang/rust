@@ -106,6 +106,7 @@ pub(crate) fn completions(
     config: &CompletionConfig,
     position: FilePosition,
 ) -> Option<Completions> {
+    let _s = ra_prof::Scope::enter();
     let ctx = CompletionContext::new(db, position, config)?;
 
     let mut acc = Completions::default();

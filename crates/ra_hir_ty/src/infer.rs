@@ -65,6 +65,11 @@ mod coerce;
 /// The entry point of type inference.
 pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
     let _p = profile("infer_query");
+    let _cpu_profieler;
+    if ra_prof::Scope::is_active() {
+        _cpu_profieler = ra_prof::cpu_profiler();
+    }
+
     let resolver = def.resolver(db.upcast());
     let mut ctx = InferenceContext::new(db, def, resolver);
 
