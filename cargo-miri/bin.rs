@@ -10,7 +10,7 @@ use std::process::Command;
 
 use rustc_version::VersionMeta;
 
-const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 20);
+const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 21);
 
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
 
@@ -258,8 +258,9 @@ fn setup(subcommand: MiriCommand) {
     // Determine where the rust sources are located.  `XARGO_RUST_SRC` env var trumps everything.
     let rust_src = match std::env::var_os("XARGO_RUST_SRC") {
         Some(path) => {
-            // Make path absolute, but not via `canonicalize` (which does not work very well on Windows).
-            env::current_dir().unwrap().join(path)
+            let path = PathBuf::from(path);
+            // Make path absolute if possible.
+            path.canonicalize().unwrap_or(path)
         }
         None => {
             // Check for `rust-src` rustup component.
