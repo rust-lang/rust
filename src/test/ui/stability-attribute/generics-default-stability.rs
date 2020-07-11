@@ -44,6 +44,8 @@ fn main() {
     // and can be used without the 'unstable_default' feature.
     let _ = STRUCT1.field;
     let _ = Struct1 { field: 1 };
+    let _ = Struct1 { field: () };
+    let _ = Struct1 { field: 1isize };
     let _: Struct1 = Struct1 { field: 1 };
     let _: usize = STRUCT1.field;
     let _ = STRUCT1.field + 1;
