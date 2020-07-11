@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn test_extract_gdb_version() {
-    macro_rules! test { ($($expectation:tt: $input:tt,)*) => {{$(
+    macro_rules! test { ($($expectation:literal: $input:literal,)*) => {{$(
         assert_eq!(extract_gdb_version($input), Some($expectation));
     )*}}}
 

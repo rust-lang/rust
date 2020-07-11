@@ -841,71 +841,36 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     // This particular form is documented in the GNU coding standards:
     // https://www.gnu.org/prep/standards/html_node/_002d_002dversion.html#g_t_002d_002dversion
 
-    // don't start parsing in the middle of a number
-    let mut prev_was_digit = false;
-    let mut in_parens = false;
-    for (pos, c) in full_version_line.char_indices() {
-        if in_parens {
-            if c == ')' {
-                in_parens = false;
-            }
-            continue;
-        } else if c == '(' {
-            in_parens = true;
-            continue;
+    let mut splits = full_version_line.rsplit(' ');
+    let version_string = splits.next().unwrap();
+
+    let mut splits = version_string.split('.');
+    let major = splits.next().unwrap();
+    let minor = splits.next().unwrap();
+    let patch = splits.next();
+
+    let major: u32 = major.parse().unwrap();
+    let (minor, patch): (u32, u32) = match minor.find(|c: char| !c.is_digit(10)) {
+        None => {
+            let minor = minor.parse().unwrap();
+            let patch: u32 = match patch {
+                Some(patch) => match patch.find(|c: char| !c.is_digit(10)) {
+                    None => patch.parse().unwrap(),
+                    Some(idx) if idx > 3 => 0,
+                    Some(idx) => patch[..idx].parse().unwrap(),
+                },
+                None => 0,
+            };
+            (minor, patch)
         }
-
-        if prev_was_digit || !c.is_digit(10) {
-            prev_was_digit = c.is_digit(10);
-            continue;
+        // There is no patch version after minor-date (e.g. "4-2012").
+        Some(idx) => {
+            let minor = minor[..idx].parse().unwrap();
+            (minor, 0)
         }
+    };
 
-        prev_was_digit = true;
-
-        let line = &full_version_line[pos..];
-
-        let next_split = match line.find(|c: char| !c.is_digit(10)) {
-            Some(idx) => idx,
-            None => continue, // no minor version
-        };
-
-        if line.as_bytes()[next_split] != b'.' {
-            continue; // no minor version
-        }
-
-        let major = &line[..next_split];
-        let line = &line[next_split + 1..];
-
-        let (minor, patch) = match line.find(|c: char| !c.is_digit(10)) {
-            Some(idx) => {
-                if line.as_bytes()[idx] == b'.' {
-                    let patch = &line[idx + 1..];
-
-                    let patch_len =
-                        patch.find(|c: char| !c.is_digit(10)).unwrap_or_else(|| patch.len());
-                    let patch = &patch[..patch_len];
-                    let patch = if patch_len > 3 || patch_len == 0 { None } else { Some(patch) };
-
-                    (&line[..idx], patch)
-                } else {
-                    (&line[..idx], None)
-                }
-            }
-            None => (line, None),
-        };
-
-        if minor.is_empty() {
-            continue;
-        }
-
-        let major: u32 = major.parse().unwrap();
-        let minor: u32 = minor.parse().unwrap();
-        let patch: u32 = patch.unwrap_or("0").parse().unwrap();
-
-        return Some(((major * 1000) + minor) * 1000 + patch);
-    }
-
-    None
+    Some(((major * 1000) + minor) * 1000 + patch)
 }
 
 /// Returns (LLDB version, LLDB is rust-enabled)
