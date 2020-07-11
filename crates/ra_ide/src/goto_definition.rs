@@ -856,4 +856,14 @@ impl Foo {
 "#,
         );
     }
+
+    #[test]
+    fn goto_def_for_type_alias_generic_parameter() {
+        check(
+            r#"
+type Alias<T> = T<|>;
+         //^
+"#,
+        )
+    }
 }

@@ -485,6 +485,7 @@ impl<'db> SemanticsImpl<'db> {
             ChildContainer::ModuleId(it) => it.resolver(self.db.upcast()),
             ChildContainer::EnumId(it) => it.resolver(self.db.upcast()),
             ChildContainer::VariantId(it) => it.resolver(self.db.upcast()),
+            ChildContainer::TypeAliasId(it) => it.resolver(self.db.upcast()),
             ChildContainer::GenericDefId(it) => it.resolver(self.db.upcast()),
         };
         SourceAnalyzer::new_for_resolver(resolver, src)
