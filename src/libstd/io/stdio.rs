@@ -930,7 +930,7 @@ pub fn input_prompt(prompt: &str) -> String {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// #![feature(input)]
 /// use std::io::input;
 ///
