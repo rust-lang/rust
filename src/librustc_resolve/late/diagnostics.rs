@@ -1044,6 +1044,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             lifetime_ref
         );
         err.span_label(lifetime_ref.span, "undeclared lifetime");
+        let mut suggests_in_band = false;
         for missing in &self.missing_named_lifetime_spots {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
@@ -1057,6 +1058,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         }) {
                         (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
                     } else {
+                        suggests_in_band = true;
                         (generics.span, format!("<{}>", lifetime_ref))
                     };
                     err.span_suggestion(
@@ -1083,6 +1085,15 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     );
                 }
             }
+        }
+        if nightly_options::is_nightly_build()
+            && !self.tcx.features().in_band_lifetimes
+            && suggests_in_band
+        {
+            err.help(
+                "if you want to experiment with in-band lifetime bindings, \
+                    add `#![feature(in_band_lifetimes)]` to the crate attributes",
+            );
         }
         err.emit();
     }
