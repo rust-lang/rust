@@ -909,7 +909,8 @@ pub fn input_prompt(prompt: &str) -> String {
 
 /// Constructs a new handle to the standard input of the current
 /// process, locks this handle and reads a line of input,
-/// returning a `String` containing the input.
+/// returning a `String` containing the input. For automatic
+/// prompt handling, see the [`input_prompt`] method.
 ///
 /// If you need more explicit control over
 /// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
