@@ -38,8 +38,8 @@ use std::{panic, thread};
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
 ///
-/// This is performed by checking whether a whitelisted set of
-/// features is available on the target machine, by querying LLVM.
+/// This is performed by checking whether a set of permitted features
+/// is available on the target machine, by querying LLVM.
 pub fn add_configuration(
     cfg: &mut CrateConfig,
     sess: &mut Session,

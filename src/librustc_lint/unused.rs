@@ -287,8 +287,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAttributes {
         let attr_info = attr.ident().and_then(|ident| self.builtin_attributes.get(&ident.name));
 
         if let Some(&&(name, ty, ..)) = attr_info {
-            if let AttributeType::Whitelisted = ty {
-                debug!("{:?} is Whitelisted", name);
+            if let AttributeType::AssumedUsed = ty {
+                debug!("{:?} is AssumedUsed", name);
                 return;
             }
         }
