@@ -7,7 +7,6 @@ LL | fn is_zen<T: Zen>(_: T) {}
 LL |     is_zen(x)
    |            ^ `T` cannot be shared between threads safely
    |
-   = help: the trait `std::marker::Sync` is not implemented for `T`
    = note: required because of the requirements on the impl of `Zen` for `&T`
    = note: required because it appears within the type `std::marker::PhantomData<&T>`
    = note: required because it appears within the type `Guard<'_, T>`
@@ -25,7 +24,6 @@ LL | fn is_zen<T: Zen>(_: T) {}
 LL |     is_zen(x)
    |            ^ `T` cannot be shared between threads safely
    |
-   = help: the trait `std::marker::Sync` is not implemented for `T`
    = note: required because of the requirements on the impl of `Zen` for `&T`
    = note: required because it appears within the type `std::marker::PhantomData<&T>`
    = note: required because it appears within the type `Guard<'_, T>`

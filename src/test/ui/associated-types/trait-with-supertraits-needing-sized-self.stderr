@@ -9,7 +9,6 @@ LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self>
 LL | pub trait Add<Rhs = Self> {
    |               --- required by this bound in `std::ops::Add`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Self`
 help: consider further restricting `Self`
    |
 LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> + std::marker::Sized {}

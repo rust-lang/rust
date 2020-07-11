@@ -9,7 +9,6 @@ LL | impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
 LL | pub trait RequiresRequiresShareAndSend : RequiresShare + Send { }
    |                                                          ---- required by this bound in `trait_superkinds_in_metadata::RequiresRequiresShareAndSend`
    |
-   = help: within `X<T>`, the trait `std::marker::Send` is not implemented for `T`
    = note: required because it appears within the type `X<T>`
 help: consider further restricting this bound
    |

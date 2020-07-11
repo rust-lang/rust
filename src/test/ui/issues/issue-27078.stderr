@@ -4,7 +4,6 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL |     fn foo(self) -> &'static i32 {
    |            ^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Self`
    = help: unsized locals are gated as an unstable feature
 help: consider further restricting `Self`
    |

@@ -6,7 +6,6 @@ LL | pub struct Bad<T: ?Sized> {
 LL |     data: T,
    |           ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
    = note: the last field of a packed struct may only have a dynamically sized type if it does not need drop to be run
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
