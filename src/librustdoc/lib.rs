@@ -15,6 +15,8 @@
 #![recursion_limit = "256"]
 
 extern crate env_logger;
+#[macro_use]
+extern crate lazy_static;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;

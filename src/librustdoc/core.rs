@@ -364,6 +364,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         ..Options::default()
     };
 
+    lazy_static! {
+        static ref EMPTY_MAP: FxHashSet<LocalDefId> = FxHashSet::default();
+    }
     let config = interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
@@ -378,8 +381,13 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         lint_caps,
         register_lints: None,
         override_queries: Some(|_sess, local_providers, external_providers| {
+            // Most lints will require typechecking, so just don't run them.
             local_providers.lint_mod = |_, _| {};
             external_providers.lint_mod = |_, _| {};
+            local_providers.typeck_item_bodies = |_, _| {};
+            // hack so that `used_trait_imports` won't try to call typeck_tables_of
+            local_providers.used_trait_imports = |_, _| &EMPTY_MAP;
+            // In case typeck does end up being called, don't ICE in case there were name resolution errors
             local_providers.typeck_tables_of = move |tcx, def_id| {
                 // Closures' tables come from their outermost function,
                 // as they are part of the same "inference environment".
@@ -439,6 +447,13 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
             global_ctxt.enter(|tcx| {
+                // Some queries require that they only run on valid types:
+                // https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425
+                // Therefore typecheck this crate before running lints.
+                // NOTE: this does not typeck item bodies or run the default rustc lints
+                // (see `override_queries` in the `config`)
+                let _ = rustc_typeck::check_crate(tcx);
+                tcx.sess.abort_if_errors();
                 sess.time("missing_docs", || {
                     rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
                 });
