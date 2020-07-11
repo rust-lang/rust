@@ -270,17 +270,17 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 }
 
 impl<'db> SemanticsImpl<'db> {
-    pub fn new(db: &'db dyn HirDatabase) -> Self {
+    fn new(db: &'db dyn HirDatabase) -> Self {
         Self { db, s2d_cache: Default::default(), cache: Default::default() }
     }
 
-    pub fn parse(&self, file_id: FileId) -> ast::SourceFile {
+    fn parse(&self, file_id: FileId) -> ast::SourceFile {
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
     }
 
-    pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
+    fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         let macro_call = self.find_file(macro_call.syntax().clone()).with_value(macro_call);
         let sa = self.analyze2(macro_call.map(|it| it.syntax()), None);
         let file_id = sa.expand(self.db, macro_call)?;
@@ -289,7 +289,7 @@ impl<'db> SemanticsImpl<'db> {
         Some(node)
     }
 
-    pub fn expand_hypothetical(
+    fn expand_hypothetical(
         &self,
         actual_macro_call: &ast::MacroCall,
         hypothetical_args: &ast::TokenTree,
@@ -310,7 +310,7 @@ impl<'db> SemanticsImpl<'db> {
         )
     }
 
-    pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
+    fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
         let parent = token.parent();
         let parent = self.find_file(parent);
         let sa = self.analyze2(parent.as_ref(), None);
@@ -334,7 +334,7 @@ impl<'db> SemanticsImpl<'db> {
         token.value
     }
 
-    pub fn descend_node_at_offset(
+    fn descend_node_at_offset(
         &self,
         node: &SyntaxNode,
         offset: TextSize,
@@ -346,24 +346,24 @@ impl<'db> SemanticsImpl<'db> {
             .flatten()
     }
 
-    pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
+    fn original_range(&self, node: &SyntaxNode) -> FileRange {
         let node = self.find_file(node.clone());
         original_range(self.db, node.as_ref())
     }
 
-    pub fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+    fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
         let src = diagnostics.source();
         let root = self.db.parse_or_expand(src.file_id).unwrap();
         let node = src.value.to_node(&root);
         original_range(self.db, src.with_value(&node))
     }
 
-    pub fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
+    fn ancestors_with_macros(&self, node: SyntaxNode) -> impl Iterator<Item = SyntaxNode> + '_ {
         let node = self.find_file(node);
         node.ancestors_with_macros(self.db.upcast()).map(|it| it.value)
     }
 
-    pub fn ancestors_at_offset_with_macros(
+    fn ancestors_at_offset_with_macros(
         &self,
         node: &SyntaxNode,
         offset: TextSize,
@@ -373,64 +373,64 @@ impl<'db> SemanticsImpl<'db> {
             .kmerge_by(|node1, node2| node1.text_range().len() < node2.text_range().len())
     }
 
-    pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
+    fn type_of_expr(&self, expr: &ast::Expr) -> Option<Type> {
         self.analyze(expr.syntax()).type_of_expr(self.db, &expr)
     }
 
-    pub fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
+    fn type_of_pat(&self, pat: &ast::Pat) -> Option<Type> {
         self.analyze(pat.syntax()).type_of_pat(self.db, &pat)
     }
 
-    pub fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
+    fn type_of_self(&self, param: &ast::SelfParam) -> Option<Type> {
         self.analyze(param.syntax()).type_of_self(self.db, &param)
     }
 
-    pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
+    fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
         self.analyze(call.syntax()).resolve_method_call(self.db, call)
     }
 
-    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {
+    fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {
         self.analyze(field.syntax()).resolve_field(self.db, field)
     }
 
-    pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<(Field, Option<Local>)> {
+    fn resolve_record_field(&self, field: &ast::RecordField) -> Option<(Field, Option<Local>)> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
-    pub fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<Field> {
+    fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<Field> {
         self.analyze(field.syntax()).resolve_record_field_pat(self.db, field)
     }
 
-    pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
+    fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
         let sa = self.analyze(macro_call.syntax());
         let macro_call = self.find_file(macro_call.syntax().clone()).with_value(macro_call);
         sa.resolve_macro_call(self.db, macro_call)
     }
 
-    pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
+    fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
     }
 
-    pub fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantId> {
+    fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantId> {
         self.analyze(record_lit.syntax()).resolve_variant(self.db, record_lit)
     }
 
-    pub fn lower_path(&self, path: &ast::Path) -> Option<Path> {
+    fn lower_path(&self, path: &ast::Path) -> Option<Path> {
         let src = self.find_file(path.syntax().clone());
         Path::from_src(path.clone(), &Hygiene::new(self.db.upcast(), src.file_id.into()))
     }
 
-    pub fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {
+    fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {
         self.analyze(pat.syntax()).resolve_bind_pat_to_const(self.db, pat)
     }
 
-    pub fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
+    fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
         self.analyze(literal.syntax())
             .record_literal_missing_fields(self.db, literal)
             .unwrap_or_default()
     }
 
-    pub fn record_pattern_missing_fields(&self, pattern: &ast::RecordPat) -> Vec<(Field, Type)> {
+    fn record_pattern_missing_fields(&self, pattern: &ast::RecordPat) -> Vec<(Field, Type)> {
         self.analyze(pattern.syntax())
             .record_pattern_missing_fields(self.db, pattern)
             .unwrap_or_default()
@@ -442,23 +442,23 @@ impl<'db> SemanticsImpl<'db> {
         f(&mut ctx)
     }
 
-    pub fn to_module_def(&self, file: FileId) -> Option<Module> {
+    fn to_module_def(&self, file: FileId) -> Option<Module> {
         self.with_ctx(|ctx| ctx.file_to_def(file)).map(Module::from)
     }
 
-    pub fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
+    fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
         let node = self.find_file(node.clone());
         let resolver = self.analyze2(node.as_ref(), None).resolver;
         SemanticsScope { db: self.db, resolver }
     }
 
-    pub fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
+    fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
         let node = self.find_file(node.clone());
         let resolver = self.analyze2(node.as_ref(), Some(offset)).resolver;
         SemanticsScope { db: self.db, resolver }
     }
 
-    pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
+    fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
         let resolver = def.id.resolver(self.db.upcast());
         SemanticsScope { db: self.db, resolver }
     }
@@ -490,14 +490,14 @@ impl<'db> SemanticsImpl<'db> {
         SourceAnalyzer::new_for_resolver(resolver, src)
     }
 
-    pub fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
+    fn cache(&self, root_node: SyntaxNode, file_id: HirFileId) {
         assert!(root_node.parent().is_none());
         let mut cache = self.cache.borrow_mut();
         let prev = cache.insert(root_node, file_id);
         assert!(prev == None || prev == Some(file_id))
     }
 
-    pub fn assert_contains_node(&self, node: &SyntaxNode) {
+    fn assert_contains_node(&self, node: &SyntaxNode) {
         self.find_file(node.clone());
     }
 
@@ -506,7 +506,7 @@ impl<'db> SemanticsImpl<'db> {
         cache.get(root_node).copied()
     }
 
-    pub fn find_file(&self, node: SyntaxNode) -> InFile<SyntaxNode> {
+    fn find_file(&self, node: SyntaxNode) -> InFile<SyntaxNode> {
         let root_node = find_root(&node);
         let file_id = self.lookup(&root_node).unwrap_or_else(|| {
             panic!(
