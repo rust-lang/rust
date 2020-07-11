@@ -9,6 +9,7 @@
 //! ensure that they're always in place if needed.
 
 use std::env;
+use std::env::consts::EXE_EXTENSION;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io;
@@ -252,8 +253,14 @@ impl Step for Llvm {
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
-            let host = builder.llvm_out(builder.config.build).join("bin/llvm-tblgen");
-            cfg.define("CMAKE_CROSSCOMPILING", "True").define("LLVM_TABLEGEN", &host);
+            let host_bin = builder.llvm_out(builder.config.build).join("bin");
+            cfg.define("CMAKE_CROSSCOMPILING", "True");
+            cfg.define("LLVM_TABLEGEN", host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION));
+            cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
+            cfg.define(
+                "LLVM_CONFIG_PATH",
+                host_bin.join("llvm-config").with_extension(EXE_EXTENSION),
+            );
 
             if target.contains("netbsd") {
                 cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
@@ -262,8 +269,6 @@ impl Step for Llvm {
             } else if target.contains("windows") {
                 cfg.define("CMAKE_SYSTEM_NAME", "Windows");
             }
-
-            cfg.define("LLVM_NATIVE_BUILD", builder.llvm_out(builder.config.build).join("build"));
         }
 
         if let Some(ref suffix) = builder.config.llvm_version_suffix {
@@ -431,6 +436,9 @@ fn configure_cmake(
             cflags.push_str(" -miphoneos-version-min=10.0");
         }
     }
+    if builder.config.llvm_clang_cl.is_some() {
+        cflags.push_str(&format!(" --target={}", target))
+    }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
     if builder.config.llvm_static_stdcpp && !target.contains("msvc") && !target.contains("netbsd") {
@@ -438,6 +446,9 @@ fn configure_cmake(
     }
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push_str(&format!(" {}", s));
+    }
+    if builder.config.llvm_clang_cl.is_some() {
+        cxxflags.push_str(&format!(" --target={}", target))
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -484,7 +495,7 @@ impl Step for Lld {
         run.builder.ensure(Lld { target: run.target });
     }
 
-    /// Compile LLVM for `target`.
+    /// Compile LLD for `target`.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         if builder.config.dry_run {
             return PathBuf::from("lld-out-dir-test-gen");
@@ -521,6 +532,7 @@ impl Step for Lld {
         // can't build on a system where your paths require `\` on Windows, but
         // there's probably a lot of reasons you can't do that other than this.
         let llvm_config_shim = env::current_exe().unwrap().with_file_name("llvm-config-wrapper");
+
         cfg.out_dir(&out_dir)
             .profile("Release")
             .env("LLVM_CONFIG_REAL", &llvm_config)
@@ -543,7 +555,10 @@ impl Step for Lld {
         if target != builder.config.build {
             cfg.env("LLVM_CONFIG_SHIM_REPLACE", &builder.config.build)
                 .env("LLVM_CONFIG_SHIM_REPLACE_WITH", &target)
-                .define("LLVM_TABLEGEN_EXE", llvm_config.with_file_name("llvm-tblgen"));
+                .define(
+                    "LLVM_TABLEGEN_EXE",
+                    llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
+                );
         }
 
         // Explicitly set C++ standard, because upstream doesn't do so
@@ -595,8 +610,8 @@ impl Step for TestHelpers {
         }
 
         // We may have found various cross-compilers a little differently due to our
-        // extra configuration, so inform gcc of these compilers. Note, though, that
-        // on MSVC we still need gcc's detection of env vars (ugh).
+        // extra configuration, so inform cc of these compilers. Note, though, that
+        // on MSVC we still need cc's detection of env vars (ugh).
         if !target.contains("msvc") {
             if let Some(ar) = builder.ar(target) {
                 cfg.archiver(ar);
