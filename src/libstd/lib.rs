@@ -274,6 +274,8 @@
 #![feature(global_asm)]
 #![feature(hash_raw_entry)]
 #![feature(hashmap_internals)]
+#![feature(input)]
+#![feature(input_prompt)]
 #![feature(int_error_internals)]
 #![feature(int_error_matching)]
 #![feature(into_future)]
