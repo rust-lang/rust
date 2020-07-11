@@ -893,9 +893,9 @@ impl fmt::Debug for StderrLock<'_> {
 /// use std::io::prompt;
 ///
 /// fn main() {
-///     let user_input = prompt("Please enter some text: ");
+///     let name = prompt("What is your name?: ");
 ///
-///     println!("You typed: {}", user_input);
+///     println!("Your name is {}!", name);
 /// }
 /// ```
 #[unstable(
@@ -935,11 +935,11 @@ pub fn prompt(prompt: &str) -> String {
 /// use std::io::input;
 ///
 /// fn main() {
-///     print!("Please enter some text: ");
+///     print!("What is your name?: ");
 ///
-///     let user_input = input();
+///     let name = input();
 ///
-///     println!("You typed: {}", user_input);
+///     println!("Your name is {}!", name);
 /// }
 /// ```
 #[unstable(
