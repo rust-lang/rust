@@ -288,7 +288,7 @@ fn array_default_impl_avoids_leaks_on_panic() {
         }
     }
 
-    let res = std::panic::catch_unwind(|| <[Bomb; 5]>::default());
+    let res = std::panic::catch_unwind(|| <[Bomb; 35]>::default());
     let panic_msg = match res {
         Ok(_) => unreachable!(),
         Err(p) => p.downcast::<&'static str>().unwrap(),

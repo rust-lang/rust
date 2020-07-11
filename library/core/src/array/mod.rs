@@ -353,28 +353,60 @@ impl<T: Ord, const N: usize> Ord for [T; N] {
     }
 }
 
-// The Default impls cannot be generated using the array_impls! macro because
-// they require array literals.
+/// This module implements `Default` for arrays.
+mod default_impls {
+    // A trait implemented by all arrays which are either empty or contain a type implementing `Default`.
+    #[unstable(
+        feature = "array_default_internals",
+        reason = "implementation detail",
+        issue = "none"
+    )]
+    #[marker]
+    pub trait ArrayDefault {}
 
-macro_rules! array_impl_default {
-    {$n:expr, $t:ident $($ts:ident)*} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
-            fn default() -> [T; $n] {
-                [$t::default(), $($ts::default()),*]
-            }
+    #[unstable(
+        feature = "array_default_internals",
+        reason = "implementation detail",
+        issue = "none"
+    )]
+    impl<T> ArrayDefault for [T; 0] {}
+
+    #[unstable(
+        feature = "array_default_internals",
+        reason = "implementation detail",
+        issue = "none"
+    )]
+    impl<T: Default, const N: usize> ArrayDefault for [T; N] {}
+
+    trait DefaultHack {
+        fn default_hack() -> Self;
+    }
+
+    impl<T> DefaultHack for T {
+        default fn default_hack() -> Self {
+            unreachable!();
         }
-        array_impl_default!{($n - 1), $($ts)*}
-    };
-    {$n:expr,} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] {
-            fn default() -> [T; $n] { [] }
+    }
+
+    impl<T: Default> DefaultHack for T {
+        fn default_hack() -> Self {
+            Default::default()
         }
-    };
+    }
+    #[stable(since = "1.4.0", feature = "array_default")]
+    impl<T, const N: usize> Default for [T; N]
+    where
+        [T; N]: ArrayDefault,
+    {
+        fn default() -> [T; N] {
+            assert_eq!(std::mem::size_of::<[(); N]>(), 0);
+            // SAFETY: it is always valid to use `ceroed` for zero-sized value.
+            let arr: [(); N] = unsafe { std::mem::zeroed() };
+            arr.map(DefaultHack::default_hack)
+        }
+    }
 }
 
-array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {
