@@ -888,7 +888,7 @@ impl fmt::Debug for StderrLock<'_> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// #![feature(input_prompt)]
 /// use std::io::input_prompt;
 ///
