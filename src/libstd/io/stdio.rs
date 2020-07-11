@@ -954,15 +954,7 @@ pub fn input() -> String {
     let len = stdin().read_line(&mut input).expect("Failed to read from stdin");
     match len {
         0 => panic!("invalid character!"),
-        _ => {
-            if input.ends_with('\n') {
-                input.pop();
-                if input.ends_with('\r') {
-                    input.pop();
-                }
-            }
-            input
-        }
+        _ => String::from(input.trim_end_matches('\n').trim_end_matches('\r')),
     }
 }
 
