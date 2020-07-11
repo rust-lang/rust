@@ -887,6 +887,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// # Examples
 ///
 /// ```
+/// #![feature(input_prompt)]
 /// use std::io::input_prompt;
 ///
 /// fn main() {
@@ -925,6 +926,7 @@ pub fn input_prompt(prompt: &str) -> String {
 /// # Examples
 ///
 /// ```
+/// #![feature(input)]
 /// use std::io::input;
 ///
 /// fn main() {
