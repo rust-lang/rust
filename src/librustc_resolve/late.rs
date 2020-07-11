@@ -504,10 +504,9 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
                 visit::walk_fn_ret_ty(this, &declaration.output);
 
-                let previous_state = this.in_func_body;
                 // Ignore errors in function bodies if this is rustdoc
                 // Be sure not to set this until the function signature has been resolved.
-                this.in_func_body = true;
+                let previous_state = replace(&mut this.in_func_body, true);
                 // Resolve the function body, potentially inside the body of an async closure
                 match fn_kind {
                     FnKind::Fn(.., body) => walk_list!(this, visit_block, body),
@@ -1175,9 +1174,8 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         impl_items: &'ast [P<AssocItem>],
     ) {
         debug!("resolve_implementation");
-        let old_ignore = self.in_func_body;
         // Never ignore errors in trait implementations.
-        self.in_func_body = false;
+        let old_ignore = replace(&mut self.in_func_body, false);
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
             // Dummy self type for better errors if `Self` is used in the trait path.
