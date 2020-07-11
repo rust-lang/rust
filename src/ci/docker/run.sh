@@ -119,11 +119,11 @@ elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
         exit 1
     fi
     # Transform changes the context of disabled Dockerfiles to match the enabled ones
-    tar --transform 's#^./disabled/#./#' -C $docker_dir -c . | docker \
+    tar --transform 's#disabled/#./#' -C $script_dir -c . | docker \
       build \
       --rm \
       -t rust-ci \
-      -f "$image/Dockerfile" \
+      -f "host-$(uname -m)/$image/Dockerfile" \
       -
 else
     echo Invalid image: $image
