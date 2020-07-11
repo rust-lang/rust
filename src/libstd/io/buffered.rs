@@ -1117,7 +1117,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     fn is_write_vectored(&self) -> bool {
         // It's hard to imagine these diverging, but it's worth checking
         // just in case, because we call `write_vectored` on both.
-        self.buffer.is_write_vectored() && self.inner().is_write_vectored()
+        self.buffer.is_write_vectored()
     }
 
     /// Write some data into this BufReader with line buffering. This means
