@@ -165,8 +165,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let cdb = analyze_cdb(matches.opt_str("cdb"), &target);
     let (gdb, gdb_version, gdb_native_rust) =
         analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
-    let (lldb_version, lldb_native_rust) = extract_lldb_version(matches.opt_str("lldb-version"));
-
+    let (lldb_version, lldb_native_rust) = matches
+        .opt_str("lldb-version")
+        .as_deref()
+        .and_then(extract_lldb_version)
+        .map(|(v, b)| (Some(v), b))
+        .unwrap_or((None, false));
     let color = match matches.opt_str("color").as_ref().map(|x| &**x) {
         Some("auto") | None => ColorConfig::AutoColor,
         Some("always") => ColorConfig::AlwaysColor,
@@ -400,17 +404,14 @@ fn configure_lldb(config: &Config) -> Option<Config> {
         return None;
     }
 
-    if let Some(lldb_version) = config.lldb_version.as_ref() {
-        if lldb_version == "350" {
-            println!(
-                "WARNING: The used version of LLDB ({}) has a \
-                 known issue that breaks debuginfo tests. See \
-                 issue #32520 for more information. Skipping all \
-                 LLDB-based tests!",
-                lldb_version
-            );
-            return None;
-        }
+    if let Some(350) = config.lldb_version {
+        println!(
+            "WARNING: The used version of LLDB (350) has a \
+             known issue that breaks debuginfo tests. See \
+             issue #32520 for more information. Skipping all \
+             LLDB-based tests!",
+        );
+        return None;
     }
 
     // Some older versions of LLDB seem to have problems with multiple
@@ -908,7 +909,7 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
 }
 
 /// Returns (LLDB version, LLDB is rust-enabled)
-fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, bool) {
+fn extract_lldb_version(full_version_line: &str) -> Option<(u32, bool)> {
     // Extract the major LLDB version from the given version string.
     // LLDB version strings are different for Apple and non-Apple platforms.
     // The Apple variant looks like this:
@@ -917,7 +918,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
     // lldb-300.2.51 (new versions)
     //
     // We are only interested in the major version number, so this function
-    // will return `Some("179")` and `Some("300")` respectively.
+    // will return `Some(179)` and `Some(300)` respectively.
     //
     // Upstream versions look like:
     // lldb version 6.0.1
@@ -929,53 +930,20 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
     // normally fine because the only non-Apple version we test is
     // rust-enabled.
 
-    if let Some(ref full_version_line) = full_version_line {
-        if !full_version_line.trim().is_empty() {
-            let full_version_line = full_version_line.trim();
+    let full_version_line = full_version_line.trim();
 
-            for (pos, l) in full_version_line.char_indices() {
-                if l != 'l' && l != 'L' {
-                    continue;
-                }
-                if pos + 5 >= full_version_line.len() {
-                    continue;
-                }
-                let l = full_version_line[pos + 1..].chars().next().unwrap();
-                if l != 'l' && l != 'L' {
-                    continue;
-                }
-                let d = full_version_line[pos + 2..].chars().next().unwrap();
-                if d != 'd' && d != 'D' {
-                    continue;
-                }
-                let b = full_version_line[pos + 3..].chars().next().unwrap();
-                if b != 'b' && b != 'B' {
-                    continue;
-                }
-                let dash = full_version_line[pos + 4..].chars().next().unwrap();
-                if dash != '-' {
-                    continue;
-                }
-
-                let vers = full_version_line[pos + 5..]
-                    .chars()
-                    .take_while(|c| c.is_digit(10))
-                    .collect::<String>();
-                if !vers.is_empty() {
-                    return (Some(vers), full_version_line.contains("rust-enabled"));
-                }
-            }
-
-            if full_version_line.starts_with("lldb version ") {
-                let vers = full_version_line[13..]
-                    .chars()
-                    .take_while(|c| c.is_digit(10))
-                    .collect::<String>();
-                if !vers.is_empty() {
-                    return (Some(vers + "00"), full_version_line.contains("rust-enabled"));
-                }
-            }
+    if let Some(apple_ver) =
+        full_version_line.strip_prefix("LLDB-").or_else(|| full_version_line.strip_prefix("lldb-"))
+    {
+        if let Some(idx) = apple_ver.find(|c: char| !c.is_digit(10)) {
+            let version: u32 = apple_ver[..idx].parse().unwrap();
+            return Some((version, full_version_line.contains("rust-enabled")));
+        }
+    } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ") {
+        if let Some(idx) = lldb_ver.find(|c: char| !c.is_digit(10)) {
+            let version: u32 = lldb_ver[..idx].parse().unwrap();
+            return Some((version * 100, full_version_line.contains("rust-enabled")));
         }
     }
-    (None, false)
+    None
 }
