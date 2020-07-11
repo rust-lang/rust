@@ -889,22 +889,22 @@ impl fmt::Debug for StderrLock<'_> {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(input_prompt)]
-/// use std::io::input_prompt;
+/// #![feature(prompt)]
+/// use std::io::prompt;
 ///
 /// fn main() {
-///     let user_input = input_prompt("Please enter some text: ");
+///     let user_input = prompt("Please enter some text: ");
 ///
 ///     println!("You typed: {}", user_input);
 /// }
 /// ```
 #[unstable(
-    feature = "input_prompt",
+    feature = "prompt",
     reason = "this function may be replaced with a \
                      more general mechanism",
     issue = "none"
 )]
-pub fn input_prompt(prompt: &str) -> String {
+pub fn prompt(prompt: &str) -> String {
     stdout().write(prompt.as_bytes()).unwrap();
     input()
 }
@@ -912,7 +912,7 @@ pub fn input_prompt(prompt: &str) -> String {
 /// Constructs a new handle to the standard input of the current
 /// process, locks this handle and reads a line of input,
 /// returning a `String` containing the input. For automatic
-/// prompt handling, see the [`input_prompt`] method.
+/// prompt handling, see the [`prompt`] method.
 ///
 /// If you need more explicit control over
 /// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
