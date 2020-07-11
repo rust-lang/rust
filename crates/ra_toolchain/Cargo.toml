@@ -4,5 +4,8 @@ name = "ra_toolchain"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 home = "0.5.3"
