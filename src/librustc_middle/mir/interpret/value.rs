@@ -68,7 +68,7 @@ impl<'tcx> ConstValue<'tcx> {
         }
     }
 
-    pub fn try_to_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+    pub fn try_to_machine_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
         Some(self.try_to_bits(tcx.data_layout.pointer_size)? as u64)
     }
 

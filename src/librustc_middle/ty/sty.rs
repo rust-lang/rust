@@ -2423,7 +2423,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
-        self.val.eval(tcx, param_env).try_to_usize(tcx)
+        self.val.eval(tcx, param_env).try_to_machine_usize(tcx)
     }
 
     #[inline]
@@ -2494,8 +2494,8 @@ impl<'tcx> ConstKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_to_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.try_to_value()?.try_to_usize(tcx)
+    pub fn try_to_machine_usize(self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        self.try_to_value()?.try_to_machine_usize(tcx)
     }
 }
 
