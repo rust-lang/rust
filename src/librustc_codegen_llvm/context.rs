@@ -1,4 +1,5 @@
 use crate::attributes;
+use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::coverageinfo;
 use crate::debuginfo;
@@ -180,6 +181,13 @@ pub unsafe fn create_module(
             llvm::LLVMRustSetModulePIELevel(llmod);
         }
     }
+
+    // Linking object files with different code models is undefined behavior
+    // because the compiler would have to generate additional code (to span
+    // longer jumps) if a larger code model is used with a smaller one.
+    //
+    // See https://reviews.llvm.org/D52322 and https://reviews.llvm.org/D52323.
+    llvm::LLVMRustSetModuleCodeModel(llmod, to_llvm_code_model(sess.code_model()));
 
     // If skipping the PLT is enabled, we need to add some module metadata
     // to ensure intrinsic calls don't use it.
