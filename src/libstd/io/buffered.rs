@@ -909,12 +909,6 @@ impl<'a, W: Write> LineWriterShim<'a, W> {
         Self { buffer }
     }
 
-    /// Get a reference to the inner writer (that is, the writer wrapped by
-    /// the BufWriter)
-    fn inner(&self) -> &W {
-        self.buffer.get_ref()
-    }
-
     /// Get a mutable reference to the inner writer (that is, the writer
     /// wrapped by the BufWriter). Be careful with this writer, as writes to
     /// it will bypass the buffer.
