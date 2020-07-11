@@ -189,7 +189,7 @@ questions or discuss things you don't understand or disagree with. However,
 recognize that the PR won't be merged unless someone on the rust team approves
 it.
 
-When your review approves the PR, it will go into a queue for yet another bot
+When your reviewer approves the PR, it will go into a queue for yet another bot
 called `@bors`.  `@bors` manages the CI build/merge queue. When your PR reaches
 the head of the `@bors` queue, `@bors` will test out the merge by running all
 tests against your PR on Travis CI. This takes a lot of time to
