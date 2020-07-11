@@ -194,6 +194,10 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.const_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
+                    ast::TypeAliasDef(it) => {
+                        let def = self.type_alias_to_def(container.with_value(it))?;
+                        def.into()
+                    },
                     _ => continue,
                 }
             };
@@ -246,6 +250,7 @@ pub(crate) enum ChildContainer {
     ImplId(ImplId),
     EnumId(EnumId),
     VariantId(VariantId),
+    TypeAliasId(TypeAliasId),
     /// XXX: this might be the same def as, for example an `EnumId`. However,
     /// here the children generic parameters, and not, eg enum variants.
     GenericDefId(GenericDefId),
@@ -258,6 +263,7 @@ impl_froms! {
     ImplId,
     EnumId,
     VariantId,
+    TypeAliasId,
     GenericDefId
 }
 
@@ -271,6 +277,7 @@ impl ChildContainer {
             ChildContainer::ImplId(it) => it.child_by_source(db),
             ChildContainer::EnumId(it) => it.child_by_source(db),
             ChildContainer::VariantId(it) => it.child_by_source(db),
+            ChildContainer::TypeAliasId(_) => DynMap::default(),
             ChildContainer::GenericDefId(it) => it.child_by_source(db),
         }
     }
