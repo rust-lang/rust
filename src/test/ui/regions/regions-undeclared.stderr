@@ -11,6 +11,8 @@ LL | enum EnumDecl {
    |              - help: consider introducing lifetime `'a` here: `<'a>`
 LL |     Foo(&'a isize),
    |          ^^ undeclared lifetime
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:5:10
@@ -20,6 +22,8 @@ LL | enum EnumDecl {
 LL |     Foo(&'a isize),
 LL |     Bar(&'a isize),
    |          ^^ undeclared lifetime
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:8:15
@@ -28,6 +32,8 @@ LL | fn fnDecl(x: &'a isize,
    |          -    ^^ undeclared lifetime
    |          |
    |          help: consider introducing lifetime `'a` here: `<'a>`
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-undeclared.rs:9:15
@@ -36,6 +42,8 @@ LL | fn fnDecl(x: &'a isize,
    |          - help: consider introducing lifetime `'a` here: `<'a>`
 LL |           y: &'a isize)
    |               ^^ undeclared lifetime
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error: aborting due to 5 previous errors
 
