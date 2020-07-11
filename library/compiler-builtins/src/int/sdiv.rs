@@ -1,4 +1,4 @@
-use int::Int;
+use int::specialized_div_rem::*;
 
 intrinsics! {
     #[maybe_use_optimized_c_shim]

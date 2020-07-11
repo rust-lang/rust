@@ -1,5 +1,7 @@
 use core::ops;
 
+mod specialized_div_rem;
+
 pub mod addsub;
 pub mod leading_zeros;
 pub mod mul;

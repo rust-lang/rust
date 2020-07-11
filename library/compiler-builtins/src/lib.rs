@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
+#![cfg_attr(feature = "asm", feature(asm))]
 #![feature(abi_unadjusted)]
 #![feature(llvm_asm)]
 #![feature(global_asm)]
