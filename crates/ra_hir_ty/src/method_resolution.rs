@@ -6,8 +6,10 @@ use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use hir_def::{
-    lang_item::LangItemTarget, type_ref::Mutability, AssocContainerId, AssocItemId, FunctionId,
-    HasModule, ImplId, Lookup, TraitId,
+    builtin_type::{IntBitness, Signedness},
+    lang_item::LangItemTarget,
+    type_ref::Mutability,
+    AssocContainerId, AssocItemId, FunctionId, HasModule, ImplId, Lookup, TraitId,
 };
 use hir_expand::name::Name;
 use ra_db::CrateId;
@@ -16,9 +18,12 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::Substs;
 use crate::{
-    autoderef, db::HirDatabase, primitive::FloatBitness, utils::all_super_traits, ApplicationTy,
-    Canonical, DebruijnIndex, InEnvironment, TraitEnvironment, TraitRef, Ty, TyKind, TypeCtor,
-    TypeWalk,
+    autoderef,
+    db::HirDatabase,
+    primitive::{FloatBitness, FloatTy, IntTy},
+    utils::all_super_traits,
+    ApplicationTy, Canonical, DebruijnIndex, InEnvironment, TraitEnvironment, TraitRef, Ty, TyKind,
+    TypeCtor, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -38,6 +43,62 @@ impl TyFingerprint {
         }
     }
 }
+
+pub(crate) const ALL_INT_FPS: [TyFingerprint; 12] = [
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Unsigned,
+        bitness: IntBitness::X8,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Unsigned,
+        bitness: IntBitness::X16,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Unsigned,
+        bitness: IntBitness::X32,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Unsigned,
+        bitness: IntBitness::X64,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Unsigned,
+        bitness: IntBitness::X128,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Unsigned,
+        bitness: IntBitness::Xsize,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Signed,
+        bitness: IntBitness::X8,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Signed,
+        bitness: IntBitness::X16,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Signed,
+        bitness: IntBitness::X32,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Signed,
+        bitness: IntBitness::X64,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Signed,
+        bitness: IntBitness::X128,
+    })),
+    TyFingerprint::Apply(TypeCtor::Int(IntTy {
+        signedness: Signedness::Signed,
+        bitness: IntBitness::Xsize,
+    })),
+];
+
+pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 2] = [
+    TyFingerprint::Apply(TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 })),
+    TyFingerprint::Apply(TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 })),
+];
 
 /// Trait impls defined or available in some crate.
 #[derive(Debug, Eq, PartialEq)]

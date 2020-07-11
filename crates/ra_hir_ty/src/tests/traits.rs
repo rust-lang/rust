@@ -3042,7 +3042,7 @@ fn foo() {
 }
 
 #[test]
-fn variable_kinds() {
+fn variable_kinds_1() {
     check_types(
         r#"
 trait Trait<T> { fn get(self, t: T) -> T; }
@@ -3054,6 +3054,23 @@ fn test() {
   //^^^^^^^^ u128
     S.get(1.);
   //^^^^^^^^ f32
+}
+        "#,
+    );
+}
+
+#[test]
+fn variable_kinds_2() {
+    check_types(
+        r#"
+trait Trait { fn get(self) -> Self; }
+impl Trait for u128 {}
+impl Trait for f32 {}
+fn test() {
+    1.get();
+  //^^^^^^^ u128
+    (1.).get();
+  //^^^^^^^^^^ f32
 }
         "#,
     );
