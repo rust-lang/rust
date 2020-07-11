@@ -527,7 +527,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 size: Size::ZERO,
             }),
 
-            // Potentially-fat pointers.
+            // Potentially-wide pointers.
             ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let mut data_ptr = scalar_unit(Pointer);
                 if !ty.is_unsafe_ptr() {
