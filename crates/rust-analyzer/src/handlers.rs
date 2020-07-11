@@ -878,9 +878,14 @@ pub(crate) fn handle_code_lens(
             snap.analysis
                 .file_structure(file_id)?
                 .into_iter()
-                .filter(|it| match it.kind {
-                    SyntaxKind::TRAIT_DEF | SyntaxKind::STRUCT_DEF | SyntaxKind::ENUM_DEF => true,
-                    _ => false,
+                .filter(|it| {
+                    matches!(
+                        it.kind,
+                        SyntaxKind::TRAIT_DEF
+                            | SyntaxKind::STRUCT_DEF
+                            | SyntaxKind::ENUM_DEF
+                            | SyntaxKind::UNION_DEF
+                    )
                 })
                 .map(|it| {
                     let range = to_proto::range(&line_index, it.node_range);

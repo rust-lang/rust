@@ -127,6 +127,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 decl_with_detail(it, Some(detail))
             },
             ast::StructDef(it) => decl(it),
+            ast::UnionDef(it) => decl(it),
             ast::EnumDef(it) => decl(it),
             ast::EnumVariant(it) => decl(it),
             ast::TraitDef(it) => decl(it),
