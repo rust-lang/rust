@@ -18,8 +18,11 @@ LL |     async fn frob(self) {}
    |
    = help: within `Foo`, the trait `std::marker::Sized` is not implemented for `str`
    = note: required because it appears within the type `Foo`
-   = note: all local variables must have a statically known size
    = help: unsized locals are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     async fn frob(&self) {}
+   |                   ^
 
 error: aborting due to 3 previous errors
 
