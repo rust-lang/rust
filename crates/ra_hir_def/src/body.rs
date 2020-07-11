@@ -46,6 +46,12 @@ pub(crate) struct Expander {
     recursion_limit: usize,
 }
 
+#[cfg(test)]
+const EXPANSION_RECURSION_LIMIT: usize = 32;
+
+#[cfg(not(test))]
+const EXPANSION_RECURSION_LIMIT: usize = 128;
+
 impl CfgExpander {
     pub(crate) fn new(
         db: &dyn DefDatabase,
@@ -93,7 +99,7 @@ impl Expander {
         macro_call: ast::MacroCall,
     ) -> Option<(Mark, T)> {
         self.recursion_limit += 1;
-        if self.recursion_limit > 32 {
+        if self.recursion_limit > EXPANSION_RECURSION_LIMIT {
             mark::hit!(your_stack_belongs_to_me);
             return None;
         }
@@ -341,7 +347,7 @@ mod tests {
     fn your_stack_belongs_to_me() {
         mark::check!(your_stack_belongs_to_me);
         lower(
-            r"
+            "
 macro_rules! n_nuple {
     ($e:tt) => ();
     ($($rest:tt)*) => {{
