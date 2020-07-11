@@ -5,7 +5,7 @@ LL |         this.x
    |         ^^^^
    |         |
    |         not found in this scope
-   |         help: did you mean: `self`
+   |         help: you might have meant to use `self` here instead
 
 error[E0425]: cannot find value `this` in this scope
   --> $DIR/suggest-self.rs:26:9
@@ -14,7 +14,7 @@ LL |         this.foo()
    |         ^^^^
    |         |
    |         not found in this scope
-   |         help: did you mean: `self`
+   |         help: you might have meant to use `self` here instead
 
 error[E0425]: cannot find value `my` in this scope
   --> $DIR/suggest-self.rs:31:9
@@ -23,7 +23,7 @@ LL |         my.bar()
    |         ^^
    |         |
    |         not found in this scope
-   |         help: did you mean: `self`
+   |         help: you might have meant to use `self` here instead
 
 error: aborting due to 3 previous errors
 
