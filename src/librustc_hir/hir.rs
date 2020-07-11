@@ -2148,6 +2148,7 @@ pub struct Param<'hir> {
     pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
     pub pat: &'hir Pat<'hir>,
+    pub ty_span: Span,
     pub span: Span,
 }
 
