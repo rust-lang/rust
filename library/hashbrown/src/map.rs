@@ -603,14 +603,17 @@ impl<K, V, S> HashMap<K, V, S> {
     /// assert_eq!(drained.count(), 4);
     /// assert_eq!(map.len(), 4);
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, K, V, F>
     where
         F: FnMut(&K, &mut V) -> bool,
     {
         DrainFilter {
             f,
-            iter: unsafe { self.table.iter() },
-            table: &mut self.table,
+            inner: DrainFilterInner {
+                iter: unsafe { self.table.iter() },
+                table: &mut self.table,
+            },
         }
     }
 
@@ -1331,32 +1334,29 @@ where
     F: FnMut(&K, &mut V) -> bool,
 {
     f: F,
-    iter: RawIter<(K, V)>,
-    table: &'a mut RawTable<(K, V)>,
+    inner: DrainFilterInner<'a, K, V>,
 }
 
 impl<'a, K, V, F> Drop for DrainFilter<'a, K, V, F>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
+    #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
-        struct DropGuard<'r, 'a, K, V, F>(&'r mut DrainFilter<'a, K, V, F>)
-        where
-            F: FnMut(&K, &mut V) -> bool;
-
-        impl<'r, 'a, K, V, F> Drop for DropGuard<'r, 'a, K, V, F>
-        where
-            F: FnMut(&K, &mut V) -> bool,
-        {
-            fn drop(&mut self) {
-                while let Some(_) = self.0.next() {}
-            }
-        }
         while let Some(item) = self.next() {
-            let guard = DropGuard(self);
+            let guard = ConsumeAllOnDrop(self);
             drop(item);
             mem::forget(guard);
         }
+    }
+}
+
+pub(super) struct ConsumeAllOnDrop<'a, T: Iterator>(pub &'a mut T);
+
+impl<T: Iterator> Drop for ConsumeAllOnDrop<'_, T> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn drop(&mut self) {
+        self.0.for_each(drop)
     }
 }
 
@@ -1365,11 +1365,29 @@ where
     F: FnMut(&K, &mut V) -> bool,
 {
     type Item = (K, V);
+
+    #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next(&mut self.f)
+    }
+}
+
+/// Portions of `DrainFilter` shared with `set::DrainFilter`
+pub(super) struct DrainFilterInner<'a, K, V> {
+    pub iter: RawIter<(K, V)>,
+    pub table: &'a mut RawTable<(K, V)>,
+}
+
+impl<K, V> DrainFilterInner<'_, K, V> {
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub(super) fn next<F>(&mut self, f: &mut F) -> Option<(K, V)>
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
         unsafe {
             while let Some(item) = self.iter.next() {
                 let &mut (ref key, ref mut value) = item.as_mut();
-                if !(self.f)(key, value) {
+                if !f(key, value) {
                     return Some(self.table.remove(item));
                 }
             }

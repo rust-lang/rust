@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Added methods that allow re-using a `RawIter` for `RawDrain`,
   `RawIntoIter`, and `RawParIter`. (#175)
 - Added `reflect_remove` and `reflect_insert` to `RawIter`. (#175)
+- Added a `drain_filter` function to `HashSet`. (#179)
 
 ### Changed
 - Deprecated `RawTable::erase_no_drop` in favor of `erase` and `remove`. (#176)
