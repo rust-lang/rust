@@ -112,7 +112,7 @@ fn map_rust_child_diagnostic(
             title: rd.message.clone(),
             id: None,
             group: None,
-            kind: Some("quickfix".to_string()),
+            kind: Some(lsp_types::CodeActionKind::QUICKFIX),
             edit: Some(lsp_ext::SnippetWorkspaceEdit {
                 // FIXME: there's no good reason to use edit_map here....
                 changes: Some(edit_map),

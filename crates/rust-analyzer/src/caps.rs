@@ -2,7 +2,7 @@
 use std::env;
 
 use lsp_types::{
-    CallHierarchyServerCapability, ClientCapabilities, CodeActionOptions,
+    CallHierarchyServerCapability, ClientCapabilities, CodeActionKind, CodeActionOptions,
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
     DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
@@ -106,12 +106,12 @@ fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProvi
                 // Ideally we would base this off of the client capabilities
                 // but the client is supposed to fall back gracefully for unknown values.
                 code_action_kinds: Some(vec![
-                    lsp_types::code_action_kind::EMPTY.to_string(),
-                    lsp_types::code_action_kind::QUICKFIX.to_string(),
-                    lsp_types::code_action_kind::REFACTOR.to_string(),
-                    lsp_types::code_action_kind::REFACTOR_EXTRACT.to_string(),
-                    lsp_types::code_action_kind::REFACTOR_INLINE.to_string(),
-                    lsp_types::code_action_kind::REFACTOR_REWRITE.to_string(),
+                    CodeActionKind::EMPTY,
+                    CodeActionKind::QUICKFIX,
+                    CodeActionKind::REFACTOR,
+                    CodeActionKind::REFACTOR_EXTRACT,
+                    CodeActionKind::REFACTOR_INLINE,
+                    CodeActionKind::REFACTOR_REWRITE,
                 ]),
                 work_done_progress_options: Default::default(),
             })

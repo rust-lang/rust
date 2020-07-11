@@ -629,16 +629,15 @@ pub(crate) fn call_hierarchy_item(
     Ok(lsp_types::CallHierarchyItem { name, kind, tags: None, detail, uri, range, selection_range })
 }
 
-pub(crate) fn code_action_kind(kind: AssistKind) -> String {
+pub(crate) fn code_action_kind(kind: AssistKind) -> lsp_types::CodeActionKind {
     match kind {
-        AssistKind::None | AssistKind::Generate => lsp_types::code_action_kind::EMPTY,
-        AssistKind::QuickFix => lsp_types::code_action_kind::QUICKFIX,
-        AssistKind::Refactor => lsp_types::code_action_kind::REFACTOR,
-        AssistKind::RefactorExtract => lsp_types::code_action_kind::REFACTOR_EXTRACT,
-        AssistKind::RefactorInline => lsp_types::code_action_kind::REFACTOR_INLINE,
-        AssistKind::RefactorRewrite => lsp_types::code_action_kind::REFACTOR_REWRITE,
+        AssistKind::None | AssistKind::Generate => lsp_types::CodeActionKind::EMPTY,
+        AssistKind::QuickFix => lsp_types::CodeActionKind::QUICKFIX,
+        AssistKind::Refactor => lsp_types::CodeActionKind::REFACTOR,
+        AssistKind::RefactorExtract => lsp_types::CodeActionKind::REFACTOR_EXTRACT,
+        AssistKind::RefactorInline => lsp_types::CodeActionKind::REFACTOR_INLINE,
+        AssistKind::RefactorRewrite => lsp_types::CodeActionKind::REFACTOR_REWRITE,
     }
-    .to_string()
 }
 
 pub(crate) fn unresolved_code_action(
