@@ -29,6 +29,7 @@ impl ToChalk for Ty {
         match self {
             Ty::Apply(apply_ty) => match apply_ty.ctor {
                 TypeCtor::Ref(m) => ref_to_chalk(db, m, apply_ty.parameters),
+                TypeCtor::Array => array_to_chalk(db, apply_ty.parameters),
                 TypeCtor::FnPtr { num_args: _ } => {
                     let substitution = apply_ty.parameters.to_chalk(db).shifted_in(&Interner);
                     chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: 0, substitution })
@@ -67,7 +68,7 @@ impl ToChalk for Ty {
                 );
                 let bounded_ty = chalk_ir::DynTy {
                     bounds: make_binders(where_clauses, 1),
-                    lifetime: LIFETIME_PLACEHOLDER.to_lifetime(&Interner),
+                    lifetime: FAKE_PLACEHOLDER.to_lifetime(&Interner),
                 };
                 chalk_ir::TyData::Dyn(bounded_ty).intern(&Interner)
             }
@@ -92,6 +93,7 @@ impl ToChalk for Ty {
             chalk_ir::TyData::Apply(apply_ty) => match apply_ty.name {
                 TypeName::Error => Ty::Unknown,
                 TypeName::Ref(m) => ref_from_chalk(db, m, apply_ty.substitution),
+                TypeName::Array => array_from_chalk(db, apply_ty.substitution),
                 _ => {
                     let ctor = from_chalk(db, apply_ty.name);
                     let parameters = from_chalk(db, apply_ty.substitution);
@@ -138,7 +140,7 @@ impl ToChalk for Ty {
     }
 }
 
-const LIFETIME_PLACEHOLDER: PlaceholderIndex =
+const FAKE_PLACEHOLDER: PlaceholderIndex =
     PlaceholderIndex { ui: UniverseIndex::ROOT, idx: usize::MAX };
 
 /// We currently don't model lifetimes, but Chalk does. So, we have to insert a
@@ -149,7 +151,7 @@ fn ref_to_chalk(
     subst: Substs,
 ) -> chalk_ir::Ty<Interner> {
     let arg = subst[0].clone().to_chalk(db);
-    let lifetime = LIFETIME_PLACEHOLDER.to_lifetime(&Interner);
+    let lifetime = FAKE_PLACEHOLDER.to_lifetime(&Interner);
     chalk_ir::ApplicationTy {
         name: TypeName::Ref(mutability.to_chalk(db)),
         substitution: chalk_ir::Substitution::from_iter(
@@ -171,6 +173,35 @@ fn ref_from_chalk(
         .filter_map(|p| Some(from_chalk(db, p.ty(&Interner)?.clone())))
         .collect();
     Ty::apply(TypeCtor::Ref(from_chalk(db, mutability)), Substs(tys))
+}
+
+/// We currently don't model constants, but Chalk does. So, we have to insert a
+/// fake constant here, because Chalks built-in logic may expect it to be there.
+fn array_to_chalk(db: &dyn HirDatabase, subst: Substs) -> chalk_ir::Ty<Interner> {
+    let arg = subst[0].clone().to_chalk(db);
+    let usize_ty = chalk_ir::ApplicationTy {
+        name: TypeName::Scalar(Scalar::Uint(chalk_ir::UintTy::Usize)),
+        substitution: chalk_ir::Substitution::empty(&Interner),
+    }
+    .intern(&Interner);
+    let const_ = FAKE_PLACEHOLDER.to_const(&Interner, usize_ty);
+    chalk_ir::ApplicationTy {
+        name: TypeName::Array,
+        substitution: chalk_ir::Substitution::from_iter(
+            &Interner,
+            vec![arg.cast(&Interner), const_.cast(&Interner)],
+        ),
+    }
+    .intern(&Interner)
+}
+
+/// Here we remove the const from the type we got from Chalk.
+fn array_from_chalk(db: &dyn HirDatabase, subst: chalk_ir::Substitution<Interner>) -> Ty {
+    let tys = subst
+        .iter(&Interner)
+        .filter_map(|p| Some(from_chalk(db, p.ty(&Interner)?.clone())))
+        .collect();
+    Ty::apply(TypeCtor::Array, Substs(tys))
 }
 
 impl ToChalk for Substs {
@@ -263,6 +294,7 @@ impl ToChalk for TypeCtor {
             TypeCtor::Tuple { cardinality } => TypeName::Tuple(cardinality.into()),
             TypeCtor::RawPtr(mutability) => TypeName::Raw(mutability.to_chalk(db)),
             TypeCtor::Slice => TypeName::Slice,
+            TypeCtor::Array => TypeName::Array,
             TypeCtor::Ref(mutability) => TypeName::Ref(mutability.to_chalk(db)),
             TypeCtor::Str => TypeName::Str,
             TypeCtor::FnDef(callable_def) => {
@@ -272,10 +304,7 @@ impl ToChalk for TypeCtor {
             TypeCtor::Never => TypeName::Never,
 
             // FIXME convert these
-            TypeCtor::Adt(_)
-            | TypeCtor::Array
-            | TypeCtor::FnPtr { .. }
-            | TypeCtor::Closure { .. } => {
+            TypeCtor::Adt(_) | TypeCtor::FnPtr { .. } | TypeCtor::Closure { .. } => {
                 // other TypeCtors get interned and turned into a chalk StructId
                 let struct_id = db.intern_type_ctor(self).into();
                 TypeName::Adt(struct_id)
