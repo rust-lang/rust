@@ -38,23 +38,8 @@ LL | |
 LL | | }
    | |_- not an `extern crate` item
 
-error: attribute should be applied to a function
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:67:1
-   |
-LL |   #[cold]
-   |   ^^^^^^^
-LL |
-LL | / mod cold {
-LL | |
-LL | |
-LL | |     mod inner { #![cold] }
-...  |
-LL | |
-LL | | }
-   | |_- not a function
-
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:91:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:67:1
    |
 LL |   #[export_name = "2200"]
    |   ^^^^^^^^^^^^^^^^^^^^^^^
@@ -63,36 +48,6 @@ LL | / mod export_name {
 LL | |
 LL | |
 LL | |     mod inner { #![export_name="2200"] }
-...  |
-LL | |
-LL | | }
-   | |_- not a function or static
-
-error: attribute should be applied to a foreign function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:115:1
-   |
-LL |   #[link_name = "1900"]
-   |   ^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / mod link_name {
-LL | |
-LL | |
-LL | |     #[link_name = "1900"]
-...  |
-LL | |
-LL | | }
-   | |_- not a foreign function or static
-
-error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:147:1
-   |
-LL |   #[link_section = "1800"]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | / mod link_section {
-LL | |
-LL | |
-LL | |     mod inner { #![link_section="1800"] }
 ...  |
 LL | |
 LL | | }
@@ -152,123 +107,30 @@ error: attribute should be applied to an `extern crate` item
 LL |     #[no_link] impl S { }
    |     ^^^^^^^^^^ ---------- not an `extern crate` item
 
-error: attribute should be applied to a function
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:72:17
-   |
-LL |     mod inner { #![cold] }
-   |     ------------^^^^^^^^-- not a function
-
-error: attribute should be applied to a function
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:78:5
-   |
-LL |     #[cold] struct S;
-   |     ^^^^^^^ --------- not a function
-
-error: attribute should be applied to a function
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:82:5
-   |
-LL |     #[cold] type T = S;
-   |     ^^^^^^^ ----------- not a function
-
-error: attribute should be applied to a function
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:86:5
-   |
-LL |     #[cold] impl S { }
-   |     ^^^^^^^ ---------- not a function
-
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:96:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:72:17
    |
 LL |     mod inner { #![export_name="2200"] }
    |     ------------^^^^^^^^^^^^^^^^^^^^^^-- not a function or static
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:102:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:78:5
    |
 LL |     #[export_name = "2200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ --------- not a function or static
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:106:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:82:5
    |
 LL |     #[export_name = "2200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ ----------- not a function or static
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:110:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:86:5
    |
 LL |     #[export_name = "2200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------- not a function or static
 
-error: attribute should be applied to a foreign function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:120:5
-   |
-LL |     #[link_name = "1900"]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     extern { }
-   |     ---------- not a foreign function or static
-   |
-help: try `#[link(name = "1900")]` instead
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:120:5
-   |
-LL |     #[link_name = "1900"]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-
-error: attribute should be applied to a foreign function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:126:17
-   |
-LL |     mod inner { #![link_name="1900"] }
-   |     ------------^^^^^^^^^^^^^^^^^^^^-- not a foreign function or static
-
-error: attribute should be applied to a foreign function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:130:5
-   |
-LL |     #[link_name = "1900"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^^ ---------- not a foreign function or static
-
-error: attribute should be applied to a foreign function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:134:5
-   |
-LL |     #[link_name = "1900"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^ --------- not a foreign function or static
-
-error: attribute should be applied to a foreign function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:138:5
-   |
-LL |     #[link_name = "1900"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^^^ ----------- not a foreign function or static
-
-error: attribute should be applied to a foreign function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:142:5
-   |
-LL |     #[link_name = "1900"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^^^ ---------- not a foreign function or static
-
-error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:152:17
-   |
-LL |     mod inner { #![link_section="1800"] }
-   |     ------------^^^^^^^^^^^^^^^^^^^^^^^-- not a function or static
-
-error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:158:5
-   |
-LL |     #[link_section = "1800"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ --------- not a function or static
-
-error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:162:5
-   |
-LL |     #[link_section = "1800"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ ----------- not a function or static
-
-error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:166:5
-   |
-LL |     #[link_section = "1800"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ ---------- not a function or static
-
-error: aborting due to 34 previous errors
+error: aborting due to 17 previous errors
 
 For more information about this error, try `rustc --explain E0518`.

@@ -64,30 +64,6 @@ mod no_link {
     //~| NOTE not an `extern crate` item
 }
 
-#[cold]
-//~^ ERROR attribute should be applied to a function
-mod cold {
-    //~^ NOTE not a function
-
-    mod inner { #![cold] }
-    //~^ ERROR attribute should be applied to a function
-    //~| NOTE not a function
-
-    #[cold] fn f() { }
-
-    #[cold] struct S;
-    //~^ ERROR attribute should be applied to a function
-    //~| NOTE not a function
-
-    #[cold] type T = S;
-    //~^ ERROR attribute should be applied to a function
-    //~| NOTE not a function
-
-    #[cold] impl S { }
-    //~^ ERROR attribute should be applied to a function
-    //~| NOTE not a function
-}
-
 #[export_name = "2200"]
 //~^ ERROR attribute should be applied to a function or static
 mod export_name {
@@ -108,62 +84,6 @@ mod export_name {
     //~| NOTE not a function or static
 
     #[export_name = "2200"] impl S { }
-    //~^ ERROR attribute should be applied to a function or static
-    //~| NOTE not a function or static
-}
-
-#[link_name = "1900"]
-//~^ ERROR attribute should be applied to a foreign function or static
-mod link_name {
-    //~^ NOTE not a foreign function or static
-
-    #[link_name = "1900"]
-    //~^ ERROR attribute should be applied to a foreign function or static
-    //~| HELP try `#[link(name = "1900")]` instead
-    extern { }
-    //~^ NOTE not a foreign function or static
-
-    mod inner { #![link_name="1900"] }
-    //~^ ERROR attribute should be applied to a foreign function or static
-    //~| NOTE not a foreign function or static
-
-    #[link_name = "1900"] fn f() { }
-    //~^ ERROR attribute should be applied to a foreign function or static
-    //~| NOTE not a foreign function or static
-
-    #[link_name = "1900"] struct S;
-    //~^ ERROR attribute should be applied to a foreign function or static
-    //~| NOTE not a foreign function or static
-
-    #[link_name = "1900"] type T = S;
-    //~^ ERROR attribute should be applied to a foreign function or static
-    //~| NOTE not a foreign function or static
-
-    #[link_name = "1900"] impl S { }
-    //~^ ERROR attribute should be applied to a foreign function or static
-    //~| NOTE not a foreign function or static
-}
-
-#[link_section = "1800"]
-//~^ ERROR attribute should be applied to a function or static
-mod link_section {
-    //~^ NOTE not a function or static
-
-    mod inner { #![link_section="1800"] }
-    //~^ ERROR attribute should be applied to a function or static
-    //~| NOTE not a function or static
-
-    #[link_section = "1800"] fn f() { }
-
-    #[link_section = "1800"] struct S;
-    //~^ ERROR attribute should be applied to a function or static
-    //~| NOTE not a function or static
-
-    #[link_section = "1800"] type T = S;
-    //~^ ERROR attribute should be applied to a function or static
-    //~| NOTE not a function or static
-
-    #[link_section = "1800"] impl S { }
     //~^ ERROR attribute should be applied to a function or static
     //~| NOTE not a function or static
 }

@@ -66,22 +66,24 @@ impl CheckAttrVisitor<'tcx> {
             } else if self.tcx.sess.check_name(attr, sym::marker) {
                 self.check_marker(attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::target_feature) {
-                self.check_target_feature(attr, span, target)
+                self.check_target_feature(hir_id, attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::track_caller) {
                 self.check_track_caller(&attr.span, attrs, span, target)
             } else if self.tcx.sess.check_name(attr, sym::doc) {
                 self.check_doc_alias(attr, hir_id, target)
-            } else if self.tcx.sess.check_name(attr, sym::cold) {
-                self.check_cold(&attr, span, target)
-            } else if self.tcx.sess.check_name(attr, sym::link_name) {
-                self.check_link_name(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::no_link) {
                 self.check_no_link(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::export_name) {
                 self.check_export_name(&attr, span, target)
-            } else if self.tcx.sess.check_name(attr, sym::link_section) {
-                self.check_link_section(&attr, span, target)
             } else {
+                // lint-only checks
+                if self.tcx.sess.check_name(attr, sym::cold) {
+                    self.check_cold(hir_id, attr, span, target);
+                } else if self.tcx.sess.check_name(attr, sym::link_name) {
+                    self.check_link_name(hir_id, attr, span, target);
+                } else if self.tcx.sess.check_name(attr, sym::link_section) {
+                    self.check_link_section(hir_id, attr, span, target);
+                }
                 true
             };
         }
@@ -212,10 +214,31 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[target_feature]` attribute on `item` is valid. Returns `true` if valid.
-    fn check_target_feature(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+    fn check_target_feature(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+    ) -> bool {
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
+            // FIXME: #[target_feature] was previously erroneously allowed on statements and some
+            // crates used this, so only emit a warning.
+            Target::Statement => {
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("attribute should be applied to a function")
+                        .warn(
+                            "this was previously accepted by the compiler but is \
+                               being phased out; it will become a hard error in \
+                               a future release!",
+                        )
+                        .span_label(*span, "not a function")
+                        .emit();
+                });
+                true
+            }
             _ => {
                 self.tcx
                     .sess
@@ -288,45 +311,58 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[cold]` is applied to a non-function. Returns `true` if valid.
-    fn check_cold(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+    fn check_cold(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
         match target {
-            Target::Fn | Target::Method(..) | Target::ForeignFn => true,
+            Target::Fn | Target::Method(..) | Target::ForeignFn => {}
             _ => {
-                self.tcx
-                    .sess
-                    .struct_span_err(attr.span, "attribute should be applied to a function")
-                    .span_label(*span, "not a function")
-                    .emit();
-                false
+                // FIXME: #[cold] was previously allowed on non-functions and some crates used
+                // this, so only emit a warning.
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("attribute should be applied to a function")
+                        .warn(
+                            "this was previously accepted by the compiler but is \
+                               being phased out; it will become a hard error in \
+                               a future release!",
+                        )
+                        .span_label(*span, "not a function")
+                        .emit();
+                });
             }
         }
     }
 
-    /// Checks if `#[link_name]` is applied to an item other than a foreign function or static. Returns `true` if valid.
-    fn check_link_name(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
-        if target == Target::ForeignFn || target == Target::ForeignStatic {
-            true
-        } else {
-            let mut err = self.tcx.sess.struct_span_err(
-                attr.span,
-                "attribute should be applied to a foreign function or static",
-            );
-            err.span_label(*span, "not a foreign function or static");
-
-            // See issue #47725
-            if target == Target::ForeignMod {
-                if let Some(value) = attr.value_str() {
-                    err.span_help(
-                        attr.span,
-                        &format!(r#"try `#[link(name = "{}")]` instead"#, value),
+    /// Checks if `#[link_name]` is applied to an item other than a foreign function or static.
+    fn check_link_name(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
+        match target {
+            Target::ForeignFn | Target::ForeignStatic => {}
+            _ => {
+                // FIXME: #[cold] was previously allowed on non-functions/statics and some crates
+                // used this, so only emit a warning.
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    let mut diag =
+                        lint.build("attribute should be applied to a foreign function or static");
+                    diag.warn(
+                        "this was previously accepted by the compiler but is \
+                               being phased out; it will become a hard error in \
+                               a future release!",
                     );
-                } else {
-                    err.span_help(attr.span, r#"try `#[link(name = "...")]` instead"#);
-                }
-            }
 
-            err.emit();
-            false
+                    // See issue #47725
+                    if let Target::ForeignMod = target {
+                        if let Some(value) = attr.value_str() {
+                            diag.span_help(
+                                attr.span,
+                                &format!(r#"try `#[link(name = "{}")]` instead"#, value),
+                            );
+                        } else {
+                            diag.span_help(attr.span, r#"try `#[link(name = "...")]` instead"#);
+                        }
+                    }
+
+                    diag.span_label(*span, "not a foreign function or static");
+                    diag.emit();
+                });
+            }
         }
     }
 
@@ -362,20 +398,23 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[link_section]` is applied to a function or static. Returns `true` if valid.
-    fn check_link_section(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+    /// Checks if `#[link_section]` is applied to a function or static.
+    fn check_link_section(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
         match target {
-            Target::Static | Target::Fn | Target::Method(..) => true,
+            Target::Static | Target::Fn | Target::Method(..) => {}
             _ => {
-                self.tcx
-                    .sess
-                    .struct_span_err(
-                        attr.span,
-                        "attribute should be applied to a function or static",
-                    )
-                    .span_label(*span, "not a function or static")
-                    .emit();
-                false
+                // FIXME: #[link_section] was previously allowed on non-functions/statics and some
+                // crates used this, so only emit a warning.
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    lint.build("attribute should be applied to a function or static")
+                        .warn(
+                            "this was previously accepted by the compiler but is \
+                               being phased out; it will become a hard error in \
+                               a future release!",
+                        )
+                        .span_label(*span, "not a function or static")
+                        .emit();
+                });
             }
         }
     }
@@ -424,7 +463,11 @@ impl CheckAttrVisitor<'tcx> {
                 }
                 sym::simd => {
                     is_simd = true;
-                    if target != Target::Struct { ("a", "struct") } else { continue }
+                    if target != Target::Struct {
+                        ("a", "struct")
+                    } else {
+                        continue;
+                    }
                 }
                 sym::transparent => {
                     is_transparent = true;
@@ -461,7 +504,11 @@ impl CheckAttrVisitor<'tcx> {
                 | sym::isize
                 | sym::usize => {
                     int_reprs += 1;
-                    if target != Target::Enum { ("an", "enum") } else { continue }
+                    if target != Target::Enum {
+                        ("an", "enum")
+                    } else {
+                        continue;
+                    }
                 }
                 _ => continue,
             };
