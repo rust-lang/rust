@@ -376,7 +376,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         registry: rustc_driver::diagnostics_registry(),
     };
 
-    interface::run_compiler_in_existing_thread_pool(config, |compiler| {
+    interface::create_compiler_and_run(config, |compiler| {
         compiler.enter(|queries| {
             let sess = compiler.session();
 
