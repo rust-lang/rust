@@ -6,6 +6,7 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
+use rustc_target::spec::abi::Abi::RustIntrinsic;
 use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
@@ -415,6 +416,20 @@ fn check_terminator(
                             func,
                         )
                         .into(),
+                    ));
+                }
+
+                // HACK: This is to "unstabilize" the `transmute` intrinsic
+                // within const fns. `transmute` is allowed in all other const contexts.
+                // This won't really scale to more intrinsics or functions. Let's allow const
+                // transmutes in const fn before we add more hacks to this.
+                if tcx.fn_sig(fn_def_id).abi() == RustIntrinsic
+                    && tcx.item_name(fn_def_id) == sym::transmute
+                    && !feature_allowed(tcx, def_id, sym::const_fn_transmute)
+                {
+                    return Err((
+                        span,
+                        "can only call `transmute` from const items, not `const fn`".into(),
                     ));
                 }
 
