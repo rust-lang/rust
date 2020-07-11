@@ -61,7 +61,7 @@ impl ToChalk for Ty {
             Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx).intern(&Interner),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
-                let where_clauses = chalk_ir::QuantifiedWhereClauses::from(
+                let where_clauses = chalk_ir::QuantifiedWhereClauses::from_iter(
                     &Interner,
                     predicates.iter().filter(|p| !p.is_error()).cloned().map(|p| p.to_chalk(db)),
                 );
@@ -152,7 +152,7 @@ fn ref_to_chalk(
     let lifetime = LIFETIME_PLACEHOLDER.to_lifetime(&Interner);
     chalk_ir::ApplicationTy {
         name: TypeName::Ref(mutability.to_chalk(db)),
-        substitution: chalk_ir::Substitution::from(
+        substitution: chalk_ir::Substitution::from_iter(
             &Interner,
             vec![lifetime.cast(&Interner), arg.cast(&Interner)],
         ),
@@ -177,7 +177,7 @@ impl ToChalk for Substs {
     type Chalk = chalk_ir::Substitution<Interner>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Substitution<Interner> {
-        chalk_ir::Substitution::from(&Interner, self.iter().map(|ty| ty.clone().to_chalk(db)))
+        chalk_ir::Substitution::from_iter(&Interner, self.iter().map(|ty| ty.clone().to_chalk(db)))
     }
 
     fn from_chalk(db: &dyn HirDatabase, parameters: chalk_ir::Substitution<Interner>) -> Substs {
@@ -492,6 +492,11 @@ impl ToChalk for GenericPredicate {
                 // we shouldn't get these from Chalk
                 panic!("encountered LifetimeOutlives from Chalk")
             }
+
+            chalk_ir::WhereClause::TypeOutlives(_) => {
+                // we shouldn't get these from Chalk
+                panic!("encountered TypeOutlives from Chalk")
+            }
         }
     }
 }
@@ -570,7 +575,7 @@ where
                 )
             });
         let value = self.value.to_chalk(db);
-        chalk_ir::Canonical { value, binders: chalk_ir::CanonicalVarKinds::from(&Interner, kinds) }
+        chalk_ir::Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
     }
 
     fn from_chalk(db: &dyn HirDatabase, canonical: chalk_ir::Canonical<T::Chalk>) -> Canonical<T> {
@@ -691,7 +696,7 @@ where
     T: HasInterner<Interner = Interner>,
 {
     chalk_ir::Binders::new(
-        chalk_ir::VariableKinds::from(
+        chalk_ir::VariableKinds::from_iter(
             &Interner,
             std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyKind::General)).take(num_vars),
         ),

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use log::debug;
 
-use chalk_ir::{fold::shift::Shift, GenericArg, TypeName};
+use chalk_ir::{fold::shift::Shift, GenericArg, TypeName, CanonicalVarKinds};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use hir_def::{
@@ -66,9 +66,12 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         &self,
         trait_id: TraitId,
         parameters: &[GenericArg<Interner>],
+        _binders: &CanonicalVarKinds<Interner>,
     ) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
         let trait_: hir_def::TraitId = from_chalk(self.db, trait_id);
+
+        // FIXME use binders to look for int/float impls when necessary
 
         let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref(&Interner).clone());
 
@@ -219,6 +222,22 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         // FIXME: implement closure support
         unimplemented!()
     }
+
+    fn trait_name(&self, _trait_id: chalk_ir::TraitId<Interner>) -> String {
+        unimplemented!()
+    }
+    fn adt_name(&self, _struct_id: chalk_ir::AdtId<Interner>) -> String {
+        unimplemented!()
+    }
+    fn assoc_type_name(&self, _assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
+        unimplemented!()
+    }
+    fn opaque_type_name(&self, _opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
+        unimplemented!()
+    }
+    fn fn_def_name(&self, _fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
+        unimplemented!()
+    }
 }
 
 pub(crate) fn program_clauses_for_chalk_env_query(
@@ -354,12 +373,21 @@ pub(crate) fn struct_datum_query(
         fundamental: false,
         phantom_data: false,
     };
+    // FIXME provide enum variants properly (for auto traits)
+    let variant = rust_ir::AdtVariantDatum {
+        fields: Vec::new(), // FIXME add fields (only relevant for auto traits),
+    };
     let struct_datum_bound = rust_ir::AdtDatumBound {
-        fields: Vec::new(), // FIXME add fields (only relevant for auto traits)
+        variants: vec![variant],
         where_clauses,
     };
-    let struct_datum =
-        StructDatum { id: struct_id, binders: make_binders(struct_datum_bound, num_params), flags };
+    let struct_datum = StructDatum {
+        // FIXME set ADT kind
+        kind: rust_ir::AdtKind::Struct,
+        id: struct_id,
+        binders: make_binders(struct_datum_bound, num_params),
+        flags
+    };
     Arc::new(struct_datum)
 }
 
