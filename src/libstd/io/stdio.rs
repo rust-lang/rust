@@ -950,10 +950,10 @@ pub fn input() -> String {
     match len {
         0 => String::new(),
         _ => {
-            if input.as_bytes()[input.len()-1] == b'\n' {
+            if input.as_bytes()[input.len() - 1] == b'\n' {
                 input.pop();
             }
-            if input.as_bytes()[input.len()-1] == b'\r' {
+            if input.as_bytes()[input.len() - 1] == b'\r' {
                 input.pop();
             }
             input
