@@ -1059,6 +1059,7 @@ dependencies = [
  "anymap",
  "drop_bomb",
  "either",
+ "expect",
  "fst",
  "indexmap",
  "insta",

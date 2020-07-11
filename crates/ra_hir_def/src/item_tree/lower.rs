@@ -546,6 +546,7 @@ impl Ctx {
                     let id: ModItem = match item {
                         ast::ExternItem::FnDef(ast) => {
                             let func = self.lower_function(&ast)?;
+                            self.data().functions[func.index].is_unsafe = true;
                             func.into()
                         }
                         ast::ExternItem::StaticDef(ast) => {
