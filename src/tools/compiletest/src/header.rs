@@ -170,14 +170,14 @@ impl EarlyProps {
                 .take(3) // 3 or more = invalid, so take at most 3.
                 .collect::<Vec<Option<u32>>>();
 
-            match range_components.len() {
-                1 => {
-                    let v = range_components[0].unwrap();
+            match *range_components {
+                [v] => {
+                    let v = v.unwrap();
                     (v, v)
                 }
-                2 => {
-                    let v_min = range_components[0].unwrap();
-                    let v_max = range_components[1].expect(ERROR_MESSAGE);
+                [min, max] => {
+                    let v_min = min.unwrap();
+                    let v_max = max.expect(ERROR_MESSAGE);
                     (v_min, v_max)
                 }
                 _ => panic!(ERROR_MESSAGE),
