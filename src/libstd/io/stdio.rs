@@ -917,7 +917,8 @@ pub fn input_prompt(prompt: &str) -> String {
 /// If you need more explicit control over
 /// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
 ///
-/// ## Note
+/// # Note
+///
 /// This function is not the recommended solution to get user input, it should
 /// only be used for simple actions. If you require more explicit control over
 /// getting user input, see the [`Stdin::read_line`] method.
