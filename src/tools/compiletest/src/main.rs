@@ -171,7 +171,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .and_then(extract_lldb_version)
         .map(|(v, b)| (Some(v), b))
         .unwrap_or((None, false));
-    let color = match matches.opt_str("color").as_ref().map(|x| &**x) {
+    let color = match matches.opt_str("color").as_deref() {
         Some("auto") | None => ColorConfig::AutoColor,
         Some("always") => ColorConfig::AlwaysColor,
         Some("never") => ColorConfig::NeverColor,
@@ -255,7 +255,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
-    logv(c, format!("filter: {}", opt_str(&config.filter.as_ref().map(|re| re.to_owned()))));
+    logv(c, format!("filter: {}", opt_str(&config.filter)));
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(
         c,
@@ -723,9 +723,7 @@ fn make_test_closure(
     let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
-    test::DynTestFn(Box::new(move || {
-        runtest::run(config, &testpaths, revision.as_ref().map(|s| s.as_str()))
-    }))
+    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths, revision.as_deref())))
 }
 
 /// Returns `true` if the given target is an Android target for the
