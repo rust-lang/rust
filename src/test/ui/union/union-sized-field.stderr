@@ -6,7 +6,6 @@ LL | union Foo<T: ?Sized> {
 LL |     value: T,
    |            ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
    = note: no field of a union may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -26,7 +25,6 @@ LL | struct Foo2<T: ?Sized> {
 LL |     value: T,
    |            ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
    = note: only the last field of a struct may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -46,7 +44,6 @@ LL | enum Foo3<T: ?Sized> {
 LL |     Value(T),
    |           ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size

@@ -21,7 +21,6 @@ LL | trait UncheckedCopy: Sized {
 LL |     + AddAssign<&'static str>
    |       ^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `Self += &'static str`
    |
-   = help: the trait `std::ops::AddAssign<&'static str>` is not implemented for `Self`
 help: consider further restricting `Self`
    |
 LL | trait UncheckedCopy: Sized + std::ops::AddAssign<&'static str> {
@@ -50,7 +49,6 @@ LL | trait UncheckedCopy: Sized {
 LL |     + Display = Self;
    |       ^^^^^^^ `Self` cannot be formatted with the default formatter
    |
-   = help: the trait `std::fmt::Display` is not implemented for `Self`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 help: consider further restricting `Self`
    |
@@ -69,7 +67,6 @@ LL |     + Display = Self;
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ `T` cannot be formatted with the default formatter
    |
-   = help: the trait `std::fmt::Display` is not implemented for `T`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 help: consider restricting type parameter `T`
    |
@@ -105,7 +102,6 @@ LL |     + AddAssign<&'static str>
 LL | impl<T> UncheckedCopy for T {}
    |         ^^^^^^^^^^^^^ no implementation for `T += &'static str`
    |
-   = help: the trait `std::ops::AddAssign<&'static str>` is not implemented for `T`
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::ops::AddAssign<&'static str>> UncheckedCopy for T {}

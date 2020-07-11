@@ -24,7 +24,6 @@ LL |     type U<'a>: PartialEq<&'a Self>;
 LL |     default type U<'a> = &'a T;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `T == T`
    |
-   = help: the trait `std::cmp::PartialEq` is not implemented for `T`
    = note: required because of the requirements on the impl of `std::cmp::PartialEq` for `&'a T`
 help: consider further restricting this bound
    |

@@ -9,7 +9,6 @@ LL | impl<X: ?Sized> T3<X> for S5<X> {
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
 help: you could relax the implicit `Sized` bound on `Y` if it were used through indirection like `&Y` or `Box<Y>`
   --> $DIR/unsized-trait-impl-self-type.rs:8:11
    |

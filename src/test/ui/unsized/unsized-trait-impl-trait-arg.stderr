@@ -9,7 +9,6 @@ LL | impl<X: ?Sized> T2<X> for S4<X> {
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait T2<Z: ?Sized> {

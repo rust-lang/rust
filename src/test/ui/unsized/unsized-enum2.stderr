@@ -7,7 +7,6 @@ LL |     // parameter
 LL |     VA(W),
    |        ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `W`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -28,7 +27,6 @@ LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL |     VB{x: X},
    |           ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -49,7 +47,6 @@ LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL |     VC(isize, Y),
    |               ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Y`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -70,7 +67,6 @@ LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 LL |     VD{u: isize, x: Z},
    |                     ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Z`
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size

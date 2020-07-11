@@ -19,7 +19,6 @@ LL | type Underconstrained<T: std::fmt::Debug> = impl 'static;
 LL |     5u32
    |     ---- this returned value is of type `u32`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `U`
    = note: the return type of a function must have a statically known size
 help: consider restricting type parameter `U`
    |
@@ -35,7 +34,6 @@ LL | type Underconstrained2<T: std::fmt::Debug> = impl 'static;
 LL |     5u32
    |     ---- this returned value is of type `u32`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `V`
    = note: the return type of a function must have a statically known size
 help: consider restricting type parameter `V`
    |

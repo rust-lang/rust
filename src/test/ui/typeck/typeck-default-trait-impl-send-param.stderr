@@ -7,7 +7,6 @@ LL |     is_send::<T>()
 LL | fn is_send<T:Send>() {
    |              ---- required by this bound in `is_send`
    |
-   = help: the trait `std::marker::Send` is not implemented for `T`
 help: consider restricting type parameter `T`
    |
 LL | fn foo<T: std::marker::Send>() {
