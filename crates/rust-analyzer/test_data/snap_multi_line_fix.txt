@@ -52,7 +52,9 @@
                 id: None,
                 group: None,
                 kind: Some(
-                    "quickfix",
+                    CodeActionKind(
+                        "quickfix",
+                    ),
                 ),
                 edit: Some(
                     SnippetWorkspaceEdit {
