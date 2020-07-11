@@ -282,6 +282,8 @@ fn verify_all_signatures() {
                 "_mm_tzcnt_64",
                 "_fxsave64",
                 "_fxrstor64",
+                "_mm512_undefined_ps",
+                "_mm512_undefined_pd",
             ];
             if !skip.contains(&rust.name) {
                 println!(
@@ -625,6 +627,8 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
 
         (&Type::MutPtr(&Type::PrimFloat(32)), "float*") => {}
         (&Type::MutPtr(&Type::PrimFloat(64)), "double*") => {}
+        (&Type::MutPtr(&Type::PrimFloat(32)), "void*") => {}
+        (&Type::MutPtr(&Type::PrimFloat(64)), "void*") => {}
         (&Type::MutPtr(&Type::PrimSigned(32)), "int*") => {}
         (&Type::MutPtr(&Type::PrimSigned(32)), "__int32*") => {}
         (&Type::MutPtr(&Type::PrimSigned(64)), "__int64*") => {}
@@ -646,6 +650,8 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
 
         (&Type::ConstPtr(&Type::PrimFloat(32)), "float const*") => {}
         (&Type::ConstPtr(&Type::PrimFloat(64)), "double const*") => {}
+        (&Type::ConstPtr(&Type::PrimFloat(32)), "void const*") => {}
+        (&Type::ConstPtr(&Type::PrimFloat(64)), "void const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(32)), "int const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32 const*") => {}
         (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64 const*") => {}

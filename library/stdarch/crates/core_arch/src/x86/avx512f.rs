@@ -1,6 +1,7 @@
 use crate::{
     core_arch::{simd::*, simd_llvm::*, x86::*},
     mem::{self, transmute},
+    ptr,
 };
 
 #[cfg(test)]
@@ -1633,6 +1634,113 @@ pub unsafe fn _mm512_mask_cmp_epi64_mask(
     transmute(r)
 }
 
+/// Returns vector of type `__m512d` with undefined elements.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_undefined_pd)
+#[inline]
+#[target_feature(enable = "avx512f")]
+// This intrinsic has no corresponding instruction.
+pub unsafe fn _mm512_undefined_pd() -> __m512d {
+    _mm512_set1_pd(0.0)
+}
+
+/// Returns vector of type `__m512` with undefined elements.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_undefined_ps)
+#[inline]
+#[target_feature(enable = "avx512f")]
+// This intrinsic has no corresponding instruction.
+pub unsafe fn _mm512_undefined_ps() -> __m512 {
+    _mm512_set1_ps(0.0)
+}
+
+/// Loads 512-bits (composed of 8 packed double-precision (64-bit)
+/// floating-point elements) from memory into result.
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_loadu_pd)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovups))]
+pub unsafe fn _mm512_loadu_pd(mem_addr: *const f64) -> __m512d {
+    ptr::read_unaligned(mem_addr as *const __m512d)
+}
+
+/// Stores 512-bits (composed of 8 packed double-precision (64-bit)
+/// floating-point elements) from `a` into memory.
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_storeu_pd)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovups))]
+pub unsafe fn _mm512_storeu_pd(mem_addr: *mut f64, a: __m512d) {
+    ptr::write_unaligned(mem_addr as *mut __m512d, a);
+}
+
+/// Loads 512-bits (composed of 16 packed single-precision (32-bit)
+/// floating-point elements) from memory into result.
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_loadu_ps)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovups))]
+pub unsafe fn _mm512_loadu_ps(mem_addr: *const f32) -> __m512 {
+    ptr::read_unaligned(mem_addr as *const __m512)
+}
+
+/// Stores 512-bits (composed of 16 packed single-precision (32-bit)
+/// floating-point elements) from `a` into memory.
+/// `mem_addr` does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_storeu_ps)
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr(vmovups))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
+pub unsafe fn _mm512_storeu_ps(mem_addr: *mut f32, a: __m512) {
+    ptr::write_unaligned(mem_addr as *mut __m512, a);
+}
+
+/// Sets packed 64-bit integers in `dst` with the supplied values in
+/// reverse order.
+///
+/// [Intel's documentation]( https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,4909&text=_mm512_set_pd)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_setr_pd(
+    e0: f64,
+    e1: f64,
+    e2: f64,
+    e3: f64,
+    e4: f64,
+    e5: f64,
+    e6: f64,
+    e7: f64,
+) -> __m512d {
+    let r = f64x8::new(e0, e1, e2, e3, e4, e5, e6, e7);
+    transmute(r)
+}
+
+/// Sets packed 64-bit integers in `dst` with the supplied values.
+///
+/// [Intel's documentation]( https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,4909&text=_mm512_set_pd)
+#[inline]
+#[target_feature(enable = "avx512f")]
+pub unsafe fn _mm512_set_pd(
+    e0: f64,
+    e1: f64,
+    e2: f64,
+    e3: f64,
+    e4: f64,
+    e5: f64,
+    e6: f64,
+    e7: f64,
+) -> __m512d {
+    _mm512_setr_pd(e7, e6, e5, e4, e3, e2, e1, e0)
+}
+
 /// Equal
 pub const _MM_CMPINT_EQ: _MM_CMPINT_ENUM = 0x00;
 /// Less-than
@@ -1702,6 +1810,7 @@ mod tests {
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
+    use crate::hint::black_box;
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_abs_epi32() {
@@ -2325,5 +2434,55 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_setzero_ps() {
         assert_eq_m512(_mm512_setzero_ps(), _mm512_set1_ps(0.));
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_loadu_pd() {
+        let a = &[4., 3., 2., 5., 8., 9., 64., 50.];
+        let p = a.as_ptr();
+        let r = _mm512_loadu_pd(black_box(p));
+        let e = _mm512_setr_pd(4., 3., 2., 5., 8., 9., 64., 50.);
+        assert_eq_m512d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_storeu_pd() {
+        let a = _mm512_set1_pd(9.);
+        let mut r = _mm512_undefined_pd();
+        _mm512_storeu_pd(&mut r as *mut _ as *mut f64, a);
+        assert_eq_m512d(r, a);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_loadu_ps() {
+        let a = &[
+            4., 3., 2., 5., 8., 9., 64., 50., -4., -3., -2., -5., -8., -9., -64., -50.,
+        ];
+        let p = a.as_ptr();
+        let r = _mm512_loadu_ps(black_box(p));
+        let e = _mm512_setr_ps(
+            4., 3., 2., 5., 8., 9., 64., 50., -4., -3., -2., -5., -8., -9., -64., -50.,
+        );
+        assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_storeu_ps() {
+        let a = _mm512_set1_ps(9.);
+        let mut r = _mm512_undefined_ps();
+        _mm512_storeu_ps(&mut r as *mut _ as *mut f32, a);
+        assert_eq_m512(r, a);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_setr_pd() {
+        let r = _mm512_set_pd(0., 1., 2., 3., 4., 5., 6., 7.);
+        assert_eq_m512d(r, _mm512_setr_pd(7., 6., 5., 4., 3., 2., 1., 0.));
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_set_pd() {
+        let r = _mm512_setr_pd(0., 1., 2., 3., 4., 5., 6., 7.);
+        assert_eq_m512d(r, _mm512_set_pd(7., 6., 5., 4., 3., 2., 1., 0.));
     }
 }

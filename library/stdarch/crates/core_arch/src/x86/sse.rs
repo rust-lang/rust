@@ -1865,8 +1865,7 @@ pub unsafe fn _mm_prefetch(p: *const i8, strategy: i32) {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_undefined_ps() -> __m128 {
-    // FIXME: this function should return MaybeUninit<__m128>
-    mem::MaybeUninit::<__m128>::uninit().assume_init()
+    _mm_set1_ps(0.0)
 }
 
 /// Transpose the 4x4 matrix formed by 4 rows of __m128 in place.

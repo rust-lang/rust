@@ -5,44 +5,6 @@ use crate::{
 
 /// Sets packed 64-bit integers in `dst` with the supplied values.
 ///
-/// [Intel's documentation]( https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,4909&text=_mm512_set_pd)
-#[inline]
-#[target_feature(enable = "avx512f")]
-pub unsafe fn _mm512_set_pd(
-    e0: f64,
-    e1: f64,
-    e2: f64,
-    e3: f64,
-    e4: f64,
-    e5: f64,
-    e6: f64,
-    e7: f64,
-) -> __m512d {
-    _mm512_setr_pd(e7, e6, e5, e4, e3, e2, e1, e0)
-}
-
-/// Sets packed 64-bit integers in `dst` with the supplied values in
-/// reverse order.
-///
-/// [Intel's documentation]( https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,4909&text=_mm512_set_pd)
-#[inline]
-#[target_feature(enable = "avx512f")]
-pub unsafe fn _mm512_setr_pd(
-    e0: f64,
-    e1: f64,
-    e2: f64,
-    e3: f64,
-    e4: f64,
-    e5: f64,
-    e6: f64,
-    e7: f64,
-) -> __m512d {
-    let r = f64x8::new(e0, e1, e2, e3, e4, e5, e6, e7);
-    transmute(r)
-}
-
-/// Sets packed 64-bit integers in `dst` with the supplied values.
-///
 /// [Intel's documentation]( https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=727,1063,4909,1062,1062,4909&text=_mm512_set_epi64)
 #[inline]
 #[target_feature(enable = "avx512f")]
@@ -309,18 +271,6 @@ mod tests {
         let mask = 0b01111010;
         let r = _mm512_mask_cmpeq_epi64_mask(mask, b, a);
         assert_eq!(r, 0b01001010);
-    }
-
-    #[simd_test(enable = "avx512f")]
-    unsafe fn test_mm512_set_pd() {
-        let r = _mm512_setr_pd(0., 1., 2., 3., 4., 5., 6., 7.);
-        assert_eq_m512d(r, _mm512_set_pd(7., 6., 5., 4., 3., 2., 1., 0.));
-    }
-
-    #[simd_test(enable = "avx512f")]
-    unsafe fn test_mm512_setr_pd() {
-        let r = _mm512_set_pd(0., 1., 2., 3., 4., 5., 6., 7.);
-        assert_eq_m512d(r, _mm512_setr_pd(7., 6., 5., 4., 3., 2., 1., 0.));
     }
 
     #[simd_test(enable = "avx512f")]
