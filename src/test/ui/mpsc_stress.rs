@@ -36,6 +36,7 @@ impl Barrier {
     fn wait(self) {
         self.shared.fetch_add(1, Ordering::SeqCst);
         while self.shared.load(Ordering::SeqCst) != self.count {
+            #[cfg(target_env = "sgx")]
             thread::yield_now();
         }
     }

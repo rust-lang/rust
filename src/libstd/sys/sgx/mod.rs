@@ -115,12 +115,9 @@ pub fn decode_error_kind(code: i32) -> ErrorKind {
 // of time and timeouts in SGX model. The enclave runner serving usercalls may
 // lie about current time and/or ignore timeout values.
 //
-// Once the event is observed, `woken_up` will be used to determine whether or
-// not the event was spurious.
-//
-// FIXME: note these caveats in documentation of all public types that use this
-// function in their execution path.
-pub fn wait_timeout_sgx<F>(event_mask: u64, duration: crate::time::Duration, woken_up: F)
+// Once the event is observed, `should_wake_up` will be used to determine
+// whether or not the event was spurious.
+pub fn usercall_wait_timeout<F>(event_mask: u64, duration: crate::time::Duration, should_wake_up: F)
 where
     F: Fn() -> bool,
 {
@@ -141,7 +138,9 @@ where
                 if event_mask == 0 {
                     rtabort!("expected usercalls::wait() to return Err, found Ok.");
                 }
-                rtassert!(eventset & event_mask == event_mask);
+                // A matching event is one whose bits are equal to or a subset
+                // of `event_mask`.
+                rtassert!(eventset & !event_mask == 0);
                 true
             }
             Err(e) => {
@@ -152,18 +151,18 @@ where
     }
 
     match wait_checked(event_mask, Some(duration)) {
-        false => return,              // timed out
-        true if woken_up() => return, // woken up
-        true => {}                    // spurious event
+        false => return,                    // timed out
+        true if should_wake_up() => return, // woken up
+        true => {}                          // spurious event
     }
 
     // Drain all cached events.
     // Note that `event_mask != 0` is implied if we get here.
     loop {
         match wait_checked(event_mask, None) {
-            false => break,               // no more cached events
-            true if woken_up() => return, // woken up
-            true => {}                    // spurious event
+            false => break,                     // no more cached events
+            true if should_wake_up() => return, // woken up
+            true => {}                          // spurious event
         }
     }
 
@@ -176,9 +175,9 @@ where
     let mut remaining = duration;
     loop {
         match wait_checked(event_mask, Some(remaining)) {
-            false => return,              // timed out
-            true if woken_up() => return, // woken up
-            true => {}                    // spurious event
+            false => return,                    // timed out
+            true if should_wake_up() => return, // woken up
+            true => {}                          // spurious event
         }
         remaining = match duration.checked_sub(start.elapsed()) {
             Some(remaining) => remaining,

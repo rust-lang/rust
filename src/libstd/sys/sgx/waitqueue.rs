@@ -1,17 +1,17 @@
-/// A simple queue implementation for synchronization primitives.
-///
-/// This queue is used to implement condition variable and mutexes.
-///
-/// Users of this API are expected to use the `WaitVariable<T>` type. Since
-/// that type is not `Sync`, it needs to be protected by e.g., a `SpinMutex` to
-/// allow shared access.
-///
-/// Since userspace may send spurious wake-ups, the wakeup event state is
-/// recorded in the enclave. The wakeup event state is protected by a spinlock.
-/// The queue and associated wait state are stored in a `WaitVariable`.
+//! A simple queue implementation for synchronization primitives.
+//!
+//! This queue is used to implement condition variable and mutexes.
+//!
+//! Users of this API are expected to use the `WaitVariable<T>` type. Since
+//! that type is not `Sync`, it needs to be protected by e.g., a `SpinMutex` to
+//! allow shared access.
+//!
+//! Since userspace may send spurious wake-ups, the wakeup event state is
+//! recorded in the enclave. The wakeup event state is protected by a spinlock.
+//! The queue and associated wait state are stored in a `WaitVariable`.
 use crate::num::NonZeroUsize;
 use crate::ops::{Deref, DerefMut};
-use crate::sys::wait_timeout_sgx;
+use crate::sys::usercall_wait_timeout;
 use crate::time::Duration;
 
 use super::abi::thread;
@@ -176,15 +176,12 @@ impl WaitQueue {
             }));
             let entry_lock = lock.lock().queue.inner.push(&mut entry);
             before_wait();
-            // don't panic, this would invalidate `entry` during unwinding
-            wait_timeout_sgx(EV_UNPARK, timeout, || entry_lock.lock().wake);
+            usercall_wait_timeout(EV_UNPARK, timeout, || entry_lock.lock().wake);
             // acquire the wait queue's lock first to avoid deadlock.
             let mut guard = lock.lock();
-            let entry_guard = entry_lock.lock();
-            let success = entry_guard.wake;
+            let success = entry_lock.lock().wake;
             if !success {
-                // nobody is waking us up, so remove the entry from the wait queue.
-                drop(entry_guard);
+                // nobody is waking us up, so remove our entry from the wait queue.
                 guard.queue.inner.remove(&mut entry);
             }
             success
@@ -363,8 +360,8 @@ mod unsafe_list {
         ///
         /// # Safety
         ///
-        /// The caller must ensure that entry has been pushed prior to this
-        /// call and has not moved since push.
+        /// The caller must ensure that `entry` has been pushed onto `self`
+        /// prior to this call and has not moved since then.
         pub unsafe fn remove(&mut self, entry: &mut UnsafeListEntry<T>) {
             rtassert!(!self.is_empty());
             // BEFORE:
