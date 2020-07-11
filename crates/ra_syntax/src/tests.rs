@@ -1,10 +1,11 @@
 use std::{
     fmt::Write,
     fs,
-    path::{Component, Path, PathBuf},
+    path::{Path, PathBuf},
 };
 
 use expect::expect_file;
+use rayon::prelude::*;
 use test_utils::project_dir;
 
 use crate::{fuzz, tokenize, SourceFile, SyntaxError, TextRange, TextSize, Token};
@@ -121,33 +122,43 @@ fn reparse_fuzz_tests() {
 /// FIXME: Use this as a benchmark
 #[test]
 fn self_hosting_parsing() {
-    use std::ffi::OsStr;
     let dir = project_dir().join("crates");
-    let mut count = 0;
-    for entry in walkdir::WalkDir::new(dir)
+    let files = walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_entry(|entry| {
-            !entry.path().components().any(|component| {
-                // Get all files which are not in the crates/ra_syntax/test_data folder
-                component == Component::Normal(OsStr::new("test_data"))
-            })
+            // Get all files which are not in the crates/ra_syntax/test_data folder
+            !entry.path().components().any(|component| component.as_os_str() == "test_data")
         })
         .map(|e| e.unwrap())
         .filter(|entry| {
             // Get all `.rs ` files
-            !entry.path().is_dir() && (entry.path().extension() == Some(OsStr::new("rs")))
+            !entry.path().is_dir() && (entry.path().extension().unwrap_or_default() == "rs")
         })
-    {
-        count += 1;
-        let text = read_text(entry.path());
-        if let Err(errors) = SourceFile::parse(&text).ok() {
-            panic!("Parsing errors:\n{:?}\n{}\n", errors, entry.path().display());
-        }
-    }
+        .map(|entry| entry.into_path())
+        .collect::<Vec<_>>();
     assert!(
-        count > 30,
+        files.len() > 100,
         "self_hosting_parsing found too few files - is it running in the right directory?"
-    )
+    );
+
+    let errors = files
+        .into_par_iter()
+        .filter_map(|file| {
+            let text = read_text(&file);
+            match SourceFile::parse(&text).ok() {
+                Ok(_) => None,
+                Err(err) => Some((file, err)),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if !errors.is_empty() {
+        let errors = errors
+            .into_iter()
+            .map(|(path, err)| format!("{}: {:?}\n", path.display(), err))
+            .collect::<String>();
+        panic!("Parsing errors:\n{}\n", errors);
+    }
 }
 
 fn test_data_dir() -> PathBuf {
