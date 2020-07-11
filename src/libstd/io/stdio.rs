@@ -923,7 +923,8 @@ pub fn input_prompt(prompt: &str) -> String {
 /// only be used for simple actions. If you require more explicit control over
 /// getting user input, see the [`Stdin::read_line`] method.
 ///
-/// ## Panics
+/// # Panics
+///
 /// This function currently panics if it does not receive input,
 /// or when input is empty without newline
 ///
