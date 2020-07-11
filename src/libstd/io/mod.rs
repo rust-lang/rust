@@ -285,7 +285,7 @@ pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
 #[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
 #[unstable(feature = "input", issue = "none")]
-pub use self::stdio::{input, input_prompt};
+pub use self::stdio::{input, prompt};
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
