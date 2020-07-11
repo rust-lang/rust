@@ -893,7 +893,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// use std::io::prompt;
 ///
 /// fn main() {
-///     let name = prompt("What is your name?: ");
+///     let name = prompt("Enter name: ");
 ///
 ///     println!("Your name is {}!", name);
 /// }
@@ -935,7 +935,7 @@ pub fn prompt(prompt: &str) -> String {
 /// use std::io::input;
 ///
 /// fn main() {
-///     print!("What is your name?: ");
+///     print!("Enter name: ");
 ///
 ///     let name = input();
 ///
