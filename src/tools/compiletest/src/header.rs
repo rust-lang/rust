@@ -188,16 +188,17 @@ impl EarlyProps {
         }
 
         fn ignore_lldb(config: &Config, line: &str) -> bool {
-            if let Some(ref actual_version) = config.lldb_version {
-                if line.starts_with("min-lldb-version") {
-                    let min_version = line
-                        .trim_end()
-                        .rsplit(' ')
-                        .next()
-                        .expect("Malformed lldb version directive");
+            if let Some(actual_version) = config.lldb_version {
+                if let Some(min_version) = line.strip_prefix("min-lldb-version:").map(str::trim) {
+                    let min_version = min_version.parse().unwrap_or_else(|e| {
+                        panic!(
+                            "Unexpected format of LLDB version string: {}\n{:?}",
+                            min_version, e
+                        );
+                    });
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    lldb_version_to_int(actual_version) < lldb_version_to_int(min_version)
+                    actual_version < min_version
                 } else if line.starts_with("rust-lldb") && !config.lldb_native_rust {
                     true
                 } else {
@@ -942,12 +943,6 @@ impl Config {
     fn parse_edition(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "edition")
     }
-}
-
-pub fn lldb_version_to_int(version_string: &str) -> isize {
-    let error_string =
-        format!("Encountered LLDB version string with unexpected format: {}", version_string);
-    version_string.parse().expect(&error_string)
 }
 
 fn expand_variables(mut value: String, config: &Config) -> String {
