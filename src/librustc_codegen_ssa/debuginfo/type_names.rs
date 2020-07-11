@@ -47,7 +47,12 @@ pub fn push_debuginfo_type_name<'tcx>(
             push_type_params(tcx, substs, output, visited);
         }
         ty::Tuple(component_types) => {
-            output.push('(');
+            if cpp_like_names {
+                output.push_str("tuple<");
+            } else {
+                output.push('(');
+            }
+
             for component_type in component_types {
                 push_debuginfo_type_name(tcx, component_type.expect_ty(), true, output, visited);
                 output.push_str(", ");
@@ -56,7 +61,12 @@ pub fn push_debuginfo_type_name<'tcx>(
                 output.pop();
                 output.pop();
             }
-            output.push(')');
+
+            if cpp_like_names {
+                output.push('>');
+            } else {
+                output.push(')');
+            }
         }
         ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl }) => {
             if !cpp_like_names {
