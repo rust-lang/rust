@@ -1,5 +1,6 @@
 // ignore-tidy-linelength
 // aux-build:unstable_generic_param.rs
+#![feature(unstable_default6)]
 
 extern crate unstable_generic_param;
 
@@ -105,4 +106,7 @@ fn main() {
     //~^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
     //~^^ use of deprecated item 'unstable_generic_param::Struct5': test [deprecated]
     //~^^^ use of deprecated item 'unstable_generic_param::Struct5::field': test [deprecated]
+
+    let _: Struct6<isize> = Struct6 { field: 1 }; // ok
+    let _: Struct6<isize> = Struct6 { field: 0 }; // ok
 }
