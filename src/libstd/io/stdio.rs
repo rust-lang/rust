@@ -946,14 +946,19 @@ pub fn input_prompt(prompt: &str) -> String {
 pub fn input() -> String {
     let mut input = String::new();
     let _ = stdout().flush();
-    stdin().read_line(&mut input).expect("Failed to read from stdin");
-    if input.as_bytes()[input.len() - 1] == b'\n' {
-        input.pop();
+    let len = stdin().read_line(&mut input).expect("Failed to read from stdin");
+    match len {
+        0 => String::new(),
+        _ => {
+            if input.as_bytes()[input.len()-1] == b'\n' {
+                input.pop();
+            }
+            if input.as_bytes()[input.len()-1] == b'\r' {
+                input.pop();
+            }
+            input
+        }
     }
-    if input.as_bytes()[input.len() - 1] == b'\r' {
-        input.pop();
-    }
-    input
 }
 
 /// Resets the thread-local stderr handle to the specified writer
