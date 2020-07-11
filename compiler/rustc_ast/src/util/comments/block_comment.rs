@@ -2,63 +2,106 @@
  * Block comment helpers.
  */
 
-/// remove whitespace-only lines from the start/end of lines
-pub fn vertical_trim(lines: Vec<String>) -> Vec<String> {
-    let mut i = 0;
-    let mut j = lines.len();
-    // first line of all-stars should be omitted
-    if !lines.is_empty() && lines[0].chars().all(|c| c == '*') {
-        i += 1;
+#[cfg(test)]
+mod tests;
+
+/********************************************************
+ * Skip lines based on the following rules:
+ *
+ * * Skip first line of all stars ("*").
+ * * Skip consecutive empty lines top-bottom.
+ * * Skip consecutive empty lines bottom-top.
+ * * Skip last line contains pattern "^ ?\**$" in regex.
+ *******************************************************/
+pub fn vertical_trim<'arr, 'row: 'arr>(lines: &'arr [&'row str]) -> &'arr [&'row str] {
+    let mut region = lines;
+    if let [first, tail @ ..] = region {
+        // Skip first line of all-stars.
+        if first.bytes().all(|c| c == b'*') {
+            region = tail;
+        }
     }
 
-    while i < j && lines[i].trim().is_empty() {
-        i += 1;
-    }
-    // like the first, a last line of all stars should be omitted
-    if j > i && lines[j - 1].chars().skip(1).all(|c| c == '*') {
-        j -= 1;
-    }
-
-    while j > i && lines[j - 1].trim().is_empty() {
-        j -= 1;
+    // Skip consecutive empty lines.
+    loop {
+        match region {
+            [first, tail @ ..] if first.trim().is_empty() => region = tail,
+            _ => break,
+        }
     }
 
-    lines[i..j].to_vec()
+    // Skip last line contains pattern "^ ?*\**" in regex.
+    if let [head @ .., last] = region {
+        let s = match last.as_bytes() {
+            [b' ', tail @ ..] => tail,
+            all => all,
+        };
+        if s.iter().all(|&c| c == b'*') {
+            region = head;
+        }
+    }
+
+    // Skip consecutive empty lines from last line backward.
+    loop {
+        match region {
+            [head @ .., last] if last.trim().is_empty() => region = head,
+            _ => break,
+        }
+    }
+
+    region
 }
 
-/// remove a "[ \t]*\*" block from each line, if possible
-pub fn horizontal_trim(lines: Vec<String>) -> Vec<String> {
-    let mut i = usize::MAX;
-    let mut can_trim = true;
-    let mut first = true;
+/// Trim all "\s*\*" prefix from comment: all or nothing.
+///
+/// For example,
+/// ```text
+///   * one two three four five ...
+///   * one two three four five ...
+///   * one two three four five ...
+/// ```
+/// will be trimmed to
+/// ```text
+///  one two three four five ...
+///  one two three four five ...
+///  one two three four five ...
+/// ```
+pub fn horizontal_trim<'arr, 'row: 'arr>(lines: &'arr [&'row str]) -> Option<Vec<&'row str>> {
+    let prefix = match lines {
+        [first, ..] => get_prefix(first)?,
+        _ => return None,
+    };
 
-    for line in &lines {
-        for (j, c) in line.chars().enumerate() {
-            if j > i || !"* \t".contains(c) {
-                can_trim = false;
-                break;
-            }
-            if c == '*' {
-                if first {
-                    i = j;
-                    first = false;
-                } else if i != j {
-                    can_trim = false;
-                }
-                break;
-            }
-        }
-        if i >= line.len() {
-            can_trim = false;
-        }
-        if !can_trim {
-            break;
-        }
+    if lines.iter().any(|l| !l.starts_with(prefix)) {
+        return None;
     }
 
-    if can_trim {
-        lines.iter().map(|line| (&line[i + 1..line.len()]).to_string()).collect()
-    } else {
-        lines
-    }
+    let lines = lines
+        .iter()
+        // SAFETY: All lines have been checked if it starts with prefix
+        .map(|l| unsafe { l.get_unchecked(prefix.len()..) })
+        .collect();
+    Some(lines)
+}
+
+/// Get the prefix with pattern "\s*\*" of input `s`.
+fn get_prefix(s: &str) -> Option<&str> {
+    let mut bytes = s.as_bytes();
+    let dst: *const u8 = loop {
+        match bytes {
+            [b' ' | b'\t', end @ ..] => bytes = end,
+            [b'*', end @ ..] => break end.as_ptr(),
+            _ => return None,
+        }
+    };
+    let prefix = unsafe {
+        // SAFETY: Two invariants are followed.
+        // * length of `prefix` is the diff of two pointer from the same str `s`.
+        // * lifetime of `prefix` is the same as argument `s`.
+        let src: *const u8 = s.as_ptr();
+        let len = dst as usize - src as usize;
+        let slice = std::slice::from_raw_parts(src, len);
+        std::str::from_utf8_unchecked(slice)
+    };
+    Some(prefix)
 }

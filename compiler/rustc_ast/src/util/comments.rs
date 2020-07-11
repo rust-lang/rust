@@ -31,10 +31,12 @@ pub fn beautify_doc_string(data: Symbol) -> String {
 
     let data = data.as_str();
     if data.contains('\n') {
-        let lines = data.lines().map(|s| s.to_string()).collect::<Vec<String>>();
-        let lines = vertical_trim(lines);
-        let lines = horizontal_trim(lines);
-        lines.join("\n")
+        let lines = data.lines().collect::<Vec<&str>>();
+        let lines = vertical_trim(&lines);
+        match horizontal_trim(lines) {
+            Some(lines) => lines.join("\n"),
+            None => lines.join("\n"),
+        }
     } else {
         data.to_string()
     }
