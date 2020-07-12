@@ -905,7 +905,7 @@ impl fmt::Debug for StderrLock<'_> {
     issue = "none"
 )]
 pub fn prompt(prompt: &str) -> String {
-    stdout().write(prompt.as_bytes()).unwrap();
+    stdout().write(prompt.as_bytes()).expect("failed to write to stdout");
     input()
 }
 
