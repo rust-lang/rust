@@ -135,8 +135,16 @@ trait Partitioner<'tcx> {
     );
 }
 
-fn get_partitioner<'tcx>() -> Box<dyn Partitioner<'tcx>> {
-    Box::new(default::DefaultPartitioning)
+fn get_partitioner<'tcx>(tcx: TyCtxt<'tcx>) -> Box<dyn Partitioner<'tcx>> {
+    let strategy = match &tcx.sess.opts.debugging_opts.cgu_partitioning_strategy {
+        None => "default",
+        Some(s) => &s[..],
+    };
+
+    match strategy {
+        "default" => Box::new(default::DefaultPartitioning),
+        _ => tcx.sess.fatal("unknown partitioning strategy"),
+    }
 }
 
 pub fn partition<'tcx>(
@@ -147,7 +155,7 @@ pub fn partition<'tcx>(
 ) -> Vec<CodegenUnit<'tcx>> {
     let _prof_timer = tcx.prof.generic_activity("cgu_partitioning");
 
-    let mut partitioner = get_partitioner();
+    let mut partitioner = get_partitioner(tcx);
     // In the first step, we place all regular monomorphizations into their
     // respective 'home' codegen unit. Regular monomorphizations are all
     // functions and statics defined in the local crate.
