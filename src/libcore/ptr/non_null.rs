@@ -217,8 +217,8 @@ impl<T> NonNull<[T]> {
     /// assert_eq!(slice.as_non_null_ptr(), NonNull::new(1 as *mut i8).unwrap());
     /// ```
     #[inline]
-    #[unstable(feature = "slice_ptr_get", issue = "none")]
-    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "none")]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_non_null_ptr(self) -> NonNull<T> {
         // SAFETY: We know `self` is non-null.
         unsafe { NonNull::new_unchecked(self.as_ptr().as_mut_ptr()) }
@@ -245,7 +245,7 @@ impl<T> NonNull<[T]> {
     ///     assert_eq!(x.get_unchecked_mut(1).as_ptr(), x.as_non_null_ptr().as_ptr().add(1));
     /// }
     /// ```
-    #[unstable(feature = "slice_ptr_get", issue = "none")]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
     where

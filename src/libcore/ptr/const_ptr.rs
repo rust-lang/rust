@@ -842,8 +842,8 @@ impl<T> *const [T] {
     /// assert_eq!(slice.as_ptr(), 0 as *const i8);
     /// ```
     #[inline]
-    #[unstable(feature = "slice_ptr_get", issue = "none")]
-    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "none")]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_ptr(self) -> *const T {
         self as *const T
     }
@@ -867,7 +867,7 @@ impl<T> *const [T] {
     ///     assert_eq!(x.get_unchecked(1), x.as_ptr().add(1));
     /// }
     /// ```
-    #[unstable(feature = "slice_ptr_get", issue = "none")]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
     #[inline]
     pub unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
     where

@@ -1043,8 +1043,8 @@ impl<T> *mut [T] {
     /// assert_eq!(slice.as_mut_ptr(), 0 as *mut i8);
     /// ```
     #[inline]
-    #[unstable(feature = "slice_ptr_get", issue = "none")]
-    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "none")]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_mut_ptr(self) -> *mut T {
         self as *mut T
     }
@@ -1068,7 +1068,7 @@ impl<T> *mut [T] {
     ///     assert_eq!(x.get_unchecked_mut(1), x.as_mut_ptr().add(1));
     /// }
     /// ```
-    #[unstable(feature = "slice_ptr_get", issue = "none")]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
     where
