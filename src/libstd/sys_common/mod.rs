@@ -65,8 +65,8 @@ pub mod remutex;
 pub mod rwlock;
 pub mod thread;
 pub mod thread_info;
-pub mod thread_local_key;
 pub mod thread_local_dtor;
+pub mod thread_local_key;
 pub mod util;
 pub mod wtf8;
 
