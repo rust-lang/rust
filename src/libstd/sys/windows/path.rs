@@ -8,6 +8,10 @@ mod tests;
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
 
+// The unsafety here stems from converting between `&OsStr` and `&[u8]`
+// and back. This is safe to do because (1) we only look at ASCII
+// contents of the encoding and (2) new &OsStr values are produced
+// only from ASCII-bounded slices of existing &OsStr values.
 fn os_str_as_u8_slice(s: &OsStr) -> &[u8] {
     unsafe { mem::transmute(s) }
 }
@@ -33,62 +37,57 @@ pub fn is_valid_drive_letter(disk: u8) -> bool {
 
 pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
     use Prefix::{DeviceNS, Disk, Verbatim, VerbatimDisk, VerbatimUNC, UNC};
-    unsafe {
-        // The unsafety here stems from converting between &OsStr and &[u8]
-        // and back. This is safe to do because (1) we only look at ASCII
-        // contents of the encoding and (2) new &OsStr values are produced
-        // only from ASCII-bounded slices of existing &OsStr values.
-        let path = os_str_as_u8_slice(path);
 
-        // \\
-        if let Some(path) = path.strip_prefix(br"\\") {
-            // \\?\
-            if let Some(path) = path.strip_prefix(br"?\") {
-                // \\?\UNC\server\share
-                if let Some(path) = path.strip_prefix(br"UNC\") {
-                    let (server, share) = match get_first_two_components(path, is_verbatim_sep) {
-                        Some((server, share)) => {
-                            (u8_slice_as_os_str(server), u8_slice_as_os_str(share))
-                        }
-                        None => (u8_slice_as_os_str(path), OsStr::new("")),
-                    };
-                    return Some(VerbatimUNC(server, share));
-                } else {
-                    // \\?\path
-                    match path {
-                        // \\?\C:\path
-                        [c, b':', b'\\', ..] if is_valid_drive_letter(*c) => {
-                            return Some(VerbatimDisk(c.to_ascii_uppercase()));
-                        }
-                        // \\?\cat_pics
-                        _ => {
-                            let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
-                            let slice = &path[..idx];
-                            return Some(Verbatim(u8_slice_as_os_str(slice)));
-                        }
+    let path = os_str_as_u8_slice(path);
+
+    // \\
+    if let Some(path) = path.strip_prefix(br"\\") {
+        // \\?\
+        if let Some(path) = path.strip_prefix(br"?\") {
+            // \\?\UNC\server\share
+            if let Some(path) = path.strip_prefix(br"UNC\") {
+                let (server, share) = match get_first_two_components(path, is_verbatim_sep) {
+                    Some((server, share)) => unsafe {
+                        (u8_slice_as_os_str(server), u8_slice_as_os_str(share))
+                    },
+                    None => (unsafe { u8_slice_as_os_str(path) }, OsStr::new("")),
+                };
+                return Some(VerbatimUNC(server, share));
+            } else {
+                // \\?\path
+                match path {
+                    // \\?\C:\path
+                    [c, b':', b'\\', ..] if is_valid_drive_letter(*c) => {
+                        return Some(VerbatimDisk(c.to_ascii_uppercase()));
+                    }
+                    // \\?\cat_pics
+                    _ => {
+                        let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
+                        let slice = &path[..idx];
+                        return Some(Verbatim(unsafe { u8_slice_as_os_str(slice) }));
                     }
                 }
-            } else if let Some(path) = path.strip_prefix(b".\\") {
-                // \\.\COM42
-                let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
-                let slice = &path[..idx];
-                return Some(DeviceNS(u8_slice_as_os_str(slice)));
             }
-            match get_first_two_components(path, is_sep_byte) {
-                Some((server, share)) if !server.is_empty() && !share.is_empty() => {
-                    // \\server\share
-                    return Some(UNC(u8_slice_as_os_str(server), u8_slice_as_os_str(share)));
-                }
-                _ => {}
-            }
-        } else if let [c, b':', ..] = path {
-            // C:
-            if is_valid_drive_letter(*c) {
-                return Some(Disk(c.to_ascii_uppercase()));
-            }
+        } else if let Some(path) = path.strip_prefix(b".\\") {
+            // \\.\COM42
+            let idx = path.iter().position(|&b| b == b'\\').unwrap_or(path.len());
+            let slice = &path[..idx];
+            return Some(DeviceNS(unsafe { u8_slice_as_os_str(slice) }));
         }
-        return None;
+        match get_first_two_components(path, is_sep_byte) {
+            Some((server, share)) if !server.is_empty() && !share.is_empty() => {
+                // \\server\share
+                return Some(unsafe { UNC(u8_slice_as_os_str(server), u8_slice_as_os_str(share)) });
+            }
+            _ => {}
+        }
+    } else if let [c, b':', ..] = path {
+        // C:
+        if is_valid_drive_letter(*c) {
+            return Some(Disk(c.to_ascii_uppercase()));
+        }
     }
+    None
 }
 
 /// Returns the first two path components with predicate `f`.
