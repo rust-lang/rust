@@ -69,14 +69,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = if fd == 0 {
                     use std::io::{self, Read};
 
-                    let mut buffer = String::new();
-                    let res = io::stdin().read_to_string(&mut buffer);
+                    this.check_no_isolation("read")?;
+
+                    let mut buffer = vec![0; count as usize];
+                    let res = io::stdin()
+                        .read(&mut buffer)
+                        // `Stdin::read` never returns a value larger
+                        // than `count`, so this cannot fail.
+                        .map(|c| i64::try_from(c).unwrap());
 
                     match res {
                         Ok(bytes) => {
-                            this.memory.write_bytes(buf, buffer.bytes())?;
+                            this.memory.write_bytes(buf, buffer)?;
                             i64::try_from(bytes).unwrap()
                         },
+                        // FIXME: set errno to appropriate value
                         Err(_) => -1,
                     }
                 } else if fd == 1 || fd == 2 {
@@ -114,6 +121,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     };
                     match res {
                         Ok(n) => i64::try_from(n).unwrap(),
+                        // FIXME: set errno to appropriate value
                         Err(_) => -1,
                     }
                 } else {
