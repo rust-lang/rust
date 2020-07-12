@@ -278,16 +278,16 @@ pub use self::buffered::{BufReader, BufWriter, LineWriter};
 pub use self::cursor::Cursor;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::error::{Error, ErrorKind, Result};
+#[unstable(feature = "input", issue = "none")]
+pub use self::stdio::input;
+#[unstable(feature = "prompt", issue = "none")]
+pub use self::stdio::prompt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
 #[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
-#[unstable(feature = "input", issue = "none")]
-pub use self::stdio::input;
-#[unstable(feature = "prompt", issue = "none")]
-pub use self::stdio::prompt;
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
