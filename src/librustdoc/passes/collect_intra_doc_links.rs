@@ -466,7 +466,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         };
 
         if parent_node.is_some() {
-            debug!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
+            trace!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
         }
 
         let current_item = match item.inner {
@@ -487,7 +487,10 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 for_.def_id().map(|did| self.cx.tcx.item_name(did).to_string())
             }
             // we don't display docs on `extern crate` items anyway, so don't process them.
-            ExternCrateItem(..) => return self.fold_item_recur(item),
+            ExternCrateItem(..) => {
+                debug!("ignoring extern crate item {:?}", item.def_id);
+                return self.fold_item_recur(item);
+            }
             ImportItem(Import::Simple(ref name, ..)) => Some(name.clone()),
             MacroItem(..) => None,
             _ => item.name.clone(),
@@ -499,6 +502,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         let cx = self.cx;
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
+        trace!("got documentation '{}'", dox);
 
         look_for_tests(&cx, &dox, &item, true);
 
@@ -540,6 +544,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         });
 
         for (ori_link, link_range) in markdown_links(&dox) {
+            trace!("considering link '{}'", ori_link);
+
             // Bail early for real links.
             if ori_link.contains('/') {
                 continue;
@@ -866,6 +872,7 @@ fn build_diagnostic(
         Some(hir_id) => hir_id,
         None => {
             // If non-local, no need to check anything.
+            info!("ignoring warning from parent crate: {}", err_msg);
             return;
         }
     };
