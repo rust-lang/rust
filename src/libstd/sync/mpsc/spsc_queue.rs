@@ -99,7 +99,9 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
     ) -> Self {
         let n1 = Node::new();
         let n2 = Node::new();
-        (*n1).next.store(n2, Ordering::Relaxed);
+        // SAFETY: At this point we know the pointer is not NUL since it was
+        // build just above.
+        unsafe { (*n1).next.store(n2, Ordering::Relaxed) }
         Queue {
             consumer: CacheAligned::new(Consumer {
                 tail: UnsafeCell::new(n2),
@@ -134,18 +136,25 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
 
     unsafe fn alloc(&self) -> *mut Node<T> {
         // First try to see if we can consume the 'first' node for our uses.
-        if *self.producer.first.get() != *self.producer.tail_copy.get() {
-            let ret = *self.producer.first.get();
-            *self.producer.0.first.get() = (*ret).next.load(Ordering::Relaxed);
-            return ret;
-        }
-        // If the above fails, then update our copy of the tail and try
-        // again.
-        *self.producer.0.tail_copy.get() = self.consumer.tail_prev.load(Ordering::Acquire);
-        if *self.producer.first.get() != *self.producer.tail_copy.get() {
-            let ret = *self.producer.first.get();
-            *self.producer.0.first.get() = (*ret).next.load(Ordering::Relaxed);
-            return ret;
+        // SAFEY: Since `self` is a valid reference, accessing its inner values
+        // can be considered safe (without checking for NUL pointers).
+        //
+        // Dereferencing of `ret` are safe too because the pointer comes from
+        // `self` once again.
+        unsafe {
+            if *self.producer.first.get() != *self.producer.tail_copy.get() {
+                let ret = *self.producer.first.get();
+                *self.producer.0.first.get() = (*ret).next.load(Ordering::Relaxed);
+                return ret;
+            }
+            // If the above fails, then update our copy of the tail and try
+            // again.
+            *self.producer.0.tail_copy.get() = self.consumer.tail_prev.load(Ordering::Acquire);
+            if *self.producer.first.get() != *self.producer.tail_copy.get() {
+                let ret = *self.producer.first.get();
+                *self.producer.0.first.get() = (*ret).next.load(Ordering::Relaxed);
+                return ret;
+            }
         }
         // If all of that fails, then we have to allocate a new node
         // (there's nothing in the node cache).

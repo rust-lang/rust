@@ -149,6 +149,7 @@
 //! [`Once`]: crate::sync::Once
 //! [`RwLock`]: crate::sync::RwLock
 
+#![deny(unsafe_op_in_unsafe_fn)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -47,14 +47,18 @@ impl SignalToken {
     /// flag.
     #[inline]
     pub unsafe fn cast_to_usize(self) -> usize {
-        mem::transmute(self.inner)
+        // SAFETY: this ok because of the internal represention of Arc, which
+        // is a pointer and phantom data (so the size of a pointer -> a usize).
+        unsafe { mem::transmute(self.inner) }
     }
 
     /// Converts from an unsafe usize value. Useful for retrieving a pipe's state
     /// flag.
     #[inline]
     pub unsafe fn cast_from_usize(signal_ptr: usize) -> SignalToken {
-        SignalToken { inner: mem::transmute(signal_ptr) }
+        // SAFETY: this ok because of the internal represention of Arc, which
+        // is a pointer and phantom data (so the size of a pointer -> a usize).
+        SignalToken { inner: unsafe { mem::transmute(signal_ptr) } }
     }
 }
 

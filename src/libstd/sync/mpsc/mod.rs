@@ -648,10 +648,18 @@ enum Flavor<T> {
 trait UnsafeFlavor<T> {
     fn inner_unsafe(&self) -> &UnsafeCell<Flavor<T>>;
     unsafe fn inner_mut(&self) -> &mut Flavor<T> {
-        &mut *self.inner_unsafe().get()
+        // SAFETY: We are sure the inner value will never be NUL when this is
+        // called, the invariants of the module make it so.
+        //
+        // It is also ensured that no other (mutable) reference will be handed
+        // out while the one returned here is in action.
+        unsafe { &mut *self.inner_unsafe().get() }
     }
     unsafe fn inner(&self) -> &Flavor<T> {
-        &*self.inner_unsafe().get()
+        // SAFETY: We are sure the inner value will never be NUL when this is
+        // called, the invariants of the module make it so nor will any mutable
+        // reference be active while this one is.
+        unsafe { &*self.inner_unsafe().get() }
     }
 }
 impl<T> UnsafeFlavor<T> for Sender<T> {
