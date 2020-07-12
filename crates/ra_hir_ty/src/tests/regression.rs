@@ -779,3 +779,60 @@ pub trait Service<Request> {
     "###
     );
 }
+
+#[test]
+fn issue_4966() {
+    assert_snapshot!(
+        infer(r#"
+pub trait IntoIterator {
+    type Item;
+}
+
+struct Repeat<A> { element: A }
+
+struct Map<F> { f: F }
+
+struct Vec<T> {}
+
+#[lang = "deref"]
+pub trait Deref {
+    type Target;
+}
+
+impl<T> Deref for Vec<T> {
+    type Target = [T];
+}
+
+fn from_iter<A, T: IntoIterator<Item = A>>(iter: T) -> Vec<A> {}
+
+fn main() {
+    let inner = Map { f: |_: &f64| 0.0 };
+
+    let repeat = Repeat { element: inner };
+
+    let vec = from_iter(repeat);
+
+    vec.foo_bar();
+}
+"#),
+        @r###"
+    270..274 'iter': T
+    289..291 '{}': ()
+    303..447 '{     ...r(); }': ()
+    313..318 'inner': Map<|&f64| -> f64>
+    321..345 'Map { ... 0.0 }': Map<|&f64| -> f64>
+    330..343 '|_: &f64| 0.0': |&f64| -> f64
+    331..332 '_': &f64
+    340..343 '0.0': f64
+    356..362 'repeat': Repeat<Map<|&f64| -> f64>>
+    365..390 'Repeat...nner }': Repeat<Map<|&f64| -> f64>>
+    383..388 'inner': Map<|&f64| -> f64>
+    401..404 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+    407..416 'from_iter': fn from_iter<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>, Repeat<Map<|&f64| -> f64>>>(Repeat<Map<|&f64| -> f64>>) -> Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+    407..424 'from_i...epeat)': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+    417..423 'repeat': Repeat<Map<|&f64| -> f64>>
+    431..434 'vec': Vec<IntoIterator::Item<Repeat<Map<|&f64| -> f64>>>>
+    431..444 'vec.foo_bar()': {unknown}
+    "###
+    );
+}
