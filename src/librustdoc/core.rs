@@ -377,18 +377,26 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         crate_name,
         lint_caps,
         register_lints: None,
-        override_queries: Some(|_sess, local_providers, external_providers| {
-            lazy_static! {
-                static ref EMPTY_SET: FxHashSet<LocalDefId> = FxHashSet::default();
-            }
+        override_queries: Some(|_sess, providers, _external_providers| {
             // Most lints will require typechecking, so just don't run them.
-            local_providers.lint_mod = |_, _| {};
-            external_providers.lint_mod = |_, _| {};
-            local_providers.typeck_item_bodies = |_, _| {};
+            providers.lint_mod = |_, _| {};
+            // Prevent `rustc_typeck::check_crate` from calling `typeck_tables_of` on all bodies.
+            providers.typeck_item_bodies = |_, _| {};
             // hack so that `used_trait_imports` won't try to call typeck_tables_of
-            local_providers.used_trait_imports = |_, _| &EMPTY_SET;
+            providers.used_trait_imports = |_, _| {
+                lazy_static! {
+                    static ref EMPTY_SET: FxHashSet<LocalDefId> = FxHashSet::default();
+                }
+                &EMPTY_SET
+            };
             // In case typeck does end up being called, don't ICE in case there were name resolution errors
-            local_providers.typeck_tables_of = move |tcx, def_id| {
+            providers.typeck_tables_of = move |tcx, def_id| {
+                thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(TyCtxt<'tcx>, LocalDefId) -> &'tcx ty::TypeckTables<'tcx> = {
+                    let mut providers = ty::query::Providers::default();
+                    rustc_typeck::provide(&mut providers);
+                    providers.typeck_tables_of
+                });
+
                 // Closures' tables come from their outermost function,
                 // as they are part of the same "inference environment".
                 // This avoids emitting errors for the parent twice (see similar code in `typeck_tables_of_with_fallback`)
@@ -447,10 +455,11 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
             global_ctxt.enter(|tcx| {
-                // Some queries require that they only run on valid types:
-                // https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425
-                // Therefore typecheck this crate before running lints.
-                // NOTE: this does not typeck item bodies or run the default rustc lints
+                // Certain queries assume that some checks were run elsewhere
+                // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
+                // so type-check everything other than function bodies in this crate before running lints.
+                // NOTE: this does not call `tcx.analysis()` so that we won't
+                // typeck function bodies or run the default rustc lints.
                 // (see `override_queries` in the `config`)
                 let _ = rustc_typeck::check_crate(tcx);
                 tcx.sess.abort_if_errors();
@@ -606,12 +615,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         })
     })
 }
-
-thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(TyCtxt<'tcx>, LocalDefId) -> &'tcx ty::TypeckTables<'tcx> = {
-    let mut providers = ty::query::Providers::default();
-    rustc_typeck::provide(&mut providers);
-    providers.typeck_tables_of
-});
 
 /// Due to https://github.com/rust-lang/rust/pull/73566,
 /// the name resolution pass may find errors that are never emitted.
