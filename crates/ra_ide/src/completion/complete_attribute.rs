@@ -85,7 +85,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("forbid(…)", Some("forbid"), Some("forbid(${0:lint})")),
     // FIXME: resolve through macro resolution?
     attr("global_allocator", None, None).prefer_inner(),
-    attr("ignore(…)", Some("ignore"), Some("ignore(${0:lint})")),
+    attr(r#"ignore = "…""#, Some("ignore"), Some(r#"ignore = "${0:reason}""#)),
     attr("inline(…)", Some("inline"), Some("inline(${0:lint})")),
     attr(r#"link_name = "…""#, Some("link_name"), Some(r#"link_name = "${0:symbol_name}""#)),
     attr("link", None, None),
@@ -300,7 +300,7 @@ struct Test {}
                 at derive(…)
                 at doc = "…"
                 at forbid(…)
-                at ignore(…)
+                at ignore = "…"
                 at inline(…)
                 at link
                 at link_name = "…"
@@ -343,7 +343,7 @@ struct Test {}
                 at feature(…)
                 at forbid(…)
                 at global_allocator
-                at ignore(…)
+                at ignore = "…"
                 at inline(…)
                 at link
                 at link_name = "…"
