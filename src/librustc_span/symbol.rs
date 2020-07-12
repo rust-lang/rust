@@ -226,6 +226,7 @@ symbols! {
         const_eval_limit,
         const_extern_fn,
         const_fn,
+        const_fn_transmute,
         const_fn_union,
         const_generics,
         const_if_match,

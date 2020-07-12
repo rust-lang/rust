@@ -393,7 +393,7 @@ pub trait PrettyPrinter<'tcx>:
                     .tcx()
                     .item_children(visible_parent)
                     .iter()
-                    .find(|child| child.res.def_id() == def_id)
+                    .find(|child| child.res.opt_def_id() == Some(def_id))
                     .map(|child| child.ident.name);
                 if let Some(reexport) = reexport {
                     *name = reexport;

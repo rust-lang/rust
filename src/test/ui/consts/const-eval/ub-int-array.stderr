@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-int-array.rs:15:1
+  --> $DIR/ub-int-array.rs:14:1
    |
 LL | / const UNINIT_INT_0: [u32; 3] = unsafe {
 LL | |
@@ -13,7 +13,7 @@ LL | | };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-int-array.rs:24:1
+  --> $DIR/ub-int-array.rs:23:1
    |
 LL | / const UNINIT_INT_1: [u32; 3] = unsafe {
 LL | |
@@ -27,7 +27,7 @@ LL | | };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-int-array.rs:44:1
+  --> $DIR/ub-int-array.rs:43:1
    |
 LL | / const UNINIT_INT_2: [u32; 3] = unsafe {
 LL | |

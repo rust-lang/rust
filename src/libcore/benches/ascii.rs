@@ -1,3 +1,5 @@
+mod is_ascii;
+
 // Lower-case ASCII 'a' is the first byte that has its highest bit set
 // after wrap-adding 0x1F:
 //

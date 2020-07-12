@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-upvars.rs:6:1
+  --> $DIR/ub-upvars.rs:5:1
    |
 LL | / const BAD_UPVAR: &dyn FnOnce() = &{
 LL | |     let bad_ref: &'static u16 = unsafe { mem::transmute(0usize) };

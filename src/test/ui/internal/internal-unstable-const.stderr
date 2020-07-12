@@ -1,4 +1,4 @@
-error[E0723]: can only call other `const fn` within a `const fn`, but `const std::intrinsics::transmute::<u32, i32>` is not stable as `const fn`
+error[E0723]: can only call `transmute` from const items, not `const fn`
   --> $DIR/internal-unstable-const.rs:11:14
    |
 LL |     unsafe { std::mem::transmute(4u32) }

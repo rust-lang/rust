@@ -1,5 +1,5 @@
 #![feature(const_fn)]
-#![feature(const_transmute)]
+#![feature(const_fn_transmute)]
 
 const fn foo() -> ! {
     unsafe { std::mem::transmute(()) }
