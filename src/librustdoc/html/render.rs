@@ -558,6 +558,7 @@ pub fn run(
     // prevent rule conflicts
     scx.style_files.push(StylePath { path: PathBuf::from("light.css"), disabled: false });
     scx.style_files.push(StylePath { path: PathBuf::from("dark.css"), disabled: true });
+    scx.style_files.push(StylePath { path: PathBuf::from("ayu.css"), disabled: true });
 
     let dst = output;
     scx.ensure_dir(&dst)?;
@@ -652,6 +653,12 @@ fn write_shared(
                 &cx.shared.fs,
                 cx.path("dark.css"),
                 static_files::themes::DARK,
+                options.enable_minification,
+            )?,
+            "ayu" => write_minify(
+                &cx.shared.fs,
+                cx.path("ayu.css"),
+                static_files::themes::AYU,
                 options.enable_minification,
             )?,
             _ => {

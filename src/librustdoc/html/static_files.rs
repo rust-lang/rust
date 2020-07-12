@@ -64,6 +64,9 @@ pub mod themes {
 
     /// The "dark" theme.
     pub static DARK: &str = include_str!("static/themes/dark.css");
+
+    /// The "ayu" theme.
+    pub static AYU: &str = include_str!("static/themes/ayu.css");
 }
 
 /// Files related to the Fira Sans font.
