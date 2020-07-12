@@ -20,12 +20,13 @@ process (e.g. a big refactoring of the code, or a
 amounts to a small feature) but is still too controversial or
 big to get by with a single r+, you can start a pFCP (or, if you
 don't have r+ rights, ask someone who has them to start one - and
-unless they have a concern themselves, they should).
+unless they have a concern themselves, they should). pFCP stands for
+"proposed final comment period".
 
 Again, the pFCP process is only needed if you need consensus - if you
 don't think anyone would have a problem with your change, it's ok to
 get by with only an r+. For example, it is OK to add or modify
-unstable command-line flags or attributes without an pFCP for
+unstable command-line flags or attributes without a pFCP for
 compiler development or standard library use, as long as you don't
 expect them to be in wide use in the nightly ecosystem.
 
@@ -33,10 +34,10 @@ You don't need to have the implementation fully ready for r+ to ask
 for a pFCP, but it is generally a good idea to have at least a proof
 of concept so that people can see what you are talking about.
 
-That starts a "proposed final comment period" (pFCP), which requires
-all members of the team to sign off the FCP. After they all do so,
-there's a 10 day long "final comment period" where everybody can comment,
-and if no new concerns are raised, the PR/issue gets FCP approval.
+When a pFCP is started, it requires all members of the team to sign off
+the FCP. After they all do so, there's a 10 day long "final comment
+period" where everybody can comment, and if no new concerns are raised,
+the PR/issue gets FCP approval.
 
 ## The logistics of writing features
 
