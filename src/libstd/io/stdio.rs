@@ -950,7 +950,7 @@ pub fn prompt(prompt: &str) -> String {
 )]
 pub fn input() -> String {
     let mut input = String::new();
-    let _ = stdout().flush();
+    stdout().flush().expect("failed to flush stdout");
     match stdin().read_line(&mut input).expect("failed to read from stdin") {
         0 => panic!("unexpected end of file"),
         _ => String::from(input.trim_end_matches(&['\n', '\r'][..])),
