@@ -2,6 +2,9 @@ use crate::ffi::OsStr;
 use crate::mem;
 use crate::path::Prefix;
 
+pub const MAIN_SEP_STR: &str = "\\";
+pub const MAIN_SEP: char = '\\';
+
 fn os_str_as_u8_slice(s: &OsStr) -> &[u8] {
     unsafe { mem::transmute(s) }
 }
@@ -90,5 +93,3 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
     }
 }
 
-pub const MAIN_SEP_STR: &str = "\\";
-pub const MAIN_SEP: char = '\\';
