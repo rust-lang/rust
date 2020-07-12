@@ -160,7 +160,10 @@ fn n_attached_trivias<'a>(
                             if let Some((peek_kind, peek_text)) =
                                 trivias.peek().map(|(_, pair)| pair)
                             {
-                                if *peek_kind == COMMENT && peek_text.starts_with("///") {
+                                if *peek_kind == COMMENT
+                                    && peek_text.starts_with("///")
+                                    && !peek_text.starts_with("////")
+                                {
                                     continue;
                                 }
                             }
