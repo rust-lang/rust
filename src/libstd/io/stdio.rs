@@ -925,8 +925,8 @@ pub fn prompt(prompt: &str) -> String {
 ///
 /// # Panics
 ///
-/// This function currently panics if it does not receive input,
-/// or when input is empty without newline
+/// This function currently panics if it does not receive input
+/// or when input is empty (end of file / `ctrl + d`).
 ///
 /// # Examples
 ///
