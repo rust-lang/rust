@@ -1995,7 +1995,6 @@ fn test() {
 fn fn_item_fn_trait() {
     check_types(
         r#"
-//- /main.rs
 #[lang = "fn_once"]
 trait FnOnce<Args> {
     type Output;
@@ -3025,7 +3024,6 @@ fn infer_box_fn_arg() {
 fn infer_dyn_fn_output() {
     check_types(
         r#"
-//- /lib.rs
 #[lang = "fn_once"]
 pub trait FnOnce<Args> {
     type Output;
@@ -3049,7 +3047,6 @@ fn foo() {
 fn infer_dyn_fn_once_output() {
     check_types(
         r#"
-//- /lib.rs
 #[lang = "fn_once"]
 pub trait FnOnce<Args> {
     type Output;
