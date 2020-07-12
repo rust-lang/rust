@@ -2,6 +2,7 @@
 use std::sync::Arc;
 
 use chalk_ir::cast::Cast;
+use chalk_solve::Solver;
 use hir_def::{
     expr::ExprId, lang_item::LangItemTarget, DefWithBodyId, ImplId, TraitId, TypeAliasId,
 };
@@ -32,9 +33,10 @@ struct ChalkContext<'a> {
     krate: CrateId,
 }
 
-fn create_chalk_solver() -> chalk_solve::Solver<Interner> {
-    let solver_choice = chalk_solve::SolverChoice::recursive();
-    solver_choice.into_solver()
+fn create_chalk_solver() -> chalk_recursive::RecursiveSolver<Interner> {
+    let overflow_depth = 100;
+    let caching_enabled = true;
+    chalk_recursive::RecursiveSolver::new(overflow_depth, caching_enabled)
 }
 
 /// A set of clauses that we assume to be true. E.g. if we are inside this function:
@@ -293,13 +295,8 @@ pub enum Impl {
     /// A normal impl from an impl block.
     ImplDef(ImplId),
     /// Closure types implement the Fn traits synthetically.
+    // FIXME: implement closure support from Chalk, remove this
     ClosureFnTraitImpl(ClosureFnTraitImplData),
-    /// [T; n]: Unsize<[T]>
-    UnsizeArray,
-    /// T: Unsize<dyn Trait> where T: Trait
-    UnsizeToTraitObject(TraitId),
-    /// dyn Trait: Unsize<dyn SuperTrait> if Trait: SuperTrait
-    UnsizeToSuperTraitObject(UnsizeToSuperTraitObjectData),
 }
 /// This exists just for Chalk, because our ImplIds are only unique per module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

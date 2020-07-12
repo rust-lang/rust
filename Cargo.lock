@@ -34,6 +34,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ansi_term"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
+dependencies = [
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -50,6 +59,17 @@ name = "arrayvec"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
+
+[[package]]
+name = "atty"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
+dependencies = [
+ "hermit-abi",
+ "libc",
+ "winapi 0.3.9",
+]
 
 [[package]]
 name = "autocfg"
@@ -124,9 +144,9 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
 name = "chalk-derive"
-version = "0.15.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7379caa72d04103fcfd9bde5642b816f58e3ffd6a0d39347e9e35a066648226"
+checksum = "9396f12a23b1a40d5019aa81bc0cbd7ccd2c9736d6bc4afc95868533c2346dcb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -135,35 +155,35 @@ dependencies = [
 ]
 
 [[package]]
-name = "chalk-engine"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e8afe48b5663504b485791ab4fae69cf4864869a71ceec9c758fd4d03423722"
-dependencies = [
- "chalk-derive",
- "chalk-ir",
- "rustc-hash",
- "tracing",
-]
-
-[[package]]
 name = "chalk-ir"
-version = "0.15.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "231e391a03c1fc45874171d92be9542efedc939bac59d9501ee28b9521feb406"
+checksum = "87e9c67d500717d65ede27affb7ae40efe240d86fbefff1006fe0ffb62d4caf9"
 dependencies = [
  "chalk-derive",
  "lazy_static",
 ]
 
 [[package]]
-name = "chalk-solve"
-version = "0.15.0"
+name = "chalk-recursive"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72c969c0fd06ad50538253327ca3445ff02cc9d0209f94c3cbf198ad9d365b48"
+checksum = "a8fd2ac0fc06c857b95614d229bbe8ea317d1d94a7e8b9442a3f05c9a2c2d5f4"
 dependencies = [
  "chalk-derive",
- "chalk-engine",
+ "chalk-ir",
+ "chalk-solve",
+ "rustc-hash",
+ "tracing",
+]
+
+[[package]]
+name = "chalk-solve"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a79166f2405c1e51eadcc1344f5ee833c7b391532dd78f64a0731a9a123cc58"
+dependencies = [
+ "chalk-derive",
  "chalk-ir",
  "ena",
  "itertools",
@@ -171,6 +191,7 @@ dependencies = [
  "rustc-hash",
  "tracing",
  "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
@@ -972,6 +993,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "quanta"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f4f7a1905379198075914bc93d32a5465c40474f90a078bb13439cb00c547bcc"
+dependencies = [
+ "libc",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1103,6 +1134,7 @@ version = "0.1.0"
 dependencies = [
  "arrayvec",
  "chalk-ir",
+ "chalk-recursive",
  "chalk-solve",
  "ena",
  "expect",
@@ -1120,6 +1152,9 @@ dependencies = [
  "smallvec",
  "stdx",
  "test_utils",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
@@ -1723,6 +1758,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "termcolor"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb6bfa289a4d7c5766392812c0a1f4c1ba45afa1ad47803c11e1f407d846d75f"
+dependencies = [
+ "winapi-util",
+]
+
+[[package]]
 name = "terminal_size"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1856,7 +1900,7 @@ version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c72c8cf3ec4ed69fef614d011a5ae4274537a8a8c59133558029bd731eb71659"
 dependencies = [
- "ansi_term",
+ "ansi_term 0.11.0",
  "chrono",
  "lazy_static",
  "matchers",
@@ -1868,6 +1912,21 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
+]
+
+[[package]]
+name = "tracing-tree"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0a389731c9e6c56fef11e438e5b6afae861d5bc301c8b4bdca8d19f0e830d82"
+dependencies = [
+ "ansi_term 0.12.1",
+ "atty",
+ "chrono",
+ "quanta",
+ "termcolor",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

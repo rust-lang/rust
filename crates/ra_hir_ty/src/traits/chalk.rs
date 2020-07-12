@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use log::debug;
 
-use chalk_ir::{fold::shift::Shift, GenericArg, TypeName};
+use chalk_ir::{fold::shift::Shift, CanonicalVarKinds, GenericArg, TypeName};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use hir_def::{
@@ -14,7 +14,10 @@ use ra_db::{salsa::InternKey, CrateId};
 
 use super::{builtin, AssocTyValue, ChalkContext, Impl};
 use crate::{
-    db::HirDatabase, display::HirDisplay, method_resolution::TyFingerprint, utils::generics,
+    db::HirDatabase,
+    display::HirDisplay,
+    method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
+    utils::generics,
     CallableDef, DebruijnIndex, GenericPredicate, Substs, Ty, TypeCtor,
 };
 use mapping::{convert_where_clauses, generic_predicate_to_inline_bound, make_binders};
@@ -66,13 +69,31 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         &self,
         trait_id: TraitId,
         parameters: &[GenericArg<Interner>],
+        binders: &CanonicalVarKinds<Interner>,
     ) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
         let trait_: hir_def::TraitId = from_chalk(self.db, trait_id);
 
         let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref(&Interner).clone());
 
+        fn binder_kind(ty: &Ty, binders: &CanonicalVarKinds<Interner>) -> Option<chalk_ir::TyKind> {
+            if let Ty::Bound(bv) = ty {
+                let binders = binders.as_slice(&Interner);
+                if bv.debruijn == DebruijnIndex::INNERMOST {
+                    if let chalk_ir::VariableKind::Ty(tk) = binders[bv.index].kind {
+                        return Some(tk);
+                    }
+                }
+            }
+            None
+        }
+
         let self_ty_fp = TyFingerprint::for_impl(&ty);
+        let fps: &[TyFingerprint] = match binder_kind(&ty, binders) {
+            Some(chalk_ir::TyKind::Integer) => &ALL_INT_FPS,
+            Some(chalk_ir::TyKind::Float) => &ALL_FLOAT_FPS,
+            _ => self_ty_fp.as_ref().map(std::slice::from_ref).unwrap_or(&[]),
+        };
 
         // Note: Since we're using impls_for_trait, only impls where the trait
         // can be resolved should ever reach Chalk. `impl_datum` relies on that
@@ -83,17 +104,21 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
 
         let id_to_chalk = |id: hir_def::ImplId| Impl::ImplDef(id).to_chalk(self.db);
 
-        let mut result: Vec<_> = match self_ty_fp {
-            Some(fp) => impl_maps
-                .iter()
-                .flat_map(|crate_impl_defs| {
-                    crate_impl_defs.for_trait_and_self_ty(trait_, fp).map(id_to_chalk)
-                })
-                .collect(),
-            None => impl_maps
+        let mut result: Vec<_> = if fps.is_empty() {
+            debug!("Unrestricted search for {:?} impls...", trait_);
+            impl_maps
                 .iter()
                 .flat_map(|crate_impl_defs| crate_impl_defs.for_trait(trait_).map(id_to_chalk))
-                .collect(),
+                .collect()
+        } else {
+            impl_maps
+                .iter()
+                .flat_map(|crate_impl_defs| {
+                    fps.iter().flat_map(move |fp| {
+                        crate_impl_defs.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
+                    })
+                })
+                .collect()
         };
 
         let arg: Option<Ty> =
@@ -217,6 +242,22 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         _substs: &chalk_ir::Substitution<Interner>,
     ) -> chalk_ir::Substitution<Interner> {
         // FIXME: implement closure support
+        unimplemented!()
+    }
+
+    fn trait_name(&self, _trait_id: chalk_ir::TraitId<Interner>) -> String {
+        unimplemented!()
+    }
+    fn adt_name(&self, _struct_id: chalk_ir::AdtId<Interner>) -> String {
+        unimplemented!()
+    }
+    fn assoc_type_name(&self, _assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
+        unimplemented!()
+    }
+    fn opaque_type_name(&self, _opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
+        unimplemented!()
+    }
+    fn fn_def_name(&self, _fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
         unimplemented!()
     }
 }
@@ -354,12 +395,18 @@ pub(crate) fn struct_datum_query(
         fundamental: false,
         phantom_data: false,
     };
-    let struct_datum_bound = rust_ir::AdtDatumBound {
-        fields: Vec::new(), // FIXME add fields (only relevant for auto traits)
-        where_clauses,
+    // FIXME provide enum variants properly (for auto traits)
+    let variant = rust_ir::AdtVariantDatum {
+        fields: Vec::new(), // FIXME add fields (only relevant for auto traits),
     };
-    let struct_datum =
-        StructDatum { id: struct_id, binders: make_binders(struct_datum_bound, num_params), flags };
+    let struct_datum_bound = rust_ir::AdtDatumBound { variants: vec![variant], where_clauses };
+    let struct_datum = StructDatum {
+        // FIXME set ADT kind
+        kind: rust_ir::AdtKind::Struct,
+        id: struct_id,
+        binders: make_binders(struct_datum_bound, num_params),
+        flags,
+    };
     Arc::new(struct_datum)
 }
 

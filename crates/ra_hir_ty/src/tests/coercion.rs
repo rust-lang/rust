@@ -662,7 +662,53 @@ fn test() {
 }
 
 #[test]
-fn coerce_unsize_trait_object() {
+fn coerce_unsize_trait_object_simple() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+#[lang = "sized"]
+pub trait Sized {}
+#[lang = "unsize"]
+pub trait Unsize<T> {}
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+
+trait Foo<T, U> {}
+trait Bar<U, T, X>: Foo<T, U> {}
+trait Baz<T, X>: Bar<usize, T, X> {}
+
+struct S<T, X>;
+impl<T, X> Foo<T, usize> for S<T, X> {}
+impl<T, X> Bar<usize, T, X> for S<T, X> {}
+impl<T, X> Baz<T, X> for S<T, X> {}
+
+fn test() {
+    let obj: &dyn Baz<i8, i16> = &S;
+    let obj: &dyn Bar<_, i8, i16> = &S;
+    let obj: &dyn Foo<i8, _> = &S;
+}
+"#, true),
+        @r###"
+    424..539 '{     ... &S; }': ()
+    434..437 'obj': &dyn Baz<i8, i16>
+    459..461 '&S': &S<i8, i16>
+    460..461 'S': S<i8, i16>
+    471..474 'obj': &dyn Bar<usize, i8, i16>
+    499..501 '&S': &S<i8, i16>
+    500..501 'S': S<i8, i16>
+    511..514 'obj': &dyn Foo<i8, usize>
+    534..536 '&S': &S<i8, {unknown}>
+    535..536 'S': S<i8, {unknown}>
+    "###
+    );
+}
+
+#[test]
+// The rust reference says this should be possible, but rustc doesn't implement
+// it. We used to support it, but Chalk doesn't.
+#[ignore]
+fn coerce_unsize_trait_object_to_trait_object() {
     assert_snapshot!(
         infer_with_mismatches(r#"
 #[lang = "sized"]
@@ -735,16 +781,17 @@ impl D for S {}
 
 fn test() {
     let obj: &dyn D = &S;
-    let obj: &dyn A = obj;
+    let obj: &dyn A = &S;
 }
 "#, true),
         @r###"
-    328..384 '{     ...obj; }': ()
+    328..383 '{     ... &S; }': ()
     338..341 'obj': &dyn D
     352..354 '&S': &S
     353..354 'S': S
     364..367 'obj': &dyn A
-    378..381 'obj': &dyn D
+    378..380 '&S': &S
+    379..380 'S': S
     "###
     );
 }

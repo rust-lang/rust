@@ -157,7 +157,7 @@ impl DebugContext<'_> {
             _ => panic!("associated type not in trait"),
         };
         let trait_data = self.0.trait_data(trait_);
-        let params = projection_ty.substitution.parameters(&Interner);
+        let params = projection_ty.substitution.as_slice(&Interner);
         write!(fmt, "<{:?} as {}", &params[0], trait_data.name,)?;
         if params.len() > 1 {
             write!(

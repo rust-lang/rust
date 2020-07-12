@@ -37,6 +37,15 @@ use crate::{
 // against snapshots of the expected results using insta. Use cargo-insta to
 // update the snapshots.
 
+fn setup_tracing() -> tracing::subscriber::DefaultGuard {
+    use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
+    use tracing_tree::HierarchicalLayer;
+    let filter = EnvFilter::from_env("CHALK_DEBUG");
+    let layer = HierarchicalLayer::default().with_indent_amount(2).with_writer(std::io::stderr);
+    let subscriber = Registry::default().with(filter).with(layer);
+    tracing::subscriber::set_default(subscriber)
+}
+
 fn check_types(ra_fixture: &str) {
     check_types_impl(ra_fixture, false)
 }
@@ -46,6 +55,7 @@ fn check_types_source_code(ra_fixture: &str) {
 }
 
 fn check_types_impl(ra_fixture: &str, display_source: bool) {
+    let _tracing = setup_tracing();
     let db = TestDB::with_files(ra_fixture);
     let mut checked_one = false;
     for (file_id, annotations) in db.extract_annotations() {
@@ -86,6 +96,7 @@ fn infer(ra_fixture: &str) -> String {
 }
 
 fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
+    let _tracing = setup_tracing();
     let (db, file_id) = TestDB::with_single_file(content);
 
     let mut buf = String::new();

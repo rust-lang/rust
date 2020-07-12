@@ -1992,6 +1992,28 @@ fn test() {
 }
 
 #[test]
+fn fn_item_fn_trait() {
+    check_types(
+        r#"
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
+
+struct S;
+
+fn foo() -> S {}
+
+fn takes_closure<U, F: FnOnce() -> U>(f: F) -> U { f() }
+
+fn test() {
+    takes_closure(foo);
+} //^^^^^^^^^^^^^^^^^^ S
+"#,
+    );
+}
+
+#[test]
 fn unselected_projection_in_trait_env_1() {
     check_types(
         r#"
@@ -3000,74 +3022,47 @@ fn infer_box_fn_arg() {
 
 #[test]
 fn infer_dyn_fn_output() {
-    assert_snapshot!(
-        infer(
-            r#"
-            //- /lib.rs deps:std
+    check_types(
+        r#"
+#[lang = "fn_once"]
+pub trait FnOnce<Args> {
+    type Output;
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+}
 
-            #[lang = "fn_once"]
-            pub trait FnOnce<Args> {
-                type Output;
+#[lang = "fn"]
+pub trait Fn<Args>: FnOnce<Args> {
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+}
 
-                extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-            }
-
-            #[lang = "fn"]
-            pub trait Fn<Args>:FnOnce<Args> {
-                extern "rust-call" fn call(&self, args: Args) -> Self::Output;
-            }
-
-            #[lang = "deref"]
-            pub trait Deref {
-                type Target: ?Sized;
-
-                fn deref(&self) -> &Self::Target;
-            }
-
-            #[lang = "owned_box"]
-            pub struct Box<T: ?Sized> {
-                inner: *mut T,
-            }
-
-            impl<T: ?Sized> Deref for Box<T> {
-                type Target = T;
-
-                fn deref(&self) -> &T {
-                    &self.inner
-                }
-            }
-
-            fn foo() {
-                let f: Box<dyn Fn() -> i32> = box(|| 5);
-                let x = f();
-            }
-        "#
-        ),
-        @r###"
-    100..104 'self': Self
-    106..110 'args': Args
-    219..223 'self': &Self
-    225..229 'args': Args
-    333..337 'self': &Self
-    503..507 'self': &Box<T>
-    515..542 '{     ...     }': &T
-    525..536 '&self.inner': &*mut T
-    526..530 'self': &Box<T>
-    526..536 'self.inner': *mut T
-    555..620 '{     ...f(); }': ()
-    565..566 'f': Box<dyn Fn<(), Output = i32>>
-    591..600 'box(|| 5)': Box<|| -> i32>
-    595..599 '|| 5': || -> i32
-    598..599 '5': i32
-    610..611 'x': FnOnce::Output<dyn Fn<(), Output = i32>, ()>
-    614..615 'f': Box<dyn Fn<(), Output = i32>>
-    614..617 'f()': FnOnce::Output<dyn Fn<(), Output = i32>, ()>
-    "###
+fn foo() {
+    let f: &dyn Fn() -> i32;
+    f();
+  //^^^ i32
+}"#,
     );
 }
 
 #[test]
-fn variable_kinds() {
+fn infer_dyn_fn_once_output() {
+    check_types(
+        r#"
+#[lang = "fn_once"]
+pub trait FnOnce<Args> {
+    type Output;
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+}
+
+fn foo() {
+    let f: dyn FnOnce() -> i32;
+    f();
+  //^^^ i32
+}"#,
+    );
+}
+
+#[test]
+fn variable_kinds_1() {
     check_types(
         r#"
 trait Trait<T> { fn get(self, t: T) -> T; }
@@ -3079,6 +3074,23 @@ fn test() {
   //^^^^^^^^ u128
     S.get(1.);
   //^^^^^^^^ f32
+}
+        "#,
+    );
+}
+
+#[test]
+fn variable_kinds_2() {
+    check_types(
+        r#"
+trait Trait { fn get(self) -> Self; }
+impl Trait for u128 {}
+impl Trait for f32 {}
+fn test() {
+    1.get();
+  //^^^^^^^ u128
+    (1.).get();
+  //^^^^^^^^^^ f32
 }
         "#,
     );
