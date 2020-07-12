@@ -28,7 +28,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
             }),
             will_save: None,
             will_save_wait_until: None,
-            save: Some(SaveOptions::default()),
+            save: Some(SaveOptions::default().into()),
         })),
         hover_provider: Some(true),
         completion_provider: Some(CompletionOptions {
