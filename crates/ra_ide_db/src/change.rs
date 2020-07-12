@@ -281,8 +281,6 @@ impl RootDatabase {
             // HirDatabase
             hir::db::InternTypeCtorQuery
             hir::db::InternTypeParamIdQuery
-            hir::db::InternChalkImplQuery
-            hir::db::InternAssocTyValueQuery
         ];
 
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));

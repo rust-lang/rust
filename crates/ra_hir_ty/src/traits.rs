@@ -3,10 +3,8 @@ use std::sync::Arc;
 
 use chalk_ir::cast::Cast;
 use chalk_solve::Solver;
-use hir_def::{
-    expr::ExprId, lang_item::LangItemTarget, DefWithBodyId, ImplId, TraitId, TypeAliasId,
-};
-use ra_db::{impl_intern_key, salsa, CrateId};
+use hir_def::{lang_item::LangItemTarget, TraitId};
+use ra_db::CrateId;
 use ra_prof::profile;
 
 use crate::{db::HirDatabase, DebruijnIndex, Substs};
@@ -16,7 +14,6 @@ use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty,
 use self::chalk::{from_chalk, Interner, ToChalk};
 
 pub(crate) mod chalk;
-mod builtin;
 
 // This controls the maximum size of types Chalk considers. If we set this too
 // high, we can run into slow edge cases; if we set it too low, Chalk won't
@@ -274,47 +271,3 @@ impl FnTrait {
         }
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ClosureFnTraitImplData {
-    def: DefWithBodyId,
-    expr: ExprId,
-    fn_trait: FnTrait,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UnsizeToSuperTraitObjectData {
-    trait_: TraitId,
-    super_trait: TraitId,
-}
-
-/// An impl. Usually this comes from an impl block, but some built-in types get
-/// synthetic impls.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Impl {
-    /// A normal impl from an impl block.
-    ImplDef(ImplId),
-    /// Closure types implement the Fn traits synthetically.
-    // FIXME: implement closure support from Chalk, remove this
-    ClosureFnTraitImpl(ClosureFnTraitImplData),
-}
-/// This exists just for Chalk, because our ImplIds are only unique per module.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GlobalImplId(salsa::InternId);
-impl_intern_key!(GlobalImplId);
-
-/// An associated type value. Usually this comes from a `type` declaration
-/// inside an impl block, but for built-in impls we have to synthesize it.
-/// (We only need this because Chalk wants a unique ID for each of these.)
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AssocTyValue {
-    /// A normal assoc type value from an impl block.
-    TypeAlias(TypeAliasId),
-    /// The output type of the Fn trait implementation.
-    ClosureFnTraitImplOutput(ClosureFnTraitImplData),
-}
-/// This exists just for Chalk, because it needs a unique ID for each associated
-/// type value in an impl (even synthetic ones).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct AssocTyValueId(salsa::InternId);
-impl_intern_key!(AssocTyValueId);

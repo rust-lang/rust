@@ -12,15 +12,17 @@ use hir_def::{
 };
 use ra_db::{salsa::InternKey, CrateId};
 
-use super::{builtin, AssocTyValue, ChalkContext, Impl};
+use super::ChalkContext;
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     utils::generics,
-    CallableDef, DebruijnIndex, GenericPredicate, Substs, Ty, TypeCtor,
+    CallableDef, DebruijnIndex, FnSig, GenericPredicate, Substs, Ty, TypeCtor,
 };
-use mapping::{convert_where_clauses, generic_predicate_to_inline_bound, make_binders};
+use mapping::{
+    convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
+};
 
 pub use self::interner::*;
 
@@ -102,9 +104,9 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         let in_self = self.db.trait_impls_in_crate(self.krate);
         let impl_maps = [in_deps, in_self];
 
-        let id_to_chalk = |id: hir_def::ImplId| Impl::ImplDef(id).to_chalk(self.db);
+        let id_to_chalk = |id: hir_def::ImplId| id.to_chalk(self.db);
 
-        let mut result: Vec<_> = if fps.is_empty() {
+        let result: Vec<_> = if fps.is_empty() {
             debug!("Unrestricted search for {:?} impls...", trait_);
             impl_maps
                 .iter()
@@ -120,13 +122,6 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                 })
                 .collect()
         };
-
-        let arg: Option<Ty> =
-            parameters.get(1).map(|p| from_chalk(self.db, p.assert_ty_ref(&Interner).clone()));
-
-        builtin::get_builtin_impls(self.db, self.krate, &ty, &arg, trait_, |i| {
-            result.push(i.to_chalk(self.db))
-        });
 
         debug!("impls_for_trait returned {} impls", result.len());
         result
@@ -217,32 +212,40 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         _closure_id: chalk_ir::ClosureId<Interner>,
         _substs: &chalk_ir::Substitution<Interner>,
     ) -> rust_ir::ClosureKind {
-        // FIXME: implement closure support
-        unimplemented!()
+        // Fn is the closure kind that implements all three traits
+        rust_ir::ClosureKind::Fn
     }
     fn closure_inputs_and_output(
         &self,
         _closure_id: chalk_ir::ClosureId<Interner>,
-        _substs: &chalk_ir::Substitution<Interner>,
+        substs: &chalk_ir::Substitution<Interner>,
     ) -> chalk_ir::Binders<rust_ir::FnDefInputsAndOutputDatum<Interner>> {
-        // FIXME: implement closure support
-        unimplemented!()
+        let sig_ty: Ty =
+            from_chalk(self.db, substs.at(&Interner, 0).assert_ty_ref(&Interner).clone());
+        let sig = FnSig::from_fn_ptr_substs(
+            &sig_ty.substs().expect("first closure param should be fn ptr"),
+            false,
+        );
+        let io = rust_ir::FnDefInputsAndOutputDatum {
+            argument_types: sig.params().iter().map(|ty| ty.clone().to_chalk(self.db)).collect(),
+            return_type: sig.ret().clone().to_chalk(self.db),
+        };
+        make_binders(io.shifted_in(&Interner), 0)
     }
     fn closure_upvars(
         &self,
         _closure_id: chalk_ir::ClosureId<Interner>,
         _substs: &chalk_ir::Substitution<Interner>,
     ) -> chalk_ir::Binders<chalk_ir::Ty<Interner>> {
-        // FIXME: implement closure support
-        unimplemented!()
+        let ty = Ty::unit().to_chalk(self.db);
+        make_binders(ty, 0)
     }
     fn closure_fn_substitution(
         &self,
         _closure_id: chalk_ir::ClosureId<Interner>,
         _substs: &chalk_ir::Substitution<Interner>,
     ) -> chalk_ir::Substitution<Interner> {
-        // FIXME: implement closure support
-        unimplemented!()
+        Substs::empty().to_chalk(self.db)
     }
 
     fn trait_name(&self, _trait_id: chalk_ir::TraitId<Interner>) -> String {
@@ -417,11 +420,8 @@ pub(crate) fn impl_datum_query(
 ) -> Arc<ImplDatum> {
     let _p = ra_prof::profile("impl_datum");
     debug!("impl_datum {:?}", impl_id);
-    let impl_: Impl = from_chalk(db, impl_id);
-    match impl_ {
-        Impl::ImplDef(impl_def) => impl_def_datum(db, krate, impl_id, impl_def),
-        _ => Arc::new(builtin::impl_datum(db, krate, impl_).to_chalk(db)),
-    }
+    let impl_: hir_def::ImplId = from_chalk(db, impl_id);
+    impl_def_datum(db, krate, impl_id, impl_)
 }
 
 fn impl_def_datum(
@@ -472,7 +472,7 @@ fn impl_def_datum(
             let name = &db.type_alias_data(type_alias).name;
             trait_data.associated_type_by_name(name).is_some()
         })
-        .map(|type_alias| AssocTyValue::TypeAlias(type_alias).to_chalk(db))
+        .map(|type_alias| TypeAliasAsValue(type_alias).to_chalk(db))
         .collect();
     debug!("impl_datum: {:?}", impl_datum_bound);
     let impl_datum = ImplDatum {
@@ -489,13 +489,8 @@ pub(crate) fn associated_ty_value_query(
     krate: CrateId,
     id: AssociatedTyValueId,
 ) -> Arc<AssociatedTyValue> {
-    let data: AssocTyValue = from_chalk(db, id);
-    match data {
-        AssocTyValue::TypeAlias(type_alias) => {
-            type_alias_associated_ty_value(db, krate, type_alias)
-        }
-        _ => Arc::new(builtin::associated_ty_value(db, krate, data).to_chalk(db)),
-    }
+    let type_alias: TypeAliasAsValue = from_chalk(db, id);
+    type_alias_associated_ty_value(db, krate, type_alias.0)
 }
 
 fn type_alias_associated_ty_value(
@@ -518,7 +513,7 @@ fn type_alias_associated_ty_value(
     let ty = db.ty(type_alias.into());
     let value_bound = rust_ir::AssociatedTyValueBound { ty: ty.value.to_chalk(db) };
     let value = rust_ir::AssociatedTyValue {
-        impl_id: Impl::ImplDef(impl_id).to_chalk(db),
+        impl_id: impl_id.to_chalk(db),
         associated_ty_id: assoc_ty.to_chalk(db),
         value: make_binders(value_bound, ty.num_binders),
     };
@@ -581,18 +576,6 @@ impl From<crate::CallableDefId> for FnDefId {
     }
 }
 
-impl From<ImplId> for crate::traits::GlobalImplId {
-    fn from(impl_id: ImplId) -> Self {
-        InternKey::from_intern_id(impl_id.0)
-    }
-}
-
-impl From<crate::traits::GlobalImplId> for ImplId {
-    fn from(impl_id: crate::traits::GlobalImplId) -> Self {
-        chalk_ir::ImplId(impl_id.as_intern_id())
-    }
-}
-
 impl From<OpaqueTyId> for crate::db::InternedOpaqueTyId {
     fn from(id: OpaqueTyId) -> Self {
         InternKey::from_intern_id(id.0)
@@ -605,14 +588,14 @@ impl From<crate::db::InternedOpaqueTyId> for OpaqueTyId {
     }
 }
 
-impl From<rust_ir::AssociatedTyValueId<Interner>> for crate::traits::AssocTyValueId {
-    fn from(id: rust_ir::AssociatedTyValueId<Interner>) -> Self {
+impl From<chalk_ir::ClosureId<Interner>> for crate::db::ClosureId {
+    fn from(id: chalk_ir::ClosureId<Interner>) -> Self {
         Self::from_intern_id(id.0)
     }
 }
 
-impl From<crate::traits::AssocTyValueId> for rust_ir::AssociatedTyValueId<Interner> {
-    fn from(assoc_ty_value_id: crate::traits::AssocTyValueId) -> Self {
-        rust_ir::AssociatedTyValueId(assoc_ty_value_id.as_intern_id())
+impl From<crate::db::ClosureId> for chalk_ir::ClosureId<Interner> {
+    fn from(id: crate::db::ClosureId) -> Self {
+        chalk_ir::ClosureId(id.as_intern_id())
     }
 }

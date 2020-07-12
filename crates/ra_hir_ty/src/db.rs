@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use hir_def::{
-    db::DefDatabase, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId, TypeParamId,
-    VariantId,
+    db::DefDatabase, expr::ExprId, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId,
+    TypeParamId, VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
@@ -12,7 +12,7 @@ use ra_prof::profile;
 
 use crate::{
     method_resolution::{InherentImpls, TraitImpls},
-    traits::{chalk, AssocTyValue, Impl},
+    traits::chalk,
     Binders, CallableDef, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
     ReturnTypeImplTraits, TraitRef, Ty, TyDefId, TypeCtor, ValueTyDefId,
 };
@@ -85,9 +85,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_impl_trait_id(&self, id: OpaqueTyId) -> InternedOpaqueTyId;
     #[salsa::interned]
-    fn intern_chalk_impl(&self, impl_: Impl) -> crate::traits::GlobalImplId;
-    #[salsa::interned]
-    fn intern_assoc_ty_value(&self, assoc_ty_value: AssocTyValue) -> crate::traits::AssocTyValueId;
+    fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> ClosureId;
 
     #[salsa::invoke(chalk::associated_ty_data_query)]
     fn associated_ty_data(&self, id: chalk::AssocTypeId) -> Arc<chalk::AssociatedTyDatum>;
@@ -151,3 +149,7 @@ impl_intern_key!(GlobalTypeParamId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedOpaqueTyId(salsa::InternId);
 impl_intern_key!(InternedOpaqueTyId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ClosureId(salsa::InternId);
+impl_intern_key!(ClosureId);
