@@ -496,11 +496,6 @@ macro_rules! define_queries_inner {
             tcx: $tcx,
             input: ($(([$($modifiers)*] [$name] [$($K)*] [$V]))*)
         }
-
-        impl Copy for Providers {}
-        impl Clone for Providers {
-            fn clone(&self) -> Self { *self }
-        }
     }
 }
 
@@ -565,14 +560,19 @@ macro_rules! define_provider_struct {
             $(pub $name: for<$tcx> fn(TyCtxt<$tcx>, $K) -> $R,)*
         }
 
-        impl Default for Providers {
-            fn default() -> Self {
+        impl Copy for Providers {}
+        impl Clone for Providers {
+            fn clone(&self) -> Self { *self }
+        }
+
+        impl Providers {
+            pub const EMPTY: Self = {
                 $(fn $name<$tcx>(_: TyCtxt<$tcx>, key: $K) -> $R {
                     bug!("`tcx.{}({:?})` unsupported by its crate",
                          stringify!($name), key);
                 })*
                 Providers { $($name),* }
-            }
+            };
         }
     };
 }

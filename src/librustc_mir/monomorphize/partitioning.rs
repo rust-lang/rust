@@ -994,7 +994,7 @@ fn collect_and_partition_mono_items(
     (tcx.arena.alloc(mono_items), codegen_units)
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
 
     providers.is_codegened_item = |tcx, def_id| {

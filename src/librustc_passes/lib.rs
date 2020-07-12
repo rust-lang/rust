@@ -5,6 +5,8 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(or_patterns)]
@@ -37,7 +39,7 @@ pub mod stability;
 mod upvars;
 mod weak_lang_items;
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     check_attr::provide(providers);
     check_const::provide(providers);
     diagnostic_items::provide(providers);

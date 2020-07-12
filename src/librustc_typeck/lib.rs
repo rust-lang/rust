@@ -59,6 +59,8 @@ This API is completely unstable and subject to change.
 #![allow(non_camel_case_types)]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
@@ -309,7 +311,7 @@ fn check_for_entry_fn(tcx: TyCtxt<'_>) {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     collect::provide(providers);
     coherence::provide(providers);
     check::provide(providers);

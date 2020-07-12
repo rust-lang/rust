@@ -1,5 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(core_intrinsics)]
 #![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]

@@ -488,7 +488,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     }
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) const fn provide(providers: &mut Providers) {
     *providers = Providers { unsafety_check_result, unsafe_derive_on_repr_packed, ..*providers };
 }
 

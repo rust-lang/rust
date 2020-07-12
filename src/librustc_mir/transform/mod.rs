@@ -43,7 +43,7 @@ pub mod uninhabited_enum_branching;
 pub mod unreachable_prop;
 pub mod validate;
 
-pub(crate) fn provide(providers: &mut Providers) {
+pub(crate) const fn provide(providers: &mut Providers) {
     self::check_unsafety::provide(providers);
     *providers = Providers {
         mir_keys,

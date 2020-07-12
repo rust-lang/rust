@@ -19,6 +19,7 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
@@ -719,31 +720,49 @@ pub fn prepare_outputs(
     Ok(outputs)
 }
 
-pub fn default_provide(providers: &mut ty::query::Providers) {
-    providers.analysis = analysis;
-    proc_macro_decls::provide(providers);
-    plugin::build::provide(providers);
-    rustc_middle::hir::provide(providers);
-    mir::provide(providers);
-    mir_build::provide(providers);
-    rustc_privacy::provide(providers);
-    typeck::provide(providers);
-    ty::provide(providers);
-    traits::provide(providers);
-    rustc_passes::provide(providers);
-    rustc_resolve::provide(providers);
-    rustc_traits::provide(providers);
-    rustc_ty::provide(providers);
-    rustc_metadata::provide(providers);
-    rustc_lint::provide(providers);
-    rustc_symbol_mangling::provide(providers);
-    rustc_codegen_ssa::provide(providers);
-}
+pub const DEFAULT_QUERY_PROVIDERS: Providers = {
+    // FIXME(eddyb) the `const fn` shouldn't be needed, but mutable references
+    // were disallowed in constants even when not escaping as `&'static mut T`.
+    const fn default_providers() -> Providers {
+        let mut providers = &mut Providers::EMPTY;
 
-pub fn default_provide_extern(providers: &mut ty::query::Providers) {
-    rustc_metadata::provide_extern(providers);
-    rustc_codegen_ssa::provide_extern(providers);
-}
+        providers.analysis = analysis;
+        proc_macro_decls::provide(providers);
+        plugin::build::provide(providers);
+        rustc_middle::hir::provide(providers);
+        mir::provide(providers);
+        mir_build::provide(providers);
+        rustc_privacy::provide(providers);
+        typeck::provide(providers);
+        ty::provide(providers);
+        traits::provide(providers);
+        rustc_passes::provide(providers);
+        rustc_resolve::provide(providers);
+        rustc_traits::provide(providers);
+        rustc_ty::provide(providers);
+        rustc_metadata::provide(providers);
+        rustc_lint::provide(providers);
+        rustc_symbol_mangling::provide(providers);
+        rustc_codegen_ssa::provide(providers);
+
+        *providers
+    }
+    default_providers()
+};
+
+pub const DEFAULT_EXTERN_QUERY_PROVIDERS: Providers = {
+    // FIXME(eddyb) the `const fn` shouldn't be needed, but mutable references
+    // were disallowed in constants even when not escaping as `&'static mut T`.
+    const fn default_extern_providers() -> Providers {
+        let providers = &mut DEFAULT_QUERY_PROVIDERS;
+
+        rustc_metadata::provide_extern(providers);
+        rustc_codegen_ssa::provide_extern(providers);
+
+        *providers
+    }
+    default_extern_providers()
+};
 
 pub struct QueryContext<'tcx>(&'tcx GlobalCtxt<'tcx>);
 
@@ -780,12 +799,11 @@ pub fn create_global_ctxt<'tcx>(
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
-    let mut local_providers = ty::query::Providers::default();
-    default_provide(&mut local_providers);
+    let mut local_providers = DEFAULT_QUERY_PROVIDERS;
     codegen_backend.provide(&mut local_providers);
 
-    let mut extern_providers = local_providers;
-    default_provide_extern(&mut extern_providers);
+    let mut extern_providers = DEFAULT_EXTERN_QUERY_PROVIDERS;
+    codegen_backend.provide(&mut extern_providers);
     codegen_backend.provide_extern(&mut extern_providers);
 
     if let Some(callback) = compiler.override_queries {

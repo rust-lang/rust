@@ -4,8 +4,9 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)]
+#![cfg_attr(bootstrap, feature(const_if_match))]
+#![feature(const_mut_refs)]
 #![feature(const_panic)]
 #![feature(crate_visibility_modifier)]
 #![feature(bool_to_option)]
@@ -23,7 +24,7 @@ mod lints;
 
 use rustc_middle::ty::query::Providers;
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     providers.check_match = hair::pattern::check_match;
     providers.lit_to_const = hair::constant::lit_to_const;
     providers.mir_built = build::mir_built;

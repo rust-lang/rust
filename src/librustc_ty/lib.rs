@@ -6,6 +6,8 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 
@@ -21,7 +23,7 @@ pub mod instance;
 mod needs_drop;
 mod ty;
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     common_traits::provide(providers);
     needs_drop::provide(providers);
     ty::provide(providers);

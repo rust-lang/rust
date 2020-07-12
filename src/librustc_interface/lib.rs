@@ -1,5 +1,7 @@
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(set_stdio)]
 #![feature(nll)]
 #![feature(generator_trait)]
@@ -14,6 +16,7 @@ mod queries;
 pub mod util;
 
 pub use interface::{run_compiler, Config};
+pub use passes::{DEFAULT_EXTERN_QUERY_PROVIDERS, DEFAULT_QUERY_PROVIDERS};
 pub use queries::Queries;
 
 #[cfg(test)]

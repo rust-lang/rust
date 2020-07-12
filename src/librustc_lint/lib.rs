@@ -29,6 +29,8 @@
 #![cfg_attr(test, feature(test))]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(crate_visibility_modifier)]
 #![feature(iter_order_by)]
 #![feature(never_type)]
@@ -88,7 +90,7 @@ pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
 pub use rustc_session::lint::{LintArray, LintPass};
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     levels::provide(providers);
     *providers = Providers { lint_mod, ..*providers };
 }

@@ -12,6 +12,8 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]

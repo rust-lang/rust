@@ -10,6 +10,8 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
 #![feature(or_patterns)]
@@ -3102,6 +3104,6 @@ impl CrateLint {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     late::lifetimes::provide(providers);
 }

@@ -1,6 +1,8 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
@@ -138,12 +140,12 @@ pub struct CodegenResults {
     pub crate_info: CrateInfo,
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide_both(providers);
 }
 
-pub fn provide_extern(providers: &mut Providers) {
+pub const fn provide_extern(providers: &mut Providers) {
     crate::back::symbol_export::provide_extern(providers);
     crate::base::provide_both(providers);
 }

@@ -7,6 +7,8 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
 #![feature(const_cstr_unchecked)]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(crate_visibility_modifier)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]

@@ -7,6 +7,8 @@
 //! of the Unstable Book for some examples.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(nll)]
 
 use rustc_lint::LintStore;

@@ -1,4 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(or_patterns)]
@@ -2029,7 +2031,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     *providers = Providers {
         privacy_access_levels,
         check_private_in_public,

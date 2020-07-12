@@ -1,6 +1,8 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(crate_visibility_modifier)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
@@ -22,7 +24,7 @@ mod type_op;
 
 use rustc_middle::ty::query::Providers;
 
-pub fn provide(p: &mut Providers) {
+pub const fn provide(p: &mut Providers) {
     dropck_outlives::provide(p);
     evaluate_obligation::provide(p);
     implied_outlives_bounds::provide(p);

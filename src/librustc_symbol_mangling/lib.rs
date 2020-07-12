@@ -88,6 +88,8 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(or_patterns)]
@@ -126,7 +128,7 @@ pub fn symbol_name_for_instance_in_crate(
     compute_symbol_name(tcx, instance, || instantiating_crate)
 }
 
-pub fn provide(providers: &mut Providers) {
+pub const fn provide(providers: &mut Providers) {
     *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
 }
 

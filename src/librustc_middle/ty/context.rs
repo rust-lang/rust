@@ -2699,7 +2699,7 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
     t as *const () == u as *const ()
 }
 
-pub fn provide(providers: &mut ty::query::Providers) {
+pub const fn provide(providers: &mut ty::query::Providers) {
     providers.in_scope_traits_map = |tcx, id| tcx.gcx.trait_map.get(&id);
     providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {

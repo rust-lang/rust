@@ -29,6 +29,7 @@
 #![feature(box_syntax)]
 #![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)]
+#![feature(const_mut_refs)]
 #![feature(const_panic)]
 #![feature(const_transmute)]
 #![feature(core_intrinsics)]
