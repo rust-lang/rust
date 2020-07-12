@@ -920,6 +920,16 @@ impl<'a, W: Write> LineWriterShim<'a, W> {
     fn buffered(&self) -> &[u8] {
         self.buffer.buffer()
     }
+
+    /// Flush the buffer iff the last byte is a newline (indicating that an
+    /// earlier write only succeeded partially, and we want to retry flushing
+    /// the buffered line before continuing with a subsequent write)
+    fn flush_if_completed_line(&mut self) -> io::Result<()> {
+        match self.buffered().last().copied() {
+            Some(b'\n') => self.buffer.flush_buf(),
+            _ => Ok(()),
+        }
+    }
 }
 
 impl<'a, W: Write> Write for LineWriterShim<'a, W> {
@@ -941,12 +951,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
             // If there are no new newlines (that is, if this write is less than
             // one line), just do a regular buffered write
             None => {
-                // Check for prior partial line writes that need to be retried.
-                // Only retry if the buffer contains a completed line, to
-                // avoid flushing partial lines.
-                if let Some(b'\n') = self.buffered().last().copied() {
-                    self.buffer.flush_buf()?;
-                }
+                self.flush_if_completed_line()?;
                 return self.buffer.write(buf);
             }
             // Otherwise, arrange for the lines to be written directly to the
@@ -1025,9 +1030,10 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     /// Because sorting through an array of `IoSlice` can be a bit convoluted,
     /// This method differs from write in the following ways:
     ///
-    /// - It attempts to write all the buffers up to and including the one
-    ///   containing the last newline. This means that it may attempt to
-    ///   write a partial line.
+    /// - It attempts to write the full content of all the buffers up to and
+    ///   including the one containing the last newline. This means that it
+    ///   may attempt to write a partial line, that buffer has data past the
+    ///   newline.
     /// - If the write only reports partial success, it does not attempt to
     ///   find the precise location of the written bytes and buffer the rest.
     ///
@@ -1057,12 +1063,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
         let last_newline_buf_idx = match last_newline_buf_idx {
             // No newlines; just do a normal buffered write
             None => {
-                // Check for prior partial line writes that need to be retried.
-                // Only retry if the buffer contains a completed line, to
-                // avoid flushing partial lines.
-                if let Some(b'\n') = self.buffered().last().copied() {
-                    self.buffer.flush_buf()?;
-                }
+                self.flush_if_completed_line()?;
                 return self.buffer.write_vectored(bufs);
             }
             Some(i) => i,
@@ -1109,8 +1110,6 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
     }
 
     fn is_write_vectored(&self) -> bool {
-        // It's hard to imagine these diverging, but it's worth checking
-        // just in case, because we call `write_vectored` on both.
         self.buffer.is_write_vectored()
     }
 
@@ -1127,12 +1126,7 @@ impl<'a, W: Write> Write for LineWriterShim<'a, W> {
             // If there are no new newlines (that is, if this write is less than
             // one line), just do a regular buffered write
             None => {
-                // Check for prior partial line writes that need to be retried.
-                // Only retry if the buffer contains a completed line, to
-                // avoid flushing partial lines.
-                if let Some(b'\n') = self.buffered().last().copied() {
-                    self.buffer.flush_buf()?;
-                }
+                self.flush_if_completed_line()?;
                 return self.buffer.write_all(buf);
             }
             // Otherwise, arrange for the lines to be written directly to the
