@@ -37,6 +37,25 @@ pub enum AssistKind {
     RefactorRewrite,
 }
 
+impl AssistKind {
+    pub fn contains(self, other: AssistKind) -> bool {
+        if self == other {
+            return true;
+        }
+
+        match self {
+            AssistKind::None | AssistKind::Generate => return true,
+            AssistKind::Refactor => match other {
+                AssistKind::RefactorExtract
+                | AssistKind::RefactorInline
+                | AssistKind::RefactorRewrite => return true,
+                _ => return false,
+            },
+            _ => return false,
+        }
+    }
+}
+
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,9 +86,14 @@ impl Assist {
     ///
     /// Assists are returned in the "unresolved" state, that is only labels are
     /// returned, without actual edits.
-    pub fn unresolved(db: &RootDatabase, config: &AssistConfig, range: FileRange) -> Vec<Assist> {
+    pub fn unresolved(
+        db: &RootDatabase,
+        config: &AssistConfig,
+        range: FileRange,
+        allowed: Option<Vec<AssistKind>>,
+    ) -> Vec<Assist> {
         let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, config, range);
+        let ctx = AssistContext::new(sema, config, range, allowed);
         let mut acc = Assists::new_unresolved(&ctx);
         handlers::all().iter().for_each(|handler| {
             handler(&mut acc, &ctx);
@@ -85,9 +109,10 @@ impl Assist {
         db: &RootDatabase,
         config: &AssistConfig,
         range: FileRange,
+        allowed: Option<Vec<AssistKind>>,
     ) -> Vec<ResolvedAssist> {
         let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, config, range);
+        let ctx = AssistContext::new(sema, config, range, allowed);
         let mut acc = Assists::new_resolved(&ctx);
         handlers::all().iter().for_each(|handler| {
             handler(&mut acc, &ctx);
