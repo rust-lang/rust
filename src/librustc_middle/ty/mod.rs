@@ -65,6 +65,7 @@ pub use self::sty::{ConstVid, FloatVid, IntVid, RegionVid, TyVid};
 pub use self::sty::{ExistentialPredicate, InferConst, InferTy, ParamConst, ParamTy, ProjectionTy};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{PolyTraitRef, TraitRef, TyKind};
+pub use self::sty::{SplitClosureSubsts, SplitGeneratorSubsts};
 pub use crate::ty::diagnostics::*;
 
 pub use self::binding::BindingMode;

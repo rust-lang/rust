@@ -319,19 +319,42 @@ pub struct ClosureSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-/// Struct returned by `split()`. Note that these are subslices of the
-/// parent slice and not canonical substs themselves.
-struct SplitClosureSubsts<'tcx> {
-    closure_kind_ty: GenericArg<'tcx>,
-    closure_sig_as_fn_ptr_ty: GenericArg<'tcx>,
-    tupled_upvars_ty: GenericArg<'tcx>,
+/// Struct returned by `split()`.
+// FIXME(eddyb) find a better name than `Split...` - perhaps `ClosureSubstsParts`?
+pub struct SplitClosureSubsts<T> {
+    pub closure_kind_ty: T,
+    pub closure_sig_as_fn_ptr_ty: T,
+    pub tupled_upvars_ty: T,
 }
 
 impl<'tcx> ClosureSubsts<'tcx> {
-    /// Divides the closure substs into their respective
-    /// components. Single source of truth with respect to the
-    /// ordering.
-    fn split(self) -> SplitClosureSubsts<'tcx> {
+    /// Construct `ClosureSubsts` from base `Substs` (i.e. of the parent function)
+    /// and `SplitClosureSubsts` containing the additional closure-specific components.
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        base_substs: SubstsRef<'tcx>,
+        parts: SplitClosureSubsts<Ty<'tcx>>,
+    ) -> ClosureSubsts<'tcx> {
+        ClosureSubsts {
+            substs: tcx.mk_substs(
+                base_substs.iter().chain(
+                    [parts.closure_kind_ty, parts.closure_sig_as_fn_ptr_ty, parts.tupled_upvars_ty]
+                        .iter()
+                        .map(|&ty| ty.into()),
+                ),
+            ),
+        }
+    }
+
+    /// Returns the non-closure-specific base `Substs` (i.e. of the parent function).
+    /// The ordering assumed here must match that used by `ClosureSubsts::new` above.
+    pub fn base_substs(self) -> &'tcx [GenericArg<'tcx>] {
+        &self.substs[..self.substs.len() - 3]
+    }
+
+    /// Divides the closure substs into their respective components.
+    /// The ordering assumed here must match that used by `ClosureSubsts::new` above.
+    fn split(self) -> SplitClosureSubsts<GenericArg<'tcx>> {
         match self.substs[..] {
             [.., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
                 SplitClosureSubsts { closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty }
@@ -395,16 +418,49 @@ pub struct GeneratorSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
 
-struct SplitGeneratorSubsts<'tcx> {
-    resume_ty: GenericArg<'tcx>,
-    yield_ty: GenericArg<'tcx>,
-    return_ty: GenericArg<'tcx>,
-    witness: GenericArg<'tcx>,
-    tupled_upvars_ty: GenericArg<'tcx>,
+// FIXME(eddyb) find a better name than `Split...` - perhaps `GeneratorSubstsParts`?
+pub struct SplitGeneratorSubsts<T> {
+    pub resume_ty: T,
+    pub yield_ty: T,
+    pub return_ty: T,
+    pub witness: T,
+    pub tupled_upvars_ty: T,
 }
 
 impl<'tcx> GeneratorSubsts<'tcx> {
-    fn split(self) -> SplitGeneratorSubsts<'tcx> {
+    /// Construct `GeneratorSubsts` from base `Substs` (i.e. of the parent function)
+    /// and `SplitGeneratorSubsts` containing the additional generator-specific components.
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        base_substs: SubstsRef<'tcx>,
+        parts: SplitGeneratorSubsts<Ty<'tcx>>,
+    ) -> GeneratorSubsts<'tcx> {
+        GeneratorSubsts {
+            substs: tcx.mk_substs(
+                base_substs.iter().chain(
+                    [
+                        parts.resume_ty,
+                        parts.yield_ty,
+                        parts.return_ty,
+                        parts.witness,
+                        parts.tupled_upvars_ty,
+                    ]
+                    .iter()
+                    .map(|&ty| ty.into()),
+                ),
+            ),
+        }
+    }
+
+    /// Returns the non-generator-specific base `Substs` (i.e. of the parent function).
+    /// The ordering assumed here must match that used by `GeneratorSubsts::new` above.
+    pub fn base_substs(self) -> &'tcx [GenericArg<'tcx>] {
+        &self.substs[..self.substs.len() - 5]
+    }
+
+    /// Divides the generator substs into their respective components.
+    /// The ordering assumed here must match that used by `GeneratorSubsts::new` above.
+    fn split(self) -> SplitGeneratorSubsts<GenericArg<'tcx>> {
         match self.substs[..] {
             [.., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
                 SplitGeneratorSubsts { resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty }
