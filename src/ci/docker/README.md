@@ -90,7 +90,7 @@ how to generate them, and how the existing ones were generated.
 
 ### Generating a `.config` file
 
-**NOTE:** Existing Dockerfiles can be a good guide for the process and order
+**NOTE:** Existing Dockerfiles can also be a good guide for the process and order
 of script execution.
 
 If you have a `linux-cross` image lying around you can use that and skip the
@@ -122,7 +122,7 @@ $ bash ./cross-apt-packages.sh
 $ bash ./crosstool-ng.sh
 ```
 
-- In case you cant to adjust or start from an existing config, copy that
+- In case you want to adjust or start from an existing config, copy that
   to the container. `crosstool-ng` will automatically load `./.config` if
   present. Otherwise one can use the TUI to load any config-file.
 
@@ -135,6 +135,7 @@ $ docker cp arm-linux-gnueabi.config drunk_murdock:/tmp/.config
   section and come back.
 
 ```
+$ cd /tmp/
 $ ct-ng menuconfig
 ```
 
