@@ -31,9 +31,11 @@ pub mod traits;
 pub mod method_resolution;
 mod op;
 mod lower;
+mod match_checking;
 pub(crate) mod infer;
-pub mod display;
 pub(crate) mod utils;
+
+pub mod display;
 pub mod db;
 pub mod diagnostics;
 pub mod expr;
@@ -43,11 +45,8 @@ pub mod unsafe_validation;
 mod tests;
 #[cfg(test)]
 mod test_db;
-mod _match;
 
-use std::ops::Deref;
-use std::sync::Arc;
-use std::{iter, mem};
+use std::{iter, mem, ops::Deref, sync::Arc};
 
 use hir_def::{
     expr::ExprId,
@@ -55,14 +54,15 @@ use hir_def::{
     AdtId, AssocContainerId, DefWithBodyId, GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
     TypeParamId,
 };
+use itertools::Itertools;
 use ra_db::{impl_intern_key, salsa, CrateId};
 
 use crate::{
     db::HirDatabase,
+    display::HirDisplay,
     primitive::{FloatTy, IntTy},
     utils::{generics, make_mut_slice, Generics},
 };
-use display::HirDisplay;
 
 pub use autoderef::autoderef;
 pub use infer::{InferTy, InferenceResult};
@@ -74,7 +74,6 @@ pub use lower::{
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
 pub use chalk_ir::{BoundVar, DebruijnIndex};
-use itertools::Itertools;
 
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or
