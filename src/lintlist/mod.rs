@@ -1790,7 +1790,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "range_minus_one",
-        group: "complexity",
+        group: "pedantic",
         desc: "`x..=(y-1)` reads better as `x..y`",
         deprecation: None,
         module: "ranges",
