@@ -283,7 +283,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 let mut switch = ::cranelift_frontend::Switch::new();
                 for (i, value) in values.iter().enumerate() {
                     let block = fx.get_block(targets[i]);
-                    switch.set_entry(*value as u64, block);
+                    switch.set_entry((*value).try_into().unwrap(), block);
                 }
                 let otherwise_block = fx.get_block(targets[targets.len() - 1]);
                 switch.emit(&mut fx.bcx, discr, otherwise_block);
