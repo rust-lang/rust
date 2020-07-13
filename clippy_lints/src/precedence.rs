@@ -5,7 +5,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 
-const ODD_FUNCTIONS_WHITELIST: [&str; 14] = [
+const ALLOWED_ODD_FUNCTIONS: [&str; 14] = [
     "asin",
     "asinh",
     "atan",
@@ -109,7 +109,7 @@ impl EarlyLintPass for Precedence {
                     if let ExprKind::Lit(ref lit) = slf.kind {
                         match lit.kind {
                             LitKind::Int(..) | LitKind::Float(..) => {
-                                if ODD_FUNCTIONS_WHITELIST
+                                if ALLOWED_ODD_FUNCTIONS
                                     .iter()
                                     .any(|odd_function| **odd_function == *path_segment_str)
                                 {
