@@ -93,7 +93,10 @@ impl PromoteCmd {
         run!("git commit -m':arrow_up: rust-analyzer'")?;
         if !self.dry_run {
             run!("git push")?;
-            run!("xdg-open https://github.com/matklad/rust/pull/new/{}", branch)?;
+            run!(
+                "xdg-open https://github.com/matklad/rust/pull/new/{}?body=r%3F%20%40ghost",
+                branch
+            )?;
         }
         Ok(())
     }
