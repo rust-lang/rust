@@ -115,4 +115,6 @@ fn main() {
 
     let _: Box2<isize, System> = Box2::new(1); // ok
     let _: Box2<isize> = Box2::new(1); // ok
+
+    let _: Box3<isize> = Box3::new(1); // ok
 }

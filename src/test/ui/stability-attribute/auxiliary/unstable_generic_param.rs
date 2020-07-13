@@ -109,3 +109,15 @@ impl<T> Box2<T, System> {
         Self { ptr: &mut t, alloc: System {} }
     }
 }
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub struct Box3<T> {
+    ptr: *mut T,
+}
+
+impl<T> Box3<T> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    pub fn new(mut t: T) -> Self {
+        Self { ptr: &mut t }
+    }
+}
