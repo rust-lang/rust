@@ -726,8 +726,10 @@ impl<'a> Builder<'a> {
             .env("RUSTDOC_REAL", self.rustdoc(compiler))
             .env("RUSTDOC_CRATE_VERSION", self.rust_version())
             .env("RUSTC_BOOTSTRAP", "1")
-            .arg("--deny")
-            .arg("invalid_codeblock_attribute");
+            .arg("-Dinvalid_codeblock_attribute");
+        if self.config.deny_warnings {
+            cmd.arg("-Dwarnings");
+        }
 
         // Remove make-related flags that can cause jobserver problems.
         cmd.env_remove("MAKEFLAGS");
@@ -841,7 +843,6 @@ impl<'a> Builder<'a> {
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.
         let mut rustdocflags = rustflags.clone();
-        rustdocflags.arg("--deny").arg("invalid_codeblock_attribute");
 
         if let Ok(s) = env::var("CARGOFLAGS") {
             cargo.args(s.split_whitespace());
@@ -1160,6 +1161,8 @@ impl<'a> Builder<'a> {
             // are always ignored in dependencies. Eventually this should be
             // fixed via better support from Cargo.
             cargo.env("RUSTC_LINT_FLAGS", lint_flags.join(" "));
+
+            rustdocflags.arg("-Dinvalid_codeblock_attribute");
         }
 
         if let Mode::Rustc | Mode::Codegen = mode {
