@@ -12,9 +12,9 @@ use crate::{
     diagnostics::{
         MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields,
     },
+    match_checking::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
-    _match::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
 };
 
 pub use hir_def::{
