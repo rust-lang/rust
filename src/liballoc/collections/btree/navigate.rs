@@ -161,15 +161,16 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
 impl<K, V> Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge> {
     /// Moves the leaf edge handle to the next leaf edge and returns the key and value
     /// in between, while deallocating any node left behind.
-    /// Unsafe for three reasons:
+    /// Unsafe for two reasons:
     /// - The caller must ensure that the leaf edge is not the last one in the tree
     ///   and is not a handle previously resulting from counterpart `next_back_unchecked`.
-    /// - If the leaf edge is the last edge of a node, that node and possibly ancestors
+    /// - Further use of the updated leaf edge handle is very dangerous. In particular,
+    ///   if the leaf edge is the last edge of a node, that node and possibly ancestors
     ///   will be deallocated, while the reference to those nodes in the surviving ancestor
-    ///   is left dangling; thus further use of the leaf edge handle is dangerous.
-    ///   It is, however, safe to call this method again on the updated handle.
-    ///   if the two preconditions above hold.
-    /// - Using the updated handle may well invalidate the returned references.
+    ///   is left dangling.
+    ///   The only safe way to proceed with the updated handle is to compare it, drop it,
+    ///   call this method again subject to both preconditions listed in the first point,
+    ///   or call counterpart `next_back_unchecked` subject to its preconditions.
     pub unsafe fn next_unchecked(&mut self) -> (K, V) {
         unsafe {
             replace(self, |leaf_edge| {
@@ -183,15 +184,16 @@ impl<K, V> Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge> {
 
     /// Moves the leaf edge handle to the previous leaf edge and returns the key
     /// and value in between, while deallocating any node left behind.
-    /// Unsafe for three reasons:
+    /// Unsafe for two reasons:
     /// - The caller must ensure that the leaf edge is not the first one in the tree
     ///   and is not a handle previously resulting from counterpart `next_unchecked`.
-    /// - If the lead edge is the first edge of a node, that node and possibly ancestors
+    /// - Further use of the updated leaf edge handle is very dangerous. In particular,
+    ///   if the leaf edge is the first edge of a node, that node and possibly ancestors
     ///   will be deallocated, while the reference to those nodes in the surviving ancestor
-    ///   is left dangling; thus further use of the leaf edge handle is dangerous.
-    ///   It is, however, safe to call this method again on the updated handle.
-    ///   if the two preconditions above hold.
-    /// - Using the updated handle may well invalidate the returned references.
+    ///   is left dangling.
+    ///   The only safe way to proceed with the updated handle is to compare it, drop it,
+    ///   call this method again subject to both preconditions listed in the first point,
+    ///   or call counterpart `next_unchecked` subject to its preconditions.
     pub unsafe fn next_back_unchecked(&mut self) -> (K, V) {
         unsafe {
             replace(self, |leaf_edge| {
