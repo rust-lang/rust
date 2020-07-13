@@ -6,6 +6,7 @@ use pretty_assertions::assert_eq;
 
 fn configure(host: &[&str], target: &[&str]) -> Config {
     let mut config = Config::default_opts();
+    config.stage = Some(2);
     // don't save toolstates
     config.save_toolstates = None;
     config.skip_only_host_steps = false;
@@ -421,7 +422,7 @@ fn test_exclude() {
 }
 
 #[test]
-fn doc_default() {
+fn doc_ci() {
     let mut config = configure(&[], &[]);
     config.compiler_docs = true;
     config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };

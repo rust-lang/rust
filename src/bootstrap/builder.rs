@@ -232,7 +232,7 @@ impl StepDescription {
                 }
 
                 if !attempted_run {
-                    panic!("Error: no rules matched {}.", path.display());
+                    panic!("error: no rules matched {}", path.display());
                 }
             }
         }
