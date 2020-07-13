@@ -17,7 +17,6 @@ pub fn opts() -> TargetOptions {
         needs_plt: true,
         relro_level: RelroLevel::Full,
         relocation_model: RelocModel::Static,
-        target_family: Some("unix".to_string()),
         pre_link_args,
 
         ..Default::default()
