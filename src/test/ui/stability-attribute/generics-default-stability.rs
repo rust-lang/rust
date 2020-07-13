@@ -109,4 +109,10 @@ fn main() {
 
     let _: Struct6<isize> = Struct6 { field: 1 }; // ok
     let _: Struct6<isize> = Struct6 { field: 0 }; // ok
+
+    let _: Box1<isize, System> = Box1::new(1); //~ ERROR use of unstable library feature 'box_alloc_param'
+    let _: Box1<isize> = Box1::new(1); // ok
+
+    let _: Box2<isize, System> = Box2::new(1); // ok
+    let _: Box2<isize> = Box2::new(1); // ok
 }

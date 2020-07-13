@@ -1,6 +1,5 @@
 #![crate_type = "lib"]
 #![feature(staged_api)]
-
 #![stable(feature = "stable_test_feature", since = "1.0.0")]
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
@@ -75,3 +74,38 @@ pub const STRUCT4: Struct4 = Struct4 { field: 1 };
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub const STRUCT5: Struct5 = Struct5 { field: 1 };
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub trait Alloc {}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub struct System {}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+impl Alloc for System {}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub struct Box1<T, #[unstable(feature = "box_alloc_param", issue = "none")] A: Alloc = System> {
+    ptr: *mut T,
+    alloc: A,
+}
+
+impl<T> Box1<T, System> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    pub fn new(mut t: T) -> Self {
+        unsafe { Self { ptr: &mut t, alloc: System {} } }
+    }
+}
+
+#[stable(feature = "stable_test_feature", since = "1.0.0")]
+pub struct Box2<T, A: Alloc = System> {
+    ptr: *mut T,
+    alloc: A,
+}
+
+impl<T> Box2<T, System> {
+    #[stable(feature = "stable_test_feature", since = "1.0.0")]
+    pub fn new(mut t: T) -> Self {
+        Self { ptr: &mut t, alloc: System {} }
+    }
+}
