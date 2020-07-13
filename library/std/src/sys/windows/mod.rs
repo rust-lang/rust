@@ -118,9 +118,9 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
         start = &start[8..];
     }
 
-    for (i, c) in start.iter().enumerate() {
+    for c in start {
         if *c == needle {
-            return Some((start.as_ptr() as usize - ptr as usize) / 2 + i);
+            return Some((c as *const u16 as usize - ptr as usize) / 2);
         }
     }
     None
