@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
                         format!("{}.to_string()", snippet(cx, args[0].span, r#""...""#)),
                         Applicability::MachineApplicable,
                     );
-                } else if let Some(_) = ty.builtin_index() {
+                } else if ty.builtin_index().is_some() {
                     span_lint_and_sugg(
                         cx,
                         REPEAT_ONCE,
