@@ -103,30 +103,17 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
 
     // For performance reasons unfold the loop eight times.
     while start.len() >= 8 {
-        if start[0] == needle {
-            return Some((start.as_ptr() as usize - ptr as usize) / 2);
+        macro_rules! if_return {
+            ($($n:literal,)+) => {
+                $(
+                    if start[$n] == needle {
+                        return Some((&start[$n] as *const u16 as usize - ptr as usize) / 2);
+                    }
+                )+
+            }
         }
-        if start[1] == needle {
-            return Some((start[1..].as_ptr() as usize - ptr as usize) / 2);
-        }
-        if start[2] == needle {
-            return Some((start[2..].as_ptr() as usize - ptr as usize) / 2);
-        }
-        if start[3] == needle {
-            return Some((start[3..].as_ptr() as usize - ptr as usize) / 2);
-        }
-        if start[4] == needle {
-            return Some((start[4..].as_ptr() as usize - ptr as usize) / 2);
-        }
-        if start[5] == needle {
-            return Some((start[5..].as_ptr() as usize - ptr as usize) / 2);
-        }
-        if start[6] == needle {
-            return Some((start[6..].as_ptr() as usize - ptr as usize) / 2);
-        }
-        if start[7] == needle {
-            return Some((start[7..].as_ptr() as usize - ptr as usize) / 2);
-        }
+
+        if_return!(0, 1, 2, 3, 4, 5, 6, 7,);
 
         start = &start[8..];
     }
