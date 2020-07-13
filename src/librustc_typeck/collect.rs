@@ -129,7 +129,7 @@ struct CollectItemTypesVisitor<'tcx> {
 /// all already existing generic type parameters to avoid suggesting a name that is already in use.
 crate fn placeholder_type_error(
     tcx: TyCtxt<'tcx>,
-    span: Span,
+    span: Option<Span>,
     generics: &[hir::GenericParam<'_>],
     placeholder_types: Vec<Span>,
     suggest: bool,
@@ -137,12 +137,15 @@ crate fn placeholder_type_error(
     if placeholder_types.is_empty() {
         return;
     }
-    let type_name = generics.next_type_param_name(None);
 
+    let type_name = generics.next_type_param_name(None);
     let mut sugg: Vec<_> =
         placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
+
     if generics.is_empty() {
-        sugg.push((span, format!("<{}>", type_name)));
+        if let Some(span) = span {
+            sugg.push((span, format!("<{}>", type_name)));
+        }
     } else if let Some(arg) = generics.iter().find(|arg| match arg.name {
         hir::ParamName::Plain(Ident { name: kw::Underscore, .. }) => true,
         _ => false,
@@ -158,6 +161,7 @@ crate fn placeholder_type_error(
             format!(", {}", type_name),
         ));
     }
+
     let mut err = bad_placeholder_type(tcx, placeholder_types);
     if suggest {
         err.multipart_suggestion(
@@ -186,7 +190,7 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
     let mut visitor = PlaceholderHirTyCollector::default();
     visitor.visit_item(item);
 
-    placeholder_type_error(tcx, generics.span, &generics.params[..], visitor.0, suggest);
+    placeholder_type_error(tcx, Some(generics.span), &generics.params[..], visitor.0, suggest);
 }
 
 impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
@@ -722,7 +726,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
             // Account for `const C: _;` and `type T = _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, DUMMY_SP, &[], visitor.0, false);
+            placeholder_type_error(tcx, None, &[], visitor.0, false);
         }
 
         hir::TraitItemKind::Type(_, None) => {}
@@ -745,7 +749,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
             // Account for `type T = _;`
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_impl_item(impl_item);
-            placeholder_type_error(tcx, DUMMY_SP, &[], visitor.0, false);
+            placeholder_type_error(tcx, None, &[], visitor.0, false);
         }
         hir::ImplItemKind::Const(..) => {}
     }
