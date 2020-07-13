@@ -87,8 +87,8 @@ impl<'tcx> ConstKind<'tcx> {
 
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
-    // return None
-    pub fn try_eval(
+    /// return `None`.
+    pub(super) fn try_eval(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
