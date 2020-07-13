@@ -153,6 +153,11 @@ unsafe impl<K: Sync, V: Sync> Sync for Root<K, V> {}
 unsafe impl<K: Send, V: Send> Send for Root<K, V> {}
 
 impl<K, V> Root<K, V> {
+    /// Returns the number of levels below the root.
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
     /// Returns a new owned tree, with its own root node that is initially empty.
     pub fn new_leaf() -> Self {
         Root { node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })), height: 0 }
