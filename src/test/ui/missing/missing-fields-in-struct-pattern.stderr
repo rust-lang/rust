@@ -1,18 +1,9 @@
-error[E0026]: struct `S` does not have fields named `a`, `b`, `c`, `d`
-  --> $DIR/missing-fields-in-struct-pattern.rs:4:16
-   |
-LL |     if let S { a, b, c, d } = S(1, 2, 3, 4) {
-   |                ^  ^  ^  ^ struct `S` does not have these fields
-
-error[E0027]: pattern does not mention fields `0`, `1`, `2`, `3`
+error[E0769]: tuple variant `S` written as struct variant
   --> $DIR/missing-fields-in-struct-pattern.rs:4:12
    |
 LL |     if let S { a, b, c, d } = S(1, 2, 3, 4) {
-   |            ^^^^^^^^^^^^^^^^ missing fields `0`, `1`, `2`, `3`
-   |
-   = note: trying to match a tuple variant with a struct variant pattern
+   |            ^^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `S(a, b, c, d)`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0026, E0027.
-For more information about an error, try `rustc --explain E0026`.
+For more information about this error, try `rustc --explain E0769`.
