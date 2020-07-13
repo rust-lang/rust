@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use base_db::CrateId;
 use chalk_ir::cast::Cast;
-use chalk_solve::Solver;
+use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
 use hir_def::{lang_item::LangItemTarget, TraitId};
 
 use crate::{db::HirDatabase, DebruijnIndex, Substs};
@@ -152,6 +152,9 @@ fn solve(
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
 ) -> Option<chalk_solve::Solution<Interner>> {
     let context = ChalkContext { db, krate };
+
+    let logging_db = LoggingRustIrDatabase::new(context);
+
     log::debug!("solve goal: {:?}", goal);
     let mut solver = create_chalk_solver();
 
@@ -167,7 +170,7 @@ fn solve(
         remaining > 0
     };
     let mut solve = || {
-        let solution = solver.solve_limited(&context, goal, should_continue);
+        let solution = solver.solve_limited(&logging_db, goal, should_continue);
         log::debug!("solve({:?}) => {:?}", goal, solution);
         solution
     };
@@ -175,6 +178,8 @@ fn solve(
     // extra sure we only use it for debugging
     let solution =
         if is_chalk_debug() { chalk::tls::set_current_program(db, solve) } else { solve() };
+
+    log::debug!("chalk program:\n{}", logging_db);
 
     solution
 }
