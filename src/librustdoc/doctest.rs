@@ -1,13 +1,14 @@
 use rustc_ast as ast;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::ErrorReported;
+use rustc_errors::{ColorConfig, ErrorReported};
+use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, CrateType};
+use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::{lint, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
@@ -293,6 +294,18 @@ fn run_test(
             path.to_str().expect("target path must be valid unicode").to_string()
         }
     });
+    match options.error_format {
+        ErrorOutputType::HumanReadable(kind) => {
+            let (_, color_config) = kind.unzip();
+            match color_config {
+                ColorConfig::Never => {}
+                _ => {
+                    compiler.arg("--color").arg("always");
+                }
+            }
+        }
+        _ => {}
+    }
 
     compiler.arg("-");
     compiler.stdin(Stdio::piped());
