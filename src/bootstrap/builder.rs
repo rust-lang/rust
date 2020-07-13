@@ -1130,22 +1130,32 @@ impl<'a> Builder<'a> {
         cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
 
         if source_type == SourceType::InTree {
+            let mut lint_flags = Vec::new();
             // When extending this list, add the new lints to the RUSTFLAGS of the
             // build_bootstrap function of src/bootstrap/bootstrap.py as well as
             // some code doesn't go through this `rustc` wrapper.
-            rustflags.arg("-Wrust_2018_idioms");
-            rustflags.arg("-Wunused_lifetimes");
+            lint_flags.push("-Wrust_2018_idioms");
+            lint_flags.push("-Wunused_lifetimes");
 
             if self.config.deny_warnings {
-                rustflags.arg("-Dwarnings");
+                lint_flags.push("-Dwarnings");
             }
 
             // FIXME(#58633) hide "unused attribute" errors in incremental
             // builds of the standard library, as the underlying checks are
             // not yet properly integrated with incremental recompilation.
             if mode == Mode::Std && compiler.stage == 0 && self.config.incremental {
-                rustflags.arg("-Aunused-attributes");
+                lint_flags.push("-Aunused-attributes");
             }
+            // This does not use RUSTFLAGS due to caching issues with Cargo.
+            // Clippy is treated as an "in tree" tool, but shares the same
+            // cache as other "submodule" tools. With these options set in
+            // RUSTFLAGS, that causes *every* shared dependency to be rebuilt.
+            // By injecting this into the rustc wrapper, this circumvents
+            // Cargo's fingerprint detection. This is fine because lint flags
+            // are always ignored in dependencies. Eventually this should be
+            // fixed via better support from Cargo.
+            cargo.env("RUSTC_LINT_FLAGS", lint_flags.join(" "));
         }
 
         if let Mode::Rustc | Mode::Codegen = mode {
