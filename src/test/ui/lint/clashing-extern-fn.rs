@@ -181,6 +181,7 @@ mod transparent {
         use super::T;
         extern "C" {
             fn transparent() -> T;
+            fn transparent_incorrect() -> T;
         }
     }
 
@@ -189,6 +190,10 @@ mod transparent {
             // Shouldn't warn here, because repr(transparent) guarantees that T's layout is the
             // same as just the usize.
             fn transparent() -> usize;
+
+            // Should warn, because there's a signedness conversion here:
+            fn transparent_incorrect() -> isize;
+            //~^ WARN `transparent_incorrect` redeclared with a different signature
         }
     }
 }

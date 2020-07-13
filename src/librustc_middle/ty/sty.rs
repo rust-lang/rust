@@ -202,6 +202,16 @@ pub enum TyKind<'tcx> {
     Error(DelaySpanBugEmitted),
 }
 
+impl TyKind<'tcx> {
+    #[inline]
+    pub fn is_primitive(&self) -> bool {
+        match self {
+            Bool | Char | Int(_) | Uint(_) | Float(_) => true,
+            _ => false,
+        }
+    }
+}
+
 /// A type that is not publicly constructable. This prevents people from making `TyKind::Error`
 /// except through `tcx.err*()`.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
@@ -1766,10 +1776,7 @@ impl<'tcx> TyS<'tcx> {
 
     #[inline]
     pub fn is_primitive(&self) -> bool {
-        match self.kind {
-            Bool | Char | Int(_) | Uint(_) | Float(_) => true,
-            _ => false,
-        }
+        self.kind.is_primitive()
     }
 
     #[inline]
