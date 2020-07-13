@@ -99,8 +99,8 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
     ) -> Self {
         let n1 = Node::new();
         let n2 = Node::new();
-        // SAFETY: At this point we know the pointer is not NUL since it was
-        // build just above.
+        // SAFETY: At this point we know the pointer is valid: it was built
+        // just above.
         unsafe { (*n1).next.store(n2, Ordering::Relaxed) }
         Queue {
             consumer: CacheAligned::new(Consumer {
@@ -135,13 +135,10 @@ impl<T, ProducerAddition, ConsumerAddition> Queue<T, ProducerAddition, ConsumerA
     }
 
     unsafe fn alloc(&self) -> *mut Node<T> {
-        // First try to see if we can consume the 'first' node for our uses.
-        // SAFEY: Since `self` is a valid reference, accessing its inner values
-        // can be considered safe (without checking for NUL pointers).
-        //
-        // Dereferencing of `ret` are safe too because the pointer comes from
-        // `self` once again.
+        // SAFEY: ??? Explain why the pointers are safe to dereference and why
+        // returning a mutable pointer is ok. ???
         unsafe {
+            // First try to see if we can consume the 'first' node for our uses.
             if *self.producer.first.get() != *self.producer.tail_copy.get() {
                 let ret = *self.producer.first.get();
                 *self.producer.0.first.get() = (*ret).next.load(Ordering::Relaxed);
@@ -322,7 +319,7 @@ mod tests {
         }
 
         unsafe fn stress_bound(bound: usize) {
-            let q = Arc::new(Queue::with_additions(bound, (), ()));
+            let q = Arc::new(unsafe { Queue::with_additions(bound, (), ()) });
 
             let (tx, rx) = channel();
             let q2 = q.clone();

@@ -651,7 +651,7 @@ trait UnsafeFlavor<T> {
         // SAFETY: We are sure the inner value will never be NUL when this is
         // called, the invariants of the module make it so.
         //
-        // It is also ensured that no other (mutable) reference will be handed
+        // The caller ensures that no other (mutable) reference will be handed
         // out while the one returned here is in action.
         unsafe { &mut *self.inner_unsafe().get() }
     }

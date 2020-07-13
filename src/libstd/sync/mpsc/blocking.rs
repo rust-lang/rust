@@ -1,6 +1,5 @@
 //! Generic support for building blocking abstractions.
 
-use crate::mem;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::Arc;
 use crate::thread::{self, Thread};
@@ -47,9 +46,7 @@ impl SignalToken {
     /// flag.
     #[inline]
     pub unsafe fn cast_to_usize(self) -> usize {
-        // SAFETY: this ok because of the internal represention of Arc, which
-        // is a pointer and phantom data (so the size of a pointer -> a usize).
-        unsafe { mem::transmute(self.inner) }
+        Arc::into_raw(self.inner) as usize
     }
 
     /// Converts from an unsafe usize value. Useful for retrieving a pipe's state
@@ -58,7 +55,10 @@ impl SignalToken {
     pub unsafe fn cast_from_usize(signal_ptr: usize) -> SignalToken {
         // SAFETY: this ok because of the internal represention of Arc, which
         // is a pointer and phantom data (so the size of a pointer -> a usize).
-        SignalToken { inner: unsafe { mem::transmute(signal_ptr) } }
+        //
+        // NOTE: The call to `from_raw` is used in conjuction with the call to
+        // `into_raw` made in the `SignalToken::cast_to_usize` method.
+        SignalToken { inner: unsafe { Arc::from_raw(signal_ptr as *const _) } }
     }
 }
 
