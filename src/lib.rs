@@ -178,8 +178,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
         Box::new(crate::metadata::CraneliftMetadataLoader)
     }
 
-    fn provide(&self, providers: &mut Providers<'_>) {
-        providers.target_features_whitelist = |tcx, cnum| {
+    fn provide(&self, providers: &mut Providers) {
+        providers.supported_target_features = |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             if tcx.sess.opts.actually_rustdoc {
                 // rustdoc needs to be able to document functions that use all the features, so
@@ -197,7 +197,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             }
         };
     }
-    fn provide_extern(&self, _providers: &mut Providers<'_>) {}
+    fn provide_extern(&self, _providers: &mut Providers) {}
 
     fn target_features(&self, _sess: &Session) -> Vec<rustc_span::Symbol> {
         vec![rustc_span::Symbol::intern("cg_clif")]
