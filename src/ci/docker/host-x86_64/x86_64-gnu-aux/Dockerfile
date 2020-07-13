@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   fonts-wqy-zenhei \
   fonts-thai-tlwg \
   fonts-kacst \
-  fonts-freefont-ttf \
+  fonts-freefont-ttf
 
 RUN curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
 RUN apt install -y nodejs
