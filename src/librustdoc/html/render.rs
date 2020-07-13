@@ -42,6 +42,7 @@ use std::str;
 use std::string::ToString;
 use std::sync::Arc;
 
+use itertools::Itertools;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -3170,15 +3171,19 @@ const ALLOWED_ATTRIBUTES: &[Symbol] = &[
 //     bar: usize,
 // }
 fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
-    let mut attrs = String::new();
+    let attrs = it
+        .attrs
+        .other_attrs
+        .iter()
+        .filter_map(|attr| {
+            if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
+                Some(pprust::attribute_to_string(&attr))
+            } else {
+                None
+            }
+        })
+        .join("\n");
 
-    for attr in &it.attrs.other_attrs {
-        if !ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
-            continue;
-        }
-
-        attrs.push_str(&pprust::attribute_to_string(&attr));
-    }
     if !attrs.is_empty() {
         write!(
             w,
