@@ -34,7 +34,7 @@ pub fn main() {
         let arr: [u8; 3] = [1, 2, 3];
         let ptr = arr[1..].as_ptr() as *const u16;
         assert_eq!(unaligned_volatile_load(ptr), u16::from_ne_bytes([arr[1], arr[2]]));
-        
+
         // test unaligned volatile store
         let ptr = arr[1..].as_ptr() as *mut u16;
         unaligned_volatile_store(ptr, 0);
