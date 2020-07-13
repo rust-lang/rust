@@ -833,8 +833,10 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push_str(&mut self, string: &str) {
-        self.vec.extend_from_slice(string.as_bytes())
+    pub fn push_str<T>(&mut self, string: T) 
+        where T: AsRef<str>
+    {
+        self.vec.extend_from_slice(string.as_ref().as_bytes())
     }
 
     /// Returns this `String`'s capacity, in bytes.
