@@ -937,7 +937,7 @@ pub fn prompt(prompt: &str) -> Result<String> {
 /// fn main() {
 ///     print!("Enter name: ");
 ///
-///     let name = input();
+///     let name = input().expect("input failed!");
 ///
 ///     println!("Your name is {}!", name);
 /// }
