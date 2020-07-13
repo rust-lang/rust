@@ -99,11 +99,10 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
 
 pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
     let ptr = haystack.as_ptr();
-    let mut len = haystack.len();
     let mut start = &haystack[..];
 
     // For performance reasons unfold the loop eight times.
-    while len >= 8 {
+    while start.len() >= 8 {
         if start[0] == needle {
             return Some((start.as_ptr() as usize - ptr as usize) / 2);
         }
@@ -130,7 +129,6 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
         }
 
         start = &start[8..];
-        len -= 8;
     }
 
     for (i, c) in start.iter().enumerate() {
