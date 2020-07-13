@@ -3158,11 +3158,11 @@ impl str {
     /// Simple patterns:
     ///
     /// ```
-    /// let s = "Löwe 老虎 Léopard";
+    /// let s = "Löwe 老虎 Léopard Gepardi";
     ///
     /// assert_eq!(s.find('L'), Some(0));
     /// assert_eq!(s.find('é'), Some(14));
-    /// assert_eq!(s.find("Léopard"), Some(13));
+    /// assert_eq!(s.find("pard"), Some(17));
     /// ```
     ///
     /// More complex patterns using point-free style and closures:
@@ -3190,8 +3190,8 @@ impl str {
         pat.into_searcher(self).next_match().map(|(i, _)| i)
     }
 
-    /// Returns the byte index of the last character of this string slice that
-    /// matches the pattern.
+    /// Returns the byte index for the first character of the rightmost match of the pattern in
+    /// this string slice.
     ///
     /// Returns [`None`] if the pattern doesn't match.
     ///
@@ -3207,10 +3207,11 @@ impl str {
     /// Simple patterns:
     ///
     /// ```
-    /// let s = "Löwe 老虎 Léopard";
+    /// let s = "Löwe 老虎 Léopard Gepardi";
     ///
     /// assert_eq!(s.rfind('L'), Some(13));
     /// assert_eq!(s.rfind('é'), Some(14));
+    /// assert_eq!(s.rfind("pard"), Some(24));
     /// ```
     ///
     /// More complex patterns with closures:
