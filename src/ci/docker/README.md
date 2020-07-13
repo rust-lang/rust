@@ -143,7 +143,7 @@ $ ct-ng menuconfig
   meaningful name. This is done outside the container.
 
 ```
-$ docker cp drunk_murdock:/.config arm-linux-gnueabi.config
+$ docker cp drunk_murdock:/tmp/.config arm-linux-gnueabi.config
 ```
 
 - Now you can shutdown the container or repeat the two last steps to generate a
