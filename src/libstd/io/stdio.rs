@@ -5,7 +5,7 @@ use crate::io::prelude::*;
 use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
-use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter, Write};
+use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter, Result, Write};
 use crate::sync::{Arc, Mutex, MutexGuard, Once};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -893,7 +893,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// use std::io::prompt;
 ///
 /// fn main() {
-///     let name = prompt("Enter name: ");
+///     let name = prompt("Enter name: ").expect("input failed!");
 ///
 ///     println!("Your name is {}!", name);
 /// }
@@ -904,9 +904,9 @@ impl fmt::Debug for StderrLock<'_> {
                      more general mechanism",
     issue = "none"
 )]
-pub fn prompt(prompt: &str) -> String {
+pub fn prompt(prompt: &str) -> Result<String> {
     stdout().write(prompt.as_bytes()).expect("failed to write to stdout");
-    input()
+    Ok(input()?)
 }
 
 /// Constructs a new handle to the standard input of the current
@@ -948,12 +948,12 @@ pub fn prompt(prompt: &str) -> String {
                      more general mechanism",
     issue = "none"
 )]
-pub fn input() -> String {
+pub fn input() -> Result<String> {
     let mut input = String::new();
     stdout().flush().expect("failed to flush stdout");
     match stdin().read_line(&mut input).expect("failed to read from stdin") {
         0 => panic!("unexpected end of file"),
-        _ => String::from(input.trim_end_matches(&['\n', '\r'][..])),
+        _ => Ok(String::from(input.trim_end_matches(&['\n', '\r'][..]))),
     }
 }
 
