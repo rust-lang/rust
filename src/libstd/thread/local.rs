@@ -363,7 +363,7 @@ pub mod fast {
     use crate::cell::Cell;
     use crate::fmt;
     use crate::mem;
-    use crate::sys::fast_thread_local::register_dtor;
+    use crate::sys::thread_local_dtor::register_dtor;
 
     #[derive(Copy, Clone)]
     enum DtorState {
@@ -468,7 +468,7 @@ pub mod os {
     use crate::fmt;
     use crate::marker;
     use crate::ptr;
-    use crate::sys_common::thread_local::StaticKey as OsStaticKey;
+    use crate::sys_common::thread_local_key::StaticKey as OsStaticKey;
 
     pub struct Key<T> {
         // OS-TLS key that we'll use to key off.

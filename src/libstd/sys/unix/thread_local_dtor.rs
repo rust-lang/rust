@@ -1,6 +1,9 @@
 #![cfg(target_thread_local)]
 #![unstable(feature = "thread_local_internals", issue = "none")]
 
+//! Provides thread-local destructors without an associated "key", which
+//! can be more efficient.
+
 // Since what appears to be glibc 2.18 this symbol has been shipped which
 // GCC and clang both use to invoke destructors in thread_local globals, so
 // let's do the same!
@@ -16,7 +19,7 @@
 ))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::mem;
-    use crate::sys_common::thread_local::register_dtor_fallback;
+    use crate::sys_common::thread_local_dtor::register_dtor_fallback;
 
     extern "C" {
         #[linkage = "extern_weak"]
