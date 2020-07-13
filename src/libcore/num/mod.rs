@@ -8,6 +8,7 @@ use crate::convert::Infallible;
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
+use crate::ops::{BitOr, BitOrAssign};
 use crate::str::FromStr;
 
 // Used because the `?` operator is not allowed in a const context.
@@ -17,6 +18,21 @@ macro_rules! try_opt {
             Some(x) => x,
             None => return None,
         }
+    };
+}
+
+#[cfg(bootstrap)]
+macro_rules! unlikely {
+    ($e: expr) => {
+        $e
+    };
+}
+
+#[cfg(not(bootstrap))]
+#[allow_internal_unstable(const_likely)]
+macro_rules! unlikely {
+    ($e: expr) => {
+        intrinsics::unlikely($e)
     };
 }
 
@@ -73,7 +89,8 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 #[rustc_const_stable(feature = "nonzero", since = "1.34.0")]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
-                    Self(n)
+                    // SAFETY: this is guaranteed to be safe by the caller.
+                    unsafe { Self(n) }
                 }
 
                 /// Creates a non-zero if the given value is not zero.
@@ -107,6 +124,57 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                     fn from(nonzero: $Ty) -> Self {
                         nonzero.0
                     }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOr for $Ty {
+                type Output = Self;
+                #[inline]
+                fn bitor(self, rhs: Self) -> Self::Output {
+                    // Safety: since `self` and `rhs` are both nonzero, the
+                    // result of the bitwise-or will be nonzero.
+                    unsafe { $Ty::new_unchecked(self.get() | rhs.get()) }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOr<$Int> for $Ty {
+                type Output = Self;
+                #[inline]
+                fn bitor(self, rhs: $Int) -> Self::Output {
+                    // Safety: since `self` is nonzero, the result of the
+                    // bitwise-or will be nonzero regardless of the value of
+                    // `rhs`.
+                    unsafe { $Ty::new_unchecked(self.get() | rhs) }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOr<$Ty> for $Int {
+                type Output = $Ty;
+                #[inline]
+                fn bitor(self, rhs: $Ty) -> Self::Output {
+                    // Safety: since `rhs` is nonzero, the result of the
+                    // bitwise-or will be nonzero regardless of the value of
+                    // `self`.
+                    unsafe { $Ty::new_unchecked(self | rhs.get()) }
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOrAssign for $Ty {
+                #[inline]
+                fn bitor_assign(&mut self, rhs: Self) {
+                    *self = *self | rhs;
+                }
+            }
+
+            #[stable(feature = "nonzero_bitor", since = "1.45.0")]
+            impl BitOrAssign<$Int> for $Ty {
+                #[inline]
+                fn bitor_assign(&mut self, rhs: $Int) {
+                    *self = *self | rhs;
                 }
             }
 
@@ -405,13 +473,13 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "#![feature(leading_trailing_ones)]
-let n = -1", stringify!($SelfT), ";
+", $Feature, "let n = -1", stringify!($SelfT), ";
 
 assert_eq!(n.leading_ones(), ", stringify!($BITS), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "leading_trailing_ones", issue = "57969")]
+            #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
+            #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn leading_ones(self) -> u32 {
                 (self as $UnsignedT).leading_ones()
@@ -426,13 +494,13 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "#![feature(leading_trailing_ones)]
-let n = 3", stringify!($SelfT), ";
+", $Feature, "let n = 3", stringify!($SelfT), ";
 
 assert_eq!(n.trailing_ones(), 2);",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "leading_trailing_ones", issue = "57969")]
+            #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
+            #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn trailing_ones(self) -> u32 {
                 (self as $UnsignedT).trailing_ones()
@@ -693,7 +761,26 @@ $EndFeature, "
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
+cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
+"::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_add`.
+                unsafe { intrinsics::unchecked_add(self, rhs) }
             }
         }
 
@@ -718,7 +805,26 @@ $EndFeature, "
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
+cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
+"::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_sub`.
+                unsafe { intrinsics::unchecked_sub(self, rhs) }
             }
         }
 
@@ -743,7 +849,26 @@ $EndFeature, "
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
+cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
+"::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_mul`.
+                unsafe { intrinsics::unchecked_mul(self, rhs) }
             }
         }
 
@@ -768,7 +893,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     // SAFETY: div by zero and by INT_MIN have been checked above
@@ -797,7 +922,7 @@ assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     Some(self.div_euclid(rhs))
@@ -826,7 +951,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     // SAFETY: div by zero and by INT_MIN have been checked above
@@ -854,7 +979,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
@@ -880,7 +1005,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -904,7 +1029,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -928,7 +1053,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -1062,8 +1187,7 @@ instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "#![feature(saturating_neg)]
-assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_neg(), 100);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_neg(), ", stringify!($SelfT),
 "::MAX);
@@ -1072,7 +1196,7 @@ assert_eq!(", stringify!($SelfT), "::MAX.saturating_neg(), ", stringify!($SelfT)
 $EndFeature, "
 ```"),
 
-            #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[stable(feature = "saturating_neg", since = "1.45.0")]
             #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
             pub const fn saturating_neg(self) -> Self {
@@ -1089,8 +1213,7 @@ MIN` instead of overflowing.
 Basic usage:
 
 ```
-", $Feature, "#![feature(saturating_neg)]
-assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
 assert_eq!((-100", stringify!($SelfT), ").saturating_abs(), 100);
 assert_eq!(", stringify!($SelfT), "::MIN.saturating_abs(), ", stringify!($SelfT),
 "::MAX);
@@ -1099,7 +1222,7 @@ assert_eq!((", stringify!($SelfT), "::MIN + 1).saturating_abs(), ", stringify!($
 $EndFeature, "
 ```"),
 
-            #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[stable(feature = "saturating_neg", since = "1.45.0")]
             #[rustc_const_unstable(feature = "const_saturating_int_methods", issue = "53718")]
             #[inline]
             pub const fn saturating_abs(self) -> Self {
@@ -1135,9 +1258,9 @@ $EndFeature, "
                 match self.checked_mul(rhs) {
                     Some(x) => x,
                     None => if (self < 0) == (rhs < 0) {
-                        Self::max_value()
+                        Self::MAX
                     } else {
-                        Self::min_value()
+                        Self::MIN
                     }
                 }
             }
@@ -1166,8 +1289,8 @@ $EndFeature, "
             pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
-                    None if self < 0 && exp % 2 == 1 => Self::min_value(),
-                    None => Self::max_value(),
+                    None if self < 0 && exp % 2 == 1 => Self::MIN,
+                    None => Self::MAX,
                 }
             }
         }
@@ -1396,8 +1519,8 @@ any high-order bits of `rhs` that would cause the shift to exceed the bitwidth o
 
 Note that this is *not* the same as a rotate-left; the RHS of a wrapping shift-left is restricted to
 the range of the type, rather than the bits shifted out of the LHS being returned to the other end.
-The primitive integer types all implement a `rotate_left` function, which may be what you want
-instead.
+The primitive integer types all implement a `[`rotate_left`](#method.rotate_left) function,
+which may be what you want instead.
 
 # Examples
 
@@ -1428,8 +1551,8 @@ removes any high-order bits of `rhs` that would cause the shift to exceed the bi
 
 Note that this is *not* the same as a rotate-right; the RHS of a wrapping shift-right is restricted
 to the range of the type, rather than the bits shifted out of the LHS being returned to the other
-end. The primitive integer types all implement a `rotate_right` function, which may be what you want
-instead.
+end. The primitive integer types all implement a [`rotate_right`](#method.rotate_right) function,
+which may be what you want instead.
 
 # Examples
 
@@ -1477,7 +1600,7 @@ $EndFeature, "
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[allow(unused_attributes)]
-            #[allow_internal_unstable(const_if_match)]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn wrapping_abs(self) -> Self {
                  if self.is_negative() {
@@ -1637,7 +1760,7 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (self, true)
                 } else {
                     (self / rhs, false)
@@ -1670,7 +1793,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (self, true)
                 } else {
                     (self.div_euclid(rhs), false)
@@ -1704,7 +1827,7 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (0, true)
                 } else {
                     (self % rhs, false)
@@ -1737,7 +1860,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (0, true)
                 } else {
                     (self.rem_euclid(rhs), false)
@@ -1766,10 +1889,10 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($Self
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[allow(unused_attributes)]
-            #[allow_internal_unstable(const_if_match)]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             pub const fn overflowing_neg(self) -> (Self, bool) {
-                if self == Self::min_value() {
-                    (Self::min_value(), true)
+                if unlikely!(self == Self::MIN) {
+                    (Self::MIN, true)
                 } else {
                     (-self, false)
                 }
@@ -1851,7 +1974,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[inline]
             pub const fn overflowing_abs(self) -> (Self, bool) {
-                (self.wrapping_abs(), self == Self::min_value())
+                (self.wrapping_abs(), self == Self::MIN)
             }
         }
 
@@ -2059,7 +2182,7 @@ $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[allow(unused_attributes)]
-            #[allow_internal_unstable(const_if_match)]
+            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub const fn abs(self) -> Self {
@@ -2594,12 +2717,12 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "#![feature(leading_trailing_ones)]
-let n = !(", stringify!($SelfT), "::MAX >> 2);
+", $Feature, "let n = !(", stringify!($SelfT), "::MAX >> 2);
 
 assert_eq!(n.leading_ones(), 2);", $EndFeature, "
 ```"),
-            #[unstable(feature = "leading_trailing_ones", issue = "57969")]
+            #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
+            #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn leading_ones(self) -> u32 {
                 (!self).leading_zeros()
@@ -2615,12 +2738,12 @@ of `self`.
 Basic usage:
 
 ```
-", $Feature, "#![feature(leading_trailing_ones)]
-let n = 0b1010111", stringify!($SelfT), ";
+", $Feature, "let n = 0b1010111", stringify!($SelfT), ";
 
 assert_eq!(n.trailing_ones(), 3);", $EndFeature, "
 ```"),
-            #[unstable(feature = "leading_trailing_ones", issue = "57969")]
+            #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
+            #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn trailing_ones(self) -> u32 {
                 (!self).trailing_zeros()
@@ -2880,7 +3003,26 @@ assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeat
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
+cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
+"::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_add`.
+                unsafe { intrinsics::unchecked_add(self, rhs) }
             }
         }
 
@@ -2903,7 +3045,26 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
+cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
+"::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_sub`.
+                unsafe { intrinsics::unchecked_sub(self, rhs) }
             }
         }
 
@@ -2926,7 +3087,26 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
+cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
+"::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`."),
+            #[unstable(
+                feature = "unchecked_math",
+                reason = "niche optimization path",
+                issue = "none",
+            )]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_mul`.
+                unsafe { intrinsics::unchecked_mul(self, rhs) }
             }
         }
 
@@ -2948,11 +3128,12 @@ assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-                match rhs {
-                    0 => None,
+                if unlikely!(rhs == 0) {
+                    None
+                } else {
                     // SAFETY: div by zero has been checked above and unsigned types have no other
                     // failure modes for division
-                    rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
+                    Some(unsafe { intrinsics::unchecked_div(self, rhs) })
                 }
             }
         }
@@ -2975,7 +3156,7 @@ assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     Some(self.div_euclid(rhs))
@@ -3002,7 +3183,7 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     // SAFETY: div by zero has been checked above and unsigned types have no other
@@ -3030,7 +3211,7 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
@@ -3057,7 +3238,7 @@ assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3080,7 +3261,7 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, 
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3103,7 +3284,7 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, 
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3157,7 +3338,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
-assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_add(127), ", stringify!($SelfT), "::MAX);",
+$EndFeature, "
 ```"),
 
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -3214,7 +3396,7 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 match self.checked_mul(rhs) {
                     Some(x) => x,
-                    None => Self::max_value(),
+                    None => Self::MAX,
                 }
             }
         }
@@ -3241,7 +3423,7 @@ $EndFeature, "
             pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
-                    None => Self::max_value(),
+                    None => Self::MAX,
                 }
             }
         }
@@ -3456,8 +3638,8 @@ Note that this is *not* the same as a rotate-left; the
 RHS of a wrapping shift-left is restricted to the range
 of the type, rather than the bits shifted out of the LHS
 being returned to the other end. The primitive integer
-types all implement a `rotate_left` function, which may
-be what you want instead.
+types all implement a [`rotate_left`](#method.rotate_left) function,
+which may be what you want instead.
 
 # Examples
 
@@ -3490,8 +3672,8 @@ Note that this is *not* the same as a rotate-right; the
 RHS of a wrapping shift-right is restricted to the range
 of the type, rather than the bits shifted out of the LHS
 being returned to the other end. The primitive integer
-types all implement a `rotate_right` function, which may
-be what you want instead.
+types all implement a [`rotate_right`](#method.rotate_right) function,
+which may be what you want instead.
 
 # Examples
 
@@ -3928,7 +4110,7 @@ Basic usage:
         }
     }
 
-            doc_comment! {
+        doc_comment! {
             concat!("Performs Euclidean division.
 
 Since, for the positive integers, all common
@@ -4026,7 +4208,7 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
             // (such as intel pre-haswell) have more efficient ctlz
             // intrinsics when the argument is non-zero.
             let z = unsafe { intrinsics::ctlz_nonzero(p) };
-            <$SelfT>::max_value() >> z
+            <$SelfT>::MAX >> z
         }
 
         doc_comment! {
@@ -5008,9 +5190,9 @@ trait FromStrRadixHelper: PartialOrd + Copy {
 macro_rules! doit {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
         #[inline]
-        fn min_value() -> Self { Self::min_value() }
+        fn min_value() -> Self { Self::MIN }
         #[inline]
-        fn max_value() -> Self { Self::max_value() }
+        fn max_value() -> Self { Self::MAX }
         #[inline]
         fn from_u32(u: u32) -> Self { u as Self }
         #[inline]

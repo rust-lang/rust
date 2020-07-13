@@ -1,0 +1,17 @@
+error: identifier pair considered confusable between `ｓ` and `s`
+  --> $DIR/lint-confusable-idents.rs:8:9
+   |
+LL | const ｓ: usize = 42;
+   |       -- this is where the previous identifier occurred
+...
+LL |     let s = "rust";
+   |         ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-confusable-idents.rs:2:9
+   |
+LL | #![deny(confusable_idents)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

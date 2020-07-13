@@ -4,13 +4,13 @@
 #![feature(associated_type_defaults)]
 #![feature(external_doc)]
 
-extern crate graphviz;
+extern crate rustc_graphviz;
 // A simple rust project
 
 extern crate krate2;
 extern crate krate2 as krate3;
 
-use graphviz::RenderOption;
+use rustc_graphviz::RenderOption;
 use std::collections::{HashMap,HashSet};
 use std::cell::RefCell;
 use std::io::Write;
@@ -27,7 +27,7 @@ use std::char::from_u32;
 static uni: &'static str = "Les Miséééééééérables";
 static yy: usize = 25;
 
-static bob: Option<graphviz::RenderOption> = None;
+static bob: Option<rustc_graphviz::RenderOption> = None;
 
 // buglink test - see issue #1337.
 
@@ -418,7 +418,7 @@ impl Error + 'static + Send {
         <Error + 'static>::is::<T>(self)
     }
 }
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 #[derive(Clone, Copy, Hash, RustcEncodable, RustcDecodable,
          PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
 struct AllDerives(i32);

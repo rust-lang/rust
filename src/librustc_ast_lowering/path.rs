@@ -9,6 +9,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
 use rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
 use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use log::debug;
@@ -273,7 +274,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .next();
         if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args = self
-                .elided_path_lifetimes(path_span, expected_lifetimes)
+                .elided_path_lifetimes(
+                    first_generic_span.map(|s| s.shrink_to_lo()).unwrap_or(segment.ident.span),
+                    expected_lifetimes,
+                )
                 .map(GenericArg::Lifetime)
                 .chain(generic_args.args.into_iter())
                 .collect();

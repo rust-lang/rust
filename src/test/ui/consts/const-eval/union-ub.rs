@@ -2,6 +2,7 @@
 
 #[repr(C)]
 union DummyUnion {
+    unit: (),
     u8: u8,
     bool: bool,
 }
@@ -29,6 +30,8 @@ union Bar {
 
 // the value is not valid for bools
 const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
+//~^ ERROR it is undefined behavior to use this value
+const UNINIT_BOOL: bool = unsafe { DummyUnion { unit: () }.bool};
 //~^ ERROR it is undefined behavior to use this value
 
 // The value is not valid for any union variant, but that's fine

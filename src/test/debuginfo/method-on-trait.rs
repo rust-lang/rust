@@ -63,8 +63,8 @@
 
 // STACK BY REF
 // lldb-command:print *self
-// lldbg-check:[...]$0 = Struct { x: 100 }
-// lldbr-check:(method_on_trait::Struct) *self = Struct { x: 100 }
+// lldbg-check:[...]$0 = { x = 100 }
+// lldbr-check:(method_on_trait::Struct) *self = { x = 100 }
 // lldb-command:print arg1
 // lldbg-check:[...]$1 = -1
 // lldbr-check:(isize) arg1 = -1
@@ -75,8 +75,8 @@
 
 // STACK BY VAL
 // lldb-command:print self
-// lldbg-check:[...]$3 = Struct { x: 100 }
-// lldbr-check:(method_on_trait::Struct) self = Struct { x: 100 }
+// lldbg-check:[...]$3 = { x = 100 }
+// lldbr-check:(method_on_trait::Struct) self = { x = 100 }
 // lldb-command:print arg1
 // lldbg-check:[...]$4 = -3
 // lldbr-check:(isize) arg1 = -3
@@ -87,8 +87,8 @@
 
 // OWNED BY REF
 // lldb-command:print *self
-// lldbg-check:[...]$6 = Struct { x: 200 }
-// lldbr-check:(method_on_trait::Struct) *self = Struct { x: 200 }
+// lldbg-check:[...]$6 = { x = 200 }
+// lldbr-check:(method_on_trait::Struct) *self = { x = 200 }
 // lldb-command:print arg1
 // lldbg-check:[...]$7 = -5
 // lldbr-check:(isize) arg1 = -5
@@ -99,8 +99,8 @@
 
 // OWNED BY VAL
 // lldb-command:print self
-// lldbg-check:[...]$9 = Struct { x: 200 }
-// lldbr-check:(method_on_trait::Struct) self = Struct { x: 200 }
+// lldbg-check:[...]$9 = { x = 200 }
+// lldbr-check:(method_on_trait::Struct) self = { x = 200 }
 // lldb-command:print arg1
 // lldbg-check:[...]$10 = -7
 // lldbr-check:(isize) arg1 = -7
@@ -111,8 +111,8 @@
 
 // OWNED MOVED
 // lldb-command:print *self
-// lldbg-check:[...]$12 = Struct { x: 200 }
-// lldbr-check:(method_on_trait::Struct) *self = Struct { x: 200 }
+// lldbg-check:[...]$12 = { x = 200 }
+// lldbr-check:(method_on_trait::Struct) *self = { x = 200 }
 // lldb-command:print arg1
 // lldbg-check:[...]$13 = -9
 // lldbr-check:(isize) arg1 = -9

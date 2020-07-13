@@ -18,6 +18,9 @@ pub struct Chain<A, B> {
     // adapter because its specialization for `FusedIterator` unconditionally descends into the
     // iterator, and that could be expensive to keep revisiting stuff like nested chains. It also
     // hurts compiler performance to add more iterator layers to `Chain`.
+    //
+    // Only the "first" iterator is actually set `None` when exhausted, depending on whether you
+    // iterate forward or backward. If you mix directions, then both sides may be `None`.
     a: Option<A>,
     b: Option<B>,
 }
@@ -43,6 +46,17 @@ macro_rules! fuse {
     };
 }
 
+/// Try an iterator method without fusing,
+/// like an inline `.as_mut().and_then(...)`
+macro_rules! maybe {
+    ($self:ident . $iter:ident . $($call:tt)+) => {
+        match $self.$iter {
+            Some(ref mut iter) => iter.$($call)+,
+            None => None,
+        }
+    };
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> Iterator for Chain<A, B>
 where
@@ -54,7 +68,7 @@ where
     #[inline]
     fn next(&mut self) -> Option<A::Item> {
         match fuse!(self.a.next()) {
-            None => fuse!(self.b.next()),
+            None => maybe!(self.b.next()),
             item => item,
         }
     }
@@ -85,7 +99,7 @@ where
         }
         if let Some(ref mut b) = self.b {
             acc = b.try_fold(acc, f)?;
-            self.b = None;
+            // we don't fuse the second iterator
         }
         Try::from_ok(acc)
     }
@@ -114,7 +128,7 @@ where
             }
             self.a = None;
         }
-        fuse!(self.b.nth(n))
+        maybe!(self.b.nth(n))
     }
 
     #[inline]
@@ -123,7 +137,7 @@ where
         P: FnMut(&Self::Item) -> bool,
     {
         match fuse!(self.a.find(&mut predicate)) {
-            None => fuse!(self.b.find(predicate)),
+            None => maybe!(self.b.find(predicate)),
             item => item,
         }
     }
@@ -174,7 +188,7 @@ where
     #[inline]
     fn next_back(&mut self) -> Option<A::Item> {
         match fuse!(self.b.next_back()) {
-            None => fuse!(self.a.next_back()),
+            None => maybe!(self.a.next_back()),
             item => item,
         }
     }
@@ -190,7 +204,7 @@ where
             }
             self.b = None;
         }
-        fuse!(self.a.nth_back(n))
+        maybe!(self.a.nth_back(n))
     }
 
     #[inline]
@@ -199,7 +213,7 @@ where
         P: FnMut(&Self::Item) -> bool,
     {
         match fuse!(self.b.rfind(&mut predicate)) {
-            None => fuse!(self.a.rfind(predicate)),
+            None => maybe!(self.a.rfind(predicate)),
             item => item,
         }
     }
@@ -216,7 +230,7 @@ where
         }
         if let Some(ref mut a) = self.a {
             acc = a.try_rfold(acc, f)?;
-            self.a = None;
+            // we don't fuse the second iterator
         }
         Try::from_ok(acc)
     }
@@ -236,8 +250,6 @@ where
 }
 
 // Note: *both* must be fused to handle double-ended iterators.
-// Now that we "fuse" both sides, we *could* implement this unconditionally,
-// but we should be cautious about committing to that in the public API.
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A, B> FusedIterator for Chain<A, B>
 where

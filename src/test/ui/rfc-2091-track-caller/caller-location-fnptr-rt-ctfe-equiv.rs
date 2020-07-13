@@ -6,7 +6,7 @@
 // run-pass
 // compile-flags: -Z unleash-the-miri-inside-of-you
 
-#![feature(core_intrinsics, const_caller_location, track_caller, const_fn)]
+#![feature(core_intrinsics, const_caller_location, const_fn)]
 
 type L = &'static std::panic::Location<'static>;
 
@@ -18,7 +18,7 @@ const fn attributed() -> L {
 const fn calling_attributed() -> L {
     // We need `-Z unleash-the-miri-inside-of-you` for this as we don't have `const fn` pointers.
     let ptr: fn() -> L = attributed;
-    ptr() //~ WARN skipping const checks
+    ptr()
 }
 
 fn main() {

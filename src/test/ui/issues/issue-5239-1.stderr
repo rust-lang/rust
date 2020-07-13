@@ -6,10 +6,10 @@ LL |     let x = |ref x: isize| { x += 1; };
    |                              |
    |                              cannot use `+=` on type `&isize`
    |
-help: `+=` can be used on 'isize', you can dereference `x`
+help: `+=` can be used on `isize`, you can dereference `x`
    |
 LL |     let x = |ref x: isize| { *x += 1; };
-   |                              ^^
+   |                              ^
 
 error: aborting due to previous error
 

@@ -1,0 +1,75 @@
+error: unused `self` argument
+  --> $DIR/unused_self.rs:11:29
+   |
+LL |         fn unused_self_move(self) {}
+   |                             ^^^^
+   |
+   = note: `-D clippy::unused-self` implied by `-D warnings`
+   = help: consider refactoring to a associated function
+
+error: unused `self` argument
+  --> $DIR/unused_self.rs:12:28
+   |
+LL |         fn unused_self_ref(&self) {}
+   |                            ^^^^^
+   |
+   = help: consider refactoring to a associated function
+
+error: unused `self` argument
+  --> $DIR/unused_self.rs:13:32
+   |
+LL |         fn unused_self_mut_ref(&mut self) {}
+   |                                ^^^^^^^^^
+   |
+   = help: consider refactoring to a associated function
+
+error: unused `self` argument
+  --> $DIR/unused_self.rs:14:32
+   |
+LL |         fn unused_self_pin_ref(self: Pin<&Self>) {}
+   |                                ^^^^
+   |
+   = help: consider refactoring to a associated function
+
+error: unused `self` argument
+  --> $DIR/unused_self.rs:15:36
+   |
+LL |         fn unused_self_pin_mut_ref(self: Pin<&mut Self>) {}
+   |                                    ^^^^
+   |
+   = help: consider refactoring to a associated function
+
+error: unused `self` argument
+  --> $DIR/unused_self.rs:16:35
+   |
+LL |         fn unused_self_pin_nested(self: Pin<Arc<Self>>) {}
+   |                                   ^^^^
+   |
+   = help: consider refactoring to a associated function
+
+error: unused `self` argument
+  --> $DIR/unused_self.rs:17:28
+   |
+LL |         fn unused_self_box(self: Box<Self>) {}
+   |                            ^^^^
+   |
+   = help: consider refactoring to a associated function
+
+error: unused `self` argument
+  --> $DIR/unused_self.rs:18:40
+   |
+LL |         fn unused_with_other_used_args(&self, x: u8, y: u8) -> u8 {
+   |                                        ^^^^^
+   |
+   = help: consider refactoring to a associated function
+
+error: unused `self` argument
+  --> $DIR/unused_self.rs:21:37
+   |
+LL |         fn unused_self_class_method(&self) {
+   |                                     ^^^^^
+   |
+   = help: consider refactoring to a associated function
+
+error: aborting due to 9 previous errors
+

@@ -1,0 +1,9 @@
+error[E0754]: `#[no_mangle]` requires ASCII identifier
+  --> $DIR/no_mangle_nonascii_forbidden.rs:4:1
+   |
+LL | pub fn řųśť() {}
+   | ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0754`.

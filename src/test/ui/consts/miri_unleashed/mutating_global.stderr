@@ -1,29 +1,9 @@
-warning: skipping const checks
-  --> $DIR/mutating_global.rs:9:9
+error[E0080]: could not evaluate static initializer
+  --> $DIR/mutating_global.rs:10:9
    |
 LL |         GLOBAL = 99
-   |         ^^^^^^
+   |         ^^^^^^^^^^^ modifying a static's initial value from another static's initializer
 
-warning: skipping const checks
-  --> $DIR/mutating_global.rs:9:9
-   |
-LL |         GLOBAL = 99
-   |         ^^^^^^
+error: aborting due to previous error
 
-error: any use of this value will cause an error
-  --> $DIR/mutating_global.rs:9:9
-   |
-LL | / const MUTATING_GLOBAL: () = {
-LL | |     unsafe {
-LL | |         GLOBAL = 99
-   | |         ^^^^^^^^^^^ modifying a static's initial value from another static's initializer
-LL | |
-LL | |
-LL | |     }
-LL | | };
-   | |__-
-   |
-   = note: `#[deny(const_err)]` on by default
-
-error: aborting due to previous error; 2 warnings emitted
-
+For more information about this error, try `rustc --explain E0080`.

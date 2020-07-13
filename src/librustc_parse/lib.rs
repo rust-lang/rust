@@ -18,7 +18,7 @@ use rustc_span::{FileName, SourceFile, Span};
 use std::path::Path;
 use std::str;
 
-use log::info;
+use log::{debug, info};
 
 pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
@@ -268,6 +268,12 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
             Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
         }
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
+        Nonterminal::NtExpr(ref expr) => {
+            if expr.tokens.is_none() {
+                debug!("missing tokens for expr {:?}", expr);
+            }
+            prepend_attrs(sess, &expr.attrs, expr.tokens.as_ref(), span)
+        }
         _ => None,
     };
 
@@ -307,6 +313,8 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
             "cached tokens found, but they're not \"probably equal\", \
                 going with stringified version"
         );
+        info!("cached tokens: {:?}", tokens);
+        info!("reparsed tokens: {:?}", tokens_for_real);
     }
     tokens_for_real
 }

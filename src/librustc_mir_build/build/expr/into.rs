@@ -3,6 +3,7 @@
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
+use rustc_ast::ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
@@ -53,7 +54,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::NeverToAny { source } => {
                 let source = this.hir.mirror(source);
                 let is_call = match source.kind {
-                    ExprKind::Call { .. } => true,
+                    ExprKind::Call { .. } | ExprKind::InlineAsm { .. } => true,
                     _ => false,
                 };
 
@@ -161,7 +162,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 });
                 exit_block.unit()
             }
-            ExprKind::Call { ty, fun, args, from_hir_call } => {
+            ExprKind::Call { ty, fun, args, from_hir_call, fn_span } => {
                 let intrinsic = match ty.kind {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
@@ -187,28 +188,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let ptr_ty = ptr.ty;
                     // Create an *internal* temp for the pointer, so that unsafety
                     // checking won't complain about the raw pointer assignment.
-                    let ptr_temp = this.local_decls.push(LocalDecl {
-                        mutability: Mutability::Mut,
-                        ty: ptr_ty,
-                        user_ty: UserTypeProjections::none(),
+                    let ptr_temp = this.local_decls.push(LocalDecl::with_source_info(
+                        ptr_ty,
                         source_info,
-                        internal: true,
-                        local_info: LocalInfo::Other,
-                        is_block_tail: None,
-                    });
+                    ).internal());
                     let ptr_temp = Place::from(ptr_temp);
                     let block = unpack!(this.into(ptr_temp, block, ptr));
                     this.into(this.hir.tcx().mk_place_deref(ptr_temp), block, val)
                 } else {
                     let args: Vec<_> = args
                         .into_iter()
-                        .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
+                        .map(|arg| unpack!(block = this.as_local_call_operand(block, arg)))
                         .collect();
 
                     let success = this.cfg.start_new_block();
                     let cleanup = this.diverge_cleanup();
 
                     this.record_operands_moved(&args);
+
+                    debug!("into_expr: fn_span={:?}", fn_span);
 
                     this.cfg.terminate(
                         block,
@@ -226,6 +224,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 Some((destination, success))
                             },
                             from_hir_call,
+                            fn_span
                         },
                     );
                     success.unit()
@@ -316,6 +315,74 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
+            ExprKind::InlineAsm { template, operands, options, line_spans } => {
+                use crate::hair;
+                use rustc_middle::mir;
+                let operands = operands
+                    .into_iter()
+                    .map(|op| match op {
+                        hair::InlineAsmOperand::In { reg, expr } => mir::InlineAsmOperand::In {
+                            reg,
+                            value: unpack!(block = this.as_local_operand(block, expr)),
+                        },
+                        hair::InlineAsmOperand::Out { reg, late, expr } => {
+                            mir::InlineAsmOperand::Out {
+                                reg,
+                                late,
+                                place: expr.map(|expr| unpack!(block = this.as_place(block, expr))),
+                            }
+                        }
+                        hair::InlineAsmOperand::InOut { reg, late, expr } => {
+                            let place = unpack!(block = this.as_place(block, expr));
+                            mir::InlineAsmOperand::InOut {
+                                reg,
+                                late,
+                                // This works because asm operands must be Copy
+                                in_value: Operand::Copy(place),
+                                out_place: Some(place),
+                            }
+                        }
+                        hair::InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
+                            mir::InlineAsmOperand::InOut {
+                                reg,
+                                late,
+                                in_value: unpack!(block = this.as_local_operand(block, in_expr)),
+                                out_place: out_expr.map(|out_expr| {
+                                    unpack!(block = this.as_place(block, out_expr))
+                                }),
+                            }
+                        }
+                        hair::InlineAsmOperand::Const { expr } => mir::InlineAsmOperand::Const {
+                            value: unpack!(block = this.as_local_operand(block, expr)),
+                        },
+                        hair::InlineAsmOperand::SymFn { expr } => {
+                            mir::InlineAsmOperand::SymFn { value: box this.as_constant(expr) }
+                        }
+                        hair::InlineAsmOperand::SymStatic { def_id } => {
+                            mir::InlineAsmOperand::SymStatic { def_id }
+                        }
+                    })
+                    .collect();
+
+                let destination = this.cfg.start_new_block();
+
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::InlineAsm {
+                        template,
+                        operands,
+                        options,
+                        line_spans,
+                        destination: if options.contains(InlineAsmOptions::NORETURN) {
+                            None
+                        } else {
+                            Some(destination)
+                        },
+                    },
+                );
+                destination.unit()
+            }
 
             // These cases don't actually need a destination
             ExprKind::Assign { .. }
@@ -348,7 +415,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // value is Sized. Usually, this is caught in type checking, but
                 // in the case of box expr there is no such check.
                 if !destination.projection.is_empty() {
-                    this.local_decls.push(LocalDecl::new_temp(expr.ty, expr.span));
+                    this.local_decls.push(LocalDecl::new(expr.ty, expr.span));
                 }
 
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
@@ -383,6 +450,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Tuple { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Literal { .. }
+            | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above

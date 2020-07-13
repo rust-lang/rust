@@ -157,10 +157,10 @@ pub enum Prefix<'a> {
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
-    /// Verbatim disk prefix, e.g., `\\?\C:\`.
+    /// Verbatim disk prefix, e.g., `\\?\C:`.
     ///
     /// Verbatim disk prefixes consist of `\\?\` immediately followed by the
-    /// drive letter and `:\`.
+    /// drive letter and `:`.
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimDisk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 
@@ -1433,6 +1433,17 @@ impl From<&Path> for Box<Path> {
     }
 }
 
+#[stable(feature = "box_from_cow", since = "1.45.0")]
+impl From<Cow<'_, Path>> for Box<Path> {
+    #[inline]
+    fn from(cow: Cow<'_, Path>) -> Box<Path> {
+        match cow {
+            Cow::Borrowed(path) => Box::from(path),
+            Cow::Owned(path) => Box::from(path),
+        }
+    }
+}
+
 #[stable(feature = "path_buf_from_box", since = "1.18.0")]
 impl From<Box<Path>> for PathBuf {
     /// Converts a `Box<Path>` into a `PathBuf`
@@ -1522,6 +1533,11 @@ impl<P: AsRef<Path>> iter::FromIterator<P> for PathBuf {
 impl<P: AsRef<Path>> iter::Extend<P> for PathBuf {
     fn extend<I: IntoIterator<Item = P>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |p| self.push(p.as_ref()));
+    }
+
+    #[inline]
+    fn extend_one(&mut self, p: P) {
+        self.push(p.as_ref());
     }
 }
 
@@ -2487,11 +2503,20 @@ impl Path {
     /// # See Also
     ///
     /// This is a convenience function that coerces errors to false. If you want to
-    /// check errors, call [fs::metadata] and handle its Result. Then call
-    /// [fs::Metadata::is_file] if it was Ok.
+    /// check errors, call [`fs::metadata`] and handle its Result. Then call
+    /// [`fs::Metadata::is_file`] if it was Ok.
     ///
-    /// [fs::metadata]: ../../std/fs/fn.metadata.html
-    /// [fs::Metadata::is_file]: ../../std/fs/struct.Metadata.html#method.is_file
+    /// When the goal is simply to read from (or write to) the source, the most
+    /// reliable way to test the source can be read (or written to) is to open
+    /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
+    /// a Unix-like system for example. See [`File::open`] or
+    /// [`OpenOptions::open`] for more information.
+    ///
+    /// [`fs::metadata`]: ../../std/fs/fn.metadata.html
+    /// [`fs::Metadata`]: ../../std/fs/struct.Metadata.html
+    /// [`fs::Metadata::is_file`]: ../../std/fs/struct.Metadata.html#method.is_file
+    /// [`File::open`]: ../../std/fs/struct.File.html#method.open
+    /// [`OpenOptions::open`]: ../../std/fs/struct.OpenOptions.html#method.open
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_file(&self) -> bool {
         fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)

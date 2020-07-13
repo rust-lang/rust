@@ -105,7 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && i != 0
                 && self.if_fallback_coercion(expr.span, &arms[0].body, &mut coercion)
             {
-                tcx.types.err
+                tcx.ty_error()
             } else {
                 // Only call this if this is not an `if` expr with an expected type and no `else`
                 // clause to avoid duplicated type errors. (#60254)
@@ -436,6 +436,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(m) = contains_ref_bindings {
             self.check_expr_with_needs(scrut, Needs::maybe_mut_place(m))
+        } else if arms.is_empty() {
+            self.check_expr(scrut)
         } else {
             // ...but otherwise we want to use any supertype of the
             // scrutinee. This is sort of a workaround, see note (*) in

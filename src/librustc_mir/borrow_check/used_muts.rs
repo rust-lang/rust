@@ -1,5 +1,7 @@
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
-use rustc_middle::mir::{Local, Location, Place, Statement, StatementKind, TerminatorKind};
+use rustc_middle::mir::{
+    Local, Location, Place, Statement, StatementKind, Terminator, TerminatorKind,
+};
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -62,20 +64,22 @@ impl GatherUsedMutsVisitor<'_, '_, '_> {
 }
 
 impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tcx> {
-    fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, _location: Location) {
-        debug!("visit_terminator_kind: kind={:?}", kind);
-        match &kind {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        debug!("visit_terminator: terminator={:?}", terminator);
+        match &terminator.kind {
             TerminatorKind::Call { destination: Some((into, _)), .. } => {
                 self.remove_never_initialized_mut_locals(*into);
             }
-            TerminatorKind::DropAndReplace { location, .. } => {
-                self.remove_never_initialized_mut_locals(*location);
+            TerminatorKind::DropAndReplace { place, .. } => {
+                self.remove_never_initialized_mut_locals(*place);
             }
             _ => {}
         }
+
+        self.super_terminator(terminator, location);
     }
 
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, _location: Location) {
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         if let StatementKind::Assign(box (into, _)) = &statement.kind {
             debug!(
                 "visit_statement: statement={:?} local={:?} \
@@ -84,6 +88,8 @@ impl<'visit, 'cx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'tc
             );
             self.remove_never_initialized_mut_locals(*into);
         }
+
+        self.super_statement(statement, location);
     }
 
     fn visit_local(&mut self, local: &Local, place_context: PlaceContext, location: Location) {

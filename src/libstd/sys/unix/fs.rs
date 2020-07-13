@@ -703,6 +703,10 @@ impl File {
             | opts.get_access_mode()?
             | opts.get_creation_mode()?
             | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+        // The third argument of `open64` is documented to have type `mode_t`. On
+        // some platforms (like macOS, where `open64` is actually `open`), `mode_t` is `u16`.
+        // However, since this is a variadic function, C integer promotion rules mean that on
+        // the ABI level, this still gets passed as `c_int` (aka `u32` on Unix platforms).
         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
         let fd = FileDesc::new(fd);
 
@@ -828,6 +832,11 @@ impl File {
         self.0.read_vectored(bufs)
     }
 
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.0.read_at(buf, offset)
     }
@@ -838,6 +847,11 @@ impl File {
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
@@ -1182,7 +1196,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let mut written = 0u64;
     while written < len {
         let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
+            let bytes_to_copy = cmp::min(len - written, usize::MAX as u64) as usize;
             let copy_result = unsafe {
                 // We actually don't have to adjust the offsets,
                 // because copy_file_range adjusts the file offset automatically

@@ -1,5 +1,6 @@
 use crate::attributes;
 use crate::callee::get_fn;
+use crate::coverageinfo;
 use crate::debuginfo;
 use crate::llvm;
 use crate::llvm_util;
@@ -16,12 +17,12 @@ use rustc_middle::bug;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_session::config::{self, CFGuard, DebugInfo};
+use rustc_session::config::{CFGuard, CrateType, DebugInfo};
 use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::{HasDataLayout, LayoutOf, PointeeInfo, Size, TargetDataLayout, VariantIdx};
-use rustc_target::spec::{HasTargetSpec, Target};
+use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 
 use std::cell::{Cell, RefCell};
 use std::ffi::CStr;
@@ -49,12 +50,13 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub const_cstr_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
-    /// Key is a Value holding a *T,
-    /// Val is a Value holding a *[T].
+    ///
+    /// Key is a Value holding a `*T`,
+    /// Val is a Value holding a `*[T]`.
     ///
     /// Needed because LLVM loses pointer->pointee association
     /// when we ptrcast, and we have to ptrcast during codegen
-    /// of a [T] const because we form a slice, a (*T,usize) pair, not
+    /// of a `[T]` const because we form a slice, a `(*T,usize)` pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
     pub const_unsized: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
@@ -76,6 +78,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: &'ll Type,
 
+    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'tcx>>,
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
@@ -87,44 +90,13 @@ pub struct CodegenCx<'ll, 'tcx> {
     local_gen_sym_counter: Cell<usize>,
 }
 
-pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
-    let reloc_model_arg = match sess.opts.cg.relocation_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.relocation_model[..],
-    };
-
-    match crate::back::write::RELOC_MODEL_ARGS.iter().find(|&&arg| arg.0 == reloc_model_arg) {
-        Some(x) => x.1,
-        _ => {
-            sess.err(&format!("{:?} is not a valid relocation mode", reloc_model_arg));
-            sess.abort_if_errors();
-            bug!();
-        }
+fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
+    match tls_model {
+        TlsModel::GeneralDynamic => llvm::ThreadLocalMode::GeneralDynamic,
+        TlsModel::LocalDynamic => llvm::ThreadLocalMode::LocalDynamic,
+        TlsModel::InitialExec => llvm::ThreadLocalMode::InitialExec,
+        TlsModel::LocalExec => llvm::ThreadLocalMode::LocalExec,
     }
-}
-
-fn get_tls_model(sess: &Session) -> llvm::ThreadLocalMode {
-    let tls_model_arg = match sess.opts.debugging_opts.tls_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.tls_model[..],
-    };
-
-    match crate::back::write::TLS_MODEL_ARGS.iter().find(|&&arg| arg.0 == tls_model_arg) {
-        Some(x) => x.1,
-        _ => {
-            sess.err(&format!("{:?} is not a valid TLS model", tls_model_arg));
-            sess.abort_if_errors();
-            bug!();
-        }
-    }
-}
-
-fn is_any_library(sess: &Session) -> bool {
-    sess.crate_types.borrow().iter().any(|ty| *ty != config::CrateType::Executable)
-}
-
-pub fn is_pie_binary(sess: &Session) -> bool {
-    !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
 fn strip_function_ptr_alignment(data_layout: String) -> String {
@@ -157,7 +129,7 @@ pub unsafe fn create_module(
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
-        let tm = crate::back::write::create_informational_target_machine(&tcx.sess, false);
+        let tm = crate::back::write::create_informational_target_machine(tcx.sess);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 
@@ -200,12 +172,13 @@ pub unsafe fn create_module(
     let llvm_target = SmallCStr::new(&sess.target.target.llvm_target);
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
 
-    if get_reloc_model(sess) == llvm::RelocMode::PIC {
+    if sess.relocation_model() == RelocModel::Pic {
         llvm::LLVMRustSetModulePICLevel(llmod);
-    }
-
-    if is_pie_binary(sess) {
-        llvm::LLVMRustSetModulePIELevel(llmod);
+        // PIE is potentially more effective than PIC, but can only be used in executables.
+        // If all our outputs are executables, then we can relax PIC to PIE.
+        if sess.crate_types().iter().all(|ty| *ty == CrateType::Executable) {
+            llvm::LLVMRustSetModulePIELevel(llmod);
+        }
     }
 
     // If skipping the PLT is enabled, we need to add some module metadata
@@ -215,14 +188,19 @@ pub unsafe fn create_module(
         llvm::LLVMRustAddModuleFlag(llmod, avoid_plt, 1);
     }
 
-    // Set module flags to enable Windows Control Flow Guard (/guard:cf) metadata
-    // only (`cfguard=1`) or metadata and checks (`cfguard=2`).
-    match sess.opts.debugging_opts.control_flow_guard {
-        CFGuard::Disabled => {}
-        CFGuard::NoChecks => {
-            llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 1)
+    // Control Flow Guard is currently only supported by the MSVC linker on Windows.
+    if sess.target.target.options.is_like_msvc {
+        match sess.opts.debugging_opts.control_flow_guard {
+            CFGuard::Disabled => {}
+            CFGuard::NoChecks => {
+                // Set `cfguard=1` module flag to emit metadata only.
+                llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 1)
+            }
+            CFGuard::Checks => {
+                // Set `cfguard=2` module flag to emit metadata and checks.
+                llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 2)
+            }
         }
-        CFGuard::Checks => llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 2),
     }
 
     llmod
@@ -281,9 +259,16 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let check_overflow = tcx.sess.overflow_checks();
 
-        let tls_model = get_tls_model(&tcx.sess);
+        let tls_model = to_llvm_tls_model(tcx.sess.tls_model());
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
+
+        let coverage_cx = if tcx.sess.opts.debugging_opts.instrument_coverage {
+            let covctx = coverageinfo::CrateCoverageContext::new();
+            Some(covctx)
+        } else {
+            None
+        };
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CrateDebugContext::new(llmod);
@@ -314,6 +299,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             scalar_lltypes: Default::default(),
             pointee_infos: Default::default(),
             isize_ty,
+            coverage_cx,
             dbg_cx,
             eh_personality: Cell::new(None),
             rust_try_fn: Cell::new(None),
@@ -324,6 +310,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
     crate fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
         &self.statics_to_rauw
+    }
+
+    #[inline]
+    pub fn coverage_context(&'a self) -> &'a coverageinfo::CrateCoverageContext<'tcx> {
+        self.coverage_cx.as_ref().unwrap()
     }
 }
 
@@ -376,6 +367,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     def_id,
                     tcx.intern_substs(&[]),
                 )
+                .unwrap()
                 .unwrap(),
             ),
             _ => {
@@ -509,6 +501,15 @@ impl CodegenCx<'b, 'tcx> {
             t_v4f64: t_f64, 4;
             t_v8f64: t_f64, 8;
         }
+
+        ifn!("llvm.wasm.trunc.saturate.unsigned.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.wasm.trunc.saturate.unsigned.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.wasm.trunc.saturate.unsigned.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.wasm.trunc.saturate.unsigned.i64.f64", fn(t_f64) -> t_i64);
+        ifn!("llvm.wasm.trunc.saturate.signed.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.wasm.trunc.saturate.signed.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.wasm.trunc.saturate.signed.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.wasm.trunc.saturate.signed.i64.f64", fn(t_f64) -> t_i64);
 
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);
@@ -790,6 +791,10 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.va_start", fn(i8p) -> void);
         ifn!("llvm.va_end", fn(i8p) -> void);
         ifn!("llvm.va_copy", fn(i8p, i8p) -> void);
+
+        if self.sess().opts.debugging_opts.instrument_coverage {
+            ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
+        }
 
         if self.sess().opts.debuginfo != DebugInfo::None {
             ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);

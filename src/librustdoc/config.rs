@@ -123,10 +123,6 @@ pub struct Options {
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
     pub default_passes: DefaultPassOption,
-    /// Document items that have lower than `pub` visibility.
-    pub document_private: bool,
-    /// Document items that have `doc(hidden)`.
-    pub document_hidden: bool,
     /// Any passes manually selected by the user.
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
@@ -177,8 +173,6 @@ impl fmt::Debug for Options {
             .field("test_args", &self.test_args)
             .field("persist_doctests", &self.persist_doctests)
             .field("default_passes", &self.default_passes)
-            .field("document_private", &self.document_private)
-            .field("document_hidden", &self.document_hidden)
             .field("manual_passes", &self.manual_passes)
             .field("display_warnings", &self.display_warnings)
             .field("show_coverage", &self.show_coverage)
@@ -248,8 +242,10 @@ pub struct RenderOptions {
     /// If false, the `select` element to have search filtering by crates on rendered docs
     /// won't be generated.
     pub generate_search_filter: bool,
-    /// Option (disabled by default) to generate files used by RLS and some other tools.
-    pub generate_redirect_pages: bool,
+    /// Document items that have lower than `pub` visibility.
+    pub document_private: bool,
+    /// Document items that have `doc(hidden)`.
+    pub document_hidden: bool,
 }
 
 impl Options {
@@ -447,7 +443,7 @@ impl Options {
             None => return Err(3),
         };
 
-        match matches.opt_str("r").as_ref().map(|s| &**s) {
+        match matches.opt_str("r").as_deref() {
             Some("rust") | None => {}
             Some(s) => {
                 diag.struct_err(&format!("unknown input format: {}", s)).emit();
@@ -530,7 +526,6 @@ impl Options {
         let static_root_path = matches.opt_str("static-root-path");
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
-        let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
         let debugging_options_strs = matches.opt_strs("Z");
@@ -567,8 +562,6 @@ impl Options {
             should_test,
             test_args,
             default_passes,
-            document_private,
-            document_hidden,
             manual_passes,
             display_warnings,
             show_coverage,
@@ -596,7 +589,8 @@ impl Options {
                 markdown_css,
                 markdown_playground_url,
                 generate_search_filter,
-                generate_redirect_pages,
+                document_private,
+                document_hidden,
             },
             output_format,
         })

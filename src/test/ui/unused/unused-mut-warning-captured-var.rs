@@ -1,3 +1,5 @@
+// run-rustfix
+
 #![forbid(unused_mut)]
 
 fn main() {

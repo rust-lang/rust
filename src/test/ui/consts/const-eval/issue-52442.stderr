@@ -1,12 +1,3 @@
-error[E0658]: `loop` is not allowed in a `const`
-  --> $DIR/issue-52442.rs:2:14
-   |
-LL |     [();  { &loop { break } as *const _ as usize } ];
-   |              ^^^^^^^^^^^^^^
-   |
-   = note: see issue #52000 <https://github.com/rust-lang/rust/issues/52000> for more information
-   = help: add `#![feature(const_loop)]` to the crate attributes to enable
-
 error[E0658]: casting pointers to integers in constants is unstable
   --> $DIR/issue-52442.rs:2:13
    |
@@ -22,7 +13,7 @@ error[E0080]: evaluation of constant value failed
 LL |     [();  { &loop { break } as *const _ as usize } ];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "pointer-to-integer cast" needs an rfc before being allowed inside constants
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0080, E0658.
 For more information about an error, try `rustc --explain E0080`.

@@ -17,7 +17,7 @@ By default, rustdoc will run some passes, namely:
 * `collapse-docs`
 * `unindent-comments`
 
-However, `strip-private` implies `strip-private-imports`, and so effectively,
+However, `strip-private` implies `strip-priv-imports`, and so effectively,
 all passes are run by default.
 
 ## `strip-hidden`

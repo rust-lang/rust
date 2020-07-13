@@ -6,6 +6,11 @@ LL | trait UncheckedCopy: Sized {
 ...
 LL |     type Output: Copy
    |                  ^^^^ the trait `std::marker::Copy` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL | trait UncheckedCopy: Sized + std::marker::Copy {
+   |                            ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: cannot add-assign `&'static str` to `Self`
   --> $DIR/defaults-unsound-62211-1.rs:25:7
@@ -17,6 +22,10 @@ LL |     + AddAssign<&'static str>
    |       ^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `Self += &'static str`
    |
    = help: the trait `std::ops::AddAssign<&'static str>` is not implemented for `Self`
+help: consider further restricting `Self`
+   |
+LL | trait UncheckedCopy: Sized + std::ops::AddAssign<&'static str> {
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `Self: std::ops::Deref` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:23:7
@@ -26,6 +35,11 @@ LL | trait UncheckedCopy: Sized {
 ...
 LL |     + Deref<Target = str>
    |       ^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Deref` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL | trait UncheckedCopy: Sized + std::ops::Deref {
+   |                            ^^^^^^^^^^^^^^^^^
 
 error[E0277]: `Self` doesn't implement `std::fmt::Display`
   --> $DIR/defaults-unsound-62211-1.rs:28:7
@@ -38,6 +52,10 @@ LL |     + Display = Self;
    |
    = help: the trait `std::fmt::Display` is not implemented for `Self`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+help: consider further restricting `Self`
+   |
+LL | trait UncheckedCopy: Sized + std::fmt::Display {
+   |                            ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `T` doesn't implement `std::fmt::Display`
   --> $DIR/defaults-unsound-62211-1.rs:41:9

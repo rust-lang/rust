@@ -230,8 +230,9 @@ pub fn struct_lint_level<'s, 'd>(
             err.allow_suggestions(false);
 
             // If this is a future incompatible lint it'll become a hard error, so
-            // we have to emit *something*. Also allow lints to whitelist themselves
-            // on a case-by-case basis for emission in a foreign macro.
+            // we have to emit *something*. Also, if this lint occurs in the
+            // expansion of a macro from an external crate, allow individual lints
+            // to opt-out from being reported.
             if future_incompatible.is_none() && !lint.report_in_external_macro {
                 err.cancel();
                 // Don't continue further, since we don't want to have
@@ -339,7 +340,7 @@ pub fn struct_lint_level<'s, 'd>(
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {
-        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
+        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop(_)) => false,
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             // Dummy span for the `def_site` means it's an external macro.

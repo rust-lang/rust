@@ -1,3 +1,12 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-trait-item-not-implemented.rs:3:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
 error[E0046]: not all trait items implemented, missing: `foo_two`
   --> $DIR/specialization-trait-item-not-implemented.rs:18:1
    |
@@ -7,6 +16,6 @@ LL |     fn foo_two(&self) -> &'static str;
 LL | impl Foo for MyStruct {}
    | ^^^^^^^^^^^^^^^^^^^^^ missing `foo_two` in implementation
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0046`.

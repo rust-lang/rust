@@ -1,9 +1,10 @@
 use crate::tests::{matches_codepattern, string_to_crate};
 
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast;
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::with_default_globals;
+use rustc_ast::with_default_session_globals;
 use rustc_ast_pretty::pprust;
+use rustc_span::symbol::Ident;
 
 // This version doesn't care about getting comments or doc-strings in.
 fn fake_print_crate(s: &mut pprust::State<'_>, krate: &ast::Crate) {
@@ -14,7 +15,7 @@ fn fake_print_crate(s: &mut pprust::State<'_>, krate: &ast::Crate) {
 struct ToZzIdentMutVisitor;
 
 impl MutVisitor for ToZzIdentMutVisitor {
-    fn visit_ident(&mut self, ident: &mut ast::Ident) {
+    fn visit_ident(&mut self, ident: &mut Ident) {
         *ident = Ident::from_str("zz");
     }
     fn visit_mac(&mut self, mac: &mut ast::MacCall) {
@@ -37,7 +38,7 @@ macro_rules! assert_pred {
 // Make sure idents get transformed everywhere.
 #[test]
 fn ident_transformation() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let mut zz_visitor = ToZzIdentMutVisitor;
         let mut krate =
             string_to_crate("#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_string());
@@ -54,7 +55,7 @@ fn ident_transformation() {
 // Make sure idents get transformed even inside macro defs.
 #[test]
 fn ident_transformation_in_defs() {
-    with_default_globals(|| {
+    with_default_session_globals(|| {
         let mut zz_visitor = ToZzIdentMutVisitor;
         let mut krate = string_to_crate(
             "macro_rules! a {(b $c:expr $(d $e:token)f+ => \

@@ -143,7 +143,7 @@ impl<T> LinkedList<T> {
         unsafe {
             node.next = self.head;
             node.prev = None;
-            let node = Some(Box::into_raw_non_null(node));
+            let node = Some(Box::leak(node).into());
 
             match self.head {
                 None => self.tail = node,
@@ -184,7 +184,7 @@ impl<T> LinkedList<T> {
         unsafe {
             node.next = None;
             node.prev = self.tail;
-            let node = Some(Box::into_raw_non_null(node));
+            let node = Some(Box::leak(node).into());
 
             match self.tail {
                 None => self.head = node,
@@ -225,17 +225,17 @@ impl<T> LinkedList<T> {
     /// maintain validity of aliasing pointers.
     #[inline]
     unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {
-        let node = node.as_mut(); // this one is ours now, we can create an &mut.
+        let node = unsafe { node.as_mut() }; // this one is ours now, we can create an &mut.
 
         // Not creating new mutable (unique!) references overlapping `element`.
         match node.prev {
-            Some(prev) => (*prev.as_ptr()).next = node.next,
+            Some(prev) => unsafe { (*prev.as_ptr()).next = node.next },
             // this node is the head node
             None => self.head = node.next,
         };
 
         match node.next {
-            Some(next) => (*next.as_ptr()).prev = node.prev,
+            Some(next) => unsafe { (*next.as_ptr()).prev = node.prev },
             // this node is the tail node
             None => self.tail = node.prev,
         };
@@ -258,17 +258,23 @@ impl<T> LinkedList<T> {
         // This method takes care not to create multiple mutable references to whole nodes at the same time,
         // to maintain validity of aliasing pointers into `element`.
         if let Some(mut existing_prev) = existing_prev {
-            existing_prev.as_mut().next = Some(splice_start);
+            unsafe {
+                existing_prev.as_mut().next = Some(splice_start);
+            }
         } else {
             self.head = Some(splice_start);
         }
         if let Some(mut existing_next) = existing_next {
-            existing_next.as_mut().prev = Some(splice_end);
+            unsafe {
+                existing_next.as_mut().prev = Some(splice_end);
+            }
         } else {
             self.tail = Some(splice_end);
         }
-        splice_start.as_mut().prev = existing_prev;
-        splice_end.as_mut().next = existing_next;
+        unsafe {
+            splice_start.as_mut().prev = existing_prev;
+            splice_end.as_mut().next = existing_next;
+        }
 
         self.len += splice_length;
     }
@@ -297,9 +303,13 @@ impl<T> LinkedList<T> {
         if let Some(mut split_node) = split_node {
             let first_part_head;
             let first_part_tail;
-            first_part_tail = split_node.as_mut().prev.take();
+            unsafe {
+                first_part_tail = split_node.as_mut().prev.take();
+            }
             if let Some(mut tail) = first_part_tail {
-                tail.as_mut().next = None;
+                unsafe {
+                    tail.as_mut().next = None;
+                }
                 first_part_head = self.head;
             } else {
                 first_part_head = None;
@@ -333,9 +343,13 @@ impl<T> LinkedList<T> {
         if let Some(mut split_node) = split_node {
             let second_part_head;
             let second_part_tail;
-            second_part_head = split_node.as_mut().next.take();
+            unsafe {
+                second_part_head = split_node.as_mut().next.take();
+            }
             if let Some(mut head) = second_part_head {
-                head.as_mut().prev = None;
+                unsafe {
+                    head.as_mut().prev = None;
+                }
                 second_part_tail = self.tail;
             } else {
                 second_part_tail = None;
@@ -972,7 +986,7 @@ unsafe impl<#[may_dangle] T> Drop for LinkedList<T> {
             fn drop(&mut self) {
                 // Continue the same loop we do below. This only runs when a destructor has
                 // panicked. If another one panics this will abort.
-                while let Some(_) = self.0.pop_front_node() {}
+                while self.0.pop_front_node().is_some() {}
             }
         }
 
@@ -1133,11 +1147,9 @@ impl<T> IterMut<'_, T> {
                     Some(prev) => prev,
                 };
 
-                let node = Some(Box::into_raw_non_null(box Node {
-                    next: Some(head),
-                    prev: Some(prev),
-                    element,
-                }));
+                let node = Some(
+                    Box::leak(box Node { next: Some(head), prev: Some(prev), element }).into(),
+                );
 
                 // Not creating references to entire nodes to not invalidate the
                 // reference to `element` we handed to the user.
@@ -1450,7 +1462,7 @@ impl<'a, T> CursorMut<'a, T> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_after(&mut self, item: T) {
         unsafe {
-            let spliced_node = Box::into_raw_non_null(Box::new(Node::new(item)));
+            let spliced_node = Box::leak(Box::new(Node::new(item))).into();
             let node_next = match self.current {
                 None => self.list.head,
                 Some(node) => node.as_ref().next,
@@ -1470,7 +1482,7 @@ impl<'a, T> CursorMut<'a, T> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_before(&mut self, item: T) {
         unsafe {
-            let spliced_node = Box::into_raw_non_null(Box::new(Node::new(item)));
+            let spliced_node = Box::leak(Box::new(Node::new(item))).into();
             let node_prev = match self.current {
                 None => self.list.tail,
                 Some(node) => node.as_ref().prev,
@@ -1495,6 +1507,31 @@ impl<'a, T> CursorMut<'a, T> {
             self.list.unlink_node(unlinked_node);
             let unlinked_node = Box::from_raw(unlinked_node.as_ptr());
             Some(unlinked_node.element)
+        }
+    }
+
+    /// Removes the current element from the `LinkedList` without deallocating the list node.
+    ///
+    /// The node that was removed is returned as a new `LinkedList` containing only this node.
+    /// The cursor is moved to point to the next element in the current `LinkedList`.
+    ///
+    /// If the cursor is currently pointing to the "ghost" non-element then no element
+    /// is removed and `None` is returned.
+    #[unstable(feature = "linked_list_cursors", issue = "58533")]
+    pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T>> {
+        let mut unlinked_node = self.current?;
+        unsafe {
+            self.current = unlinked_node.as_ref().next;
+            self.list.unlink_node(unlinked_node);
+
+            unlinked_node.as_mut().prev = None;
+            unlinked_node.as_mut().next = None;
+            Some(LinkedList {
+                head: Some(unlinked_node),
+                tail: Some(unlinked_node),
+                len: 1,
+                marker: PhantomData,
+            })
         }
     }
 
@@ -1725,6 +1762,11 @@ impl<T> Extend<T> for LinkedList<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<I>>::spec_extend(self, iter);
     }
+
+    #[inline]
+    fn extend_one(&mut self, elem: T) {
+        self.push_back(elem);
+    }
 }
 
 impl<I: IntoIterator> SpecExtend<I> for LinkedList<I::Item> {
@@ -1743,6 +1785,11 @@ impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
 impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &elem: &'a T) {
+        self.push_back(elem);
     }
 }
 
@@ -1843,3 +1890,15 @@ unsafe impl<T: Send> Send for IterMut<'_, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
+
+#[unstable(feature = "linked_list_cursors", issue = "58533")]
+unsafe impl<T: Sync> Send for Cursor<'_, T> {}
+
+#[unstable(feature = "linked_list_cursors", issue = "58533")]
+unsafe impl<T: Sync> Sync for Cursor<'_, T> {}
+
+#[unstable(feature = "linked_list_cursors", issue = "58533")]
+unsafe impl<T: Send> Send for CursorMut<'_, T> {}
+
+#[unstable(feature = "linked_list_cursors", issue = "58533")]
+unsafe impl<T: Sync> Sync for CursorMut<'_, T> {}

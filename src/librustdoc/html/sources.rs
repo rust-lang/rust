@@ -67,10 +67,10 @@ impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &FileName) -> Result<(), Error> {
         let p = match *filename {
-            FileName::Real(ref file) => file,
+            FileName::Real(ref file) => file.local_path().to_path_buf(),
             _ => return Ok(()),
         };
-        if self.scx.local_sources.contains_key(&**p) {
+        if self.scx.local_sources.contains_key(&*p) {
             // We've already emitted this source
             return Ok(());
         }
@@ -126,7 +126,7 @@ impl<'a> SourceCollector<'a> {
             &self.scx.themes,
         );
         self.scx.fs.write(&cur, v.as_bytes())?;
-        self.scx.local_sources.insert(p.clone(), href);
+        self.scx.local_sources.insert(p, href);
         Ok(())
     }
 }

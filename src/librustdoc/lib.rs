@@ -9,7 +9,6 @@
 #![feature(nll)]
 #![feature(or_patterns)]
 #![feature(test)]
-#![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
@@ -165,9 +164,8 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optmulti(
                 "",
                 "passes",
-                "list of passes to also run, you might want \
-                        to pass it multiple times; a value of `list` \
-                        will print available passes",
+                "list of passes to also run, you might want to pass it multiple times; a value of \
+                        `list` will print available passes",
                 "PASSES",
             )
         }),
@@ -248,8 +246,8 @@ fn opts() -> Vec<RustcOptGroup> {
                 "e",
                 "extend-css",
                 "To add some CSS rules with a given file to generate doc with your \
-                      own theme. However, your theme might break if the rustdoc's generated HTML \
-                      changes, so be careful!",
+                        own theme. However, your theme might break if the rustdoc's generated HTML \
+                        changes, so be careful!",
                 "PATH",
             )
         }),
@@ -262,7 +260,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "playground-url",
                 "URL to send code snippets to, may be reset by --markdown-playground-url \
-                      or `#![doc(html_playground_url=...)]`",
+                        or `#![doc(html_playground_url=...)]`",
                 "URL",
             )
         }),
@@ -276,8 +274,7 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optflag(
                 "",
                 "sort-modules-by-appearance",
-                "sort modules by where they appear in the \
-                                                         program, rather than alphabetically",
+                "sort modules by where they appear in the program, rather than alphabetically",
             )
         }),
         stable("theme", |o| {
@@ -358,7 +355,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "",
                 "static-root-path",
                 "Path string to force loading static files from in output pages. \
-                      If not set, uses combinations of '../' to reach the documentation root.",
+                        If not set, uses combinations of '../' to reach the documentation root.",
                 "PATH",
             )
         }),
@@ -375,13 +372,6 @@ fn opts() -> Vec<RustcOptGroup> {
                 "persist-doctests",
                 "Directory to persist doctest executables into",
                 "PATH",
-            )
-        }),
-        unstable("generate-redirect-pages", |o| {
-            o.optflag(
-                "",
-                "generate-redirect-pages",
-                "Generate extra pages to support legacy URLs and tool links",
             )
         }),
         unstable("show-coverage", |o| {
@@ -447,17 +437,35 @@ fn main_args(args: &[String]) -> i32 {
         Ok(opts) => opts,
         Err(code) => return code,
     };
-    rustc_interface::interface::default_thread_pool(options.edition, move || main_options(options))
+    rustc_interface::interface::setup_callbacks_and_run_in_default_thread_pool_with_globals(
+        options.edition,
+        move || main_options(options),
+    )
+}
+
+fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> i32 {
+    match res {
+        Ok(()) => 0,
+        Err(err) => {
+            if !err.is_empty() {
+                diag.struct_err(&err).emit();
+            }
+            1
+        }
+    }
 }
 
 fn main_options(options: config::Options) -> i32 {
     let diag = core::new_handler(options.error_format, None, &options.debugging_options);
 
     match (options.should_test, options.markdown_input()) {
-        (true, true) => return markdown::test(options, &diag),
-        (true, false) => return test::run(options),
+        (true, true) => return wrap_return(&diag, markdown::test(options)),
+        (true, false) => return wrap_return(&diag, test::run(options)),
         (false, true) => {
-            return markdown::render(options.input, options.render_options, &diag, options.edition);
+            return wrap_return(
+                &diag,
+                markdown::render(&options.input, options.render_options, options.edition),
+            );
         }
         (false, false) => {}
     }
@@ -466,7 +474,29 @@ fn main_options(options: config::Options) -> i32 {
     // but we can't crates the Handler ahead of time because it's not Send
     let diag_opts = (options.error_format, options.edition, options.debugging_options.clone());
     let show_coverage = options.show_coverage;
-    rust_input(options, move |out| {
+
+    // First, parse the crate and extract all relevant information.
+    info!("starting to run rustc");
+
+    // Interpret the input file as a rust source file, passing it through the
+    // compiler all the way through the analysis passes. The rustdoc output is
+    // then generated from the cleaned AST of the crate. This runs all the
+    // plug/cleaning passes.
+    let result = rustc_driver::catch_fatal_errors(move || {
+        let crate_name = options.crate_name.clone();
+        let crate_version = options.crate_version.clone();
+        let (mut krate, renderinfo, renderopts) = core::run_core(options);
+
+        info!("finished with rustc");
+
+        if let Some(name) = crate_name {
+            krate.name = name
+        }
+
+        krate.version = crate_version;
+
+        let out = Output { krate, renderinfo, renderopts };
+
         if show_coverage {
             // if we ran coverage, bail early, we don't need to also generate docs at this point
             // (also we didn't load in any of the useful passes)
@@ -486,36 +516,6 @@ fn main_options(options: config::Options) -> i32 {
                 rustc_driver::EXIT_FAILURE
             }
         }
-    })
-}
-
-/// Interprets the input file as a rust source file, passing it through the
-/// compiler all the way through the analysis passes. The rustdoc output is then
-/// generated from the cleaned AST of the crate.
-///
-/// This form of input will run all of the plug/cleaning passes
-fn rust_input<R, F>(options: config::Options, f: F) -> R
-where
-    R: 'static + Send,
-    F: 'static + Send + FnOnce(Output) -> R,
-{
-    // First, parse the crate and extract all relevant information.
-    info!("starting to run rustc");
-
-    let result = rustc_driver::catch_fatal_errors(move || {
-        let crate_name = options.crate_name.clone();
-        let crate_version = options.crate_version.clone();
-        let (mut krate, renderinfo, renderopts) = core::run_core(options);
-
-        info!("finished with rustc");
-
-        if let Some(name) = crate_name {
-            krate.name = name
-        }
-
-        krate.version = crate_version;
-
-        f(Output { krate, renderinfo, renderopts })
     });
 
     match result {

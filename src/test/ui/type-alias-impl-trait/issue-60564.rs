@@ -17,11 +17,8 @@ where
 {
     type BitsIter = IterBitsIter<T, E, u8>;
     fn iter_bits(self, n: u8) -> Self::BitsIter {
-    //~^ ERROR non-defining opaque type use in defining scope
-    //~| ERROR non-defining opaque type use in defining scope
-        (0u8..n)
-            .rev()
-            .map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())
+        //~^ ERROR non-defining opaque type use in defining scope
+        (0u8..n).rev().map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())
     }
 }
 

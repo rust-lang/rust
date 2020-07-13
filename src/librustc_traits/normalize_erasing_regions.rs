@@ -7,7 +7,7 @@ use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
 
-crate fn provide(p: &mut Providers<'_>) {
+crate fn provide(p: &mut Providers) {
     *p = Providers { normalize_generic_arg_after_erasing_regions, ..*p };
 }
 
@@ -40,14 +40,15 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
 }
 
 fn not_outlives_predicate(p: &ty::Predicate<'_>) -> bool {
-    match p {
-        ty::Predicate::RegionOutlives(..) | ty::Predicate::TypeOutlives(..) => false,
-        ty::Predicate::Trait(..)
-        | ty::Predicate::Projection(..)
-        | ty::Predicate::WellFormed(..)
-        | ty::Predicate::ObjectSafe(..)
-        | ty::Predicate::ClosureKind(..)
-        | ty::Predicate::Subtype(..)
-        | ty::Predicate::ConstEvaluatable(..) => true,
+    match p.kind() {
+        ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
+        ty::PredicateKind::Trait(..)
+        | ty::PredicateKind::Projection(..)
+        | ty::PredicateKind::WellFormed(..)
+        | ty::PredicateKind::ObjectSafe(..)
+        | ty::PredicateKind::ClosureKind(..)
+        | ty::PredicateKind::Subtype(..)
+        | ty::PredicateKind::ConstEvaluatable(..)
+        | ty::PredicateKind::ConstEquate(..) => true,
     }
 }

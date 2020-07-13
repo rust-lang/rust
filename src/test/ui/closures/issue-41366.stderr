@@ -1,23 +1,14 @@
 error[E0631]: type mismatch in closure arguments
   --> $DIR/issue-41366.rs:10:5
    |
-LL |     (&|_|()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
-   |     ^^-----^
+LL |     (&|_| ()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
+   |     ^^------^
    |     | |
-   |     | found signature of `fn(_) -> _`
-   |     expected signature of `for<'x> fn(<u32 as T<'x>>::V) -> _`
+   |     | found signature of `fn(u16) -> _`
+   |     expected signature of `fn(<u32 as T<'x>>::V) -> _`
    |
    = note: required for the cast to the object type `dyn for<'x> std::ops::Fn(<u32 as T<'x>>::V)`
 
-error[E0271]: type mismatch resolving `for<'x> <[closure@$DIR/issue-41366.rs:10:7: 10:12] as std::ops::FnOnce<(<u32 as T<'x>>::V,)>>::Output == ()`
-  --> $DIR/issue-41366.rs:10:5
-   |
-LL |     (&|_|()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
-   |     ^^^^^^^^ expected bound lifetime parameter 'x, found concrete lifetime
-   |
-   = note: required for the cast to the object type `dyn for<'x> std::ops::Fn(<u32 as T<'x>>::V)`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0271, E0631.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0631`.

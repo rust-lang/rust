@@ -24,16 +24,16 @@
 // lldb-command:run
 
 // lldb-command:print *stack_val_ref
-// lldbg-check:[...]$0 = (-14, -19)
-// lldbr-check:((i16, f32)) *stack_val_ref = { = -14 = -19 }
+// lldbg-check:[...]$0 = { 0 = -14 1 = -19 }
+// lldbr-check:((i16, f32)) *stack_val_ref = { 0 = -14 1 = -19 }
 
 // lldb-command:print *ref_to_unnamed
-// lldbg-check:[...]$1 = (-15, -20)
-// lldbr-check:((i16, f32)) *ref_to_unnamed = { = -15 = -20 }
+// lldbg-check:[...]$1 = { 0 = -15 1 = -20 }
+// lldbr-check:((i16, f32)) *ref_to_unnamed = { 0 = -15 1 = -20 }
 
 // lldb-command:print *unique_val_ref
-// lldbg-check:[...]$2 = (-17, -22)
-// lldbr-check:((i16, f32)) *unique_val_ref = { = -17 = -22 }
+// lldbg-check:[...]$2 = { 0 = -17 1 = -22 }
+// lldbr-check:((i16, f32)) *unique_val_ref = { 0 = -17 1 = -22 }
 
 
 #![allow(unused_variables)]

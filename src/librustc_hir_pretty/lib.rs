@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::{kw, IdentPrinter};
+use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
 use rustc_span::{self, BytePos, FileName};
 use rustc_target::spec::abi::Abi;
 
@@ -23,7 +23,7 @@ pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId
 }
 
 pub enum AnnNode<'a> {
-    Name(&'a ast::Name),
+    Name(&'a Symbol),
     Block(&'a hir::Block<'a>),
     Item(&'a hir::Item<'a>),
     SubItem(hir::HirId),
@@ -145,7 +145,7 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.comments
     }
 
-    fn print_ident(&mut self, ident: ast::Ident) {
+    fn print_ident(&mut self, ident: Ident) {
         self.s.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
         self.ann.post(self, AnnNode::Name(&ident.name))
     }
@@ -201,6 +201,52 @@ pub fn visibility_qualified<S: Into<Cow<'static, str>>>(vis: &hir::Visibility<'_
         s.print_visibility(vis);
         s.s.word(w)
     })
+}
+
+pub fn generic_params_to_string(generic_params: &[GenericParam<'_>]) -> String {
+    to_string(NO_ANN, |s| s.print_generic_params(generic_params))
+}
+
+pub fn bounds_to_string<'b>(bounds: impl IntoIterator<Item = &'b hir::GenericBound<'b>>) -> String {
+    to_string(NO_ANN, |s| s.print_bounds("", bounds))
+}
+
+pub fn param_to_string(arg: &hir::Param<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_param(arg))
+}
+
+pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_type(ty))
+}
+
+pub fn path_segment_to_string(segment: &hir::PathSegment<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_path_segment(segment))
+}
+
+pub fn path_to_string(segment: &hir::Path<'_>) -> String {
+    to_string(NO_ANN, |s| s.print_path(segment, false))
+}
+
+pub fn fn_to_string(
+    decl: &hir::FnDecl<'_>,
+    header: hir::FnHeader,
+    name: Option<Symbol>,
+    generics: &hir::Generics<'_>,
+    vis: &hir::Visibility<'_>,
+    arg_names: &[Ident],
+    body_id: Option<hir::BodyId>,
+) -> String {
+    to_string(NO_ANN, |s| s.print_fn(decl, header, name, generics, vis, arg_names, body_id))
+}
+
+pub fn enum_def_to_string(
+    enum_definition: &hir::EnumDef<'_>,
+    generics: &hir::Generics<'_>,
+    name: Symbol,
+    span: rustc_span::Span,
+    visibility: &hir::Visibility<'_>,
+) -> String {
+    to_string(NO_ANN, |s| s.print_enum_def(enum_definition, generics, name, span, visibility))
 }
 
 impl<'a> State<'a> {
@@ -361,7 +407,7 @@ impl<'a> State<'a> {
                     &f.param_names[..],
                 );
             }
-            hir::TyKind::Def(..) => {}
+            hir::TyKind::OpaqueDef(..) => self.s.word("/*impl Trait*/"),
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
             hir::TyKind::TraitObject(bounds, ref lifetime) => {
                 let mut first = true;
@@ -453,7 +499,7 @@ impl<'a> State<'a> {
 
     fn print_associated_const(
         &mut self,
-        ident: ast::Ident,
+        ident: Ident,
         ty: &hir::Ty<'_>,
         default: Option<hir::BodyId>,
         vis: &hir::Visibility<'_>,
@@ -473,7 +519,7 @@ impl<'a> State<'a> {
 
     fn print_associated_type(
         &mut self,
-        ident: ast::Ident,
+        ident: Ident,
         generics: &hir::Generics<'_>,
         bounds: Option<hir::GenericBounds<'_>>,
         ty: Option<&hir::Ty<'_>>,
@@ -768,7 +814,7 @@ impl<'a> State<'a> {
         &mut self,
         enum_definition: &hir::EnumDef<'_>,
         generics: &hir::Generics<'_>,
-        name: ast::Name,
+        name: Symbol,
         span: rustc_span::Span,
         visibility: &hir::Visibility<'_>,
     ) {
@@ -827,7 +873,7 @@ impl<'a> State<'a> {
         &mut self,
         struct_def: &hir::VariantData<'_>,
         generics: &hir::Generics<'_>,
-        name: ast::Name,
+        name: Symbol,
         span: rustc_span::Span,
         print_finalizer: bool,
     ) {
@@ -886,11 +932,11 @@ impl<'a> State<'a> {
     }
     pub fn print_method_sig(
         &mut self,
-        ident: ast::Ident,
+        ident: Ident,
         m: &hir::FnSig<'_>,
         generics: &hir::Generics<'_>,
         vis: &hir::Visibility<'_>,
-        arg_names: &[ast::Ident],
+        arg_names: &[Ident],
         body_id: Option<hir::BodyId>,
     ) {
         self.print_fn(&m.decl, m.header, Some(ident.name), generics, vis, arg_names, body_id)
@@ -956,12 +1002,6 @@ impl<'a> State<'a> {
             }
             hir::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, &ii.generics, None, Some(ty));
-            }
-            hir::ImplItemKind::OpaqueTy(bounds) => {
-                self.word_space("type");
-                self.print_ident(ii.ident);
-                self.print_bounds("= impl", bounds);
-                self.s.word(";");
             }
         }
         self.ann.post(self, AnnNode::SubItem(ii.hir_id))
@@ -1262,7 +1302,7 @@ impl<'a> State<'a> {
             hir::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(&func, args);
             }
-            hir::ExprKind::MethodCall(ref segment, _, ref args) => {
+            hir::ExprKind::MethodCall(ref segment, _, ref args, _) => {
                 self.print_expr_method_call(segment, args);
             }
             hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
@@ -1297,7 +1337,7 @@ impl<'a> State<'a> {
                 self.bopen();
 
                 // Print `let _t = $init;`:
-                let temp = ast::Ident::from_str("_t");
+                let temp = Ident::from_str("_t");
                 self.print_local(Some(init), |this| this.print_ident(temp));
                 self.s.word(";");
 
@@ -1409,6 +1449,110 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(&expr, parser::PREC_JUMP);
                 }
             }
+            hir::ExprKind::InlineAsm(ref a) => {
+                enum AsmArg<'a> {
+                    Template(String),
+                    Operand(&'a hir::InlineAsmOperand<'a>),
+                    Options(ast::InlineAsmOptions),
+                }
+
+                let mut args = vec![];
+                args.push(AsmArg::Template(ast::InlineAsmTemplatePiece::to_string(&a.template)));
+                args.extend(a.operands.iter().map(|o| AsmArg::Operand(o)));
+                if !a.options.is_empty() {
+                    args.push(AsmArg::Options(a.options));
+                }
+
+                self.word("asm!");
+                self.popen();
+                self.commasep(Consistent, &args, |s, arg| match arg {
+                    AsmArg::Template(template) => s.print_string(&template, ast::StrStyle::Cooked),
+                    AsmArg::Operand(op) => match op {
+                        hir::InlineAsmOperand::In { reg, expr } => {
+                            s.word("in");
+                            s.popen();
+                            s.word(format!("{}", reg));
+                            s.pclose();
+                            s.space();
+                            s.print_expr(expr);
+                        }
+                        hir::InlineAsmOperand::Out { reg, late, expr } => {
+                            s.word(if *late { "lateout" } else { "out" });
+                            s.popen();
+                            s.word(format!("{}", reg));
+                            s.pclose();
+                            s.space();
+                            match expr {
+                                Some(expr) => s.print_expr(expr),
+                                None => s.word("_"),
+                            }
+                        }
+                        hir::InlineAsmOperand::InOut { reg, late, expr } => {
+                            s.word(if *late { "inlateout" } else { "inout" });
+                            s.popen();
+                            s.word(format!("{}", reg));
+                            s.pclose();
+                            s.space();
+                            s.print_expr(expr);
+                        }
+                        hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
+                            s.word(if *late { "inlateout" } else { "inout" });
+                            s.popen();
+                            s.word(format!("{}", reg));
+                            s.pclose();
+                            s.space();
+                            s.print_expr(in_expr);
+                            s.space();
+                            s.word_space("=>");
+                            match out_expr {
+                                Some(out_expr) => s.print_expr(out_expr),
+                                None => s.word("_"),
+                            }
+                        }
+                        hir::InlineAsmOperand::Const { expr } => {
+                            s.word("const");
+                            s.space();
+                            s.print_expr(expr);
+                        }
+                        hir::InlineAsmOperand::Sym { expr } => {
+                            s.word("sym");
+                            s.space();
+                            s.print_expr(expr);
+                        }
+                    },
+                    AsmArg::Options(opts) => {
+                        s.word("options");
+                        s.popen();
+                        let mut options = vec![];
+                        if opts.contains(ast::InlineAsmOptions::PURE) {
+                            options.push("pure");
+                        }
+                        if opts.contains(ast::InlineAsmOptions::NOMEM) {
+                            options.push("nomem");
+                        }
+                        if opts.contains(ast::InlineAsmOptions::READONLY) {
+                            options.push("readonly");
+                        }
+                        if opts.contains(ast::InlineAsmOptions::PRESERVES_FLAGS) {
+                            options.push("preserves_flags");
+                        }
+                        if opts.contains(ast::InlineAsmOptions::NORETURN) {
+                            options.push("noreturn");
+                        }
+                        if opts.contains(ast::InlineAsmOptions::NOSTACK) {
+                            options.push("nostack");
+                        }
+                        if opts.contains(ast::InlineAsmOptions::ATT_SYNTAX) {
+                            options.push("att_syntax");
+                        }
+                        s.commasep(Inconsistent, &options, |s, &opt| {
+                            s.word(opt);
+                        });
+                        s.pclose();
+                    }
+                });
+                self.pclose();
+            }
             hir::ExprKind::LlvmInlineAsm(ref a) => {
                 let i = &a.inner;
                 self.s.word("llvm_asm!");
@@ -1496,8 +1640,8 @@ impl<'a> State<'a> {
         self.s.word(i.to_string())
     }
 
-    pub fn print_name(&mut self, name: ast::Name) {
-        self.print_ident(ast::Ident::with_dummy_span(name))
+    pub fn print_name(&mut self, name: Symbol) {
+        self.print_ident(Ident::with_dummy_span(name))
     }
 
     pub fn print_for_decl(&mut self, loc: &hir::Local<'_>, coll: &hir::Expr<'_>) {
@@ -1888,10 +2032,10 @@ impl<'a> State<'a> {
         &mut self,
         decl: &hir::FnDecl<'_>,
         header: hir::FnHeader,
-        name: Option<ast::Name>,
+        name: Option<Symbol>,
         generics: &hir::Generics<'_>,
         vis: &hir::Visibility<'_>,
-        arg_names: &[ast::Ident],
+        arg_names: &[Ident],
         body_id: Option<hir::BodyId>,
     ) {
         self.print_fn_header_info(header, vis);
@@ -2154,9 +2298,9 @@ impl<'a> State<'a> {
         abi: Abi,
         unsafety: hir::Unsafety,
         decl: &hir::FnDecl<'_>,
-        name: Option<ast::Name>,
+        name: Option<Symbol>,
         generic_params: &[hir::GenericParam<'_>],
-        arg_names: &[ast::Ident],
+        arg_names: &[Ident],
     ) {
         self.ibox(INDENT_UNIT);
         if !generic_params.is_empty() {
@@ -2341,7 +2485,7 @@ fn contains_exterior_struct_lit(value: &hir::Expr<'_>) -> bool {
             contains_exterior_struct_lit(&x)
         }
 
-        hir::ExprKind::MethodCall(.., ref exprs) => {
+        hir::ExprKind::MethodCall(.., ref exprs, _) => {
             // `X { y: 1 }.bar(...)`
             contains_exterior_struct_lit(&exprs[0])
         }

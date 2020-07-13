@@ -372,6 +372,14 @@ fn assert_covariance() {
     }
 }
 
+#[test]
+fn test_retain() {
+    let mut a = BinaryHeap::from(vec![-10, -5, 1, 2, 4, 13]);
+    a.retain(|x| x % 2 == 0);
+
+    assert_eq!(a.into_sorted_vec(), [-10, 2, 4])
+}
+
 // old binaryheap failed this test
 //
 // Integrity means that all elements are present after a comparison panics,
@@ -409,16 +417,14 @@ fn panic_safe() {
     }
     let mut rng = thread_rng();
     const DATASZ: usize = 32;
-    #[cfg(not(miri))] // Miri is too slow
-    const NTEST: usize = 10;
-    #[cfg(miri)]
-    const NTEST: usize = 1;
+    // Miri is too slow
+    let ntest = if cfg!(miri) { 1 } else { 10 };
 
     // don't use 0 in the data -- we want to catch the zeroed-out case.
     let data = (1..=DATASZ).collect::<Vec<_>>();
 
     // since it's a fuzzy test, run several tries.
-    for _ in 0..NTEST {
+    for _ in 0..ntest {
         for i in 1..=DATASZ {
             DROP_COUNTER.store(0, Ordering::SeqCst);
 

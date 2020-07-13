@@ -3,7 +3,6 @@ use crate::fmt;
 use crate::marker::{PhantomData, Unsize};
 use crate::mem;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr::NonNull;
 
 // ignore-tidy-undocumented-unsafe
 
@@ -71,9 +70,10 @@ impl<T: Sized> Unique<T> {
     /// a `T`, which means this must not be used as a "not yet initialized"
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
-    // FIXME: rename to dangling() to match NonNull?
     #[inline]
-    pub const fn empty() -> Self {
+    pub const fn dangling() -> Self {
+        // SAFETY: mem::align_of() returns a valid, non-null pointer. The
+        // conditions to call new_unchecked() are thus respected.
         unsafe { Unique::new_unchecked(mem::align_of::<T>() as *mut T) }
     }
 }
@@ -87,13 +87,15 @@ impl<T: ?Sized> Unique<T> {
     /// `ptr` must be non-null.
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        Unique { pointer: ptr as _, _marker: PhantomData }
+        // SAFETY: the caller must guarantee that `ptr` is non-null.
+        unsafe { Unique { pointer: ptr as _, _marker: PhantomData } }
     }
 
     /// Creates a new `Unique` if `ptr` is non-null.
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
+            // SAFETY: The pointer has already been checked and is not null.
             Some(unsafe { Unique { pointer: ptr as _, _marker: PhantomData } })
         } else {
             None
@@ -113,7 +115,9 @@ impl<T: ?Sized> Unique<T> {
     /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
     #[inline]
     pub unsafe fn as_ref(&self) -> &T {
-        &*self.as_ptr()
+        // SAFETY: the caller must guarantee that `self` meets all the
+        // requirements for a reference.
+        unsafe { &*self.as_ptr() }
     }
 
     /// Mutably dereferences the content.
@@ -123,12 +127,17 @@ impl<T: ?Sized> Unique<T> {
     /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
     #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut T {
-        &mut *self.as_ptr()
+        // SAFETY: the caller must guarantee that `self` meets all the
+        // requirements for a mutable reference.
+        unsafe { &mut *self.as_ptr() }
     }
 
     /// Casts to a pointer of another type.
     #[inline]
     pub const fn cast<U>(self) -> Unique<U> {
+        // SAFETY: Unique::new_unchecked() creates a new unique and needs
+        // the given pointer to not be null.
+        // Since we are passing self as a pointer, it cannot be null.
         unsafe { Unique::new_unchecked(self.as_ptr() as *mut U) }
     }
 }
@@ -168,22 +177,7 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 impl<T: ?Sized> From<&mut T> for Unique<T> {
     #[inline]
     fn from(reference: &mut T) -> Self {
+        // SAFETY: A mutable reference cannot be null
         unsafe { Unique { pointer: reference as *mut T, _marker: PhantomData } }
-    }
-}
-
-#[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> From<&T> for Unique<T> {
-    #[inline]
-    fn from(reference: &T) -> Self {
-        unsafe { Unique { pointer: reference as *const T, _marker: PhantomData } }
-    }
-}
-
-#[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
-    #[inline]
-    fn from(p: NonNull<T>) -> Self {
-        unsafe { Unique::new_unchecked(p.as_ptr()) }
     }
 }

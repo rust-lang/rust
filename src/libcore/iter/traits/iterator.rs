@@ -333,7 +333,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in self {
+        while let Some(x) = self.next() {
             if n == 0 {
                 return Some(x);
             }
@@ -1180,6 +1180,17 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
     /// ```
+    ///
+    /// If less than `n` elements are available,
+    /// `take` will limit itself to the size of the underlying iterator:
+    ///
+    /// ```
+    /// let v = vec![1, 2];
+    /// let mut iter = v.into_iter().take(5);
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, n: usize) -> Take<Self>
@@ -1510,7 +1521,7 @@ pub trait Iterator {
     ///
     /// let iter = a.iter();
     ///
-    /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i );
+    /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i);
     ///
     /// assert_eq!(sum, 6);
     ///
@@ -1524,7 +1535,7 @@ pub trait Iterator {
     /// let mut iter = a.iter();
     ///
     /// // instead, we add in a .by_ref()
-    /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i );
+    /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i);
     ///
     /// assert_eq!(sum, 3);
     ///
@@ -1697,12 +1708,12 @@ pub trait Iterator {
             mut f: impl FnMut(&T) -> bool + 'a,
             left: &'a mut B,
             right: &'a mut B,
-        ) -> impl FnMut(T) + 'a {
-            move |x| {
+        ) -> impl FnMut((), T) + 'a {
+            move |(), x| {
                 if f(&x) {
-                    left.extend(Some(x));
+                    left.extend_one(x);
                 } else {
-                    right.extend(Some(x));
+                    right.extend_one(x);
                 }
             }
         }
@@ -1710,7 +1721,7 @@ pub trait Iterator {
         let mut left: B = Default::default();
         let mut right: B = Default::default();
 
-        self.for_each(extend(f, &mut left, &mut right));
+        self.fold((), extend(f, &mut left, &mut right));
 
         (left, right)
     }
@@ -1826,7 +1837,7 @@ pub trait Iterator {
     ///
     /// # Note to Implementors
     ///
-    /// Most of the other (forward) methods have default implementations in
+    /// Several of the other (forward) methods have default implementations in
     /// terms of this one, so try to implement this explicitly if it can
     /// do something better than the default `for` loop implementation.
     ///
@@ -1944,6 +1955,15 @@ pub trait Iterator {
     /// may not terminate for infinite iterators, even on traits for which a
     /// result is determinable in finite time.
     ///
+    /// # Note to Implementors
+    ///
+    /// Several of the other (forward) methods have default implementations in
+    /// terms of this one, so try to implement this explicitly if it can
+    /// do something better than the default `for` loop implementation.
+    ///
+    /// In particular, try to have this call `fold()` on the internal parts
+    /// from which this iterator is composed.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1992,17 +2012,16 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, f: F) -> B
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x);
         }
-
-        self.try_fold(init, ok(f)).unwrap()
+        accum
     }
 
     /// The same as [`fold()`](#method.fold), but uses the first element in the
@@ -2246,7 +2265,7 @@ pub trait Iterator {
     }
 
     /// Applies function to the elements of iterator and returns
-    /// the first non-none result or the first error.
+    /// the first true result or the first error.
     ///
     /// # Examples
     ///
@@ -2267,19 +2286,26 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
-    fn try_find<F, E, R>(&mut self, mut f: F) -> Result<Option<Self::Item>, E>
+    fn try_find<F, R>(&mut self, f: F) -> Result<Option<Self::Item>, R::Error>
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
-        R: Try<Ok = bool, Error = E>,
+        R: Try<Ok = bool>,
     {
-        self.try_for_each(move |x| match f(&x).into_result() {
-            Ok(false) => LoopState::Continue(()),
-            Ok(true) => LoopState::Break(Ok(x)),
-            Err(x) => LoopState::Break(Err(x)),
-        })
-        .break_value()
-        .transpose()
+        #[inline]
+        fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> LoopState<(), Result<T, R::Error>>
+        where
+            F: FnMut(&T) -> R,
+            R: Try<Ok = bool>,
+        {
+            move |(), x| match f(&x).into_result() {
+                Ok(false) => LoopState::Continue(()),
+                Ok(true) => LoopState::Break(Ok(x)),
+                Err(x) => LoopState::Break(Err(x)),
+            }
+        }
+
+        self.try_fold((), check(f)).break_value().transpose()
     }
 
     /// Searches for an element in an iterator, returning its index.
@@ -2665,17 +2691,23 @@ pub trait Iterator {
         fn extend<'a, A, B>(
             ts: &'a mut impl Extend<A>,
             us: &'a mut impl Extend<B>,
-        ) -> impl FnMut((A, B)) + 'a {
-            move |(t, u)| {
-                ts.extend(Some(t));
-                us.extend(Some(u));
+        ) -> impl FnMut((), (A, B)) + 'a {
+            move |(), (t, u)| {
+                ts.extend_one(t);
+                us.extend_one(u);
             }
         }
 
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
 
-        self.for_each(extend(&mut ts, &mut us));
+        let (lower_bound, _) = self.size_hint();
+        if lower_bound > 0 {
+            ts.extend_reserve(lower_bound);
+            us.extend_reserve(lower_bound);
+        }
+
+        self.fold((), extend(&mut ts, &mut us));
 
         (ts, us)
     }
@@ -2692,12 +2724,12 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let v_cloned: Vec<_> = a.iter().copied().collect();
+    /// let v_copied: Vec<_> = a.iter().copied().collect();
     ///
     /// // copied is the same as .map(|&x| x)
     /// let v_map: Vec<_> = a.iter().map(|&x| x).collect();
     ///
-    /// assert_eq!(v_cloned, vec![1, 2, 3]);
+    /// assert_eq!(v_copied, vec![1, 2, 3]);
     /// assert_eq!(v_map, vec![1, 2, 3]);
     /// ```
     #[stable(feature = "iter_copied", since = "1.36.0")]

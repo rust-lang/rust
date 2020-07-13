@@ -30,66 +30,27 @@
 //!
 //! [gen-kill]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 
+use std::cmp::Ordering;
 use std::io;
 
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
 mod cursor;
+mod direction;
 mod engine;
 mod graphviz;
 mod visitor;
 
 pub use self::cursor::{ResultsCursor, ResultsRefCursor};
-pub use self::engine::Engine;
+pub use self::direction::{Backward, Direction, Forward};
+pub use self::engine::{Engine, Results};
 pub use self::visitor::{visit_results, ResultsVisitor};
 pub use self::visitor::{BorrowckFlowState, BorrowckResults};
-
-/// A dataflow analysis that has converged to fixpoint.
-pub struct Results<'tcx, A>
-where
-    A: Analysis<'tcx>,
-{
-    pub analysis: A,
-    entry_sets: IndexVec<BasicBlock, BitSet<A::Idx>>,
-}
-
-impl<A> Results<'tcx, A>
-where
-    A: Analysis<'tcx>,
-{
-    /// Creates a `ResultsCursor` that can inspect these `Results`.
-    pub fn into_results_cursor(self, body: &'mir mir::Body<'tcx>) -> ResultsCursor<'mir, 'tcx, A> {
-        ResultsCursor::new(body, self)
-    }
-
-    /// Gets the entry set for the given block.
-    pub fn entry_set_for_block(&self, block: BasicBlock) -> &BitSet<A::Idx> {
-        &self.entry_sets[block]
-    }
-
-    pub fn visit_with(
-        &self,
-        body: &'mir mir::Body<'tcx>,
-        blocks: impl IntoIterator<Item = BasicBlock>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
-    ) {
-        visit_results(body, blocks, self, vis)
-    }
-
-    pub fn visit_in_rpo_with(
-        &self,
-        body: &'mir mir::Body<'tcx>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
-    ) {
-        let blocks = mir::traversal::reverse_postorder(body);
-        visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
-    }
-}
 
 /// Parameterization for the precise form of data flow that is used.
 ///
@@ -144,6 +105,9 @@ pub trait AnalysisDomain<'tcx>: BottomValue {
     /// The type of the elements in the state vector.
     type Idx: Idx;
 
+    /// The direction of this analyis. Either `Forward` or `Backward`.
+    type Direction: Direction = Forward;
+
     /// A descriptive name for this analysis. Used only for debugging.
     ///
     /// This name should be brief and contain no spaces, periods or other characters that are not
@@ -155,6 +119,13 @@ pub trait AnalysisDomain<'tcx>: BottomValue {
 
     /// Mutates the entry set of the `START_BLOCK` to contain the initial state for dataflow
     /// analysis.
+    ///
+    /// For backward analyses, initial state besides the bottom value is not yet supported. Trying
+    /// to mutate the initial state will result in a panic.
+    //
+    // FIXME: For backward dataflow analyses, the initial state should be applied to every basic
+    // block where control flow could exit the MIR body (e.g., those terminated with `return` or
+    // `resume`). It's not obvious how to handle `yield` points in generators, however.
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>);
 
     /// Prints an element in the state vector for debugging.
@@ -247,6 +218,8 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     ///
     /// Much like `apply_call_return_effect`, this effect is only propagated along a single
     /// outgoing edge from this basic block.
+    ///
+    /// FIXME: This class of effects is not supported for backward dataflow analyses.
     fn apply_discriminant_switch_effect(
         &self,
         _state: &mut BitSet<Self::Idx>,
@@ -338,7 +311,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     /// See `Analysis::apply_yield_resume_effect`.
     fn yield_resume_effect(
         &self,
-        _trans: &mut BitSet<Self::Idx>,
+        _trans: &mut impl GenKill<Self::Idx>,
         _resume_block: BasicBlock,
         _resume_place: mir::Place<'tcx>,
     ) {
@@ -517,6 +490,65 @@ impl<T: Idx> GenKill<T> for BitSet<T> {
 
     fn kill(&mut self, elem: T) {
         self.remove(elem);
+    }
+}
+
+// NOTE: DO NOT CHANGE VARIANT ORDER. The derived `Ord` impls rely on the current order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Effect {
+    /// The "before" effect (e.g., `apply_before_statement_effect`) for a statement (or
+    /// terminator).
+    Before,
+
+    /// The "primary" effect (e.g., `apply_statement_effect`) for a statement (or terminator).
+    Primary,
+}
+
+impl Effect {
+    pub const fn at_index(self, statement_index: usize) -> EffectIndex {
+        EffectIndex { effect: self, statement_index }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EffectIndex {
+    statement_index: usize,
+    effect: Effect,
+}
+
+impl EffectIndex {
+    fn next_in_forward_order(self) -> Self {
+        match self.effect {
+            Effect::Before => Effect::Primary.at_index(self.statement_index),
+            Effect::Primary => Effect::Before.at_index(self.statement_index + 1),
+        }
+    }
+
+    fn next_in_backward_order(self) -> Self {
+        match self.effect {
+            Effect::Before => Effect::Primary.at_index(self.statement_index),
+            Effect::Primary => Effect::Before.at_index(self.statement_index - 1),
+        }
+    }
+
+    /// Returns `true` if the effect at `self` should be applied eariler than the effect at `other`
+    /// in forward order.
+    fn precedes_in_forward_order(self, other: Self) -> bool {
+        let ord = self
+            .statement_index
+            .cmp(&other.statement_index)
+            .then_with(|| self.effect.cmp(&other.effect));
+        ord == Ordering::Less
+    }
+
+    /// Returns `true` if the effect at `self` should be applied earlier than the effect at `other`
+    /// in backward order.
+    fn precedes_in_backward_order(self, other: Self) -> bool {
+        let ord = other
+            .statement_index
+            .cmp(&self.statement_index)
+            .then_with(|| self.effect.cmp(&other.effect));
+        ord == Ordering::Less
     }
 }
 

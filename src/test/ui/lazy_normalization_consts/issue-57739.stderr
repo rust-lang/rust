@@ -1,0 +1,19 @@
+warning: the feature `lazy_normalization_consts` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-57739.rs:1:12
+   |
+LL | #![feature(lazy_normalization_consts)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #72219 <https://github.com/rust-lang/rust/issues/72219> for more information
+
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-57739.rs:12:5
+   |
+LL |     array: [u8; T::SIZE],
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error; 1 warning emitted
+

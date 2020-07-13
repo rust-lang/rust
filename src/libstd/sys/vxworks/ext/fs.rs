@@ -6,7 +6,6 @@ use crate::path::Path;
 use crate::sys;
 use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
-use libc;
 
 /// Unix-specific extensions to [`File`].
 ///
@@ -133,7 +132,7 @@ pub trait FileExt {
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
     ///
-    /// [`File::write`]: ../../../../std/fs/struct.File.html#write.v
+    /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write
     ///
     /// # Examples
     ///

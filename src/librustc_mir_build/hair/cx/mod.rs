@@ -47,9 +47,6 @@ crate struct Cx<'a, 'tcx> {
 
     /// Whether this constant/function needs overflow checks.
     check_overflow: bool,
-
-    /// See field with the same name on `mir::Body`.
-    control_flow_destroyed: Vec<(Span, String)>,
 }
 
 impl<'a, 'tcx> Cx<'a, 'tcx> {
@@ -82,19 +79,14 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             infcx,
             root_lint_level: src_id,
             param_env: tcx.param_env(src_def_id),
-            identity_substs: InternalSubsts::identity_for_item(tcx, src_def_id),
+            identity_substs: InternalSubsts::identity_for_item(tcx, src_def_id.to_def_id()),
             region_scope_tree: tcx.region_scope_tree(src_def_id),
             tables,
             constness,
-            body_owner: src_def_id,
+            body_owner: src_def_id.to_def_id(),
             body_owner_kind,
             check_overflow,
-            control_flow_destroyed: Vec::new(),
         }
-    }
-
-    crate fn control_flow_destroyed(self) -> Vec<(Span, String)> {
-        self.control_flow_destroyed
     }
 }
 

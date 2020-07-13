@@ -1,4 +1,15 @@
-use std::cell::Cell;
+//! This module provides a way to deal with self-referential data.
+//!
+//! The main idea is to allocate such data in a generator frame and then
+//! give access to it by executing user-provided closures inside that generator.
+//! The module provides a safe abstraction for the latter task.
+//!
+//! The interface consists of two exported macros meant to be used together:
+//! * `declare_box_region_type` wraps a generator inside a struct with `access`
+//!   method which accepts closures.
+//! * `box_region_allow_access` is a helper which should be called inside
+//!   a generator to actually execute those closures.
+
 use std::marker::PhantomData;
 use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
@@ -14,24 +25,23 @@ impl AccessAction {
 
 #[derive(Copy, Clone)]
 pub enum Action {
+    Initial,
     Access(AccessAction),
     Complete,
 }
 
-thread_local!(pub static BOX_REGION_ARG: Cell<Action> = Cell::new(Action::Complete));
-
 pub struct PinnedGenerator<I, A, R> {
-    generator: Pin<Box<dyn Generator<Yield = YieldType<I, A>, Return = R>>>,
+    generator: Pin<Box<dyn Generator<Action, Yield = YieldType<I, A>, Return = R>>>,
 }
 
 impl<I, A, R> PinnedGenerator<I, A, R> {
-    pub fn new<T: Generator<Yield = YieldType<I, A>, Return = R> + 'static>(
+    pub fn new<T: Generator<Action, Yield = YieldType<I, A>, Return = R> + 'static>(
         generator: T,
     ) -> (I, Self) {
         let mut result = PinnedGenerator { generator: Box::pin(generator) };
 
         // Run it to the first yield to set it up
-        let init = match Pin::new(&mut result.generator).resume(()) {
+        let init = match Pin::new(&mut result.generator).resume(Action::Initial) {
             GeneratorState::Yielded(YieldType::Initial(y)) => y,
             _ => panic!(),
         };
@@ -40,21 +50,17 @@ impl<I, A, R> PinnedGenerator<I, A, R> {
     }
 
     pub unsafe fn access(&mut self, closure: *mut dyn FnMut()) {
-        BOX_REGION_ARG.with(|i| {
-            i.set(Action::Access(AccessAction(closure)));
-        });
-
-        // Call the generator, which in turn will call the closure in BOX_REGION_ARG
-        if let GeneratorState::Complete(_) = Pin::new(&mut self.generator).resume(()) {
+        // Call the generator, which in turn will call the closure
+        if let GeneratorState::Complete(_) =
+            Pin::new(&mut self.generator).resume(Action::Access(AccessAction(closure)))
+        {
             panic!()
         }
     }
 
     pub fn complete(&mut self) -> R {
         // Tell the generator we want it to complete, consuming it and yielding a result
-        BOX_REGION_ARG.with(|i| i.set(Action::Complete));
-
-        let result = Pin::new(&mut self.generator).resume(());
+        let result = Pin::new(&mut self.generator).resume(Action::Complete);
         if let GeneratorState::Complete(r) = result { r } else { panic!() }
     }
 }
@@ -89,7 +95,7 @@ macro_rules! declare_box_region_type {
         >);
 
         impl $name {
-            fn new<T: ::std::ops::Generator<Yield = $yield_type, Return = $retc> + 'static>(
+            fn new<T: ::std::ops::Generator<$crate::box_region::Action, Yield = $yield_type, Return = $retc> + 'static>(
                 generator: T
             ) -> ($reti, Self) {
                 let (initial, pinned) = $crate::box_region::PinnedGenerator::new(generator);
@@ -98,7 +104,7 @@ macro_rules! declare_box_region_type {
 
             $v fn access<F: for<$($lifetimes)*> FnOnce($($args,)*) -> R, R>(&mut self, f: F) -> R {
                 // Turn the FnOnce closure into *mut dyn FnMut()
-                // so we can pass it in to the generator using the BOX_REGION_ARG thread local
+                // so we can pass it in to the generator
                 let mut r = None;
                 let mut f = Some(f);
                 let mut_f: &mut dyn for<$($lifetimes)*> FnMut(($($args,)*)) =
@@ -140,9 +146,9 @@ macro_rules! declare_box_region_type {
 #[macro_export]
 #[allow_internal_unstable(fn_traits)]
 macro_rules! box_region_allow_access {
-    (for($($lifetimes:tt)*), ($($args:ty),*), ($($exprs:expr),*) ) => {
+    (for($($lifetimes:tt)*), ($($args:ty),*), ($($exprs:expr),*), $action:ident) => {
         loop {
-            match $crate::box_region::BOX_REGION_ARG.with(|i| i.get()) {
+            match $action {
                 $crate::box_region::Action::Access(accessor) => {
                     let accessor: &mut dyn for<$($lifetimes)*> FnMut($($args),*) = unsafe {
                         ::std::mem::transmute(accessor.get())
@@ -152,10 +158,11 @@ macro_rules! box_region_allow_access {
                         let marker = $crate::box_region::Marker::<
                             for<$($lifetimes)*> fn(($($args,)*))
                         >::new();
-                        yield $crate::box_region::YieldType::Accessor(marker)
+                        $action = yield $crate::box_region::YieldType::Accessor(marker);
                     };
                 }
                 $crate::box_region::Action::Complete => break,
+                $crate::box_region::Action::Initial => panic!("unexpected box_region action: Initial"),
             }
         }
     }

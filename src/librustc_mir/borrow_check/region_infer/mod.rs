@@ -6,14 +6,13 @@ use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::canonical::QueryOutlivesConstraint;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::mir::{
     Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
-    ConstraintCategory, Local, Location,
+    ConstraintCategory, Local, Location, ReturnConstraint,
 };
 use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
@@ -315,16 +314,81 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// SCC could have as well. This implies that the SCC must have
     /// the minimum, or narrowest, universe.
     fn compute_scc_universes(
-        constraints_scc: &Sccs<RegionVid, ConstraintSccIndex>,
+        constraint_sccs: &Sccs<RegionVid, ConstraintSccIndex>,
         definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
     ) -> IndexVec<ConstraintSccIndex, ty::UniverseIndex> {
-        let num_sccs = constraints_scc.num_sccs();
+        let num_sccs = constraint_sccs.num_sccs();
         let mut scc_universes = IndexVec::from_elem_n(ty::UniverseIndex::MAX, num_sccs);
 
+        debug!("compute_scc_universes()");
+
+        // For each region R in universe U, ensure that the universe for the SCC
+        // that contains R is "no bigger" than U. This effectively sets the universe
+        // for each SCC to be the minimum of the regions within.
         for (region_vid, region_definition) in definitions.iter_enumerated() {
-            let scc = constraints_scc.scc(region_vid);
+            let scc = constraint_sccs.scc(region_vid);
             let scc_universe = &mut scc_universes[scc];
-            *scc_universe = ::std::cmp::min(*scc_universe, region_definition.universe);
+            let scc_min = std::cmp::min(region_definition.universe, *scc_universe);
+            if scc_min != *scc_universe {
+                *scc_universe = scc_min;
+                debug!(
+                    "compute_scc_universes: lowered universe of {scc:?} to {scc_min:?} \
+                    because it contains {region_vid:?} in {region_universe:?}",
+                    scc = scc,
+                    scc_min = scc_min,
+                    region_vid = region_vid,
+                    region_universe = region_definition.universe,
+                );
+            }
+        }
+
+        // Walk each SCC `A` and `B` such that `A: B`
+        // and ensure that universe(A) can see universe(B).
+        //
+        // This serves to enforce the 'empty/placeholder' hierarchy
+        // (described in more detail on `RegionKind`):
+        //
+        // ```
+        // static -----+
+        //   |         |
+        // empty(U0) placeholder(U1)
+        //   |      /
+        // empty(U1)
+        // ```
+        //
+        // In particular, imagine we have variables R0 in U0 and R1
+        // created in U1, and constraints like this;
+        //
+        // ```
+        // R1: !1 // R1 outlives the placeholder in U1
+        // R1: R0 // R1 outlives R0
+        // ```
+        //
+        // Here, we wish for R1 to be `'static`, because it
+        // cannot outlive `placeholder(U1)` and `empty(U0)` any other way.
+        //
+        // Thanks to this loop, what happens is that the `R1: R0`
+        // constraint lowers the universe of `R1` to `U0`, which in turn
+        // means that the `R1: !1` constraint will (later) cause
+        // `R1` to become `'static`.
+        for scc_a in constraint_sccs.all_sccs() {
+            for &scc_b in constraint_sccs.successors(scc_a) {
+                let scc_universe_a = scc_universes[scc_a];
+                let scc_universe_b = scc_universes[scc_b];
+                let scc_universe_min = std::cmp::min(scc_universe_a, scc_universe_b);
+                if scc_universe_a != scc_universe_min {
+                    scc_universes[scc_a] = scc_universe_min;
+
+                    debug!(
+                        "compute_scc_universes: lowered universe of {scc_a:?} to {scc_universe_min:?} \
+                        because {scc_a:?}: {scc_b:?} and {scc_b:?} is in universe {scc_universe_b:?}",
+                        scc_a = scc_a,
+                        scc_b = scc_b,
+                        scc_universe_min = scc_universe_min,
+                        scc_universe_b = scc_universe_b
+                    );
+                }
+            }
         }
 
         debug!("compute_scc_universes: scc_universe = {:#?}", scc_universes);
@@ -416,7 +480,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     }
                 }
 
-                NLLRegionVariableOrigin::Existential { .. } => {
+                NLLRegionVariableOrigin::RootEmptyRegion
+                | NLLRegionVariableOrigin::Existential { .. } => {
                     // For existential, regions, nothing to do.
                 }
             }
@@ -550,9 +615,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // SCC. For each SCC, we visit its successors and compute
         // their values, then we union all those values to get our
         // own.
-        let visited = &mut BitSet::new_empty(self.constraint_sccs.num_sccs());
-        for scc_index in self.constraint_sccs.all_sccs() {
-            self.propagate_constraint_sccs_if_new(scc_index, visited);
+        let constraint_sccs = self.constraint_sccs.clone();
+        for scc in constraint_sccs.all_sccs() {
+            self.compute_value_for_scc(scc);
         }
 
         // Sort the applied member constraints so we can binary search
@@ -560,36 +625,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.member_constraints_applied.sort_by_key(|applied| applied.member_region_scc);
     }
 
-    /// Computes the value of the SCC `scc_a` if it has not already
-    /// been computed. The `visited` parameter is a bitset
-    #[inline]
-    fn propagate_constraint_sccs_if_new(
-        &mut self,
-        scc_a: ConstraintSccIndex,
-        visited: &mut BitSet<ConstraintSccIndex>,
-    ) {
-        if visited.insert(scc_a) {
-            self.propagate_constraint_sccs_new(scc_a, visited);
-        }
-    }
-
     /// Computes the value of the SCC `scc_a`, which has not yet been
-    /// computed. This works by first computing all successors of the
-    /// SCC (if they haven't been computed already) and then unioning
-    /// together their elements.
-    fn propagate_constraint_sccs_new(
-        &mut self,
-        scc_a: ConstraintSccIndex,
-        visited: &mut BitSet<ConstraintSccIndex>,
-    ) {
+    /// computed, by unioning the values of its successors.
+    /// Assumes that all successors have been computed already
+    /// (which is assured by iterating over SCCs in dependency order).
+    fn compute_value_for_scc(&mut self, scc_a: ConstraintSccIndex) {
         let constraint_sccs = self.constraint_sccs.clone();
 
         // Walk each SCC `B` such that `A: B`...
         for &scc_b in constraint_sccs.successors(scc_a) {
             debug!("propagate_constraint_sccs: scc_a = {:?} scc_b = {:?}", scc_a, scc_b);
-
-            // ...compute the value of `B`...
-            self.propagate_constraint_sccs_if_new(scc_b, visited);
 
             // ...and add elements from `B` into `A`. One complication
             // arises because of universes: If `B` contains something
@@ -1069,6 +1114,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         lub
     }
 
+    /// Like `universal_upper_bound`, but returns an approximation more suitable
+    /// for diagnostics. If `r` contains multiple disjoint universal regions
+    /// (e.g. 'a and 'b in `fn foo<'a, 'b> { ... }`, we pick the lower-numbered region.
+    /// This corresponds to picking named regions over unnamed regions
+    /// (e.g. picking early-bound regions over a closure late-bound region).
+    ///
+    /// This means that the returned value may not be a true upper bound, since
+    /// only 'static is known to outlive disjoint universal regions.
+    /// Therefore, this method should only be used in diagnostic code,
+    /// where displaying *some* named universal region is better than
+    /// falling back to 'static.
+    pub(in crate::borrow_check) fn approx_universal_upper_bound(&self, r: RegionVid) -> RegionVid {
+        debug!("approx_universal_upper_bound(r={:?}={})", r, self.region_value_str(r));
+
+        // Find the smallest universal region that contains all other
+        // universal regions within `region`.
+        let mut lub = self.universal_regions.fr_fn_body;
+        let r_scc = self.constraint_sccs.scc(r);
+        let static_r = self.universal_regions.fr_static;
+        for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            let new_lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
+            debug!("approx_universal_upper_bound: ur={:?} lub={:?} new_lub={:?}", ur, lub, new_lub);
+            if ur != static_r && lub != static_r && new_lub == static_r {
+                lub = std::cmp::min(ur, lub);
+            } else {
+                lub = new_lub;
+            }
+        }
+
+        debug!("approx_universal_upper_bound: r={:?} lub={:?}", r, lub);
+
+        lub
+    }
+
     /// Tests if `test` is true when applied to `lower_bound` at
     /// `point`.
     fn eval_verify_bound(
@@ -1258,7 +1337,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.check_bound_universal_region(fr, placeholder, errors_buffer);
                 }
 
-                NLLRegionVariableOrigin::Existential { .. } => {
+                NLLRegionVariableOrigin::RootEmptyRegion
+                | NLLRegionVariableOrigin::Existential { .. } => {
                     // nothing to check here
                 }
             }
@@ -1360,7 +1440,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.check_bound_universal_region(fr, placeholder, errors_buffer);
                 }
 
-                NLLRegionVariableOrigin::Existential { .. } => {
+                NLLRegionVariableOrigin::RootEmptyRegion
+                | NLLRegionVariableOrigin::Existential { .. } => {
                     // nothing to check here
                 }
             }
@@ -1633,9 +1714,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 universe1.cannot_name(placeholder.universe)
             }
 
-            NLLRegionVariableOrigin::FreeRegion | NLLRegionVariableOrigin::Existential { .. } => {
-                false
-            }
+            NLLRegionVariableOrigin::RootEmptyRegion
+            | NLLRegionVariableOrigin::FreeRegion
+            | NLLRegionVariableOrigin::Existential { .. } => false,
         }
     }
 
@@ -1773,6 +1854,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Finds some region R such that `fr1: R` and `R` is live at `elem`.
     crate fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
         debug!("find_sub_region_live_at(fr1={:?}, elem={:?})", fr1, elem);
+        debug!("find_sub_region_live_at: {:?} is in scc {:?}", fr1, self.constraint_sccs.scc(fr1));
+        debug!(
+            "find_sub_region_live_at: {:?} is in universe {:?}",
+            fr1,
+            self.scc_universes[self.constraint_sccs.scc(fr1)]
+        );
         self.find_constraint_paths_between_regions(fr1, |r| {
             // First look for some `r` such that `fr1: r` and `r` is live at `elem`
             debug!(
@@ -1794,13 +1881,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         .or_else(|| {
             // If we fail to find THAT, it may be that `fr1` is a
             // placeholder that cannot "fit" into its SCC. In that
-            // case, there should be some `r` where `fr1: r`, both
-            // `fr1` and `r` are in the same SCC, and `fr1` is a
+            // case, there should be some `r` where `fr1: r` and `fr1` is a
             // placeholder that `r` cannot name. We can blame that
             // edge.
+            //
+            // Remember that if `R1: R2`, then the universe of R1
+            // must be able to name the universe of R2, because R2 will
+            // be at least `'empty(Universe(R2))`, and `R1` must be at
+            // larger than that.
             self.find_constraint_paths_between_regions(fr1, |r| {
-                self.constraint_sccs.scc(fr1) == self.constraint_sccs.scc(r)
-                    && self.cannot_name_placeholder(r, fr1)
+                self.cannot_name_placeholder(r, fr1)
             })
         })
         .map(|(_path, r)| r)
@@ -1815,11 +1905,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             RegionElement::PlaceholderRegion(error_placeholder) => self
                 .definitions
                 .iter_enumerated()
-                .filter_map(|(r, definition)| match definition.origin {
+                .find_map(|(r, definition)| match definition.origin {
                     NLLRegionVariableOrigin::Placeholder(p) if p == error_placeholder => Some(r),
                     _ => None,
                 })
-                .next()
                 .unwrap(),
         }
     }
@@ -1945,7 +2034,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let blame_source = match from_region_origin {
             NLLRegionVariableOrigin::FreeRegion
             | NLLRegionVariableOrigin::Existential { from_forall: false } => true,
-            NLLRegionVariableOrigin::Placeholder(_)
+            NLLRegionVariableOrigin::RootEmptyRegion
+            | NLLRegionVariableOrigin::Placeholder(_)
             | NLLRegionVariableOrigin::Existential { from_forall: true } => false,
         };
 
@@ -1961,7 +2051,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     | ConstraintCategory::BoringNoLocation
                     | ConstraintCategory::Internal => false,
                     ConstraintCategory::TypeAnnotation
-                    | ConstraintCategory::Return
+                    | ConstraintCategory::Return(_)
                     | ConstraintCategory::Yield => true,
                     _ => constraint_sup_scc != target_scc,
                 }
@@ -1986,7 +2076,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
-                if categorized_path[i].0 == ConstraintCategory::Return
+                if matches!(categorized_path[i].0, ConstraintCategory::Return(_))
                     && next.0 == ConstraintCategory::OpaqueType
                 {
                     // The return expression is being influenced by the return type being
@@ -1994,6 +2084,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     return *next;
                 }
             }
+
+            if categorized_path[i].0 == ConstraintCategory::Return(ReturnConstraint::Normal) {
+                let field = categorized_path.iter().find_map(|p| {
+                    if let ConstraintCategory::ClosureUpvar(f) = p.0 { Some(f) } else { None }
+                });
+
+                if let Some(field) = field {
+                    categorized_path[i].0 =
+                        ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
+                }
+            }
+
             return categorized_path[i];
         }
 

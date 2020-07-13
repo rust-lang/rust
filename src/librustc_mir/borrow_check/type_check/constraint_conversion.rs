@@ -160,10 +160,6 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) {
-        // FIXME -- this is not the fix I would prefer
-        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = a {
-            return;
-        }
         let b = self.to_region_vid(b);
         let a = self.to_region_vid(a);
         self.add_outlives(b, a);
@@ -176,10 +172,6 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         a: ty::Region<'tcx>,
         bound: VerifyBound<'tcx>,
     ) {
-        // FIXME: I'd prefer if NLL had a notion of empty
-        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = a {
-            return;
-        }
         let type_test = self.verify_to_type_test(kind, a, bound);
         self.add_type_test(type_test);
     }

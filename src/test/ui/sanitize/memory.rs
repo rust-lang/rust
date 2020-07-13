@@ -1,6 +1,5 @@
 // needs-sanitizer-support
-// only-linux
-// only-x86_64
+// needs-sanitizer-memory
 //
 // compile-flags: -Z sanitizer=memory -Zsanitizer-memory-track-origins -O
 //

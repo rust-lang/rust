@@ -13,9 +13,9 @@ use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
-use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{unwrap_or, walk_list};
+use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
@@ -24,13 +24,15 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::TraitCandidate;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::def_id::LocalDefId;
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
 use log::debug;
+use rustc_span::source_map::{respan, Spanned};
 use std::collections::BTreeSet;
-use std::mem::replace;
+use std::mem::{replace, take};
 
 mod diagnostics;
 crate mod lifetimes;
@@ -98,6 +100,9 @@ crate enum RibKind<'a> {
     /// upvars).
     AssocItemRibKind,
 
+    /// We passed through a closure. Disallow labels.
+    ClosureOrAsyncRibKind,
+
     /// We passed through a function definition. Disallow upvars.
     /// Permit only those const parameters that are specified in the function's generics.
     FnItemRibKind,
@@ -121,11 +126,15 @@ crate enum RibKind<'a> {
 }
 
 impl RibKind<'_> {
-    // Whether this rib kind contains generic parameters, as opposed to local
-    // variables.
+    /// Whether this rib kind contains generic parameters, as opposed to local
+    /// variables.
     crate fn contains_params(&self) -> bool {
         match self {
-            NormalRibKind | FnItemRibKind | ConstantItemRibKind | ModuleRibKind(_)
+            NormalRibKind
+            | ClosureOrAsyncRibKind
+            | FnItemRibKind
+            | ConstantItemRibKind
+            | ModuleRibKind(_)
             | MacroDefinition(_) => false,
             AssocItemRibKind | ItemRibKind(_) | ForwardTyParamBanRibKind => true,
         }
@@ -231,6 +240,13 @@ impl<'a> PathSource<'a> {
                 },
                 _ => "value",
             },
+        }
+    }
+
+    fn is_call(self) -> bool {
+        match self {
+            PathSource::Expr(Some(&Expr { kind: ExprKind::Call(..), .. })) => true,
+            _ => false,
         }
     }
 
@@ -347,7 +363,7 @@ struct DiagnosticMetadata<'ast> {
     currently_processing_generics: bool,
 
     /// The current enclosing function (used for better errors).
-    current_function: Option<Span>,
+    current_function: Option<(FnKind<'ast>, Span)>,
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
     /// they are used (in a `break` or `continue` statement)
@@ -464,9 +480,11 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             // Bail if there's no body.
             FnKind::Fn(.., None) => return visit::walk_fn(self, fn_kind, sp),
             FnKind::Fn(FnCtxt::Free | FnCtxt::Foreign, ..) => FnItemRibKind,
-            FnKind::Fn(FnCtxt::Assoc(_), ..) | FnKind::Closure(..) => NormalRibKind,
+            FnKind::Fn(FnCtxt::Assoc(_), ..) => NormalRibKind,
+            FnKind::Closure(..) => ClosureOrAsyncRibKind,
         };
-        let previous_value = replace(&mut self.diagnostic_metadata.current_function, Some(sp));
+        let previous_value =
+            replace(&mut self.diagnostic_metadata.current_function, Some((fn_kind, sp)));
         debug!("(resolving function) entering function");
         let declaration = fn_kind.decl();
 
@@ -525,8 +543,8 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
         for param in &generics.params {
             match param.kind {
-                GenericParamKind::Lifetime { .. } => self.visit_generic_param(param),
-                GenericParamKind::Type { ref default, .. } => {
+                GenericParamKind::Lifetime => self.visit_generic_param(param),
+                GenericParamKind::Type { ref default } => {
                     for bound in &param.bounds {
                         self.visit_param_bound(bound);
                     }
@@ -540,7 +558,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     // Allow all following defaults to refer to this type parameter.
                     default_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
                 }
-                GenericParamKind::Const { ref ty } => {
+                GenericParamKind::Const { ref ty, kw_span: _ } => {
                     for bound in &param.bounds {
                         self.visit_param_bound(bound);
                     }
@@ -697,7 +715,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn with_scope<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let id = self.r.definitions.local_def_id(id);
+        let id = self.r.local_def_id(id);
         let module = self.r.module_map.get(&id).cloned(); // clones a reference
         if let Some(module) = module {
             // Move down in the graph.
@@ -714,42 +732,86 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
-    /// Searches the current set of local scopes for labels. Returns the first non-`None` label that
-    /// is returned by the given predicate function
-    ///
-    /// Stops after meeting a closure.
-    fn search_label<P, R>(&self, mut ident: Ident, pred: P) -> Option<R>
-    where
-        P: Fn(&Rib<'_, NodeId>, Ident) -> Option<R>,
-    {
-        for rib in self.label_ribs.iter().rev() {
-            match rib.kind {
-                NormalRibKind => {}
+    /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
+    /// label and reports an error if the label is not found or is unreachable.
+    fn resolve_label(&self, mut label: Ident) -> Option<NodeId> {
+        let mut suggestion = None;
+
+        // Preserve the original span so that errors contain "in this macro invocation"
+        // information.
+        let original_span = label.span;
+
+        for i in (0..self.label_ribs.len()).rev() {
+            let rib = &self.label_ribs[i];
+
+            if let MacroDefinition(def) = rib.kind {
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
-                MacroDefinition(def) => {
-                    if def == self.r.macro_def(ident.span.ctxt()) {
-                        ident.span.remove_mark();
-                    }
-                }
-                _ => {
-                    // Do not resolve labels across function boundary
-                    return None;
+                if def == self.r.macro_def(label.span.ctxt()) {
+                    label.span.remove_mark();
                 }
             }
-            let r = pred(rib, ident);
-            if r.is_some() {
-                return r;
+
+            let ident = label.normalize_to_macro_rules();
+            if let Some((ident, id)) = rib.bindings.get_key_value(&ident) {
+                return if self.is_label_valid_from_rib(i) {
+                    Some(*id)
+                } else {
+                    self.r.report_error(
+                        original_span,
+                        ResolutionError::UnreachableLabel {
+                            name: &label.name.as_str(),
+                            definition_span: ident.span,
+                            suggestion,
+                        },
+                    );
+
+                    None
+                };
+            }
+
+            // Diagnostics: Check if this rib contains a label with a similar name, keep track of
+            // the first such label that is encountered.
+            suggestion = suggestion.or_else(|| self.suggestion_for_label_in_rib(i, label));
+        }
+
+        self.r.report_error(
+            original_span,
+            ResolutionError::UndeclaredLabel { name: &label.name.as_str(), suggestion },
+        );
+        None
+    }
+
+    /// Determine whether or not a label from the `rib_index`th label rib is reachable.
+    fn is_label_valid_from_rib(&self, rib_index: usize) -> bool {
+        let ribs = &self.label_ribs[rib_index + 1..];
+
+        for rib in ribs {
+            match rib.kind {
+                NormalRibKind | MacroDefinition(..) => {
+                    // Nothing to do. Continue.
+                }
+
+                AssocItemRibKind
+                | ClosureOrAsyncRibKind
+                | FnItemRibKind
+                | ItemRibKind(..)
+                | ConstantItemRibKind
+                | ModuleRibKind(..)
+                | ForwardTyParamBanRibKind => {
+                    return false;
+                }
             }
         }
-        None
+
+        true
     }
 
     fn resolve_adt(&mut self, item: &'ast Item, generics: &'ast Generics) {
         debug!("resolve_adt");
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                let item_def_id = this.r.definitions.local_def_id(item.id).to_def_id();
+                let item_def_id = this.r.local_def_id(item.id).to_def_id();
                 this.with_self_rib(Res::SelfTy(None, Some(item_def_id)), |this| {
                     visit::walk_item(this, item);
                 });
@@ -780,14 +842,14 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                         report_error(self, ns);
                     }
                     Some(LexicalScopeBinding::Item(binding)) => {
-                        let orig_blacklisted_binding =
-                            replace(&mut self.r.blacklisted_binding, Some(binding));
+                        let orig_unusable_binding =
+                            replace(&mut self.r.unusable_binding, Some(binding));
                         if let Some(LexicalScopeBinding::Res(..)) = self
                             .resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span)
                         {
                             report_error(self, ns);
                         }
-                        self.r.blacklisted_binding = orig_blacklisted_binding;
+                        self.r.unusable_binding = orig_unusable_binding;
                     }
                     None => {}
                 }
@@ -829,7 +891,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::Trait(.., ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.definitions.local_def_id(item.id).to_def_id();
+                    let local_def_id = this.r.local_def_id(item.id).to_def_id();
                     this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
@@ -870,7 +932,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ItemKind::TraitAlias(ref generics, ref bounds) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.definitions.local_def_id(item.id).to_def_id();
+                    let local_def_id = this.r.local_def_id(item.id).to_def_id();
                     this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
@@ -951,7 +1013,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             seen_bindings.entry(ident).or_insert(param.ident.span);
 
             // Plain insert (no renaming).
-            let res = Res::Def(def_kind, self.r.definitions.local_def_id(param.id).to_def_id());
+            let res = Res::Def(def_kind, self.r.local_def_id(param.id).to_def_id());
 
             match param.kind {
                 GenericParamKind::Type { .. } => {
@@ -1101,7 +1163,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             this.with_self_rib(Res::SelfTy(None, None), |this| {
                 // Resolve the trait reference, if necessary.
                 this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
-                    let item_def_id = this.r.definitions.local_def_id(item_id).to_def_id();
+                    let item_def_id = this.r.local_def_id(item_id).to_def_id();
                     this.with_self_rib(Res::SelfTy(trait_id, Some(item_def_id)), |this| {
                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
                             // Resolve type arguments in the trait path.
@@ -1194,7 +1256,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn check_trait_item<F>(&mut self, ident: Ident, ns: Namespace, span: Span, err: F)
     where
-        F: FnOnce(Name, &str) -> ResolutionError<'_>,
+        F: FnOnce(Symbol, &str) -> ResolutionError<'_>,
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the
         // trait.
@@ -1322,7 +1384,8 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         // 3) Report all missing variables we found.
         let mut missing_vars = missing_vars.iter_mut().collect::<Vec<_>>();
-        missing_vars.sort();
+        missing_vars.sort_by_key(|(sym, _err)| sym.as_str());
+
         for (name, mut v) in missing_vars {
             if inconsistent_vars.contains_key(name) {
                 v.could_be_path = false;
@@ -1522,22 +1585,26 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         has_sub: bool,
     ) -> Option<Res> {
+        // An immutable (no `mut`) by-value (no `ref`) binding pattern without
+        // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
+        // also be interpreted as a path to e.g. a constant, variant, etc.
+        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
+
         let ls_binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?;
         let (res, binding) = match ls_binding {
-            LexicalScopeBinding::Item(binding) if binding.is_ambiguity() => {
+            LexicalScopeBinding::Item(binding)
+                if is_syntactic_ambiguity && binding.is_ambiguity() =>
+            {
                 // For ambiguous bindings we don't know all their definitions and cannot check
                 // whether they can be shadowed by fresh bindings or not, so force an error.
+                // issues/33118#issuecomment-233962221 (see below) still applies here,
+                // but we have to ignore it for backward compatibility.
                 self.r.record_use(ident, ValueNS, binding, false);
                 return None;
             }
             LexicalScopeBinding::Item(binding) => (binding.res(), Some(binding)),
             LexicalScopeBinding::Res(res) => (res, None),
         };
-
-        // An immutable (no `mut`) by-value (no `ref`) binding pattern without
-        // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
-        // also be interpreted as a path to e.g. a constant, variant, etc.
-        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
         match res {
             Res::SelfCtor(_) // See #70549.
@@ -1615,13 +1682,81 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         let report_errors = |this: &mut Self, res: Option<Res>| {
             let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
+
             let def_id = this.parent_scope.module.normal_ancestor_id;
-            let node_id = this.r.definitions.as_local_node_id(def_id).unwrap();
-            let better = res.is_some();
+            let instead = res.is_some();
             let suggestion =
                 if res.is_none() { this.report_missing_type_error(path) } else { None };
-            this.r.use_injections.push(UseError { err, candidates, node_id, better, suggestion });
+
+            this.r.use_injections.push(UseError { err, candidates, def_id, instead, suggestion });
+
             PartialRes::new(Res::Err)
+        };
+
+        // For paths originating from calls (like in `HashMap::new()`), tries
+        // to enrich the plain `failed to resolve: ...` message with hints
+        // about possible missing imports.
+        //
+        // Similar thing, for types, happens in `report_errors` above.
+        let report_errors_for_call = |this: &mut Self, parent_err: Spanned<ResolutionError<'a>>| {
+            if !source.is_call() {
+                return Some(parent_err);
+            }
+
+            // Before we start looking for candidates, we have to get our hands
+            // on the type user is trying to perform invocation on; basically:
+            // we're transforming `HashMap::new` into just `HashMap`
+            let path = if let Some((_, path)) = path.split_last() {
+                path
+            } else {
+                return Some(parent_err);
+            };
+
+            let (mut err, candidates) =
+                this.smart_resolve_report_errors(path, span, PathSource::Type, None);
+
+            if candidates.is_empty() {
+                err.cancel();
+                return Some(parent_err);
+            }
+
+            // There are two different error messages user might receive at
+            // this point:
+            // - E0412 cannot find type `{}` in this scope
+            // - E0433 failed to resolve: use of undeclared type or module `{}`
+            //
+            // The first one is emitted for paths in type-position, and the
+            // latter one - for paths in expression-position.
+            //
+            // Thus (since we're in expression-position at this point), not to
+            // confuse the user, we want to keep the *message* from E0432 (so
+            // `parent_err`), but we want *hints* from E0412 (so `err`).
+            //
+            // And that's what happens below - we're just mixing both messages
+            // into a single one.
+            let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
+
+            parent_err.cancel();
+
+            err.message = take(&mut parent_err.message);
+            err.code = take(&mut parent_err.code);
+            err.children = take(&mut parent_err.children);
+
+            drop(parent_err);
+
+            let def_id = this.parent_scope.module.normal_ancestor_id;
+
+            this.r.use_injections.push(UseError {
+                err,
+                candidates,
+                def_id,
+                instead: false,
+                suggestion: None,
+            });
+
+            // We don't return `Some(parent_err)` here, because the error will
+            // be already printed as part of the `use` injections
+            None
         };
 
         let partial_res = match self.resolve_qpath_anywhere(
@@ -1633,14 +1768,15 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             source.defer_to_typeck(),
             crate_lint,
         ) {
-            Some(partial_res) if partial_res.unresolved_segments() == 0 => {
+            Ok(Some(partial_res)) if partial_res.unresolved_segments() == 0 => {
                 if is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err {
                     partial_res
                 } else {
                     report_errors(self, Some(partial_res.base_res()))
                 }
             }
-            Some(partial_res) if source.defer_to_typeck() => {
+
+            Ok(Some(partial_res)) if source.defer_to_typeck() => {
                 // Not fully resolved associated item `T::A::B` or `<T as Tr>::A::B`
                 // or `<T>::A::B`. If `B` should be resolved in value namespace then
                 // it needs to be added to the trait map.
@@ -1651,25 +1787,34 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 }
 
                 let mut std_path = vec![Segment::from_ident(Ident::with_dummy_span(sym::std))];
+
                 std_path.extend(path);
+
                 if self.r.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
-                    let cl = CrateLint::No;
-                    let ns = Some(ns);
                     if let PathResult::Module(_) | PathResult::NonModule(_) =
-                        self.resolve_path(&std_path, ns, false, span, cl)
+                        self.resolve_path(&std_path, Some(ns), false, span, CrateLint::No)
                     {
-                        // check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
+                        // Check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
                         let item_span =
                             path.iter().last().map(|segment| segment.ident.span).unwrap_or(span);
-                        debug!("accessed item from `std` submodule as a bare type {:?}", std_path);
+
                         let mut hm = self.r.session.confused_type_with_std_module.borrow_mut();
                         hm.insert(item_span, span);
-                        // In some places (E0223) we only have access to the full path
                         hm.insert(span, span);
                     }
                 }
+
                 partial_res
             }
+
+            Err(err) => {
+                if let Some(err) = report_errors_for_call(self, err) {
+                    self.r.report_error(err.span, err.node);
+                }
+
+                PartialRes::new(Res::Err)
+            }
+
             _ => report_errors(self, None),
         };
 
@@ -1678,6 +1823,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
             self.r.record_partial_res(id, partial_res);
         }
+
         partial_res
     }
 
@@ -1707,17 +1853,16 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         span: Span,
         defer_to_typeck: bool,
         crate_lint: CrateLint,
-    ) -> Option<PartialRes> {
+    ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
         let mut fin_res = None;
+
         for (i, ns) in [primary_ns, TypeNS, ValueNS].iter().cloned().enumerate() {
             if i == 0 || ns != primary_ns {
-                match self.resolve_qpath(id, qself, path, ns, span, crate_lint) {
-                    // If defer_to_typeck, then resolution > no resolution,
-                    // otherwise full resolution > partial resolution > no resolution.
+                match self.resolve_qpath(id, qself, path, ns, span, crate_lint)? {
                     Some(partial_res)
                         if partial_res.unresolved_segments() == 0 || defer_to_typeck =>
                     {
-                        return Some(partial_res);
+                        return Ok(Some(partial_res));
                     }
                     partial_res => {
                         if fin_res.is_none() {
@@ -1728,19 +1873,19 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
         }
 
-        // `MacroNS`
         assert!(primary_ns != MacroNS);
+
         if qself.is_none() {
             let path_seg = |seg: &Segment| PathSegment::from_ident(seg.ident);
             let path = Path { segments: path.iter().map(path_seg).collect(), span };
             if let Ok((_, res)) =
                 self.r.resolve_macro_path(&path, None, &self.parent_scope, false, false)
             {
-                return Some(PartialRes::new(res));
+                return Ok(Some(PartialRes::new(res)));
             }
         }
 
-        fin_res
+        Ok(fin_res)
     }
 
     /// Handles paths that may refer to associated items.
@@ -1752,7 +1897,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ns: Namespace,
         span: Span,
         crate_lint: CrateLint,
-    ) -> Option<PartialRes> {
+    ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
         debug!(
             "resolve_qpath(id={:?}, qself={:?}, path={:?}, ns={:?}, span={:?})",
             id, qself, path, ns, span,
@@ -1763,10 +1908,10 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // This is a case like `<T>::B`, where there is no
                 // trait to resolve.  In that case, we leave the `B`
                 // segment to be resolved by type-check.
-                return Some(PartialRes::with_unresolved_segments(
+                return Ok(Some(PartialRes::with_unresolved_segments(
                     Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX)),
                     path.len(),
-                ));
+                )));
             }
 
             // Make sure `A::B` in `<T as A::B>::C` is a trait item.
@@ -1796,10 +1941,10 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // The remaining segments (the `C` in our example) will
             // have to be resolved by type-check, since that requires doing
             // trait resolution.
-            return Some(PartialRes::with_unresolved_segments(
+            return Ok(Some(PartialRes::with_unresolved_segments(
                 partial_res.base_res(),
                 partial_res.unresolved_segments() + path.len() - qself.position - 1,
-            ));
+            )));
         }
 
         let result = match self.resolve_path(&path, Some(ns), true, span, crate_lint) {
@@ -1834,11 +1979,10 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 PartialRes::new(module.res().unwrap())
             }
             PathResult::Failed { is_error_from_last_segment: false, span, label, suggestion } => {
-                self.r.report_error(span, ResolutionError::FailedToResolve { label, suggestion });
-                PartialRes::new(Res::Err)
+                return Err(respan(span, ResolutionError::FailedToResolve { label, suggestion }));
             }
-            PathResult::Module(..) | PathResult::Failed { .. } => return None,
-            PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
+            PathResult::Module(..) | PathResult::Failed { .. } => return Ok(None),
+            PathResult::Indeterminate => bug!("indeterminate path result in resolve_qpath"),
         };
 
         if path.len() > 1
@@ -1858,7 +2002,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         module.res().unwrap()
                     }
-                    _ => return Some(result),
+                    _ => return Ok(Some(result)),
                 }
             };
             if result.base_res() == unqualified_result {
@@ -1867,7 +2011,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
         }
 
-        Some(result)
+        Ok(Some(result))
     }
 
     fn with_resolved_label(&mut self, label: Option<Label>, id: NodeId, f: impl FnOnce(&mut Self)) {
@@ -1910,7 +2054,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if let StmtKind::Item(ref item) = stmt.kind {
                 if let ItemKind::MacroDef(..) = item.kind {
                     num_macro_definition_ribs += 1;
-                    let res = self.r.definitions.local_def_id(item.id).to_def_id();
+                    let res = self.r.local_def_id(item.id).to_def_id();
                     self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
                     self.label_ribs.push(Rib::new(MacroDefinition(res)));
                 }
@@ -1951,35 +2095,10 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                let node_id = self.search_label(label.ident, |rib, ident| {
-                    rib.bindings.get(&ident.normalize_to_macro_rules()).cloned()
-                });
-                match node_id {
-                    None => {
-                        // Search again for close matches...
-                        // Picks the first label that is "close enough", which is not necessarily
-                        // the closest match
-                        let close_match = self.search_label(label.ident, |rib, ident| {
-                            let names = rib.bindings.iter().filter_map(|(id, _)| {
-                                if id.span.ctxt() == label.ident.span.ctxt() {
-                                    Some(&id.name)
-                                } else {
-                                    None
-                                }
-                            });
-                            find_best_match_for_name(names, &ident.as_str(), None)
-                        });
-                        self.r.record_partial_res(expr.id, PartialRes::new(Res::Err));
-                        self.r.report_error(
-                            label.ident.span,
-                            ResolutionError::UndeclaredLabel(&label.ident.as_str(), close_match),
-                        );
-                    }
-                    Some(node_id) => {
-                        // Since this res is a label, it is never read.
-                        self.r.label_res_map.insert(expr.id, node_id);
-                        self.diagnostic_metadata.unused_labels.remove(&node_id);
-                    }
+                if let Some(node_id) = self.resolve_label(label.ident) {
+                    // Since this res is a label, it is never read.
+                    self.r.label_res_map.insert(expr.id, node_id);
+                    self.diagnostic_metadata.unused_labels.remove(&node_id);
                 }
 
                 // visit `break` argument if any
@@ -1996,7 +2115,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     this.visit_expr(cond);
                     this.visit_block(then);
                 });
-                opt_else.as_ref().map(|expr| self.visit_expr(expr));
+                if let Some(expr) = opt_else {
+                    self.visit_expr(expr);
+                }
             }
 
             ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
@@ -2024,7 +2145,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::Field(ref subexpression, _) => {
                 self.resolve_expr(subexpression, Some(expr));
             }
-            ExprKind::MethodCall(ref segment, ref arguments) => {
+            ExprKind::MethodCall(ref segment, ref arguments, _) => {
                 let mut arguments = arguments.iter();
                 self.resolve_expr(arguments.next().unwrap(), Some(expr));
                 for argument in arguments {
@@ -2049,20 +2170,25 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // closure are detected as upvars rather than normal closure arg usages.
             ExprKind::Closure(_, Async::Yes { .. }, _, ref fn_decl, ref body, _span) => {
                 self.with_rib(ValueNS, NormalRibKind, |this| {
-                    // Resolve arguments:
-                    this.resolve_params(&fn_decl.inputs);
-                    // No need to resolve return type --
-                    // the outer closure return type is `FnRetTy::Default`.
+                    this.with_label_rib(ClosureOrAsyncRibKind, |this| {
+                        // Resolve arguments:
+                        this.resolve_params(&fn_decl.inputs);
+                        // No need to resolve return type --
+                        // the outer closure return type is `FnRetTy::Default`.
 
-                    // Now resolve the inner closure
-                    {
-                        // No need to resolve arguments: the inner closure has none.
-                        // Resolve the return type:
-                        visit::walk_fn_ret_ty(this, &fn_decl.output);
-                        // Resolve the body
-                        this.visit_expr(body);
-                    }
+                        // Now resolve the inner closure
+                        {
+                            // No need to resolve arguments: the inner closure has none.
+                            // Resolve the return type:
+                            visit::walk_fn_ret_ty(this, &fn_decl.output);
+                            // Resolve the body
+                            this.visit_expr(body);
+                        }
+                    })
                 });
+            }
+            ExprKind::Async(..) | ExprKind::Closure(..) => {
+                self.with_label_rib(ClosureOrAsyncRibKind, |this| visit::walk_expr(this, expr));
             }
             _ => {
                 visit::walk_expr(self, expr);
@@ -2095,7 +2221,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         mut ident: Ident,
         ns: Namespace,
-    ) -> Vec<TraitCandidate<NodeId>> {
+    ) -> Vec<TraitCandidate> {
         debug!("(getting traits containing item) looking for '{}'", ident.name);
 
         let mut found_traits = Vec::new();
@@ -2140,7 +2266,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         ident: Ident,
         ns: Namespace,
         module: Module<'a>,
-        found_traits: &mut Vec<TraitCandidate<NodeId>>,
+        found_traits: &mut Vec<TraitCandidate>,
     ) {
         assert!(ns == TypeNS || ns == ValueNS);
         let mut traits = module.traits.borrow_mut();
@@ -2199,12 +2325,13 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         mut kind: &NameBindingKind<'_>,
         trait_name: Ident,
-    ) -> SmallVec<[NodeId; 1]> {
+    ) -> SmallVec<[LocalDefId; 1]> {
         let mut import_ids = smallvec![];
         while let NameBindingKind::Import { import, binding, .. } = kind {
-            self.r.maybe_unused_trait_imports.insert(import.id);
+            let id = self.r.local_def_id(import.id);
+            self.r.maybe_unused_trait_imports.insert(id);
             self.r.add_to_glob_map(&import, trait_name);
-            import_ids.push(import.id);
+            import_ids.push(id);
             kind = &binding.kind;
         }
         import_ids

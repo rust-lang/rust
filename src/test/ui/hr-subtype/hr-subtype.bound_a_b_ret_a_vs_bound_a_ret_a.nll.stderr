@@ -1,0 +1,14 @@
+error: higher-ranked subtype error
+  --> $DIR/hr-subtype.rs:45:13
+   |
+LL |               gimme::<$t1>(None::<$t2>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | / check! { bound_a_b_ret_a_vs_bound_a_ret_a: (for<'a,'b> fn(&'a u32, &'b u32) -> &'a u32,
+LL | | for<'a>    fn(&'a u32, &'a u32) -> &'a u32) }
+   | |_____________________________________________- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

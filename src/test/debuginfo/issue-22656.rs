@@ -4,7 +4,6 @@
 
 // min-lldb-version: 310
 // ignore-gdb
-// ignore-tidy-linelength
 
 // compile-flags:-g
 
@@ -12,11 +11,11 @@
 // lldb-command:run
 
 // lldb-command:print v
-// lldbg-check:[...]$0 = vec![1, 2, 3]
-// lldbr-check:(alloc::vec::Vec<i32>) v = vec![1, 2, 3]
+// lldbg-check:[...]$0 = size=3 { [0] = 1 [1] = 2 [2] = 3 }
+// lldbr-check:(alloc::vec::Vec<i32>) v = size=3 { [0] = 1 [1] = 2 [2] = 3 }
 // lldb-command:print zs
-// lldbg-check:[...]$1 = StructWithZeroSizedField { x: ZeroSizedStruct[...], y: 123, z: ZeroSizedStruct[...], w: 456 }
-// lldbr-check:(issue_22656::StructWithZeroSizedField) zs = StructWithZeroSizedField { x: ZeroSizedStruct { }, y: 123, z: ZeroSizedStruct { }, w: 456 }
+// lldbg-check:[...]$1 = { x = y = 123 z = w = 456 }
+// lldbr-check:(issue_22656::StructWithZeroSizedField) zs = { x = y = 123 z = w = 456 }
 // lldbr-command:continue
 
 #![allow(unused_variables)]

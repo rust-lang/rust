@@ -1,13 +1,19 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
+use rustc_errors::ErrorReported;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::lang_items::DropInPlaceFnLangItem;
+use rustc_hir::lang_items::{DropInPlaceFnLangItem, FnOnceTraitLangItem};
 use rustc_macros::HashStable;
 
 use std::fmt;
 
+/// A monomorphized `InstanceDef`.
+///
+/// Monomorphization happens on-the-fly and no monomorphized MIR is ever created. Instead, this type
+/// simply couples a potentially generic `InstanceDef` with some substs, and codegen and const eval
+/// will do all required substitution as they run.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, Lift)]
 pub struct Instance<'tcx> {
@@ -17,10 +23,26 @@ pub struct Instance<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InstanceDef<'tcx> {
+    /// A user-defined callable item.
+    ///
+    /// This includes:
+    /// - `fn` items
+    /// - closures
+    /// - generators
     Item(DefId),
+
+    /// An intrinsic `fn` item (with `"rust-intrinsic"` or `"platform-intrinsic"` ABI).
+    ///
+    /// Alongside `Virtual`, this is the only `InstanceDef` that does not have its own callable MIR.
+    /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
+    /// caller.
     Intrinsic(DefId),
 
-    /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
+    /// `<T as Trait>::method` where `method` receives unsizeable `self: Self` (part of the
+    /// `unsized_locals` feature).
+    ///
+    /// The generated shim will take `Self` via `*mut Self` - conceptually this is `&owned Self` -
+    /// and dereference the argument to call the original function.
     VtableShim(DefId),
 
     /// `fn()` pointer where the function itself cannot be turned into a pointer.
@@ -36,7 +58,8 @@ pub enum InstanceDef<'tcx> {
     /// (the definition of the function itself).
     ReifyShim(DefId),
 
-    /// `<fn() as FnTrait>::call_*`
+    /// `<fn() as FnTrait>::call_*` (generated `FnTrait` implementation for `fn()` pointers).
+    ///
     /// `DefId` is `FnTrait::call_*`.
     ///
     /// NB: the (`fn` pointer) type must currently be monomorphic to avoid double substitution
@@ -44,19 +67,22 @@ pub enum InstanceDef<'tcx> {
     // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     FnPtrShim(DefId, Ty<'tcx>),
 
-    /// `<dyn Trait as Trait>::fn`, "direct calls" of which are implicitly
-    /// codegen'd as virtual calls.
+    /// Dynamic dispatch to `<dyn Trait as Trait>::fn`.
     ///
-    /// NB: if this is reified to a `fn` pointer, a `ReifyShim` is used
-    /// (see `ReifyShim` above for more details on that).
+    /// This `InstanceDef` does not have callable MIR. Calls to `Virtual` instances must be
+    /// codegen'd as virtual calls through the vtable.
+    ///
+    /// If this is reified to a `fn` pointer, a `ReifyShim` is used (see `ReifyShim` above for more
+    /// details on that).
     Virtual(DefId, usize),
 
-    /// `<[mut closure] as FnOnce>::call_once`
-    ClosureOnceShim {
-        call_once: DefId,
-    },
+    /// `<[FnMut closure] as FnOnce>::call_once`.
+    ///
+    /// The `DefId` is the ID of the `call_once` method in `FnOnce`.
+    ClosureOnceShim { call_once: DefId },
 
     /// `core::ptr::drop_in_place::<T>`.
+    ///
     /// The `DefId` is for `core::ptr::drop_in_place`.
     /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop
     /// glue.
@@ -66,7 +92,12 @@ pub enum InstanceDef<'tcx> {
     // FIXME(#69925) support polymorphic MIR shim bodies properly instead.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
-    ///`<T as Clone>::clone` shim.
+    /// Compiler-generated `<T as Clone>::clone` implementation.
+    ///
+    /// For all types that automatically implement `Copy`, a trivial `Clone` impl is provided too.
+    /// Additionally, arrays, tuples, and closures get a `Clone` shim even if they aren't `Copy`.
+    ///
+    /// The `DefId` is for `Clone::clone`, the `Ty` is the type `T` with the builtin `Clone` impl.
     ///
     /// NB: the type must currently be monomorphic to avoid double substitution
     /// problems with the MIR shim bodies. `Instance::resolve` enforces this.
@@ -268,29 +299,41 @@ impl<'tcx> Instance<'tcx> {
     /// this is used to find the precise code that will run for a trait method invocation,
     /// if known.
     ///
-    /// Returns `None` if we cannot resolve `Instance` to a specific instance.
+    /// Returns `Ok(None)` if we cannot resolve `Instance` to a specific instance.
     /// For example, in a context like this,
     ///
     /// ```
     /// fn foo<T: Debug>(t: T) { ... }
     /// ```
     ///
-    /// trying to resolve `Debug::fmt` applied to `T` will yield `None`, because we do not
+    /// trying to resolve `Debug::fmt` applied to `T` will yield `Ok(None)`, because we do not
     /// know what code ought to run. (Note that this setting is also affected by the
     /// `RevealMode` in the parameter environment.)
     ///
     /// Presuming that coherence and type-check have succeeded, if this method is invoked
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
-    /// `Some`.
+    /// `Ok(Some(instance))`.
+    ///
+    /// Returns `Err(ErrorReported)` when the `Instance` resolution process
+    /// couldn't complete due to errors elsewhere - this is distinct
+    /// from `Ok(None)` to avoid misleading diagnostics when an error
+    /// has already been/will be emitted, for the original cause
     pub fn resolve(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-    ) -> Option<Instance<'tcx>> {
+    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
-        tcx.resolve_instance((tcx.erase_regions(&param_env), def_id, tcx.erase_regions(&substs)))
+
+        // HACK(eddyb) erase regions in `substs` first, so that `param_env.and(...)`
+        // below is more likely to ignore the bounds in scope (e.g. if the only
+        // generic parameters mentioned by `substs` were lifetime ones).
+        let substs = tcx.erase_regions(&substs);
+
+        // FIXME(eddyb) should this always use `param_env.with_reveal_all()`?
+        tcx.resolve_instance(tcx.erase_regions(&param_env.and((def_id, substs))))
     }
 
     pub fn resolve_for_fn_ptr(
@@ -300,7 +343,7 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        Instance::resolve(tcx, param_env, def_id, substs).map(|mut resolved| {
+        Instance::resolve(tcx, param_env, def_id, substs).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def_id) if resolved.def.requires_caller_location(tcx) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
@@ -332,7 +375,7 @@ impl<'tcx> Instance<'tcx> {
             debug!(" => associated item with unsizeable self: Self");
             Some(Instance { def: InstanceDef::VtableShim(def_id), substs })
         } else {
-            Instance::resolve(tcx, param_env, def_id, substs)
+            Instance::resolve(tcx, param_env, def_id, substs).ok().flatten()
         }
     }
 
@@ -353,7 +396,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(DropInPlaceFnLangItem, None);
         let substs = tcx.intern_substs(&[ty.into()]);
-        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap()
+        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
     }
 
     pub fn fn_once_adapter_instance(
@@ -362,7 +405,7 @@ impl<'tcx> Instance<'tcx> {
         substs: ty::SubstsRef<'tcx>,
     ) -> Instance<'tcx> {
         debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
-        let fn_once = tcx.lang_items().fn_once_trait().unwrap();
+        let fn_once = tcx.require_lang_item(FnOnceTraitLangItem, None);
         let call_once = tcx
             .associated_items(fn_once)
             .in_definition_order()

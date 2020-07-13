@@ -11,7 +11,7 @@ IMAGE_BASE:
     .long 1                    /* type = NT_VERSION */
 0:  .asciz "toolchain-version" /* name */
 1:  .align 4
-2:  .long 0                    /* desc - toolchain version number, 32-bit LE */
+2:  .long 1                    /* desc - toolchain version number, 32-bit LE */
 3:  .align 4
 
 .section .rodata
@@ -26,17 +26,9 @@ IMAGE_BASE:
 .Lxsave_clear:
 .org .+24
 .Lxsave_mxcsr:
-    .int 0
+    .short 0x1f80
 
 /*  We can store a bunch of data in the gap between MXCSR and the XSAVE header */
-
-/* MXCSR initialization value for ABI */
-.Lmxcsr_init:
-    .int 0x1f80
-
-/* x87 FPU control word initialization value for ABI */
-.Lfpucw_init:
-    .int 0x037f
 
 /*  The following symbols point at read-only data that will be filled in by the */
 /*  post-linker. */
@@ -68,10 +60,14 @@ IMAGE_BASE:
     globvar TEXT_BASE 8
     /*  The size in bytes of enclacve text section */
     globvar TEXT_SIZE 8
-    /*  The base address (relative to enclave start) of the enclave EH_FRM_HDR section */
-    globvar EH_FRM_HDR_BASE 8
-    /*  The size in bytes of enclacve EH_FRM_HDR section */
-    globvar EH_FRM_HDR_SIZE 8
+    /*  The base address (relative to enclave start) of the enclave .eh_frame_hdr section */
+    globvar EH_FRM_HDR_OFFSET 8
+    /*  The size in bytes of enclave .eh_frame_hdr section */
+    globvar EH_FRM_HDR_LEN 8
+    /*  The base address (relative to enclave start) of the enclave .eh_frame section */
+    globvar EH_FRM_OFFSET 8
+    /*  The size in bytes of enclacve .eh_frame section */
+    globvar EH_FRM_LEN 8
 
 .org .Lxsave_clear+512
 .Lxsave_header:
@@ -177,13 +173,17 @@ sgx_entry:
     jz .Lskip_debug_init
     mov %r10,%gs:tcsls_debug_panic_buf_ptr
 .Lskip_debug_init:
+/*  reset cpu state */
+    mov %rdx, %r10
+    mov $-1, %rax
+    mov $-1, %rdx
+    xrstor .Lxsave_clear(%rip)
+    mov %r10, %rdx
+
 /*  check if returning from usercall */
     mov %gs:tcsls_last_rsp,%r11
     test %r11,%r11
     jnz .Lusercall_ret
-/*  reset user state */
-    ldmxcsr .Lmxcsr_init(%rip)
-    fldcw .Lfpucw_init(%rip)
 /*  setup stack */
     mov %gs:tcsls_tos,%rsp /*  initially, RSP is not set to the correct value */
                            /*  here. This is fixed below under "adjust stack". */
@@ -324,7 +324,9 @@ usercall:
 /*  return */
     mov %rsi,%rax /*  RAX = return value */
     /* NOP: mov %rdx,%rdx */ /*  RDX = return value */
-    ret
+    pop %r11
+    lfence
+    jmp *%r11
 
 /*
 The following functions need to be defined externally:
@@ -343,20 +345,28 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
 .global get_tcs_addr
 get_tcs_addr:
     mov %gs:tcsls_tcs_addr,%rax
-    ret
+    pop %r11
+    lfence
+    jmp *%r11
 
 .global get_tls_ptr
 get_tls_ptr:
     mov %gs:tcsls_tls_ptr,%rax
-    ret
+    pop %r11
+    lfence
+    jmp *%r11
 
 .global set_tls_ptr
 set_tls_ptr:
     mov %rdi,%gs:tcsls_tls_ptr
-    ret
+    pop %r11
+    lfence
+    jmp *%r11
 
 .global take_debug_panic_buf_ptr
 take_debug_panic_buf_ptr:
     xor %rax,%rax
     xchg %gs:tcsls_debug_panic_buf_ptr,%rax
-    ret
+    pop %r11
+    lfence
+    jmp *%r11

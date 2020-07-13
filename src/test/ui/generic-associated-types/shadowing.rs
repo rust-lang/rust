@@ -18,12 +18,10 @@ impl<'a> NoShadow<'a> for &'a u32 {
 trait ShadowT<T> {
     type Bar<T>;
     //~^ ERROR the name `T` is already used
-    //~| ERROR type-generic associated types are not yet implemented
 }
 
 trait NoShadowT<T> {
     type Bar<U>; // OK
-    //~^ ERROR type-generic associated types are not yet implemented
 }
 
 impl<T> NoShadowT<T> for Option<T> {

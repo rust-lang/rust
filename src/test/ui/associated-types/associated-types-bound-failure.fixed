@@ -14,7 +14,7 @@ pub trait GetToInt
 }
 
 fn foo<G>(g: G) -> isize
-    where G : GetToInt, <G as GetToInt>::R: ToInt 
+    where G : GetToInt, <G as GetToInt>::R: ToInt
 {
     ToInt::to_int(&g.get()) //~ ERROR E0277
 }

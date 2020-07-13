@@ -96,7 +96,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             ));
 
             match result {
-                Ok(Some(Vtable::VtableImpl(_))) => {
+                Ok(Some(ImplSource::ImplSourceUserDefined(_))) => {
                     debug!(
                         "find_auto_trait_generics({:?}): \
                          manual impl found, bailing out",
@@ -195,7 +195,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             let body_id_map: FxHashMap<_, _> = infcx
                 .inner
                 .borrow()
-                .region_obligations
+                .region_obligations()
                 .iter()
                 .map(|&(id, _)| (id, vec![]))
                 .collect();
@@ -281,9 +281,8 @@ impl AutoTraitFinder<'tcx> {
             },
         }));
 
-        let mut computed_preds: FxHashSet<_> = param_env.caller_bounds.iter().cloned().collect();
-        let mut user_computed_preds: FxHashSet<_> =
-            user_env.caller_bounds.iter().cloned().collect();
+        let computed_preds = param_env.caller_bounds().iter();
+        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds().iter().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -305,11 +304,15 @@ impl AutoTraitFinder<'tcx> {
             let result = select.select(&obligation);
 
             match &result {
-                &Ok(Some(ref vtable)) => {
+                &Ok(Some(ref impl_source)) => {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
 
-                    if let Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) = vtable {
+                    if let ImplSource::ImplSourceUserDefined(ImplSourceUserDefinedData {
+                        impl_def_id,
+                        ..
+                    }) = impl_source
+                    {
                         // Blame 'tidy' for the weird bracket placement.
                         if infcx.tcx.impl_polarity(*impl_def_id) == ty::ImplPolarity::Negative {
                             debug!(
@@ -321,7 +324,7 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
 
-                    let obligations = vtable.clone().nested_obligations().into_iter();
+                    let obligations = impl_source.clone().nested_obligations().into_iter();
 
                     if !self.evaluate_nested_obligations(
                         ty,
@@ -341,7 +344,8 @@ impl AutoTraitFinder<'tcx> {
                         already_visited.remove(&pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
-                            ty::Predicate::Trait(pred, hir::Constness::NotConst),
+                            ty::PredicateKind::Trait(pred, hir::Constness::NotConst)
+                                .to_predicate(self.tcx),
                         );
                         predicates.push_back(pred);
                     } else {
@@ -358,17 +362,18 @@ impl AutoTraitFinder<'tcx> {
                 _ => panic!("Unexpected error for '{:?}': {:?}", ty, result),
             };
 
-            computed_preds.extend(user_computed_preds.iter().cloned());
-            let normalized_preds =
-                elaborate_predicates(tcx, computed_preds.iter().cloned().collect())
-                    .map(|o| o.predicate);
+            let normalized_preds = elaborate_predicates(
+                tcx,
+                computed_preds.clone().chain(user_computed_preds.iter().cloned()),
+            )
+            .map(|o| o.predicate);
             new_env =
-                ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal, None);
+                ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal(), None);
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_predicates(user_computed_preds.into_iter()),
-            user_env.reveal,
+            user_env.reveal(),
             None,
         );
         debug!(
@@ -410,8 +415,10 @@ impl AutoTraitFinder<'tcx> {
     ) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
-            if let (&ty::Predicate::Trait(new_trait, _), ty::Predicate::Trait(old_trait, _)) =
-                (&new_pred, old_pred)
+            if let (
+                ty::PredicateKind::Trait(new_trait, _),
+                ty::PredicateKind::Trait(old_trait, _),
+            ) = (new_pred.kind(), old_pred.kind())
             {
                 if new_trait.def_id() == old_trait.def_id() {
                     let new_substs = new_trait.skip_binder().trait_ref.substs;
@@ -629,8 +636,8 @@ impl AutoTraitFinder<'tcx> {
             //
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
-            match &predicate {
-                &ty::Predicate::Trait(p, _) => {
+            match predicate.kind() {
+                &ty::PredicateKind::Trait(p, _) => {
                     if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
                         && !only_projections
                         && is_new_pred
@@ -639,7 +646,7 @@ impl AutoTraitFinder<'tcx> {
                     }
                     predicates.push_back(p);
                 }
-                &ty::Predicate::Projection(p) => {
+                &ty::PredicateKind::Projection(p) => {
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
                         predicate
@@ -739,7 +746,7 @@ impl AutoTraitFinder<'tcx> {
                             if p.ty().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
-                                    v.clone().iter().cloned(),
+                                    v.into_iter(),
                                     computed_preds,
                                     fresh_preds,
                                     predicates,
@@ -764,12 +771,12 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                &ty::Predicate::RegionOutlives(ref binder) => {
+                &ty::PredicateKind::RegionOutlives(binder) => {
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
-                &ty::Predicate::TypeOutlives(ref binder) => {
+                &ty::PredicateKind::TypeOutlives(binder) => {
                     match (
                         binder.no_bound_vars(),
                         binder.map_bound_ref(|pred| pred.0).no_bound_vars(),

@@ -1,0 +1,28 @@
+// run-pass
+// ignore-cross-compile
+// ignore-stage1
+
+#![feature(rustc_private)]
+
+extern crate rustc_middle;
+extern crate rustc_target;
+
+use rustc_middle::mir::interpret::InitMask;
+use rustc_target::abi::Size;
+
+fn main() {
+    let mut mask = InitMask::new(Size::from_bytes(500), false);
+    assert!(!mask.get(Size::from_bytes(499)));
+    mask.set(Size::from_bytes(499), true);
+    assert!(mask.get(Size::from_bytes(499)));
+    mask.set_range_inbounds(Size::from_bytes(100), Size::from_bytes(256), true);
+    for i in 0..100 {
+        assert!(!mask.get(Size::from_bytes(i)));
+    }
+    for i in 100..256 {
+        assert!(mask.get(Size::from_bytes(i)));
+    }
+    for i in 256..499 {
+        assert!(!mask.get(Size::from_bytes(i)));
+    }
+}

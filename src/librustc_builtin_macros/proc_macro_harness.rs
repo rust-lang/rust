@@ -1,27 +1,27 @@
 use std::mem;
 
-use rustc_ast::ast::{self, Ident, NodeId};
+use rustc_ast::ast::{self, NodeId};
 use rustc_ast::attr;
 use rustc_ast::expand::is_proc_macro_attr;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast_pretty::pprust;
-use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::AstPass;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::smallvec;
 use std::cell::RefCell;
 
 struct ProcMacroDerive {
     id: NodeId,
-    trait_name: ast::Name,
+    trait_name: Symbol,
     function_name: Ident,
     span: Span,
-    attrs: Vec<ast::Name>,
+    attrs: Vec<Symbol>,
 }
 
 enum ProcMacroDefType {
@@ -52,7 +52,7 @@ struct CollectProcMacros<'a> {
 
 pub fn inject(
     sess: &ParseSess,
-    resolver: &mut dyn Resolver,
+    resolver: &mut dyn ResolverExpand,
     mut krate: ast::Crate,
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
@@ -480,7 +480,7 @@ fn mk_decls(
 
     let anon_constant = cx.item_const(
         span,
-        ast::Ident::new(kw::Underscore, span),
+        Ident::new(kw::Underscore, span),
         cx.ty(span, ast::TyKind::Tup(Vec::new())),
         block,
     );

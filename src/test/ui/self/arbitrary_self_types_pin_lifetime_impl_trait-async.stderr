@@ -1,16 +1,17 @@
-error: cannot infer an appropriate lifetime
+error[E0759]: cannot infer an appropriate lifetime
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:16
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                ^^^^                 ---------- this return type evaluates to the `'static` lifetime...
-   |                |
-   |                ...but this borrow...
+   |                ^^^^  ----------     ---------- ...and is required to live as long as `'static` here
+   |                |     |
+   |                |     this data with an anonymous lifetime `'_`...
+   |                ...is captured here...
    |
-note: ...can't outlive the lifetime `'_` as defined on the method body at 8:26
-  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:26
+help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'_` lifetime bound
    |
-LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                          ^
+LL |     async fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
+   |                                                ^^^^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0759`.

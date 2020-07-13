@@ -9,6 +9,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
    |                                         ^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0277]: `std::cell::RefCell<isize>` cannot be shared between threads safely
   --> $DIR/issue-7364.rs:6:1

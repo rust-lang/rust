@@ -3,7 +3,7 @@
 //! For an overview of what canonicalization is and how it fits into
 //! rustc, check out the [chapter in the rustc dev guide][c].
 //!
-//! [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
@@ -35,7 +35,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#canonicalizing-the-query
+    /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(
         &self,
         value: &V,
@@ -79,7 +79,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc dev guide][c].
     ///
-    /// [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html#canonicalizing-the-query-result
+    /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(&self, value: &V) -> Canonicalized<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
@@ -314,25 +314,25 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             }
 
             ty::ReVar(vid) => {
-                let r = self
+                let resolved_vid = self
                     .infcx
                     .unwrap()
                     .inner
                     .borrow_mut()
                     .unwrap_region_constraints()
-                    .opportunistic_resolve_var(self.tcx, vid);
+                    .opportunistic_resolve_var(vid);
                 debug!(
                     "canonical: region var found with vid {:?}, \
                      opportunistically resolved to {:?}",
                     vid, r
                 );
+                let r = self.tcx.reuse_or_mk_region(r, ty::ReVar(resolved_vid));
                 self.canonicalize_region_mode.canonicalize_free_region(self, r)
             }
 
             ty::ReStatic
             | ty::ReEarlyBound(..)
             | ty::ReFree(_)
-            | ty::ReScope(_)
             | ty::ReEmpty(_)
             | ty::RePlaceholder(..)
             | ty::ReErased => self.canonicalize_region_mode.canonicalize_free_region(self, r),
@@ -353,8 +353,10 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                     // `TyVar(vid)` is unresolved, track its universe index in the canonicalized
                     // result.
                     Err(mut ui) => {
-                        // FIXME: perf problem described in #55921.
-                        ui = ty::UniverseIndex::ROOT;
+                        if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
+                            // FIXME: perf problem described in #55921.
+                            ui = ty::UniverseIndex::ROOT;
+                        }
                         self.canonicalize_ty_var(
                             CanonicalVarInfo {
                                 kind: CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)),
@@ -402,7 +404,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Float(..)
             | ty::Adt(..)
             | ty::Str
-            | ty::Error
+            | ty::Error(_)
             | ty::Array(..)
             | ty::Slice(..)
             | ty::RawPtr(..)
@@ -413,7 +415,6 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Never
             | ty::Tuple(..)
             | ty::Projection(..)
-            | ty::UnnormalizedProjection(..)
             | ty::Foreign(..)
             | ty::Param(..)
             | ty::Opaque(..) => {
@@ -439,8 +440,10 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                     // `ConstVar(vid)` is unresolved, track its universe index in the
                     // canonicalized result
                     Err(mut ui) => {
-                        // FIXME: perf problem described in #55921.
-                        ui = ty::UniverseIndex::ROOT;
+                        if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
+                            // FIXME: perf problem described in #55921.
+                            ui = ty::UniverseIndex::ROOT;
+                        }
                         return self.canonicalize_const_var(
                             CanonicalVarInfo { kind: CanonicalVarKind::Const(ui) },
                             ct,

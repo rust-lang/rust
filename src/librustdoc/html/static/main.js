@@ -3,7 +3,7 @@
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
-/* global onEach, removeClass, updateLocalStorage */
+/* global onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -47,6 +47,16 @@ function getSearchElement() {
     return document.getElementById("search");
 }
 
+// Sets the focus on the search bar at the top of the page
+function focusSearchBar() {
+    getSearchInput().focus();
+}
+
+// Removes the focus from the search bar
+function defocusSearchBar() {
+    getSearchInput().blur();
+}
+
 (function() {
     "use strict";
 
@@ -81,6 +91,7 @@ function getSearchElement() {
 
     var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
     var search_input = getSearchInput();
+    var searchTimeout = null;
 
     // On the search screen, so you remain on the last tab you opened.
     //
@@ -89,12 +100,23 @@ function getSearchElement() {
     // 2 for "In Return Types"
     var currentTab = 0;
 
+    var mouseMovedAfterSearch = true;
+
     var titleBeforeSearch = document.title;
 
+    function clearInputTimeout() {
+        if (searchTimeout !== null) {
+            clearTimeout(searchTimeout);
+            searchTimeout = null;
+        }
+    }
+
     function getPageId() {
-        var id = document.location.href.split("#")[1];
-        if (id) {
-            return id.split("?")[0].split("&")[0];
+        if (window.location.hash) {
+            var tmp = window.location.hash.replace(/^#/, "");
+            if (tmp.length > 0) {
+                return tmp;
+            }
         }
         return null;
     }
@@ -144,6 +166,7 @@ function getSearchElement() {
         }
         addClass(main, "hidden");
         removeClass(search, "hidden");
+        mouseMovedAfterSearch = false;
     }
 
     function hideSearchResults(search) {
@@ -181,6 +204,7 @@ function getSearchElement() {
     var savedHash = "";
 
     function handleHashes(ev) {
+        var elem;
         var search = getSearchElement();
         if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
             // This block occurs when clicking on an element in the navbar while
@@ -190,7 +214,7 @@ function getSearchElement() {
             if (browserSupportsHistoryApi()) {
                 history.replaceState(hash, "", "?search=#" + hash);
             }
-            var elem = document.getElementById(hash);
+            elem = document.getElementById(hash);
             if (elem) {
                 elem.scrollIntoView();
             }
@@ -201,7 +225,7 @@ function getSearchElement() {
             if (savedHash.length === 0) {
                 return;
             }
-            var elem = document.getElementById(savedHash.slice(1)); // we remove the '#'
+            elem = document.getElementById(savedHash.slice(1)); // we remove the '#'
             if (!elem || !isHidden(elem)) {
                 return;
             }
@@ -324,7 +348,7 @@ function getSearchElement() {
     }
 
     function displayHelp(display, ev, help) {
-        var help = help ? help : getHelpElement();
+        help = help ? help : getHelpElement();
         if (display === true) {
             if (hasClass(help, "hidden")) {
                 ev.preventDefault();
@@ -344,6 +368,7 @@ function getSearchElement() {
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
+            clearInputTimeout();
             ev.preventDefault();
             hideSearchResults(search);
             document.title = titleBeforeSearch;
@@ -404,6 +429,12 @@ function getSearchElement() {
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
+    function resetMouseMoved(ev) {
+        mouseMovedAfterSearch = true;
+    }
+
+    document.addEventListener("mousemove", resetMouseMoved);
+
     var handleSourceHighlight = (function() {
         var prev_line_id = 0;
 
@@ -438,8 +469,8 @@ function getSearchElement() {
 
                 set_fragment(cur_line_id);
             }
-        }
-    })();
+        };
+    }());
 
     document.addEventListener("click", function(ev) {
         if (hasClass(ev.target, "collapse-toggle")) {
@@ -465,27 +496,30 @@ function getSearchElement() {
         }
     });
 
-    var x = document.getElementsByClassName("version-selector");
-    if (x.length > 0) {
-        x[0].onchange = function() {
-            var i, match,
-                url = document.location.href,
-                stripped = "",
-                len = rootPath.match(/\.\.\//g).length + 1;
+    (function() {
+        var x = document.getElementsByClassName("version-selector");
+        if (x.length > 0) {
+            x[0].onchange = function() {
+                var i, match,
+                    url = document.location.href,
+                    stripped = "",
+                    len = rootPath.match(/\.\.\//g).length + 1;
 
-            for (i = 0; i < len; ++i) {
-                match = url.match(/\/[^\/]*$/);
-                if (i < len - 1) {
-                    stripped = match[0] + stripped;
+                for (i = 0; i < len; ++i) {
+                    match = url.match(/\/[^\/]*$/);
+                    if (i < len - 1) {
+                        stripped = match[0] + stripped;
+                    }
+                    url = url.substring(0, url.length - match[0].length);
                 }
-                url = url.substring(0, url.length - match[0].length);
-            }
 
-            url += "/" + document.getElementsByClassName("version-selector")[0].value + stripped;
+                var selectedVersion = document.getElementsByClassName("version-selector")[0].value;
+                url += "/" + selectedVersion + stripped;
 
-            document.location.href = url;
-        };
-    }
+                document.location.href = url;
+            };
+        }
+    }());
 
     /**
      * A function to compute the Levenshtein distance between two strings
@@ -522,7 +556,7 @@ function getSearchElement() {
         return s1_len + s2_len;
     }
 
-    function initSearch(rawSearchIndex) {
+    window.initSearch = function(rawSearchIndex) {
         var MAX_LEV_DISTANCE = 3;
         var MAX_RESULTS = 200;
         var GENERICS_DATA = 1;
@@ -531,6 +565,7 @@ function getSearchElement() {
         var OUTPUT_DATA = 1;
         var NO_TYPE_FILTER = -1;
         var currentResults, index, searchIndex;
+        var ALIASES = {};
         var params = getQueryStringParams();
 
         // Populate search bar with query string search term when provided,
@@ -601,7 +636,7 @@ function getSearchElement() {
             function sortResults(results, isType) {
                 var ar = [];
                 for (var entry in results) {
-                    if (results.hasOwnProperty(entry)) {
+                    if (hasOwnProperty(results, entry)) {
                         ar.push(results[entry]);
                     }
                 }
@@ -963,6 +998,73 @@ function getSearchElement() {
                 return itemTypes[ty.ty] + ty.path + ty.name;
             }
 
+            function createAliasFromItem(item) {
+                return {
+                    crate: item.crate,
+                    name: item.name,
+                    path: item.path,
+                    desc: item.desc,
+                    ty: item.ty,
+                    parent: item.parent,
+                    type: item.type,
+                    is_alias: true,
+                };
+            }
+
+            function handleAliases(ret, query, filterCrates) {
+                // We separate aliases and crate aliases because we want to have current crate
+                // aliases to be before the others in the displayed results.
+                var aliases = [];
+                var crateAliases = [];
+                var i;
+                if (filterCrates !== undefined) {
+                    if (ALIASES[filterCrates] && ALIASES[filterCrates][query.search]) {
+                        for (i = 0; i < ALIASES[filterCrates][query.search].length; ++i) {
+                            aliases.push(
+                                createAliasFromItem(
+                                    searchIndex[ALIASES[filterCrates][query.search][i]]));
+                        }
+                    }
+                } else {
+                    Object.keys(ALIASES).forEach(function(crate) {
+                        if (ALIASES[crate][query.search]) {
+                            var pushTo = crate === window.currentCrate ? crateAliases : aliases;
+                            for (i = 0; i < ALIASES[crate][query.search].length; ++i) {
+                                pushTo.push(
+                                    createAliasFromItem(
+                                        searchIndex[ALIASES[crate][query.search][i]]));
+                            }
+                        }
+                    });
+                }
+
+                var sortFunc = function(aaa, bbb) {
+                    if (aaa.path < bbb.path) {
+                        return 1;
+                    } else if (aaa.path === bbb.path) {
+                        return 0;
+                    }
+                    return -1;
+                };
+                crateAliases.sort(sortFunc);
+                aliases.sort(sortFunc);
+
+                var pushFunc = function(alias) {
+                    alias.alias = query.raw;
+                    var res = buildHrefAndPath(alias);
+                    alias.displayPath = pathSplitter(res[0]);
+                    alias.fullPath = alias.displayPath + alias.name;
+                    alias.href = res[1];
+
+                    ret.others.unshift(alias);
+                    if (ret.others.length > MAX_RESULTS) {
+                        ret.others.pop();
+                    }
+                };
+                onEach(aliases, pushFunc);
+                onEach(crateAliases, pushFunc);
+            }
+
             // quoted values mean literal search
             var nSearchWords = searchWords.length;
             var i;
@@ -1033,8 +1135,6 @@ function getSearchElement() {
                     }
                     fullId = generateId(ty);
 
-                    // allow searching for void (no output) functions as well
-                    var typeOutput = type.length > OUTPUT_DATA ? type[OUTPUT_DATA].name : "";
                     returned = checkReturned(ty, output, true, NO_TYPE_FILTER);
                     if (output.name === "*" || returned === true) {
                         in_args = false;
@@ -1097,7 +1197,6 @@ function getSearchElement() {
                 var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
 
                 var lev;
-                var lev_distance;
                 for (j = 0; j < nSearchWords; ++j) {
                     ty = searchIndex[j];
                     if (!ty || (filterCrates !== undefined && ty.crate !== filterCrates)) {
@@ -1190,23 +1289,7 @@ function getSearchElement() {
                 "returned": sortResults(results_returned, true),
                 "others": sortResults(results),
             };
-            if (ALIASES && ALIASES[window.currentCrate] &&
-                    ALIASES[window.currentCrate][query.raw]) {
-                var aliases = ALIASES[window.currentCrate][query.raw];
-                for (i = 0; i < aliases.length; ++i) {
-                    aliases[i].is_alias = true;
-                    aliases[i].alias = query.raw;
-                    aliases[i].path = aliases[i].p;
-                    var res = buildHrefAndPath(aliases[i]);
-                    aliases[i].displayPath = pathSplitter(res[0]);
-                    aliases[i].fullPath = aliases[i].displayPath + aliases[i].name;
-                    aliases[i].href = res[1];
-                    ret.others.unshift(aliases[i]);
-                    if (ret.others.length > MAX_RESULTS) {
-                        ret.others.pop();
-                    }
-                }
-            }
+            handleAliases(ret, query, filterCrates);
             return ret;
         }
 
@@ -1282,20 +1365,22 @@ function getSearchElement() {
                 }
             };
             var mouseover_func = function(e) {
-                var el = e.target;
-                // to retrieve the real "owner" of the event.
-                while (el.tagName !== "TR") {
-                    el = el.parentNode;
-                }
-                clearTimeout(hoverTimeout);
-                hoverTimeout = setTimeout(function() {
-                    onEachLazy(document.getElementsByClassName("search-results"), function(e) {
-                        onEachLazy(e.getElementsByClassName("result"), function(i_e) {
-                            removeClass(i_e, "highlighted");
+                if (mouseMovedAfterSearch) {
+                    var el = e.target;
+                    // to retrieve the real "owner" of the event.
+                    while (el.tagName !== "TR") {
+                        el = el.parentNode;
+                    }
+                    clearTimeout(hoverTimeout);
+                    hoverTimeout = setTimeout(function() {
+                        onEachLazy(document.getElementsByClassName("search-results"), function(e) {
+                            onEachLazy(e.getElementsByClassName("result"), function(i_e) {
+                                removeClass(i_e, "highlighted");
+                            });
                         });
-                    });
-                    addClass(el, "highlighted");
-                }, 20);
+                        addClass(el, "highlighted");
+                    }, 20);
+                }
             };
             onEachLazy(document.getElementsByClassName("search-results"), function(e) {
                 onEachLazy(e.getElementsByClassName("result"), function(i_e) {
@@ -1325,6 +1410,7 @@ function getSearchElement() {
 
                     addClass(actives[currentTab][0].previousElementSibling, "highlighted");
                     removeClass(actives[currentTab][0], "highlighted");
+                    e.preventDefault();
                 } else if (e.which === 40) { // down
                     if (!actives[currentTab].length) {
                         var results = document.getElementById("results").childNodes;
@@ -1338,6 +1424,7 @@ function getSearchElement() {
                         addClass(actives[currentTab][0].nextElementSibling, "highlighted");
                         removeClass(actives[currentTab][0], "highlighted");
                     }
+                    e.preventDefault();
                 } else if (e.which === 13) { // return
                     if (actives[currentTab].length) {
                         document.location.href =
@@ -1599,19 +1686,18 @@ function getSearchElement() {
                     "returned": mergeArrays(results.returned),
                     "others": mergeArrays(results.others),
                 };
-            } else {
-                return {
-                    "in_args": results.in_args[0],
-                    "returned": results.returned[0],
-                    "others": results.others[0],
-                };
             }
+            return {
+                "in_args": results.in_args[0],
+                "returned": results.returned[0],
+                "others": results.others[0],
+            };
         }
 
         function getFilterCrates() {
             var elem = document.getElementById("crate-search");
 
-            if (elem && elem.value !== "All crates" && rawSearchIndex.hasOwnProperty(elem.value)) {
+            if (elem && elem.value !== "All crates" && hasOwnProperty(rawSearchIndex, elem.value)) {
                 return elem.value;
             }
             return undefined;
@@ -1656,9 +1742,12 @@ function getSearchElement() {
             searchIndex = [];
             var searchWords = [];
             var i;
+            var currentIndex = 0;
 
             for (var crate in rawSearchIndex) {
-                if (!rawSearchIndex.hasOwnProperty(crate)) { continue; }
+                if (!hasOwnProperty(rawSearchIndex, crate)) { continue; }
+
+                var crateSize = 0;
 
                 searchWords.push(crate);
                 searchIndex.push({
@@ -1669,6 +1758,7 @@ function getSearchElement() {
                     desc: rawSearchIndex[crate].doc,
                     type: null,
                 });
+                currentIndex += 1;
 
                 // an array of [(Number) item type,
                 //              (String) name,
@@ -1680,6 +1770,9 @@ function getSearchElement() {
                 // an array of [(Number) item type,
                 //              (String) name]
                 var paths = rawSearchIndex[crate].p;
+                // a array of [(String) alias name
+                //             [Number] index to items]
+                var aliases = rawSearchIndex[crate].a;
 
                 // convert `rawPaths` entries into object form
                 var len = paths.length;
@@ -1698,9 +1791,18 @@ function getSearchElement() {
                 var lastPath = "";
                 for (i = 0; i < len; ++i) {
                     var rawRow = items[i];
-                    var row = {crate: crate, ty: rawRow[0], name: rawRow[1],
-                               path: rawRow[2] || lastPath, desc: rawRow[3],
-                               parent: paths[rawRow[4]], type: rawRow[5]};
+                    if (!rawRow[2]) {
+                        rawRow[2] = lastPath;
+                    }
+                    var row = {
+                        crate: crate,
+                        ty: rawRow[0],
+                        name: rawRow[1],
+                        path: rawRow[2],
+                        desc: rawRow[3],
+                        parent: paths[rawRow[4]],
+                        type: rawRow[5],
+                    };
                     searchIndex.push(row);
                     if (typeof row.name === "string") {
                         var word = row.name.toLowerCase();
@@ -1709,15 +1811,32 @@ function getSearchElement() {
                         searchWords.push("");
                     }
                     lastPath = row.path;
+                    crateSize += 1;
                 }
+
+                if (aliases) {
+                    ALIASES[crate] = {};
+                    var j, local_aliases;
+                    for (var alias_name in aliases) {
+                        if (!aliases.hasOwnProperty(alias_name)) { continue; }
+
+                        if (!ALIASES[crate].hasOwnProperty(alias_name)) {
+                            ALIASES[crate][alias_name] = [];
+                        }
+                        local_aliases = aliases[alias_name];
+                        for (j = 0; j < local_aliases.length; ++j) {
+                            ALIASES[crate][alias_name].push(local_aliases[j] + currentIndex);
+                        }
+                    }
+                }
+                currentIndex += crateSize;
             }
             return searchWords;
         }
 
         function startSearch() {
-            var searchTimeout;
             var callback = function() {
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 if (search_input.value.length === 0) {
                     if (browserSupportsHistoryApi()) {
                         history.replaceState("", window.currentCrate + " - Rust", "?search=");
@@ -1731,7 +1850,7 @@ function getSearchElement() {
             search_input.oninput = callback;
             document.getElementsByClassName("search-form")[0].onsubmit = function(e) {
                 e.preventDefault();
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 search();
             };
             search_input.onchange = function(e) {
@@ -1740,7 +1859,7 @@ function getSearchElement() {
                     return;
                 }
                 // Do NOT e.preventDefault() here. It will prevent pasting.
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 // zero-timeout necessary here because at the time of event handler execution the
                 // pasted content is not in the input field yet. Shouldn’t make any difference for
                 // change, though.
@@ -1809,7 +1928,7 @@ function getSearchElement() {
 
                 var crates = [];
                 for (var crate in rawSearchIndex) {
-                    if (!rawSearchIndex.hasOwnProperty(crate)) {
+                    if (!hasOwnProperty(rawSearchIndex, crate)) {
                         continue;
                     }
                     crates.push(crate);
@@ -1833,12 +1952,11 @@ function getSearchElement() {
                 sidebar.appendChild(div);
             }
         }
-    }
+    };
 
-    window.initSearch = initSearch;
 
     // delayed sidebar rendering.
-    function initSidebarItems(items) {
+    window.initSidebarItems = function(items) {
         var sidebar = document.getElementsByClassName("sidebar-elems")[0];
         var current = window.sidebarCurrent;
 
@@ -1900,9 +2018,7 @@ function getSearchElement() {
         block("foreigntype", "Foreign Types");
         block("keyword", "Keywords");
         block("traitalias", "Trait Aliases");
-    }
-
-    window.initSidebarItems = initSidebarItems;
+    };
 
     window.register_implementors = function(imp) {
         var implementors = document.getElementById("implementors-list");
@@ -2079,19 +2195,13 @@ function getSearchElement() {
                         }
                     }
                     var ns = n.nextElementSibling;
-                    while (true) {
-                        if (ns && (
-                                hasClass(ns, "docblock") ||
-                                hasClass(ns, "stability"))) {
-                            if (addOrRemove) {
-                                addClass(ns, "hidden-by-impl-hider");
-                            } else {
-                                removeClass(ns, "hidden-by-impl-hider");
-                            }
-                            ns = ns.nextElementSibling;
-                            continue;
+                    while (ns && (hasClass(ns, "docblock") || hasClass(ns, "stability"))) {
+                        if (addOrRemove) {
+                            addClass(ns, "hidden-by-impl-hider");
+                        } else {
+                            removeClass(ns, "hidden-by-impl-hider");
                         }
-                        break;
+                        ns = ns.nextElementSibling;
                     }
                 }
             };
@@ -2164,7 +2274,7 @@ function getSearchElement() {
         }
     }
 
-    function collapser(e, collapse) {
+    function collapser(pageId, e, collapse) {
         // inherent impl ids are like "impl" or impl-<number>'.
         // they will never be hidden by default.
         var n = e.parentElement;
@@ -2180,11 +2290,11 @@ function getSearchElement() {
         if (collapse) {
             toggleAllDocs(pageId, true);
         } else if (getCurrentValue("rustdoc-auto-hide-trait-implementations") !== "false") {
-            var impl_list = document.getElementById("implementations-list");
+            var impl_list = document.getElementById("trait-implementations-list");
 
             if (impl_list !== null) {
                 onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(e, collapse);
+                    collapser(pageId, e, collapse);
                 });
             }
 
@@ -2192,7 +2302,7 @@ function getSearchElement() {
 
             if (blanket_list !== null) {
                 onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(e, collapse);
+                    collapser(pageId, e, collapse);
                 });
             }
         }
@@ -2216,103 +2326,7 @@ function getSearchElement() {
         return toggle;
     }
 
-    var toggle = createSimpleToggle(false);
-    var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
-    var pageId = getPageId();
-
-    var func = function(e) {
-        var next = e.nextElementSibling;
-        if (!next) {
-            return;
-        }
-        if (hasClass(next, "docblock") === true ||
-            (hasClass(next, "stability") === true &&
-             hasClass(next.nextElementSibling, "docblock") === true)) {
-            var newToggle = toggle.cloneNode(true);
-            insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
-            if (hideMethodDocs === true && hasClass(e, "method") === true) {
-                collapseDocs(newToggle, "hide", pageId);
-            }
-        }
-    };
-
-    var funcImpl = function(e) {
-        var next = e.nextElementSibling;
-        if (next && hasClass(next, "docblock")) {
-            next = next.nextElementSibling;
-        }
-        if (!next) {
-            return;
-        }
-        if (next.getElementsByClassName("method").length > 0 && hasClass(e, "impl")) {
-            insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
-        }
-    };
-
-    onEachLazy(document.getElementsByClassName("method"), func);
-    onEachLazy(document.getElementsByClassName("associatedconstant"), func);
-    onEachLazy(document.getElementsByClassName("impl"), funcImpl);
-    var impl_call = function() {};
-    if (hideMethodDocs === true) {
-        impl_call = function(e, newToggle, pageId) {
-            if (e.id.match(/^impl(?:-\d+)?$/) === null) {
-                // Automatically minimize all non-inherent impls
-                if (hasClass(e, "impl") === true) {
-                    collapseDocs(newToggle, "hide", pageId);
-                }
-            }
-        };
-    }
-    var newToggle = document.createElement("a");
-    newToggle.href = "javascript:void(0)";
-    newToggle.className = "collapse-toggle hidden-default collapsed";
-    newToggle.innerHTML = "[<span class=\"inner\">" + labelForToggleButton(true) +
-                          "</span>] Show hidden undocumented items";
-    function toggleClicked() {
-        if (hasClass(this, "collapsed")) {
-            removeClass(this, "collapsed");
-            onEachLazy(this.parentNode.getElementsByClassName("hidden"), function(x) {
-                if (hasClass(x, "content") === false) {
-                    removeClass(x, "hidden");
-                    addClass(x, "x");
-                }
-            }, true);
-            this.innerHTML = "[<span class=\"inner\">" + labelForToggleButton(false) +
-                             "</span>] Hide undocumented items";
-        } else {
-            addClass(this, "collapsed");
-            onEachLazy(this.parentNode.getElementsByClassName("x"), function(x) {
-                if (hasClass(x, "content") === false) {
-                    addClass(x, "hidden");
-                    removeClass(x, "x");
-                }
-            }, true);
-            this.innerHTML = "[<span class=\"inner\">" + labelForToggleButton(true) +
-                             "</span>] Show hidden undocumented items";
-        }
-    }
-    onEachLazy(document.getElementsByClassName("impl-items"), function(e) {
-        onEachLazy(e.getElementsByClassName("associatedconstant"), func);
-        var hiddenElems = e.getElementsByClassName("hidden");
-        var needToggle = false;
-
-        var hlength = hiddenElems.length;
-        for (var i = 0; i < hlength; ++i) {
-            if (hasClass(hiddenElems[i], "content") === false &&
-                hasClass(hiddenElems[i], "docblock") === false) {
-                needToggle = true;
-                break;
-            }
-        }
-        if (needToggle === true) {
-            var inner_toggle = newToggle.cloneNode(true);
-            inner_toggle.onclick = toggleClicked;
-            e.insertBefore(inner_toggle, e.firstChild);
-            impl_call(e.previousSibling, inner_toggle, pageId);
-        }
-    });
-
-    function createToggle(otherMessage, fontSize, extraClass, show) {
+    function createToggle(toggle, otherMessage, fontSize, extraClass, show) {
         var span = document.createElement("span");
         span.className = "toggle-label";
         if (show) {
@@ -2347,97 +2361,206 @@ function getSearchElement() {
         return wrapper;
     }
 
-    var currentType = document.getElementsByClassName("type-decl")[0];
-    var className = null;
-    if (currentType) {
-        currentType = currentType.getElementsByClassName("rust")[0];
-        if (currentType) {
-            currentType.classList.forEach(function(item) {
-                if (item !== "main") {
-                    className = item;
-                    return true;
-                }
-            });
-        }
-    }
-    var showItemDeclarations = getCurrentValue("rustdoc-auto-hide-" + className);
-    if (showItemDeclarations === null) {
-        if (className === "enum" || className === "macro") {
-            showItemDeclarations = "false";
-        } else if (className === "struct" || className === "union" || className === "trait") {
-            showItemDeclarations = "true";
-        } else {
-            // In case we found an unknown type, we just use the "parent" value.
-            showItemDeclarations = getCurrentValue("rustdoc-auto-hide-declarations");
-        }
-    }
-    showItemDeclarations = showItemDeclarations === "false";
-    function buildToggleWrapper(e) {
-        if (hasClass(e, "autohide")) {
-            var wrap = e.previousElementSibling;
-            if (wrap && hasClass(wrap, "toggle-wrapper")) {
-                var inner_toggle = wrap.childNodes[0];
-                var extra = e.childNodes[0].tagName === "H3";
+    (function() {
+        var toggle = createSimpleToggle(false);
+        var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
+        var pageId = getPageId();
 
-                e.style.display = "none";
-                addClass(wrap, "collapsed");
-                onEachLazy(inner_toggle.getElementsByClassName("inner"), function(e) {
-                    e.innerHTML = labelForToggleButton(true);
-                });
-                onEachLazy(inner_toggle.getElementsByClassName("toggle-label"), function(e) {
-                    e.style.display = "inline-block";
-                    if (extra === true) {
-                        i_e.innerHTML = " Show " + e.childNodes[0].innerHTML;
+        var func = function(e) {
+            var next = e.nextElementSibling;
+            if (!next) {
+                return;
+            }
+            if (hasClass(next, "docblock") === true ||
+                (hasClass(next, "stability") === true &&
+                 hasClass(next.nextElementSibling, "docblock") === true)) {
+                var newToggle = toggle.cloneNode(true);
+                insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
+                if (hideMethodDocs === true && hasClass(e, "method") === true) {
+                    collapseDocs(newToggle, "hide", pageId);
+                }
+            }
+        };
+
+        var funcImpl = function(e) {
+            var next = e.nextElementSibling;
+            if (next && hasClass(next, "docblock")) {
+                next = next.nextElementSibling;
+            }
+            if (!next) {
+                return;
+            }
+            if (hasClass(e, "impl") &&
+                (next.getElementsByClassName("method").length > 0 ||
+                 next.getElementsByClassName("associatedconstant").length > 0)) {
+                insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
+            }
+        };
+
+        onEachLazy(document.getElementsByClassName("method"), func);
+        onEachLazy(document.getElementsByClassName("associatedconstant"), func);
+        onEachLazy(document.getElementsByClassName("impl"), funcImpl);
+        var impl_call = function() {};
+        if (hideMethodDocs === true) {
+            impl_call = function(e, newToggle) {
+                if (e.id.match(/^impl(?:-\d+)?$/) === null) {
+                    // Automatically minimize all non-inherent impls
+                    if (hasClass(e, "impl") === true) {
+                        collapseDocs(newToggle, "hide", pageId);
+                    }
+                }
+            };
+        }
+        var newToggle = document.createElement("a");
+        newToggle.href = "javascript:void(0)";
+        newToggle.className = "collapse-toggle hidden-default collapsed";
+        newToggle.innerHTML = "[<span class=\"inner\">" + labelForToggleButton(true) +
+                              "</span>] Show hidden undocumented items";
+        function toggleClicked() {
+            if (hasClass(this, "collapsed")) {
+                removeClass(this, "collapsed");
+                onEachLazy(this.parentNode.getElementsByClassName("hidden"), function(x) {
+                    if (hasClass(x, "content") === false) {
+                        removeClass(x, "hidden");
+                        addClass(x, "x");
+                    }
+                }, true);
+                this.innerHTML = "[<span class=\"inner\">" + labelForToggleButton(false) +
+                                 "</span>] Hide undocumented items";
+            } else {
+                addClass(this, "collapsed");
+                onEachLazy(this.parentNode.getElementsByClassName("x"), function(x) {
+                    if (hasClass(x, "content") === false) {
+                        addClass(x, "hidden");
+                        removeClass(x, "x");
+                    }
+                }, true);
+                this.innerHTML = "[<span class=\"inner\">" + labelForToggleButton(true) +
+                                 "</span>] Show hidden undocumented items";
+            }
+        }
+        onEachLazy(document.getElementsByClassName("impl-items"), function(e) {
+            onEachLazy(e.getElementsByClassName("associatedconstant"), func);
+            var hiddenElems = e.getElementsByClassName("hidden");
+            var needToggle = false;
+
+            var hlength = hiddenElems.length;
+            for (var i = 0; i < hlength; ++i) {
+                if (hasClass(hiddenElems[i], "content") === false &&
+                    hasClass(hiddenElems[i], "docblock") === false) {
+                    needToggle = true;
+                    break;
+                }
+            }
+            if (needToggle === true) {
+                var inner_toggle = newToggle.cloneNode(true);
+                inner_toggle.onclick = toggleClicked;
+                e.insertBefore(inner_toggle, e.firstChild);
+                impl_call(e.previousSibling, inner_toggle);
+            }
+        });
+
+        var currentType = document.getElementsByClassName("type-decl")[0];
+        var className = null;
+        if (currentType) {
+            currentType = currentType.getElementsByClassName("rust")[0];
+            if (currentType) {
+                currentType.classList.forEach(function(item) {
+                    if (item !== "main") {
+                        className = item;
+                        return true;
                     }
                 });
             }
         }
-        if (e.parentNode.id === "main") {
-            var otherMessage = "";
-            var fontSize;
-            var extraClass;
-
-            if (hasClass(e, "type-decl")) {
-                fontSize = "20px";
-                otherMessage = "&nbsp;Show&nbsp;declaration";
-                if (showItemDeclarations === false) {
-                    extraClass = "collapsed";
-                }
-            } else if (hasClass(e, "sub-variant")) {
-                otherMessage = "&nbsp;Show&nbsp;fields";
-            } else if (hasClass(e, "non-exhaustive")) {
-                otherMessage = "&nbsp;This&nbsp;";
-                if (hasClass(e, "non-exhaustive-struct")) {
-                    otherMessage += "struct";
-                } else if (hasClass(e, "non-exhaustive-enum")) {
-                    otherMessage += "enum";
-                } else if (hasClass(e, "non-exhaustive-variant")) {
-                    otherMessage += "enum variant";
-                } else if (hasClass(e, "non-exhaustive-type")) {
-                    otherMessage += "type";
-                }
-                otherMessage += "&nbsp;is&nbsp;marked&nbsp;as&nbsp;non-exhaustive";
-            } else if (hasClass(e.childNodes[0], "impl-items")) {
-                extraClass = "marg-left";
-            }
-
-            e.parentNode.insertBefore(
-                createToggle(otherMessage,
-                             fontSize,
-                             extraClass,
-                             hasClass(e, "type-decl") === false || showItemDeclarations === true),
-                e);
-            if (hasClass(e, "type-decl") === true && showItemDeclarations === true) {
-                collapseDocs(e.previousSibling.childNodes[0], "toggle");
-            }
-            if (hasClass(e, "non-exhaustive") === true) {
-                collapseDocs(e.previousSibling.childNodes[0], "toggle");
+        var showItemDeclarations = getCurrentValue("rustdoc-auto-hide-" + className);
+        if (showItemDeclarations === null) {
+            if (className === "enum" || className === "macro") {
+                showItemDeclarations = "false";
+            } else if (className === "struct" || className === "union" || className === "trait") {
+                showItemDeclarations = "true";
+            } else {
+                // In case we found an unknown type, we just use the "parent" value.
+                showItemDeclarations = getCurrentValue("rustdoc-auto-hide-declarations");
             }
         }
-    }
+        showItemDeclarations = showItemDeclarations === "false";
+        function buildToggleWrapper(e) {
+            if (hasClass(e, "autohide")) {
+                var wrap = e.previousElementSibling;
+                if (wrap && hasClass(wrap, "toggle-wrapper")) {
+                    var inner_toggle = wrap.childNodes[0];
+                    var extra = e.childNodes[0].tagName === "H3";
 
-    onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
-    onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
+                    e.style.display = "none";
+                    addClass(wrap, "collapsed");
+                    onEachLazy(inner_toggle.getElementsByClassName("inner"), function(e) {
+                        e.innerHTML = labelForToggleButton(true);
+                    });
+                    onEachLazy(inner_toggle.getElementsByClassName("toggle-label"), function(e) {
+                        e.style.display = "inline-block";
+                        if (extra === true) {
+                            e.innerHTML = " Show " + e.childNodes[0].innerHTML;
+                        }
+                    });
+                }
+            }
+            if (e.parentNode.id === "main") {
+                var otherMessage = "";
+                var fontSize;
+                var extraClass;
+
+                if (hasClass(e, "type-decl")) {
+                    fontSize = "20px";
+                    otherMessage = "&nbsp;Show&nbsp;declaration";
+                    if (showItemDeclarations === false) {
+                        extraClass = "collapsed";
+                    }
+                } else if (hasClass(e, "sub-variant")) {
+                    otherMessage = "&nbsp;Show&nbsp;fields";
+                } else if (hasClass(e, "non-exhaustive")) {
+                    otherMessage = "&nbsp;This&nbsp;";
+                    if (hasClass(e, "non-exhaustive-struct")) {
+                        otherMessage += "struct";
+                    } else if (hasClass(e, "non-exhaustive-enum")) {
+                        otherMessage += "enum";
+                    } else if (hasClass(e, "non-exhaustive-variant")) {
+                        otherMessage += "enum variant";
+                    } else if (hasClass(e, "non-exhaustive-type")) {
+                        otherMessage += "type";
+                    }
+                    otherMessage += "&nbsp;is&nbsp;marked&nbsp;as&nbsp;non-exhaustive";
+                } else if (hasClass(e.childNodes[0], "impl-items")) {
+                    extraClass = "marg-left";
+                }
+
+                e.parentNode.insertBefore(
+                    createToggle(
+                        toggle,
+                        otherMessage,
+                        fontSize,
+                        extraClass,
+                        hasClass(e, "type-decl") === false || showItemDeclarations === true),
+                    e);
+                if (hasClass(e, "type-decl") === true && showItemDeclarations === true) {
+                    collapseDocs(e.previousSibling.childNodes[0], "toggle");
+                }
+                if (hasClass(e, "non-exhaustive") === true) {
+                    collapseDocs(e.previousSibling.childNodes[0], "toggle");
+                }
+            }
+        }
+
+        onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
+        onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
+        var pageId = getPageId();
+
+        autoCollapse(pageId, getCurrentValue("rustdoc-collapse") === "true");
+
+        if (pageId !== null) {
+            expandSection(pageId);
+        }
+    }());
 
     function createToggleWrapper(tog) {
         var span = document.createElement("span");
@@ -2452,56 +2575,60 @@ function getSearchElement() {
         return wrapper;
     }
 
-    // To avoid checking on "rustdoc-item-attributes" value on every loop...
-    var itemAttributesFunc = function() {};
-    if (getCurrentValue("rustdoc-auto-hide-attributes") !== "false") {
-        itemAttributesFunc = function(x) {
-            collapseDocs(x.previousSibling.childNodes[0], "toggle");
-        };
-    }
-    var attributesToggle = createToggleWrapper(createSimpleToggle(false));
-    onEachLazy(main.getElementsByClassName("attributes"), function(i_e) {
-        var attr_tog = attributesToggle.cloneNode(true);
-        if (hasClass(i_e, "top-attr") === true) {
-            addClass(attr_tog, "top-attr");
+    (function() {
+        // To avoid checking on "rustdoc-item-attributes" value on every loop...
+        var itemAttributesFunc = function() {};
+        if (getCurrentValue("rustdoc-auto-hide-attributes") !== "false") {
+            itemAttributesFunc = function(x) {
+                collapseDocs(x.previousSibling.childNodes[0], "toggle");
+            };
         }
-        i_e.parentNode.insertBefore(attr_tog, i_e);
-        itemAttributesFunc(i_e);
-    });
-
-    // To avoid checking on "rustdoc-line-numbers" value on every loop...
-    var lineNumbersFunc = function() {};
-    if (getCurrentValue("rustdoc-line-numbers") === "true") {
-        lineNumbersFunc = function(x) {
-            var count = x.textContent.split("\n").length;
-            var elems = [];
-            for (var i = 0; i < count; ++i) {
-                elems.push(i + 1);
+        var attributesToggle = createToggleWrapper(createSimpleToggle(false));
+        onEachLazy(main.getElementsByClassName("attributes"), function(i_e) {
+            var attr_tog = attributesToggle.cloneNode(true);
+            if (hasClass(i_e, "top-attr") === true) {
+                addClass(attr_tog, "top-attr");
             }
-            var node = document.createElement("pre");
-            addClass(node, "line-number");
-            node.innerHTML = elems.join("\n");
-            x.parentNode.insertBefore(node, x);
-        };
-    }
-    onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(e) {
-        if (hasClass(e, "compile_fail")) {
-            e.addEventListener("mouseover", function(event) {
-                this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
-            });
-            e.addEventListener("mouseout", function(event) {
-                this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-            });
-        } else if (hasClass(e, "ignore")) {
-            e.addEventListener("mouseover", function(event) {
-                this.parentElement.previousElementSibling.childNodes[0].style.color = "#ff9200";
-            });
-            e.addEventListener("mouseout", function(event) {
-                this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-            });
+            i_e.parentNode.insertBefore(attr_tog, i_e);
+            itemAttributesFunc(i_e);
+        });
+    }());
+
+    (function() {
+        // To avoid checking on "rustdoc-line-numbers" value on every loop...
+        var lineNumbersFunc = function() {};
+        if (getCurrentValue("rustdoc-line-numbers") === "true") {
+            lineNumbersFunc = function(x) {
+                var count = x.textContent.split("\n").length;
+                var elems = [];
+                for (var i = 0; i < count; ++i) {
+                    elems.push(i + 1);
+                }
+                var node = document.createElement("pre");
+                addClass(node, "line-number");
+                node.innerHTML = elems.join("\n");
+                x.parentNode.insertBefore(node, x);
+            };
         }
-        lineNumbersFunc(e);
-    });
+        onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(e) {
+            if (hasClass(e, "compile_fail")) {
+                e.addEventListener("mouseover", function() {
+                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
+                });
+                e.addEventListener("mouseout", function() {
+                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
+                });
+            } else if (hasClass(e, "ignore")) {
+                e.addEventListener("mouseover", function() {
+                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#ff9200";
+                });
+                e.addEventListener("mouseout", function() {
+                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
+                });
+            }
+            lineNumbersFunc(e);
+        });
+    }());
 
     // In the search display, allows to switch between tabs.
     function printTab(nb) {
@@ -2568,12 +2695,6 @@ function getSearchElement() {
         hideSidebar();
     };
 
-    autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
-
-    if (window.location.hash && window.location.hash.length > 0) {
-        expandSection(window.location.hash.replace(/^#/, ""));
-    }
-
     if (main) {
         onEachLazy(main.getElementsByClassName("loading-content"), function(e) {
             e.remove();
@@ -2594,7 +2715,7 @@ function getSearchElement() {
         });
     }
 
-    function addSearchOptions(crates) {
+    window.addSearchOptions = function(crates) {
         var elem = document.getElementById("crate-search");
 
         if (!elem) {
@@ -2603,7 +2724,7 @@ function getSearchElement() {
         var crates_text = [];
         if (Object.keys(crates).length > 1) {
             for (var crate in crates) {
-                if (crates.hasOwnProperty(crate)) {
+                if (hasOwnProperty(crates, crate)) {
                     crates_text.push(crate);
                 }
             }
@@ -2638,10 +2759,8 @@ function getSearchElement() {
 
         if (search_input) {
             search_input.removeAttribute('disabled');
-        };
-    }
-
-    window.addSearchOptions = addSearchOptions;
+        }
+    };
 
     function buildHelperPopup() {
         var popup = document.createElement("aside");
@@ -2694,12 +2813,8 @@ function getSearchElement() {
     buildHelperPopup();
 }());
 
-// Sets the focus on the search bar at the top of the page
-function focusSearchBar() {
-    getSearchInput().focus();
-}
-
-// Removes the focus from the search bar
-function defocusSearchBar() {
-    getSearchInput().blur();
-}
+// This is required in firefox. Explanations: when going back in the history, firefox doesn't re-run
+// the JS, therefore preventing rustdoc from setting a few things required to be able to reload the
+// previous search results (if you navigated to a search result with the keyboard, pressed enter on
+// it to navigate to that result, and then came back to this page).
+window.onunload = function(){};

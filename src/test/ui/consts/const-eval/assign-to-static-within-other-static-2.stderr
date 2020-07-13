@@ -3,6 +3,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL |     *FOO.0.get() = 5;
    |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

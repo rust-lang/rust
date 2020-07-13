@@ -139,10 +139,12 @@
 //! otherwise invalidating the memory used to store the data is restricted, too.
 //! Concretely, for pinned data you have to maintain the invariant
 //! that *its memory will not get invalidated or repurposed from the moment it gets pinned until
-//! when [`drop`] is called*. Memory can be invalidated by deallocation, but also by
+//! when [`drop`] is called*.  Only once [`drop`] returns or panics, the memory may be reused.
+//!
+//! Memory can be "invalidated" by deallocation, but also by
 //! replacing a [`Some(v)`] by [`None`], or calling [`Vec::set_len`] to "kill" some elements
 //! off of a vector. It can be repurposed by using [`ptr::write`] to overwrite it without
-//! calling the destructor first.
+//! calling the destructor first. None of this is allowed for pinned data without calling [`drop`].
 //!
 //! This is exactly the kind of guarantee that the intrusive linked list from the previous
 //! section needs to function correctly.
@@ -677,7 +679,10 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     {
         let pointer = &*self.pointer;
         let new_pointer = func(pointer);
-        Pin::new_unchecked(new_pointer)
+
+        // SAFETY: the safety contract for `new_unchecked` must be
+        // upheld by the caller.
+        unsafe { Pin::new_unchecked(new_pointer) }
     }
 
     /// Gets a shared reference out of a pin.
@@ -767,9 +772,13 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
         U: ?Sized,
         F: FnOnce(&mut T) -> &mut U,
     {
-        let pointer = Pin::get_unchecked_mut(self);
+        // SAFETY: the caller is responsible for not moving the
+        // value out of this reference.
+        let pointer = unsafe { Pin::get_unchecked_mut(self) };
         let new_pointer = func(pointer);
-        Pin::new_unchecked(new_pointer)
+        // SAFETY: as the value of `this` is guaranteed to not have
+        // been moved out, this call to `new_unchecked` is safe.
+        unsafe { Pin::new_unchecked(new_pointer) }
     }
 }
 

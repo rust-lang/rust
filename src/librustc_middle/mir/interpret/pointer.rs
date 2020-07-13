@@ -1,36 +1,10 @@
-use super::{AllocId, InterpResult};
+use super::{uabs, AllocId, InterpResult};
 
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
 use std::convert::TryFrom;
-use std::fmt::{self, Display};
-
-/// Used by `check_in_alloc` to indicate context of check
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum CheckInAllocMsg {
-    MemoryAccessTest,
-    NullPointerTest,
-    PointerArithmeticTest,
-    InboundsTest,
-}
-
-impl Display for CheckInAllocMsg {
-    /// When this is printed as an error the context looks like this
-    /// "{test name} failed: pointer must be in-bounds at offset..."
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match *self {
-                CheckInAllocMsg::MemoryAccessTest => "Memory access",
-                CheckInAllocMsg::NullPointerTest => "Null pointer test",
-                CheckInAllocMsg::PointerArithmeticTest => "Pointer arithmetic",
-                CheckInAllocMsg::InboundsTest => "Inbounds test",
-            }
-        )
-    }
-}
+use std::fmt;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pointer arithmetic
@@ -51,6 +25,12 @@ pub trait PointerArithmetic: HasDataLayout {
     }
 
     #[inline]
+    fn machine_isize_min(&self) -> i64 {
+        let max_isize_plus_1 = 1i128 << (self.pointer_size().bits() - 1);
+        i64::try_from(-max_isize_plus_1).unwrap()
+    }
+
+    #[inline]
     fn machine_isize_max(&self) -> i64 {
         let max_isize_plus_1 = 1u128 << (self.pointer_size().bits() - 1);
         i64::try_from(max_isize_plus_1 - 1).unwrap()
@@ -68,21 +48,23 @@ pub trait PointerArithmetic: HasDataLayout {
 
     #[inline]
     fn overflowing_offset(&self, val: u64, i: u64) -> (u64, bool) {
+        // We do not need to check if i fits in a machine usize. If it doesn't,
+        // either the wrapping_add will wrap or res will not fit in a pointer.
         let res = val.overflowing_add(i);
         self.truncate_to_ptr(res)
     }
 
     #[inline]
     fn overflowing_signed_offset(&self, val: u64, i: i64) -> (u64, bool) {
-        if i < 0 {
-            // Trickery to ensure that `i64::MIN` works fine: compute `n = -i`.
-            // This formula only works for true negative values; it overflows for zero!
-            let n = u64::MAX - (i as u64) + 1;
-            let res = val.overflowing_sub(n);
-            self.truncate_to_ptr(res)
+        // We need to make sure that i fits in a machine isize.
+        let n = uabs(i);
+        if i >= 0 {
+            let (val, over) = self.overflowing_offset(val, n);
+            (val, over || i > self.machine_isize_max())
         } else {
-            // `i >= 0`, so the cast is safe.
-            self.overflowing_offset(val, i as u64)
+            let res = val.overflowing_sub(n);
+            let (val, over) = self.truncate_to_ptr(res);
+            (val, over || i < self.machine_isize_min())
         }
     }
 
@@ -101,33 +83,55 @@ pub trait PointerArithmetic: HasDataLayout {
 
 impl<T: HasDataLayout> PointerArithmetic for T {}
 
-/// `Pointer` is generic over the type that represents a reference to `Allocation`s,
-/// thus making it possible for the most convenient representation to be used in
-/// each context.
+/// Represents a pointer in the Miri engine.
 ///
-/// Defaults to the index based and loosely coupled `AllocId`.
-///
-/// `Pointer` is also generic over the `Tag` associated with each pointer,
+/// `Pointer` is generic over the `Tag` associated with each pointer,
 /// which is used to do provenance tracking during execution.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 #[derive(HashStable)]
-pub struct Pointer<Tag = (), Id = AllocId> {
-    pub alloc_id: Id,
+pub struct Pointer<Tag = ()> {
+    pub alloc_id: AllocId,
     pub offset: Size,
     pub tag: Tag,
 }
 
 static_assert_size!(Pointer, 16);
 
-impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for Pointer<Tag, Id> {
+/// Print the address of a pointer (without the tag)
+fn print_ptr_addr<Tag>(ptr: &Pointer<Tag>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    // Forward `alternate` flag to `alloc_id` printing.
+    if f.alternate() {
+        write!(f, "{:#?}", ptr.alloc_id)?;
+    } else {
+        write!(f, "{:?}", ptr.alloc_id)?;
+    }
+    // Print offset only if it is non-zero.
+    if ptr.offset.bytes() > 0 {
+        write!(f, "+0x{:x}", ptr.offset.bytes())?;
+    }
+    Ok(())
+}
+
+// We want the `Debug` output to be readable as it is used by `derive(Debug)` for
+// all the Miri types.
+// We have to use `Debug` output for the tag, because `()` does not implement
+// `Display` so we cannot specialize that.
+impl<Tag: fmt::Debug> fmt::Debug for Pointer<Tag> {
     default fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}+{:x}[{:?}]", self.alloc_id, self.offset.bytes(), self.tag)
+        print_ptr_addr(self, f)?;
+        write!(f, "[{:?}]", self.tag)
     }
 }
 // Specialization for no tag
-impl<Id: fmt::Debug> fmt::Debug for Pointer<(), Id> {
+impl fmt::Debug for Pointer<()> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}+{:x}", self.alloc_id, self.offset.bytes())
+        print_ptr_addr(self, f)
+    }
+}
+
+impl<Tag: fmt::Debug> fmt::Display for Pointer<Tag> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
     }
 }
 

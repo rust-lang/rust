@@ -91,6 +91,10 @@ crate struct Cache {
     /// The version of the crate being documented, if given from the `--crate-version` flag.
     pub crate_version: Option<String>,
 
+    /// Whether to document private items.
+    /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
+    pub document_private: bool,
+
     // Private fields only used when initially crawling a crate to build a cache
     stack: Vec<String>,
     parent_stack: Vec<DefId>,
@@ -120,12 +124,13 @@ crate struct Cache {
 
     /// Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
     /// we need the alias element to have an array of items.
-    pub(super) aliases: FxHashMap<String, Vec<IndexItem>>,
+    pub(super) aliases: BTreeMap<String, Vec<usize>>,
 }
 
 impl Cache {
     pub fn from_krate(
         renderinfo: RenderInfo,
+        document_private: bool,
         extern_html_root_urls: &BTreeMap<String, String>,
         dst: &Path,
         mut krate: clean::Crate,
@@ -160,6 +165,7 @@ impl Cache {
             stripped_mod: false,
             access_levels,
             crate_version: krate.version.take(),
+            document_private,
             orphan_impl_items: Vec::new(),
             orphan_trait_impls: Vec::new(),
             traits: krate.external_traits.replace(Default::default()),
@@ -173,7 +179,7 @@ impl Cache {
         // Cache where all our extern crates are located
         for &(n, ref e) in &krate.externs {
             let src_root = match e.src {
-                FileName::Real(ref p) => match p.parent() {
+                FileName::Real(ref p) => match p.local_path().parent() {
                     Some(p) => p.to_path_buf(),
                     None => PathBuf::new(),
                 },
@@ -311,7 +317,7 @@ impl DocFolder for Cache {
             };
 
             match parent {
-                (parent, Some(path)) if is_inherent_impl_item || (!self.stripped_mod) => {
+                (parent, Some(path)) if is_inherent_impl_item || !self.stripped_mod => {
                     debug_assert!(!item.is_stripped());
 
                     // A crate has a module at its root, containing all items,
@@ -327,6 +333,13 @@ impl DocFolder for Cache {
                             parent_idx: None,
                             search_type: get_index_search_type(&item),
                         });
+
+                        for alias in item.attrs.get_doc_aliases() {
+                            self.aliases
+                                .entry(alias.to_lowercase())
+                                .or_insert(Vec::new())
+                                .push(self.search_index.len() - 1);
+                        }
                     }
                 }
                 (Some(parent), None) if is_inherent_impl_item => {
@@ -376,11 +389,8 @@ impl DocFolder for Cache {
                 {
                     self.paths.insert(item.def_id, (self.stack.clone(), item.type_()));
                 }
-                self.add_aliases(&item);
             }
-
             clean::PrimitiveItem(..) => {
-                self.add_aliases(&item);
                 self.paths.insert(item.def_id, (self.stack.clone(), item.type_()));
             }
 
@@ -488,40 +498,6 @@ impl DocFolder for Cache {
     }
 }
 
-impl Cache {
-    fn add_aliases(&mut self, item: &clean::Item) {
-        if item.def_id.index == CRATE_DEF_INDEX {
-            return;
-        }
-        if let Some(ref item_name) = item.name {
-            let path = self
-                .paths
-                .get(&item.def_id)
-                .map(|p| p.0[..p.0.len() - 1].join("::"))
-                .unwrap_or("std".to_owned());
-            for alias in item
-                .attrs
-                .lists(sym::doc)
-                .filter(|a| a.check_name(sym::alias))
-                .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
-                .filter(|v| !v.is_empty())
-                .collect::<FxHashSet<_>>()
-                .into_iter()
-            {
-                self.aliases.entry(alias).or_insert(Vec::with_capacity(1)).push(IndexItem {
-                    ty: item.type_(),
-                    name: item_name.to_string(),
-                    path: path.clone(),
-                    desc: shorten(plain_summary_line(item.doc_value())),
-                    parent: None,
-                    parent_idx: None,
-                    search_type: get_index_search_type(&item),
-                });
-            }
-        }
-    }
-}
-
 /// Attempts to find where an external crate is located, given that we're
 /// rendering in to the specified source destination.
 fn extern_location(
@@ -567,7 +543,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = vec![];
 
-    let Cache { ref mut search_index, ref orphan_impl_items, ref paths, .. } = *cache;
+    let Cache { ref mut search_index, ref orphan_impl_items, ref paths, ref mut aliases, .. } =
+        *cache;
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
@@ -582,6 +559,12 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
             });
+            for alias in item.attrs.get_doc_aliases() {
+                aliases
+                    .entry(alias.to_lowercase())
+                    .or_insert(Vec::new())
+                    .push(search_index.len() - 1);
+            }
         }
     }
 
@@ -630,6 +613,12 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         items: Vec<&'a IndexItem>,
         #[serde(rename = "p")]
         paths: Vec<(ItemType, String)>,
+        // The String is alias name and the vec is the list of the elements with this alias.
+        //
+        // To be noted: the `usize` elements are indexes to `items`.
+        #[serde(rename = "a")]
+        #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+        aliases: &'a BTreeMap<String, Vec<usize>>,
     }
 
     // Collect the index into a string
@@ -640,6 +629,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
             doc: crate_doc,
             items: crate_items,
             paths: crate_paths,
+            aliases,
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.

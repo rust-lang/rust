@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/interior-mutability.rs:44:26
+  --> $DIR/interior-mutability.rs:40:26
    |
 LL |     let x: &'static _ = &X;
    |            ----------    ^ creates a temporary which is freed while still in use
@@ -10,7 +10,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/interior-mutability.rs:45:26
+  --> $DIR/interior-mutability.rs:41:26
    |
 LL |     let y: &'static _ = &Y;
    |            ----------    ^ creates a temporary which is freed while still in use
@@ -21,7 +21,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/interior-mutability.rs:46:26
+  --> $DIR/interior-mutability.rs:42:26
    |
 LL |     let z: &'static _ = &Z;
    |            ----------    ^ creates a temporary which is freed while still in use

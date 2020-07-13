@@ -57,7 +57,6 @@ o("cargo-native-static", "build.cargo-native-static", "static native libraries i
 o("profiler", "build.profiler", "build the profiler runtime")
 o("full-tools", None, "enable all tools")
 o("lld", "rust.lld", "build lld")
-o("lldb", "rust.lldb", "build lldb")
 o("missing-tools", "dist.missing-tools", "allow failures when building tools")
 o("use-libcxx", "llvm.use-libcxx", "build LLVM with libc++")
 o("control-flow-guard", "rust.control-flow-guard", "Enable Control Flow Guard")
@@ -141,6 +140,8 @@ v("musl-root-mips64el", "target.mips64el-unknown-linux-muslabi64.musl-root",
 v("qemu-armhf-rootfs", "target.arm-unknown-linux-gnueabihf.qemu-rootfs",
   "rootfs in qemu testing, you probably don't want to use this")
 v("qemu-aarch64-rootfs", "target.aarch64-unknown-linux-gnu.qemu-rootfs",
+  "rootfs in qemu testing, you probably don't want to use this")
+v("qemu-riscv64-rootfs", "target.riscv64gc-unknown-linux-gnu.qemu-rootfs",
   "rootfs in qemu testing, you probably don't want to use this")
 v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")

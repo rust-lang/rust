@@ -1,0 +1,28 @@
+error: calling `as_bytes()` on a string literal
+  --> $DIR/string_lit_as_bytes.rs:7:14
+   |
+LL |     let bs = "hello there".as_bytes();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"hello there"`
+   |
+   = note: `-D clippy::string-lit-as-bytes` implied by `-D warnings`
+
+error: calling `as_bytes()` on a string literal
+  --> $DIR/string_lit_as_bytes.rs:9:14
+   |
+LL |     let bs = r###"raw string with 3# plus " ""###.as_bytes();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `br###"raw string with 3# plus " ""###`
+
+error: calling `as_bytes()` on `include_str!(..)`
+  --> $DIR/string_lit_as_bytes.rs:19:22
+   |
+LL |     let includestr = include_str!("entry_unfixable.rs").as_bytes();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `include_bytes!(..)` instead: `include_bytes!("entry_unfixable.rs")`
+
+error: calling `as_bytes()` on a string literal
+  --> $DIR/string_lit_as_bytes.rs:21:13
+   |
+LL |     let _ = "string with newline/t/n".as_bytes();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"string with newline/t/n"`
+
+error: aborting due to 4 previous errors
+

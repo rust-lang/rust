@@ -1,0 +1,70 @@
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:12:5
+   |
+LL |     true
+   |     ^^^^ help: add `return` as shown: `return true`
+   |
+   = note: `-D clippy::implicit-return` implied by `-D warnings`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:18:9
+   |
+LL |         true
+   |         ^^^^ help: add `return` as shown: `return true`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:20:9
+   |
+LL |         false
+   |         ^^^^^ help: add `return` as shown: `return false`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:27:17
+   |
+LL |         true => false,
+   |                 ^^^^^ help: add `return` as shown: `return false`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:28:20
+   |
+LL |         false => { true },
+   |                    ^^^^ help: add `return` as shown: `return true`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:43:9
+   |
+LL |         break true;
+   |         ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:51:13
+   |
+LL |             break true;
+   |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:60:13
+   |
+LL |             break true;
+   |             ^^^^^^^^^^ help: change `break` to `return` as shown: `return true`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:78:18
+   |
+LL |     let _ = || { true };
+   |                  ^^^^ help: add `return` as shown: `return true`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:79:16
+   |
+LL |     let _ = || true;
+   |                ^^^^ help: add `return` as shown: `return true`
+
+error: missing `return` statement
+  --> $DIR/implicit_return.rs:87:5
+   |
+LL |     format!("test {}", "test")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add `return` as shown: `return format!("test {}", "test")`
+
+error: aborting due to 11 previous errors
+

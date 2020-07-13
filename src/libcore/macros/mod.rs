@@ -1,30 +1,6 @@
-#[cfg(bootstrap)]
 #[doc(include = "panic.md")]
 #[macro_export]
-#[allow_internal_unstable(core_panic, track_caller)]
-#[stable(feature = "core", since = "1.6.0")]
-macro_rules! panic {
-    () => (
-        $crate::panic!("explicit panic")
-    );
-    ($msg:expr) => (
-        $crate::panicking::panic($msg)
-    );
-    ($msg:expr,) => (
-        $crate::panic!($msg)
-    );
-    ($fmt:expr, $($arg:tt)+) => (
-        $crate::panicking::panic_fmt(
-            $crate::format_args!($fmt, $($arg)+),
-            $crate::panic::Location::caller(),
-        )
-    );
-}
-
-#[cfg(not(bootstrap))]
-#[doc(include = "panic.md")]
-#[macro_export]
-#[allow_internal_unstable(core_panic, track_caller)]
+#[allow_internal_unstable(core_panic, const_caller_location)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
@@ -175,7 +151,7 @@ macro_rules! assert_ne {
 /// An unchecked assertion allows a program in an inconsistent state to keep
 /// running, which might have unexpected consequences but does not introduce
 /// unsafety as long as this only happens in safe code. The performance cost
-/// of assertions, is however, not measurable in general. Replacing [`assert!`]
+/// of assertions, however, is not measurable in general. Replacing [`assert!`]
 /// with `debug_assert!` is thus only encouraged after thorough profiling, and
 /// more importantly, only in safe code!
 ///
@@ -1183,6 +1159,10 @@ pub(crate) mod builtin {
     /// The syntax given to this macro is the same syntax as the [`cfg`]
     /// attribute.
     ///
+    /// `cfg!`, unlike `#[cfg]`, does not remove any code and only evaluates to true or false. For
+    /// example, all blocks in an if/else expression need to be valid when `cfg!` is used for
+    /// the condition, regardless of what `cfg!` is evaluating.
+    ///
     /// [`cfg`]: ../reference/conditional-compilation.html#the-cfg-attribute
     ///
     /// # Examples
@@ -1263,7 +1243,7 @@ pub(crate) mod builtin {
     /// be disabled. See [`debug_assert!`] for assertions that are not enabled in
     /// release builds by default.
     ///
-    /// Unsafe code relies on `assert!` to enforce run-time invariants that, if
+    /// Unsafe code may rely on `assert!` to enforce run-time invariants that, if
     /// violated could lead to unsafety.
     ///
     /// Other use-cases of `assert!` include testing and enforcing run-time
@@ -1313,57 +1293,29 @@ pub(crate) mod builtin {
     /// [unstable book]: ../unstable-book/library-features/asm.html
     #[unstable(
         feature = "asm",
-        issue = "70173",
+        issue = "72016",
         reason = "inline assembly is not stable enough for use and is subject to change"
-    )]
-    #[cfg_attr(
-        not(bootstrap),
-        rustc_deprecated(
-            since = "1.44.0",
-            reason = "the syntax of asm! will change soon, use llvm_asm! to avoid breakage",
-            suggestion = "llvm_asm",
-        )
     )]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! asm {
-        ("assembly template"
-                        : $("output"(operand),)*
-                        : $("input"(operand),)*
-                        : $("clobbers",)*
-                        : $("options",)*) => {
+        ("assembly template",
+            $(operands,)*
+            $(options($(option),*))?
+        ) => {
             /* compiler built-in */
         };
     }
 
-    /// Inline assembly.
+    /// LLVM-style inline assembly.
     ///
     /// Read the [unstable book] for the usage.
     ///
-    /// [unstable book]: ../unstable-book/library-features/asm.html
-    #[cfg(bootstrap)]
+    /// [unstable book]: ../unstable-book/library-features/llvm-asm.html
     #[unstable(
         feature = "llvm_asm",
         issue = "70173",
-        reason = "inline assembly is not stable enough for use and is subject to change"
-    )]
-    #[macro_export]
-    #[allow_internal_unstable(asm)]
-    macro_rules! llvm_asm {
-        // Redirect to asm! for stage0
-        ($($arg:tt)*) => { $crate::asm!($($arg)*) }
-    }
-
-    /// Inline assembly.
-    ///
-    /// Read the [unstable book] for the usage.
-    ///
-    /// [unstable book]: ../unstable-book/library-features/asm.html
-    #[cfg(not(bootstrap))]
-    #[unstable(
-        feature = "llvm_asm",
-        issue = "70173",
-        reason = "inline assembly is not stable enough for use and is subject to change"
+        reason = "prefer using the new asm! syntax instead"
     )]
     #[rustc_builtin_macro]
     #[macro_export]
@@ -1460,7 +1412,6 @@ pub(crate) mod builtin {
     }
 
     /// Keeps the item it's applied to if the passed path is accessible, and removes it otherwise.
-    #[cfg(not(bootstrap))]
     #[unstable(
         feature = "cfg_accessible",
         issue = "64797",

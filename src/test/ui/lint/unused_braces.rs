@@ -1,5 +1,8 @@
 // check-pass
+// run-rustfix
+
 #![warn(unused_braces, unused_parens)]
+#![allow(unreachable_code, unused_unsafe)] // for rustfix
 
 fn consume<T>(_: T) {}
 

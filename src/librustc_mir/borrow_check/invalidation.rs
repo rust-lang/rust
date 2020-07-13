@@ -1,8 +1,8 @@
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::TerminatorKind;
-use rustc_middle::mir::{BasicBlock, Body, Location, Place, ReadOnlyBodyAndCache, Rvalue};
+use rustc_middle::mir::{BasicBlock, Body, Location, Place, Rvalue};
 use rustc_middle::mir::{BorrowKind, Mutability, Operand};
+use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
@@ -18,7 +18,7 @@ pub(super) fn generate_invalidates<'tcx>(
     tcx: TyCtxt<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
-    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     if all_facts.is_none() {
@@ -37,7 +37,7 @@ pub(super) fn generate_invalidates<'tcx>(
             body: &body,
             dominators,
         };
-        ig.visit_body(&body);
+        ig.visit_body(body);
     }
 }
 
@@ -112,14 +112,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
         self.super_statement(statement, location);
     }
 
-    fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, location: Location) {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         self.check_activations(location);
 
-        match kind {
+        match &terminator.kind {
             TerminatorKind::SwitchInt { ref discr, switch_ty: _, values: _, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { location: drop_place, target: _, unwind: _ } => {
+            TerminatorKind::Drop { place: drop_place, target: _, unwind: _ } => {
                 self.access_place(
                     location,
                     *drop_place,
@@ -128,7 +128,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 );
             }
             TerminatorKind::DropAndReplace {
-                location: drop_place,
+                place: drop_place,
                 value: ref new_value,
                 target: _,
                 unwind: _,
@@ -142,6 +142,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 destination,
                 cleanup: _,
                 from_hir_call: _,
+                fn_span: _,
             } => {
                 self.consume_operand(location, func);
                 for arg in args {
@@ -183,16 +184,45 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     }
                 }
             }
+            TerminatorKind::InlineAsm {
+                template: _,
+                ref operands,
+                options: _,
+                line_spans: _,
+                destination: _,
+            } => {
+                for op in operands {
+                    match *op {
+                        InlineAsmOperand::In { reg: _, ref value }
+                        | InlineAsmOperand::Const { ref value } => {
+                            self.consume_operand(location, value);
+                        }
+                        InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
+                            if let Some(place) = place {
+                                self.mutate_place(location, place, Shallow(None), JustWrite);
+                            }
+                        }
+                        InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
+                            self.consume_operand(location, in_value);
+                            if let Some(out_place) = out_place {
+                                self.mutate_place(location, out_place, Shallow(None), JustWrite);
+                            }
+                        }
+                        InlineAsmOperand::SymFn { value: _ }
+                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
+                    }
+                }
+            }
             TerminatorKind::Goto { target: _ }
             | TerminatorKind::Abort
             | TerminatorKind::Unreachable
-            | TerminatorKind::FalseEdges { real_target: _, imaginary_target: _ }
+            | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ } => {
                 // no data used, thus irrelevant to borrowck
             }
         }
 
-        self.super_terminator_kind(kind, location);
+        self.super_terminator(terminator, location);
     }
 }
 
@@ -271,6 +301,8 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
 
                 self.access_place(location, place, access_kind, LocalMutationIsAllowed::No);
             }
+
+            Rvalue::ThreadLocalRef(_) => {}
 
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)

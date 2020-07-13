@@ -164,13 +164,13 @@
 // lldb-command:continue
 
 // lldb-command:print simple_struct_ident
-// lldbg-check:[...]$22 = Struct { x: 3537, y: 35437.5, z: true }
-// lldbr-check:(destructured_for_loop_variable::Struct) simple_struct_ident = Struct { x: 3537, y: 35437.5, z: true }
+// lldbg-check:[...]$22 = { x = 3537 y = 35437.5 z = true }
+// lldbr-check:(destructured_for_loop_variable::Struct) simple_struct_ident = { x = 3537 y = 35437.5 z = true }
 // lldb-command:continue
 
 // lldb-command:print simple_tuple_ident
-// lldbg-check:[...]$23 = (34903493, 232323)
-// lldbr-check:((u32, i64)) simple_tuple_ident = { = 34903493 = 232323 }
+// lldbg-check:[...]$23 = { 0 = 34903493 1 = 232323 }
+// lldbr-check:((u32, i64)) simple_tuple_ident = { 0 = 34903493 1 = 232323 }
 // lldb-command:continue
 
 #![allow(unused_variables)]

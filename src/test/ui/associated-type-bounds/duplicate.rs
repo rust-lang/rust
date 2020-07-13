@@ -2,7 +2,7 @@
 
 #![feature(associated_type_bounds)]
 #![feature(type_alias_impl_trait)]
-#![feature(impl_trait_in_bindings)] //~ WARN the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash [incomplete_features]
+#![feature(impl_trait_in_bindings)] //~ WARN the feature `impl_trait_in_bindings` is incomplete
 #![feature(untagged_unions)]
 
 use std::iter;
@@ -108,17 +108,11 @@ type TAW3<T> where T: Iterator<Item: 'static, Item: 'static> = T;
 type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
 //~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
 type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
 //~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
 type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]
-//~| ERROR could not find defining uses
-//~| ERROR could not find defining uses
 //~| ERROR could not find defining uses
 type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
 //~^ ERROR the value of the associated type `Item` (from trait `std::iter::Iterator`) is already specified [E0719]

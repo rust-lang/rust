@@ -685,12 +685,12 @@ mod impl_keyword {}
 /// ## Literal Examples:
 ///
 ///    * `for _ **in** 1..3 {}` - Iterate over an exclusive range up to but excluding 3.
-///    * `for _ **in** 1..=3 {}` - Iterate over an inclusive range up to and includeing 3.
+///    * `for _ **in** 1..=3 {}` - Iterate over an inclusive range up to and including 3.
 ///
 /// (Read more about [range patterns])
 ///
 /// [`Iterator`]: ../book/ch13-04-performance.html
-/// [`range patterns`]: ../reference/patterns.html?highlight=range#range-patterns
+/// [range patterns]: ../reference/patterns.html?highlight=range#range-patterns
 /// [`for`]: keyword.for.html
 mod in_keyword {}
 
@@ -913,10 +913,28 @@ mod match_keyword {}
 //
 /// Organize code into [modules].
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// Use `mod` to create new [modules] to encapsulate code, including other
+/// modules:
 ///
+/// ```
+/// mod foo {
+///     mod bar {
+///         type MyType = (u8, u8);
+///         fn baz() {}
+///     }
+/// }
+/// ```
+///
+/// Like [`struct`]s and [`enum`]s, a module and its content are private by
+/// default, unaccessible to code outside of the module.
+///
+/// To learn more about allowing access, see the documentation for the [`pub`]
+/// keyword.
+///
+/// [`enum`]: keyword.enum.html
+/// [`pub`]: keyword.pub.html
+/// [`struct`]: keyword.struct.html
 /// [modules]: ../reference/items/modules.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod mod_keyword {}
 
 #[doc(keyword = "move")]
@@ -965,11 +983,61 @@ mod move_keyword {}
 
 #[doc(keyword = "mut")]
 //
-/// A mutable binding, reference, or pointer.
+/// A mutable variable, reference, or pointer.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `mut` can be used in several situations. The first is mutable variables,
+/// which can be used anywhere you can bind a value to a variable name. Some
+/// examples:
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// ```rust
+/// // A mutable variable in the parameter list of a function.
+/// fn foo(mut x: u8, y: u8) -> u8 {
+///     x += y;
+///     x
+/// }
+///
+/// // Modifying a mutable variable.
+/// # #[allow(unused_assignments)]
+/// let mut a = 5;
+/// a = 6;
+///
+/// assert_eq!(foo(3, 4), 7);
+/// assert_eq!(a, 6);
+/// ```
+///
+/// The second is mutable references. They can be created from `mut` variables
+/// and must be unique: no other variables can have a mutable reference, nor a
+/// shared reference.
+///
+/// ```rust
+/// // Taking a mutable reference.
+/// fn push_two(v: &mut Vec<u8>) {
+///     v.push(2);
+/// }
+///
+/// // A mutable reference cannot be taken to a non-mutable variable.
+/// let mut v = vec![0, 1];
+/// // Passing a mutable reference.
+/// push_two(&mut v);
+///
+/// assert_eq!(v, vec![0, 1, 2]);
+/// ```
+///
+/// ```rust,compile_fail,E0502
+/// let mut v = vec![0, 1];
+/// let mut_ref_v = &mut v;
+/// ##[allow(unused)]
+/// let ref_v = &v;
+/// mut_ref_v.push(2);
+/// ```
+///
+/// Mutable raw pointers work much like mutable references, with the added
+/// possibility of not pointing to a valid object. The syntax is `*mut Type`.
+///
+/// More information on mutable references and pointers can be found in```
+/// [Reference].
+///
+/// [Reference]: ../reference/types/pointer.html#mutable-references-mut
 mod mut_keyword {}
 
 #[doc(keyword = "pub")]
@@ -1000,18 +1068,148 @@ mod ref_keyword {}
 //
 /// Return a value from a function.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// A `return` marks the end of an execution path in a function:
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// ```
+/// fn foo() -> i32 {
+///     return 3;
+/// }
+/// assert_eq!(foo(), 3);
+/// ```
+///
+/// `return` is not needed when the returned value is the last expression in the
+/// function. In this case the `;` is omitted:
+///
+/// ```
+/// fn foo() -> i32 {
+///     3
+/// }
+/// assert_eq!(foo(), 3);
+/// ```
+///
+/// `return` returns from the function immediately (an "early return"):
+///
+/// ```no_run
+/// use std::fs::File;
+/// use std::io::{Error, ErrorKind, Read, Result};
+///
+/// fn main() -> Result<()> {
+///     let mut file = match File::open("foo.txt") {
+///         Ok(f) => f,
+///         Err(e) => return Err(e),
+///     };
+///
+///     let mut contents = String::new();
+///     let size = match file.read_to_string(&mut contents) {
+///         Ok(s) => s,
+///         Err(e) => return Err(e),
+///     };
+///
+///     if contents.contains("impossible!") {
+///         return Err(Error::new(ErrorKind::Other, "oh no!"));
+///     }
+///
+///     if size > 9000 {
+///         return Err(Error::new(ErrorKind::Other, "over 9000!"));
+///     }
+///
+///     assert_eq!(contents, "Hello, world!");
+///     Ok(())
+/// }
+/// ```
 mod return_keyword {}
 
 #[doc(keyword = "self")]
 //
 /// The receiver of a method, or the current module.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `self` is used in two situations: referencing the current module and marking
+/// the receiver of a method.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// In paths, `self` can be used to refer to the current module, either in a
+/// [`use`] statement or in a path to access an element:
+///
+/// ```
+/// # #![allow(unused_imports)]
+/// use std::io::{self, Read};
+/// ```
+///
+/// Is functionally the same as:
+///
+/// ```
+/// # #![allow(unused_imports)]
+/// use std::io;
+/// use std::io::Read;
+/// ```
+///
+/// Using `self` to access an element in the current module:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// # fn main() {}
+/// fn foo() {}
+/// fn bar() {
+///     self::foo()
+/// }
+/// ```
+///
+/// `self` as the current receiver for a method allows to omit the parameter
+/// type most of the time. With the exception of this particularity, `self` is
+/// used much like any other parameter:
+///
+/// ```
+/// struct Foo(i32);
+///
+/// impl Foo {
+///     // No `self`.
+///     fn new() -> Self {
+///         Self(0)
+///     }
+///
+///     // Consuming `self`.
+///     fn consume(self) -> Self {
+///         Self(self.0 + 1)
+///     }
+///
+///     // Borrowing `self`.
+///     fn borrow(&self) -> &i32 {
+///         &self.0
+///     }
+///
+///     // Borrowing `self` mutably.
+///     fn borrow_mut(&mut self) -> &mut i32 {
+///         &mut self.0
+///     }
+/// }
+///
+/// // This method must be called with a `Type::` prefix.
+/// let foo = Foo::new();
+/// assert_eq!(foo.0, 0);
+///
+/// // Those two calls produces the same result.
+/// let foo = Foo::consume(foo);
+/// assert_eq!(foo.0, 1);
+/// let foo = foo.consume();
+/// assert_eq!(foo.0, 2);
+///
+/// // Borrowing is handled automatically with the second syntax.
+/// let borrow_1 = Foo::borrow(&foo);
+/// let borrow_2 = foo.borrow();
+/// assert_eq!(borrow_1, borrow_2);
+///
+/// // Borrowing mutably is handled automatically too with the second syntax.
+/// let mut foo = Foo::new();
+/// *Foo::borrow_mut(&mut foo) += 1;
+/// assert_eq!(foo.0, 1);
+/// *foo.borrow_mut() += 1;
+/// assert_eq!(foo.0, 2);
+/// ```
+///
+/// Note that this automatic conversion when calling `foo.method()` is not
+/// limited to the examples above. See the [Reference] for more information.
+///
+/// [`use`]: keyword.use.html
+/// [Reference]: ../reference/items/associated-items.html#methods
 mod self_keyword {}
 
 #[doc(keyword = "Self")]
@@ -1019,20 +1217,148 @@ mod self_keyword {}
 /// The implementing type within a [`trait`] or [`impl`] block, or the current type within a type
 /// definition.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// Within a type definition:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// struct Node {
+///     elem: i32,
+///     // `Self` is a `Node` here.
+///     next: Option<Box<Self>>,
+/// }
+/// ```
+///
+/// In an [`impl`] block:
+///
+/// ```
+/// struct Foo(i32);
+///
+/// impl Foo {
+///     fn new() -> Self {
+///         Self(0)
+///     }
+/// }
+///
+/// assert_eq!(Foo::new().0, Foo(0).0);
+/// ```
+///
+/// Generic parameters are implicit with `Self`:
+///
+/// ```
+/// # #![allow(dead_code)]
+/// struct Wrap<T> {
+///     elem: T,
+/// }
+///
+/// impl<T> Wrap<T> {
+///     fn new(elem: T) -> Self {
+///         Self { elem }
+///     }
+/// }
+/// ```
+///
+/// In a [`trait`] definition and related [`impl`] block:
+///
+/// ```
+/// trait Example {
+///     fn example() -> Self;
+/// }
+///
+/// struct Foo(i32);
+///
+/// impl Example for Foo {
+///     fn example() -> Self {
+///         Self(42)
+///     }
+/// }
+///
+/// assert_eq!(Foo::example().0, Foo(42).0);
+/// ```
 ///
 /// [`impl`]: keyword.impl.html
 /// [`trait`]: keyword.trait.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod self_upper_keyword {}
 
 #[doc(keyword = "static")]
 //
-/// A place that is valid for the duration of a program.
+/// A static item is a value which is valid for the entire duration of your
+/// program (a `'static` lifetime).
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// On the surface, `static` items seem very similar to [`const`]s: both contain
+/// a value, both require type annotations and both can only be initialized with
+/// constant functions and values. However, `static`s are notably different in
+/// that they represent a location in memory. That means that you can have
+/// references to `static` items and potentially even modify them, making them
+/// essentially global variables.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// Static items do not call [`drop`] at the end of the program.
+///
+/// There are two types of `static` items: those declared in association with
+/// the [`mut`] keyword and those without.
+///
+/// Static items cannot be moved:
+///
+/// ```rust,compile_fail,E0507
+/// static VEC: Vec<u32> = vec![];
+///
+/// fn move_vec(v: Vec<u32>) -> Vec<u32> {
+///     v
+/// }
+///
+/// // This line causes an error
+/// move_vec(VEC);
+/// ```
+///
+/// # Simple `static`s
+///
+/// Accessing non-[`mut`] `static` items is considered safe, but some
+/// restrictions apply. Most notably, the type of a `static` value needs to
+/// implement the [`Sync`] trait, ruling out interior mutability containers
+/// like [`RefCell`]. See the [Reference] for more information.
+///
+/// ```rust
+/// static FOO: [i32; 5] = [1, 2, 3, 4, 5];
+///
+/// let r1 = &FOO as *const _;
+/// let r2 = &FOO as *const _;
+/// // With a strictly read-only static, references will have the same adress
+/// assert_eq!(r1, r2);
+/// // A static item can be used just like a variable in many cases
+/// println!("{:?}", FOO);
+/// ```
+///
+/// # Mutable `static`s
+///
+/// If a `static` item is declared with the [`mut`] keyword, then it is allowed
+/// to be modified by the program. However, accessing mutable `static`s can
+/// cause undefined behavior in a number of ways, for example due to data races
+/// in a multithreaded context. As such, all accesses to mutable `static`s
+/// require an [`unsafe`] block.
+///
+/// Despite their unsafety, mutable `static`s are necessary in many contexts:
+/// they can be used to represent global state shared by the whole program or in
+/// [`extern`] blocks to bind to variables from C libraries.
+///
+/// In an [`extern`] block:
+///
+/// ```rust,no_run
+/// # #![allow(dead_code)]
+/// extern "C" {
+///     static mut ERROR_MESSAGE: *mut std::os::raw::c_char;
+/// }
+/// ```
+///
+/// Mutable `static`s, just like simple `static`s, have some restrictions that
+/// apply to them. See the [Reference] for more information.
+///
+/// [`const`]: keyword.const.html
+/// [`extern`]: keyword.extern.html
+/// [`mut`]: keyword.mut.html
+/// [`unsafe`]: keyword.unsafe.html
+/// [`drop`]: mem/fn.drop.html
+/// [`Sync`]: marker/trait.Sync.html
+/// [`RefCell`]: cell/struct.RefCell.html
+/// [Reference]: ../reference/items/static-items.html
 mod static_keyword {}
 
 #[doc(keyword = "struct")]
@@ -1147,10 +1473,26 @@ mod struct_keyword {}
 //
 /// The parent of the current [module].
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// ```rust
+/// # #![allow(dead_code)]
+/// # fn main() {}
+/// mod a {
+///     pub fn foo() {}
+/// }
+/// mod b {
+///     pub fn foo() {
+///         super::a::foo(); // call a's foo function
+///     }
+/// }
+/// ```
+///
+/// It is also possible to use `super` multiple times: `super::super::foo`,
+/// going up the ancestor chain.
+///
+/// See the [Reference] for more information.
 ///
 /// [module]: ../reference/items/modules.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// [Reference]: ../reference/paths.html#super
 mod super_keyword {}
 
 #[doc(keyword = "trait")]
@@ -1194,9 +1536,44 @@ mod true_keyword {}
 //
 /// Define an alias for an existing type.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// The syntax is `type Name = ExistingType;`.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// # Examples
+///
+/// `type` does **not** create a new type:
+///
+/// ```rust
+/// type Meters = u32;
+/// type Kilograms = u32;
+///
+/// let m: Meters = 3;
+/// let k: Kilograms = 3;
+///
+/// assert_eq!(m, k);
+/// ```
+///
+/// In traits, `type` is used to declare an [associated type]:
+///
+/// ```rust
+/// trait Iterator {
+///     // associated type declaration
+///     type Item;
+///     fn next(&mut self) -> Option<Self::Item>;
+/// }
+///
+/// struct Once<T>(Option<T>);
+///
+/// impl<T> Iterator for Once<T> {
+///     // associated type definition
+///     type Item = T;
+///     fn next(&mut self) -> Option<Self::Item> {
+///         self.0.take()
+///     }
+/// }
+/// ```
+///
+/// [`trait`]: keyword.trait.html
+/// [associated type]: ../reference/items/associated-items.html#associated-types
 mod type_keyword {}
 
 #[doc(keyword = "unsafe")]
@@ -1213,9 +1590,61 @@ mod unsafe_keyword {}
 //
 /// Import or rename items from other crates or modules.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// Usually a `use` keyword is used to shorten the path required to refer to a module item.
+/// The keyword may appear in modules, blocks and even functions, usually at the top.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// The most basic usage of the keyword is `use path::to::item;`,
+/// though a number of convenient shortcuts are supported:
+///
+///   * Simultaneously binding a list of paths with a common prefix,
+///     using the glob-like brace syntax `use a::b::{c, d, e::f, g::h::i};`
+///   * Simultaneously binding a list of paths with a common prefix and their common parent module,
+///     using the [`self`] keyword, such as `use a::b::{self, c, d::e};`
+///   * Rebinding the target name as a new local name, using the syntax `use p::q::r as x;`.
+///     This can also be used with the last two features: `use a::b::{self as ab, c as abc}`.
+///   * Binding all paths matching a given prefix,
+///     using the asterisk wildcard syntax `use a::b::*;`.
+///   * Nesting groups of the previous features multiple times,
+///     such as `use a::b::{self as ab, c, d::{*, e::f}};`
+///   * Reexporting with visibility modifiers such as `pub use a::b;`
+///   * Importing with `_` to only import the methods of a trait without binding it to a name
+///     (to avoid conflict for example): `use ::std::io::Read as _;`.
+///
+/// Using path qualifiers like [`crate`], [`super`] or [`self`] is supported: `use crate::a::b;`.
+///
+/// Note that when the wildcard `*` is used on a type, it does not import its methods (though
+/// for `enum`s it imports the variants, as shown in the example below).
+///
+/// ```compile_fail,edition2018
+/// enum ExampleEnum {
+///     VariantA,
+///     VariantB,
+/// }
+///
+/// impl ExampleEnum {
+///     fn new() -> Self {
+///         Self::VariantA
+///     }
+/// }
+///
+/// use ExampleEnum::*;
+///
+/// // Compiles.
+/// let _ = VariantA;
+///
+/// // Does not compile !
+/// let n = new();
+/// ```
+///
+/// For more information on `use` and paths in general, see the [Reference].
+///
+/// The differences about paths and the `use` keyword between the 2015 and 2018 editions
+/// can also be found in the [Reference].
+///
+/// [`crate`]: keyword.crate.html
+/// [`self`]: keyword.self.html
+/// [`super`]: keyword.super.html
+/// [Reference]: ../reference/items/use-declarations.html
 mod use_keyword {}
 
 #[doc(keyword = "where")]

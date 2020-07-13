@@ -2,7 +2,6 @@ pub mod codegen_fn_attrs;
 pub mod cstore;
 pub mod dependency_format;
 pub mod exported_symbols;
-pub mod free_region;
 pub mod lang_items;
 pub mod lib_features {
     use rustc_data_structures::fx::{FxHashMap, FxHashSet};

@@ -14,22 +14,22 @@ use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::lint::{struct_lint_level, LintLevelMap, LintLevelSets, LintSet, LintSource};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::{builtin, Level, Lint};
+use rustc_session::lint::{builtin, Level, Lint, LintId};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{source_map::MultiSpan, Span, DUMMY_SP};
 
 use std::cmp;
 
-fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
+fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> LintLevelMap {
     assert_eq!(cnum, LOCAL_CRATE);
     let store = unerased_lint_store(tcx);
     let levels = LintLevelsBuilder::new(tcx.sess, false, &store);
     let mut builder = LintLevelMapBuilder { levels, tcx, store };
     let krate = tcx.hir().krate();
 
-    let push = builder.levels.push(&krate.item.attrs, &store);
+    let push = builder.levels.push(&krate.item.attrs, &store, true);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     for macro_def in krate.exported_macros {
         builder.levels.register_id(macro_def.hir_id);
@@ -37,7 +37,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
     intravisit::walk_crate(&mut builder, krate);
     builder.levels.pop(push);
 
-    tcx.arena.alloc(builder.levels.build_map())
+    builder.levels.build_map()
 }
 
 pub struct LintLevelsBuilder<'s> {
@@ -80,11 +80,13 @@ impl<'s> LintLevelsBuilder<'s> {
             let level = cmp::min(level, self.sets.lint_cap);
 
             let lint_flag_val = Symbol::intern(lint_name);
+
             let ids = match store.find_lints(&lint_name) {
                 Ok(ids) => ids,
                 Err(_) => continue, // errors handled in check_lint_name_cmdline above
             };
             for id in ids {
+                self.check_gated_lint(id, DUMMY_SP);
                 let src = LintSource::CommandLine(lint_flag_val);
                 specs.insert(id, (level, src));
             }
@@ -103,11 +105,16 @@ impl<'s> LintLevelsBuilder<'s> {
     /// * It'll validate all lint-related attributes in `attrs`
     /// * It'll mark all lint-related attributes as used
     /// * Lint levels will be updated based on the attributes provided
-    /// * Lint attributes are validated, e.g., a #[forbid] can't be switched to
-    ///   #[allow]
+    /// * Lint attributes are validated, e.g., a `#[forbid]` can't be switched to
+    ///   `#[allow]`
     ///
     /// Don't forget to call `pop`!
-    pub fn push(&mut self, attrs: &[ast::Attribute], store: &LintStore) -> BuilderPush {
+    pub fn push(
+        &mut self,
+        attrs: &[ast::Attribute],
+        store: &LintStore,
+        is_crate_node: bool,
+    ) -> BuilderPush {
         let mut specs = FxHashMap::default();
         let sess = self.sess;
         let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
@@ -212,8 +219,9 @@ impl<'s> LintLevelsBuilder<'s> {
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintSource::Node(name, li.span(), reason);
-                        for id in ids {
-                            specs.insert(*id, (level, src));
+                        for &id in ids {
+                            self.check_gated_lint(id, attr.span);
+                            specs.insert(id, (level, src));
                         }
                     }
 
@@ -330,6 +338,40 @@ impl<'s> LintLevelsBuilder<'s> {
             }
         }
 
+        if !is_crate_node {
+            for (id, &(level, ref src)) in specs.iter() {
+                if !id.lint.crate_level_only {
+                    continue;
+                }
+
+                let (lint_attr_name, lint_attr_span) = match *src {
+                    LintSource::Node(name, span, _) => (name, span),
+                    _ => continue,
+                };
+
+                let lint = builtin::UNUSED_ATTRIBUTES;
+                let (lint_level, lint_src) =
+                    self.sets.get_lint_level(lint, self.cur, Some(&specs), self.sess);
+                struct_lint_level(
+                    self.sess,
+                    lint,
+                    lint_level,
+                    lint_src,
+                    Some(lint_attr_span.into()),
+                    |lint| {
+                        let mut db = lint.build(&format!(
+                            "{}({}) is ignored unless specified at crate level",
+                            level.as_str(),
+                            lint_attr_name
+                        ));
+                        db.emit();
+                    },
+                );
+                // don't set a separate error for every lint in the group
+                break;
+            }
+        }
+
         for (id, &(level, ref src)) in specs.iter() {
             if level == Level::Forbid {
                 continue;
@@ -383,9 +425,29 @@ impl<'s> LintLevelsBuilder<'s> {
         BuilderPush { prev, changed: prev != self.cur }
     }
 
+    /// Checks if the lint is gated on a feature that is not enabled.
+    fn check_gated_lint(&self, lint_id: LintId, span: Span) {
+        if let Some(feature) = lint_id.lint.feature_gate {
+            if !self.sess.features_untracked().enabled(feature) {
+                feature_err(
+                    &self.sess.parse_sess,
+                    feature,
+                    span,
+                    &format!("the `{}` lint is unstable", lint_id.lint.name_lower()),
+                )
+                .emit();
+            }
+        }
+    }
+
     /// Called after `push` when the scope of a set of attributes are exited.
     pub fn pop(&mut self, push: BuilderPush) {
         self.cur = push.prev;
+    }
+
+    /// Find the lint level for a lint.
+    pub fn lint_level(&self, lint: &'static Lint) -> (Level, LintSource) {
+        self.sets.get_lint_level(lint, self.cur, None, self.sess)
     }
 
     /// Used to emit a lint-related diagnostic based on the current state of
@@ -396,7 +458,7 @@ impl<'s> LintLevelsBuilder<'s> {
         span: Option<MultiSpan>,
         decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
     ) {
-        let (level, src) = self.sets.get_lint_level(lint, self.cur, None, self.sess);
+        let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, span, decorate)
     }
 
@@ -426,7 +488,8 @@ impl LintLevelMapBuilder<'_, '_> {
     where
         F: FnOnce(&mut Self),
     {
-        let push = self.levels.push(attrs, self.store);
+        let is_crate_hir = id == hir::CRATE_HIR_ID;
+        let push = self.levels.push(attrs, self.store, is_crate_hir);
         if push.changed {
             self.levels.register_id(id);
         }
@@ -508,6 +571,6 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.lint_levels = lint_levels;
 }

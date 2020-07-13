@@ -4,11 +4,11 @@
 //[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 // build-pass
 // ignore-pass (test emits codegen-time warnings and verifies that they are not errors)
+// normalize-stderr-test "shift left by (64|32)_usize which" -> "shift left by %BITS% which"
 
 #![crate_type="lib"]
 #![warn(arithmetic_overflow, const_err)]
-#![allow(unused_variables)]
-#![allow(dead_code)]
+
 
 pub trait Foo {
     const N: i32;

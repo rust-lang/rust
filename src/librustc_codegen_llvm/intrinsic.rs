@@ -7,21 +7,27 @@ use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 use crate::value::Value;
 
+use log::debug;
+
 use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
-use rustc_codegen_ssa::common::TypeKind;
+use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_codegen_ssa::coverageinfo::CounterOp;
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
 use rustc_hir as hir;
+use rustc_middle::mir::coverage;
+use rustc_middle::mir::Operand;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_target::abi::{self, HasDataLayout, LayoutOf, Primitive};
+use rustc_target::spec::PanicStrategy;
 
 use std::cmp::Ordering;
 use std::iter;
@@ -78,6 +84,53 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Valu
 }
 
 impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    fn is_codegen_intrinsic(
+        &mut self,
+        intrinsic: &str,
+        args: &Vec<Operand<'tcx>>,
+        caller_instance: ty::Instance<'tcx>,
+    ) -> bool {
+        match intrinsic {
+            "count_code_region" => {
+                use coverage::count_code_region_args::*;
+                self.add_counter_region(
+                    caller_instance,
+                    op_to_u32(&args[COUNTER_INDEX]),
+                    op_to_u32(&args[START_BYTE_POS]),
+                    op_to_u32(&args[END_BYTE_POS]),
+                );
+                true // Also inject the counter increment in the backend
+            }
+            "coverage_counter_add" | "coverage_counter_subtract" => {
+                use coverage::coverage_counter_expression_args::*;
+                self.add_counter_expression_region(
+                    caller_instance,
+                    op_to_u32(&args[COUNTER_EXPRESSION_INDEX]),
+                    op_to_u32(&args[LEFT_INDEX]),
+                    if intrinsic == "coverage_counter_add" {
+                        CounterOp::Add
+                    } else {
+                        CounterOp::Subtract
+                    },
+                    op_to_u32(&args[RIGHT_INDEX]),
+                    op_to_u32(&args[START_BYTE_POS]),
+                    op_to_u32(&args[END_BYTE_POS]),
+                );
+                false // Does not inject backend code
+            }
+            "coverage_unreachable" => {
+                use coverage::coverage_unreachable_args::*;
+                self.add_unreachable_region(
+                    caller_instance,
+                    op_to_u32(&args[START_BYTE_POS]),
+                    op_to_u32(&args[END_BYTE_POS]),
+                );
+                false // Does not inject backend code
+            }
+            _ => true, // Unhandled intrinsics should be passed to `codegen_intrinsic_call()`
+        }
+    }
+
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -85,6 +138,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
+        caller_instance: ty::Instance<'tcx>,
     ) {
         let tcx = self.tcx;
         let callee_ty = instance.monomorphic_ty(tcx);
@@ -134,6 +188,23 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "breakpoint" => {
                 let llfn = self.get_intrinsic(&("llvm.debugtrap"));
                 self.call(llfn, &[], None)
+            }
+            "count_code_region" => {
+                // FIXME(richkadel): The current implementation assumes the MIR for the given
+                // caller_instance represents a single function. Validate and/or correct if inlining
+                // and/or monomorphization invalidates these assumptions.
+                let coverageinfo = tcx.coverageinfo(caller_instance.def_id());
+                let mangled_fn = tcx.symbol_name(caller_instance);
+                let (mangled_fn_name, _len_val) = self.const_str(mangled_fn.name);
+                let hash = self.const_u64(coverageinfo.hash);
+                let num_counters = self.const_u32(coverageinfo.num_counters);
+                use coverage::count_code_region_args::*;
+                let index = args[COUNTER_INDEX].immediate();
+                debug!(
+                    "count_code_region to LLVM intrinsic instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
+                    mangled_fn.name, hash, num_counters, index,
+                );
+                self.instrprof_increment(mangled_fn_name, hash, num_counters, index)
             }
             "va_start" => self.va_start(args[0].immediate()),
             "va_end" => self.va_end(args[0].immediate()),
@@ -186,12 +257,12 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
             "size_of" | "pref_align_of" | "min_align_of" | "needs_drop" | "type_id"
-            | "type_name" => {
-                let ty_name = self
+            | "type_name" | "variant_count" => {
+                let value = self
                     .tcx
                     .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
                     .unwrap();
-                OperandRef::from_const(self, ty_name, ret_ty).immediate_or_packed_pair(self)
+                OperandRef::from_const(self, value, ret_ty).immediate_or_packed_pair(self)
             }
             // Effectively no-op
             "forget" => {
@@ -548,7 +619,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             }
 
-            "discriminant_value" => args[0].deref(self.cx()).codegen_get_discr(self, ret_ty),
+            "discriminant_value" => {
+                if ret_ty.is_integral() {
+                    args[0].deref(self.cx()).codegen_get_discr(self, ret_ty)
+                } else {
+                    span_bug!(span, "Invalid discriminant type for `{:?}`", arg_tys[0])
+                }
+            }
 
             name if name.starts_with("simd_") => {
                 match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
@@ -698,6 +775,16 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 return;
             }
 
+            "ptr_guaranteed_eq" | "ptr_guaranteed_ne" => {
+                let a = args[0].immediate();
+                let b = args[1].immediate();
+                if name == "ptr_guaranteed_eq" {
+                    self.icmp(IntPredicate::IntEQ, a, b)
+                } else {
+                    self.icmp(IntPredicate::IntNE, a, b)
+                }
+            }
+
             "ptr_offset_from" => {
                 let ty = substs.type_at(0);
                 let pointee_size = self.size_of(ty);
@@ -804,7 +891,7 @@ fn try_intrinsic(
     catch_func: &'ll Value,
     dest: &'ll Value,
 ) {
-    if bx.sess().no_landing_pads() {
+    if bx.sess().panic_strategy() == PanicStrategy::Abort {
         bx.call(try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
@@ -2094,4 +2181,8 @@ fn float_type_width(ty: Ty<'_>) -> Option<u64> {
         ty::Float(t) => Some(t.bit_width()),
         _ => None,
     }
+}
+
+fn op_to_u32<'tcx>(op: &Operand<'tcx>) -> u32 {
+    Operand::scalar_from_const(op).to_u32().expect("Scalar is u32")
 }

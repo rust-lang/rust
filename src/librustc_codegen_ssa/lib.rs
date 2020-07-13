@@ -24,7 +24,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::LangItem;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::middle::cstore::{CrateSource, LibSource, NativeLibrary};
+use rustc_middle::middle::cstore::{CrateSource, LibSource, NativeLib};
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::ty::query::Providers;
 use rustc_session::config::{OutputFilenames, OutputType, RUST_CGU_EXT};
@@ -34,6 +34,7 @@ use std::path::{Path, PathBuf};
 pub mod back;
 pub mod base;
 pub mod common;
+pub mod coverageinfo;
 pub mod debuginfo;
 pub mod glue;
 pub mod meth;
@@ -55,31 +56,18 @@ pub struct ModuleCodegen<M> {
 
 // FIXME(eddyb) maybe include the crate name in this?
 pub const METADATA_FILENAME: &str = "lib.rmeta";
-pub const RLIB_BYTECODE_EXTENSION: &str = "bc.z";
 
 impl<M> ModuleCodegen<M> {
     pub fn into_compiled_module(
         self,
         emit_obj: bool,
         emit_bc: bool,
-        emit_bc_compressed: bool,
         outputs: &OutputFilenames,
     ) -> CompiledModule {
         let object = emit_obj.then(|| outputs.temp_path(OutputType::Object, Some(&self.name)));
         let bytecode = emit_bc.then(|| outputs.temp_path(OutputType::Bitcode, Some(&self.name)));
-        let bytecode_compressed = emit_bc_compressed.then(|| {
-            outputs
-                .temp_path(OutputType::Bitcode, Some(&self.name))
-                .with_extension(RLIB_BYTECODE_EXTENSION)
-        });
 
-        CompiledModule {
-            name: self.name.clone(),
-            kind: self.kind,
-            object,
-            bytecode,
-            bytecode_compressed,
-        }
+        CompiledModule { name: self.name.clone(), kind: self.kind, object, bytecode }
     }
 }
 
@@ -89,7 +77,6 @@ pub struct CompiledModule {
     pub kind: ModuleKind,
     pub object: Option<PathBuf>,
     pub bytecode: Option<PathBuf>,
-    pub bytecode_compressed: Option<PathBuf>,
 }
 
 pub struct CachedModuleCodegen {
@@ -126,9 +113,9 @@ pub struct CrateInfo {
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
     pub is_no_builtins: FxHashSet<CrateNum>,
-    pub native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
+    pub native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLib>>>,
     pub crate_name: FxHashMap<CrateNum, String>,
-    pub used_libraries: Lrc<Vec<NativeLibrary>>,
+    pub used_libraries: Lrc<Vec<NativeLib>>,
     pub link_args: Lrc<Vec<String>>,
     pub used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     pub used_crates_static: Vec<(CrateNum, LibSource)>,
@@ -151,12 +138,12 @@ pub struct CodegenResults {
     pub crate_info: CrateInfo,
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide_both(providers);
 }
 
-pub fn provide_extern(providers: &mut Providers<'_>) {
+pub fn provide_extern(providers: &mut Providers) {
     crate::back::symbol_export::provide_extern(providers);
     crate::base::provide_both(providers);
 }

@@ -120,12 +120,13 @@ fn overlap<'cx, 'tcx>(
     debug!("overlap(a_def_id={:?}, b_def_id={:?})", a_def_id, b_def_id);
 
     selcx.infcx().probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
-        overlap_within_probe(selcx, a_def_id, b_def_id, snapshot)
+        overlap_within_probe(selcx, skip_leak_check, a_def_id, b_def_id, snapshot)
     })
 }
 
 fn overlap_within_probe(
     selcx: &mut SelectionContext<'cx, 'tcx>,
+    skip_leak_check: SkipLeakCheck,
     a_def_id: DefId,
     b_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
@@ -178,6 +179,13 @@ fn overlap_within_probe(
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
         return None;
+    }
+
+    if !skip_leak_check.is_yes() {
+        if let Err(_) = infcx.leak_check(true, snapshot) {
+            debug!("overlap: leak check failed");
+            return None;
+        }
     }
 
     let impl_header = selcx.infcx().resolve_vars_if_possible(&a_impl_header);
@@ -327,12 +335,12 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///    try to implement this trait-ref. To check for this, we use InCrate::Remote
 ///    mode. That is sound because we already know all the impls from known crates.
 ///
-/// 3. For non-#[fundamental] traits, they guarantee that parent crates can
+/// 3. For non-`#[fundamental]` traits, they guarantee that parent crates can
 ///    add "non-blanket" impls without breaking negative reasoning in dependent
 ///    crates. This is the "rebalancing coherence" (RFC 1023) restriction.
 ///
 ///    For that, we only a allow crate to perform negative reasoning on
-///    non-local-non-#[fundamental] only if there's a local key parameter as per (2).
+///    non-local-non-`#[fundamental]` only if there's a local key parameter as per (2).
 ///
 ///    Because we never perform negative reasoning generically (coherence does
 ///    not involve type parameters), this can be interpreted as doing the full
@@ -565,11 +573,10 @@ fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> 
             }
         }
 
-        ty::Error => None,
+        ty::Error(_) => None,
 
-        ty::UnnormalizedProjection(..)
-        | ty::Closure(..)
-        | ty::Generator(..)
-        | ty::GeneratorWitness(..) => bug!("ty_is_local invoked on unexpected type: {:?}", ty),
+        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
+            bug!("ty_is_local invoked on unexpected type: {:?}", ty)
+        }
     }
 }

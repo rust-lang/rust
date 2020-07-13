@@ -19,16 +19,18 @@ use rustc_ast::ast;
 use rustc_ast::walk_list;
 use rustc_data_structures::sync::{join, par_iter, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::LintPass;
+use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use log::debug;
 use std::any::Any;
+use std::cell::Cell;
 use std::slice;
 
 /// Extract the `LintStore` from the query context.
@@ -42,12 +44,12 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
 }) }
 
-struct LateContextAndPass<'a, 'tcx, T: LateLintPass<'a, 'tcx>> {
-    context: LateContext<'a, 'tcx>,
+struct LateContextAndPass<'tcx, T: LateLintPass<'tcx>> {
+    context: LateContext<'tcx>,
     pass: T,
 }
 
-impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
+impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
     /// Merge the lints specified by any lint attributes into the
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
@@ -91,9 +93,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
     }
 }
 
-impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
-    for LateContextAndPass<'a, 'tcx, T>
-{
+impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPass<'tcx, T> {
     type Map = Map<'tcx>;
 
     /// Because lints are scoped lexically, we want to walk nested
@@ -103,12 +103,25 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         hir_visit::NestedVisitorMap::All(self.context.tcx.hir())
     }
 
-    fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let old_tables = self.context.tables;
-        self.context.tables = self.context.tcx.body_tables(body);
-        let body = self.context.tcx.hir().body(body);
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+        let old_enclosing_body = self.context.enclosing_body.replace(body_id);
+        let old_cached_typeck_tables = self.context.cached_typeck_tables.get();
+
+        // HACK(eddyb) avoid trashing `cached_typeck_tables` when we're
+        // nested in `visit_fn`, which may have already resulted in them
+        // being queried.
+        if old_enclosing_body != Some(body_id) {
+            self.context.cached_typeck_tables.set(None);
+        }
+
+        let body = self.context.tcx.hir().body(body_id);
         self.visit_body(body);
-        self.context.tables = old_tables;
+        self.context.enclosing_body = old_enclosing_body;
+
+        // See HACK comment above.
+        if old_enclosing_body != Some(body_id) {
+            self.context.cached_typeck_tables.set(old_cached_typeck_tables);
+        }
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -180,19 +193,20 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
     ) {
         // Wrap in tables here, not just in visit_nested_body,
         // in order for `check_fn` to be able to use them.
-        let old_tables = self.context.tables;
-        self.context.tables = self.context.tcx.body_tables(body_id);
+        let old_enclosing_body = self.context.enclosing_body.replace(body_id);
+        let old_cached_typeck_tables = self.context.cached_typeck_tables.take();
         let body = self.context.tcx.hir().body(body_id);
         lint_callback!(self, check_fn, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body_id, span, id);
         lint_callback!(self, check_fn_post, fk, decl, body, span, id);
-        self.context.tables = old_tables;
+        self.context.enclosing_body = old_enclosing_body;
+        self.context.cached_typeck_tables.set(old_cached_typeck_tables);
     }
 
     fn visit_variant_data(
         &mut self,
         s: &'tcx hir::VariantData<'tcx>,
-        _: ast::Name,
+        _: Symbol,
         _: &'tcx hir::Generics<'tcx>,
         _: hir::HirId,
         _: Span,
@@ -227,7 +241,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> hir_visit::Visitor<'tcx>
         hir_visit::walk_ty(self, t);
     }
 
-    fn visit_name(&mut self, sp: Span, name: ast::Name) {
+    fn visit_name(&mut self, sp: Span, name: Symbol) {
         lint_callback!(self, check_name, sp, name);
     }
 
@@ -332,8 +346,8 @@ impl LintPass for LateLintPassObjects<'_> {
 }
 
 macro_rules! expand_late_lint_pass_impl_methods {
-    ([$a:tt, $hir:tt], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &LateContext<$a, $hir>, $($param: $arg),*) {
+    ([$hir:tt], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+        $(fn $name(&mut self, context: &LateContext<$hir>, $($param: $arg),*) {
             for obj in self.lints.iter_mut() {
                 obj.$name(context, $($param),*);
             }
@@ -342,29 +356,30 @@ macro_rules! expand_late_lint_pass_impl_methods {
 }
 
 macro_rules! late_lint_pass_impl {
-    ([], [$hir:tt], $methods:tt) => (
-        impl<'a, $hir> LateLintPass<'a, $hir> for LateLintPassObjects<'_> {
-            expand_late_lint_pass_impl_methods!(['a, $hir], $methods);
+    ([], [$hir:tt], $methods:tt) => {
+        impl<$hir> LateLintPass<$hir> for LateLintPassObjects<'_> {
+            expand_late_lint_pass_impl_methods!([$hir], $methods);
         }
-    )
+    };
 }
 
 crate::late_lint_methods!(late_lint_pass_impl, [], ['tcx]);
 
-fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
+fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
     tcx: TyCtxt<'tcx>,
-    module_def_id: DefId,
+    module_def_id: LocalDefId,
     pass: T,
 ) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let context = LateContext {
         tcx,
-        tables: &ty::TypeckTables::empty(None),
+        enclosing_body: None,
+        cached_typeck_tables: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
         lint_store: unerased_lint_store(tcx),
-        last_node_with_lint_attrs: tcx.hir().as_local_hir_id(module_def_id).unwrap(),
+        last_node_with_lint_attrs: tcx.hir().as_local_hir_id(module_def_id),
         generics: None,
         only_module: true,
     };
@@ -380,9 +395,9 @@ fn late_lint_mod_pass<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     }
 }
 
-pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
+pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
     tcx: TyCtxt<'tcx>,
-    module_def_id: DefId,
+    module_def_id: LocalDefId,
     builtin_lints: T,
 ) {
     if tcx.sess.opts.debugging_opts.no_interleave_lints {
@@ -400,14 +415,15 @@ pub fn late_lint_mod<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
     }
 }
 
-fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
+fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
 
     let context = LateContext {
         tcx,
-        tables: &ty::TypeckTables::empty(None),
+        enclosing_body: None,
+        cached_typeck_tables: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
         access_levels,
         lint_store: unerased_lint_store(tcx),
@@ -430,7 +446,7 @@ fn late_lint_pass_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tc
     })
 }
 
-fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
+fn late_lint_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, builtin_lints: T) {
     let mut passes = unerased_lint_store(tcx).late_passes.iter().map(|p| (p)()).collect::<Vec<_>>();
 
     if !tcx.sess.opts.debugging_opts.no_interleave_lints {
@@ -460,7 +476,7 @@ fn late_lint_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(tcx: TyCtxt<'tcx>, b
 }
 
 /// Performs lint checking on a crate.
-pub fn check_crate<'tcx, T: for<'a> LateLintPass<'a, 'tcx>>(
+pub fn check_crate<'tcx, T: LateLintPass<'tcx>>(
     tcx: TyCtxt<'tcx>,
     builtin_lints: impl FnOnce() -> T + Send,
 ) {

@@ -2,7 +2,7 @@
 // edition:2015
 // run-rustfix
 // rustfix-only-machine-applicable
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 #![feature(rust_2018_preview)]
 #![warn(rust_2018_compatibility)]

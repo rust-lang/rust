@@ -16,7 +16,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::builtin::UNUSED_ATTRIBUTES;
 use rustc_span::symbol::Symbol;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use log::debug;
 
@@ -35,8 +35,8 @@ declare_lint! {
 
 declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UnusedResults {
+    fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         let expr = match s.kind {
             hir::StmtKind::Semi(ref expr) => &**expr,
             _ => return,
@@ -46,7 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             return;
         }
 
-        let ty = cx.tables.expr_ty(&expr);
+        let ty = cx.tables().expr_ty(&expr);
         let type_permits_lack_of_use = check_must_use_ty(cx, ty, &expr, s.span, "", "", 1);
 
         let mut fn_warned = false;
@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             hir::ExprKind::Call(ref callee, _) => {
                 match callee.kind {
                     hir::ExprKind::Path(ref qpath) => {
-                        match cx.tables.qpath_res(qpath, callee.hir_id) {
+                        match cx.qpath_res(qpath, callee.hir_id) {
                             Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) => Some(def_id),
                             // `Res::Local` if it was a closure, for which we
                             // do not currently support must-use linting
@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     _ => None,
                 }
             }
-            hir::ExprKind::MethodCall(..) => cx.tables.type_dependent_def_id(expr.hir_id),
+            hir::ExprKind::MethodCall(..) => cx.tables().type_dependent_def_id(expr.hir_id),
             _ => None,
         };
         if let Some(def_id) = maybe_def_id {
@@ -116,7 +116,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         // Returns whether an error has been emitted (and thus another does not need to be later).
         fn check_must_use_ty<'tcx>(
-            cx: &LateContext<'_, 'tcx>,
+            cx: &LateContext<'tcx>,
             ty: Ty<'tcx>,
             expr: &hir::Expr<'_>,
             span: Span,
@@ -146,7 +146,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
                     for (predicate, _) in cx.tcx.predicates_of(def).predicates {
-                        if let ty::Predicate::Trait(ref poly_trait_predicate, _) = predicate {
+                        if let ty::PredicateKind::Trait(ref poly_trait_predicate, _) =
+                            predicate.kind()
+                        {
                             let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
                             let def_id = trait_ref.def_id;
                             let descr_pre =
@@ -211,7 +213,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         // this would still require a copy into the format string, which would only be executed
         // when needed.
         fn check_must_use_def(
-            cx: &LateContext<'_, '_>,
+            cx: &LateContext<'_>,
             def_id: DefId,
             span: Span,
             descr_pre_path: &str,
@@ -249,8 +251,8 @@ declare_lint! {
 
 declare_lint_pass!(PathStatements => [PATH_STATEMENTS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for PathStatements {
+    fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(ref expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
                 cx.struct_span_lint(PATH_STATEMENTS, s.span, |lint| {
@@ -274,8 +276,8 @@ impl UnusedAttributes {
 
 impl_lint_pass!(UnusedAttributes => [UNUSED_ATTRIBUTES]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
-    fn check_attribute(&mut self, cx: &LateContext<'_, '_>, attr: &ast::Attribute) {
+impl<'tcx> LateLintPass<'tcx> for UnusedAttributes {
+    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
 
         if attr.is_doc_comment() {
@@ -285,8 +287,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
         let attr_info = attr.ident().and_then(|ident| self.builtin_attributes.get(&ident.name));
 
         if let Some(&&(name, ty, ..)) = attr_info {
-            if let AttributeType::Whitelisted = ty {
-                debug!("{:?} is Whitelisted", name);
+            if let AttributeType::AssumedUsed = ty {
+                debug!("{:?} is AssumedUsed", name);
                 return;
             }
         }
@@ -380,11 +382,27 @@ trait UnusedDelimLint {
     );
 
     fn is_expr_delims_necessary(inner: &ast::Expr, followed_by_block: bool) -> bool {
-        followed_by_block
-            && match inner.kind {
-                ExprKind::Ret(_) | ExprKind::Break(..) => true,
-                _ => parser::contains_exterior_struct_lit(&inner),
+        // Prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`
+        let lhs_needs_parens = {
+            let mut innermost = inner;
+            loop {
+                if let ExprKind::Binary(_, lhs, _rhs) = &innermost.kind {
+                    innermost = lhs;
+                    if !rustc_ast::util::classify::expr_requires_semi_to_be_stmt(innermost) {
+                        break true;
+                    }
+                } else {
+                    break false;
+                }
             }
+        };
+
+        lhs_needs_parens
+            || (followed_by_block
+                && match inner.kind {
+                    ExprKind::Ret(_) | ExprKind::Break(..) => true,
+                    _ => parser::contains_exterior_struct_lit(&inner),
+                })
     }
 
     fn emit_unused_delims_expr(
@@ -415,6 +433,12 @@ trait UnusedDelimLint {
         msg: &str,
         keep_space: (bool, bool),
     ) {
+        // FIXME(flip1995): Quick and dirty fix for #70814. This should be fixed in rustdoc
+        // properly.
+        if span == DUMMY_SP {
+            return;
+        }
+
         cx.struct_span_lint(self.lint(), span, |lint| {
             let span_msg = format!("unnecessary {} around {}", Self::DELIM_STR, msg);
             let mut err = lint.build(&span_msg);
@@ -502,7 +526,7 @@ trait UnusedDelimLint {
                 let (args_to_check, ctx) = match *call_or_other {
                     Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg),
                     // first "argument" is self (which sometimes needs delims)
-                    MethodCall(_, ref args) => (&args[1..], UnusedDelimsCtx::MethodArg),
+                    MethodCall(_, ref args, _) => (&args[1..], UnusedDelimsCtx::MethodArg),
                     // actual catch-all arm
                     _ => {
                         return;
@@ -919,14 +943,14 @@ declare_lint! {
 
 declare_lint_pass!(UnusedAllocation => [UNUSED_ALLOCATION]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
+    fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
         match e.kind {
             hir::ExprKind::Box(_) => {}
             _ => return,
         }
 
-        for adj in cx.tables.expr_adjustments(e) {
+        for adj in cx.tables().expr_adjustments(e) {
             if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
                 cx.struct_span_lint(UNUSED_ALLOCATION, e.span, |lint| {
                     let msg = match m {

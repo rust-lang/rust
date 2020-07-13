@@ -2,7 +2,6 @@
 
 # ignore-musl
 # ignore-windows
-# ignore-macos (rust-lang/rust#66568)
 # Objects are reproducible but their path is not.
 
 all:  \
@@ -21,7 +20,7 @@ sysroot:
 	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
 	$(RUSTC) reproducible-build-aux.rs
 	$(RUSTC) reproducible-build.rs --crate-type rlib --sysroot $(shell $(RUSTC) --print sysroot) --remap-path-prefix=$(shell $(RUSTC) --print sysroot)=/sysroot
-	cp -r $(shell $(RUSTC) --print sysroot) $(TMPDIR)/sysroot
+	cp -R $(shell $(RUSTC) --print sysroot) $(TMPDIR)/sysroot
 	cp $(TMPDIR)/libreproducible_build.rlib $(TMPDIR)/libfoo.rlib
 	$(RUSTC) reproducible-build.rs --crate-type rlib --sysroot $(TMPDIR)/sysroot --remap-path-prefix=$(TMPDIR)/sysroot=/sysroot
 	cmp "$(TMPDIR)/libreproducible_build.rlib" "$(TMPDIR)/libfoo.rlib" || exit 1

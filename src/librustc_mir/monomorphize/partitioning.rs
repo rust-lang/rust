@@ -306,7 +306,7 @@ fn mono_item_visibility(
             let def_id = tcx.hir().local_def_id(*hir_id);
             return if tcx.is_reachable_non_generic(def_id) {
                 *can_be_internalized = false;
-                default_visibility(tcx, def_id, false)
+                default_visibility(tcx, def_id.to_def_id(), false)
             } else {
                 Visibility::Hidden
             };
@@ -454,17 +454,10 @@ fn default_visibility(tcx: TyCtxt<'_>, id: DefId, is_generic: bool) -> Visibilit
 fn merge_codegen_units<'tcx>(
     tcx: TyCtxt<'tcx>,
     initial_partitioning: &mut PreInliningPartitioning<'tcx>,
-    mut target_cgu_count: usize,
+    target_cgu_count: usize,
 ) {
     assert!(target_cgu_count >= 1);
     let codegen_units = &mut initial_partitioning.codegen_units;
-
-    if tcx.is_compiler_builtins(LOCAL_CRATE) {
-        // Compiler builtins require some degree of control over how mono items
-        // are partitioned into compilation units. Provide it by keeping the
-        // original partitioning when compiling the compiler builtins crate.
-        target_cgu_count = codegen_units.len();
-    }
 
     // Note that at this point in time the `codegen_units` here may not be in a
     // deterministic order (but we know they're deterministically the same set).
@@ -755,7 +748,7 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             Some(def_id)
         }
         MonoItem::Static(def_id) => Some(def_id),
-        MonoItem::GlobalAsm(hir_id) => Some(tcx.hir().local_def_id(hir_id)),
+        MonoItem::GlobalAsm(hir_id) => Some(tcx.hir().local_def_id(hir_id).to_def_id()),
     }
 }
 
@@ -779,7 +772,7 @@ fn compute_codegen_unit_name(
                 cgu_def_id = Some(DefId { krate: def_id.krate, index: CRATE_DEF_INDEX });
             }
             break;
-        } else if tcx.def_kind(current_def_id) == Some(DefKind::Mod) {
+        } else if tcx.def_kind(current_def_id) == DefKind::Mod {
             if cgu_def_id.is_none() {
                 cgu_def_id = Some(current_def_id);
             }
@@ -887,9 +880,9 @@ where
 }
 
 fn collect_and_partition_mono_items(
-    tcx: TyCtxt<'_>,
+    tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
-) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'_>]) {
+) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
@@ -1001,7 +994,7 @@ fn collect_and_partition_mono_items(
     (tcx.arena.alloc(mono_items), codegen_units)
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
 
     providers.is_codegened_item = |tcx, def_id| {

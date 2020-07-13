@@ -1,35 +1,35 @@
 error[E0426]: use of undeclared label `'fo`
   --> $DIR/suggest-labels.rs:4:15
    |
+LL |     'foo: loop {
+   |     ---- a label with a similar name is reachable
 LL |         break 'fo;
    |               ^^^
-   |
-help: a label with a similar name exists in this scope
-   |
-LL |         break 'foo;
-   |               ^^^^
+   |               |
+   |               undeclared label `'fo`
+   |               help: try using similarly named label: `'foo`
 
 error[E0426]: use of undeclared label `'bor`
   --> $DIR/suggest-labels.rs:8:18
    |
+LL |     'bar: loop {
+   |     ---- a label with a similar name is reachable
 LL |         continue 'bor;
    |                  ^^^^
-   |
-help: a label with a similar name exists in this scope
-   |
-LL |         continue 'bar;
-   |                  ^^^^
+   |                  |
+   |                  undeclared label `'bor`
+   |                  help: try using similarly named label: `'bar`
 
 error[E0426]: use of undeclared label `'longlable`
   --> $DIR/suggest-labels.rs:13:19
    |
+LL |         'longlabel1: loop {
+   |         ----------- a label with a similar name is reachable
 LL |             break 'longlable;
    |                   ^^^^^^^^^^
-   |
-help: a label with a similar name exists in this scope
-   |
-LL |             break 'longlabel1;
-   |                   ^^^^^^^^^^^
+   |                   |
+   |                   undeclared label `'longlable`
+   |                   help: try using similarly named label: `'longlabel1`
 
 error: aborting due to 3 previous errors
 

@@ -1,32 +1,11 @@
-error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+error: lifetime may not live long enough
   --> $DIR/regions-escape-method.rs:15:13
    |
 LL |     s.f(|p| p)
-   |             ^
-   |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 15:9...
-  --> $DIR/regions-escape-method.rs:15:9
-   |
-LL |     s.f(|p| p)
-   |         ^^^^^
-note: ...so that the expression is assignable
-  --> $DIR/regions-escape-method.rs:15:13
-   |
-LL |     s.f(|p| p)
-   |             ^
-   = note: expected  `&i32`
-              found  `&i32`
-note: but, the lifetime must be valid for the method call at 15:5...
-  --> $DIR/regions-escape-method.rs:15:5
-   |
-LL |     s.f(|p| p)
-   |     ^^^^^^^^^^
-note: ...so that a type/lifetime parameter is in scope here
-  --> $DIR/regions-escape-method.rs:15:5
-   |
-LL |     s.f(|p| p)
-   |     ^^^^^^^^^^
+   |          -- ^ returning this value requires that `'1` must outlive `'2`
+   |          ||
+   |          |return type of closure is &'2 i32
+   |          has type `&'1 i32`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

@@ -64,6 +64,24 @@ impl<K: DepKind> DepNode<K> {
         debug_assert!(!kind.has_params());
         DepNode { kind, hash: Fingerprint::ZERO }
     }
+
+    pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
+    where
+        Ctxt: crate::query::QueryContext<DepKind = K>,
+        Key: DepNodeParams<Ctxt>,
+    {
+        let hash = arg.to_fingerprint(tcx);
+        let dep_node = DepNode { kind, hash };
+
+        #[cfg(debug_assertions)]
+        {
+            if !kind.can_reconstruct_query_key() && tcx.debug_dep_node() {
+                tcx.dep_graph().register_dep_node_debug_str(dep_node, || arg.to_debug_str(tcx));
+            }
+        }
+
+        dep_node
+    }
 }
 
 impl<K: DepKind> fmt::Debug for DepNode<K> {
@@ -73,7 +91,7 @@ impl<K: DepKind> fmt::Debug for DepNode<K> {
 }
 
 pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool;
+    fn can_reconstruct_query_key() -> bool;
 
     /// This method turns the parameters of a DepNodeConstructor into an opaque
     /// Fingerprint to be used in DepNode.
@@ -90,7 +108,7 @@ pub trait DepNodeParams<Ctxt: DepContext>: fmt::Debug + Sized {
     /// This method tries to recover the query key from the given `DepNode`,
     /// something which is needed when forcing `DepNode`s during red-green
     /// evaluation. The query system will only call this method if
-    /// `CAN_RECONSTRUCT_QUERY_KEY` is `true`.
+    /// `can_reconstruct_query_key()` is `true`.
     /// It is always valid to return `None` here, in which case incremental
     /// compilation will treat the query as having changed instead of forcing it.
     fn recover(tcx: Ctxt, dep_node: &DepNode<Ctxt::DepKind>) -> Option<Self>;
@@ -100,7 +118,10 @@ impl<Ctxt: DepContext, T> DepNodeParams<Ctxt> for T
 where
     T: HashStable<Ctxt::StableHashingContext> + fmt::Debug,
 {
-    default const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+    #[inline]
+    default fn can_reconstruct_query_key() -> bool {
+        false
+    }
 
     default fn to_fingerprint(&self, tcx: Ctxt) -> Fingerprint {
         let mut hcx = tcx.create_stable_hashing_context();
@@ -117,6 +138,12 @@ where
 
     default fn recover(_: Ctxt, _: &DepNode<Ctxt::DepKind>) -> Option<Self> {
         None
+    }
+}
+
+impl<Ctxt: DepContext> DepNodeParams<Ctxt> for () {
+    fn to_fingerprint(&self, _: Ctxt) -> Fingerprint {
+        Fingerprint::ZERO
     }
 }
 

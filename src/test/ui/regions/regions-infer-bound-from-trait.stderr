@@ -4,13 +4,7 @@ error[E0309]: the parameter type `A` may not live long enough
 LL | fn bar1<'a,A>(x: Inv<'a>, a: A) {
    |            - help: consider adding an explicit lifetime bound...: `A: 'a`
 LL |     check_bound(x, a)
-   |     ^^^^^^^^^^^
-   |
-note: ...so that the type `A` will meet its required lifetime bounds
-  --> $DIR/regions-infer-bound-from-trait.rs:33:5
-   |
-LL |     check_bound(x, a)
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
 
 error[E0309]: the parameter type `A` may not live long enough
   --> $DIR/regions-infer-bound-from-trait.rs:37:5
@@ -18,13 +12,7 @@ error[E0309]: the parameter type `A` may not live long enough
 LL | fn bar2<'a,'b,A:Is<'b>>(x: Inv<'a>, y: Inv<'b>, a: A) {
    |               -- help: consider adding an explicit lifetime bound...: `A: 'a +`
 LL |     check_bound(x, a)
-   |     ^^^^^^^^^^^
-   |
-note: ...so that the type `A` will meet its required lifetime bounds
-  --> $DIR/regions-infer-bound-from-trait.rs:37:5
-   |
-LL |     check_bound(x, a)
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
 
 error: aborting due to 2 previous errors
 

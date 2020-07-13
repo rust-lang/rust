@@ -20,6 +20,7 @@ use rustc_ast::ast;
 use rustc_ast::visit as ast_visit;
 use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use log::debug;
@@ -54,7 +55,8 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     where
         F: FnOnce(&mut Self),
     {
-        let push = self.context.builder.push(attrs, &self.context.lint_store);
+        let is_crate_node = id == ast::CRATE_NODE_ID;
+        let push = self.context.builder.push(attrs, &self.context.lint_store, is_crate_node);
         self.check_id(id);
         self.enter_attrs(attrs);
         f(self);
@@ -159,7 +161,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_ty(self, t);
     }
 
-    fn visit_ident(&mut self, ident: ast::Ident) {
+    fn visit_ident(&mut self, ident: Ident) {
         run_early_pass!(self, check_ident, ident);
     }
 

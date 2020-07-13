@@ -7,7 +7,8 @@ async fn an_async_block() -> u32 {
         let x: Option<u32> = None;
         x?; //~ ERROR the `?` operator
         22
-    }.await
+    }
+    .await
 }
 
 async fn async_closure_containing_fn() -> u32 {

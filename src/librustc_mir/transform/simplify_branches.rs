@@ -21,7 +21,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(src.def_id());
         for block in body.basic_blocks_mut() {
             let terminator = block.terminator_mut();
@@ -53,7 +53,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
                 } if (c.literal.try_eval_bool(tcx, param_env) == Some(true)) == expected => {
                     TerminatorKind::Goto { target }
                 }
-                TerminatorKind::FalseEdges { real_target, .. } => {
+                TerminatorKind::FalseEdge { real_target, .. } => {
                     TerminatorKind::Goto { target: real_target }
                 }
                 TerminatorKind::FalseUnwind { real_target, .. } => {

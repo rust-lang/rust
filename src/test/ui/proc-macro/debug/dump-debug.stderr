@@ -1,0 +1,166 @@
+TokenStream [Ident { ident: "ident", span: #0 bytes(130..135) }, Ident { ident: "r#ident", span: #0 bytes(151..158) }, Punct { ch: ',', spacing: Alone, span: #0 bytes(176..177) }, Punct { ch: '=', spacing: Joint, span: #0 bytes(203..205) }, Punct { ch: '=', spacing: Joint, span: #0 bytes(203..205) }, Punct { ch: '>', spacing: Alone, span: #0 bytes(205..206) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: #0 bytes(230..232) }, Group { delimiter: Bracket, stream: TokenStream [Ident { ident: "_", span: #0 bytes(258..259) }], span: #0 bytes(257..260) }, Literal { kind: Integer, symbol: "0", suffix: None, span: #0 bytes(315..316) }, Literal { kind: Float, symbol: "1.0", suffix: None, span: #0 bytes(321..324) }, Literal { kind: Str, symbol: "S", suffix: None, span: #0 bytes(329..332) }, Literal { kind: ByteStr, symbol: "B", suffix: None, span: #0 bytes(337..341) }, Literal { kind: StrRaw(0), symbol: "R", suffix: None, span: #0 bytes(346..350) }, Literal { kind: StrRaw(2), symbol: "R", suffix: None, span: #0 bytes(355..363) }, Literal { kind: ByteStrRaw(0), symbol: "BR", suffix: None, span: #0 bytes(368..374) }, Literal { kind: ByteStrRaw(2), symbol: "BR", suffix: None, span: #0 bytes(379..389) }, Literal { kind: Char, symbol: "C", suffix: None, span: #0 bytes(394..397) }, Literal { kind: Byte, symbol: "B", suffix: None, span: #0 bytes(402..406) }, Literal { kind: Integer, symbol: "0", suffix: Some("q"), span: #0 bytes(437..439) }, Literal { kind: Float, symbol: "1.0", suffix: Some("q"), span: #0 bytes(444..448) }, Literal { kind: Str, symbol: "S", suffix: Some("q"), span: #0 bytes(453..457) }, Literal { kind: ByteStr, symbol: "B", suffix: Some("q"), span: #0 bytes(462..467) }, Literal { kind: StrRaw(0), symbol: "R", suffix: Some("q"), span: #0 bytes(472..477) }, Literal { kind: StrRaw(2), symbol: "R", suffix: Some("q"), span: #0 bytes(482..491) }, Literal { kind: ByteStrRaw(0), symbol: "BR", suffix: Some("q"), span: #0 bytes(496..503) }, Literal { kind: ByteStrRaw(2), symbol: "BR", suffix: Some("q"), span: #0 bytes(508..519) }, Literal { kind: Char, symbol: "C", suffix: Some("q"), span: #0 bytes(524..528) }, Literal { kind: Byte, symbol: "B", suffix: Some("q"), span: #0 bytes(533..538) }]
+TokenStream [
+    Ident {
+        ident: "ident",
+        span: #0 bytes(130..135),
+    },
+    Ident {
+        ident: "r#ident",
+        span: #0 bytes(151..158),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: #0 bytes(176..177),
+    },
+    Punct {
+        ch: '=',
+        spacing: Joint,
+        span: #0 bytes(203..205),
+    },
+    Punct {
+        ch: '=',
+        spacing: Joint,
+        span: #0 bytes(203..205),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: #0 bytes(205..206),
+    },
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [],
+        span: #0 bytes(230..232),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "_",
+                span: #0 bytes(258..259),
+            },
+        ],
+        span: #0 bytes(257..260),
+    },
+    Literal {
+        kind: Integer,
+        symbol: "0",
+        suffix: None,
+        span: #0 bytes(315..316),
+    },
+    Literal {
+        kind: Float,
+        symbol: "1.0",
+        suffix: None,
+        span: #0 bytes(321..324),
+    },
+    Literal {
+        kind: Str,
+        symbol: "S",
+        suffix: None,
+        span: #0 bytes(329..332),
+    },
+    Literal {
+        kind: ByteStr,
+        symbol: "B",
+        suffix: None,
+        span: #0 bytes(337..341),
+    },
+    Literal {
+        kind: StrRaw(0),
+        symbol: "R",
+        suffix: None,
+        span: #0 bytes(346..350),
+    },
+    Literal {
+        kind: StrRaw(2),
+        symbol: "R",
+        suffix: None,
+        span: #0 bytes(355..363),
+    },
+    Literal {
+        kind: ByteStrRaw(0),
+        symbol: "BR",
+        suffix: None,
+        span: #0 bytes(368..374),
+    },
+    Literal {
+        kind: ByteStrRaw(2),
+        symbol: "BR",
+        suffix: None,
+        span: #0 bytes(379..389),
+    },
+    Literal {
+        kind: Char,
+        symbol: "C",
+        suffix: None,
+        span: #0 bytes(394..397),
+    },
+    Literal {
+        kind: Byte,
+        symbol: "B",
+        suffix: None,
+        span: #0 bytes(402..406),
+    },
+    Literal {
+        kind: Integer,
+        symbol: "0",
+        suffix: Some("q"),
+        span: #0 bytes(437..439),
+    },
+    Literal {
+        kind: Float,
+        symbol: "1.0",
+        suffix: Some("q"),
+        span: #0 bytes(444..448),
+    },
+    Literal {
+        kind: Str,
+        symbol: "S",
+        suffix: Some("q"),
+        span: #0 bytes(453..457),
+    },
+    Literal {
+        kind: ByteStr,
+        symbol: "B",
+        suffix: Some("q"),
+        span: #0 bytes(462..467),
+    },
+    Literal {
+        kind: StrRaw(0),
+        symbol: "R",
+        suffix: Some("q"),
+        span: #0 bytes(472..477),
+    },
+    Literal {
+        kind: StrRaw(2),
+        symbol: "R",
+        suffix: Some("q"),
+        span: #0 bytes(482..491),
+    },
+    Literal {
+        kind: ByteStrRaw(0),
+        symbol: "BR",
+        suffix: Some("q"),
+        span: #0 bytes(496..503),
+    },
+    Literal {
+        kind: ByteStrRaw(2),
+        symbol: "BR",
+        suffix: Some("q"),
+        span: #0 bytes(508..519),
+    },
+    Literal {
+        kind: Char,
+        symbol: "C",
+        suffix: Some("q"),
+        span: #0 bytes(524..528),
+    },
+    Literal {
+        kind: Byte,
+        symbol: "B",
+        suffix: Some("q"),
+        span: #0 bytes(533..538),
+    },
+]

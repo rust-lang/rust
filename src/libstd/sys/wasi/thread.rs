@@ -25,7 +25,7 @@ impl Thread {
 
     pub fn sleep(dur: Duration) {
         let nanos = dur.as_nanos();
-        assert!(nanos <= u64::max_value() as u128);
+        assert!(nanos <= u64::MAX as u128);
 
         const USERDATA: wasi::Userdata = 0x0123_45678;
 

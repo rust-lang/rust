@@ -121,16 +121,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             (Some(ret_span), _) => (
                 ty_sub.span,
                 ret_span,
-                "this parameter and the return type are declared \
-                 with different lifetimes..."
+                "this parameter and the return type are declared with different lifetimes..."
                     .to_owned(),
                 format!("...but data{} is returned here", span_label_var1),
             ),
             (_, Some(ret_span)) => (
                 ty_sup.span,
                 ret_span,
-                "this parameter and the return type are declared \
-                 with different lifetimes..."
+                "this parameter and the return type are declared with different lifetimes..."
                     .to_owned(),
                 format!("...but data{} is returned here", span_label_var1),
             ),

@@ -1,8 +1,6 @@
 use ArgumentType::*;
 use Position::*;
 
-use fmt_macros as parse;
-
 use rustc_ast::ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -10,7 +8,8 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_parse_format as parse;
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
 
 use std::borrow::Cow;
@@ -108,7 +107,8 @@ struct Context<'a, 'b> {
     arg_spans: Vec<Span>,
     /// All the formatting arguments that have formatting flags set, in order for diagnostics.
     arg_with_formatting: Vec<parse::FormatSpec<'a>>,
-    /// Whether this formatting string is a literal or it comes from a macro.
+
+    /// Whether this format string came from a string literal, as opposed to a macro.
     is_literal: bool,
 }
 
@@ -280,6 +280,8 @@ impl<'a, 'b> Context<'a, 'b> {
                                 ("x", "LowerHex"),
                                 ("X", "UpperHex"),
                             ] {
+                                // FIXME: rustfix (`run-rustfix`) fails to apply suggestions.
+                                // > "Cannot replace slice of data that was already replaced"
                                 err.tool_only_span_suggestion(
                                     sp,
                                     &format!("use the `{}` trait", name),
@@ -324,7 +326,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// format string.
     fn report_invalid_references(&self, numbered_position_args: bool) {
         let mut e;
-        let sp = if self.is_literal {
+        let sp = if !self.arg_spans.is_empty() {
             // Point at the formatting arguments.
             MultiSpan::from_spans(self.arg_spans.clone())
         } else {
@@ -372,7 +374,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 let reg = refs.pop().unwrap();
                 (format!("arguments {head} and {tail}", head = refs.join(", "), tail = reg,), pos)
             };
-            if !self.is_literal {
+            if self.arg_spans.is_empty() {
                 sp = MultiSpan::from_span(self.fmtsp);
             }
 
@@ -501,14 +503,55 @@ impl<'a, 'b> Context<'a, 'b> {
                         self.verify_arg_type(Exact(idx), ty)
                     }
                     None => {
-                        let msg = format!("there is no argument named `{}`", name);
-                        let sp = if self.is_literal {
-                            *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp)
+                        let capture_feature_enabled = self
+                            .ecx
+                            .ecfg
+                            .features
+                            .map_or(false, |features| features.format_args_capture);
+
+                        // For the moment capturing variables from format strings expanded from macros is
+                        // disabled (see RFC #2795)
+                        let can_capture = capture_feature_enabled && self.is_literal;
+
+                        if can_capture {
+                            // Treat this name as a variable to capture from the surrounding scope
+                            let idx = self.args.len();
+                            self.arg_types.push(Vec::new());
+                            self.arg_unique_types.push(Vec::new());
+                            self.args.push(
+                                self.ecx.expr_ident(self.fmtsp, Ident::new(name, self.fmtsp)),
+                            );
+                            self.names.insert(name, idx);
+                            self.verify_arg_type(Exact(idx), ty)
                         } else {
-                            self.fmtsp
-                        };
-                        let mut err = self.ecx.struct_span_err(sp, &msg[..]);
-                        err.emit();
+                            let msg = format!("there is no argument named `{}`", name);
+                            let sp = if self.is_literal {
+                                *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp)
+                            } else {
+                                self.fmtsp
+                            };
+                            let mut err = self.ecx.struct_span_err(sp, &msg[..]);
+
+                            if capture_feature_enabled && !self.is_literal {
+                                err.note(&format!(
+                                    "did you intend to capture a variable `{}` from \
+                                     the surrounding scope?",
+                                    name
+                                ));
+                                err.note(
+                                    "to avoid ambiguity, `format_args!` cannot capture variables \
+                                     when the format string is expanded from a macro",
+                                );
+                            } else if self.ecx.parse_sess().unstable_features.is_nightly_build() {
+                                err.help(&format!(
+                                    "if you intended to capture `{}` from the surrounding scope, add \
+                                     `#![feature(format_args_capture)]` to the crate attributes",
+                                    name
+                                ));
+                            }
+
+                            err.emit();
+                        }
                     }
                 }
             }
@@ -535,7 +578,7 @@ impl<'a, 'b> Context<'a, 'b> {
         self.count_args_index_offset = sofar;
     }
 
-    fn rtpath(ecx: &ExtCtxt<'_>, s: &str) -> Vec<ast::Ident> {
+    fn rtpath(ecx: &ExtCtxt<'_>, s: &str) -> Vec<Ident> {
         ecx.std_path(&[sym::fmt, sym::rt, sym::v1, Symbol::intern(s)])
     }
 
@@ -794,7 +837,7 @@ impl<'a, 'b> Context<'a, 'b> {
         macsp: Span,
         mut sp: Span,
         ty: &ArgumentType,
-        arg: ast::Ident,
+        arg: Ident,
     ) -> P<ast::Expr> {
         sp = ecx.with_def_site_ctxt(sp);
         let arg = ecx.expr_ident(sp, arg);
@@ -892,110 +935,20 @@ pub fn expand_preparsed_format_args(
         }
     };
 
-    let (is_literal, fmt_snippet) = match ecx.source_map().span_to_snippet(fmt_sp) {
-        Ok(s) => (s.starts_with('"') || s.starts_with("r#"), Some(s)),
-        _ => (false, None),
-    };
-
     let str_style = match fmt_style {
         ast::StrStyle::Cooked => None,
         ast::StrStyle::Raw(raw) => Some(raw as usize),
     };
 
-    /// Finds the indices of all characters that have been processed and differ between the actual
-    /// written code (code snippet) and the `InternedString` that gets processed in the `Parser`
-    /// in order to properly synthethise the intra-string `Span`s for error diagnostics.
-    fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
-        let mut eat_ws = false;
-        let mut s = snippet.chars().enumerate().peekable();
-        let mut skips = vec![];
-        while let Some((pos, c)) = s.next() {
-            match (c, s.peek()) {
-                // skip whitespace and empty lines ending in '\\'
-                ('\\', Some((next_pos, '\n'))) if !is_raw => {
-                    eat_ws = true;
-                    skips.push(pos);
-                    skips.push(*next_pos);
-                    let _ = s.next();
-                }
-                ('\\', Some((next_pos, '\n' | 'n' | 't'))) if eat_ws => {
-                    skips.push(pos);
-                    skips.push(*next_pos);
-                    let _ = s.next();
-                }
-                (' ' | '\n' | '\t', _) if eat_ws => {
-                    skips.push(pos);
-                }
-                ('\\', Some((next_pos, 'n' | 't' | '0' | '\\' | '\'' | '\"'))) => {
-                    skips.push(*next_pos);
-                    let _ = s.next();
-                }
-                ('\\', Some((_, 'x'))) if !is_raw => {
-                    for _ in 0..3 {
-                        // consume `\xAB` literal
-                        if let Some((pos, _)) = s.next() {
-                            skips.push(pos);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                ('\\', Some((_, 'u'))) if !is_raw => {
-                    if let Some((pos, _)) = s.next() {
-                        skips.push(pos);
-                    }
-                    if let Some((next_pos, next_c)) = s.next() {
-                        if next_c == '{' {
-                            skips.push(next_pos);
-                            let mut i = 0; // consume up to 6 hexanumeric chars + closing `}`
-                            while let (Some((next_pos, c)), true) = (s.next(), i < 7) {
-                                if c.is_digit(16) {
-                                    skips.push(next_pos);
-                                } else if c == '}' {
-                                    skips.push(next_pos);
-                                    break;
-                                } else {
-                                    break;
-                                }
-                                i += 1;
-                            }
-                        } else if next_c.is_digit(16) {
-                            skips.push(next_pos);
-                            // We suggest adding `{` and `}` when appropriate, accept it here as if
-                            // it were correct
-                            let mut i = 0; // consume up to 6 hexanumeric chars
-                            while let (Some((next_pos, c)), _) = (s.next(), i < 6) {
-                                if c.is_digit(16) {
-                                    skips.push(next_pos);
-                                } else {
-                                    break;
-                                }
-                                i += 1;
-                            }
-                        }
-                    }
-                }
-                _ if eat_ws => {
-                    // `take_while(|c| c.is_whitespace())`
-                    eat_ws = false;
-                }
-                _ => {}
-            }
-        }
-        skips
-    }
-
-    let skips = if let (true, Some(ref snippet)) = (is_literal, fmt_snippet.as_ref()) {
-        let r_start = str_style.map(|r| r + 1).unwrap_or(0);
-        let r_end = str_style.map(|r| r).unwrap_or(0);
-        let s = &snippet[r_start + 1..snippet.len() - r_end - 1];
-        find_skips(s, str_style.is_some())
-    } else {
-        vec![]
-    };
-
     let fmt_str = &fmt_str.as_str(); // for the suggestions below
-    let mut parser = parse::Parser::new(fmt_str, str_style, skips, append_newline);
+    let fmt_snippet = ecx.source_map().span_to_snippet(fmt_sp).ok();
+    let mut parser = parse::Parser::new(
+        fmt_str,
+        str_style,
+        fmt_snippet,
+        append_newline,
+        parse::ParseMode::Format,
+    );
 
     let mut unverified_pieces = Vec::new();
     while let Some(piece) = parser.next() {
@@ -1048,7 +1001,7 @@ pub fn expand_preparsed_format_args(
         invalid_refs: Vec::new(),
         arg_spans,
         arg_with_formatting: Vec::new(),
-        is_literal,
+        is_literal: parser.is_literal,
     };
 
     // This needs to happen *after* the Parser has consumed all pieces to create all the spans

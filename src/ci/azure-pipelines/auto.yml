@@ -142,20 +142,16 @@ jobs:
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
-      # MSVC aux tests
-      x86_64-msvc-aux:
-        RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
       x86_64-msvc-cargo:
         SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
-        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+        INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
         VCVARS_BAT: vcvars64.bat
         # FIXME(#59637)
         NO_DEBUG_ASSERTIONS: 1
         NO_LLVM_ASSERTIONS: 1
       # MSVC tools tests
       x86_64-msvc-tools:
-        SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py
+        SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py
         INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json
 
       # 32/64-bit MinGW builds.

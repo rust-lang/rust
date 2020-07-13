@@ -24,16 +24,16 @@
 
 // lldb-command:run
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::generator-0) $0 = generator-0(&0x[...])
+// lldbg-check:(generator_objects::main::generator-0) $0 = { 0 = 0x[...] }
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::generator-0) $1 = generator-0(&0x[...])
+// lldbg-check:(generator_objects::main::generator-0) $1 = { 0 = 0x[...] }
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::generator-0) $2 = generator-0(&0x[...])
+// lldbg-check:(generator_objects::main::generator-0) $2 = { 0 = 0x[...] }
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::generator-0) $3 = generator-0(&0x[...])
+// lldbg-check:(generator_objects::main::generator-0) $3 = { 0 = 0x[...] }
 
 #![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]
 #![omit_gdb_pretty_printer_section]

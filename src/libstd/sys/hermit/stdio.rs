@@ -10,15 +10,20 @@ impl Stdin {
     pub fn new() -> io::Result<Stdin> {
         Ok(Stdin)
     }
+}
 
-    pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
+impl io::Read for Stdin {
+    fn read(&mut self, data: &mut [u8]) -> io::Result<usize> {
         self.read_vectored(&mut [IoSliceMut::new(data)])
     }
 
-    pub fn read_vectored(&self, _data: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        //ManuallyDrop::new(unsafe { WasiFd::from_raw(libc::STDIN_FILENO as u32) })
-        //    .read(data)
+    fn read_vectored(&mut self, _data: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         Ok(0)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        true
     }
 }
 
@@ -26,8 +31,10 @@ impl Stdout {
     pub fn new() -> io::Result<Stdout> {
         Ok(Stdout)
     }
+}
 
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
+impl io::Write for Stdout {
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let len;
 
         unsafe { len = abi::write(1, data.as_ptr() as *const u8, data.len()) }
@@ -39,7 +46,7 @@ impl Stdout {
         }
     }
 
-    pub fn write_vectored(&self, data: &[IoSlice<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, data: &[IoSlice<'_>]) -> io::Result<usize> {
         let len;
 
         unsafe { len = abi::write(1, data.as_ptr() as *const u8, data.len()) }
@@ -51,7 +58,12 @@ impl Stdout {
         }
     }
 
-    pub fn flush(&self) -> io::Result<()> {
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
@@ -60,42 +72,40 @@ impl Stderr {
     pub fn new() -> io::Result<Stderr> {
         Ok(Stderr)
     }
-
-    pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        let len;
-
-        unsafe { len = abi::write(2, data.as_ptr() as *const u8, data.len()) }
-
-        if len < 0 {
-            Err(io::Error::new(io::ErrorKind::Other, "Stderr is not able to print"))
-        } else {
-            Ok(len as usize)
-        }
-    }
-
-    pub fn write_vectored(&self, data: &[IoSlice<'_>]) -> io::Result<usize> {
-        let len;
-
-        unsafe { len = abi::write(2, data.as_ptr() as *const u8, data.len()) }
-
-        if len < 0 {
-            Err(io::Error::new(io::ErrorKind::Other, "Stderr is not able to print"))
-        } else {
-            Ok(len as usize)
-        }
-    }
-
-    pub fn flush(&self) -> io::Result<()> {
-        Ok(())
-    }
 }
 
 impl io::Write for Stderr {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        (&*self).write(data)
+        let len;
+
+        unsafe { len = abi::write(2, data.as_ptr() as *const u8, data.len()) }
+
+        if len < 0 {
+            Err(io::Error::new(io::ErrorKind::Other, "Stderr is not able to print"))
+        } else {
+            Ok(len as usize)
+        }
     }
+
+    fn write_vectored(&mut self, data: &[IoSlice<'_>]) -> io::Result<usize> {
+        let len;
+
+        unsafe { len = abi::write(2, data.as_ptr() as *const u8, data.len()) }
+
+        if len < 0 {
+            Err(io::Error::new(io::ErrorKind::Other, "Stderr is not able to print"))
+        } else {
+            Ok(len as usize)
+        }
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
     fn flush(&mut self) -> io::Result<()> {
-        (&*self).flush()
+        Ok(())
     }
 }
 

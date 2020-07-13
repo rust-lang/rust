@@ -14,7 +14,7 @@ fn bap() -> Trait { Struct }
 //~^ ERROR E0746
 fn ban() -> dyn Trait { Struct }
 //~^ ERROR E0746
-fn bak() -> dyn Trait { unimplemented!() } //~ ERROR E0277
+fn bak() -> dyn Trait { unimplemented!() } //~ ERROR E0746
 // Suggest using `Box<dyn Trait>`
 fn bal() -> dyn Trait { //~ ERROR E0746
     if true {
@@ -26,7 +26,7 @@ fn bax() -> dyn Trait { //~ ERROR E0746
     if true {
         Struct
     } else {
-        42
+        42 //~ ERROR `if` and `else` have incompatible types
     }
 }
 fn bam() -> Box<dyn Trait> {

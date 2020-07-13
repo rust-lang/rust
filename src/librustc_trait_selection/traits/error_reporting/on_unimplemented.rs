@@ -82,10 +82,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         match &node {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) => {
                 self.describe_generator(*body_id).or_else(|| {
-                    Some(if let hir::FnHeader { asyncness: hir::IsAsync::Async, .. } = sig.header {
-                        "an async function"
-                    } else {
-                        "a function"
+                    Some(match sig.header {
+                        hir::FnHeader { asyncness: hir::IsAsync::Async, .. } => "an async function",
+                        _ => "a function",
                     })
                 })
             }
@@ -97,10 +96,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 kind: hir::ImplItemKind::Fn(sig, body_id),
                 ..
             }) => self.describe_generator(*body_id).or_else(|| {
-                Some(if let hir::FnHeader { asyncness: hir::IsAsync::Async, .. } = sig.header {
-                    "an async method"
-                } else {
-                    "a method"
+                Some(match sig.header {
+                    hir::FnHeader { asyncness: hir::IsAsync::Async, .. } => "an async method",
+                    _ => "a method",
                 })
             }),
             hir::Node::Expr(hir::Expr {
@@ -124,7 +122,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) -> OnUnimplementedNote {
         let def_id =
             self.impl_similar_to(trait_ref, obligation).unwrap_or_else(|| trait_ref.def_id());
-        let trait_ref = *trait_ref.skip_binder();
+        let trait_ref = trait_ref.skip_binder();
 
         let mut flags = vec![];
         flags.push((
@@ -221,7 +219,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
         if let ty::Dynamic(traits, _) = self_ty.kind {
-            for t in *traits.skip_binder() {
+            for t in traits.skip_binder() {
                 if let ty::ExistentialPredicate::Trait(trait_ref) = t {
                     flags.push((sym::_Self, Some(self.tcx.def_path_str(trait_ref.def_id))))
                 }

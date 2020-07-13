@@ -2,7 +2,6 @@ use crate::cmp;
 use crate::fmt;
 use crate::intrinsics;
 use crate::ops::{Add, AddAssign, Try};
-use crate::usize;
 
 use super::{from_fn, LoopState};
 use super::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedLen};
@@ -273,7 +272,8 @@ where
     T: Copy,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        *self.it.get_unchecked(i)
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        unsafe { *self.it.get_unchecked(i) }
     }
 
     #[inline]
@@ -403,7 +403,8 @@ where
     T: Clone,
 {
     default unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        self.it.get_unchecked(i).clone()
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        unsafe { self.it.get_unchecked(i) }.clone()
     }
 
     #[inline]
@@ -419,7 +420,8 @@ where
     T: Copy,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        *self.it.get_unchecked(i)
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        unsafe { *self.it.get_unchecked(i) }
     }
 
     #[inline]
@@ -513,6 +515,9 @@ where
             acc = self.iter.try_fold(acc, &mut f)?;
         }
     }
+
+    // No `fold` override, because `fold` doesn't make much sense for `Cycle`,
+    // and we can't do anything better than the default.
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -644,6 +649,25 @@ where
         }
         from_fn(nth(&mut self.iter, self.step)).try_fold(acc, f)
     }
+
+    fn fold<Acc, F>(mut self, mut acc: Acc, mut f: F) -> Acc
+    where
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn nth<I: Iterator>(iter: &mut I, step: usize) -> impl FnMut() -> Option<I::Item> + '_ {
+            move || iter.nth(step)
+        }
+
+        if self.first_take {
+            self.first_take = false;
+            match self.iter.next() {
+                None => return acc,
+                Some(x) => acc = f(acc, x),
+            }
+        }
+        from_fn(nth(&mut self.iter, self.step)).fold(acc, f)
+    }
 }
 
 impl<I> StepBy<I>
@@ -700,6 +724,29 @@ where
             Some(x) => {
                 let acc = f(init, x)?;
                 from_fn(nth_back(&mut self.iter, self.step)).try_fold(acc, f)
+            }
+        }
+    }
+
+    #[inline]
+    fn rfold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+    where
+        Self: Sized,
+        F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn nth_back<I: DoubleEndedIterator>(
+            iter: &mut I,
+            step: usize,
+        ) -> impl FnMut() -> Option<I::Item> + '_ {
+            move || iter.nth_back(step)
+        }
+
+        match self.next_back() {
+            None => init,
+            Some(x) => {
+                let acc = f(init, x);
+                from_fn(nth_back(&mut self.iter, self.step)).fold(acc, f)
             }
         }
     }
@@ -886,7 +933,8 @@ where
     F: FnMut(I::Item) -> B,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
-        (self.f)(self.iter.get_unchecked(i))
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        (self.f)(unsafe { self.iter.get_unchecked(i) })
     }
     #[inline]
     fn may_have_side_effect() -> bool {
@@ -1348,7 +1396,8 @@ where
     I: TrustedRandomAccess,
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> (usize, I::Item) {
-        (self.count + i, self.iter.get_unchecked(i))
+        // SAFETY: the caller must uphold the contract for `TrustedRandomAccess::get_unchecked`.
+        (self.count + i, unsafe { self.iter.get_unchecked(i) })
     }
 
     fn may_have_side_effect() -> bool {
@@ -1575,6 +1624,69 @@ impl<I: Iterator> Peekable<I> {
         let iter = &mut self.iter;
         self.peeked.get_or_insert_with(|| iter.next()).as_ref()
     }
+
+    /// Consume the next value of this iterator if a condition is true.
+    ///
+    /// If `func` returns `true` for the next value of this iterator, consume and return it.
+    /// Otherwise, return `None`.
+    ///
+    /// # Examples
+    /// Consume a number if it's equal to 0.
+    /// ```
+    /// #![feature(peekable_next_if)]
+    /// let mut iter = (0..5).peekable();
+    /// // The first item of the iterator is 0; consume it.
+    /// assert_eq!(iter.next_if(|&x| x == 0), Some(0));
+    /// // The next item returned is now 1, so `consume` will return `false`.
+    /// assert_eq!(iter.next_if(|&x| x == 0), None);
+    /// // `next_if` saves the value of the next item if it was not equal to `expected`.
+    /// assert_eq!(iter.next(), Some(1));
+    /// ```
+    ///
+    /// Consume any number less than 10.
+    /// ```
+    /// #![feature(peekable_next_if)]
+    /// let mut iter = (1..20).peekable();
+    /// // Consume all numbers less than 10
+    /// while iter.next_if(|&x| x < 10).is_some() {}
+    /// // The next value returned will be 10
+    /// assert_eq!(iter.next(), Some(10));
+    /// ```
+    #[unstable(feature = "peekable_next_if", issue = "72480")]
+    pub fn next_if(&mut self, func: impl FnOnce(&I::Item) -> bool) -> Option<I::Item> {
+        match self.next() {
+            Some(matched) if func(&matched) => Some(matched),
+            other => {
+                // Since we called `self.next()`, we consumed `self.peeked`.
+                assert!(self.peeked.is_none());
+                self.peeked = Some(other);
+                None
+            }
+        }
+    }
+
+    /// Consume the next item if it is equal to `expected`.
+    ///
+    /// # Example
+    /// Consume a number if it's equal to 0.
+    /// ```
+    /// #![feature(peekable_next_if)]
+    /// let mut iter = (0..5).peekable();
+    /// // The first item of the iterator is 0; consume it.
+    /// assert_eq!(iter.next_if_eq(&0), Some(0));
+    /// // The next item returned is now 1, so `consume` will return `false`.
+    /// assert_eq!(iter.next_if_eq(&0), None);
+    /// // `next_if_eq` saves the value of the next item if it was not equal to `expected`.
+    /// assert_eq!(iter.next(), Some(1));
+    /// ```
+    #[unstable(feature = "peekable_next_if", issue = "72480")]
+    pub fn next_if_eq<R>(&mut self, expected: &R) -> Option<I::Item>
+    where
+        R: ?Sized,
+        I::Item: PartialEq<R>,
+    {
+        self.next_if(|next| next == expected)
+    }
 }
 
 /// An iterator that rejects elements while `predicate` returns `true`.
@@ -1768,6 +1880,20 @@ where
             self.iter.try_fold(init, check(flag, p, fold)).into_try()
         }
     }
+
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1838,6 +1964,20 @@ where
             None => LoopState::Break(Try::from_ok(acc)),
         })
         .into_try()
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
     }
 }
 
@@ -2007,6 +2147,18 @@ where
             self.iter.try_rfold(init, check(n, fold)).into_try()
         }
     }
+
+    fn rfold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<Acc, T>(mut f: impl FnMut(Acc, T) -> Acc) -> impl FnMut(Acc, T) -> Result<Acc, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_rfold(init, ok(fold)).unwrap()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -2106,6 +2258,20 @@ where
             self.iter.try_fold(init, check(n, fold)).into_try()
         }
     }
+
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
+    }
 }
 
 #[stable(feature = "double_ended_take_iterator", since = "1.38.0")]
@@ -2154,6 +2320,24 @@ where
                 Try::from_ok(init)
             } else {
                 self.iter.try_rfold(init, fold)
+            }
+        }
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        if self.n == 0 {
+            init
+        } else {
+            let len = self.iter.len();
+            if len > self.n && self.iter.nth_back(len - self.n - 1).is_none() {
+                init
+            } else {
+                self.iter.rfold(init, fold)
             }
         }
     }
@@ -2237,6 +2421,20 @@ where
         let state = &mut self.state;
         let f = &mut self.f;
         self.iter.try_fold(init, scan(state, f, fold)).into_try()
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
     }
 }
 
@@ -2444,5 +2642,18 @@ where
                 }
             })
             .into_try()
+    }
+
+    fn fold<B, F>(mut self, init: B, fold: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(fold)).unwrap()
     }
 }

@@ -261,6 +261,13 @@ declare_features! (
     (accepted, transparent_enums, "1.42.0", Some(60405), None),
     /// Allows using subslice patterns, `[a, .., b]` and `[a, xs @ .., b]`.
     (accepted, slice_patterns, "1.42.0", Some(62254), None),
+    /// Allows the use of `if` and `match` in constants.
+    (accepted, const_if_match, "1.45.0", Some(49146), None),
+    /// Allows the use of `loop` and `while` in constants.
+    (accepted, const_loop, "1.45.0", Some(52000), None),
+    /// Allows `#[track_caller]` to be used which provides
+    /// accurate caller location reporting during panic (RFC 2091).
+    (accepted, track_caller, "1.46.0", Some(47809), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

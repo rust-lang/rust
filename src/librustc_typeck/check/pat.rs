@@ -13,6 +13,7 @@ use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, BindingMode, Ty, TypeFoldable};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{Span, Spanned};
+use rustc_span::symbol::Ident;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 
 use std::cmp;
@@ -104,7 +105,9 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) {
-        self.demand_eqtype_pat_diag(cause_span, expected, actual, ti).map(|mut err| err.emit());
+        if let Some(mut err) = self.demand_eqtype_pat_diag(cause_span, expected, actual, ti) {
+            err.emit();
+        }
     }
 }
 
@@ -209,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // errors in some cases, such as this one:
         //
         // ```
-        // fn foo<'x>(x: &'x int) {
+        // fn foo<'x>(x: &'x i32) {
         //    let a = 1;
         //    let mut z = x;
         //    z = &a;
@@ -217,7 +220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // ```
         //
         // The reason we might get an error is that `z` might be
-        // assigned a type like `&'x int`, and then we would have
+        // assigned a type like `&'x i32`, and then we would have
         // a problem when we try to assign `&a` to `z`, because
         // the lifetime of `&a` (i.e., the enclosing block) is
         // shorter than `'x`.
@@ -226,11 +229,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // expected type here is whatever type the user wrote, not
         // the initializer's type. In this case the user wrote
         // nothing, so we are going to create a type variable `Z`.
-        // Then we will assign the type of the initializer (`&'x
-        // int`) as a subtype of `Z`: `&'x int <: Z`. And hence we
-        // will instantiate `Z` as a type `&'0 int` where `'0` is
-        // a fresh region variable, with the constraint that `'x :
-        // '0`.  So basically we're all set.
+        // Then we will assign the type of the initializer (`&'x i32`)
+        // as a subtype of `Z`: `&'x i32 <: Z`. And hence we
+        // will instantiate `Z` as a type `&'0 i32` where `'0` is
+        // a fresh region variable, with the constraint that `'x : '0`.
+        // So basically we're all set.
         //
         // Note that there are two tests to check that this remains true
         // (`regions-reassign-{match,let}-bound-pointer.rs`).
@@ -439,7 +442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // There exists a side that didn't meet our criteria that the end-point
             // be of a numeric or char type, as checked in `calc_side` above.
             self.emit_err_pat_range(span, lhs, rhs);
-            return self.tcx.types.err;
+            return self.tcx.ty_error();
         }
 
         // Now that we know the types can be unified we find the unified type
@@ -449,12 +452,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Subtyping doesn't matter here, as the value is some kind of scalar.
         let demand_eqtype = |x, y| {
             if let Some((_, x_ty, x_span)) = x {
-                self.demand_eqtype_pat_diag(x_span, expected, x_ty, ti).map(|mut err| {
+                if let Some(mut err) = self.demand_eqtype_pat_diag(x_span, expected, x_ty, ti) {
                     if let Some((_, y_ty, y_span)) = y {
                         self.endpoint_has_type(&mut err, y_span, y_ty);
                     }
                     err.emit();
-                });
+                };
             }
         };
         demand_eqtype(lhs, rhs);
@@ -670,11 +673,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             variant_ty
         } else {
+            let err = self.tcx.ty_error();
             for field in fields {
                 let ti = TopInfo { parent_pat: Some(&pat), ..ti };
-                self.check_pat(&field.pat, self.tcx.types.err, def_bm, ti);
+                self.check_pat(&field.pat, err, def_bm, ti);
             }
-            return self.tcx.types.err;
+            return err;
         };
 
         // Type-check the path.
@@ -684,7 +688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.check_struct_pat_fields(pat_ty, &pat, variant, fields, etc, def_bm, ti) {
             pat_ty
         } else {
-            self.tcx.types.err
+            self.tcx.ty_error()
         }
     }
 
@@ -702,11 +706,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match res {
             Res::Err => {
                 self.set_tainted_by_errors();
-                return tcx.types.err;
+                return tcx.ty_error();
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fictive | CtorKind::Fn), _) => {
                 report_unexpected_variant_res(tcx, res, pat.span);
-                return tcx.types.err;
+                return tcx.ty_error();
             }
             Res::SelfCtor(..)
             | Res::Def(
@@ -785,7 +789,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let on_error = || {
             let parent_pat = Some(pat);
             for pat in subpats {
-                self.check_pat(&pat, tcx.types.err, def_bm, TopInfo { parent_pat, ..ti });
+                self.check_pat(&pat, tcx.ty_error(), def_bm, TopInfo { parent_pat, ..ti });
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -821,7 +825,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if res == Res::Err {
             self.set_tainted_by_errors();
             on_error();
-            return self.tcx.types.err;
+            return self.tcx.ty_error();
         }
 
         // Type-check the path.
@@ -829,18 +833,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id);
         if !pat_ty.is_fn() {
             report_unexpected_res(res);
-            return tcx.types.err;
+            return tcx.ty_error();
         }
 
         let variant = match res {
             Res::Err => {
                 self.set_tainted_by_errors();
                 on_error();
-                return tcx.types.err;
+                return tcx.ty_error();
             }
             Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
                 report_unexpected_res(res);
-                return tcx.types.err;
+                return tcx.ty_error();
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
             _ => bug!("unexpected pattern resolution: {:?}", res),
@@ -852,8 +856,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the tuple struct pattern against the expected type.
         let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, ti);
-        let had_err = diag.is_some();
-        diag.map(|mut err| err.emit());
+        let had_err = if let Some(mut err) = diag {
+            err.emit();
+            true
+        } else {
+            false
+        };
 
         // Type-check subpatterns.
         if subpats.len() == variant.fields.len()
@@ -873,7 +881,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Pattern has wrong number of fields.
             self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected, had_err);
             on_error();
-            return tcx.types.err;
+            return tcx.ty_error();
         }
         pat_ty
     }
@@ -994,9 +1002,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
-            let element_tys_iter = (0..max_len).map(|_| tcx.types.err);
+            let element_tys_iter = (0..max_len).map(|_| tcx.ty_error());
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, &tcx.types.err, def_bm, ti);
+                self.check_pat(elem, &tcx.ty_error(), def_bm, ti);
             }
             tcx.mk_tup(element_tys_iter)
         } else {
@@ -1045,7 +1053,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Occupied(occupied) => {
                     self.error_field_already_bound(span, field.ident, *occupied.get());
                     no_field_errors = false;
-                    tcx.types.err
+                    tcx.ty_error()
                 }
                 Vacant(vacant) => {
                     vacant.insert(span);
@@ -1059,7 +1067,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field.ident);
                             no_field_errors = false;
-                            tcx.types.err
+                            tcx.ty_error()
                         })
                 }
             };
@@ -1127,7 +1135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    fn error_field_already_bound(&self, span: Span, ident: ast::Ident, other_field: Span) {
+    fn error_field_already_bound(&self, span: Span, ident: Ident, other_field: Span) {
         struct_span_err!(
             self.tcx.sess,
             span,
@@ -1143,8 +1151,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn error_inexistent_fields(
         &self,
         kind_name: &str,
-        inexistent_fields: &[ast::Ident],
-        unmentioned_fields: &mut Vec<ast::Ident>,
+        inexistent_fields: &[Ident],
+        unmentioned_fields: &mut Vec<Ident>,
         variant: &ty::VariantDef,
     ) {
         let tcx = self.tcx;
@@ -1219,7 +1227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn error_unmentioned_fields(
         &self,
         span: Span,
-        unmentioned_fields: &[ast::Ident],
+        unmentioned_fields: &[Ident],
         variant: &ty::VariantDef,
     ) {
         let field_names = if unmentioned_fields.len() == 1 {
@@ -1274,7 +1282,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype_pat(span, expected, box_ty, ti);
             (box_ty, inner_ty)
         } else {
-            (tcx.types.err, tcx.types.err)
+            let err = tcx.ty_error();
+            (err, err)
         };
         self.check_pat(&inner, inner_ty, def_bm, ti);
         box_ty
@@ -1320,7 +1329,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         } else {
-            (tcx.types.err, tcx.types.err)
+            let err = tcx.ty_error();
+            (err, err)
         };
         self.check_pat(&inner, inner_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
         rptr_ty
@@ -1371,7 +1381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !expected.references_error() {
                     self.error_expected_array_or_slice(span, expected);
                 }
-                let err = self.tcx.types.err;
+                let err = self.tcx.ty_error();
                 (err, Some(err), err)
             }
         };
@@ -1438,7 +1448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If we get here, we must have emitted an error.
-        (Some(self.tcx.types.err), arr_ty)
+        (Some(self.tcx.ty_error()), arr_ty)
     }
 
     fn error_scrutinee_inconsistent_length(&self, span: Span, min_len: u64, size: u64) {

@@ -1,7 +1,7 @@
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
-use rustc_middle::mir::{BodyAndCache, Location, PlaceElem, Promoted};
+use rustc_middle::mir::{Body, Location, PlaceElem, Promoted};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
@@ -9,8 +9,8 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 /// inference variables, returning the number of variables created.
 pub fn renumber_mir<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
-    body: &mut BodyAndCache<'tcx>,
-    promoted: &mut IndexVec<Promoted, BodyAndCache<'tcx>>,
+    body: &mut Body<'tcx>,
+    promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) {
     debug!("renumber_mir()");
     debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
@@ -66,14 +66,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
 
     fn process_projection_elem(
         &mut self,
-        elem: &PlaceElem<'tcx>,
+        elem: PlaceElem<'tcx>,
         _: Location,
     ) -> Option<PlaceElem<'tcx>> {
         if let PlaceElem::Field(field, ty) = elem {
-            let new_ty = self.renumber_regions(ty);
+            let new_ty = self.renumber_regions(&ty);
 
-            if new_ty != *ty {
-                return Some(PlaceElem::Field(*field, new_ty));
+            if new_ty != ty {
+                return Some(PlaceElem::Field(field, new_ty));
             }
         }
 

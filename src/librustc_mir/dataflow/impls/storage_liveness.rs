@@ -84,13 +84,13 @@ type BorrowedLocalsResults<'a, 'tcx> = ResultsRefCursor<'a, 'a, 'tcx, MaybeBorro
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
 pub struct MaybeRequiresStorage<'mir, 'tcx> {
-    body: ReadOnlyBodyAndCache<'mir, 'tcx>,
+    body: &'mir Body<'tcx>,
     borrowed_locals: RefCell<BorrowedLocalsResults<'mir, 'tcx>>,
 }
 
 impl<'mir, 'tcx> MaybeRequiresStorage<'mir, 'tcx> {
     pub fn new(
-        body: ReadOnlyBodyAndCache<'mir, 'tcx>,
+        body: &'mir Body<'tcx>,
         borrowed_locals: &'mir Results<'tcx, MaybeBorrowedLocals>,
     ) -> Self {
         MaybeRequiresStorage {
@@ -183,6 +183,23 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             // place to have storage *before* the yield, only after.
             TerminatorKind::Yield { .. } => {}
 
+            TerminatorKind::InlineAsm { operands, .. } => {
+                for op in operands {
+                    match op {
+                        InlineAsmOperand::Out { place, .. }
+                        | InlineAsmOperand::InOut { out_place: place, .. } => {
+                            if let Some(place) = place {
+                                trans.gen(place.local);
+                            }
+                        }
+                        InlineAsmOperand::In { .. }
+                        | InlineAsmOperand::Const { .. }
+                        | InlineAsmOperand::SymFn { .. }
+                        | InlineAsmOperand::SymStatic { .. } => {}
+                    }
+                }
+            }
+
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
             TerminatorKind::Call { destination: None, .. }
@@ -190,7 +207,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
@@ -224,10 +241,11 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
+            | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Return
             | TerminatorKind::SwitchInt { .. }
@@ -250,7 +268,7 @@ impl<'mir, 'tcx> dataflow::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 
 
     fn yield_resume_effect(
         &self,
-        trans: &mut BitSet<Self::Idx>,
+        trans: &mut impl GenKill<Self::Idx>,
         _resume_block: BasicBlock,
         resume_place: mir::Place<'tcx>,
     ) {
@@ -283,7 +301,7 @@ where
     fn visit_local(&mut self, local: &Local, context: PlaceContext, loc: Location) {
         if PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) == context {
             let mut borrowed_locals = self.borrowed_locals.borrow_mut();
-            borrowed_locals.seek_before(loc);
+            borrowed_locals.seek_before_primary_effect(loc);
             if !borrowed_locals.contains(*local) {
                 self.trans.kill(*local);
             }

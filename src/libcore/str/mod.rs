@@ -419,7 +419,11 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
-    &*(v as *const [u8] as *const str)
+    // SAFETY: the caller must guarantee that the bytes `v`
+    // are valid UTF-8, thus the cast to `*const str` is safe.
+    // Also, the pointer dereference is safe because that pointer
+    // comes from a reference which is guaranteed to be valid for reads.
+    unsafe { &*(v as *const [u8] as *const str) }
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -444,7 +448,11 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[inline]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
-    &mut *(v as *mut [u8] as *mut str)
+    // SAFETY: the caller must guarantee that the bytes `v`
+    // are valid UTF-8, thus the cast to `*mut str` is safe.
+    // Also, the pointer dereference is safe because that pointer
+    // comes from a reference which is guaranteed to be valid for writes.
+    unsafe { &mut *(v as *mut [u8] as *mut str) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -867,7 +875,9 @@ unsafe impl TrustedLen for Bytes<'_> {}
 #[doc(hidden)]
 unsafe impl TrustedRandomAccess for Bytes<'_> {
     unsafe fn get_unchecked(&mut self, i: usize) -> u8 {
-        self.0.get_unchecked(i)
+        // SAFETY: the caller must uphold the safety contract
+        // for `TrustedRandomAccess::get_unchecked`.
+        unsafe { self.0.get_unchecked(i) }
     }
     fn may_have_side_effect() -> bool {
         false
@@ -1651,7 +1661,7 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
-            if align != usize::max_value() && align.wrapping_sub(index) % usize_bytes == 0 {
+            if align != usize::MAX && align.wrapping_sub(index) % usize_bytes == 0 {
                 let ptr = v.as_ptr();
                 while index < blocks_end {
                     // SAFETY: since `align - index` and `ascii_block_size` are
@@ -1904,15 +1914,27 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            let ptr = slice.as_ptr().add(self.start);
+            // SAFETY: the caller guarantees that `self` is in bounds of `slice`
+            // which satisfies all the conditions for `add`.
+            let ptr = unsafe { slice.as_ptr().add(self.start) };
             let len = self.end - self.start;
-            super::from_utf8_unchecked(slice::from_raw_parts(ptr, len))
+            // SAFETY: as the caller guarantees that `self` is in bounds of `slice`,
+            // we can safely construct a subslice with `from_raw_parts` and use it
+            // since we return a shared thus immutable reference.
+            // The call to `from_utf8_unchecked` is safe since the data comes from
+            // a `str` which is guaranteed to be valid utf8, since the caller
+            // must guarantee that `self.start` and `self.end` are char boundaries.
+            unsafe { super::from_utf8_unchecked(slice::from_raw_parts(ptr, len)) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_mut_ptr().add(self.start);
+            // SAFETY: see comments for `get_unchecked`.
+            let ptr = unsafe { slice.as_mut_ptr().add(self.start) };
             let len = self.end - self.start;
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len))
+            // SAFETY: mostly identical to the comments for `get_unchecked`, except that we
+            // can return a mutable reference since the caller passed a mutable reference
+            // and is thus guaranteed to have exclusive write access to `slice`.
+            unsafe { super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len)) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -1974,12 +1996,21 @@ mod traits {
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
             let ptr = slice.as_ptr();
-            super::from_utf8_unchecked(slice::from_raw_parts(ptr, self.end))
+            // SAFETY: as the caller guarantees that `self` is in bounds of `slice`,
+            // we can safely construct a subslice with `from_raw_parts` and use it
+            // since we return a shared thus immutable reference.
+            // The call to `from_utf8_unchecked` is safe since the data comes from
+            // a `str` which is guaranteed to be valid utf8, since the caller
+            // must guarantee that `self.end` is a char boundary.
+            unsafe { super::from_utf8_unchecked(slice::from_raw_parts(ptr, self.end)) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
             let ptr = slice.as_mut_ptr();
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, self.end))
+            // SAFETY: mostly identical to `get_unchecked`, except that we can safely
+            // return a mutable reference since the caller passed a mutable reference
+            // and is thus guaranteed to have exclusive write access to `slice`.
+            unsafe { super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, self.end)) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -2036,15 +2067,27 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            let ptr = slice.as_ptr().add(self.start);
+            // SAFETY: the caller guarantees that `self` is in bounds of `slice`
+            // which satisfies all the conditions for `add`.
+            let ptr = unsafe { slice.as_ptr().add(self.start) };
             let len = slice.len() - self.start;
-            super::from_utf8_unchecked(slice::from_raw_parts(ptr, len))
+            // SAFETY: as the caller guarantees that `self` is in bounds of `slice`,
+            // we can safely construct a subslice with `from_raw_parts` and use it
+            // since we return a shared thus immutable reference.
+            // The call to `from_utf8_unchecked` is safe since the data comes from
+            // a `str` which is guaranteed to be valid utf8, since the caller
+            // must guarantee that `self.start` is a char boundary.
+            unsafe { super::from_utf8_unchecked(slice::from_raw_parts(ptr, len)) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_mut_ptr().add(self.start);
+            // SAFETY: identical to `get_unchecked`.
+            let ptr = unsafe { slice.as_mut_ptr().add(self.start) };
             let len = slice.len() - self.start;
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len))
+            // SAFETY: mostly identical to `get_unchecked`, except that we can safely
+            // return a mutable reference since the caller passed a mutable reference
+            // and is thus guaranteed to have exclusive write access to `slice`.
+            unsafe { super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, len)) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -2083,7 +2126,7 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 None
             } else {
                 (*self.start()..self.end() + 1).get(slice)
@@ -2091,7 +2134,7 @@ mod traits {
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 None
             } else {
                 (*self.start()..self.end() + 1).get_mut(slice)
@@ -2099,22 +2142,24 @@ mod traits {
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            (*self.start()..self.end() + 1).get_unchecked(slice)
+            // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+            unsafe { (*self.start()..self.end() + 1).get_unchecked(slice) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            (*self.start()..self.end() + 1).get_unchecked_mut(slice)
+            // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+            unsafe { (*self.start()..self.end() + 1).get_unchecked_mut(slice) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 str_index_overflow_fail();
             }
             (*self.start()..self.end() + 1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            if *self.end() == usize::max_value() {
+            if *self.end() == usize::MAX {
                 str_index_overflow_fail();
             }
             (*self.start()..self.end() + 1).index_mut(slice)
@@ -2140,30 +2185,32 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if self.end == usize::max_value() { None } else { (..self.end + 1).get(slice) }
+            if self.end == usize::MAX { None } else { (..self.end + 1).get(slice) }
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if self.end == usize::max_value() { None } else { (..self.end + 1).get_mut(slice) }
+            if self.end == usize::MAX { None } else { (..self.end + 1).get_mut(slice) }
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            (..self.end + 1).get_unchecked(slice)
+            // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+            unsafe { (..self.end + 1).get_unchecked(slice) }
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            (..self.end + 1).get_unchecked_mut(slice)
+            // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+            unsafe { (..self.end + 1).get_unchecked_mut(slice) }
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            if self.end == usize::max_value() {
+            if self.end == usize::MAX {
                 str_index_overflow_fail();
             }
             (..self.end + 1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            if self.end == usize::max_value() {
+            if self.end == usize::MAX {
                 str_index_overflow_fail();
             }
             (..self.end + 1).index_mut(slice)
@@ -2270,12 +2317,11 @@ impl str {
         self.len() == 0
     }
 
-    /// Checks that `index`-th byte lies at the start and/or end of a
-    /// UTF-8 code point sequence.
+    /// Checks that `index`-th byte is the first byte in a UTF-8 code point
+    /// sequence or the end of the string.
     ///
     /// The start and end of the string (when `index == self.len()`) are
-    /// considered to be
-    /// boundaries.
+    /// considered to be boundaries.
     ///
     /// Returns `false` if `index` is greater than `self.len()`.
     ///
@@ -2374,7 +2420,11 @@ impl str {
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
     #[inline(always)]
     pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
-        &mut *(self as *mut str as *mut [u8])
+        // SAFETY: the cast from `&str` to `&[u8]` is safe since `str`
+        // has the same layout as `&[u8]` (only libstd can make this guarantee).
+        // The pointer dereference is safe since it comes from a mutable reference which
+        // is guaranteed to be valid for writes.
+        unsafe { &mut *(self as *mut str as *mut [u8]) }
     }
 
     /// Converts a string slice to a raw pointer.
@@ -2510,7 +2560,8 @@ impl str {
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
-        i.get_unchecked(self)
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+        unsafe { i.get_unchecked(self) }
     }
 
     /// Returns a mutable, unchecked subslice of `str`.
@@ -2542,7 +2593,8 @@ impl str {
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
-        i.get_unchecked_mut(self)
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+        unsafe { i.get_unchecked_mut(self) }
     }
 
     /// Creates a string slice from another string slice, bypassing safety
@@ -2592,7 +2644,8 @@ impl str {
     #[rustc_deprecated(since = "1.29.0", reason = "use `get_unchecked(begin..end)` instead")]
     #[inline]
     pub unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
-        (begin..end).get_unchecked(self)
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked`.
+        unsafe { (begin..end).get_unchecked(self) }
     }
 
     /// Creates a string slice from another string slice, bypassing safety
@@ -2623,7 +2676,8 @@ impl str {
     #[rustc_deprecated(since = "1.29.0", reason = "use `get_unchecked_mut(begin..end)` instead")]
     #[inline]
     pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
-        (begin..end).get_unchecked_mut(self)
+        // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`.
+        unsafe { (begin..end).get_unchecked_mut(self) }
     }
 
     /// Divide one string slice into two at an index.
@@ -3335,7 +3389,7 @@ impl str {
     ///     .split_inclusive('\n').collect();
     /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb.\n"]);
     /// ```
-    #[unstable(feature = "split_inclusive", issue = "none")]
+    #[unstable(feature = "split_inclusive", issue = "72360")]
     #[inline]
     pub fn split_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
         SplitInclusive(SplitInternal {
@@ -4052,15 +4106,13 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_strip)]
-    ///
     /// assert_eq!("foo:bar".strip_prefix("foo:"), Some("bar"));
     /// assert_eq!("foo:bar".strip_prefix("bar"), None);
     /// assert_eq!("foofoo".strip_prefix("foo"), Some("foo"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "str_strip", reason = "newly added", issue = "67302")]
+    #[stable(feature = "str_strip", since = "1.45.0")]
     pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a str> {
         prefix.strip_prefix_of(self)
     }
@@ -4082,14 +4134,13 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_strip)]
     /// assert_eq!("bar:foo".strip_suffix(":foo"), Some("bar"));
     /// assert_eq!("bar:foo".strip_suffix("bar"), None);
     /// assert_eq!("foofoo".strip_suffix("foo"), Some("foo"));
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "str_strip", reason = "newly added", issue = "67302")]
+    #[stable(feature = "str_strip", since = "1.45.0")]
     pub fn strip_suffix<'a, P>(&'a self, suffix: P) -> Option<&'a str>
     where
         P: Pattern<'a>,
@@ -4297,7 +4348,7 @@ impl str {
         // We can treat each byte as character here: all multibyte characters
         // start with a byte that is not in the ascii range, so we will stop
         // there already.
-        self.bytes().all(|b| b.is_ascii())
+        self.as_bytes().is_ascii()
     }
 
     /// Checks that two strings are an ASCII case-insensitive match.
@@ -4575,7 +4626,7 @@ pub struct SplitAsciiWhitespace<'a> {
 ///
 /// [`split_inclusive`]: ../../std/primitive.str.html#method.split_inclusive
 /// [`str`]: ../../std/primitive.str.html
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 pub struct SplitInclusive<'a, P: Pattern<'a>>(SplitInternal<'a, P>);
 
 impl_fn_for_zst! {
@@ -4668,7 +4719,7 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl FusedIterator for SplitAsciiWhitespace<'_> {}
 
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
     type Item = &'a str;
 
@@ -4678,7 +4729,7 @@ impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitInclusive").field("0", &self.0).finish()
@@ -4686,14 +4737,14 @@ impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitInclusive<'a, P> {
     fn clone(&self) -> Self {
         SplitInclusive(self.0.clone())
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     for SplitInclusive<'a, P>
 {
@@ -4703,7 +4754,7 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive", issue = "72360")]
 impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
 
 /// An iterator of [`u16`] over the string encoded as UTF-16.

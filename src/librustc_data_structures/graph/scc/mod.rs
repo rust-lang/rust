@@ -1,7 +1,9 @@
-//! Routine to compute the strongly connected components (SCCs) of a
-//! graph, as well as the resulting DAG if each SCC is replaced with a
-//! node in the graph. This uses Tarjan's algorithm that completes in
-//! O(n) time.
+//! Routine to compute the strongly connected components (SCCs) of a graph.
+//!
+//! Also computes as the resulting DAG if each SCC is replaced with a
+//! node in the graph. This uses [Tarjan's algorithm](
+//! https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm)
+//! that completes in *O(n)* time.
 
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
@@ -47,6 +49,11 @@ impl<N: Idx, S: Idx> Sccs<N, S> {
     }
 
     /// Returns an iterator over the SCCs in the graph.
+    ///
+    /// The SCCs will be iterated in **dependency order** (or **post order**),
+    /// meaning that if `S1 -> S2`, we will visit `S2` first and `S1` after.
+    /// This is convenient when the edges represent dependencies: when you visit
+    /// `S1`, the value for `S2` will already have been computed.
     pub fn all_sccs(&self) -> impl Iterator<Item = S> {
         (0..self.scc_data.len()).map(S::new)
     }

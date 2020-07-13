@@ -444,10 +444,7 @@ fn map_lib_features(
                         level: Status::Unstable,
                         since: None,
                         has_gate_test: false,
-                        // FIXME(#57563): #57563 is now used as a common tracking issue,
-                        // although we would like to have specific tracking issues for each
-                        // `rustc_const_unstable` in the future.
-                        tracking_issue: NonZeroU32::new(57563),
+                        tracking_issue: find_attr_val(line, "issue").and_then(handle_issue_none),
                     };
                     mf(Ok((feature_name, feature)), file, i + 1);
                     continue;

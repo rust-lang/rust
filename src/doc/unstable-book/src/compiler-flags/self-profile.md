@@ -13,7 +13,7 @@ For example:
 First, run a compilation session and provide the `-Zself-profile` flag:
 
 ```console
-$ rustc --crate-name foo -Zself-profile`
+$ rustc --crate-name foo -Zself-profile
 ```
 
 This will generate three files in the working directory such as:

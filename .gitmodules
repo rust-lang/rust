@@ -16,9 +16,6 @@
 [submodule "src/tools/rls"]
 	path = src/tools/rls
 	url = https://github.com/rust-lang/rls.git
-[submodule "src/tools/clippy"]
-	path = src/tools/clippy
-	url = https://github.com/rust-lang/rust-clippy.git
 [submodule "src/tools/rustfmt"]
 	path = src/tools/rustfmt
 	url = https://github.com/rust-lang/rustfmt.git
@@ -40,7 +37,10 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/9.0-2019-12-19
+	branch = rustc/10.0-2020-05-05
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
+[submodule "src/tools/rust-analyzer"]
+	path = src/tools/rust-analyzer
+	url = https://github.com/rust-analyzer/rust-analyzer.git

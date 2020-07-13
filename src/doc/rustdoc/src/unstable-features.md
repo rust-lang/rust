@@ -38,50 +38,62 @@ future.
 Attempting to use these error numbers on stable will result in the code sample being interpreted as
 plain text.
 
-### Linking to items by type
+### Linking to items by name
 
-As designed in [RFC 1946], Rustdoc can parse paths to items when you use them as links. To resolve
-these type names, it uses the items currently in-scope, either by declaration or by `use` statement.
-For modules, the "active scope" depends on whether the documentation is written outside the module
-(as `///` comments on the `mod` statement) or inside the module (at `//!` comments inside the file
-or block). For all other items, it uses the enclosing module's scope.
+Rustdoc is capable of directly linking to other rustdoc pages in Markdown documentation using the path of item as a link.
 
-[RFC 1946]: https://github.com/rust-lang/rfcs/pull/1946
-
-For example, in the following code:
+For example, in the following code all of the links will link to the rustdoc page for `Bar`:
 
 ```rust
-/// Does the thing.
-pub fn do_the_thing(_: SomeType) {
-    println!("Let's do the thing!");
-}
+/// This struct is not [Bar]
+pub struct Foo1;
 
-/// Token you use to [`do_the_thing`].
-pub struct SomeType;
-```
+/// This struct is also not [bar](Bar)
+pub struct Foo2;
 
-The link to ``[`do_the_thing`]`` in `SomeType`'s docs will properly link to the page for `fn
-do_the_thing`. Note that here, rustdoc will insert the link target for you, but manually writing the
-target out also works:
-
-```rust
-pub mod some_module {
-    /// Token you use to do the thing.
-    pub struct SomeStruct;
-}
-
-/// Does the thing. Requires one [`SomeStruct`] for the thing to work.
+/// This struct is also not [bar][b]
 ///
-/// [`SomeStruct`]: some_module::SomeStruct
-pub fn do_the_thing(_: some_module::SomeStruct) {
-    println!("Let's do the thing!");
+/// [b]: Bar
+pub struct Foo3;
+
+/// This struct is also not [`Bar`]
+pub struct Foo4;
+
+pub struct Bar;
+```
+
+You can refer to anything in scope, and use paths, including `Self`. You may also use `foo()` and `foo!()` to refer to methods/functions and macros respectively.
+
+```rust,edition2018
+use std::sync::mpsc::Receiver;
+
+/// This is an version of [`Receiver`], with support for [`std::future`].
+///
+/// You can obtain a [`std::future::Future`] by calling [`Self::recv()`].
+pub struct AsyncReceiver<T> {
+    sender: Receiver<T>
+}
+
+impl<T> AsyncReceiver<T> {
+    pub async fn recv() -> T {
+        unimplemented!()
+    }
 }
 ```
 
-For more details, check out [the RFC][RFC 1946], and see [the tracking issue][43466] for more
-information about what parts of the feature are available.
+Paths in Rust have three namespaces: type, value, and macro. Items from these namespaces are allowed to overlap. In case of ambiguity, rustdoc will warn about the ambiguity and ask you to disambiguate, which can be done by using a prefix like `struct@`, `enum@`, `type@`, `trait@`, `union@`, `const@`, `static@`, `value@`, `function@`, `mod@`, `fn@`, `module@`, `method@` , `macro@`, or `derive@`:
 
-[43466]: https://github.com/rust-lang/rust/issues/43466
+```rust
+/// See also: [`Foo`](struct@Foo)
+struct Bar;
+
+/// This is different from [`Foo`](fn@Foo)
+struct Foo {}
+
+fn Foo() {}
+```
+
+Note: Because of how `macro_rules` macros are scoped in Rust, the intra-doc links of a `macro_rules` macro will be resolved relative to the crate root, as opposed to the module it is defined in.
 
 ## Extensions to the `#[doc]` attribute
 
@@ -321,7 +333,7 @@ library, as an equivalent command-line argument is provided to `rustc` when buil
 ### `--index-page`: provide a top-level landing page for docs
 
 This feature allows you to generate an index-page with a given markdown file. A good example of it
-is the [rust documentation index](https://doc.rust-lang.org/index.html).
+is the [rust documentation index](https://doc.rust-lang.org/nightly/index.html).
 
 With this, you'll have a page which you can custom as much as you want at the top of your crates.
 

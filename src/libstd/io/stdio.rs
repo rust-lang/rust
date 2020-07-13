@@ -88,10 +88,28 @@ impl Read for StdinRaw {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.0.read_to_end(buf)
+    }
+
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.0.read_to_string(buf)
+    }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        self.0.read_exact(buf)
+    }
 }
+
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
@@ -101,10 +119,28 @@ impl Write for StdoutRaw {
         self.0.write_vectored(bufs)
     }
 
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         self.0.flush()
     }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.0.write_all(buf)
+    }
+
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.0.write_all_vectored(bufs)
+    }
+
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        self.0.write_fmt(fmt)
+    }
 }
+
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
@@ -114,8 +150,25 @@ impl Write for StderrRaw {
         self.0.write_vectored(bufs)
     }
 
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         self.0.flush()
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.0.write_all(buf)
+    }
+
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.0.write_all_vectored(bufs)
+    }
+
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        self.0.write_fmt(fmt)
     }
 }
 
@@ -140,6 +193,14 @@ impl<W: io::Write> io::Write for Maybe<W> {
         }
     }
 
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        match self {
+            Maybe::Real(w) => w.is_write_vectored(),
+            Maybe::Fake => true,
+        }
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
@@ -160,6 +221,14 @@ impl<R: io::Read> io::Read for Maybe<R> {
         match self {
             Maybe::Real(r) => handle_ebadf(r.read_vectored(bufs), 0),
             Maybe::Fake => Ok(0),
+        }
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        match self {
+            Maybe::Real(w) => w.is_read_vectored(),
+            Maybe::Fake => true,
         }
     }
 }
@@ -352,6 +421,10 @@ impl Read for Stdin {
         self.lock().read_vectored(bufs)
     }
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.lock().is_read_vectored()
+    }
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -377,8 +450,25 @@ impl Read for StdinLock<'_> {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_to_end(buf)
+    }
+
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.inner.read_to_string(buf)
+    }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        self.inner.read_exact(buf)
     }
 }
 
@@ -387,8 +477,17 @@ impl BufRead for StdinLock<'_> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         self.inner.fill_buf()
     }
+
     fn consume(&mut self, n: usize) {
         self.inner.consume(n)
+    }
+
+    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_until(byte, buf)
+    }
+
+    fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.inner.read_line(buf)
     }
 }
 
@@ -543,11 +642,18 @@ impl Write for Stdout {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.lock().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.lock().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.lock().flush()
     }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.lock().write_all_vectored(bufs)
     }
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
         self.lock().write_fmt(args)
@@ -561,8 +667,18 @@ impl Write for StdoutLock<'_> {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.borrow_mut().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.inner.borrow_mut().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.inner.borrow_mut().write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.inner.borrow_mut().write_all_vectored(bufs)
     }
 }
 
@@ -709,11 +825,18 @@ impl Write for Stderr {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.lock().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.lock().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.lock().flush()
     }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.lock().write_all_vectored(bufs)
     }
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
         self.lock().write_fmt(args)
@@ -727,8 +850,18 @@ impl Write for StderrLock<'_> {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.borrow_mut().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.inner.borrow_mut().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.inner.borrow_mut().write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.inner.borrow_mut().write_all_vectored(bufs)
     }
 }
 

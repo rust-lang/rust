@@ -1,11 +1,11 @@
-use crate::diagnostics::{ImportSuggestion, TypoSuggestion};
+use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::lifetimes::{ElisionFailureInfo, LifetimeContext};
 use crate::late::{LateResolutionVisitor, RibKind};
 use crate::path_names_to_string;
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
-use rustc_ast::ast::{self, Expr, ExprKind, Ident, Item, ItemKind, NodeId, Path, Ty, TyKind};
+use rustc_ast::ast::{self, Expr, ExprKind, Item, ItemKind, NodeId, Path, Ty, TyKind};
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
@@ -16,7 +16,7 @@ use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::PrimTy;
 use rustc_session::config::nightly_options;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
 use log::debug;
@@ -100,9 +100,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
-        let is_enum_variant = &|res| {
-            if let Res::Def(DefKind::Variant, _) = res { true } else { false }
-        };
+        let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
 
         // Make the base error.
         let expected = source.descr_expected();
@@ -151,7 +149,11 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             };
             (
                 format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
-                format!("not found in {}", mod_str),
+                if path_str == "async" && expected.starts_with("struct") {
+                    "`async` blocks are only allowed in the 2018 edition".to_string()
+                } else {
+                    format!("not found in {}", mod_str)
+                },
                 item_span,
                 false,
             )
@@ -164,9 +166,9 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         if ["this", "my"].contains(&&*item_str.as_str())
             && self.self_value_is_available(path[0].ident.span, span)
         {
-            err.span_suggestion(
+            err.span_suggestion_short(
                 span,
-                "did you mean",
+                "you might have meant to use `self` here instead",
                 "self".to_string(),
                 Applicability::MaybeIncorrect,
             );
@@ -191,8 +193,15 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 _ => "`self` value is a keyword only available in methods with a `self` parameter"
                      .to_string(),
             });
-            if let Some(span) = &self.diagnostic_metadata.current_function {
-                err.span_label(*span, "this function doesn't have a `self` parameter");
+            if let Some((fn_kind, span)) = &self.diagnostic_metadata.current_function {
+                // The current function has a `self' parameter, but we were unable to resolve
+                // a reference to `self`. This can only happen if the `self` identifier we
+                // are resolving came from a different hygiene context.
+                if fn_kind.decl().inputs.get(0).map(|p| p.is_self()).unwrap_or(false) {
+                    err.span_label(*span, "this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters");
+                } else {
+                    err.span_label(*span, "this function doesn't have a `self` parameter");
+                }
             }
             return (err, Vec::new());
         }
@@ -201,7 +210,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         let ident = path.last().unwrap().ident;
         let candidates = self
             .r
-            .lookup_import_candidates(ident, ns, is_expected)
+            .lookup_import_candidates(ident, ns, &self.parent_scope, is_expected)
             .drain(..)
             .filter(|ImportSuggestion { did, .. }| {
                 match (did, res.and_then(|res| res.opt_def_id())) {
@@ -212,7 +221,8 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             .collect::<Vec<_>>();
         let crate_def_id = DefId::local(CRATE_DEF_INDEX);
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
-            let enum_candidates = self.r.lookup_import_candidates(ident, ns, is_enum_variant);
+            let enum_candidates =
+                self.r.lookup_import_candidates(ident, ns, &self.parent_scope, is_enum_variant);
             let mut enum_candidates = enum_candidates
                 .iter()
                 .map(|suggestion| import_candidate_to_enum_paths(&suggestion))
@@ -383,7 +393,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         has_self_arg
     }
 
-    fn followed_by_brace(&self, span: Span) -> (bool, Option<(Span, String)>) {
+    fn followed_by_brace(&self, span: Span) -> (bool, Option<Span>) {
         // HACK(estebank): find a better way to figure out that this was a
         // parser issue where a struct literal is being used on an expression
         // where a brace being opened means a block is being started. Look
@@ -406,7 +416,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             _ => false,
         };
         // In case this could be a struct literal that needs to be surrounded
-        // by parenthesis, find the appropriate span.
+        // by parentheses, find the appropriate span.
         let mut i = 0;
         let mut closing_brace = None;
         loop {
@@ -414,10 +424,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             match sm.span_to_snippet(sp) {
                 Ok(ref snippet) => {
                     if snippet == "}" {
-                        let sp = span.to(sp);
-                        if let Ok(snippet) = sm.span_to_snippet(sp) {
-                            closing_brace = Some((sp, snippet));
-                        }
+                        closing_brace = Some(span.to(sp));
                         break;
                     }
                 }
@@ -479,17 +486,23 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     suggested = path_sep(err, &parent);
                 }
                 PathSource::Expr(None) if followed_by_brace => {
-                    if let Some((sp, snippet)) = closing_brace {
-                        err.span_suggestion(
-                            sp,
-                            "surround the struct literal with parenthesis",
-                            format!("({})", snippet),
+                    if let Some(sp) = closing_brace {
+                        err.multipart_suggestion(
+                            "surround the struct literal with parentheses",
+                            vec![
+                                (sp.shrink_to_lo(), "(".to_string()),
+                                (sp.shrink_to_hi(), ")".to_string()),
+                            ],
                             Applicability::MaybeIncorrect,
                         );
                     } else {
                         err.span_label(
-                            span, // Note the parenthesis surrounding the suggestion below
-                            format!("did you mean `({} {{ /* fields */ }})`?", path_str),
+                            span, // Note the parentheses surrounding the suggestion below
+                            format!(
+                                "you might want to surround a struct literal with parentheses: \
+                                 `({} {{ /* fields */ }})`?",
+                                path_str
+                            ),
                         );
                     }
                     suggested = true;
@@ -497,7 +510,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 _ => {}
             }
             if !suggested {
-                if let Some(span) = self.r.definitions.opt_span(def_id) {
+                if let Some(span) = self.r.opt_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
                 err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?", path_str));
@@ -516,10 +529,16 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     err.note("if you want the `try` keyword, you need to be in the 2018 edition");
                 }
             }
-            (Res::Def(DefKind::TyAlias, _), PathSource::Trait(_)) => {
+            (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
                 if nightly_options::is_nightly_build() {
-                    err.note("did you mean to use a trait alias?");
+                    let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
+                               `type` alias";
+                    if let Some(span) = self.r.opt_span(def_id) {
+                        err.span_help(span, msg);
+                    } else {
+                        err.help(msg);
+                    }
                 }
             }
             (Res::Def(DefKind::Mod, _), PathSource::Expr(Some(parent))) => {
@@ -572,7 +591,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                 bad_struct_syntax_suggestion(def_id);
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), def_id), _) if ns == ValueNS => {
-                if let Some(span) = self.r.definitions.opt_span(def_id) {
+                if let Some(span) = self.r.opt_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
                 err.span_label(span, format!("did you mean `{}( /* fields */ )`?", path_str));
@@ -864,7 +883,15 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                     let module_def_id = module.def_id().unwrap();
                     if module_def_id == def_id {
                         let path = Path { span: name_binding.span, segments: path_segments };
-                        result = Some((module, ImportSuggestion { did: Some(def_id), path }));
+                        result = Some((
+                            module,
+                            ImportSuggestion {
+                                did: Some(def_id),
+                                descr: "module",
+                                path,
+                                accessible: true,
+                            },
+                        ));
                     } else {
                         // add the module to the lookup
                         if seen_modules.insert(module_def_id) {
@@ -896,20 +923,47 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
         &self,
         path: &[Segment],
     ) -> Option<(Span, &'static str, String, Applicability)> {
-        let ident = match path {
-            [segment] => segment.ident,
+        let (ident, span) = match path {
+            [segment] if !segment.has_generic_args => {
+                (segment.ident.to_string(), segment.ident.span)
+            }
             _ => return None,
         };
-        match (
-            self.diagnostic_metadata.current_item,
-            self.diagnostic_metadata.currently_processing_generics,
-        ) {
-            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), true) if ident.name == sym::main => {
+        let mut iter = ident.chars().map(|c| c.is_uppercase());
+        let single_uppercase_char =
+            matches!(iter.next(), Some(true)) && matches!(iter.next(), None);
+        if !self.diagnostic_metadata.currently_processing_generics && !single_uppercase_char {
+            return None;
+        }
+        match (self.diagnostic_metadata.current_item, single_uppercase_char) {
+            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), _) if ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }
-            (Some(Item { kind, .. }), true) => {
+            (
+                Some(Item {
+                    kind:
+                        kind @ ItemKind::Fn(..)
+                        | kind @ ItemKind::Enum(..)
+                        | kind @ ItemKind::Struct(..)
+                        | kind @ ItemKind::Union(..),
+                    ..
+                }),
+                true,
+            )
+            | (Some(Item { kind, .. }), false) => {
                 // Likely missing type parameter.
                 if let Some(generics) = kind.generics() {
+                    if span.overlaps(generics.span) {
+                        // Avoid the following:
+                        // error[E0405]: cannot find trait `A` in this scope
+                        //  --> $DIR/typo-suggestion-named-underscore.rs:CC:LL
+                        //   |
+                        // L | fn foo<T: A>(x: T) {} // Shouldn't suggest underscore
+                        //   |           ^- help: you might be missing a type parameter: `, A`
+                        //   |           |
+                        //   |           not found in this scope
+                        return None;
+                    }
                     let msg = "you might be missing a type parameter";
                     let (span, sugg) = if let [.., param] = &generics.params[..] {
                         let span = if let [.., bound] = &param.bounds[..] {
@@ -935,6 +989,32 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             _ => {}
         }
         None
+    }
+
+    /// Given the target `label`, search the `rib_index`th label rib for similarly named labels,
+    /// optionally returning the closest match and whether it is reachable.
+    crate fn suggestion_for_label_in_rib(
+        &self,
+        rib_index: usize,
+        label: Ident,
+    ) -> Option<LabelSuggestion> {
+        // Are ribs from this `rib_index` within scope?
+        let within_scope = self.is_label_valid_from_rib(rib_index);
+
+        let rib = &self.label_ribs[rib_index];
+        let names = rib
+            .bindings
+            .iter()
+            .filter(|(id, _)| id.span.ctxt() == label.span.ctxt())
+            .map(|(id, _)| &id.name);
+
+        find_best_match_for_name(names, &label.as_str(), None).map(|symbol| {
+            // Upon finding a similar name, get the ident that it was from - the span
+            // contained within helps make a useful diagnostic. In addition, determine
+            // whether this candidate is within scope.
+            let (ident, _) = rib.bindings.iter().find(|(ident, _)| ident.name == symbol).unwrap();
+            (*ident, within_scope)
+        })
     }
 }
 
@@ -962,6 +1042,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             lifetime_ref
         );
         err.span_label(lifetime_ref.span, "undeclared lifetime");
+        let mut suggests_in_band = false;
         for missing in &self.missing_named_lifetime_spots {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
@@ -975,6 +1056,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         }) {
                         (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
                     } else {
+                        suggests_in_band = true;
                         (generics.span, format!("<{}>", lifetime_ref))
                     };
                     err.span_suggestion(
@@ -1001,6 +1083,15 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     );
                 }
             }
+        }
+        if nightly_options::is_nightly_build()
+            && !self.tcx.features().in_band_lifetimes
+            && suggests_in_band
+        {
+            err.help(
+                "if you want to experiment with in-band lifetime bindings, \
+                    add `#![feature(in_band_lifetimes)]` to the crate attributes",
+            );
         }
         err.emit();
     }
@@ -1031,104 +1122,128 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         span: Span,
         count: usize,
-        lifetime_names: &FxHashSet<ast::Ident>,
+        lifetime_names: &FxHashSet<Ident>,
         params: &[ElisionFailureInfo],
     ) {
-        if count > 1 {
-            err.span_label(span, format!("expected {} lifetime parameters", count));
-        } else {
-            let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok();
-            let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
-                err.span_suggestion(
-                    span,
-                    "consider using the named lifetime",
-                    sugg,
-                    Applicability::MaybeIncorrect,
-                );
-            };
-            let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg: &str| {
-                err.span_label(span, "expected named lifetime parameter");
+        let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok();
 
-                for missing in self.missing_named_lifetime_spots.iter().rev() {
-                    let mut introduce_suggestion = vec![];
-                    let msg;
-                    let should_break;
-                    introduce_suggestion.push(match missing {
-                        MissingLifetimeSpot::Generics(generics) => {
-                            msg = "consider introducing a named lifetime parameter".to_string();
-                            should_break = true;
-                            if let Some(param) = generics.params.iter().find(|p| match p.kind {
-                                hir::GenericParamKind::Type {
-                                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                    ..
-                                } => false,
-                                _ => true,
-                            }) {
-                                (param.span.shrink_to_lo(), "'a, ".to_string())
-                            } else {
-                                (generics.span, "<'a>".to_string())
-                            }
-                        }
-                        MissingLifetimeSpot::HigherRanked { span, span_type } => {
-                            msg = format!(
-                                "consider making the {} lifetime-generic with a new `'a` lifetime",
-                                span_type.descr(),
-                            );
-                            should_break = false;
-                            err.note(
-                                "for more information on higher-ranked polymorphism, visit \
-                             https://doc.rust-lang.org/nomicon/hrtb.html",
-                            );
-                            (*span, span_type.suggestion("'a"))
-                        }
-                    });
-                    for param in params {
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span)
-                        {
-                            if snippet.starts_with('&') && !snippet.starts_with("&'") {
-                                introduce_suggestion
-                                    .push((param.span, format!("&'a {}", &snippet[1..])));
-                            } else if snippet.starts_with("&'_ ") {
-                                introduce_suggestion
-                                    .push((param.span, format!("&'a {}", &snippet[4..])));
-                            }
+        err.span_label(
+            span,
+            &format!(
+                "expected {} lifetime parameter{}",
+                if count == 1 { "named".to_string() } else { count.to_string() },
+                pluralize!(count)
+            ),
+        );
+
+        let suggest_existing = |err: &mut DiagnosticBuilder<'_>, sugg| {
+            err.span_suggestion_verbose(
+                span,
+                &format!("consider using the `{}` lifetime", lifetime_names.iter().next().unwrap()),
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+        };
+        let suggest_new = |err: &mut DiagnosticBuilder<'_>, sugg: &str| {
+            for missing in self.missing_named_lifetime_spots.iter().rev() {
+                let mut introduce_suggestion = vec![];
+                let msg;
+                let should_break;
+                introduce_suggestion.push(match missing {
+                    MissingLifetimeSpot::Generics(generics) => {
+                        msg = "consider introducing a named lifetime parameter".to_string();
+                        should_break = true;
+                        if let Some(param) = generics.params.iter().find(|p| match p.kind {
+                            hir::GenericParamKind::Type {
+                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                                ..
+                            } => false,
+                            _ => true,
+                        }) {
+                            (param.span.shrink_to_lo(), "'a, ".to_string())
+                        } else {
+                            (generics.span, "<'a>".to_string())
                         }
                     }
-                    introduce_suggestion.push((span, sugg.to_string()));
-                    err.multipart_suggestion(
-                        &msg,
-                        introduce_suggestion,
-                        Applicability::MaybeIncorrect,
-                    );
-                    if should_break {
-                        break;
+                    MissingLifetimeSpot::HigherRanked { span, span_type } => {
+                        msg = format!(
+                            "consider making the {} lifetime-generic with a new `'a` lifetime",
+                            span_type.descr(),
+                        );
+                        should_break = false;
+                        err.note(
+                            "for more information on higher-ranked polymorphism, visit \
+                            https://doc.rust-lang.org/nomicon/hrtb.html",
+                        );
+                        (*span, span_type.suggestion("'a"))
+                    }
+                });
+                for param in params {
+                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
+                        if snippet.starts_with('&') && !snippet.starts_with("&'") {
+                            introduce_suggestion
+                                .push((param.span, format!("&'a {}", &snippet[1..])));
+                        } else if snippet.starts_with("&'_ ") {
+                            introduce_suggestion
+                                .push((param.span, format!("&'a {}", &snippet[4..])));
+                        }
                     }
                 }
-            };
-
-            match (lifetime_names.len(), lifetime_names.iter().next(), snippet.as_deref()) {
-                (1, Some(name), Some("&")) => {
-                    suggest_existing(err, format!("&{} ", name));
-                }
-                (1, Some(name), Some("'_")) => {
-                    suggest_existing(err, name.to_string());
-                }
-                (1, Some(name), Some(snippet)) if !snippet.ends_with('>') => {
-                    suggest_existing(err, format!("{}<{}>", snippet, name));
-                }
-                (0, _, Some("&")) => {
-                    suggest_new(err, "&'a ");
-                }
-                (0, _, Some("'_")) => {
-                    suggest_new(err, "'a");
-                }
-                (0, _, Some(snippet)) if !snippet.ends_with('>') => {
-                    suggest_new(err, &format!("{}<'a>", snippet));
-                }
-                _ => {
-                    err.span_label(span, "expected lifetime parameter");
+                introduce_suggestion.push((span, sugg.to_string()));
+                err.multipart_suggestion(&msg, introduce_suggestion, Applicability::MaybeIncorrect);
+                if should_break {
+                    break;
                 }
             }
+        };
+
+        match (lifetime_names.len(), lifetime_names.iter().next(), snippet.as_deref()) {
+            (1, Some(name), Some("&")) => {
+                suggest_existing(err, format!("&{} ", name));
+            }
+            (1, Some(name), Some("'_")) => {
+                suggest_existing(err, name.to_string());
+            }
+            (1, Some(name), Some("")) => {
+                suggest_existing(err, format!("{}, ", name).repeat(count));
+            }
+            (1, Some(name), Some(snippet)) if !snippet.ends_with('>') => {
+                suggest_existing(
+                    err,
+                    format!(
+                        "{}<{}>",
+                        snippet,
+                        std::iter::repeat(name.to_string())
+                            .take(count)
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                );
+            }
+            (0, _, Some("&")) if count == 1 => {
+                suggest_new(err, "&'a ");
+            }
+            (0, _, Some("'_")) if count == 1 => {
+                suggest_new(err, "'a");
+            }
+            (0, _, Some(snippet)) if !snippet.ends_with('>') && count == 1 => {
+                suggest_new(err, &format!("{}<'a>", snippet));
+            }
+            (n, ..) if n > 1 => {
+                let spans: Vec<Span> = lifetime_names.iter().map(|lt| lt.span).collect();
+                err.span_note(spans, "these named lifetimes are available to use");
+                if Some("") == snippet.as_deref() {
+                    // This happens when we have `Foo<T>` where we point at the space before `T`,
+                    // but this can be confusing so we give a suggestion with placeholders.
+                    err.span_suggestion_verbose(
+                        span,
+                        "consider using one of the available lifetimes here",
+                        "'lifetime, ".repeat(count),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+            }
+            _ => {}
         }
     }
 }

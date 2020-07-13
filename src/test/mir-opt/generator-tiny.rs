@@ -1,7 +1,8 @@
 //! Tests that generators that cannot return or unwind don't have unnecessary
 //! panic branches.
 
-// compile-flags: -Zno-landing-pads
+// compile-flags: -C panic=abort
+// no-prefer-dynamic
 
 #![feature(generators, generator_trait)]
 

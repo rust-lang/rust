@@ -6,13 +6,17 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(crate_visibility_modifier)]
-#![feature(const_if_match)]
+#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)]
 #![feature(const_panic)]
-#![cfg_attr(not(bootstrap), feature(negative_impls))]
+#![feature(negative_impls)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![feature(specialization)]
+#![feature(min_specialization)]
+
+// FIXME(#56935): Work around ICEs during cross-compilation.
+#[allow(unused)]
+extern crate rustc_macros;
 
 use rustc_data_structures::AtomicRef;
 use rustc_macros::HashStable_Generic;
@@ -21,12 +25,14 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 mod caching_source_map_view;
 pub mod source_map;
 pub use self::caching_source_map_view::CachingSourceMapView;
+use source_map::SourceMap;
 
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;
+pub use hygiene::SyntaxContext;
 use hygiene::Transparency;
-pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, MacroKind, SyntaxContext};
+pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, ForLoopLoc, MacroKind};
 pub mod def_id;
 use def_id::{CrateNum, DefId, LOCAL_CRATE};
 mod span_encoding;
@@ -49,7 +55,7 @@ use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::Hash;
 use std::ops::{Add, Sub};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use md5::Md5;
@@ -59,29 +65,85 @@ use sha1::Sha1;
 #[cfg(test)]
 mod tests;
 
-pub struct Globals {
+// Per-session global variables: this struct is stored in thread-local storage
+// in such a way that it is accessible without any kind of handle to all
+// threads within the compilation session, but is not accessible outside the
+// session.
+pub struct SessionGlobals {
     symbol_interner: Lock<symbol::Interner>,
     span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
+    source_map: Lock<Option<Lrc<SourceMap>>>,
 }
 
-impl Globals {
-    pub fn new(edition: Edition) -> Globals {
-        Globals {
+impl SessionGlobals {
+    pub fn new(edition: Edition) -> SessionGlobals {
+        SessionGlobals {
             symbol_interner: Lock::new(symbol::Interner::fresh()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
+            source_map: Lock::new(None),
         }
     }
 }
 
-scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
+scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: SessionGlobals);
+
+// FIXME: Perhaps this should not implement Rustc{Decodable, Encodable}
+//
+// FIXME: We should use this enum or something like it to get rid of the
+// use of magic `/rust/1.x/...` paths across the board.
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
+#[derive(HashStable_Generic)]
+pub enum RealFileName {
+    Named(PathBuf),
+    /// For de-virtualized paths (namely paths into libstd that have been mapped
+    /// to the appropriate spot on the local host's file system),
+    Devirtualized {
+        /// `local_path` is the (host-dependent) local path to the file.
+        local_path: PathBuf,
+        /// `virtual_name` is the stable path rustc will store internally within
+        /// build artifacts.
+        virtual_name: PathBuf,
+    },
+}
+
+impl RealFileName {
+    /// Returns the path suitable for reading from the file system on the local host.
+    /// Avoid embedding this in build artifacts; see `stable_name` for that.
+    pub fn local_path(&self) -> &Path {
+        match self {
+            RealFileName::Named(p)
+            | RealFileName::Devirtualized { local_path: p, virtual_name: _ } => &p,
+        }
+    }
+
+    /// Returns the path suitable for reading from the file system on the local host.
+    /// Avoid embedding this in build artifacts; see `stable_name` for that.
+    pub fn into_local_path(self) -> PathBuf {
+        match self {
+            RealFileName::Named(p)
+            | RealFileName::Devirtualized { local_path: p, virtual_name: _ } => p,
+        }
+    }
+
+    /// Returns the path suitable for embedding into build artifacts. Note that
+    /// a virtualized path will not correspond to a valid file system path; see
+    /// `local_path` for something that is more likely to return paths into the
+    /// local host file system.
+    pub fn stable_name(&self) -> &Path {
+        match self {
+            RealFileName::Named(p)
+            | RealFileName::Devirtualized { local_path: _, virtual_name: p } => &p,
+        }
+    }
+}
 
 /// Differentiates between real files and common virtual files.
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
 #[derive(HashStable_Generic)]
 pub enum FileName {
-    Real(PathBuf),
+    Real(RealFileName),
     /// Call to `quote!`.
     QuoteExpansion(u64),
     /// Command line.
@@ -97,13 +159,21 @@ pub enum FileName {
     /// Custom sources for explicit parser calls from plugins and drivers.
     Custom(String),
     DocTest(PathBuf, isize),
+    /// Post-substitution inline assembly from LLVM
+    InlineAsm(u64),
 }
 
 impl std::fmt::Display for FileName {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
         match *self {
-            Real(ref path) => write!(fmt, "{}", path.display()),
+            Real(RealFileName::Named(ref path)) => write!(fmt, "{}", path.display()),
+            // FIXME: might be nice to display both compoments of Devirtualized.
+            // But for now (to backport fix for issue #70924), best to not
+            // perturb diagnostics so its obvious test suite still works.
+            Real(RealFileName::Devirtualized { ref local_path, virtual_name: _ }) => {
+                write!(fmt, "{}", local_path.display())
+            }
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
             Anon(_) => write!(fmt, "<anon>"),
@@ -112,6 +182,7 @@ impl std::fmt::Display for FileName {
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{}>", s),
             DocTest(ref path, _) => write!(fmt, "{}", path.display()),
+            InlineAsm(_) => write!(fmt, "<inline asm>"),
         }
     }
 }
@@ -119,7 +190,7 @@ impl std::fmt::Display for FileName {
 impl From<PathBuf> for FileName {
     fn from(p: PathBuf) -> Self {
         assert!(!p.to_string_lossy().ends_with('>'));
-        FileName::Real(p)
+        FileName::Real(RealFileName::Named(p))
     }
 }
 
@@ -135,7 +206,8 @@ impl FileName {
             | CliCrateAttr(_)
             | Custom(_)
             | QuoteExpansion(_)
-            | DocTest(_, _) => false,
+            | DocTest(_, _)
+            | InlineAsm(_) => false,
         }
     }
 
@@ -177,6 +249,12 @@ impl FileName {
 
     pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName {
         FileName::DocTest(path, line)
+    }
+
+    pub fn inline_asm_source_code(src: &str) -> FileName {
+        let mut hasher = StableHasher::new();
+        src.hash(&mut hasher);
+        FileName::InlineAsm(hasher.finish())
     }
 }
 
@@ -235,7 +313,9 @@ impl Ord for Span {
     }
 }
 
-/// A collection of spans. Spans have two orthogonal attributes:
+/// A collection of `Span`s.
+///
+/// Spans have two orthogonal attributes:
 ///
 /// - They can be *primary spans*. In this case they are the locus of
 ///   the error, and would be rendered with `^^^`.
@@ -627,12 +707,52 @@ impl rustc_serialize::UseSpecializedDecodable for Span {
     }
 }
 
+/// Calls the provided closure, using the provided `SourceMap` to format
+/// any spans that are debug-printed during the closure'e exectuino.
+///
+/// Normally, the global `TyCtxt` is used to retrieve the `SourceMap`
+/// (see `rustc_interface::callbacks::span_debug1). However, some parts
+/// of the compiler (e.g. `rustc_parse`) may debug-print `Span`s before
+/// a `TyCtxt` is available. In this case, we fall back to
+/// the `SourceMap` provided to this function. If that is not available,
+/// we fall back to printing the raw `Span` field values
+pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) -> T {
+    SESSION_GLOBALS.with(|session_globals| {
+        *session_globals.source_map.borrow_mut() = Some(source_map);
+    });
+    struct ClearSourceMap;
+    impl Drop for ClearSourceMap {
+        fn drop(&mut self) {
+            SESSION_GLOBALS.with(|session_globals| {
+                session_globals.source_map.borrow_mut().take();
+            });
+        }
+    }
+
+    let _guard = ClearSourceMap;
+    f()
+}
+
+pub fn debug_with_source_map(
+    span: Span,
+    f: &mut fmt::Formatter<'_>,
+    source_map: &SourceMap,
+) -> fmt::Result {
+    write!(f, "{} ({:?})", source_map.span_to_string(span), span.ctxt())
+}
+
 pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    f.debug_struct("Span")
-        .field("lo", &span.lo())
-        .field("hi", &span.hi())
-        .field("ctxt", &span.ctxt())
-        .finish()
+    SESSION_GLOBALS.with(|session_globals| {
+        if let Some(source_map) = &*session_globals.source_map.borrow() {
+            debug_with_source_map(span, f, source_map)
+        } else {
+            f.debug_struct("Span")
+                .field("lo", &span.lo())
+                .field("hi", &span.hi())
+                .field("ctxt", &span.ctxt())
+                .finish()
+        }
+    })
 }
 
 impl fmt::Debug for Span {
@@ -657,7 +777,8 @@ impl MultiSpan {
         MultiSpan { primary_spans: vec![primary_span], span_labels: vec![] }
     }
 
-    pub fn from_spans(vec: Vec<Span>) -> MultiSpan {
+    pub fn from_spans(mut vec: Vec<Span>) -> MultiSpan {
+        vec.sort();
         MultiSpan { primary_spans: vec, span_labels: vec![] }
     }
 
@@ -1144,7 +1265,7 @@ impl SourceFile {
             hasher.finish::<u128>()
         };
         let end_pos = start_pos.to_usize() + src.len();
-        assert!(end_pos <= u32::max_value() as usize);
+        assert!(end_pos <= u32::MAX as usize);
 
         let (lines, multibyte_chars, non_narrow_chars) =
             analyze_source_file::analyze_source_file(&src[..], start_pos);

@@ -8,7 +8,10 @@ LL |     Plus(Expr, Expr),
    |          |
    |          recursive without indirection
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Expr` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Expr` representable
+   |
+LL |     Plus(Box<Expr>, Box<Expr>),
+   |          ^^^^    ^  ^^^^    ^
 
 error: aborting due to previous error
 

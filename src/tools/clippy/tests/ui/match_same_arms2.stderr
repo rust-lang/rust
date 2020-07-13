@@ -1,0 +1,145 @@
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:20:14
+   |
+LL |           _ => {
+   |  ______________^
+LL | |             //~ ERROR match arms have same body
+LL | |             foo();
+LL | |             let mut a = 42 + [23].len() as i32;
+...  |
+LL | |             a
+LL | |         },
+   | |_________^
+   |
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
+note: same as this
+  --> $DIR/match_same_arms2.rs:11:15
+   |
+LL |           42 => {
+   |  _______________^
+LL | |             foo();
+LL | |             let mut a = 42 + [23].len() as i32;
+LL | |             if true {
+...  |
+LL | |             a
+LL | |         },
+   | |_________^
+note: `42` has the same arm body as the `_` wildcard, consider removing it
+  --> $DIR/match_same_arms2.rs:11:15
+   |
+LL |           42 => {
+   |  _______________^
+LL | |             foo();
+LL | |             let mut a = 42 + [23].len() as i32;
+LL | |             if true {
+...  |
+LL | |             a
+LL | |         },
+   | |_________^
+
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:34:15
+   |
+LL |         51 => foo(), //~ ERROR match arms have same body
+   |               ^^^^^
+   |
+note: same as this
+  --> $DIR/match_same_arms2.rs:33:15
+   |
+LL |         42 => foo(),
+   |               ^^^^^
+help: consider refactoring into `42 | 51`
+  --> $DIR/match_same_arms2.rs:33:9
+   |
+LL |         42 => foo(),
+   |         ^^
+
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:40:17
+   |
+LL |         None => 24, //~ ERROR match arms have same body
+   |                 ^^
+   |
+note: same as this
+  --> $DIR/match_same_arms2.rs:39:20
+   |
+LL |         Some(_) => 24,
+   |                    ^^
+help: consider refactoring into `Some(_) | None`
+  --> $DIR/match_same_arms2.rs:39:9
+   |
+LL |         Some(_) => 24,
+   |         ^^^^^^^
+
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:62:28
+   |
+LL |         (None, Some(a)) => bar(a), //~ ERROR match arms have same body
+   |                            ^^^^^^
+   |
+note: same as this
+  --> $DIR/match_same_arms2.rs:61:28
+   |
+LL |         (Some(a), None) => bar(a),
+   |                            ^^^^^^
+help: consider refactoring into `(Some(a), None) | (None, Some(a))`
+  --> $DIR/match_same_arms2.rs:61:9
+   |
+LL |         (Some(a), None) => bar(a),
+   |         ^^^^^^^^^^^^^^^
+
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:68:26
+   |
+LL |         (.., Some(a)) => bar(a), //~ ERROR match arms have same body
+   |                          ^^^^^^
+   |
+note: same as this
+  --> $DIR/match_same_arms2.rs:67:26
+   |
+LL |         (Some(a), ..) => bar(a),
+   |                          ^^^^^^
+help: consider refactoring into `(Some(a), ..) | (.., Some(a))`
+  --> $DIR/match_same_arms2.rs:67:9
+   |
+LL |         (Some(a), ..) => bar(a),
+   |         ^^^^^^^^^^^^^
+
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:102:29
+   |
+LL |         (Ok(_), Some(x)) => println!("ok {}", x),
+   |                             ^^^^^^^^^^^^^^^^^^^^
+   |
+note: same as this
+  --> $DIR/match_same_arms2.rs:101:29
+   |
+LL |         (Ok(x), Some(_)) => println!("ok {}", x),
+   |                             ^^^^^^^^^^^^^^^^^^^^
+help: consider refactoring into `(Ok(x), Some(_)) | (Ok(_), Some(x))`
+  --> $DIR/match_same_arms2.rs:101:9
+   |
+LL |         (Ok(x), Some(_)) => println!("ok {}", x),
+   |         ^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:117:18
+   |
+LL |         Ok(_) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+   |
+note: same as this
+  --> $DIR/match_same_arms2.rs:116:18
+   |
+LL |         Ok(3) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+help: consider refactoring into `Ok(3) | Ok(_)`
+  --> $DIR/match_same_arms2.rs:116:9
+   |
+LL |         Ok(3) => println!("ok"),
+   |         ^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
+

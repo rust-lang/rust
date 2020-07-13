@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, RelroLevel, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
@@ -16,7 +16,7 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         needs_plt: true,
         relro_level: RelroLevel::Full,
-        relocation_model: "static".to_string(),
+        relocation_model: RelocModel::Static,
         target_family: Some("unix".to_string()),
         pre_link_args,
 

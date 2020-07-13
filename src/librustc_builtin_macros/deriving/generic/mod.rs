@@ -181,15 +181,14 @@ use std::cell::RefCell;
 use std::iter;
 use std::vec;
 
-use rustc_ast::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use rustc_ast::ast::{self, BinOpKind, EnumDef, Expr, Generics, PatKind};
 use rustc_ast::ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_ast::ptr::P;
 use rustc_attr as attr;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_session::parse::ParseSess;
 use rustc_span::source_map::respan;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
@@ -222,7 +221,7 @@ pub struct TraitDef<'a> {
 
     pub methods: Vec<MethodDef<'a>>,
 
-    pub associated_types: Vec<(ast::Ident, Ty<'a>)>,
+    pub associated_types: Vec<(Ident, Ty<'a>)>,
 }
 
 pub struct MethodDef<'a> {
@@ -336,14 +335,14 @@ pub fn combine_substructure(
 /// is not global and starts with `T`, or a `TyQPath`.
 fn find_type_parameters(
     ty: &ast::Ty,
-    ty_param_names: &[ast::Name],
+    ty_param_names: &[Symbol],
     cx: &ExtCtxt<'_>,
 ) -> Vec<P<ast::Ty>> {
     use rustc_ast::visit;
 
     struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
-        ty_param_names: &'a [ast::Name],
+        ty_param_names: &'a [Symbol],
         types: Vec<P<ast::Ty>>,
     }
 
@@ -437,14 +436,7 @@ impl<'a> TraitDef<'a> {
                         // This can only cause further compilation errors
                         // downstream in blatantly illegal code, so it
                         // is fine.
-                        self.expand_enum_def(
-                            cx,
-                            enum_def,
-                            &item.attrs,
-                            item.ident,
-                            generics,
-                            from_scratch,
-                        )
+                        self.expand_enum_def(cx, enum_def, item.ident, generics, from_scratch)
                     }
                     ast::ItemKind::Union(ref struct_def, ref generics) => {
                         if self.supports_unions {
@@ -620,7 +612,7 @@ impl<'a> TraitDef<'a> {
                 .peekable();
 
             if ty_params.peek().is_some() {
-                let ty_param_names: Vec<ast::Name> =
+                let ty_param_names: Vec<Symbol> =
                     ty_params.map(|ty_param| ty_param.ident.name).collect();
 
                 for field_ty in field_tys {
@@ -769,7 +761,6 @@ impl<'a> TraitDef<'a> {
         &self,
         cx: &mut ExtCtxt<'_>,
         enum_def: &'a EnumDef,
-        type_attrs: &[ast::Attribute],
         type_ident: Ident,
         generics: &Generics,
         from_scratch: bool,
@@ -801,7 +792,6 @@ impl<'a> TraitDef<'a> {
                         cx,
                         self,
                         enum_def,
-                        type_attrs,
                         type_ident,
                         self_args,
                         &nonself_args[..],
@@ -814,38 +804,6 @@ impl<'a> TraitDef<'a> {
 
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods)
     }
-}
-
-fn find_repr_type_name(sess: &ParseSess, type_attrs: &[ast::Attribute]) -> &'static str {
-    let mut repr_type_name = "isize";
-    for a in type_attrs {
-        for r in &attr::find_repr_attrs(sess, a) {
-            repr_type_name = match *r {
-                attr::ReprPacked(_)
-                | attr::ReprSimd
-                | attr::ReprAlign(_)
-                | attr::ReprTransparent
-                | attr::ReprNoNiche => continue,
-
-                attr::ReprC => "i32",
-
-                attr::ReprInt(attr::SignedInt(ast::IntTy::Isize)) => "isize",
-                attr::ReprInt(attr::SignedInt(ast::IntTy::I8)) => "i8",
-                attr::ReprInt(attr::SignedInt(ast::IntTy::I16)) => "i16",
-                attr::ReprInt(attr::SignedInt(ast::IntTy::I32)) => "i32",
-                attr::ReprInt(attr::SignedInt(ast::IntTy::I64)) => "i64",
-                attr::ReprInt(attr::SignedInt(ast::IntTy::I128)) => "i128",
-
-                attr::ReprInt(attr::UnsignedInt(ast::UintTy::Usize)) => "usize",
-                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U8)) => "u8",
-                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U16)) => "u16",
-                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U32)) => "u32",
-                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U64)) => "u64",
-                attr::ReprInt(attr::UnsignedInt(ast::UintTy::U128)) => "u128",
-            }
-        }
-    }
-    repr_type_name
 }
 
 impl<'a> MethodDef<'a> {
@@ -1148,20 +1106,11 @@ impl<'a> MethodDef<'a> {
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
-        type_attrs: &[ast::Attribute],
         type_ident: Ident,
         self_args: Vec<P<Expr>>,
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
-        self.build_enum_match_tuple(
-            cx,
-            trait_,
-            enum_def,
-            type_attrs,
-            type_ident,
-            self_args,
-            nonself_args,
-        )
+        self.build_enum_match_tuple(cx, trait_, enum_def, type_ident, self_args, nonself_args)
     }
 
     /// Creates a match for a tuple of all `self_args`, where either all
@@ -1181,11 +1130,11 @@ impl<'a> MethodDef<'a> {
 
     /// ```{.text}
     /// let __self0_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&self) } as i32;
+    ///     std::intrinsics::discriminant_value(&self) };
     /// let __self1_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&arg1) } as i32;
+    ///     std::intrinsics::discriminant_value(&arg1) };
     /// let __self2_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&arg2) } as i32;
+    ///     std::intrinsics::discriminant_value(&arg2) };
     ///
     /// if __self0_vi == __self1_vi && __self0_vi == __self2_vi && ... {
     ///     match (...) {
@@ -1204,7 +1153,6 @@ impl<'a> MethodDef<'a> {
         cx: &mut ExtCtxt<'_>,
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
-        type_attrs: &[ast::Attribute],
         type_ident: Ident,
         mut self_args: Vec<P<Expr>>,
         nonself_args: &[P<Expr>],
@@ -1223,7 +1171,7 @@ impl<'a> MethodDef<'a> {
             .collect::<Vec<String>>();
 
         let self_arg_idents =
-            self_arg_names.iter().map(|name| cx.ident_of(name, sp)).collect::<Vec<ast::Ident>>();
+            self_arg_names.iter().map(|name| cx.ident_of(name, sp)).collect::<Vec<Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to an int
@@ -1234,7 +1182,7 @@ impl<'a> MethodDef<'a> {
                 let vi_suffix = format!("{}_vi", &name[..]);
                 cx.ident_of(&vi_suffix[..], trait_.span)
             })
-            .collect::<Vec<ast::Ident>>();
+            .collect::<Vec<Ident>>();
 
         // Builds, via callback to call_substructure_method, the
         // delegated expression that handles the catch-all case,
@@ -1392,21 +1340,18 @@ impl<'a> MethodDef<'a> {
         //
         if variants.len() > 1 && self_args.len() > 1 {
             // Build a series of let statements mapping each self_arg
-            // to its discriminant value. If this is a C-style enum
-            // with a specific repr type, then casts the values to
-            // that type.  Otherwise casts to `i32` (the default repr
-            // type).
+            // to its discriminant value.
             //
             // i.e., for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
             // with three Self args, builds three statements:
             //
             // ```
             // let __self0_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&self) } as i32;
+            //     std::intrinsics::discriminant_value(&self) };
             // let __self1_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&arg1) } as i32;
+            //     std::intrinsics::discriminant_value(&arg1) };
             // let __self2_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&arg2) } as i32;
+            //     std::intrinsics::discriminant_value(&arg2) };
             // ```
             let mut index_let_stmts: Vec<ast::Stmt> = Vec::with_capacity(vi_idents.len() + 1);
 
@@ -1414,17 +1359,12 @@ impl<'a> MethodDef<'a> {
             // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...
             let mut discriminant_test = cx.expr_bool(sp, true);
 
-            let target_type_name = find_repr_type_name(&cx.parse_sess, type_attrs);
-
             let mut first_ident = None;
             for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
                 let self_addr = cx.expr_addr_of(sp, self_arg.clone());
                 let variant_value =
                     deriving::call_intrinsic(cx, sp, "discriminant_value", vec![self_addr]);
-
-                let target_ty = cx.ty_ident(sp, cx.ident_of(target_type_name, sp));
-                let variant_disr = cx.expr_cast(sp, variant_value, target_ty);
-                let let_stmt = cx.stmt_let(sp, false, ident, variant_disr);
+                let let_stmt = cx.stmt_let(sp, false, ident, variant_value);
                 index_let_stmts.push(let_stmt);
 
                 match first_ident {
@@ -1598,7 +1538,7 @@ impl<'a> TraitDef<'a> {
     fn create_subpatterns(
         &self,
         cx: &mut ExtCtxt<'_>,
-        field_paths: Vec<ast::Ident>,
+        field_paths: Vec<Ident>,
         mutbl: ast::Mutability,
         use_temporaries: bool,
     ) -> Vec<P<ast::Pat>> {
@@ -1670,7 +1610,7 @@ impl<'a> TraitDef<'a> {
     fn create_enum_variant_pattern(
         &self,
         cx: &mut ExtCtxt<'_>,
-        enum_ident: ast::Ident,
+        enum_ident: Ident,
         variant: &'a ast::Variant,
         prefix: &str,
         mutbl: ast::Mutability,

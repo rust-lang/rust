@@ -12,6 +12,7 @@ error[E0019]: constant contains unimplemented expression type
 LL | const CON : Box<i32> = box 0;
    |                            ^
    |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: A function call isn't allowed in the const's initialization expression because the expression's value must be known at compile-time.
    = note: Remember: you can't use a function call inside a const's initialization expression! However, you can use it anywhere else.
 

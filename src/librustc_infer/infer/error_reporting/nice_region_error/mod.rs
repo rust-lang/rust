@@ -8,7 +8,6 @@ use rustc_span::source_map::Span;
 mod different_lifetimes;
 mod find_anon_type;
 mod named_anon_conflict;
-mod outlives_closure;
 mod placeholder_error;
 mod static_impl_trait;
 mod trait_impl_difference;
@@ -56,10 +55,9 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
                 diag.emit();
                 ErrorReported
             })
-            .or_else(|| self.try_report_anon_anon_conflict())
-            .or_else(|| self.try_report_outlives_closure())
-            .or_else(|| self.try_report_static_impl_trait())
             .or_else(|| self.try_report_impl_not_conforming_to_trait())
+            .or_else(|| self.try_report_anon_anon_conflict())
+            .or_else(|| self.try_report_static_impl_trait())
     }
 
     pub fn regions(&self) -> Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)> {

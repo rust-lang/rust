@@ -4,9 +4,9 @@
 
 #![feature(rustc_private)]
 
-extern crate serialize;
+extern crate rustc_serialize;
 
-use serialize::{json, Decodable};
+use rustc_serialize::{json, Decodable};
 
 trait JD : Decodable {}
 

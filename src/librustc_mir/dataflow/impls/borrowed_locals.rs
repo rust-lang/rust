@@ -173,6 +173,7 @@ where
 
             mir::Rvalue::Cast(..)
             | mir::Rvalue::Use(..)
+            | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::Repeat(..)
             | mir::Rvalue::Len(..)
             | mir::Rvalue::BinaryOp(..)
@@ -188,8 +189,8 @@ where
         self.super_terminator(terminator, location);
 
         match terminator.kind {
-            mir::TerminatorKind::Drop { location: dropped_place, .. }
-            | mir::TerminatorKind::DropAndReplace { location: dropped_place, .. } => {
+            mir::TerminatorKind::Drop { place: dropped_place, .. }
+            | mir::TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
                 // See documentation for `unsound_ignore_borrow_on_drop` for an explanation.
                 if !self.ignore_borrow_on_drop {
                     self.trans.gen(dropped_place.local);
@@ -199,10 +200,11 @@ where
             TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
+            | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Return
             | TerminatorKind::SwitchInt { .. }
@@ -231,7 +233,7 @@ impl MutBorrow<'mir, 'tcx> {
     ///
     /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: Place<'tcx>) -> bool {
-        !place.ty(self.body, self.tcx).ty.is_freeze(self.tcx, self.param_env, DUMMY_SP)
+        !place.ty(self.body, self.tcx).ty.is_freeze(self.tcx.at(DUMMY_SP), self.param_env)
     }
 }
 

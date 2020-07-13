@@ -14,15 +14,24 @@ error[E0106]: missing lifetime specifier
   --> $DIR/underscore-lifetime-binders.rs:2:17
    |
 LL | struct Baz<'a>(&'_ &'a u8);
-   |                 ^^ help: consider using the named lifetime: `'a`
+   |                 ^^ expected named lifetime parameter
+   |
+help: consider using the `'a` lifetime
+   |
+LL | struct Baz<'a>(&'a &'a u8);
+   |                 ^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/underscore-lifetime-binders.rs:10:33
    |
 LL | fn meh() -> Box<dyn for<'_> Meh<'_>>
-   |                                 ^^ help: consider giving it a 'static lifetime: `'static`
+   |                                 ^^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime
+   |
+LL | fn meh() -> Box<dyn for<'_> Meh<'static>>
+   |                                 ^^^^^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/underscore-lifetime-binders.rs:16:35

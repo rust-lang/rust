@@ -15,9 +15,9 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
 }
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=RUST_CHECK");
     if env::var_os("RUST_CHECK").is_some() {
         // If we're just running `check`, there's no need for LLVM to be built.
-        println!("cargo:rerun-if-env-changed=RUST_CHECK");
         return;
     }
 
@@ -78,6 +78,7 @@ fn main() {
         "arm",
         "aarch64",
         "amdgpu",
+        "avr",
         "mips",
         "powerpc",
         "systemz",
@@ -292,11 +293,9 @@ fn main() {
         }
     }
 
-    // LLVM requires symbols from this library, but apparently they're not printed
-    // during llvm-config?
+    // Libstdc++ depends on pthread which Rust doesn't link on MinGW
+    // since nothing else requires it.
     if target.contains("windows-gnu") {
-        println!("cargo:rustc-link-lib=static-nobundle=gcc_s");
         println!("cargo:rustc-link-lib=static-nobundle=pthread");
-        println!("cargo:rustc-link-lib=dylib=uuid");
     }
 }

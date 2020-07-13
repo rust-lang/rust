@@ -12,11 +12,11 @@ use crate::channel;
 use crate::channel::GitInfo;
 use crate::compile;
 use crate::toolstate::ToolState;
-use crate::util::{add_dylib_path, exe, CiEnv};
+use crate::util::{add_dylib_path, exe};
 use crate::Compiler;
 use crate::Mode;
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
     InTree,
     Submodule,
@@ -226,13 +226,9 @@ pub fn prepare_tool_cargo(
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
-    let mut cargo = builder.cargo(compiler, mode, target, command);
+    let mut cargo = builder.cargo(compiler, mode, source_type, target, command);
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
-
-    if source_type == SourceType::Submodule {
-        cargo.env("RUSTC_EXTERNAL_TOOL", "1");
-    }
 
     let mut features = extra_features.to_vec();
     if builder.build.config.cargo_native_static {
@@ -240,7 +236,6 @@ pub fn prepare_tool_cargo(
             || path.ends_with("rls")
             || path.ends_with("clippy")
             || path.ends_with("miri")
-            || path.ends_with("rustbook")
             || path.ends_with("rustfmt")
         {
             cargo.env("LIBZ_SYS_STATIC", "1");
@@ -252,6 +247,10 @@ pub fn prepare_tool_cargo(
     // own copy
     cargo.env("LZMA_API_STATIC", "1");
 
+    // CFG_RELEASE is needed by rustfmt (and possibly other tools) which
+    // import rustc-ap-rustc_attr which requires this to be set for the
+    // `#[cfg(version(...))]` attribute.
+    cargo.env("CFG_RELEASE", builder.rust_release());
     cargo.env("CFG_RELEASE_CHANNEL", &builder.config.channel);
     cargo.env("CFG_VERSION", builder.rust_version());
     cargo.env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM);
@@ -270,20 +269,6 @@ pub fn prepare_tool_cargo(
         cargo.arg("--features").arg(&features.join(", "));
     }
     cargo
-}
-
-fn rustbook_features() -> Vec<String> {
-    let mut features = Vec::new();
-
-    // Due to CI budged and risk of spurious failures we want to limit jobs running this check.
-    // At same time local builds should run it regardless of the platform.
-    // `CiEnv::None` means it's local build and `CHECK_LINKS` is defined in x86_64-gnu-tools to
-    // explicitly enable it on single job
-    if CiEnv::current() == CiEnv::None || env::var("CHECK_LINKS").is_ok() {
-        features.push("linkcheck".to_string());
-    }
-
-    features
 }
 
 macro_rules! bootstrap_tool {
@@ -368,7 +353,7 @@ macro_rules! bootstrap_tool {
 }
 
 bootstrap_tool!(
-    Rustbook, "src/tools/rustbook", "rustbook", features = rustbook_features();
+    Rustbook, "src/tools/rustbook", "rustbook";
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen";
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
@@ -381,7 +366,7 @@ bootstrap_tool!(
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
 );
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct ErrorIndex {
     pub compiler: Compiler,
 }
@@ -407,9 +392,9 @@ impl Step for ErrorIndex {
     fn make_run(run: RunConfig<'_>) {
         // Compile the error-index in the same stage as rustdoc to avoid
         // recompiling rustdoc twice if we can.
-        let stage = if run.builder.top_stage >= 2 { run.builder.top_stage } else { 0 };
-        run.builder
-            .ensure(ErrorIndex { compiler: run.builder.compiler(stage, run.builder.config.build) });
+        let host = run.builder.config.build;
+        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
+        run.builder.ensure(ErrorIndex { compiler });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
@@ -464,7 +449,7 @@ impl Step for RemoteTestServer {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct Rustdoc {
     /// This should only ever be 0 or 2.
     /// We sometimes want to reference the "bootstrap" rustdoc, which is why this option is here.
@@ -477,7 +462,7 @@ impl Step for Rustdoc {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rustdoc")
+        run.path("src/tools/rustdoc").path("src/librustdoc")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -591,6 +576,8 @@ macro_rules! tool_extended {
        $toolstate:ident,
        $path:expr,
        $tool_name:expr,
+       stable = $stable:expr,
+       $(in_tree = $in_tree:expr,)*
        $extra_deps:block;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -602,12 +589,25 @@ macro_rules! tool_extended {
 
         impl Step for $name {
             type Output = Option<PathBuf>;
-            const DEFAULT: bool = true;
+            const DEFAULT: bool = true; // Overwritten below
             const ONLY_HOSTS: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 let builder = run.builder;
-                run.path($path).default_condition(builder.config.extended)
+                run.path($path).default_condition(
+                    builder.config.extended
+                        && builder.config.tools.as_ref().map_or(
+                            // By default, on nightly/dev enable all tools, else only
+                            // build stable tools.
+                            $stable || builder.build.unstable_features(),
+                            // If `tools` is set, search list for this tool.
+                            |tools| {
+                                tools.iter().any(|tool| match tool.as_ref() {
+                                    "clippy" => $tool_name == "clippy-driver",
+                                    x => $tool_name == x,
+                            })
+                        }),
+                )
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -629,7 +629,11 @@ macro_rules! tool_extended {
                     path: $path,
                     extra_features: $sel.extra_features,
                     is_optional_tool: true,
-                    source_type: SourceType::Submodule,
+                    source_type: if false $(|| $in_tree)* {
+                        SourceType::InTree
+                    } else {
+                        SourceType::Submodule
+                    },
                 })
             }
         }
@@ -637,23 +641,24 @@ macro_rules! tool_extended {
     }
 }
 
+// Note: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
+// to make `./x.py build <tool>` work.
 tool_extended!((self, builder),
-    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
-    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", {};
-    Clippy, clippy, "src/tools/clippy", "clippy-driver", {};
-    Miri, miri, "src/tools/miri", "miri", {};
-    CargoMiri, miri, "src/tools/miri", "cargo-miri", {};
-    Rls, rls, "src/tools/rls", "rls", {
-        let clippy = builder.ensure(Clippy {
+    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, {};
+    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
+    Clippy, clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
+    Miri, miri, "src/tools/miri", "miri", stable=false, {};
+    CargoMiri, miri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, {};
+    Rls, rls, "src/tools/rls", "rls", stable=true, {
+        builder.ensure(Clippy {
             compiler: self.compiler,
             target: self.target,
             extra_features: Vec::new(),
         });
-        if clippy.is_some() {
-            self.extra_features.push("clippy".to_owned());
-        }
+        self.extra_features.push("clippy".to_owned());
     };
-    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", {};
+    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, {};
+    RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, {};
 );
 
 impl<'a> Builder<'a> {

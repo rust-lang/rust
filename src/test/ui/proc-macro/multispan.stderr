@@ -1,89 +1,89 @@
 error: hello to you, too!
-  --> $DIR/multispan.rs:14:5
+  --> $DIR/multispan.rs:12:5
    |
 LL |     hello!(hi);
    |     ^^^^^^^^^^^
    |
 note: found these 'hi's
-  --> $DIR/multispan.rs:14:12
+  --> $DIR/multispan.rs:12:12
    |
 LL |     hello!(hi);
    |            ^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:17:5
+  --> $DIR/multispan.rs:15:5
    |
 LL |     hello!(hi hi);
    |     ^^^^^^^^^^^^^^
    |
 note: found these 'hi's
-  --> $DIR/multispan.rs:17:12
+  --> $DIR/multispan.rs:15:12
    |
 LL |     hello!(hi hi);
    |            ^^ ^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:20:5
+  --> $DIR/multispan.rs:18:5
    |
 LL |     hello!(hi hi hi);
    |     ^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
-  --> $DIR/multispan.rs:20:12
+  --> $DIR/multispan.rs:18:12
    |
 LL |     hello!(hi hi hi);
    |            ^^ ^^ ^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:23:5
+  --> $DIR/multispan.rs:21:5
    |
 LL |     hello!(hi hey hi yo hi beep beep hi hi);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
-  --> $DIR/multispan.rs:23:12
+  --> $DIR/multispan.rs:21:12
    |
 LL |     hello!(hi hey hi yo hi beep beep hi hi);
    |            ^^     ^^    ^^           ^^ ^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:24:5
+  --> $DIR/multispan.rs:22:5
    |
 LL |     hello!(hi there, hi how are you? hi... hi.);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
-  --> $DIR/multispan.rs:24:12
+  --> $DIR/multispan.rs:22:12
    |
 LL |     hello!(hi there, hi how are you? hi... hi.);
    |            ^^        ^^              ^^    ^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:25:5
+  --> $DIR/multispan.rs:23:5
    |
 LL |     hello!(whoah. hi di hi di ho);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
-  --> $DIR/multispan.rs:25:19
+  --> $DIR/multispan.rs:23:19
    |
 LL |     hello!(whoah. hi di hi di ho);
    |                   ^^    ^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:26:5
+  --> $DIR/multispan.rs:24:5
    |
 LL |     hello!(hi good hi and good bye);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: found these 'hi's
-  --> $DIR/multispan.rs:26:12
+  --> $DIR/multispan.rs:24:12
    |
 LL |     hello!(hi good hi and good bye);
    |            ^^      ^^

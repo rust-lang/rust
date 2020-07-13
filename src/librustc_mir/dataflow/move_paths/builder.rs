@@ -176,7 +176,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn add_move_path(
         &mut self,
         base: MovePathIndex,
-        elem: &PlaceElem<'tcx>,
+        elem: PlaceElem<'tcx>,
         mk_place: impl FnOnce(TyCtxt<'tcx>) -> Place<'tcx>,
     ) -> MovePathIndex {
         let MoveDataBuilder {
@@ -324,6 +324,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
     fn gather_rvalue(&mut self, rvalue: &Rvalue<'tcx>) {
         match *rvalue {
+            Rvalue::ThreadLocalRef(_) => {} // not-a-move
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
@@ -364,7 +365,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | TerminatorKind::Resume
             | TerminatorKind::Abort
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Unreachable => {}
 
@@ -386,13 +387,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
 
-            TerminatorKind::Drop { location, target: _, unwind: _ } => {
-                self.gather_move(location);
+            TerminatorKind::Drop { place, target: _, unwind: _ } => {
+                self.gather_move(place);
             }
-            TerminatorKind::DropAndReplace { location, ref value, .. } => {
-                self.create_move_path(location);
+            TerminatorKind::DropAndReplace { place, ref value, .. } => {
+                self.create_move_path(place);
                 self.gather_operand(value);
-                self.gather_init(location.as_ref(), InitKind::Deep);
+                self.gather_init(place.as_ref(), InitKind::Deep);
             }
             TerminatorKind::Call {
                 ref func,
@@ -400,6 +401,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 ref destination,
                 cleanup: _,
                 from_hir_call: _,
+                fn_span: _,
             } => {
                 self.gather_operand(func);
                 for arg in args {
@@ -408,6 +410,37 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 if let Some((destination, _bb)) = *destination {
                     self.create_move_path(destination);
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
+                }
+            }
+            TerminatorKind::InlineAsm {
+                template: _,
+                ref operands,
+                options: _,
+                line_spans: _,
+                destination: _,
+            } => {
+                for op in operands {
+                    match *op {
+                        InlineAsmOperand::In { reg: _, ref value }
+                        | InlineAsmOperand::Const { ref value } => {
+                            self.gather_operand(value);
+                        }
+                        InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
+                            if let Some(place) = place {
+                                self.create_move_path(place);
+                                self.gather_init(place.as_ref(), InitKind::Deep);
+                            }
+                        }
+                        InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
+                            self.gather_operand(in_value);
+                            if let Some(out_place) = out_place {
+                                self.create_move_path(out_place);
+                                self.gather_init(out_place.as_ref(), InitKind::Deep);
+                            }
+                        }
+                        InlineAsmOperand::SymFn { value: _ }
+                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
+                    }
                 }
             }
         }
@@ -459,7 +492,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 let elem =
                     ProjectionElem::ConstantIndex { offset, min_length: len, from_end: false };
                 let path =
-                    self.add_move_path(base_path, &elem, |tcx| tcx.mk_place_elem(base_place, elem));
+                    self.add_move_path(base_path, elem, |tcx| tcx.mk_place_elem(base_place, elem));
                 self.record_move(place, path);
             }
         } else {

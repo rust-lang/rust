@@ -8,7 +8,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{slice, vec};
 
-use rustc_ast::ast::{self, AttrStyle, Ident};
+use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::attr;
 use rustc_ast::util::comments::strip_doc_comment_decoration;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -21,7 +21,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::middle::stability;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
@@ -85,9 +85,7 @@ pub struct Item {
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let fake = MAX_DEF_ID.with(|m| {
-            m.borrow().get(&self.def_id.krate).map(|id| self.def_id >= *id).unwrap_or(false)
-        });
+        let fake = self.is_fake();
         let def_id: &dyn fmt::Debug = if fake { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
@@ -237,6 +235,13 @@ impl Item {
             }
             _ => false,
         }
+    }
+
+    /// See comments on next_def_id
+    pub fn is_fake(&self) -> bool {
+        MAX_DEF_ID.with(|m| {
+            m.borrow().get(&self.def_id.krate).map(|id| self.def_id >= *id).unwrap_or(false)
+        })
     }
 }
 
@@ -481,6 +486,33 @@ impl Attributes {
         })
     }
 
+    /// Enforce the format of attributes inside `#[doc(...)]`.
+    pub fn check_doc_attributes(
+        diagnostic: &::rustc_errors::Handler,
+        mi: &ast::MetaItem,
+    ) -> Option<(String, String)> {
+        mi.meta_item_list().and_then(|list| {
+            for meta in list {
+                if meta.check_name(sym::alias) {
+                    if !meta.is_value_str()
+                        || meta
+                            .value_str()
+                            .map(|s| s.to_string())
+                            .unwrap_or_else(String::new)
+                            .is_empty()
+                    {
+                        diagnostic.span_err(
+                            meta.span(),
+                            "doc alias attribute expects a string: #[doc(alias = \"0\")]",
+                        );
+                    }
+                }
+            }
+
+            None
+        })
+    }
+
     pub fn has_doc_flag(&self, flag: Symbol) -> bool {
         for attr in &self.other_attrs {
             if !attr.check_name(sym::doc) {
@@ -524,6 +556,7 @@ impl Attributes {
                 } else {
                     if attr.check_name(sym::doc) {
                         if let Some(mi) = attr.meta() {
+                            Attributes::check_doc_attributes(&diagnostic, &mi);
                             if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
                                 // Extracted #[doc(cfg(...))]
                                 match Cfg::parse(cfg_mi) {
@@ -595,6 +628,7 @@ impl Attributes {
     /// Cache must be populated before call
     pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
         use crate::html::format::href;
+        use crate::html::render::CURRENT_DEPTH;
 
         self.links
             .iter()
@@ -615,12 +649,13 @@ impl Attributes {
                         if let Some(ref fragment) = *fragment {
                             let cache = cache();
                             let url = match cache.extern_locations.get(krate) {
-                                Some(&(_, ref src, ExternalLocation::Local)) => {
-                                    src.to_str().expect("invalid file path")
+                                Some(&(_, _, ExternalLocation::Local)) => {
+                                    let depth = CURRENT_DEPTH.with(|l| l.get());
+                                    "../".repeat(depth)
                                 }
-                                Some(&(_, _, ExternalLocation::Remote(ref s))) => s,
+                                Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
                                 Some(&(_, _, ExternalLocation::Unknown)) | None => {
-                                    "https://doc.rust-lang.org/nightly"
+                                    String::from("https://doc.rust-lang.org/nightly")
                                 }
                             };
                             // This is a primitive so the url is done "by hand".
@@ -642,6 +677,15 @@ impl Attributes {
                 }
             })
             .collect()
+    }
+
+    pub fn get_doc_aliases(&self) -> FxHashSet<String> {
+        self.other_attrs
+            .lists(sym::doc)
+            .filter(|a| a.check_name(sym::alias))
+            .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
+            .filter(|v| !v.is_empty())
+            .collect::<FxHashSet<_>>()
     }
 }
 

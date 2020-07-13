@@ -87,9 +87,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
                 index.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }
-            ty::ReScope(scope) => {
-                scope.hash_stable(hcx, hasher);
-            }
             ty::ReFree(ref free_region) => {
                 free_region.hash_stable(hcx, hasher);
             }
@@ -126,7 +123,7 @@ where
     T: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.skip_binder().hash_stable(hcx, hasher);
+        self.as_ref().skip_binder().hash_stable(hcx, hasher);
     }
 }
 
@@ -136,8 +133,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            let alloc_kind = tcx.alloc_map.lock().get(*self);
-            alloc_kind.hash_stable(hcx, hasher);
+            tcx.get_global_alloc(*self).hash_stable(hcx, hasher);
         });
     }
 }

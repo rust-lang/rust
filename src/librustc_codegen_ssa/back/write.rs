@@ -5,7 +5,6 @@ use super::symbol_export::symbol_name_for_instance_in_crate;
 
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
-    RLIB_BYTECODE_EXTENSION,
 };
 
 use crate::traits::*;
@@ -22,21 +21,20 @@ use rustc_errors::{DiagnosticId, FatalError, Handler, Level};
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
-    copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
+    copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
 };
-use rustc_middle::dep_graph::{WorkProduct, WorkProductFileKind, WorkProductId};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
-use rustc_session::config::{
-    self, Lto, OutputFilenames, OutputType, Passes, Sanitizer, SwitchWithOptPath,
-};
+use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
+use rustc_session::config::{Passes, SanitizerSet, SwitchWithOptPath};
 use rustc_session::Session;
-use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::spec::MergeFunctions;
+use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
+use rustc_target::spec::{MergeFunctions, PanicStrategy};
 
 use std::any::Any;
 use std::fs;
@@ -70,10 +68,6 @@ pub enum BitcodeSection {
     // No bitcode section.
     None,
 
-    // An empty bitcode section (to placate tools such as the iOS linker that
-    // require this section even if they don't use it).
-    Marker,
-
     // A full, uncompressed bitcode section.
     Full,
 }
@@ -92,18 +86,18 @@ pub struct ModuleConfig {
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
 
-    pub sanitizer: Option<Sanitizer>,
-    pub sanitizer_recover: Vec<Sanitizer>,
+    pub sanitizer: SanitizerSet,
+    pub sanitizer_recover: SanitizerSet,
     pub sanitizer_memory_track_origins: usize,
 
     // Flags indicating which outputs to produce.
     pub emit_pre_lto_bc: bool,
     pub emit_no_opt_bc: bool,
     pub emit_bc: bool,
-    pub emit_bc_compressed: bool,
     pub emit_ir: bool,
     pub emit_asm: bool,
     pub emit_obj: EmitObj,
+    pub bc_cmdline: String,
 
     // Miscellaneous flags.  These are mostly copied from command-line
     // options.
@@ -116,10 +110,16 @@ pub struct ModuleConfig {
     pub merge_functions: bool,
     pub inline_threshold: Option<usize>,
     pub new_llvm_pass_manager: bool,
+    pub emit_lifetime_markers: bool,
 }
 
 impl ModuleConfig {
-    fn new(kind: ModuleKind, sess: &Session, no_builtins: bool) -> ModuleConfig {
+    fn new(
+        kind: ModuleKind,
+        sess: &Session,
+        no_builtins: bool,
+        is_compiler_builtins: bool,
+    ) -> ModuleConfig {
         // If it's a regular module, use `$regular`, otherwise use `$other`.
         // `$regular` and `$other` are evaluated lazily.
         macro_rules! if_regular {
@@ -142,16 +142,25 @@ impl ModuleConfig {
         let emit_obj = if !should_emit_obj {
             EmitObj::None
         } else if sess.target.target.options.obj_is_bitcode
-            || sess.opts.cg.linker_plugin_lto.enabled()
+            || (sess.opts.cg.linker_plugin_lto.enabled() && !no_builtins)
         {
+            // This case is selected if the target uses objects as bitcode, or
+            // if linker plugin LTO is enabled. In the linker plugin LTO case
+            // the assumption is that the final link-step will read the bitcode
+            // and convert it to object code. This may be done by either the
+            // native linker or rustc itself.
+            //
+            // Note, however, that the linker-plugin-lto requested here is
+            // explicitly ignored for `#![no_builtins]` crates. These crates are
+            // specifically ignored by rustc's LTO passes and wouldn't work if
+            // loaded into the linker. These crates define symbols that LLVM
+            // lowers intrinsics to, and these symbol dependencies aren't known
+            // until after codegen. As a result any crate marked
+            // `#![no_builtins]` is assumed to not participate in LTO and
+            // instead goes on to generate object code.
             EmitObj::Bitcode
-        } else if sess.opts.debugging_opts.embed_bitcode {
-            match sess.opts.optimize {
-                config::OptLevel::No | config::OptLevel::Less => {
-                    EmitObj::ObjectCode(BitcodeSection::Marker)
-                }
-                _ => EmitObj::ObjectCode(BitcodeSection::Full),
-            }
+        } else if need_bitcode_in_object(sess) {
+            EmitObj::ObjectCode(BitcodeSection::Full)
         } else {
             EmitObj::ObjectCode(BitcodeSection::None)
         };
@@ -160,8 +169,17 @@ impl ModuleConfig {
             passes: if_regular!(
                 {
                     let mut passes = sess.opts.cg.passes.clone();
-                    if sess.opts.debugging_opts.profile {
+                    // compiler_builtins overrides the codegen-units settings,
+                    // which is incompatible with -Zprofile which requires that
+                    // only a single codegen unit is used per crate.
+                    if sess.opts.debugging_opts.profile && !is_compiler_builtins {
                         passes.push("insert-gcov-profiling".to_owned());
+                    }
+
+                    // The rustc option `-Zinstrument_coverage` injects intrinsic calls to
+                    // `llvm.instrprof.increment()`, which requires the LLVM `instrprof` pass.
+                    if sess.opts.debugging_opts.instrument_coverage {
+                        passes.push("instrprof".to_owned());
                     }
                     passes
                 },
@@ -177,10 +195,10 @@ impl ModuleConfig {
             ),
             pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
 
-            sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer.clone(), None),
+            sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer, SanitizerSet::empty()),
             sanitizer_recover: if_regular!(
-                sess.opts.debugging_opts.sanitizer_recover.clone(),
-                vec![]
+                sess.opts.debugging_opts.sanitizer_recover,
+                SanitizerSet::empty()
             ),
             sanitizer_memory_track_origins: if_regular!(
                 sess.opts.debugging_opts.sanitizer_memory_track_origins,
@@ -196,16 +214,6 @@ impl ModuleConfig {
                 save_temps || sess.opts.output_types.contains_key(&OutputType::Bitcode),
                 save_temps
             ),
-            emit_bc_compressed: match kind {
-                ModuleKind::Regular | ModuleKind::Allocator => {
-                    // Emit compressed bitcode files for the crate if we're
-                    // emitting an rlib. Whenever an rlib is created, the
-                    // bitcode is inserted into the archive in order to allow
-                    // LTO against it.
-                    need_crate_bitcode_for_rlib(sess)
-                }
-                ModuleKind::Metadata => false,
-            },
             emit_ir: if_regular!(
                 sess.opts.output_types.contains_key(&OutputType::LlvmAssembly),
                 false
@@ -215,6 +223,7 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
+            bc_cmdline: sess.target.target.options.bitcode_llvm_cmdline.clone(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
             no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
@@ -256,12 +265,12 @@ impl ModuleConfig {
 
             inline_threshold: sess.opts.cg.inline_threshold,
             new_llvm_pass_manager: sess.opts.debugging_opts.new_llvm_pass_manager,
+            emit_lifetime_markers: sess.emit_lifetime_markers(),
         }
     }
 
     pub fn bitcode_needed(&self) -> bool {
         self.emit_bc
-            || self.emit_bc_compressed
             || self.emit_obj == EmitObj::Bitcode
             || self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
     }
@@ -292,7 +301,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub fewer_names: bool,
     pub exported_symbols: Option<Arc<ExportedSymbols>>,
     pub opts: Arc<config::Options>,
-    pub crate_types: Vec<config::CrateType>,
+    pub crate_types: Vec<CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
     pub output_filenames: Arc<OutputFilenames>,
     pub regular_module_config: Arc<ModuleConfig>,
@@ -377,9 +386,12 @@ pub struct CompiledModules {
     pub allocator_module: Option<CompiledModule>,
 }
 
-fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
-    sess.crate_types.borrow().contains(&config::CrateType::Rlib)
-        && sess.opts.output_types.contains_key(&OutputType::Exe)
+fn need_bitcode_in_object(sess: &Session) -> bool {
+    let requested_for_rlib = sess.opts.cg.embed_bitcode
+        && sess.crate_types().contains(&CrateType::Rlib)
+        && sess.opts.output_types.contains_key(&OutputType::Exe);
+    let forced_by_target = sess.target.target.options.forces_embed_bitcode;
+    requested_for_rlib || forced_by_target
 }
 
 fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
@@ -405,6 +417,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let no_builtins = attr::contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
+    let is_compiler_builtins =
+        attr::contains_name(&tcx.hir().krate().item.attrs, sym::compiler_builtins);
     let subsystem =
         attr::first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
@@ -421,9 +435,12 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let linker_info = LinkerInfo::new(tcx);
     let crate_info = CrateInfo::new(tcx);
 
-    let regular_config = ModuleConfig::new(ModuleKind::Regular, sess, no_builtins);
-    let metadata_config = ModuleConfig::new(ModuleKind::Metadata, sess, no_builtins);
-    let allocator_config = ModuleConfig::new(ModuleKind::Allocator, sess, no_builtins);
+    let regular_config =
+        ModuleConfig::new(ModuleKind::Regular, sess, no_builtins, is_compiler_builtins);
+    let metadata_config =
+        ModuleConfig::new(ModuleKind::Metadata, sess, no_builtins, is_compiler_builtins);
+    let allocator_config =
+        ModuleConfig::new(ModuleKind::Allocator, sess, no_builtins, is_compiler_builtins);
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (codegen_worker_send, codegen_worker_receive) = channel();
@@ -470,23 +487,13 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
         return work_products;
     }
 
-    let _timer = sess.timer("incr_comp_copy_cgu_workproducts");
+    let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
 
     for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
-        let mut files = vec![];
-
-        if let Some(ref path) = module.object {
-            files.push((WorkProductFileKind::Object, path.clone()));
-        }
-        if let Some(ref path) = module.bytecode {
-            files.push((WorkProductFileKind::Bytecode, path.clone()));
-        }
-        if let Some(ref path) = module.bytecode_compressed {
-            files.push((WorkProductFileKind::BytecodeCompressed, path.clone()));
-        }
+        let path = module.object.as_ref().map(|path| path.clone());
 
         if let Some((id, product)) =
-            copy_cgu_workproducts_to_incr_comp_cache_dir(sess, &module.name, &files)
+            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, &path)
         {
             work_products.insert(id, product);
         }
@@ -720,10 +727,51 @@ fn execute_work_item<B: ExtraBackendMethods>(
 }
 
 // Actual LTO type we end up choosing based on multiple factors.
-enum ComputedLtoType {
+pub enum ComputedLtoType {
     No,
     Thin,
     Fat,
+}
+
+pub fn compute_per_cgu_lto_type(
+    sess_lto: &Lto,
+    opts: &config::Options,
+    sess_crate_types: &[CrateType],
+    module_kind: ModuleKind,
+) -> ComputedLtoType {
+    // Metadata modules never participate in LTO regardless of the lto
+    // settings.
+    if module_kind == ModuleKind::Metadata {
+        return ComputedLtoType::No;
+    }
+
+    // If the linker does LTO, we don't have to do it. Note that we
+    // keep doing full LTO, if it is requested, as not to break the
+    // assumption that the output will be a single module.
+    let linker_does_lto = opts.cg.linker_plugin_lto.enabled();
+
+    // When we're automatically doing ThinLTO for multi-codegen-unit
+    // builds we don't actually want to LTO the allocator modules if
+    // it shows up. This is due to various linker shenanigans that
+    // we'll encounter later.
+    let is_allocator = module_kind == ModuleKind::Allocator;
+
+    // We ignore a request for full crate grath LTO if the cate type
+    // is only an rlib, as there is no full crate graph to process,
+    // that'll happen later.
+    //
+    // This use case currently comes up primarily for targets that
+    // require LTO so the request for LTO is always unconditionally
+    // passed down to the backend, but we don't actually want to do
+    // anything about it yet until we've got a final product.
+    let is_rlib = sess_crate_types.len() == 1 && sess_crate_types[0] == CrateType::Rlib;
+
+    match sess_lto {
+        Lto::ThinLocal if !linker_does_lto && !is_allocator => ComputedLtoType::Thin,
+        Lto::Thin if !linker_does_lto && !is_rlib => ComputedLtoType::Thin,
+        Lto::Fat if !is_rlib => ComputedLtoType::Fat,
+        _ => ComputedLtoType::No,
+    }
 }
 
 fn execute_optimize_work_item<B: ExtraBackendMethods>(
@@ -742,39 +790,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     // back to the coordinator thread for further LTO processing (which
     // has to wait for all the initial modules to be optimized).
 
-    // If the linker does LTO, we don't have to do it. Note that we
-    // keep doing full LTO, if it is requested, as not to break the
-    // assumption that the output will be a single module.
-    let linker_does_lto = cgcx.opts.cg.linker_plugin_lto.enabled();
-
-    // When we're automatically doing ThinLTO for multi-codegen-unit
-    // builds we don't actually want to LTO the allocator modules if
-    // it shows up. This is due to various linker shenanigans that
-    // we'll encounter later.
-    let is_allocator = module.kind == ModuleKind::Allocator;
-
-    // We ignore a request for full crate grath LTO if the cate type
-    // is only an rlib, as there is no full crate graph to process,
-    // that'll happen later.
-    //
-    // This use case currently comes up primarily for targets that
-    // require LTO so the request for LTO is always unconditionally
-    // passed down to the backend, but we don't actually want to do
-    // anything about it yet until we've got a final product.
-    let is_rlib = cgcx.crate_types.len() == 1 && cgcx.crate_types[0] == config::CrateType::Rlib;
-
-    // Metadata modules never participate in LTO regardless of the lto
-    // settings.
-    let lto_type = if module.kind == ModuleKind::Metadata {
-        ComputedLtoType::No
-    } else {
-        match cgcx.lto {
-            Lto::ThinLocal if !linker_does_lto && !is_allocator => ComputedLtoType::Thin,
-            Lto::Thin if !linker_does_lto && !is_rlib => ComputedLtoType::Thin,
-            Lto::Fat if !is_rlib => ComputedLtoType::Fat,
-            _ => ComputedLtoType::No,
-        }
-    };
+    let lto_type = compute_per_cgu_lto_type(&cgcx.lto, &cgcx.opts, &cgcx.crate_types, module.kind);
 
     // If we're doing some form of incremental LTO then we need to be sure to
     // save our module to disk first.
@@ -819,29 +835,9 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 ) -> Result<WorkItemResult<B>, FatalError> {
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
     let mut object = None;
-    let mut bytecode = None;
-    let mut bytecode_compressed = None;
-    for (kind, saved_file) in &module.source.saved_files {
-        let obj_out = match kind {
-            WorkProductFileKind::Object => {
-                let path = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
-                object = Some(path.clone());
-                path
-            }
-            WorkProductFileKind::Bytecode => {
-                let path = cgcx.output_filenames.temp_path(OutputType::Bitcode, Some(&module.name));
-                bytecode = Some(path.clone());
-                path
-            }
-            WorkProductFileKind::BytecodeCompressed => {
-                let path = cgcx
-                    .output_filenames
-                    .temp_path(OutputType::Bitcode, Some(&module.name))
-                    .with_extension(RLIB_BYTECODE_EXTENSION);
-                bytecode_compressed = Some(path.clone());
-                path
-            }
-        };
+    if let Some(saved_file) = module.source.saved_file {
+        let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
+        object = Some(obj_out.clone());
         let source_file = in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
         debug!(
             "copying pre-existing module `{}` from {:?} to {}",
@@ -861,15 +857,12 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     }
 
     assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
-    assert_eq!(bytecode.is_some(), module_config.emit_bc);
-    assert_eq!(bytecode_compressed.is_some(), module_config.emit_bc_compressed);
 
     Ok(WorkItemResult::Compiled(CompiledModule {
         name: module.name,
         kind: ModuleKind::Regular,
         object,
-        bytecode,
-        bytecode_compressed,
+        bytecode: None,
     }))
 }
 
@@ -1004,10 +997,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
     };
     let cgcx = CodegenContext::<B> {
         backend: backend.clone(),
-        crate_types: sess.crate_types.borrow().clone(),
+        crate_types: sess.crate_types().to_vec(),
         each_linked_rlib_for_lto,
         lto: sess.lto(),
-        no_landing_pads: sess.no_landing_pads(),
+        no_landing_pads: sess.panic_strategy() == PanicStrategy::Abort,
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),
@@ -1023,7 +1016,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
-        tm_factory: TargetMachineFactory(backend.target_machine_factory(tcx.sess, ol, false)),
+        tm_factory: TargetMachineFactory(backend.target_machine_factory(tcx.sess, ol)),
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
@@ -1564,7 +1557,7 @@ fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>
 
 enum SharedEmitterMessage {
     Diagnostic(Diagnostic),
-    InlineAsmError(u32, String),
+    InlineAsmError(u32, String, Level, Option<(String, Vec<InnerSpan>)>),
     AbortIfErrors,
     Fatal(String),
 }
@@ -1585,8 +1578,14 @@ impl SharedEmitter {
         (SharedEmitter { sender }, SharedEmitterMain { receiver })
     }
 
-    pub fn inline_asm_error(&self, cookie: u32, msg: String) {
-        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg)));
+    pub fn inline_asm_error(
+        &self,
+        cookie: u32,
+        msg: String,
+        level: Level,
+        source: Option<(String, Vec<InnerSpan>)>,
+    ) {
+        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)));
     }
 
     pub fn fatal(&self, msg: &str) {
@@ -1639,8 +1638,35 @@ impl SharedEmitterMain {
                     }
                     handler.emit_diagnostic(&d);
                 }
-                Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
-                    sess.span_err(ExpnId::from_u32(cookie).expn_data().call_site, &msg)
+                Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
+                    let msg = msg.strip_prefix("error: ").unwrap_or(&msg);
+
+                    let mut err = match level {
+                        Level::Error => sess.struct_err(&msg),
+                        Level::Warning => sess.struct_warn(&msg),
+                        Level::Note => sess.struct_note_without_error(&msg),
+                        _ => bug!("Invalid inline asm diagnostic level"),
+                    };
+
+                    // If the cookie is 0 then we don't have span information.
+                    if cookie != 0 {
+                        let pos = BytePos::from_u32(cookie);
+                        let span = Span::with_root_ctxt(pos, pos);
+                        err.set_span(span);
+                    };
+
+                    // Point to the generated assembly if it is available.
+                    if let Some((buffer, spans)) = source {
+                        let source = sess
+                            .source_map()
+                            .new_source_file(FileName::inline_asm_source_code(&buffer), buffer);
+                        let source_span = Span::with_root_ctxt(source.start_pos, source.end_pos);
+                        let spans: Vec<_> =
+                            spans.iter().map(|sp| source_span.from_inner(*sp)).collect();
+                        err.span_note(spans, "instantiated into assembly here");
+                    }
+
+                    err.emit();
                 }
                 Ok(SharedEmitterMessage::AbortIfErrors) => {
                     sess.abort_if_errors();
@@ -1825,7 +1851,7 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     );
 
     tcx.sess.target.target.options.is_like_msvc &&
-        tcx.sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateType::Rlib) &&
+        tcx.sess.crate_types().iter().any(|ct| *ct == CrateType::Rlib) &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
     // dynamic linking when linker plugin LTO is enabled.

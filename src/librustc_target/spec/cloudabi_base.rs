@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, RelroLevel, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, RelroLevel, TargetOptions, TlsModel};
 
 pub fn opts() -> TargetOptions {
     let mut args = LinkArgs::new();
@@ -7,7 +7,6 @@ pub fn opts() -> TargetOptions {
         vec![
             "-Wl,-Bstatic".to_string(),
             "-Wl,--no-dynamic-linker".to_string(),
-            "-Wl,--eh-frame-hdr".to_string(),
             "-Wl,--gc-sections".to_string(),
         ],
     );
@@ -29,7 +28,7 @@ pub fn opts() -> TargetOptions {
         // (Global Offset Table) to obtain the effective address of a
         // thread-local variable. Using a GOT is useful only when doing
         // dynamic linking.
-        tls_model: "local-exec".to_string(),
+        tls_model: TlsModel::LocalExec,
         relro_level: RelroLevel::Full,
         ..Default::default()
     }

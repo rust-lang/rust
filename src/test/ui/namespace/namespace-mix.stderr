@@ -12,11 +12,11 @@ help: a tuple struct with a similar name exists
    |
 LL |     check(m1::TS);
    |               ^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use m2::S;
    |
-LL | use namespace_mix::xm2::S;
+LL | use xm2::S;
    |
 
 error[E0423]: expected value, found type alias `xm1::S`
@@ -35,11 +35,11 @@ help: a tuple struct with a similar name exists
    |
 LL |     check(xm1::TS);
    |                ^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use m2::S;
    |
-LL | use namespace_mix::xm2::S;
+LL | use xm2::S;
    |
 
 error[E0423]: expected value, found struct variant `m7::V`
@@ -57,11 +57,11 @@ help: a tuple variant with a similar name exists
    |
 LL |     check(m7::TV);
    |               ^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use m8::V;
    |
-LL | use namespace_mix::xm8::V;
+LL | use xm8::V;
    |
 
 error[E0423]: expected value, found struct variant `xm7::V`
@@ -79,11 +79,11 @@ help: a tuple variant with a similar name exists
    |
 LL |     check(xm7::TV);
    |                ^^
-help: possible better candidates are found in other modules, you can import them into scope
+help: consider importing one of these items instead
    |
 LL | use m8::V;
    |
-LL | use namespace_mix::xm8::V;
+LL | use xm8::V;
    |
 
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied

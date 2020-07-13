@@ -1,9 +1,13 @@
-# The Rust Programming Language
+<a href = "https://www.rust-lang.org/"> 
+<img width = "90%" height = "auto" src = "https://img.shields.io/badge/Rust-Programming%20Language-black?style=flat&logo=rust" alt = "The Rust Programming Language">
+</a>
 
 This is the main source code repository for [Rust]. It contains the compiler,
-standard library, and documentation.
+standard library, and documentation. 
 
 [Rust]: https://www.rust-lang.org
+
+**Note: this README is for _users_ rather than _contributors_.**
 
 ## Quick Start
 
@@ -14,16 +18,18 @@ Read ["Installation"] from [The Book].
 
 ## Installing from Source
 
-_Note: If you wish to contribute to the compiler, you should read [this
-chapter][rustcguidebuild] of the rustc-dev-guide instead of this section._
+**Note: If you wish to _contribute_ to the compiler, you should read the
+[Getting Started][gettingstarted] of the rustc-dev-guide instead of this
+section.**
 
-The Rust build system has a Python script called `x.py` to bootstrap building
-the compiler. More information about it may be found by running `./x.py --help`
-or reading the [rustc dev guide][rustcguidebuild].
+The Rust build system uses a Python script called `x.py` to build the compiler,
+which manages the bootstrapping process. More information about it can be found 
+by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
 
+[gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.html
 [rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
-### Building on *nix
+### Building on a Unix-like system
 1. Make sure you have installed the dependencies:
 
    * `g++` 5.1 or later or `clang++` 3.5 or later
@@ -54,9 +60,8 @@ or reading the [rustc dev guide][rustcguidebuild].
     $ cp config.toml.example config.toml
     ```
 
-    It is recommended that if you plan to use the Rust build system to create
-    an installation (using `./x.py install`) that you set the `prefix` value
-    in the `[install]` section to a directory that you have write permissions.
+    If you plan to use `x.py install` to create an installation, it is recommended
+    that you set the `prefix` value in the `[install]` section to a directory.
 
     Create install directory if you are not installing in default directory
 
@@ -143,8 +148,8 @@ shell with:
 ```
 
 Currently, building Rust only works with some known versions of Visual Studio. If
-you have a more recent version installed the build system doesn't understand
-then you may need to force rustbuild to use an older version. This can be done
+you have a more recent version installed and the build system doesn't understand,
+you may need to force rustbuild to use an older version. This can be done
 by manually calling the appropriate vcvars file before running the bootstrap.
 
 ```batch
@@ -224,10 +229,6 @@ Snapshot binaries are currently built and tested on several platforms:
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
 
-There is more advice about hacking on Rust in [CONTRIBUTING.md].
-
-[CONTRIBUTING.md]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md
-
 ## Getting Help
 
 The Rust community congregates in a few places:
@@ -242,21 +243,8 @@ The Rust community congregates in a few places:
 
 ## Contributing
 
-To contribute to Rust, please see [CONTRIBUTING](CONTRIBUTING.md).
-
-Most real-time collaboration happens in a variety of channels on the
-[Rust Discord server][rust-discord], with channels dedicated for getting help,
-community, documentation, and all major contribution areas in the Rust ecosystem.
-A good place to ask for help would be the #help channel.
-
-The [rustc dev guide] might be a good place to start if you want to find out how
-various parts of the compiler work.
-
-Also, you may find the [rustdocs for the compiler itself][rustdocs] useful.
-
-[rust-discord]: https://discord.gg/rust-lang
-[rustc dev guide]: https://rustc-dev-guide.rust-lang.org/about-this-guide.html
-[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/
+If you are interested in contributing to the Rust project, please take a look
+at the [Getting Started][gettingstarted] guide in the [rustc-dev-guide].
 
 ## License
 

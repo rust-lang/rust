@@ -25,10 +25,6 @@ except ImportError:
 # read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
     'miri': {'oli-obk', 'RalfJung', 'eddyb'},
-    'clippy-driver': {
-        'Manishearth', 'llogiq', 'mcarton', 'oli-obk', 'phansch', 'flip1995',
-        'yaahc',
-    },
     'rls': {'Xanewok'},
     'rustfmt': {'topecongiro'},
     'book': {'carols10cents', 'steveklabnik'},
@@ -43,9 +39,21 @@ MAINTAINERS = {
     'rustc-dev-guide': {'mark-i-m', 'spastorino', 'amanjeev', 'JohnTitor'},
 }
 
+LABELS = {
+    'miri': ['A-miri', 'C-bug'],
+    'rls': ['A-rls', 'C-bug'],
+    'rustfmt': ['C-bug'],
+    'book': ['C-bug'],
+    'nomicon': ['C-bug'],
+    'reference': ['C-bug'],
+    'rust-by-example': ['C-bug'],
+    'embedded-book': ['C-bug'],
+    'edition-guide': ['C-bug'],
+    'rustc-dev-guide': ['C-bug'],
+}
+
 REPOS = {
     'miri': 'https://github.com/rust-lang/miri',
-    'clippy-driver': 'https://github.com/rust-lang/rust-clippy',
     'rls': 'https://github.com/rust-lang/rls',
     'rustfmt': 'https://github.com/rust-lang/rustfmt',
     'book': 'https://github.com/rust-lang/book',
@@ -137,6 +145,7 @@ def issue(
     assignees,
     relevant_pr_number,
     relevant_pr_user,
+    labels,
 ):
     # Open an issue about the toolstate failure.
     if status == 'test-fail':
@@ -160,6 +169,7 @@ def issue(
         )),
         'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
         'assignees': list(assignees),
+        'labels': labels,
     })
     print("Creating issue:\n{}".format(request))
     response = urllib2.urlopen(urllib2.Request(
@@ -240,7 +250,7 @@ def update_latest(
                 try:
                     issue(
                         tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
-                        relevant_pr_number, relevant_pr_user,
+                        relevant_pr_number, relevant_pr_user, LABELS.get(tool, ''),
                     )
                 except urllib2.HTTPError as e:
                     # network errors will simply end up not creating an issue, but that's better

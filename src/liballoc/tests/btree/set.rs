@@ -33,6 +33,37 @@ fn test_hash() {
     assert_eq!(hash(&x), hash(&y));
 }
 
+#[test]
+fn test_iter_min_max() {
+    let mut a = BTreeSet::new();
+    assert_eq!(a.iter().min(), None);
+    assert_eq!(a.iter().max(), None);
+    assert_eq!(a.range(..).min(), None);
+    assert_eq!(a.range(..).max(), None);
+    assert_eq!(a.difference(&BTreeSet::new()).min(), None);
+    assert_eq!(a.difference(&BTreeSet::new()).max(), None);
+    assert_eq!(a.intersection(&a).min(), None);
+    assert_eq!(a.intersection(&a).max(), None);
+    assert_eq!(a.symmetric_difference(&BTreeSet::new()).min(), None);
+    assert_eq!(a.symmetric_difference(&BTreeSet::new()).max(), None);
+    assert_eq!(a.union(&a).min(), None);
+    assert_eq!(a.union(&a).max(), None);
+    a.insert(1);
+    a.insert(2);
+    assert_eq!(a.iter().min(), Some(&1));
+    assert_eq!(a.iter().max(), Some(&2));
+    assert_eq!(a.range(..).min(), Some(&1));
+    assert_eq!(a.range(..).max(), Some(&2));
+    assert_eq!(a.difference(&BTreeSet::new()).min(), Some(&1));
+    assert_eq!(a.difference(&BTreeSet::new()).max(), Some(&2));
+    assert_eq!(a.intersection(&a).min(), Some(&1));
+    assert_eq!(a.intersection(&a).max(), Some(&2));
+    assert_eq!(a.symmetric_difference(&BTreeSet::new()).min(), Some(&1));
+    assert_eq!(a.symmetric_difference(&BTreeSet::new()).max(), Some(&2));
+    assert_eq!(a.union(&a).min(), Some(&1));
+    assert_eq!(a.union(&a).max(), Some(&2));
+}
+
 fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
 where
     F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, &mut dyn FnMut(&i32) -> bool) -> bool,
@@ -621,10 +652,8 @@ fn test_split_off_empty_left() {
 
 #[test]
 fn test_split_off_large_random_sorted() {
-    #[cfg(not(miri))] // Miri is too slow
-    let mut data = rand_data(1529);
-    #[cfg(miri)]
-    let mut data = rand_data(529);
+    // Miri is too slow
+    let mut data = if cfg!(miri) { rand_data(529) } else { rand_data(1529) };
     // special case with maximum height.
     data.sort();
 

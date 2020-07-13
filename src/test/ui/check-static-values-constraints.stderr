@@ -5,7 +5,9 @@ LL |                                           ..SafeStruct{field1: SafeEnum::Va
    |  ___________________________________________^
 LL | |
 LL | |                                                      field2: SafeEnum::Variant1}};
-   | |________________________________________________________________________________^ statics cannot evaluate destructors
+   | |                                                                                ^- value is dropped here
+   | |________________________________________________________________________________|
+   |                                                                                  statics cannot evaluate destructors
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:79:33
@@ -18,6 +20,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL | static STATIC11: Box<MyOwned> = box MyOwned;
    |                                     ^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
   --> $DIR/check-static-values-constraints.rs:90:32
@@ -36,6 +40,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL |     box MyOwned,
    |         ^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:97:5
@@ -48,6 +54,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL |     box MyOwned,
    |         ^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:102:6
@@ -60,6 +68,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL |     &box MyOwned,
    |          ^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:104:6
@@ -72,6 +82,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL |     &box MyOwned,
    |          ^^^^^^^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:111:5
@@ -84,6 +96,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL |     box 3;
    |         ^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0507]: cannot move out of static item `x`
   --> $DIR/check-static-values-constraints.rs:116:45
@@ -105,6 +119,8 @@ error[E0019]: static contains unimplemented expression type
    |
 LL |     let y = { static x: Box<isize> = box 3; x };
    |                                          ^
+   |
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to 17 previous errors
 

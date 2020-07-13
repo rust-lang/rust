@@ -31,7 +31,6 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
 use std::error;
-
 use std::ffi::OsStr;
 use std::fmt::{self, Formatter, Write};
 use std::fs::{self, File};
@@ -40,6 +39,7 @@ use std::io::{self, BufReader};
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::str;
+use std::string::ToString;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust;
@@ -92,7 +92,7 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
 #[derive(Debug)]
 pub struct Error {
     pub file: PathBuf,
-    pub error: io::Error,
+    pub error: String,
 }
 
 impl error::Error for Error {}
@@ -109,8 +109,11 @@ impl std::fmt::Display for Error {
 }
 
 impl PathError for Error {
-    fn new<P: AsRef<Path>>(e: io::Error, path: P) -> Error {
-        Error { file: path.as_ref().to_path_buf(), error: e }
+    fn new<S, P: AsRef<Path>>(e: S, path: P) -> Error
+    where
+        S: ToString + Sized,
+    {
+        Error { file: path.as_ref().to_path_buf(), error: e.to_string() }
     }
 }
 
@@ -192,8 +195,6 @@ crate struct SharedContext {
     /// Optional path string to be used to load static files on output pages. If not set, uses
     /// combinations of `../` to reach the documentation root.
     pub static_root_path: Option<String>,
-    /// Option disabled by default to generate files used by RLS and some other tools.
-    pub generate_redirect_pages: bool,
     /// The fs handle we are working with.
     pub fs: DocFS,
     /// The default edition used to parse doctests.
@@ -293,7 +294,12 @@ impl Serialize for IndexItem {
     where
         S: Serializer,
     {
-        assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
+        assert_eq!(
+            self.parent.is_some(),
+            self.parent_idx.is_some(),
+            "`{}` is missing idx",
+            self.name
+        );
 
         (self.ty, &self.name, &self.path, &self.desc, self.parent_idx, &self.search_type)
             .serialize(serializer)
@@ -460,12 +466,12 @@ pub fn run(
         resource_suffix,
         static_root_path,
         generate_search_filter,
-        generate_redirect_pages,
+        document_private,
         ..
     } = options;
 
     let src_root = match krate.src {
-        FileName::Real(ref p) => match p.parent() {
+        FileName::Real(ref p) => match p.local_path().parent() {
             Some(p) => p.to_path_buf(),
             None => PathBuf::new(),
         },
@@ -527,7 +533,6 @@ pub fn run(
         themes,
         resource_suffix,
         static_root_path,
-        generate_redirect_pages,
         fs: DocFS::new(&errors),
         edition,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
@@ -538,7 +543,7 @@ pub fn run(
     scx.ensure_dir(&dst)?;
     krate = sources::render(&dst, &mut scx, krate)?;
     let (new_crate, index, cache) =
-        Cache::from_krate(renderinfo, &extern_html_root_urls, &dst, krate);
+        Cache::from_krate(renderinfo, document_private, &extern_html_root_urls, &dst, krate);
     krate = new_crate;
     let cache = Arc::new(cache);
     let mut cx = Context {
@@ -557,7 +562,7 @@ pub fn run(
 
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-    write_shared(&cx, &krate, index, &md_opts, diag)?;
+    write_shared(&cx, &krate, index, &md_opts)?;
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
 
     // And finally render the whole crate's documentation
@@ -577,7 +582,6 @@ fn write_shared(
     krate: &clean::Crate,
     search_index: String,
     options: &RenderOptions,
-    diag: &rustc_errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
@@ -796,7 +800,7 @@ themePicker.onblur = handleThemeButtonsBlur;
         if path.exists() {
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
-                if !line.starts_with("\"") {
+                if !line.starts_with('"') {
                     continue;
                 }
                 if line.starts_with(&format!("\"{}\"", krate)) {
@@ -810,50 +814,13 @@ themePicker.onblur = handleThemeButtonsBlur;
                 }
                 krates.push(
                     line.split('"')
-                        .filter(|s| !s.is_empty())
-                        .next()
+                        .find(|s| !s.is_empty())
                         .map(|s| s.to_owned())
                         .unwrap_or_else(String::new),
                 );
             }
         }
         Ok((ret, krates))
-    }
-
-    fn show_item(item: &IndexItem, krate: &str) -> String {
-        format!(
-            "{{'crate':'{}','ty':{},'name':'{}','desc':'{}','p':'{}'{}}}",
-            krate,
-            item.ty as usize,
-            item.name,
-            item.desc.replace("'", "\\'"),
-            item.path,
-            if let Some(p) = item.parent_idx { format!(",'parent':{}", p) } else { String::new() }
-        )
-    }
-
-    let dst = cx.dst.join(&format!("aliases{}.js", cx.shared.resource_suffix));
-    {
-        let (mut all_aliases, _) = try_err!(collect(&dst, &krate.name, "ALIASES"), &dst);
-        let mut output = String::with_capacity(100);
-        for (alias, items) in &cx.cache.aliases {
-            if items.is_empty() {
-                continue;
-            }
-            output.push_str(&format!(
-                "\"{}\":[{}],",
-                alias,
-                items.iter().map(|v| show_item(v, &krate.name)).collect::<Vec<_>>().join(",")
-            ));
-        }
-        all_aliases.push(format!("ALIASES[\"{}\"] = {{{}}};", krate.name, output));
-        all_aliases.sort();
-        let mut v = Buffer::html();
-        writeln!(&mut v, "var ALIASES = {{}};");
-        for aliases in &all_aliases {
-            writeln!(&mut v, "{}", aliases);
-        }
-        cx.shared.fs.write(&dst, v.into_inner().into_bytes())?;
     }
 
     use std::ffi::OsString;
@@ -960,7 +927,8 @@ themePicker.onblur = handleThemeButtonsBlur;
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(index_page, md_opts, diag, cx.shared.edition);
+            crate::markdown::render(&index_page, md_opts, cx.shared.edition)
+                .map_err(|e| Error::new(e, &index_page))?;
         } else {
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
@@ -1584,14 +1552,6 @@ impl Context {
                 if !self.render_redirect_pages {
                     all.append(full_path(self, &item), &item_type);
                 }
-                if self.shared.generate_redirect_pages {
-                    // Redirect from a sane URL using the namespace to Rustdoc's
-                    // URL for the page.
-                    let redir_name = format!("{}.{}.html", name, item_type.name_space());
-                    let redir_dst = self.dst.join(redir_name);
-                    let v = layout::redirect(file_name);
-                    self.shared.fs.write(&redir_dst, v.as_bytes())?;
-                }
                 // If the item is a macro, redirect from the old macro URL (with !)
                 // to the new one (without).
                 if item_type == ItemType::Macro {
@@ -1650,9 +1610,10 @@ impl Context {
 
         // We can safely ignore synthetic `SourceFile`s.
         let file = match item.source.filename {
-            FileName::Real(ref path) => path,
+            FileName::Real(ref path) => path.local_path().to_path_buf(),
             _ => return None,
         };
+        let file = &file;
 
         let (krate, path) = if item.source.cnum == LOCAL_CRATE {
             if let Some(path) = self.shared.local_sources.get(file) {
@@ -2281,7 +2242,10 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             );
             message.push_str(&format!(": {}", html.to_string()));
         }
-        stability.push(format!("<div class='stab deprecated'>{}</div>", message));
+        stability.push(format!(
+            "<div class='stab deprecated'><span class='emoji'>👎</span> {}</div>",
+            message,
+        ));
     }
 
     if let Some(stab) = item.stability.as_ref().filter(|stab| stab.level == stability::Unstable) {
@@ -2610,8 +2574,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
         let name = m.name.as_ref().unwrap();
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
-        let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-        write!(w, "<h3 id='{id}' class='method'><code id='{ns_id}'>", id = id, ns_id = ns_id);
+        write!(w, "<h3 id='{id}' class='method'><code>", id = id);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
         render_stability_since(w, m, t);
@@ -2996,20 +2959,14 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
                     ItemType::StructField,
                     field.name.as_ref().unwrap()
                 ));
-                let ns_id = cx.derive_id(format!(
-                    "{}.{}",
-                    field.name.as_ref().unwrap(),
-                    ItemType::StructField.name_space()
-                ));
                 write!(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
                            <a href=\"#{id}\" class=\"anchor field\"></a>\
-                           <code id=\"{ns_id}\">{name}: {ty}</code>\
+                           <code>{name}: {ty}</code>\
                            </span>",
                     item_type = ItemType::StructField,
                     id = id,
-                    ns_id = ns_id,
                     name = field.name.as_ref().unwrap(),
                     ty = ty.print()
                 );
@@ -3127,18 +3084,12 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
         for variant in &e.variants {
             let id =
                 cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.as_ref().unwrap()));
-            let ns_id = cx.derive_id(format!(
-                "{}.{}",
-                variant.name.as_ref().unwrap(),
-                ItemType::Variant.name_space()
-            ));
             write!(
                 w,
                 "<div id=\"{id}\" class=\"variant small-section-header\">\
-                       <a href=\"#{id}\" class=\"anchor field\"></a>\
-                       <code id='{ns_id}'>{name}",
+                    <a href=\"#{id}\" class=\"anchor field\"></a>\
+                    <code>{name}",
                 id = id,
-                ns_id = ns_id,
                 name = variant.name.as_ref().unwrap()
             );
             if let clean::VariantItem(ref var) = variant.inner {
@@ -3179,21 +3130,13 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
                             variant.name.as_ref().unwrap(),
                             field.name.as_ref().unwrap()
                         ));
-                        let ns_id = cx.derive_id(format!(
-                            "{}.{}.{}.{}",
-                            variant.name.as_ref().unwrap(),
-                            ItemType::Variant.name_space(),
-                            field.name.as_ref().unwrap(),
-                            ItemType::StructField.name_space()
-                        ));
                         write!(
                             w,
                             "<span id=\"{id}\" class=\"variant small-section-header\">\
                                    <a href=\"#{id}\" class=\"anchor field\"></a>\
-                                   <code id='{ns_id}'>{f}:&nbsp;{t}\
+                                   <code>{f}:&nbsp;{t}\
                                    </code></span>",
                             id = id,
-                            ns_id = ns_id,
                             f = field.name.as_ref().unwrap(),
                             t = ty.print()
                         );
@@ -3208,7 +3151,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum) {
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-const ATTRIBUTE_WHITELIST: &[Symbol] = &[
+const ALLOWED_ATTRIBUTES: &[Symbol] = &[
     sym::export_name,
     sym::lang,
     sym::link_section,
@@ -3230,7 +3173,7 @@ fn render_attributes(w: &mut Buffer, it: &clean::Item, top: bool) {
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
-        if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty()) {
+        if !ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
             continue;
         }
 
@@ -3413,8 +3356,8 @@ fn render_assoc_items(
                 write!(
                     w,
                     "\
-                    <h2 id='methods' class='small-section-header'>\
-                      Methods<a href='#methods' class='anchor'></a>\
+                    <h2 id='implementations' class='small-section-header'>\
+                      Implementations<a href='#implementations' class='anchor'></a>\
                     </h2>\
                 "
                 );
@@ -3475,10 +3418,10 @@ fn render_assoc_items(
             write!(
                 w,
                 "\
-                <h2 id='implementations' class='small-section-header'>\
-                  Trait Implementations<a href='#implementations' class='anchor'></a>\
+                <h2 id='trait-implementations' class='small-section-header'>\
+                  Trait Implementations<a href='#trait-implementations' class='anchor'></a>\
                 </h2>\
-                <div id='implementations-list'>{}</div>",
+                <div id='trait-implementations-list'>{}</div>",
                 impls
             );
         }
@@ -3527,14 +3470,13 @@ fn render_deref_methods(
         .inner_impl()
         .items
         .iter()
-        .filter_map(|item| match item.inner {
+        .find_map(|item| match item.inner {
             clean::TypedefItem(ref t, true) => Some(match *t {
                 clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                 _ => (&t.type_, &t.type_),
             }),
             _ => None,
         })
-        .next()
         .expect("Expected associated type binding");
     let what =
         AssocItemRender::DerefFor { trait_: deref_type, type_: real_target, deref_mut_: deref_mut };
@@ -3686,9 +3628,7 @@ fn render_impl(
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
-                    let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                    write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                    write!(w, "<code id='{}'>", ns_id);
+                    write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
                     render_stability_since_raw(w, item.stable_since(), outer_version);
@@ -3704,17 +3644,13 @@ fn render_impl(
             }
             clean::TypedefItem(ref tydef, _) => {
                 let id = cx.derive_id(format!("{}.{}", ItemType::AssocType, name));
-                let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                write!(w, "<code id='{}'>", ns_id);
+                write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id), "");
                 write!(w, "</code></h4>");
             }
             clean::AssocConstItem(ref ty, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
-                let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                write!(w, "<code id='{}'>", ns_id);
+                write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code>");
                 render_stability_since_raw(w, item.stable_since(), outer_version);
@@ -3729,9 +3665,7 @@ fn render_impl(
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
-                let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
-                write!(w, "<code id='{}'>", ns_id);
+                write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id), "");
                 write!(w, "</code></h4>");
             }
@@ -4094,12 +4028,12 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_none())
                 .flat_map(move |i| get_methods(i.inner_impl(), false, used_links_bor, false))
                 .collect::<Vec<_>>();
-            // We want links' order to be reproducible so we don't use unstable sort.
-            ret.sort();
             if !ret.is_empty() {
+                // We want links' order to be reproducible so we don't use unstable sort.
+                ret.sort();
                 out.push_str(&format!(
-                    "<a class=\"sidebar-title\" href=\"#methods\">Methods\
-                                       </a><div class=\"sidebar-links\">{}</div>",
+                    "<a class=\"sidebar-title\" href=\"#implementations\">Methods</a>\
+                     <div class=\"sidebar-links\">{}</div>",
                     ret.join("")
                 ));
             }
@@ -4111,19 +4045,19 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                 .filter(|i| i.inner_impl().trait_.is_some())
                 .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did)
             {
-                if let Some((target, real_target)) = impl_
-                    .inner_impl()
-                    .items
-                    .iter()
-                    .filter_map(|item| match item.inner {
+                if let Some((target, real_target)) =
+                    impl_.inner_impl().items.iter().find_map(|item| match item.inner {
                         clean::TypedefItem(ref t, true) => Some(match *t {
                             clean::Typedef { item_type: Some(ref type_), .. } => (type_, &t.type_),
                             _ => (&t.type_, &t.type_),
                         }),
                         _ => None,
                     })
-                    .next()
                 {
+                    let deref_mut = v
+                        .iter()
+                        .filter(|i| i.inner_impl().trait_.is_some())
+                        .any(|i| i.inner_impl().trait_.def_id() == c.deref_mut_trait_did);
                     let inner_impl = target
                         .def_id()
                         .or(target
@@ -4144,7 +4078,9 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         let mut ret = impls
                             .iter()
                             .filter(|i| i.inner_impl().trait_.is_none())
-                            .flat_map(|i| get_methods(i.inner_impl(), true, &mut used_links, true))
+                            .flat_map(|i| {
+                                get_methods(i.inner_impl(), true, &mut used_links, deref_mut)
+                            })
                             .collect::<Vec<_>>();
                         // We want links' order to be reproducible so we don't use unstable sort.
                         ret.sort();
@@ -4196,8 +4132,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
 
             if !concrete_format.is_empty() {
                 out.push_str(
-                    "<a class=\"sidebar-title\" href=\"#implementations\">\
-                              Trait Implementations</a>",
+                    "<a class=\"sidebar-title\" href=\"#trait-implementations\">\
+                        Trait Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", concrete_format));
             }
@@ -4205,7 +4141,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             if !synthetic_format.is_empty() {
                 out.push_str(
                     "<a class=\"sidebar-title\" href=\"#synthetic-implementations\">\
-                              Auto Trait Implementations</a>",
+                        Auto Trait Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", synthetic_format));
             }
@@ -4213,7 +4149,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
             if !blanket_format.is_empty() {
                 out.push_str(
                     "<a class=\"sidebar-title\" href=\"#blanket-implementations\">\
-                              Blanket Implementations</a>",
+                        Blanket Implementations</a>",
                 );
                 out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", blanket_format));
             }
@@ -4271,7 +4207,7 @@ fn is_negative_impl(i: &clean::Impl) -> bool {
 fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     let mut sidebar = String::new();
 
-    let types = t
+    let mut types = t
         .items
         .iter()
         .filter_map(|m| match m.name {
@@ -4280,8 +4216,8 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             }
             _ => None,
         })
-        .collect::<String>();
-    let consts = t
+        .collect::<Vec<_>>();
+    let mut consts = t
         .items
         .iter()
         .filter_map(|m| match m.name {
@@ -4290,7 +4226,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
             }
             _ => None,
         })
-        .collect::<String>();
+        .collect::<Vec<_>>();
     let mut required = t
         .items
         .iter()
@@ -4313,24 +4249,26 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         .collect::<Vec<String>>();
 
     if !types.is_empty() {
+        types.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#associated-types\">\
-                                   Associated Types</a><div class=\"sidebar-links\">{}</div>",
-            types
+                Associated Types</a><div class=\"sidebar-links\">{}</div>",
+            types.join("")
         ));
     }
     if !consts.is_empty() {
+        consts.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#associated-const\">\
-                                   Associated Constants</a><div class=\"sidebar-links\">{}</div>",
-            consts
+                Associated Constants</a><div class=\"sidebar-links\">{}</div>",
+            consts.join("")
         ));
     }
     if !required.is_empty() {
         required.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#required-methods\">\
-                                   Required Methods</a><div class=\"sidebar-links\">{}</div>",
+                Required Methods</a><div class=\"sidebar-links\">{}</div>",
             required.join("")
         ));
     }
@@ -4338,7 +4276,7 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         provided.sort();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#provided-methods\">\
-                                   Provided Methods</a><div class=\"sidebar-links\">{}</div>",
+                Provided Methods</a><div class=\"sidebar-links\">{}</div>",
             provided.join("")
         ));
     }
@@ -4349,33 +4287,32 @@ fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
         let mut res = implementors
             .iter()
             .filter(|i| i.inner_impl().for_.def_id().map_or(false, |d| !c.paths.contains_key(&d)))
-            .filter_map(|i| match extract_for_impl_name(&i.impl_item) {
-                Some((ref name, ref id)) => {
-                    Some(format!("<a href=\"#{}\">{}</a>", id, Escape(name)))
-                }
-                _ => None,
-            })
-            .collect::<Vec<String>>();
+            .filter_map(|i| extract_for_impl_name(&i.impl_item))
+            .collect::<Vec<_>>();
+
         if !res.is_empty() {
             res.sort();
             sidebar.push_str(&format!(
                 "<a class=\"sidebar-title\" href=\"#foreign-impls\">\
-                                       Implementations on Foreign Types</a><div \
-                                       class=\"sidebar-links\">{}</div>",
-                res.join("")
+                    Implementations on Foreign Types</a><div \
+                    class=\"sidebar-links\">{}</div>",
+                res.into_iter()
+                    .map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name)))
+                    .collect::<Vec<_>>()
+                    .join("")
             ));
         }
     }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
 
     sidebar.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
     if t.auto {
         sidebar.push_str(
             "<a class=\"sidebar-title\" \
-                          href=\"#synthetic-implementors\">Auto Implementors</a>",
+                href=\"#synthetic-implementors\">Auto Implementors</a>",
         );
     }
-
-    sidebar.push_str(&sidebar_assoc_items(it));
 
     write!(buf, "<div class=\"block items\">{}</div>", sidebar)
 }
@@ -4397,18 +4334,18 @@ fn sidebar_typedef(buf: &mut Buffer, it: &clean::Item) {
 }
 
 fn get_struct_fields_name(fields: &[clean::Item]) -> String {
-    fields
+    let mut fields = fields
         .iter()
         .filter(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false })
         .filter_map(|f| match f.name {
-            Some(ref name) => Some(format!(
-                "<a href=\"#structfield.{name}\">\
-                                              {name}</a>",
-                name = name
-            )),
+            Some(ref name) => {
+                Some(format!("<a href=\"#structfield.{name}\">{name}</a>", name = name))
+            }
             _ => None,
         })
-        .collect()
+        .collect::<Vec<_>>();
+    fields.sort();
+    fields.join("")
 }
 
 fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
@@ -4418,7 +4355,7 @@ fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
     if !fields.is_empty() {
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#fields\">Fields</a>\
-                                   <div class=\"sidebar-links\">{}</div>",
+             <div class=\"sidebar-links\">{}</div>",
             fields
         ));
     }
@@ -4433,23 +4370,20 @@ fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
 fn sidebar_enum(buf: &mut Buffer, it: &clean::Item, e: &clean::Enum) {
     let mut sidebar = String::new();
 
-    let variants = e
+    let mut variants = e
         .variants
         .iter()
         .filter_map(|v| match v.name {
-            Some(ref name) => Some(format!(
-                "<a href=\"#variant.{name}\">{name}\
-                                                                 </a>",
-                name = name
-            )),
+            Some(ref name) => Some(format!("<a href=\"#variant.{name}\">{name}</a>", name = name)),
             _ => None,
         })
-        .collect::<String>();
+        .collect::<Vec<_>>();
     if !variants.is_empty() {
+        variants.sort_unstable();
         sidebar.push_str(&format!(
             "<a class=\"sidebar-title\" href=\"#variants\">Variants</a>\
-                                   <div class=\"sidebar-links\">{}</div>",
-            variants
+             <div class=\"sidebar-links\">{}</div>",
+            variants.join(""),
         ));
     }
 

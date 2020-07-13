@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `&mut Baz: Happy` is not satisfied
+  --> $DIR/trait-suggest-deferences-multiple-1.rs:52:9
+   |
+LL | fn foo<T>(_: T) where T: Happy {}
+   |                          ----- required by this bound in `foo`
+...
+LL |     foo(&mut baz);
+   |         ^^^^^^^^ the trait `Happy` is not implemented for `&mut Baz`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

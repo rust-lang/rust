@@ -14,7 +14,7 @@ use std::ptr;
 
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_middle::ty::{self, query::TyCtxtAt, Instance, ParamEnv};
+use rustc_middle::ty::{self, Instance, ParamEnv, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
@@ -115,7 +115,7 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub extra: M::MemoryExtra,
 
     /// Lets us implement `HasDataLayout`, which is awfully convenient.
-    pub tcx: TyCtxtAt<'tcx>,
+    pub tcx: TyCtxt<'tcx>,
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M> {
@@ -126,7 +126,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M>
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxtAt<'tcx>, extra: M::MemoryExtra) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, extra: M::MemoryExtra) -> Self {
         Memory {
             alloc_map: M::MemoryMap::default(),
             extra_fn_ptr_map: FxHashMap::default(),
@@ -153,10 +153,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
     ) -> Pointer<M::PointerTag> {
         let id = match fn_val {
-            FnVal::Instance(instance) => self.tcx.alloc_map.lock().create_fn_alloc(instance),
+            FnVal::Instance(instance) => self.tcx.create_fn_alloc(instance),
             FnVal::Other(extra) => {
                 // FIXME(RalfJung): Should we have a cache here?
-                let id = self.tcx.alloc_map.lock().reserve();
+                let id = self.tcx.reserve_alloc_id();
                 let old = self.extra_fn_ptr_map.insert(id, extra);
                 assert!(old.is_none());
                 id
@@ -189,7 +189,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         alloc: Allocation,
         kind: MemoryKind<M::MemoryKind>,
     ) -> Pointer<M::PointerTag> {
-        let id = self.tcx.alloc_map.lock().reserve();
+        let id = self.tcx.reserve_alloc_id();
         debug_assert_ne!(
             Some(kind),
             M::GLOBAL_KIND.map(MemoryKind::Machine),
@@ -260,7 +260,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(alloc) => alloc,
             None => {
                 // Deallocating global memory -- always an error
-                return Err(match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
+                return Err(match self.tcx.get_global_alloc(ptr.alloc_id) {
                     Some(GlobalAlloc::Function(..)) => err_ub_format!("deallocating a function"),
                     Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
                         err_ub_format!("deallocating static memory")
@@ -365,7 +365,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 assert!(size.bytes() == 0);
                 // Must be non-NULL.
                 if bits == 0 {
-                    throw_ub!(InvalidIntPointerUsage(0))
+                    throw_ub!(DanglingIntPointer(0, msg))
                 }
                 // Must be aligned.
                 if let Some(align) = align {
@@ -425,12 +425,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// `M::tag_allocation`.
     fn get_global_alloc(
         memory_extra: &M::MemoryExtra,
-        tcx: TyCtxtAt<'tcx>,
+        tcx: TyCtxt<'tcx>,
         id: AllocId,
         is_write: bool,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
-        let alloc = tcx.alloc_map.lock().get(id);
-        let (alloc, def_id) = match alloc {
+        let (alloc, def_id) = match tcx.get_global_alloc(id) {
             Some(GlobalAlloc::Memory(mem)) => {
                 // Memory of a constant or promoted or anonymous memory referenced by a static.
                 (mem, None)
@@ -438,11 +437,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
             None => throw_ub!(PointerUseAfterFree(id)),
             Some(GlobalAlloc::Static(def_id)) => {
+                assert!(!tcx.is_thread_local_static(def_id));
                 // Notice that every static has two `AllocId` that will resolve to the same
                 // thing here: one maps to `GlobalAlloc::Static`, this is the "lazy" ID,
                 // and the other one is maps to `GlobalAlloc::Memory`, this is returned by
                 // `const_eval_raw` and it is the "resolved" ID.
-                // The resolved ID is never used by the interpreted progrma, it is hidden.
+                // The resolved ID is never used by the interpreted program, it is hidden.
+                // This is relied upon for soundness of const-patterns; a pointer to the resolved
+                // ID would "sidestep" the checks that make sure consts do not point to statics!
                 // The `GlobalAlloc::Memory` branch here is still reachable though; when a static
                 // contains a reference to memory that was created during its evaluation (i.e., not
                 // to another static), those inner references only exist in "resolved" form.
@@ -453,7 +455,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     throw_unsup!(ReadForeignStatic(def_id))
                 }
                 trace!("get_global_alloc: Need to compute {:?}", def_id);
-                let instance = Instance::mono(tcx.tcx, def_id);
+                let instance = Instance::mono(tcx, def_id);
                 let gid = GlobalId { instance, promoted: None };
                 // Use the raw query here to break validation cycles. Later uses of the static
                 // will call the full query anyway.
@@ -466,7 +468,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     })?;
                 // Make sure we use the ID of the resolved memory, not the lazy one!
                 let id = raw_const.alloc_id;
-                let allocation = tcx.alloc_map.lock().unwrap_memory(id);
+                let allocation = tcx.global_alloc(id).unwrap_memory();
 
                 (allocation, Some(def_id))
             }
@@ -589,9 +591,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // # Statics
         // Can't do this in the match argument, we may get cycle errors since the lock would
         // be held throughout the match.
-        let alloc = self.tcx.alloc_map.lock().get(id);
-        match alloc {
+        match self.tcx.get_global_alloc(id) {
             Some(GlobalAlloc::Static(did)) => {
+                assert!(!self.tcx.is_thread_local_static(did));
                 // Use size and align of the type.
                 let ty = self.tcx.type_of(did);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
@@ -625,7 +627,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if let Some(extra) = self.extra_fn_ptr_map.get(&id) {
             Some(FnVal::Other(*extra))
         } else {
-            match self.tcx.alloc_map.lock().get(id) {
+            match self.tcx.get_global_alloc(id) {
                 Some(GlobalAlloc::Function(instance)) => Some(FnVal::Instance(instance)),
                 _ => None,
             }
@@ -661,15 +663,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// control for this.
     pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
         // Cannot be a closure because it is generic in `Tag`, `Extra`.
-        fn write_allocation_track_relocs<'tcx, Tag, Extra>(
-            tcx: TyCtxtAt<'tcx>,
+        fn write_allocation_track_relocs<'tcx, Tag: Copy + fmt::Debug, Extra>(
+            tcx: TyCtxt<'tcx>,
             allocs_to_print: &mut VecDeque<AllocId>,
             alloc: &Allocation<Tag, Extra>,
         ) {
             for &(_, target_id) in alloc.relocations().values() {
                 allocs_to_print.push_back(target_id);
             }
-            pretty::write_allocation(tcx.tcx, alloc, &mut std::io::stderr()).unwrap();
+            pretty::write_allocation(tcx, alloc, &mut std::io::stderr()).unwrap();
         }
 
         allocs.sort();
@@ -693,7 +695,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 }
                 None => {
                     // global alloc
-                    match self.tcx.alloc_map.lock().get(id) {
+                    match self.tcx.get_global_alloc(id) {
                         Some(GlobalAlloc::Memory(alloc)) => {
                             eprint!(" (unchanged global, ");
                             write_allocation_track_relocs(self.tcx, &mut allocs_to_print, alloc);
@@ -818,7 +820,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 return Ok(());
             }
         };
-        let tcx = self.tcx.tcx;
+        let tcx = self.tcx;
         self.get_raw_mut(ptr.alloc_id)?.write_bytes(&tcx, ptr, src)
     }
 
@@ -844,7 +846,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 return Ok(());
             }
         };
-        let tcx = self.tcx.tcx;
+        let tcx = self.tcx;
         let allocation = self.get_raw_mut(ptr.alloc_id)?;
 
         for idx in 0..len {
@@ -886,7 +888,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let relocations =
             self.get_raw(src.alloc_id)?.prepare_relocation_copy(self, src, size, dest, length);
 
-        let tcx = self.tcx.tcx;
+        let tcx = self.tcx;
 
         // This checks relocation edges on the src.
         let src_bytes =

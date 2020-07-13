@@ -278,6 +278,7 @@ use crate::vec::Vec;
 /// [`Deref`]: ../../std/ops/trait.Deref.html
 /// [`as_str()`]: struct.String.html#method.as_str
 #[derive(PartialOrd, Eq, Ord)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "string_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct String {
     vec: Vec<u8>,
@@ -723,7 +724,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
-        String { vec: Vec::from_raw_parts(buf, length, capacity) }
+        unsafe { String { vec: Vec::from_raw_parts(buf, length, capacity) } }
     }
 
     /// Converts a vector of bytes to a `String` without checking that the
@@ -1328,9 +1329,11 @@ impl String {
         let amt = bytes.len();
         self.vec.reserve(amt);
 
-        ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
-        ptr::copy(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
-        self.vec.set_len(len + amt);
+        unsafe {
+            ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
+            ptr::copy(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
+            self.vec.set_len(len + amt);
+        }
     }
 
     /// Inserts a string slice into this `String` at a byte position.
@@ -1771,6 +1774,15 @@ impl FromIterator<String> for String {
     }
 }
 
+#[stable(feature = "box_str2", since = "1.45.0")]
+impl FromIterator<Box<str>> for String {
+    fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String {
+        let mut buf = String::new();
+        buf.extend(iter);
+        buf
+    }
+}
+
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> FromIterator<Cow<'a, str>> for String {
     fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
@@ -1798,12 +1810,32 @@ impl Extend<char> for String {
         self.reserve(lower_bound);
         iterator.for_each(move |c| self.push(c));
     }
+
+    #[inline]
+    fn extend_one(&mut self, c: char) {
+        self.push(c);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
+    }
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a> Extend<&'a char> for String {
     fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &c: &'a char) {
+        self.push(c);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
     }
 }
 
@@ -1812,6 +1844,18 @@ impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(s));
     }
+
+    #[inline]
+    fn extend_one(&mut self, s: &'a str) {
+        self.push_str(s);
+    }
+}
+
+#[stable(feature = "box_str2", since = "1.45.0")]
+impl Extend<Box<str>> for String {
+    fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {
+        iter.into_iter().for_each(move |s| self.push_str(&s));
+    }
 }
 
 #[stable(feature = "extend_string", since = "1.4.0")]
@@ -1819,12 +1863,22 @@ impl Extend<String> for String {
     fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
+
+    #[inline]
+    fn extend_one(&mut self, s: String) {
+        self.push_str(&s);
+    }
 }
 
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a> Extend<Cow<'a, str>> for String {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
+    }
+
+    #[inline]
+    fn extend_one(&mut self, s: Cow<'a, str>) {
+        self.push_str(&s);
     }
 }
 
@@ -2192,6 +2246,14 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     }
 }
 
+#[stable(feature = "char_to_string_specialization", since = "1.46.0")]
+impl ToString for char {
+    #[inline]
+    fn to_string(&self) -> String {
+        String::from(self.encode_utf8(&mut [0; 4]))
+    }
+}
+
 #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
 impl ToString for str {
     #[inline]
@@ -2472,3 +2534,11 @@ impl DoubleEndedIterator for Drain<'_> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for Drain<'_> {}
+
+#[stable(feature = "from_char_for_string", since = "1.46.0")]
+impl From<char> for String {
+    #[inline]
+    fn from(c: char) -> Self {
+        c.to_string()
+    }
+}

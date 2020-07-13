@@ -14,8 +14,8 @@
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
 use crate::back::write::{
-    start_async_codegen, submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm,
-    submit_pre_lto_module_to_llvm, OngoingCodegen,
+    compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
+    submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
 };
 use crate::common::{IntPredicate, RealPredicate, TypeKind};
 use crate::meth;
@@ -30,7 +30,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::print_time_passes_entry;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::lang_items::StartFnLangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -43,7 +43,8 @@ use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{self, EntryFnType, Lto};
+use rustc_session::config::{self, EntryFnType};
+use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_symbol_mangling::test as symbol_names_test;
@@ -397,7 +398,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         None => return None,
     };
 
-    let instance = Instance::mono(cx.tcx(), main_def_id);
+    let instance = Instance::mono(cx.tcx(), main_def_id.to_def_id());
 
     if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main
@@ -416,7 +417,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
         sp: Span,
         rust_main: Bx::Value,
-        rust_main_def_id: DefId,
+        rust_main_def_id: LocalDefId,
         use_start_lang_item: bool,
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
@@ -465,6 +466,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     start_def_id,
                     cx.tcx().intern_substs(&[main_ret_ty.into()]),
                 )
+                .unwrap()
                 .unwrap(),
             );
             (
@@ -538,7 +540,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // unnecessarily.
     if tcx.dep_graph.is_fully_enabled() {
         for cgu in codegen_units {
-            tcx.codegen_unit(cgu.name());
+            tcx.ensure().codegen_unit(cgu.name());
         }
     }
 
@@ -840,10 +842,9 @@ impl CrateInfo {
                 }
             }
 
-            // No need to look for lang items that are whitelisted and don't
-            // actually need to exist.
+            // No need to look for lang items that don't actually need to exist.
             let missing =
-                missing.iter().cloned().filter(|&l| !lang_items::whitelisted(tcx, l)).collect();
+                missing.iter().cloned().filter(|&l| lang_items::required(tcx, l)).collect();
             info.missing_lang_items.insert(cnum, missing);
         }
 
@@ -851,7 +852,7 @@ impl CrateInfo {
     }
 }
 
-pub fn provide_both(providers: &mut Providers<'_>) {
+pub fn provide_both(providers: &mut Providers) {
     providers.backend_optimization_level = |tcx, cratenum| {
         let for_speed = match tcx.sess.opts.optimize {
             // If globally no optimisation is done, #[optimize] has no effect.
@@ -894,7 +895,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             .native_libraries(krate)
             .iter()
             .filter(|lib| {
-                if lib.kind != cstore::NativeLibraryKind::NativeUnknown {
+                if !matches!(lib.kind, NativeLibKind::Dylib | NativeLibKind::Unspecified) {
                     return false;
                 }
                 let cfg = match lib.cfg {
@@ -907,7 +908,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             .map(|id| &module_map[&id])
             .flat_map(|module| module.foreign_items.iter().cloned())
             .collect();
-        tcx.arena.alloc(dllimports)
+        dllimports
     };
 
     providers.is_dllimport_foreign_item =
@@ -940,8 +941,18 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
     );
 
     if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
-        // We can re-use either the pre- or the post-thinlto state
-        if tcx.sess.lto() != Lto::No { CguReuse::PreLto } else { CguReuse::PostLto }
+        // We can re-use either the pre- or the post-thinlto state. If no LTO is
+        // being performed then we can use post-LTO artifacts, otherwise we must
+        // reuse pre-LTO artifacts
+        match compute_per_cgu_lto_type(
+            &tcx.sess.lto(),
+            &tcx.sess.opts,
+            &tcx.sess.crate_types(),
+            ModuleKind::Regular,
+        ) {
+            ComputedLtoType::No => CguReuse::PostLto,
+            _ => CguReuse::PreLto,
+        }
     } else {
         CguReuse::No
     }

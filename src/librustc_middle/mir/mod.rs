@@ -19,9 +19,8 @@ use rustc_target::abi::VariantIdx;
 
 use polonius_engine::Atom;
 pub use rustc_ast::ast::Mutability;
-use rustc_ast::ast::Name;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
@@ -29,21 +28,25 @@ use rustc_macros::HashStable;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_target::abi;
+use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 use std::slice;
 use std::{iter, mem, option};
 
-pub use self::cache::{BodyAndCache, ReadOnlyBodyAndCache};
+use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
-pub use crate::read_only;
 
-mod cache;
+pub mod coverage;
 pub mod interpret;
 pub mod mono;
+mod predecessors;
 mod query;
 pub mod tcx;
+pub mod terminator;
+pub use terminator::*;
 pub mod traversal;
 mod type_foldable;
 pub mod visit;
@@ -76,7 +79,8 @@ pub enum MirPhase {
     Build = 0,
     Const = 1,
     Validated = 2,
-    Optimized = 3,
+    DropElab = 3,
+    Optimized = 4,
 }
 
 impl MirPhase {
@@ -108,7 +112,7 @@ pub struct Body<'tcx> {
     pub yield_ty: Option<Ty<'tcx>>,
 
     /// Generator drop glue.
-    pub generator_drop: Option<Box<BodyAndCache<'tcx>>>,
+    pub generator_drop: Option<Box<Body<'tcx>>>,
 
     /// The layout of a generator. Produced by the state transformation.
     pub generator_layout: Option<GeneratorLayout<'tcx>>,
@@ -144,26 +148,24 @@ pub struct Body<'tcx> {
     /// Debug information pertaining to user variables, including captures.
     pub var_debug_info: Vec<VarDebugInfo<'tcx>>,
 
-    /// Mark this MIR of a const context other than const functions as having converted a `&&` or
-    /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
-    /// this conversion from happening and use short circuiting, we will cause the following code
-    /// to change the value of `x`: `let mut x = 42; false && { x = 55; true };`
-    ///
-    /// List of places where control flow was destroyed. Used for error reporting.
-    pub control_flow_destroyed: Vec<(Span, String)>,
-
     /// A span representing this MIR, for error reporting.
     pub span: Span,
 
-    /// The user may be writing e.g. &[(SOME_CELL, 42)][i].1 and this would get promoted, because
+    /// Constants that are required to evaluate successfully for this MIR to be well-formed.
+    /// We hold in this field all the constants we are not able to evaluate yet.
+    pub required_consts: Vec<Constant<'tcx>>,
+
+    /// The user may be writing e.g. `&[(SOME_CELL, 42)][i].1` and this would get promoted, because
     /// we'd statically know that no thing with interior mutability will ever be available to the
     /// user without some serious unsafe code.  Now this means that our promoted is actually
-    /// &[(SOME_CELL, 42)] and the MIR using it will do the &promoted[i].1 projection because the
-    /// index may be a runtime value. Such a promoted value is illegal because it has reachable
+    /// `&[(SOME_CELL, 42)]` and the MIR using it will do the `&promoted[i].1` projection because
+    /// the index may be a runtime value. Such a promoted value is illegal because it has reachable
     /// interior mutability. This flag just makes this situation very obvious where the previous
     /// implementation without the flag hid this situation silently.
     /// FIXME(oli-obk): rewrite the promoted during promotion to eliminate the cell components.
     pub ignore_interior_mut_in_const_validation: bool,
+
+    predecessor_cache: PredecessorCache,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -175,7 +177,6 @@ impl<'tcx> Body<'tcx> {
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
-        control_flow_destroyed: Vec<(Span, String)>,
         generator_kind: Option<GeneratorKind>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
@@ -200,8 +201,9 @@ impl<'tcx> Body<'tcx> {
             spread_arg: None,
             var_debug_info,
             span,
+            required_consts: Vec::new(),
             ignore_interior_mut_in_const_validation: false,
-            control_flow_destroyed,
+            predecessor_cache: PredecessorCache::new(),
         }
     }
 
@@ -223,16 +225,48 @@ impl<'tcx> Body<'tcx> {
             arg_count: 0,
             spread_arg: None,
             span: DUMMY_SP,
-            control_flow_destroyed: Vec::new(),
+            required_consts: Vec::new(),
             generator_kind: None,
             var_debug_info: Vec::new(),
             ignore_interior_mut_in_const_validation: false,
+            predecessor_cache: PredecessorCache::new(),
         }
     }
 
     #[inline]
     pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &self.basic_blocks
+    }
+
+    #[inline]
+    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        // Because the user could mutate basic block terminators via this reference, we need to
+        // invalidate the predecessor cache.
+        //
+        // FIXME: Use a finer-grained API for this, so only transformations that alter terminators
+        // invalidate the predecessor cache.
+        self.predecessor_cache.invalidate();
+        &mut self.basic_blocks
+    }
+
+    #[inline]
+    pub fn basic_blocks_and_local_decls_mut(
+        &mut self,
+    ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
+        self.predecessor_cache.invalidate();
+        (&mut self.basic_blocks, &mut self.local_decls)
+    }
+
+    #[inline]
+    pub fn basic_blocks_local_decls_mut_and_var_debug_info(
+        &mut self,
+    ) -> (
+        &mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+        &mut LocalDecls<'tcx>,
+        &mut Vec<VarDebugInfo<'tcx>>,
+    ) {
+        self.predecessor_cache.invalidate();
+        (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
     }
 
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
@@ -357,17 +391,29 @@ impl<'tcx> Body<'tcx> {
     }
 
     /// Returns the return type; it always return first element from `local_decls` array.
+    #[inline]
     pub fn return_ty(&self) -> Ty<'tcx> {
         self.local_decls[RETURN_PLACE].ty
     }
 
     /// Gets the location of the terminator for the given block.
+    #[inline]
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
         Location { block: bb, statement_index: self[bb].statements.len() }
     }
+
+    #[inline]
+    pub fn predecessors(&self) -> impl std::ops::Deref<Target = Predecessors> + '_ {
+        self.predecessor_cache.compute(&self.basic_blocks)
+    }
+
+    #[inline]
+    pub fn dominators(&self) -> Dominators<BasicBlock> {
+        dominators(self)
+    }
 }
 
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum Safety {
     Safe,
     /// Unsafe because of a PushUnsafeBlock
@@ -384,6 +430,13 @@ impl<'tcx> Index<BasicBlock> for Body<'tcx> {
     #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.basic_blocks()[index]
+    }
+}
+
+impl<'tcx> IndexMut<BasicBlock> for Body<'tcx> {
+    #[inline]
+    fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
+        &mut self.basic_blocks_mut()[index]
     }
 }
 
@@ -409,8 +462,39 @@ impl<T> ClearCrossCrate<T> {
     }
 }
 
-impl<T: Encodable> rustc_serialize::UseSpecializedEncodable for ClearCrossCrate<T> {}
-impl<T: Decodable> rustc_serialize::UseSpecializedDecodable for ClearCrossCrate<T> {}
+const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
+const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
+
+impl<T: Encodable> rustc_serialize::UseSpecializedEncodable for ClearCrossCrate<T> {
+    #[inline]
+    fn default_encode<E: rustc_serialize::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+        match *self {
+            ClearCrossCrate::Clear => TAG_CLEAR_CROSS_CRATE_CLEAR.encode(e),
+            ClearCrossCrate::Set(ref val) => {
+                TAG_CLEAR_CROSS_CRATE_SET.encode(e)?;
+                val.encode(e)
+            }
+        }
+    }
+}
+impl<T: Decodable> rustc_serialize::UseSpecializedDecodable for ClearCrossCrate<T> {
+    #[inline]
+    fn default_decode<D>(d: &mut D) -> Result<ClearCrossCrate<T>, D::Error>
+    where
+        D: rustc_serialize::Decoder,
+    {
+        let discr = u8::decode(d)?;
+
+        match discr {
+            TAG_CLEAR_CROSS_CRATE_CLEAR => Ok(ClearCrossCrate::Clear),
+            TAG_CLEAR_CROSS_CRATE_SET => {
+                let val = T::decode(d)?;
+                Ok(ClearCrossCrate::Set(val))
+            }
+            _ => unreachable!(),
+        }
+    }
+}
 
 /// Grouped information about the source code origin of a MIR entity.
 /// Intended to be inspected by diagnostics and debuginfo.
@@ -425,6 +509,13 @@ pub struct SourceInfo {
     /// The source scope, keeping track of which bindings can be
     /// seen by debuginfo, active lint levels, `unsafe {...}`, etc.
     pub scope: SourceScope,
+}
+
+impl SourceInfo {
+    #[inline]
+    pub fn outermost(span: Span) -> Self {
+        SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -625,6 +716,9 @@ pub struct BlockTailInfo {
     /// Examples include `{ ...; tail };` and `let _ = { ...; tail };`
     /// but not e.g., `let _x = { ...; tail };`
     pub tail_result_is_ignored: bool,
+
+    /// `Span` of the tail expression.
+    pub span: Span,
 }
 
 /// A MIR local.
@@ -639,7 +733,7 @@ pub struct LocalDecl<'tcx> {
     pub mutability: Mutability,
 
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub local_info: LocalInfo<'tcx>,
+    pub local_info: Option<Box<LocalInfo<'tcx>>>,
 
     /// `true` if this is an internal local.
     ///
@@ -675,7 +769,7 @@ pub struct LocalDecl<'tcx> {
     /// borrow checker needs this information since it can affect
     /// region inference.
     // FIXME(matthewjasper) Don't store in this in `Body`
-    pub user_ty: UserTypeProjections,
+    pub user_ty: Option<Box<UserTypeProjections>>,
 
     /// The *syntactic* (i.e., not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
@@ -759,7 +853,13 @@ pub struct LocalDecl<'tcx> {
     pub source_info: SourceInfo,
 }
 
-/// Extra information about a local that's used for diagnostics.
+// `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(LocalDecl<'_>, 56);
+
+/// Extra information about a some locals that's used for diagnostics. (Not
+/// used for non-StaticRef temporaries, the return place, or anonymous function
+/// parameters.)
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum LocalInfo<'tcx> {
     /// A user-defined local variable or function parameter
@@ -770,8 +870,6 @@ pub enum LocalInfo<'tcx> {
     User(ClearCrossCrate<BindingForm<'tcx>>),
     /// A temporary created that references the static with the given `DefId`.
     StaticRef { def_id: DefId, is_thread_local: bool },
-    /// Any other temporary, the return place, or an anonymous function parameter.
-    Other,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -783,16 +881,16 @@ impl<'tcx> LocalDecl<'tcx> {
     /// - or `match ... { C(x) => ... }`
     pub fn can_be_made_mutable(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,
-            }))) => true,
+            })))) => true,
 
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
                 ImplicitSelfKind::Imm,
-            ))) => true,
+            )))) => true,
 
             _ => false,
         }
@@ -803,14 +901,14 @@ impl<'tcx> LocalDecl<'tcx> {
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,
-            }))) => true,
+            })))) => true,
 
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_))) => true,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_)))) => true,
 
             _ => false,
         }
@@ -821,7 +919,7 @@ impl<'tcx> LocalDecl<'tcx> {
     #[inline]
     pub fn is_user_variable(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(_) => true,
+            Some(box LocalInfo::User(_)) => true,
             _ => false,
         }
     }
@@ -831,7 +929,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
         match self.local_info {
-            LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)) => true,
+            Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))) => true,
             _ => false,
         }
     }
@@ -840,7 +938,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// access that static
     pub fn is_ref_to_static(&self) -> bool {
         match self.local_info {
-            LocalInfo::StaticRef { .. } => true,
+            Some(box LocalInfo::StaticRef { .. }) => true,
             _ => false,
         }
     }
@@ -849,7 +947,7 @@ impl<'tcx> LocalDecl<'tcx> {
     /// access that static
     pub fn is_ref_to_thread_local(&self) -> bool {
         match self.local_info {
-            LocalInfo::StaticRef { is_thread_local, .. } => is_thread_local,
+            Some(box LocalInfo::StaticRef { is_thread_local, .. }) => is_thread_local,
             _ => false,
         }
     }
@@ -861,10 +959,31 @@ impl<'tcx> LocalDecl<'tcx> {
         self.source_info.span.desugaring_kind().is_some()
     }
 
-    /// Creates a new `LocalDecl` for a temporary.
+    /// Creates a new `LocalDecl` for a temporary: mutable, non-internal.
     #[inline]
-    pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::new_local(ty, Mutability::Mut, false, span)
+    pub fn new(ty: Ty<'tcx>, span: Span) -> Self {
+        Self::with_source_info(ty, SourceInfo::outermost(span))
+    }
+
+    /// Like `LocalDecl::new`, but takes a `SourceInfo` instead of a `Span`.
+    #[inline]
+    pub fn with_source_info(ty: Ty<'tcx>, source_info: SourceInfo) -> Self {
+        LocalDecl {
+            mutability: Mutability::Mut,
+            local_info: None,
+            internal: false,
+            is_block_tail: None,
+            ty,
+            user_ty: None,
+            source_info,
+        }
+    }
+
+    /// Converts `self` into same `LocalDecl` except tagged as internal.
+    #[inline]
+    pub fn internal(mut self) -> Self {
+        self.internal = true;
+        self
     }
 
     /// Converts `self` into same `LocalDecl` except tagged as immutable.
@@ -881,47 +1000,12 @@ impl<'tcx> LocalDecl<'tcx> {
         self.is_block_tail = Some(info);
         self
     }
-
-    /// Creates a new `LocalDecl` for a internal temporary.
-    #[inline]
-    pub fn new_internal(ty: Ty<'tcx>, span: Span) -> Self {
-        Self::new_local(ty, Mutability::Mut, true, span)
-    }
-
-    #[inline]
-    fn new_local(ty: Ty<'tcx>, mutability: Mutability, internal: bool, span: Span) -> Self {
-        LocalDecl {
-            mutability,
-            ty,
-            user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            internal,
-            local_info: LocalInfo::Other,
-            is_block_tail: None,
-        }
-    }
-
-    /// Builds a `LocalDecl` for the return place.
-    ///
-    /// This must be inserted into the `local_decls` list as the first local.
-    #[inline]
-    pub fn new_return_place(return_ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
-        LocalDecl {
-            mutability: Mutability::Mut,
-            ty: return_ty,
-            user_ty: UserTypeProjections::none(),
-            source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            internal: false,
-            is_block_tail: None,
-            local_info: LocalInfo::Other,
-        }
-    }
 }
 
 /// Debug information pertaining to a user variable.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VarDebugInfo<'tcx> {
-    pub name: Name,
+    pub name: Symbol,
 
     /// Source info of the user variable, including the scope
     /// within which the variable is visible (to debuginfo)
@@ -976,174 +1060,44 @@ pub struct BasicBlockData<'tcx> {
     pub is_cleanup: bool,
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct Terminator<'tcx> {
-    pub source_info: SourceInfo,
-    pub kind: TerminatorKind<'tcx>,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
-pub enum TerminatorKind<'tcx> {
-    /// Block should have one successor in the graph; we jump there.
-    Goto { target: BasicBlock },
-
-    /// Operand evaluates to an integer; jump depending on its value
-    /// to one of the targets, and otherwise fallback to `otherwise`.
-    SwitchInt {
-        /// The discriminant value being tested.
-        discr: Operand<'tcx>,
-
-        /// The type of value being tested.
-        switch_ty: Ty<'tcx>,
-
-        /// Possible values. The locations to branch to in each case
-        /// are found in the corresponding indices from the `targets` vector.
-        values: Cow<'tcx, [u128]>,
-
-        /// Possible branch sites. The last element of this vector is used
-        /// for the otherwise branch, so targets.len() == values.len() + 1
-        /// should hold.
-        //
-        // This invariant is quite non-obvious and also could be improved.
-        // One way to make this invariant is to have something like this instead:
-        //
-        // branches: Vec<(ConstInt, BasicBlock)>,
-        // otherwise: Option<BasicBlock> // exhaustive if None
-        //
-        // However we’ve decided to keep this as-is until we figure a case
-        // where some other approach seems to be strictly better than other.
-        targets: Vec<BasicBlock>,
-    },
-
-    /// Indicates that the landing pad is finished and unwinding should
-    /// continue. Emitted by `build::scope::diverge_cleanup`.
-    Resume,
-
-    /// Indicates that the landing pad is finished and that the process
-    /// should abort. Used to prevent unwinding for foreign items.
-    Abort,
-
-    /// Indicates a normal return. The return place should have
-    /// been filled in by now. This should occur at most once.
-    Return,
-
-    /// Indicates a terminator that can never be reached.
-    Unreachable,
-
-    /// Drop the `Place`.
-    Drop { location: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
-
-    /// Drop the `Place` and assign the new value over it. This ensures
-    /// that the assignment to `P` occurs *even if* the destructor for
-    /// place unwinds. Its semantics are best explained by the
-    /// elaboration:
-    ///
-    /// ```
-    /// BB0 {
-    ///   DropAndReplace(P <- V, goto BB1, unwind BB2)
-    /// }
-    /// ```
-    ///
-    /// becomes
-    ///
-    /// ```
-    /// BB0 {
-    ///   Drop(P, goto BB1, unwind BB2)
-    /// }
-    /// BB1 {
-    ///   // P is now uninitialized
-    ///   P <- V
-    /// }
-    /// BB2 {
-    ///   // P is now uninitialized -- its dtor panicked
-    ///   P <- V
-    /// }
-    /// ```
-    DropAndReplace {
-        location: Place<'tcx>,
-        value: Operand<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>,
-    },
-
-    /// Block ends with a call of a converging function.
-    Call {
-        /// The function that’s being called.
-        func: Operand<'tcx>,
-        /// Arguments the function is called with.
-        /// These are owned by the callee, which is free to modify them.
-        /// This allows the memory occupied by "by-value" arguments to be
-        /// reused across function calls without duplicating the contents.
-        args: Vec<Operand<'tcx>>,
-        /// Destination for the return value. If some, the call is converging.
-        destination: Option<(Place<'tcx>, BasicBlock)>,
-        /// Cleanups to be done if the call unwinds.
-        cleanup: Option<BasicBlock>,
-        /// `true` if this is from a call in HIR rather than from an overloaded
-        /// operator. True for overloaded function call.
-        from_hir_call: bool,
-    },
-
-    /// Jump to the target if the condition has the expected value,
-    /// otherwise panic with a message and a cleanup target.
-    Assert {
-        cond: Operand<'tcx>,
-        expected: bool,
-        msg: AssertMessage<'tcx>,
-        target: BasicBlock,
-        cleanup: Option<BasicBlock>,
-    },
-
-    /// A suspend point.
-    Yield {
-        /// The value to return.
-        value: Operand<'tcx>,
-        /// Where to resume to.
-        resume: BasicBlock,
-        /// The place to store the resume argument in.
-        resume_arg: Place<'tcx>,
-        /// Cleanup to be done if the generator is dropped at this suspend point.
-        drop: Option<BasicBlock>,
-    },
-
-    /// Indicates the end of the dropping of a generator.
-    GeneratorDrop,
-
-    /// A block where control flow only ever takes one real path, but borrowck
-    /// needs to be more conservative.
-    FalseEdges {
-        /// The target normal control flow will take.
-        real_target: BasicBlock,
-        /// A block control flow could conceptually jump to, but won't in
-        /// practice.
-        imaginary_target: BasicBlock,
-    },
-    /// A terminator for blocks that only take one path in reality, but where we
-    /// reserve the right to unwind in borrowck, even if it won't happen in practice.
-    /// This can arise in infinite loops with no function calls for example.
-    FalseUnwind {
-        /// The target normal control flow will take.
-        real_target: BasicBlock,
-        /// The imaginary cleanup block link. This particular path will never be taken
-        /// in practice, but in order to avoid fragility we want to always
-        /// consider it in borrowck. We don't want to accept programs which
-        /// pass borrowck only when `panic=abort` or some assertions are disabled
-        /// due to release vs. debug mode builds. This needs to be an `Option` because
-        /// of the `remove_noop_landing_pads` and `no_landing_pads` passes.
-        unwind: Option<BasicBlock>,
-    },
-}
-
 /// Information about an assertion failure.
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
 pub enum AssertKind<O> {
     BoundsCheck { len: O, index: O },
-    Overflow(BinOp),
-    OverflowNeg,
-    DivisionByZero,
-    RemainderByZero,
+    Overflow(BinOp, O, O),
+    OverflowNeg(O),
+    DivisionByZero(O),
+    RemainderByZero(O),
     ResumedAfterReturn(GeneratorKind),
     ResumedAfterPanic(GeneratorKind),
+}
+
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub enum InlineAsmOperand<'tcx> {
+    In {
+        reg: InlineAsmRegOrRegClass,
+        value: Operand<'tcx>,
+    },
+    Out {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        place: Option<Place<'tcx>>,
+    },
+    InOut {
+        reg: InlineAsmRegOrRegClass,
+        late: bool,
+        in_value: Operand<'tcx>,
+        out_place: Option<Place<'tcx>>,
+    },
+    Const {
+        value: Operand<'tcx>,
+    },
+    SymFn {
+        value: Box<Constant<'tcx>>,
+    },
+    SymStatic {
+        def_id: DefId,
+    },
 }
 
 /// Type for MIR `Assert` terminator error messages.
@@ -1153,145 +1107,6 @@ pub type Successors<'a> =
     iter::Chain<option::IntoIter<&'a BasicBlock>, slice::Iter<'a, BasicBlock>>;
 pub type SuccessorsMut<'a> =
     iter::Chain<option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
-
-impl<'tcx> Terminator<'tcx> {
-    pub fn successors(&self) -> Successors<'_> {
-        self.kind.successors()
-    }
-
-    pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
-        self.kind.successors_mut()
-    }
-
-    pub fn unwind(&self) -> Option<&Option<BasicBlock>> {
-        self.kind.unwind()
-    }
-
-    pub fn unwind_mut(&mut self) -> Option<&mut Option<BasicBlock>> {
-        self.kind.unwind_mut()
-    }
-}
-
-impl<'tcx> TerminatorKind<'tcx> {
-    pub fn if_(
-        tcx: TyCtxt<'tcx>,
-        cond: Operand<'tcx>,
-        t: BasicBlock,
-        f: BasicBlock,
-    ) -> TerminatorKind<'tcx> {
-        static BOOL_SWITCH_FALSE: &[u128] = &[0];
-        TerminatorKind::SwitchInt {
-            discr: cond,
-            switch_ty: tcx.types.bool,
-            values: From::from(BOOL_SWITCH_FALSE),
-            targets: vec![f, t],
-        }
-    }
-
-    pub fn successors(&self) -> Successors<'_> {
-        use self::TerminatorKind::*;
-        match *self {
-            Resume
-            | Abort
-            | GeneratorDrop
-            | Return
-            | Unreachable
-            | Call { destination: None, cleanup: None, .. } => None.into_iter().chain(&[]),
-            Goto { target: ref t }
-            | Call { destination: None, cleanup: Some(ref t), .. }
-            | Call { destination: Some((_, ref t)), cleanup: None, .. }
-            | Yield { resume: ref t, drop: None, .. }
-            | DropAndReplace { target: ref t, unwind: None, .. }
-            | Drop { target: ref t, unwind: None, .. }
-            | Assert { target: ref t, cleanup: None, .. }
-            | FalseUnwind { real_target: ref t, unwind: None } => Some(t).into_iter().chain(&[]),
-            Call { destination: Some((_, ref t)), cleanup: Some(ref u), .. }
-            | Yield { resume: ref t, drop: Some(ref u), .. }
-            | DropAndReplace { target: ref t, unwind: Some(ref u), .. }
-            | Drop { target: ref t, unwind: Some(ref u), .. }
-            | Assert { target: ref t, cleanup: Some(ref u), .. }
-            | FalseUnwind { real_target: ref t, unwind: Some(ref u) } => {
-                Some(t).into_iter().chain(slice::from_ref(u))
-            }
-            SwitchInt { ref targets, .. } => None.into_iter().chain(&targets[..]),
-            FalseEdges { ref real_target, ref imaginary_target } => {
-                Some(real_target).into_iter().chain(slice::from_ref(imaginary_target))
-            }
-        }
-    }
-
-    pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
-        use self::TerminatorKind::*;
-        match *self {
-            Resume
-            | Abort
-            | GeneratorDrop
-            | Return
-            | Unreachable
-            | Call { destination: None, cleanup: None, .. } => None.into_iter().chain(&mut []),
-            Goto { target: ref mut t }
-            | Call { destination: None, cleanup: Some(ref mut t), .. }
-            | Call { destination: Some((_, ref mut t)), cleanup: None, .. }
-            | Yield { resume: ref mut t, drop: None, .. }
-            | DropAndReplace { target: ref mut t, unwind: None, .. }
-            | Drop { target: ref mut t, unwind: None, .. }
-            | Assert { target: ref mut t, cleanup: None, .. }
-            | FalseUnwind { real_target: ref mut t, unwind: None } => {
-                Some(t).into_iter().chain(&mut [])
-            }
-            Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut u), .. }
-            | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
-            | DropAndReplace { target: ref mut t, unwind: Some(ref mut u), .. }
-            | Drop { target: ref mut t, unwind: Some(ref mut u), .. }
-            | Assert { target: ref mut t, cleanup: Some(ref mut u), .. }
-            | FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) } => {
-                Some(t).into_iter().chain(slice::from_mut(u))
-            }
-            SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets[..]),
-            FalseEdges { ref mut real_target, ref mut imaginary_target } => {
-                Some(real_target).into_iter().chain(slice::from_mut(imaginary_target))
-            }
-        }
-    }
-
-    pub fn unwind(&self) -> Option<&Option<BasicBlock>> {
-        match *self {
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Abort
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. } => None,
-            TerminatorKind::Call { cleanup: ref unwind, .. }
-            | TerminatorKind::Assert { cleanup: ref unwind, .. }
-            | TerminatorKind::DropAndReplace { ref unwind, .. }
-            | TerminatorKind::Drop { ref unwind, .. }
-            | TerminatorKind::FalseUnwind { ref unwind, .. } => Some(unwind),
-        }
-    }
-
-    pub fn unwind_mut(&mut self) -> Option<&mut Option<BasicBlock>> {
-        match *self {
-            TerminatorKind::Goto { .. }
-            | TerminatorKind::Resume
-            | TerminatorKind::Abort
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable
-            | TerminatorKind::GeneratorDrop
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdges { .. } => None,
-            TerminatorKind::Call { cleanup: ref mut unwind, .. }
-            | TerminatorKind::Assert { cleanup: ref mut unwind, .. }
-            | TerminatorKind::DropAndReplace { ref mut unwind, .. }
-            | TerminatorKind::Drop { ref mut unwind, .. }
-            | TerminatorKind::FalseUnwind { ref mut unwind, .. } => Some(unwind),
-        }
-    }
-}
 
 impl<'tcx> BasicBlockData<'tcx> {
     pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
@@ -1356,10 +1171,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
         self.statements.resize(
             gap.end,
-            Statement {
-                source_info: SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE },
-                kind: StatementKind::Nop,
-            },
+            Statement { source_info: SourceInfo::outermost(DUMMY_SP), kind: StatementKind::Nop },
         );
         for (splice_start, new_stmts) in splices.into_iter().rev() {
             let splice_end = splice_start + new_stmts.size_hint().0;
@@ -1385,17 +1197,17 @@ impl<O> AssertKind<O> {
     pub fn description(&self) -> &'static str {
         use AssertKind::*;
         match self {
-            Overflow(BinOp::Add) => "attempt to add with overflow",
-            Overflow(BinOp::Sub) => "attempt to subtract with overflow",
-            Overflow(BinOp::Mul) => "attempt to multiply with overflow",
-            Overflow(BinOp::Div) => "attempt to divide with overflow",
-            Overflow(BinOp::Rem) => "attempt to calculate the remainder with overflow",
-            OverflowNeg => "attempt to negate with overflow",
-            Overflow(BinOp::Shr) => "attempt to shift right with overflow",
-            Overflow(BinOp::Shl) => "attempt to shift left with overflow",
-            Overflow(op) => bug!("{:?} cannot overflow", op),
-            DivisionByZero => "attempt to divide by zero",
-            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
+            Overflow(BinOp::Add, _, _) => "attempt to add with overflow",
+            Overflow(BinOp::Sub, _, _) => "attempt to subtract with overflow",
+            Overflow(BinOp::Mul, _, _) => "attempt to multiply with overflow",
+            Overflow(BinOp::Div, _, _) => "attempt to divide with overflow",
+            Overflow(BinOp::Rem, _, _) => "attempt to calculate the remainder with overflow",
+            OverflowNeg(_) => "attempt to negate with overflow",
+            Overflow(BinOp::Shr, _, _) => "attempt to shift right with overflow",
+            Overflow(BinOp::Shl, _, _) => "attempt to shift left with overflow",
+            Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
+            DivisionByZero(_) => "attempt to divide by zero",
+            RemainderByZero(_) => "attempt to calculate the remainder with a divisor of zero",
             ResumedAfterReturn(GeneratorKind::Gen) => "generator resumed after completion",
             ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
             ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
@@ -1409,12 +1221,54 @@ impl<O> AssertKind<O> {
     where
         O: Debug,
     {
+        use AssertKind::*;
         match self {
-            AssertKind::BoundsCheck { ref len, ref index } => write!(
+            BoundsCheck { ref len, ref index } => write!(
                 f,
                 "\"index out of bounds: the len is {{}} but the index is {{}}\", {:?}, {:?}",
                 len, index
             ),
+
+            OverflowNeg(op) => {
+                write!(f, "\"attempt to negate {{}} which would overflow\", {:?}", op)
+            }
+            DivisionByZero(op) => write!(f, "\"attempt to divide {{}} by zero\", {:?}", op),
+            RemainderByZero(op) => write!(
+                f,
+                "\"attempt to calculate the remainder of {{}} with a divisor of zero\", {:?}",
+                op
+            ),
+            Overflow(BinOp::Add, l, r) => write!(
+                f,
+                "\"attempt to compute `{{}} + {{}}` which would overflow\", {:?}, {:?}",
+                l, r
+            ),
+            Overflow(BinOp::Sub, l, r) => write!(
+                f,
+                "\"attempt to compute `{{}} - {{}}` which would overflow\", {:?}, {:?}",
+                l, r
+            ),
+            Overflow(BinOp::Mul, l, r) => write!(
+                f,
+                "\"attempt to compute `{{}} * {{}}` which would overflow\", {:?}, {:?}",
+                l, r
+            ),
+            Overflow(BinOp::Div, l, r) => write!(
+                f,
+                "\"attempt to compute `{{}} / {{}}` which would overflow\", {:?}, {:?}",
+                l, r
+            ),
+            Overflow(BinOp::Rem, l, r) => write!(
+                f,
+                "\"attempt to compute the remainder of `{{}} % {{}}` which would overflow\", {:?}, {:?}",
+                l, r
+            ),
+            Overflow(BinOp::Shr, _, r) => {
+                write!(f, "\"attempt to shift right by {{}} which would overflow\", {:?}", r)
+            }
+            Overflow(BinOp::Shl, _, r) => {
+                write!(f, "\"attempt to shift left by {{}} which would overflow\", {:?}", r)
+            }
             _ => write!(f, "\"{}\"", self.description()),
         }
     }
@@ -1427,122 +1281,35 @@ impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
             BoundsCheck { ref len, ref index } => {
                 write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index)
             }
+            OverflowNeg(op) => write!(f, "attempt to negate {:#?} which would overflow", op),
+            DivisionByZero(op) => write!(f, "attempt to divide {:#?} by zero", op),
+            RemainderByZero(op) => {
+                write!(f, "attempt to calculate the remainder of {:#?} with a divisor of zero", op)
+            }
+            Overflow(BinOp::Add, l, r) => {
+                write!(f, "attempt to compute `{:#?} + {:#?}` which would overflow", l, r)
+            }
+            Overflow(BinOp::Sub, l, r) => {
+                write!(f, "attempt to compute `{:#?} - {:#?}` which would overflow", l, r)
+            }
+            Overflow(BinOp::Mul, l, r) => {
+                write!(f, "attempt to compute `{:#?} * {:#?}` which would overflow", l, r)
+            }
+            Overflow(BinOp::Div, l, r) => {
+                write!(f, "attempt to compute `{:#?} / {:#?}` which would overflow", l, r)
+            }
+            Overflow(BinOp::Rem, l, r) => write!(
+                f,
+                "attempt to compute the remainder of `{:#?} % {:#?}` which would overflow",
+                l, r
+            ),
+            Overflow(BinOp::Shr, _, r) => {
+                write!(f, "attempt to shift right by {:#?} which would overflow", r)
+            }
+            Overflow(BinOp::Shl, _, r) => {
+                write!(f, "attempt to shift left by {:#?} which would overflow", r)
+            }
             _ => write!(f, "{}", self.description()),
-        }
-    }
-}
-
-impl<'tcx> Debug for TerminatorKind<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        self.fmt_head(fmt)?;
-        let successor_count = self.successors().count();
-        let labels = self.fmt_successor_labels();
-        assert_eq!(successor_count, labels.len());
-
-        match successor_count {
-            0 => Ok(()),
-
-            1 => write!(fmt, " -> {:?}", self.successors().next().unwrap()),
-
-            _ => {
-                write!(fmt, " -> [")?;
-                for (i, target) in self.successors().enumerate() {
-                    if i > 0 {
-                        write!(fmt, ", ")?;
-                    }
-                    write!(fmt, "{}: {:?}", labels[i], target)?;
-                }
-                write!(fmt, "]")
-            }
-        }
-    }
-}
-
-impl<'tcx> TerminatorKind<'tcx> {
-    /// Writes the "head" part of the terminator; that is, its name and the data it uses to pick the
-    /// successor basic block, if any. The only information not included is the list of possible
-    /// successors, which may be rendered differently between the text and the graphviz format.
-    pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> fmt::Result {
-        use self::TerminatorKind::*;
-        match self {
-            Goto { .. } => write!(fmt, "goto"),
-            SwitchInt { discr, .. } => write!(fmt, "switchInt({:?})", discr),
-            Return => write!(fmt, "return"),
-            GeneratorDrop => write!(fmt, "generator_drop"),
-            Resume => write!(fmt, "resume"),
-            Abort => write!(fmt, "abort"),
-            Yield { value, resume_arg, .. } => write!(fmt, "{:?} = yield({:?})", resume_arg, value),
-            Unreachable => write!(fmt, "unreachable"),
-            Drop { location, .. } => write!(fmt, "drop({:?})", location),
-            DropAndReplace { location, value, .. } => {
-                write!(fmt, "replace({:?} <- {:?})", location, value)
-            }
-            Call { func, args, destination, .. } => {
-                if let Some((destination, _)) = destination {
-                    write!(fmt, "{:?} = ", destination)?;
-                }
-                write!(fmt, "{:?}(", func)?;
-                for (index, arg) in args.iter().enumerate() {
-                    if index > 0 {
-                        write!(fmt, ", ")?;
-                    }
-                    write!(fmt, "{:?}", arg)?;
-                }
-                write!(fmt, ")")
-            }
-            Assert { cond, expected, msg, .. } => {
-                write!(fmt, "assert(")?;
-                if !expected {
-                    write!(fmt, "!")?;
-                }
-                write!(fmt, "{:?}, ", cond)?;
-                msg.fmt_assert_args(fmt)?;
-                write!(fmt, ")")
-            }
-            FalseEdges { .. } => write!(fmt, "falseEdges"),
-            FalseUnwind { .. } => write!(fmt, "falseUnwind"),
-        }
-    }
-
-    /// Returns the list of labels for the edges to the successor basic blocks.
-    pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
-        use self::TerminatorKind::*;
-        match *self {
-            Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
-            Goto { .. } => vec!["".into()],
-            SwitchInt { ref values, switch_ty, .. } => ty::tls::with(|tcx| {
-                let param_env = ty::ParamEnv::empty();
-                let switch_ty = tcx.lift(&switch_ty).unwrap();
-                let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
-                values
-                    .iter()
-                    .map(|&u| {
-                        ty::Const::from_scalar(tcx, Scalar::from_uint(u, size), switch_ty)
-                            .to_string()
-                            .into()
-                    })
-                    .chain(iter::once("otherwise".into()))
-                    .collect()
-            }),
-            Call { destination: Some(_), cleanup: Some(_), .. } => {
-                vec!["return".into(), "unwind".into()]
-            }
-            Call { destination: Some(_), cleanup: None, .. } => vec!["return".into()],
-            Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into()],
-            Call { destination: None, cleanup: None, .. } => vec![],
-            Yield { drop: Some(_), .. } => vec!["resume".into(), "drop".into()],
-            Yield { drop: None, .. } => vec!["resume".into()],
-            DropAndReplace { unwind: None, .. } | Drop { unwind: None, .. } => {
-                vec!["return".into()]
-            }
-            DropAndReplace { unwind: Some(_), .. } | Drop { unwind: Some(_), .. } => {
-                vec!["return".into(), "unwind".into()]
-            }
-            Assert { cleanup: None, .. } => vec!["".into()],
-            Assert { .. } => vec!["success".into(), "unwind".into()],
-            FalseEdges { .. } => vec!["real".into(), "imaginary".into()],
-            FalseUnwind { unwind: Some(_), .. } => vec!["real".into(), "cleanup".into()],
-            FalseUnwind { unwind: None, .. } => vec!["real".into()],
         }
     }
 }
@@ -1807,8 +1574,6 @@ impl<V, T> ProjectionElem<V, T> {
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
-impl<'tcx> Copy for PlaceElem<'tcx> {}
-
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(PlaceElem<'_>, 16);
@@ -1937,10 +1702,10 @@ impl Debug for Place<'_> {
                 ProjectionElem::ConstantIndex { offset, min_length, from_end: true } => {
                     write!(fmt, "[-{:?} of {:?}]", offset, min_length)?;
                 }
-                ProjectionElem::Subslice { from, to, from_end: true } if *to == 0 => {
+                ProjectionElem::Subslice { from, to, from_end: true } if to == 0 => {
                     write!(fmt, "[{:?}:]", from)?;
                 }
-                ProjectionElem::Subslice { from, to, from_end: true } if *from == 0 => {
+                ProjectionElem::Subslice { from, to, from_end: true } if from == 0 => {
                     write!(fmt, "[:-{:?}]", to)?;
                 }
                 ProjectionElem::Subslice { from, to, from_end: true } => {
@@ -2038,6 +1803,45 @@ impl<'tcx> Operand<'tcx> {
         })
     }
 
+    /// Convenience helper to make a literal-like constant from a given scalar value.
+    /// Since this is used to synthesize MIR, assumes `user_ty` is None.
+    pub fn const_from_scalar(
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        val: Scalar,
+        span: Span,
+    ) -> Operand<'tcx> {
+        debug_assert!({
+            let param_env_and_ty = ty::ParamEnv::empty().and(ty);
+            let type_size = tcx
+                .layout_of(param_env_and_ty)
+                .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
+                .size;
+            let scalar_size = abi::Size::from_bytes(match val {
+                Scalar::Raw { size, .. } => size,
+                _ => panic!("Invalid scalar type {:?}", val),
+            });
+            scalar_size == type_size
+        });
+        Operand::Constant(box Constant {
+            span,
+            user_ty: None,
+            literal: ty::Const::from_scalar(tcx, val, ty),
+        })
+    }
+
+    /// Convenience helper to make a `Scalar` from the given `Operand`, assuming that `Operand`
+    /// wraps a constant literal value. Panics if this is not the case.
+    pub fn scalar_from_const(operand: &Operand<'tcx>) -> Scalar {
+        match operand {
+            Operand::Constant(constant) => match constant.literal.val.try_to_scalar() {
+                Some(scalar) => scalar,
+                _ => panic!("{:?}: Scalar value expected", constant.literal.val),
+            },
+            _ => panic!("{:?}: Constant expected", operand),
+        }
+    }
+
     pub fn to_copy(&self) -> Self {
         match *self {
             Operand::Copy(_) | Operand::Constant(_) => self.clone(),
@@ -2069,12 +1873,17 @@ pub enum Rvalue<'tcx> {
     /// &x or &mut x
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
 
+    /// Accessing a thread local static. This is inherently a runtime operation, even if llvm
+    /// treats it as an access to a static. This `Rvalue` yields a reference to the thread local
+    /// static.
+    ThreadLocalRef(DefId),
+
     /// Create a raw pointer to the given place
     /// Can be generated by raw address of expressions (`&raw const x`),
     /// or when casting a reference to a raw pointer.
     AddressOf(Mutability, Place<'tcx>),
 
-    /// length of a [X] or [X;n] value
+    /// length of a `[X]` or `[X;n]` value
     Len(Place<'tcx>),
 
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
@@ -2208,6 +2017,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Discriminant(ref place) => write!(fmt, "discriminant({:?})", place),
             NullaryOp(ref op, ref t) => write!(fmt, "{:?}({:?})", op, t),
+            ThreadLocalRef(did) => ty::tls::with(|tcx| {
+                let muta = tcx.static_mutability(did).unwrap().prefix_str();
+                write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
+            }),
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
@@ -2286,19 +2099,21 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }
 
                     AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
-                        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+                        if let Some(def_id) = def_id.as_local() {
+                            let hir_id = tcx.hir().as_local_hir_id(def_id);
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
                                 let substs = tcx.lift(&substs).unwrap();
                                 format!(
                                     "[closure@{}]",
-                                    tcx.def_path_str_with_substs(def_id, substs),
+                                    tcx.def_path_str_with_substs(def_id.to_def_id(), substs),
                                 )
                             } else {
-                                format!("[closure@{:?}]", tcx.hir().span(hir_id))
+                                let span = tcx.hir().span(hir_id);
+                                format!("[closure@{}]", tcx.sess.source_map().span_to_string(span))
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(upvars) = tcx.upvars(def_id) {
+                            if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in upvars.keys().zip(places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
@@ -2312,11 +2127,12 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     }),
 
                     AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
-                        if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
+                        if let Some(def_id) = def_id.as_local() {
+                            let hir_id = tcx.hir().as_local_hir_id(def_id);
                             let name = format!("[generator@{:?}]", tcx.hir().span(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(upvars) = tcx.upvars(def_id) {
+                            if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in upvars.keys().zip(places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
@@ -2341,7 +2157,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// this does not necessarily mean that they are "==" in Rust -- in
 /// particular one must be wary of `NaN`!
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
@@ -2358,13 +2174,12 @@ pub struct Constant<'tcx> {
 impl Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.literal.val.try_to_scalar() {
-            Some(Scalar::Ptr(ptr)) => match tcx.alloc_map.lock().get(ptr.alloc_id) {
-                Some(GlobalAlloc::Static(def_id)) => Some(def_id),
-                Some(_) => None,
-                None => {
-                    tcx.sess.delay_span_bug(DUMMY_SP, "MIR cannot contain dangling const pointers");
-                    None
+            Some(Scalar::Ptr(ptr)) => match tcx.global_alloc(ptr.alloc_id) {
+                GlobalAlloc::Static(def_id) => {
+                    assert!(!tcx.is_thread_local_static(def_id));
+                    Some(def_id)
                 }
+                _ => None,
             },
             _ => None,
         }
@@ -2405,12 +2220,16 @@ impl Constant<'tcx> {
 /// &'static str`.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct UserTypeProjections {
-    pub(crate) contents: Vec<(UserTypeProjection, Span)>,
+    pub contents: Vec<(UserTypeProjection, Span)>,
 }
 
 impl<'tcx> UserTypeProjections {
     pub fn none() -> Self {
         UserTypeProjections { contents: vec![] }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.contents.is_empty()
     }
 
     pub fn from_projections(projs: impl Iterator<Item = (UserTypeProjection, Span)>) -> Self {
@@ -2591,18 +2410,21 @@ impl<'tcx> graph::DirectedGraph for Body<'tcx> {
 }
 
 impl<'tcx> graph::WithNumNodes for Body<'tcx> {
+    #[inline]
     fn num_nodes(&self) -> usize {
         self.basic_blocks.len()
     }
 }
 
 impl<'tcx> graph::WithStartNode for Body<'tcx> {
+    #[inline]
     fn start_node(&self) -> Self::Node {
         START_BLOCK
     }
 }
 
 impl<'tcx> graph::WithSuccessors for Body<'tcx> {
+    #[inline]
     fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
         self.basic_blocks[node].terminator().successors().cloned()
     }
@@ -2611,6 +2433,18 @@ impl<'tcx> graph::WithSuccessors for Body<'tcx> {
 impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
     type Item = BasicBlock;
     type Iter = iter::Cloned<Successors<'b>>;
+}
+
+impl graph::GraphPredecessors<'graph> for Body<'tcx> {
+    type Item = BasicBlock;
+    type Iter = smallvec::IntoIter<[BasicBlock; 4]>;
+}
+
+impl graph::WithPredecessors for Body<'tcx> {
+    #[inline]
+    fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
+        self.predecessors()[node].clone().into_iter()
+    }
 }
 
 /// `Location` represents the position of the start of the statement; or, if
@@ -2642,25 +2476,23 @@ impl Location {
     }
 
     /// Returns `true` if `other` is earlier in the control flow graph than `self`.
-    pub fn is_predecessor_of<'tcx>(
-        &self,
-        other: Location,
-        body: ReadOnlyBodyAndCache<'_, 'tcx>,
-    ) -> bool {
+    pub fn is_predecessor_of<'tcx>(&self, other: Location, body: &Body<'tcx>) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.
         if self.block == other.block && self.statement_index < other.statement_index {
             return true;
         }
 
+        let predecessors = body.predecessors();
+
         // If we're in another block, then we want to check that block is a predecessor of `other`.
-        let mut queue: Vec<BasicBlock> = body.predecessors_for(other.block).to_vec();
+        let mut queue: Vec<BasicBlock> = predecessors[other.block].to_vec();
         let mut visited = FxHashSet::default();
 
         while let Some(block) = queue.pop() {
             // If we haven't visited this block before, then make sure we visit it's predecessors.
             if visited.insert(block) {
-                queue.extend(body.predecessors_for(block).iter().cloned());
+                queue.extend(predecessors[block].iter().cloned());
             } else {
                 continue;
             }

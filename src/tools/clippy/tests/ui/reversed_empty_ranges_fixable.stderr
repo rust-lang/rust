@@ -1,0 +1,47 @@
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_fixable.rs:9:5
+   |
+LL |     (42..=21).for_each(|x| println!("{}", x));
+   |     ^^^^^^^^^
+   |
+   = note: `-D clippy::reversed-empty-ranges` implied by `-D warnings`
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     (21..=42).rev().for_each(|x| println!("{}", x));
+   |     ^^^^^^^^^^^^^^^
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_fixable.rs:10:13
+   |
+LL |     let _ = (ANSWER..21).filter(|x| x % 2 == 0).take(10).collect::<Vec<_>>();
+   |             ^^^^^^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     let _ = (21..ANSWER).rev().filter(|x| x % 2 == 0).take(10).collect::<Vec<_>>();
+   |             ^^^^^^^^^^^^^^^^^^
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_fixable.rs:12:14
+   |
+LL |     for _ in -21..=-42 {}
+   |              ^^^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for _ in (-42..=-21).rev() {}
+   |              ^^^^^^^^^^^^^^^^^
+
+error: this range is empty so it will yield no values
+  --> $DIR/reversed_empty_ranges_fixable.rs:13:14
+   |
+LL |     for _ in 42u32..21u32 {}
+   |              ^^^^^^^^^^^^
+   |
+help: consider using the following if you are attempting to iterate over this range in reverse
+   |
+LL |     for _ in (21u32..42u32).rev() {}
+   |              ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

@@ -1,4 +1,7 @@
+// run-rustfix
+
 #![deny(unused_parens)]
+#![allow(while_true)] // for rustfix
 
 #[derive(Eq, PartialEq)]
 struct X { y: bool }
@@ -13,22 +16,22 @@ fn bar(y: bool) -> X {
     return (X { y }); //~ ERROR unnecessary parentheses around `return` value
 }
 
-fn unused_parens_around_return_type() -> (u32) { //~ ERROR unnecessary parentheses around type
+pub fn unused_parens_around_return_type() -> (u32) { //~ ERROR unnecessary parentheses around type
     panic!()
 }
 
-fn unused_parens_around_block_return() -> u32 {
-    let foo = {
+pub fn unused_parens_around_block_return() -> u32 {
+    let _foo = {
         (5) //~ ERROR unnecessary parentheses around block return value
     };
     (5) //~ ERROR unnecessary parentheses around block return value
 }
 
-trait Trait {
+pub trait Trait {
     fn test(&self);
 }
 
-fn passes_unused_parens_lint() -> &'static (dyn Trait) {
+pub fn passes_unused_parens_lint() -> &'static (dyn Trait) {
     panic!()
 }
 
@@ -38,8 +41,8 @@ macro_rules! baz {
     }
 }
 
-const CONST_ITEM: usize = (10); //~ ERROR unnecessary parentheses around assigned value
-static STATIC_ITEM: usize = (10); //~ ERROR unnecessary parentheses around assigned value
+pub const CONST_ITEM: usize = (10); //~ ERROR unnecessary parentheses around assigned value
+pub static STATIC_ITEM: usize = (10); //~ ERROR unnecessary parentheses around assigned value
 
 fn main() {
     foo();
@@ -47,7 +50,6 @@ fn main() {
 
     if (true) {} //~ ERROR unnecessary parentheses around `if` condition
     while (true) {} //~ ERROR unnecessary parentheses around `while` condition
-    //~^ WARN denote infinite loops with
     match (true) { //~ ERROR unnecessary parentheses around `match` scrutinee expression
         _ => {}
     }

@@ -54,7 +54,6 @@ pub use core::prelude::v1::{
     PartialEq, PartialOrd, RustcDecodable, RustcEncodable,
 };
 
-#[cfg(not(bootstrap))]
 #[unstable(
     feature = "cfg_accessible",
     issue = "64797",

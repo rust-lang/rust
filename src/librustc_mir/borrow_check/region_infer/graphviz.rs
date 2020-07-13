@@ -1,5 +1,5 @@
 //! This module provides linkage between RegionInferenceContext and
-//! libgraphviz traits, specialized to attaching borrowck analysis
+//! librustc_graphviz traits, specialized to attaching borrowck analysis
 //! data to rendered labels.
 
 use std::borrow::Cow;
@@ -7,6 +7,7 @@ use std::io::{self, Write};
 
 use super::*;
 use crate::borrow_check::constraints::OutlivesConstraint;
+use rustc_graphviz as dot;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out the region constraint graph.

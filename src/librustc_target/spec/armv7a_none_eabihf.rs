@@ -5,18 +5,18 @@
 // changes (list in `armv7a_none_eabi.rs`) to bring it closer to the bare-metal
 // `thumb` & `aarch64` targets.
 
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
+use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
         linker: Some("rust-lld".to_owned()),
         features: "+v7,+vfp3,-d32,+thumb2,-neon,+strict-align".to_string(),
         executables: true,
-        relocation_model: "static".to_string(),
+        relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(64),
         panic_strategy: PanicStrategy::Abort,
-        abi_blacklist: super::arm_base::abi_blacklist(),
+        unsupported_abis: super::arm_base::unsupported_abis(),
         emit_debug_gdb_scripts: false,
         ..Default::default()
     };

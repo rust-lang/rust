@@ -79,8 +79,6 @@
 //! }
 //! ```
 
-// ignore-tidy-undocumented-unsafe
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
@@ -335,31 +333,31 @@ pub trait Hasher {
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i16(&mut self, i: i16) {
-        self.write(&i.to_ne_bytes())
+        self.write_u16(i as u16)
     }
     /// Writes a single `i32` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i32(&mut self, i: i32) {
-        self.write(&i.to_ne_bytes())
+        self.write_u32(i as u32)
     }
     /// Writes a single `i64` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_i64(&mut self, i: i64) {
-        self.write(&i.to_ne_bytes())
+        self.write_u64(i as u64)
     }
     /// Writes a single `i128` into this hasher.
     #[inline]
     #[stable(feature = "i128", since = "1.26.0")]
     fn write_i128(&mut self, i: i128) {
-        self.write(&i.to_ne_bytes())
+        self.write_u128(i as u128)
     }
     /// Writes a single `isize` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_isize(&mut self, i: isize) {
-        self.write(&i.to_ne_bytes())
+        self.write_usize(i as usize)
     }
 }
 
@@ -572,6 +570,10 @@ mod impls {
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
                     let newlen = data.len() * mem::size_of::<$ty>();
                     let ptr = data.as_ptr() as *const u8;
+                    // SAFETY: `ptr` is valid and aligned, as this macro is only used
+                    // for numeric primitives which have no padding. The new slice only
+                    // spans across `data` and is never mutated, and its total size is the
+                    // same as the original `data` so it can't be over `isize::MAX`.
                     state.write(unsafe { slice::from_raw_parts(ptr, newlen) })
                 }
             }
@@ -691,6 +693,11 @@ mod impls {
                 state.write_usize(*self as *const () as usize);
             } else {
                 // Fat pointer
+                // SAFETY: we are accessing the memory occupied by `self`
+                // which is guaranteed to be valid.
+                // This assumes a fat pointer can be represented by a `(usize, usize)`,
+                // which is safe to do in `std` because it is shipped and kept in sync
+                // with the implementation of fat pointers in `rustc`.
                 let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
                 state.write_usize(a);
                 state.write_usize(b);
@@ -706,6 +713,11 @@ mod impls {
                 state.write_usize(*self as *const () as usize);
             } else {
                 // Fat pointer
+                // SAFETY: we are accessing the memory occupied by `self`
+                // which is guaranteed to be valid.
+                // This assumes a fat pointer can be represented by a `(usize, usize)`,
+                // which is safe to do in `std` because it is shipped and kept in sync
+                // with the implementation of fat pointers in `rustc`.
                 let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
                 state.write_usize(a);
                 state.write_usize(b);

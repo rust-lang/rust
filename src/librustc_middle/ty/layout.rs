@@ -4,13 +4,15 @@ use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
-use rustc_ast::ast::{self, Ident, IntTy, UintTy};
+use rustc_ast::ast::{self, IntTy, UintTy};
 use rustc_attr as attr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
+use rustc_hir::lang_items::{GeneratorStateLangItem, PinTypeLangItem};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, Conv, FnAbi, PassMode, Reg, RegKind,
@@ -70,8 +72,8 @@ impl IntegerExt for Integer {
     }
 
     /// Finds the appropriate Integer type and signedness for the given
-    /// signed discriminant range and #[repr] attribute.
-    /// N.B.: u128 values above i128::MAX will be treated as signed, but
+    /// signed discriminant range and `#[repr]` attribute.
+    /// N.B.: `u128` values above `i128::MAX` will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
     fn repr_discr<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -185,10 +187,9 @@ fn layout_raw<'tcx>(
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Result<&'tcx Layout, LayoutError<'tcx>> {
     ty::tls::with_related_context(tcx, move |icx| {
-        let rec_limit = *tcx.sess.recursion_limit.get();
         let (param_env, ty) = query.into_parts();
 
-        if icx.layout_depth > rec_limit {
+        if !tcx.sess.recursion_limit().value_within_limit(icx.layout_depth) {
             tcx.sess.fatal(&format!("overflow representing the type `{}`", ty));
         }
 
@@ -209,7 +210,7 @@ fn layout_raw<'tcx>(
     })
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { layout_raw, ..*providers };
 }
 
@@ -526,7 +527,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 size: Size::ZERO,
             }),
 
-            // Potentially-fat pointers.
+            // Potentially-wide pointers.
             ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let mut data_ptr = scalar_unit(Pointer);
                 if !ty.is_unsafe_ptr() {
@@ -973,13 +974,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                             return Ok(tcx.intern_layout(Layout {
                                 variants: Variants::Multiple {
-                                    discr: niche_scalar,
-                                    discr_kind: DiscriminantKind::Niche {
+                                    tag: niche_scalar,
+                                    tag_encoding: TagEncoding::Niche {
                                         dataful_variant: i,
                                         niche_variants,
                                         niche_start,
                                     },
-                                    discr_index: 0,
+                                    tag_field: 0,
                                     variants: st,
                                 },
                                 fields: FieldsShape::Arbitrary {
@@ -1215,9 +1216,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 tcx.intern_layout(Layout {
                     variants: Variants::Multiple {
-                        discr: tag,
-                        discr_kind: DiscriminantKind::Tag,
-                        discr_index: 0,
+                        tag,
+                        tag_encoding: TagEncoding::Direct,
+                        tag_field: 0,
                         variants: layout_variants,
                     },
                     fields: FieldsShape::Arbitrary {
@@ -1240,13 +1241,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.layout_raw(param_env.and(normalized))?
             }
 
-            ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::UnnormalizedProjection(..)
-            | ty::GeneratorWitness(..)
-            | ty::Infer(_) => bug!("Layout::compute: unexpected type `{}`", ty),
+            ty::Bound(..) | ty::Placeholder(..) | ty::GeneratorWitness(..) | ty::Infer(_) => {
+                bug!("Layout::compute: unexpected type `{}`", ty)
+            }
 
-            ty::Param(_) | ty::Error => {
+            ty::Param(_) | ty::Error(_) => {
                 return Err(LayoutError::Unknown(ty));
             }
         })
@@ -1400,15 +1399,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Build a prefix layout, including "promoting" all ineligible
         // locals as part of the prefix. We compute the layout of all of
         // these fields at once to get optimal packing.
-        let discr_index = substs.as_generator().prefix_tys().count();
+        let tag_index = substs.as_generator().prefix_tys().count();
 
         // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
         let max_discr = (info.variant_fields.len() - 1) as u128;
         let discr_int = Integer::fit_unsigned(max_discr);
         let discr_int_ty = discr_int.to_ty(tcx, false);
-        let discr = Scalar { value: Primitive::Int(discr_int, false), valid_range: 0..=max_discr };
-        let discr_layout = self.tcx.intern_layout(Layout::scalar(self, discr.clone()));
-        let discr_layout = TyAndLayout { ty: discr_int_ty, layout: discr_layout };
+        let tag = Scalar { value: Primitive::Int(discr_int, false), valid_range: 0..=max_discr };
+        let tag_layout = self.tcx.intern_layout(Layout::scalar(self, tag.clone()));
+        let tag_layout = TyAndLayout { ty: discr_int_ty, layout: tag_layout };
 
         let promoted_layouts = ineligible_locals
             .iter()
@@ -1419,7 +1418,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             .as_generator()
             .prefix_tys()
             .map(|ty| self.layout_of(ty))
-            .chain(iter::once(Ok(discr_layout)))
+            .chain(iter::once(Ok(tag_layout)))
             .chain(promoted_layouts)
             .collect::<Result<Vec<_>, _>>()?;
         let prefix = self.univariant_uninterned(
@@ -1442,7 +1441,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
                 // "outer" and "promoted" fields respectively.
-                let b_start = (discr_index + 1) as u32;
+                let b_start = (tag_index + 1) as u32;
                 let offsets_b = offsets.split_off(b_start as usize);
                 let offsets_a = offsets;
 
@@ -1559,9 +1558,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let layout = tcx.intern_layout(Layout {
             variants: Variants::Multiple {
-                discr,
-                discr_kind: DiscriminantKind::Tag,
-                discr_index,
+                tag: tag,
+                tag_encoding: TagEncoding::Direct,
+                tag_field: tag_index,
                 variants,
             },
             fields: outer_fields,
@@ -1589,7 +1588,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // Ignore layouts that are done with non-empty environments or
         // non-monomorphic layouts, as the user only wants to see the stuff
         // resulting from the final codegen session.
-        if layout.ty.has_param_types_or_consts() || !self.param_env.caller_bounds.is_empty() {
+        if layout.ty.has_param_types_or_consts() || !self.param_env.caller_bounds().is_empty() {
             return;
         }
 
@@ -1628,9 +1627,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let adt_kind = adt_def.adt_kind();
         let adt_packed = adt_def.repr.pack.is_some();
 
-        let build_variant_info = |n: Option<Ident>,
-                                  flds: &[ast::Name],
-                                  layout: TyAndLayout<'tcx>| {
+        let build_variant_info = |n: Option<Ident>, flds: &[Symbol], layout: TyAndLayout<'tcx>| {
             let mut min_size = Size::ZERO;
             let field_info: Vec<_> = flds
                 .iter()
@@ -1683,7 +1680,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
             }
 
-            Variants::Multiple { ref discr, ref discr_kind, .. } => {
+            Variants::Multiple { ref tag, ref tag_encoding, .. } => {
                 debug!(
                     "print-type-size `{:#?}` adt general variants def {}",
                     layout.ty,
@@ -1705,8 +1702,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 record(
                     adt_kind.into(),
                     adt_packed,
-                    match discr_kind {
-                        DiscriminantKind::Tag => Some(discr.value.size(self)),
+                    match tag_encoding {
+                        TagEncoding::Direct => Some(tag.value.size(self)),
                         _ => None,
                     },
                     variant_infos,
@@ -2004,6 +2001,8 @@ where
                 }
 
                 let fields = match this.ty.kind {
+                    ty::Adt(def, _) if def.variants.is_empty() =>
+                        bug!("for_variant called on zero-variant enum"),
                     ty::Adt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!(),
                 };
@@ -2031,11 +2030,11 @@ where
 
     fn field(this: TyAndLayout<'tcx>, cx: &C, i: usize) -> C::TyAndLayout {
         let tcx = cx.tcx();
-        let discr_layout = |discr: &Scalar| -> C::TyAndLayout {
-            let layout = Layout::scalar(cx, discr.clone());
+        let tag_layout = |tag: &Scalar| -> C::TyAndLayout {
+            let layout = Layout::scalar(cx, tag.clone());
             MaybeResult::from(Ok(TyAndLayout {
                 layout: tcx.intern_layout(layout),
-                ty: discr.value.to_ty(tcx),
+                ty: tag.value.to_ty(tcx),
             }))
         };
 
@@ -2112,9 +2111,9 @@ where
                     .unwrap()
                     .nth(i)
                     .unwrap(),
-                Variants::Multiple { ref discr, discr_index, .. } => {
-                    if i == discr_index {
-                        return discr_layout(discr);
+                Variants::Multiple { ref tag, tag_field, .. } => {
+                    if i == tag_field {
+                        return tag_layout(tag);
                     }
                     substs.as_generator().prefix_tys().nth(i).unwrap()
                 }
@@ -2131,21 +2130,20 @@ where
                     Variants::Single { index } => def.variants[index].fields[i].ty(tcx, substs),
 
                     // Discriminant field for enums (where applicable).
-                    Variants::Multiple { ref discr, .. } => {
+                    Variants::Multiple { ref tag, .. } => {
                         assert_eq!(i, 0);
-                        return discr_layout(discr);
+                        return tag_layout(tag);
                     }
                 }
             }
 
             ty::Projection(_)
-            | ty::UnnormalizedProjection(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Opaque(..)
             | ty::Param(_)
             | ty::Infer(_)
-            | ty::Error => bug!("TyAndLayout::field_type: unexpected type `{}`", this.ty),
+            | ty::Error(_) => bug!("TyAndLayout::field_type: unexpected type `{}`", this.ty),
         })
     }
 
@@ -2161,7 +2159,7 @@ where
 
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 let tcx = cx.tcx();
-                let is_freeze = ty.is_freeze(tcx, cx.param_env(), DUMMY_SP);
+                let is_freeze = ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env());
                 let kind = match mt {
                     hir::Mutability::Not => {
                         if is_freeze {
@@ -2211,10 +2209,10 @@ where
                     // using more niches than just null (e.g., the first page of
                     // the address space, or unaligned pointers).
                     Variants::Multiple {
-                        discr_kind: DiscriminantKind::Niche { dataful_variant, .. },
-                        discr_index,
+                        tag_encoding: TagEncoding::Niche { dataful_variant, .. },
+                        tag_field,
                         ..
-                    } if this.fields.offset(discr_index) == offset => {
+                    } if this.fields.offset(tag_field) == offset => {
                         Some(this.for_variant(cx, dataful_variant))
                     }
                     _ => Some(this),
@@ -2305,7 +2303,7 @@ impl<'tcx> ty::Instance<'tcx> {
 
                 let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
                 sig.map_bound(|sig| tcx.mk_fn_sig(
-                    iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                    iter::once(env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
                     sig.output(),
                     sig.c_variadic,
                     sig.unsafety,
@@ -2318,13 +2316,13 @@ impl<'tcx> ty::Instance<'tcx> {
                 let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
-                let pin_did = tcx.lang_items().pin_type().unwrap();
+                let pin_did = tcx.require_lang_item(PinTypeLangItem, None);
                 let pin_adt_ref = tcx.adt_def(pin_did);
                 let pin_substs = tcx.intern_substs(&[env_ty.into()]);
                 let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
                 sig.map_bound(|sig| {
-                    let state_did = tcx.lang_items().gen_state().unwrap();
+                    let state_did = tcx.require_lang_item(GeneratorStateLangItem, None);
                     let state_adt_ref = tcx.adt_def(state_did);
                     let state_substs = tcx.intern_substs(&[
                         sig.yield_ty.into(),
@@ -2533,6 +2531,8 @@ where
             Msp430Interrupt => Conv::Msp430Intr,
             X86Interrupt => Conv::X86Intr,
             AmdGpuKernel => Conv::AmdGpuKernel,
+            AvrInterrupt => Conv::AvrInterrupt,
+            AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
 
             // These API constants ought to be more specific...
             Cdecl => Conv::C,
@@ -2607,7 +2607,7 @@ where
 
                     // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
                     // for the entire duration of the function as they can be deallocated
-                    // any time. Set their valid size to 0.
+                    // at any time. Set their valid size to 0.
                     attrs.pointee_size = match kind {
                         PointerKind::UniqueOwned => Size::ZERO,
                         _ => pointee.size,

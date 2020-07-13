@@ -1,10 +1,8 @@
 error[E0641]: cannot cast to a pointer of an unknown kind
-  --> $DIR/order-dependent-cast-inference.rs:5:17
+  --> $DIR/order-dependent-cast-inference.rs:5:22
    |
 LL |     let mut y = 0 as *const _;
-   |                 ^^^^^--------
-   |                      |
-   |                      help: consider giving more type information
+   |                      ^^^^^^^^ needs more type information
    |
    = note: the type information given here is insufficient to check whether the pointer cast is valid
 

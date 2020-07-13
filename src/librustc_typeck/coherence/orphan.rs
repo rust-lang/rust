@@ -35,7 +35,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
             let trait_def_id = trait_ref.def_id;
             let sm = self.tcx.sess.source_map();
             let sp = sm.guess_head_span(item.span);
-            match traits::orphan_check(self.tcx, def_id) {
+            match traits::orphan_check(self.tcx, def_id.to_def_id()) {
                 Ok(()) => {}
                 Err(traits::OrphanCheckErr::NonLocalInputType(tys)) => {
                     let mut err = struct_span_err!(

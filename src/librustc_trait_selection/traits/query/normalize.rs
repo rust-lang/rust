@@ -7,6 +7,7 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::error_reporting::InferCtxtExt;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
@@ -103,15 +104,15 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // (*)
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
-                match self.param_env.reveal {
+                match self.param_env.reveal() {
                     Reveal::UserFacing => ty,
 
                     Reveal::All => {
-                        let recursion_limit = *self.tcx().sess.recursion_limit.get();
-                        if self.anon_depth >= recursion_limit {
+                        let recursion_limit = self.tcx().sess.recursion_limit();
+                        if !recursion_limit.value_within_limit(self.anon_depth) {
                             let obligation = Obligation::with_depth(
                                 self.cause.clone(),
-                                recursion_limit,
+                                recursion_limit.0,
                                 self.param_env,
                                 ty,
                             );
@@ -131,7 +132,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                                 ty
                             );
                         }
-                        let folded_ty = self.fold_ty(concrete_ty);
+                        let folded_ty = ensure_sufficient_stack(|| self.fold_ty(concrete_ty));
                         self.anon_depth -= 1;
                         folded_ty
                     }
@@ -144,7 +145,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // handle normalization within binders because
                 // otherwise we wind up a need to normalize when doing
                 // trait matching (since you can have a trait
-                // obligation like `for<'a> T::B : Fn(&'a int)`), but
+                // obligation like `for<'a> T::B: Fn(&'a i32)`), but
                 // we can't normalize with bound regions in scope. So
                 // far now we just ignore binders but only normalize
                 // if all bound regions are gone (and then we still

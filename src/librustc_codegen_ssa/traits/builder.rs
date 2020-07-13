@@ -1,5 +1,6 @@
 use super::abi::AbiBuilderMethods;
 use super::asm::AsmBuilderMethods;
+use super::coverageinfo::CoverageInfoBuilderMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgAbiMethods;
@@ -29,6 +30,7 @@ pub enum OverflowOp {
 
 pub trait BuilderMethods<'a, 'tcx>:
     HasCodegen<'tcx>
+    + CoverageInfoBuilderMethods<'tcx>
     + DebugInfoBuilderMethods
     + ArgAbiMethods<'tcx>
     + AbiBuilderMethods<'tcx>
@@ -156,6 +158,8 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    fn fptoui_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Option<Self::Value>;
+    fn fptosi_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Option<Self::Value>;
     fn fptoui(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptosi(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn uitofp(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
@@ -259,6 +263,14 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     /// Called for `StorageDead`
     fn lifetime_end(&mut self, ptr: Self::Value, size: Size);
+
+    fn instrprof_increment(
+        &mut self,
+        fn_name: Self::Value,
+        hash: Self::Value,
+        num_counters: Self::Value,
+        index: Self::Value,
+    ) -> Self::Value;
 
     fn call(
         &mut self,

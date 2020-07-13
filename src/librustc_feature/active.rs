@@ -238,6 +238,7 @@ declare_features! (
     (active, movbe_target_feature, "1.34.0", Some(44839), None),
     (active, rtm_target_feature, "1.35.0", Some(44839), None),
     (active, f16c_target_feature, "1.36.0", Some(44839), None),
+    (active, riscv_target_feature, "1.45.0", Some(44839), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates (target features)
@@ -400,9 +401,6 @@ declare_features! (
     /// Allows dereferencing raw pointers during const eval.
     (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
 
-    /// Allows comparing raw pointers during const eval.
-    (active, const_compare_raw_pointers, "1.27.0", Some(53020), None),
-
     /// Allows `#[doc(alias = "...")]`.
     (active, doc_alias, "1.27.0", Some(50146), None),
 
@@ -430,8 +428,7 @@ declare_features! (
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (active, marker_trait_attr, "1.30.0", Some(29864), None),
 
-    /// Allows macro invocations on modules expressions and statements and
-    /// procedural macros to expand to non-items.
+    /// Allows macro attributes on expressions, statements and non-inline modules.
     (active, proc_macro_hygiene, "1.30.0", Some(54727), None),
 
     /// Allows unsized rvalues at arguments and parameters.
@@ -497,10 +494,6 @@ declare_features! (
     /// Allows the use of raw-dylibs (RFC 2627).
     (active, raw_dylib, "1.40.0", Some(58713), None),
 
-    /// Allows `#[track_caller]` to be used which provides
-    /// accurate caller location reporting during panic (RFC 2091).
-    (active, track_caller, "1.40.0", Some(47809), None),
-
     /// Allows making `dyn Trait` well-formed even if `Trait` is not object safe.
     /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
@@ -521,9 +514,6 @@ declare_features! (
     /// Allows using the `#[register_tool]` attribute.
     (active, register_tool, "1.41.0", Some(66079), None),
 
-    /// Allows the use of `if` and `match` in constants.
-    (active, const_if_match, "1.41.0", Some(49146), None),
-
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
 
@@ -532,9 +522,6 @@ declare_features! (
 
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
-
-    /// Allows the use of `loop` and `while` in constants.
-    (active, const_loop, "1.41.0", Some(52000), None),
 
     /// Allows bindings in the subpattern of a binding pattern.
     /// For example, you can write `x @ Some(y)`.
@@ -559,6 +546,36 @@ declare_features! (
     /// Allow negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
 
+    /// Allows the use of `#[target_feature]` on safe functions.
+    (active, target_feature_11, "1.45.0", Some(69098), None),
+
+    /// Allow conditional compilation depending on rust version
+    (active, cfg_version, "1.45.0", Some(64796), None),
+
+    /// Allows the use of `#[ffi_pure]` on foreign functions.
+    (active, ffi_pure, "1.45.0", Some(58329), None),
+
+    /// Allows the use of `#[ffi_const]` on foreign functions.
+    (active, ffi_const, "1.45.0", Some(58328), None),
+
+    /// No longer treat an unsafe function as an unsafe block.
+    (active, unsafe_block_in_unsafe_fn, "1.45.0", Some(71668), None),
+
+    /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
+    (active, abi_avr_interrupt, "1.45.0", Some(69664), None),
+
+    /// Be more precise when looking for live drops in a const context.
+    (active, const_precise_live_drops, "1.46.0", Some(73255), None),
+
+    /// Allows capturing variables in scope using format_args!
+    (active, format_args_capture, "1.46.0", Some(67984), None),
+
+    /// Lazily evaluate constants. This allows constants to depend on type parameters.
+    (active, lazy_normalization_consts, "1.46.0", Some(72219), None),
+
+    /// Alloc calling `transmute` in const fn
+    (active, const_fn_transmute, "1.46.0", Some(53605), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -575,4 +592,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::raw_dylib,
     sym::const_trait_impl,
     sym::const_trait_bound_opt_out,
+    sym::lazy_normalization_consts,
+    sym::specialization,
 ];

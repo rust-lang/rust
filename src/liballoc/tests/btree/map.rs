@@ -28,10 +28,8 @@ const MIN_INSERTS_HEIGHT_2: usize = NODE_CAPACITY + (NODE_CAPACITY + 1) * NODE_C
 #[test]
 fn test_basic_large() {
     let mut map = BTreeMap::new();
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 10000;
-    #[cfg(miri)]
-    let size = MIN_INSERTS_HEIGHT_2;
+    // Miri is too slow
+    let size = if cfg!(miri) { MIN_INSERTS_HEIGHT_2 } else { 10000 };
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -155,10 +153,8 @@ fn test_basic_small() {
 
 #[test]
 fn test_iter() {
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 10000;
-    #[cfg(miri)]
-    let size = 200;
+    // Miri is too slow
+    let size = if cfg!(miri) { 200 } else { 10000 };
 
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
@@ -180,10 +176,8 @@ fn test_iter() {
 
 #[test]
 fn test_iter_rev() {
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 10000;
-    #[cfg(miri)]
-    let size = 200;
+    // Miri is too slow
+    let size = if cfg!(miri) { 200 } else { 10000 };
 
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
@@ -289,10 +283,8 @@ fn test_values_mut() {
 
 #[test]
 fn test_iter_mixed() {
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 10000;
-    #[cfg(miri)]
-    let size = 200;
+    // Miri is too slow
+    let size = if cfg!(miri) { 200 } else { 10000 };
 
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
@@ -315,6 +307,42 @@ fn test_iter_mixed() {
     test(size, map.iter().map(|(&k, &v)| (k, v)));
     test(size, map.iter_mut().map(|(&k, &mut v)| (k, v)));
     test(size, map.into_iter());
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // FIXME: fails in Miri <https://github.com/rust-lang/rust/issues/73915>
+fn test_iter_min_max() {
+    let mut a = BTreeMap::new();
+    assert_eq!(a.iter().min(), None);
+    assert_eq!(a.iter().max(), None);
+    assert_eq!(a.iter_mut().min(), None);
+    assert_eq!(a.iter_mut().max(), None);
+    assert_eq!(a.range(..).min(), None);
+    assert_eq!(a.range(..).max(), None);
+    assert_eq!(a.range_mut(..).min(), None);
+    assert_eq!(a.range_mut(..).max(), None);
+    assert_eq!(a.keys().min(), None);
+    assert_eq!(a.keys().max(), None);
+    assert_eq!(a.values().min(), None);
+    assert_eq!(a.values().max(), None);
+    assert_eq!(a.values_mut().min(), None);
+    assert_eq!(a.values_mut().max(), None);
+    a.insert(1, 42);
+    a.insert(2, 24);
+    assert_eq!(a.iter().min(), Some((&1, &42)));
+    assert_eq!(a.iter().max(), Some((&2, &24)));
+    assert_eq!(a.iter_mut().min(), Some((&1, &mut 42)));
+    assert_eq!(a.iter_mut().max(), Some((&2, &mut 24)));
+    assert_eq!(a.range(..).min(), Some((&1, &42)));
+    assert_eq!(a.range(..).max(), Some((&2, &24)));
+    assert_eq!(a.range_mut(..).min(), Some((&1, &mut 42)));
+    assert_eq!(a.range_mut(..).max(), Some((&2, &mut 24)));
+    assert_eq!(a.keys().min(), Some(&1));
+    assert_eq!(a.keys().max(), Some(&2));
+    assert_eq!(a.values().min(), Some(&24));
+    assert_eq!(a.values().max(), Some(&42));
+    assert_eq!(a.values_mut().min(), Some(&mut 24));
+    assert_eq!(a.values_mut().max(), Some(&mut 42));
 }
 
 fn range_keys(map: &BTreeMap<i32, i32>, range: impl RangeBounds<i32>) -> Vec<i32> {
@@ -525,10 +553,8 @@ fn test_range_backwards_4() {
 
 #[test]
 fn test_range_1000() {
-    #[cfg(not(miri))] // Miri is too slow
-    let size = 1000;
-    #[cfg(miri)]
-    let size = MIN_INSERTS_HEIGHT_2 as u32;
+    // Miri is too slow
+    let size = if cfg!(miri) { MIN_INSERTS_HEIGHT_2 as u32 } else { 1000 };
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
@@ -566,10 +592,8 @@ fn test_range_borrowed_key() {
 #[test]
 fn test_range() {
     let size = 200;
-    #[cfg(not(miri))] // Miri is too slow
-    let step = 1;
-    #[cfg(miri)]
-    let step = 66;
+    // Miri is too slow
+    let step = if cfg!(miri) { 66 } else { 1 };
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     for i in (0..size).step_by(step) {
@@ -589,10 +613,8 @@ fn test_range() {
 #[test]
 fn test_range_mut() {
     let size = 200;
-    #[cfg(not(miri))] // Miri is too slow
-    let step = 1;
-    #[cfg(miri)]
-    let step = 66;
+    // Miri is too slow
+    let step = if cfg!(miri) { 66 } else { 1 };
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     for i in (0..size).step_by(step) {
@@ -1263,10 +1285,8 @@ fn test_split_off_empty_left() {
 
 #[test]
 fn test_split_off_large_random_sorted() {
-    #[cfg(not(miri))] // Miri is too slow
-    let mut data = rand_data(1529);
-    #[cfg(miri)]
-    let mut data = rand_data(529);
+    // Miri is too slow
+    let mut data = if cfg!(miri) { rand_data(529) } else { rand_data(1529) };
     // special case with maximum height.
     data.sort();
 

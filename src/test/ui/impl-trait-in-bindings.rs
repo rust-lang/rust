@@ -1,7 +1,7 @@
 // run-pass
 
 #![feature(impl_trait_in_bindings)]
-//~^ WARN the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash
+//~^ WARN the feature `impl_trait_in_bindings` is incomplete
 
 use std::fmt::Debug;
 

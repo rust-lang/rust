@@ -19,7 +19,7 @@
 //! For a more detailed look at what is happening here, check
 //! out the [chapter in the rustc dev guide][c].
 //!
-//! [c]: https://rustc-dev-guide.rust-lang.org/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
@@ -87,7 +87,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ) -> CanonicalVarValues<'tcx> {
         let var_values: IndexVec<BoundVar, GenericArg<'tcx>> = variables
             .iter()
-            .map(|info| self.instantiate_canonical_var(span, *info, &universe_map))
+            .map(|info| self.instantiate_canonical_var(span, info, &universe_map))
             .collect();
 
         CanonicalVarValues { var_values }
@@ -154,7 +154,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 self.tcx
                     .mk_const(ty::Const {
                         val: ty::ConstKind::Placeholder(placeholder_mapped),
-                        ty: self.tcx.types.err, // FIXME(const_generics)
+                        ty: self.tcx.ty_error(), // FIXME(const_generics)
                     })
                     .into()
             }

@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 use crate::io::prelude::*;
 
 use crate::fmt;
@@ -577,8 +578,14 @@ impl Read for TcpStream {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -589,6 +596,11 @@ impl Write for TcpStream {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -606,8 +618,14 @@ impl Read for &TcpStream {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -618,6 +636,11 @@ impl Write for &TcpStream {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
     }
 
     fn flush(&mut self) -> io::Result<()> {

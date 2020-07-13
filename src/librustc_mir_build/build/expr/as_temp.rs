@@ -3,10 +3,10 @@
 use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
+use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_hir as hir;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_hir as hir;
-use rustc_span::symbol::sym;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
@@ -22,7 +22,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         M: Mirror<'tcx, Output = Expr<'tcx>>,
     {
         let expr = self.hir.mirror(expr);
-        self.expr_as_temp(block, temp_lifetime, expr, mutability)
+        //
+        // this is the only place in mir building that we need to truly need to worry about
+        // infinite recursion. Everything else does recurse, too, but it always gets broken up
+        // at some point by inserting an intermediate temporary
+        ensure_sufficient_stack(|| self.expr_as_temp(block, temp_lifetime, expr, mutability))
     }
 
     fn expr_as_temp(
@@ -48,7 +52,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let expr_ty = expr.ty;
         let temp = {
-            let mut local_decl = LocalDecl::new_temp(expr_ty, expr_span);
+            let mut local_decl = LocalDecl::new(expr_ty, expr_span);
             if mutability == Mutability::Not {
                 local_decl = local_decl.immutable();
             }
@@ -59,10 +63,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Some(tail_info) = this.block_context.currently_in_block_tail() {
                 local_decl = local_decl.block_tail(tail_info);
             }
-            if let ExprKind::StaticRef { def_id, .. } = expr.kind {
-                let is_thread_local = this.hir.tcx().has_attr(def_id, sym::thread_local);
-                local_decl.internal = true;
-                local_decl.local_info = LocalInfo::StaticRef { def_id, is_thread_local };
+            match expr.kind {
+                ExprKind::StaticRef { def_id, .. } => {
+                    assert!(!this.hir.tcx().is_thread_local_static(def_id));
+                    local_decl.internal = true;
+                    local_decl.local_info = Some(box LocalInfo::StaticRef { def_id, is_thread_local: false });
+                }
+                ExprKind::ThreadLocalRef(def_id) => {
+                    assert!(this.hir.tcx().is_thread_local_static(def_id));
+                    local_decl.internal = true;
+                    local_decl.local_info = Some(box LocalInfo::StaticRef { def_id, is_thread_local: true });
+                }
+                _ => {}
             }
             this.local_decls.push(local_decl)
         };

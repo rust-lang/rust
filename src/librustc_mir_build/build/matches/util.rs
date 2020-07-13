@@ -85,7 +85,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(
                     from_block,
                     source_info,
-                    TerminatorKind::FalseEdges { real_target, imaginary_target: target },
+                    TerminatorKind::FalseEdge { real_target, imaginary_target: target },
                 );
             }
             _ => self.cfg.goto(from_block, source_info, real_target),

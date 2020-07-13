@@ -209,7 +209,7 @@ pub fn get_real_types(
                                 res.extend(adds);
                             } else if !ty.is_full_generic() {
                                 if let Some(kind) =
-                                    ty.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx))
+                                    ty.def_id().map(|did| cx.tcx.def_kind(did).clean(cx))
                                 {
                                     res.insert((ty, kind));
                                 }
@@ -226,9 +226,7 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     } else if !ty.is_full_generic() {
-                        if let Some(kind) =
-                            ty.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx))
-                        {
+                        if let Some(kind) = ty.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
                             res.insert((ty.clone(), kind));
                         }
                     }
@@ -236,7 +234,7 @@ pub fn get_real_types(
             }
         }
     } else {
-        if let Some(kind) = arg.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx)) {
+        if let Some(kind) = arg.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
             res.insert((arg.clone(), kind));
         }
         if let Some(gens) = arg.generics() {
@@ -246,9 +244,7 @@ pub fn get_real_types(
                     if !adds.is_empty() {
                         res.extend(adds);
                     }
-                } else if let Some(kind) =
-                    gen.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx))
-                {
+                } else if let Some(kind) = gen.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
                     res.insert((gen.clone(), kind));
                 }
             }
@@ -275,7 +271,7 @@ pub fn get_all_types(
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            if let Some(kind) = arg.type_.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx)) {
+            if let Some(kind) = arg.type_.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
                 all_types.insert((arg.type_.clone(), kind));
             }
         }
@@ -285,9 +281,7 @@ pub fn get_all_types(
         FnRetTy::Return(ref return_type) => {
             let mut ret = get_real_types(generics, &return_type, cx, 0);
             if ret.is_empty() {
-                if let Some(kind) =
-                    return_type.def_id().and_then(|did| cx.tcx.def_kind(did).clean(cx))
-                {
+                if let Some(kind) = return_type.def_id().map(|did| cx.tcx.def_kind(did).clean(cx)) {
                     ret.insert((return_type.clone(), kind));
                 }
             }
@@ -334,7 +328,7 @@ pub fn strip_path(path: &Path) -> Path {
     Path { global: path.global, res: path.res, segments }
 }
 
-pub fn qpath_to_string(p: &hir::QPath) -> String {
+pub fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, ref path) => &path.segments,
         hir::QPath::TypeRelative(_, ref segment) => return segment.ident.to_string(),
@@ -423,7 +417,7 @@ impl ToSource for rustc_span::Span {
     }
 }
 
-pub fn name_from_pat(p: &hir::Pat) -> String {
+pub fn name_from_pat(p: &hir::Pat<'_>) -> String {
     use rustc_hir::*;
     debug!("trying to get a name from pattern: {:?}", p);
 
@@ -473,7 +467,8 @@ pub fn name_from_pat(p: &hir::Pat) -> String {
 pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
         ty::ConstKind::Unevaluated(def_id, _, promoted) => {
-            let mut s = if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
+            let mut s = if let Some(def_id) = def_id.as_local() {
+                let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
                 print_const_expr(cx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
                 inline::print_inlined_const(cx, def_id)
@@ -486,8 +481,8 @@ pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
         _ => {
             let mut s = n.to_string();
             // array lengths are obviously usize
-            if s.ends_with("usize") {
-                let n = s.len() - "usize".len();
+            if s.ends_with("_usize") {
+                let n = s.len() - "_usize".len();
                 s.truncate(n);
                 if s.ends_with(": ") {
                     let n = s.len() - ": ".len();

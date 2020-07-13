@@ -49,7 +49,6 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use crate::mir;
 use crate::mir::interpret::{GlobalId, LitToConstInput};
 use crate::traits;
 use crate::traits::query::{
@@ -129,7 +128,7 @@ macro_rules! define_dep_nodes {
                             // tuple args
                             $({
                                 return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
-                                    ::CAN_RECONSTRUCT_QUERY_KEY;
+                                    ::can_reconstruct_query_key();
                             })*
 
                             true
@@ -183,31 +182,10 @@ macro_rules! define_dep_nodes {
                     // tuple args
                     $({
                         erase!($tuple_arg_ty);
-                        let hash = DepNodeParams::to_fingerprint(&arg, _tcx);
-                        let dep_node = DepNode {
-                            kind: DepKind::$variant,
-                            hash
-                        };
-
-                        #[cfg(debug_assertions)]
-                        {
-                            if !dep_node.kind.can_reconstruct_query_key() &&
-                            (_tcx.sess.opts.debugging_opts.incremental_info ||
-                                _tcx.sess.opts.debugging_opts.query_dep_graph)
-                            {
-                                _tcx.dep_graph.register_dep_node_debug_str(dep_node, || {
-                                    arg.to_debug_str(_tcx)
-                                });
-                            }
-                        }
-
-                        return dep_node;
+                        return DepNode::construct(_tcx, DepKind::$variant, &arg)
                     })*
 
-                    DepNode {
-                        kind: DepKind::$variant,
-                        hash: Fingerprint::ZERO,
-                    }
+                    return DepNode::construct(_tcx, DepKind::$variant, &())
                 }
             )*
         }
@@ -326,7 +304,10 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 ]);
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         tcx.def_path_hash(*self).0
@@ -342,7 +323,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         self.to_def_id().to_fingerprint(tcx)
@@ -358,7 +342,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
@@ -375,7 +362,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        false
+    }
 
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full
@@ -397,7 +387,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        false
+    }
 
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full

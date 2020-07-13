@@ -1,7 +1,7 @@
 use crate::ty::fold::{TypeFoldable, TypeFolder};
 use crate::ty::{self, Ty, TyCtxt, TypeFlags};
 
-pub(super) fn provide(providers: &mut ty::query::Providers<'_>) {
+pub(super) fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { erase_regions_ty, ..*providers };
 }
 

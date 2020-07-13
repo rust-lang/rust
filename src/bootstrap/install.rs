@@ -32,6 +32,9 @@ pub fn install_cargo(builder: &Builder<'_>, stage: u32, host: Interned<String>) 
 pub fn install_rls(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "rls", "rls", stage, Some(host));
 }
+pub fn install_rust_analyzer(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
+    install_sh(builder, "rust-analyzer", "rust-analyzer", stage, Some(host));
+}
 pub fn install_clippy(builder: &Builder<'_>, stage: u32, host: Interned<String>) {
     install_sh(builder, "clippy", "clippy", stage, Some(host));
 }
@@ -70,7 +73,10 @@ fn install_sh(
     let libdir_default = PathBuf::from("lib");
     let mandir_default = datadir_default.join("man");
     let prefix = builder.config.prefix.as_ref().map_or(prefix_default, |p| {
-        fs::canonicalize(p).unwrap_or_else(|_| panic!("could not canonicalize {}", p.display()))
+        fs::create_dir_all(p)
+            .unwrap_or_else(|err| panic!("could not create {}: {}", p.display(), err));
+        fs::canonicalize(p)
+            .unwrap_or_else(|err| panic!("could not canonicalize {}: {}", p.display(), err))
     });
     let sysconfdir = builder.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
     let datadir = builder.config.datadir.as_ref().unwrap_or(&datadir_default);
@@ -213,11 +219,19 @@ install!((self, builder, _config),
             );
         }
     };
+    RustAnalyzer, "rust-analyzer", Self::should_build(_config), only_hosts: true, {
+        builder.ensure(dist::RustAnalyzer { compiler: self.compiler, target: self.target });
+        if Self::should_install(builder) {
+            install_rust_analyzer(builder, self.compiler.stage, self.target);
+        } else {
+            builder.info(
+                &format!("skipping Install rust-analyzer stage{} ({})", self.compiler.stage, self.target),
+            );
+        }
+    };
     Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Clippy {
-            compiler: self.compiler,
-            target: self.target,
-        }).is_some() || Self::should_install(builder) {
+        builder.ensure(dist::Clippy { compiler: self.compiler, target: self.target });
+        if Self::should_install(builder) {
             install_clippy(builder, self.compiler.stage, self.target);
         } else {
             builder.info(

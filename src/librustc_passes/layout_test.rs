@@ -1,6 +1,6 @@
 use rustc_ast::ast::Attribute;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::ItemKind;
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, TyAndLayout};
@@ -27,9 +27,8 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
             ItemKind::TyAlias(..)
             | ItemKind::Enum(..)
             | ItemKind::Struct(..)
-            | ItemKind::Union(..)
-            | ItemKind::OpaqueTy(..) => {
-                for attr in self.tcx.get_attrs(item_def_id).iter() {
+            | ItemKind::Union(..) => {
+                for attr in self.tcx.get_attrs(item_def_id.to_def_id()).iter() {
                     if attr.check_name(sym::rustc_layout) {
                         self.dump_layout_of(item_def_id, item, attr);
                     }
@@ -44,7 +43,7 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
 }
 
 impl LayoutTest<'tcx> {
-    fn dump_layout_of(&self, item_def_id: DefId, item: &hir::Item<'tcx>, attr: &Attribute) {
+    fn dump_layout_of(&self, item_def_id: LocalDefId, item: &hir::Item<'tcx>, attr: &Attribute) {
         let tcx = self.tcx;
         let param_env = self.tcx.param_env(item_def_id);
         let ty = self.tcx.type_of(item_def_id);
@@ -83,9 +82,11 @@ impl LayoutTest<'tcx> {
                         }
 
                         sym::debug => {
+                            let normalized_ty =
+                                self.tcx.normalize_erasing_regions(param_env.with_reveal_all(), ty);
                             self.tcx.sess.span_err(
                                 item.span,
-                                &format!("layout_of({:?}) = {:#?}", ty, *ty_layout),
+                                &format!("layout_of({:?}) = {:#?}", normalized_ty, *ty_layout),
                             );
                         }
 

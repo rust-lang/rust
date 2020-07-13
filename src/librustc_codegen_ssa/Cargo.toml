@@ -19,7 +19,7 @@ libc = "0.2.50"
 jobserver = "0.1.11"
 tempfile = "3.1"
 
-rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 rustc_middle = { path = "../librustc_middle" }
@@ -34,4 +34,3 @@ rustc_incremental = { path = "../librustc_incremental" }
 rustc_index = { path = "../librustc_index" }
 rustc_target = { path = "../librustc_target" }
 rustc_session = { path = "../librustc_session" }
-rustc_metadata = { path = "../librustc_metadata" }

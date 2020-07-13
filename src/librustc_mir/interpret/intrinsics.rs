@@ -7,16 +7,16 @@ use std::convert::TryFrom;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
     self,
-    interpret::{ConstValue, GlobalId, InterpResult, Scalar},
+    interpret::{uabs, ConstValue, GlobalId, InterpResult, Scalar},
     BinOp,
 };
 use rustc_middle::ty;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Abi, LayoutOf as _, Primitive, Size};
 
-use super::{ImmTy, InterpCx, Machine, OpTy, PlaceTy};
+use super::{CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy};
 
 mod caller_location;
 mod type_name;
@@ -69,6 +69,13 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ConstValue::from_machine_usize(n, &tcx)
         }
         sym::type_id => ConstValue::from_u64(tcx.type_id_hash(tp_ty)),
+        sym::variant_count => {
+            if let ty::Adt(ref adt, _) = tp_ty.kind {
+                ConstValue::from_machine_usize(adt.variants.len() as u64, &tcx)
+            } else {
+                ConstValue::from_machine_usize(0u64, &tcx)
+            }
+        }
         other => bug!("`{}` is not a zero arg intrinsic", other),
     })
 }
@@ -109,10 +116,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::needs_drop
             | sym::size_of
             | sym::type_id
-            | sym::type_name => {
+            | sym::type_name
+            | sym::variant_count => {
                 let gid = GlobalId { instance, promoted: None };
                 let ty = match intrinsic_name {
-                    sym::min_align_of | sym::pref_align_of | sym::size_of => self.tcx.types.usize,
+                    sym::min_align_of | sym::pref_align_of | sym::size_of | sym::variant_count => {
+                        self.tcx.types.usize
+                    }
                     sym::needs_drop => self.tcx.types.bool,
                     sym::type_id => self.tcx.types.u64,
                     sym::type_name => self.tcx.mk_static_str(),
@@ -135,7 +145,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
                     Abi::Scalar(ref scalar) => scalar.value,
-                    _ => bug!("{} called on invalid type {:?}", intrinsic_name, ty),
+                    _ => span_bug!(
+                        self.cur_span(),
+                        "{} called on invalid type {:?}",
+                        intrinsic_name,
+                        ty
+                    ),
                 };
                 let (nonzero, intrinsic_name) = match intrinsic_name {
                     sym::cttz_nonzero => (true, sym::cttz),
@@ -220,7 +235,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::discriminant_value => {
                 let place = self.deref_operand(args[0])?;
                 let discr_val = self.read_discriminant(place.into())?.0;
-                self.write_scalar(Scalar::from_u64(u64::try_from(discr_val).unwrap()), dest)?;
+                self.write_scalar(discr_val, dest)?;
             }
             sym::unchecked_shl
             | sym::unchecked_shr
@@ -273,7 +288,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = Scalar::from_uint(truncated_bits, layout.size);
                 self.write_scalar(result, dest)?;
             }
+            sym::offset => {
+                let ptr = self.read_scalar(args[0])?.not_undef()?;
+                let offset_count = self.read_scalar(args[1])?.to_machine_isize(self)?;
+                let pointee_ty = substs.type_at(0);
 
+                let offset_ptr = self.ptr_offset_inbounds(ptr, pointee_ty, offset_count)?;
+                self.write_scalar(offset_ptr, dest)?;
+            }
+            sym::arith_offset => {
+                let ptr = self.read_scalar(args[0])?.not_undef()?;
+                let offset_count = self.read_scalar(args[1])?.to_machine_isize(self)?;
+                let pointee_ty = substs.type_at(0);
+
+                let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
+                let offset_bytes = offset_count.wrapping_mul(pointee_size);
+                let offset_ptr = ptr.ptr_wrapping_signed_offset(offset_bytes, self);
+                self.write_scalar(offset_ptr, dest)?;
+            }
+            sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
+                // FIXME: return `true` for at least some comparisons where we can reliably
+                // determine the result of runtime (in)equality tests at compile-time.
+                self.write_scalar(Scalar::from_bool(false), dest)?;
+            }
             sym::ptr_offset_from => {
                 let a = self.read_immediate(args[0])?.to_scalar()?;
                 let b = self.read_immediate(args[1])?.to_scalar()?;
@@ -330,7 +367,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let index = u64::from(self.read_scalar(args[1])?.to_u32()?);
                 let elem = args[2];
                 let input = args[0];
-                let (len, e_ty) = input.layout.ty.simd_size_and_type(self.tcx.tcx);
+                let (len, e_ty) = input.layout.ty.simd_size_and_type(*self.tcx);
                 assert!(
                     index < len,
                     "Index `{}` must be in bounds of vector type `{}`: `[0, {})`",
@@ -357,7 +394,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::simd_extract => {
                 let index = u64::from(self.read_scalar(args[1])?.to_u32()?);
-                let (len, e_ty) = args[0].layout.ty.simd_size_and_type(self.tcx.tcx);
+                let (len, e_ty) = args[0].layout.ty.simd_size_and_type(*self.tcx);
                 assert!(
                     index < len,
                     "index `{}` is out-of-bounds of vector type `{}` with length `{}`",
@@ -372,6 +409,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 );
                 self.copy_op(self.operand_index(args[0], index)?, dest)?;
             }
+            sym::likely | sym::unlikely => {
+                // These just return their argument
+                self.copy_op(args[0], dest)?;
+            }
+            // FIXME(#73156): Handle source code coverage in const eval
+            sym::count_code_region
+            | sym::coverage_counter_add
+            | sym::coverage_counter_subtract
+            | sym::coverage_unreachable => (),
             _ => return Ok(false),
         }
 
@@ -402,5 +448,37 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
         self.binop_ignore_overflow(BinOp::Div, a, b, dest)
+    }
+
+    /// Offsets a pointer by some multiple of its type, returning an error if the pointer leaves its
+    /// allocation. For integer pointers, we consider each of them their own tiny allocation of size
+    /// 0, so offset-by-0 (and only 0) is okay -- except that NULL cannot be offset by _any_ value.
+    pub fn ptr_offset_inbounds(
+        &self,
+        ptr: Scalar<M::PointerTag>,
+        pointee_ty: Ty<'tcx>,
+        offset_count: i64,
+    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
+        // We cannot overflow i64 as a type's size must be <= isize::MAX.
+        let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
+        // The computed offset, in bytes, cannot overflow an isize.
+        let offset_bytes =
+            offset_count.checked_mul(pointee_size).ok_or(err_ub!(PointerArithOverflow))?;
+        // The offset being in bounds cannot rely on "wrapping around" the address space.
+        // So, first rule out overflows in the pointer arithmetic.
+        let offset_ptr = ptr.ptr_signed_offset(offset_bytes, self)?;
+        // ptr and offset_ptr must be in bounds of the same allocated object. This means all of the
+        // memory between these pointers must be accessible. Note that we do not require the
+        // pointers to be properly aligned (unlike a read/write operation).
+        let min_ptr = if offset_bytes >= 0 { ptr } else { offset_ptr };
+        let size: u64 = uabs(offset_bytes);
+        // This call handles checking for integer/NULL pointers.
+        self.memory.check_ptr_access_align(
+            min_ptr,
+            Size::from_bytes(size),
+            None,
+            CheckInAllocMsg::InboundsTest,
+        )?;
+        Ok(offset_ptr)
     }
 }

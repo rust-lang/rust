@@ -1,6 +1,4 @@
 #![crate_name = "compiletest"]
-#![feature(vec_remove_item)]
-#![deny(warnings)]
 // The `test` crate is the only unstable feature
 // allowed here, just to share similar code.
 #![feature(test)]
@@ -10,8 +8,6 @@ extern crate test;
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, Pretty, TestPaths};
 use crate::util::logv;
-use env_logger;
-use getopts;
 use getopts::Options;
 use log::*;
 use std::env;
@@ -347,7 +343,10 @@ pub fn run_tests(config: Config) {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
         Err(e) => {
-            println!("I/O failure during tests: {:?}", e);
+            // We don't know if tests passed or not, but if there was an error
+            // during testing we don't want to just suceeed (we may not have
+            // tested something), so fail.
+            panic!("I/O failure during tests: {:?}", e);
         }
     }
 }
@@ -402,7 +401,7 @@ fn configure_lldb(config: &Config) -> Option<Config> {
     }
 
     if let Some(lldb_version) = config.lldb_version.as_ref() {
-        if is_blacklisted_lldb_version(&lldb_version) {
+        if lldb_version == "350" {
             println!(
                 "WARNING: The used version of LLDB ({}) has a \
                  known issue that breaks debuginfo tests. See \
@@ -461,11 +460,13 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
 
     // Relevant pretty printer files
     let pretty_printer_files = [
-        "src/etc/debugger_pretty_printers_common.py",
+        "src/etc/rust_types.py",
         "src/etc/gdb_load_rust_pretty_printers.py",
-        "src/etc/gdb_rust_pretty_printing.py",
+        "src/etc/gdb_lookup.py",
+        "src/etc/gdb_providers.py",
         "src/etc/lldb_batchmode.py",
-        "src/etc/lldb_rust_formatters.py",
+        "src/etc/lldb_lookup.py",
+        "src/etc/lldb_providers.py",
     ];
     for file in &pretty_printer_files {
         let path = rust_src_dir.join(file);
@@ -831,12 +832,28 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     // GDB versions look like this: "major.minor.patch?.yyyymmdd?", with both
     // of the ? sections being optional
 
-    // We will parse up to 3 digits for minor and patch, ignoring the date
-    // We limit major to 1 digit, otherwise, on openSUSE, we parse the openSUSE version
+    // We will parse up to 3 digits for each component, ignoring the date
+
+    // We skip text in parentheses.  This avoids accidentally parsing
+    // the openSUSE version, which looks like:
+    //  GNU gdb (GDB; openSUSE Leap 15.0) 8.1
+    // This particular form is documented in the GNU coding standards:
+    // https://www.gnu.org/prep/standards/html_node/_002d_002dversion.html#g_t_002d_002dversion
 
     // don't start parsing in the middle of a number
     let mut prev_was_digit = false;
+    let mut in_parens = false;
     for (pos, c) in full_version_line.char_indices() {
+        if in_parens {
+            if c == ')' {
+                in_parens = false;
+            }
+            continue;
+        } else if c == '(' {
+            in_parens = true;
+            continue;
+        }
+
         if prev_was_digit || !c.is_digit(10) {
             prev_was_digit = c.is_digit(10);
             continue;
@@ -876,7 +893,7 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
             None => (line, None),
         };
 
-        if major.len() != 1 || minor.is_empty() {
+        if minor.is_empty() {
             continue;
         }
 
@@ -961,8 +978,4 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
         }
     }
     (None, false)
-}
-
-fn is_blacklisted_lldb_version(version: &str) -> bool {
-    version == "350"
 }

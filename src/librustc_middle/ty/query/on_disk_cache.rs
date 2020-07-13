@@ -1,13 +1,12 @@
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::mir::interpret;
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use crate::mir::{self, interpret};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use rustc_ast::ast::Ident;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, Once};
+use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
@@ -20,14 +19,12 @@ use rustc_serialize::{
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::hygiene::{ExpnId, SyntaxContext};
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
+use rustc_span::symbol::Ident;
 use rustc_span::CachingSourceMapView;
 use rustc_span::{BytePos, SourceFile, Span, DUMMY_SP};
 use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
-
-const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
-const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
 
 const TAG_NO_EXPN_DATA: u8 = 0;
 const TAG_EXPN_DATA_SHORTHAND: u8 = 1;
@@ -49,7 +46,7 @@ pub struct OnDiskCache<'sess> {
     current_diagnostics: Lock<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
 
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
-    cnum_map: Once<IndexVec<CrateNum, Option<CrateNum>>>,
+    cnum_map: OnceCell<IndexVec<CrateNum, Option<CrateNum>>>,
 
     source_map: &'sess SourceMap,
     file_index_to_stable_id: FxHashMap<SourceFileIndex, StableSourceFileId>,
@@ -128,7 +125,7 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_stable_id: footer.file_index_to_stable_id,
             file_index_to_file: Default::default(),
             prev_cnums: footer.prev_cnums,
-            cnum_map: Once::new(),
+            cnum_map: OnceCell::new(),
             source_map: sess.source_map(),
             current_diagnostics: Default::default(),
             query_result_index: footer.query_result_index.into_iter().collect(),
@@ -144,7 +141,7 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_stable_id: Default::default(),
             file_index_to_file: Default::default(),
             prev_cnums: vec![],
-            cnum_map: Once::new(),
+            cnum_map: OnceCell::new(),
             source_map,
             current_diagnostics: Default::default(),
             query_result_index: Default::default(),
@@ -370,14 +367,14 @@ impl<'sess> OnDiskCache<'sess> {
     {
         let pos = index.get(&dep_node_index).cloned()?;
 
-        // Initialize `cnum_map` using the value from the thread that finishes the closure first.
-        self.cnum_map.init_nonlocking_same(|| Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
+        let cnum_map =
+            self.cnum_map.get_or_init(|| Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
 
         let mut decoder = CacheDecoder {
             tcx,
             opaque: opaque::Decoder::new(&self.serialized_data[..], pos.to_usize()),
             source_map: self.source_map,
-            cnum_map: self.cnum_map.get(),
+            cnum_map,
             synthetic_syntax_contexts: &self.synthetic_syntax_contexts,
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
@@ -527,14 +524,37 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
         let cache_key =
             ty::CReaderCacheKey { cnum: CrateNum::ReservedForIncrCompCache, pos: shorthand };
 
-        if let Some(&ty) = tcx.rcache.borrow().get(&cache_key) {
+        if let Some(&ty) = tcx.ty_rcache.borrow().get(&cache_key) {
             return Ok(ty);
         }
 
         let ty = or_insert_with(self)?;
         // This may overwrite the entry, but it should overwrite with the same value.
-        tcx.rcache.borrow_mut().insert_same(cache_key, ty);
+        tcx.ty_rcache.borrow_mut().insert_same(cache_key, ty);
         Ok(ty)
+    }
+
+    fn cached_predicate_for_shorthand<F>(
+        &mut self,
+        shorthand: usize,
+        or_insert_with: F,
+    ) -> Result<ty::Predicate<'tcx>, Self::Error>
+    where
+        F: FnOnce(&mut Self) -> Result<ty::Predicate<'tcx>, Self::Error>,
+    {
+        let tcx = self.tcx();
+
+        let cache_key =
+            ty::CReaderCacheKey { cnum: CrateNum::ReservedForIncrCompCache, pos: shorthand };
+
+        if let Some(&pred) = tcx.pred_rcache.borrow().get(&cache_key) {
+            return Ok(pred);
+        }
+
+        let pred = or_insert_with(self)?;
+        // This may overwrite the entry, but it should overwrite with the same value.
+        tcx.pred_rcache.borrow_mut().insert_same(cache_key, pred);
+        Ok(pred)
     }
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
@@ -664,24 +684,6 @@ impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for CacheDecoder<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for CacheDecoder<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
         Fingerprint::decode_opaque(&mut self.opaque)
-    }
-}
-
-impl<'a, 'tcx, T: Decodable> SpecializedDecoder<mir::ClearCrossCrate<T>>
-    for CacheDecoder<'a, 'tcx>
-{
-    #[inline]
-    fn specialized_decode(&mut self) -> Result<mir::ClearCrossCrate<T>, Self::Error> {
-        let discr = u8::decode(self)?;
-
-        match discr {
-            TAG_CLEAR_CROSS_CRATE_CLEAR => Ok(mir::ClearCrossCrate::Clear),
-            TAG_CLEAR_CROSS_CRATE_SET => {
-                let val = T::decode(self)?;
-                Ok(mir::ClearCrossCrate::Set(val))
-            }
-            _ => unreachable!(),
-        }
     }
 }
 
@@ -828,27 +830,29 @@ where
     }
 }
 
-impl<'a, 'tcx, E> SpecializedEncoder<Ty<'tcx>> for CacheEncoder<'a, 'tcx, E>
+impl<'a, 'b, 'c, 'tcx, E> SpecializedEncoder<&'b ty::TyS<'c>> for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + TyEncoder,
+    &'b ty::TyS<'c>: UseSpecializedEncodable,
 {
     #[inline]
-    fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
+    fn specialized_encode(&mut self, ty: &&'b ty::TyS<'c>) -> Result<(), Self::Error> {
+        debug_assert!(self.tcx.lift(ty).is_some());
+        let ty = unsafe { std::mem::transmute::<&&'b ty::TyS<'c>, &&'tcx ty::TyS<'tcx>>(ty) };
         ty_codec::encode_with_shorthand(self, ty, |encoder| &mut encoder.type_shorthands)
     }
 }
 
-impl<'a, 'tcx, E> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, Span)]>
-    for CacheEncoder<'a, 'tcx, E>
+impl<'a, 'b, 'tcx, E> SpecializedEncoder<ty::Predicate<'b>> for CacheEncoder<'a, 'tcx, E>
 where
     E: 'a + TyEncoder,
 {
     #[inline]
-    fn specialized_encode(
-        &mut self,
-        predicates: &&'tcx [(ty::Predicate<'tcx>, Span)],
-    ) -> Result<(), Self::Error> {
-        ty_codec::encode_spanned_predicates(self, predicates, |encoder| {
+    fn specialized_encode(&mut self, predicate: &ty::Predicate<'b>) -> Result<(), Self::Error> {
+        debug_assert!(self.tcx.lift(predicate).is_some());
+        let predicate =
+            unsafe { std::mem::transmute::<&ty::Predicate<'b>, &ty::Predicate<'tcx>>(predicate) };
+        ty_codec::encode_with_shorthand(self, predicate, |encoder| {
             &mut encoder.predicate_shorthands
         })
     }
@@ -890,23 +894,6 @@ impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for CacheEncoder<'a, 'tcx, opaque
     }
 }
 
-impl<'a, 'tcx, E, T> SpecializedEncoder<mir::ClearCrossCrate<T>> for CacheEncoder<'a, 'tcx, E>
-where
-    E: 'a + TyEncoder,
-    T: Encodable,
-{
-    #[inline]
-    fn specialized_encode(&mut self, val: &mir::ClearCrossCrate<T>) -> Result<(), Self::Error> {
-        match *val {
-            mir::ClearCrossCrate::Clear => TAG_CLEAR_CROSS_CRATE_CLEAR.encode(self),
-            mir::ClearCrossCrate::Set(ref val) => {
-                TAG_CLEAR_CROSS_CRATE_SET.encode(self)?;
-                val.encode(self)
-            }
-        }
-    }
-}
-
 macro_rules! encoder_methods {
     ($($name:ident($ty:ty);)*) => {
         #[inline]
@@ -922,6 +909,7 @@ where
 {
     type Error = E::Error;
 
+    #[inline]
     fn emit_unit(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
@@ -994,7 +982,7 @@ fn encode_query_results<'a, 'tcx, Q, E>(
     query_result_index: &mut EncodedQueryResultIndex,
 ) -> Result<(), E::Error>
 where
-    Q: super::QueryDescription<TyCtxt<'tcx>>,
+    Q: super::QueryDescription<TyCtxt<'tcx>> + super::QueryAccessors<TyCtxt<'tcx>>,
     Q::Value: Encodable,
     E: 'a + TyEncoder,
 {
@@ -1008,7 +996,7 @@ where
 
     state.iter_results(|results| {
         for (key, value, dep_node) in results {
-            if Q::cache_on_disk(tcx, key.clone(), Some(&value)) {
+            if Q::cache_on_disk(tcx, &key, Some(&value)) {
                 let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
                 // Record position of the cache entry.

@@ -6,7 +6,7 @@ LL | impl Trait1 for dyn Send {}
 LL | impl Trait1 for dyn Send {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + 'static)`
 
-error[E0748]: found both positive and negative implementation of trait `Trait2` for type `(dyn std::marker::Send + 'static)`:
+error[E0751]: found both positive and negative implementation of trait `Trait2` for type `(dyn std::marker::Send + 'static)`:
   --> $DIR/issue-33140-hack-boundaries.rs:25:1
    |
 LL | impl Trait2 for dyn Send {}
@@ -64,5 +64,5 @@ LL | impl Trait5 for dyn Send where u32: Copy {}
 
 error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0119, E0748.
+Some errors have detailed explanations: E0119, E0751.
 For more information about an error, try `rustc --explain E0119`.

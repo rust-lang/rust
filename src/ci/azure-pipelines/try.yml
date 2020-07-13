@@ -26,8 +26,6 @@ jobs:
   strategy:
     matrix:
       dist-x86_64-linux: {}
-      dist-x86_64-linux-alt:
-        IMAGE: dist-x86_64-linux
 
 # The macOS and Windows builds here are currently disabled due to them not being
 # overly necessary on `try` builds. We also don't actually have anything that

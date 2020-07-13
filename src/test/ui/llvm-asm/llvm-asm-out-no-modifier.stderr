@@ -1,5 +1,5 @@
 error[E0661]: output operand constraint lacks '=' or '+'
-  --> $DIR/llvm-asm-out-no-modifier.rs:22:34
+  --> $DIR/llvm-asm-out-no-modifier.rs:23:34
    |
 LL |         llvm_asm!("mov $1, $0" : "r"(x) : "r"(5));
    |                                  ^^^

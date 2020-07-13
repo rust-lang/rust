@@ -2,6 +2,7 @@
 // Regression test for issue #66856.
 //
 // compile-flags: -Zmir-opt-level=2
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 enum Src {
     Foo(u8),

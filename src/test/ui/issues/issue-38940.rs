@@ -42,5 +42,5 @@ fn main() {
     let t = Top::new();
     let x: &Bottom = &t;
     //~^ ERROR mismatched types
-    //~| ERROR reached the recursion limit while auto-dereferencing `I`
+    //~| ERROR reached the recursion limit while auto-dereferencing `J`
 }

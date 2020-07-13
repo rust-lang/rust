@@ -1,3 +1,5 @@
+// ignore-tidy-undocumented-unsafe
+
 use crate::cmp;
 use crate::mem::{self, MaybeUninit};
 use crate::ptr;
@@ -77,9 +79,9 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             // the way until about `left + right == 32`, but the worst case performance breaks even
             // around 16. 24 was chosen as middle ground. If the size of `T` is larger than 4
             // `usize`s, this algorithm also outperforms other algorithms.
-            let x = mid.sub(left);
+            let x = unsafe { mid.sub(left) };
             // beginning of first round
-            let mut tmp: T = x.read();
+            let mut tmp: T = unsafe { x.read() };
             let mut i = right;
             // `gcd` can be found before hand by calculating `gcd(left + right, right)`,
             // but it is faster to do one loop which calculates the gcd as a side effect, then
@@ -90,7 +92,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             // the very end. This is possibly due to the fact that swapping or replacing temporaries
             // uses only one memory address in the loop instead of needing to manage two.
             loop {
-                tmp = x.add(i).replace(tmp);
+                tmp = unsafe { x.add(i).replace(tmp) };
                 // instead of incrementing `i` and then checking if it is outside the bounds, we
                 // check if `i` will go outside the bounds on the next increment. This prevents
                 // any wrapping of pointers or `usize`.
@@ -98,7 +100,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
                     i -= left;
                     if i == 0 {
                         // end of first round
-                        x.write(tmp);
+                        unsafe { x.write(tmp) };
                         break;
                     }
                     // this conditional must be here if `left + right >= 15`
@@ -111,14 +113,14 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             }
             // finish the chunk with more rounds
             for start in 1..gcd {
-                tmp = x.add(start).read();
+                tmp = unsafe { x.add(start).read() };
                 i = start + right;
                 loop {
-                    tmp = x.add(i).replace(tmp);
+                    tmp = unsafe { x.add(i).replace(tmp) };
                     if i >= left {
                         i -= left;
                         if i == start {
-                            x.add(start).write(tmp);
+                            unsafe { x.add(start).write(tmp) };
                             break;
                         }
                     } else {
@@ -133,15 +135,19 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             // The `[T; 0]` here is to ensure this is appropriately aligned for T
             let mut rawarray = MaybeUninit::<(BufType, [T; 0])>::uninit();
             let buf = rawarray.as_mut_ptr() as *mut T;
-            let dim = mid.sub(left).add(right);
+            let dim = unsafe { mid.sub(left).add(right) };
             if left <= right {
-                ptr::copy_nonoverlapping(mid.sub(left), buf, left);
-                ptr::copy(mid, mid.sub(left), right);
-                ptr::copy_nonoverlapping(buf, dim, left);
+                unsafe {
+                    ptr::copy_nonoverlapping(mid.sub(left), buf, left);
+                    ptr::copy(mid, mid.sub(left), right);
+                    ptr::copy_nonoverlapping(buf, dim, left);
+                }
             } else {
-                ptr::copy_nonoverlapping(mid, buf, right);
-                ptr::copy(mid.sub(left), dim, left);
-                ptr::copy_nonoverlapping(buf, mid.sub(left), right);
+                unsafe {
+                    ptr::copy_nonoverlapping(mid, buf, right);
+                    ptr::copy(mid.sub(left), dim, left);
+                    ptr::copy_nonoverlapping(buf, mid.sub(left), right);
+                }
             }
             return;
         } else if left >= right {
@@ -150,8 +156,10 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             // of this algorithm would be, and swapping using that last chunk instead of swapping
             // adjacent chunks like this algorithm is doing, but this way is still faster.
             loop {
-                ptr::swap_nonoverlapping(mid.sub(right), mid, right);
-                mid = mid.sub(right);
+                unsafe {
+                    ptr::swap_nonoverlapping(mid.sub(right), mid, right);
+                    mid = mid.sub(right);
+                }
                 left -= right;
                 if left < right {
                     break;
@@ -160,8 +168,10 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
         } else {
             // Algorithm 3, `left < right`
             loop {
-                ptr::swap_nonoverlapping(mid.sub(left), mid, left);
-                mid = mid.add(left);
+                unsafe {
+                    ptr::swap_nonoverlapping(mid.sub(left), mid, left);
+                    mid = mid.add(left);
+                }
                 right -= left;
                 if right < left {
                     break;

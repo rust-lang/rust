@@ -90,7 +90,6 @@ pub fn simplify_type(
         ty::Never => Some(NeverSimplifiedType),
         ty::Tuple(ref tys) => Some(TupleSimplifiedType(tys.len())),
         ty::FnPtr(ref f) => Some(FunctionSimplifiedType(f.skip_binder().inputs().len())),
-        ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
         ty::Projection(_) | ty::Param(_) => {
             if can_simplify_params {
                 // In normalized types, projections don't unify with
@@ -105,7 +104,7 @@ pub fn simplify_type(
         }
         ty::Opaque(def_id, _) => Some(OpaqueSimplifiedType(def_id)),
         ty::Foreign(def_id) => Some(ForeignSimplifiedType(def_id)),
-        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) | ty::Error => None,
+        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) | ty::Error(_) => None,
     }
 }
 

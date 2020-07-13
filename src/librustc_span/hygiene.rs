@@ -1,9 +1,8 @@
-//! Machinery for hygienic macros, inspired by the `MTWT[1]` paper.
+//! Machinery for hygienic macros.
 //!
-//! `[1]` Matthew Flatt, Ryan Culpepper, David Darais, and Robert Bruce Findler. 2012.
-//! *Macros that work together: Compile-time bindings, partial expansion,
-//! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
-//! DOI=10.1017/S0956796812000093 <https://doi.org/10.1017/S0956796812000093>
+//! Inspired by Matthew Flatt et al., “Macros That Work Together: Compile-Time Bindings, Partial
+//! Expansion, and Definition Contexts,” *Journal of Functional Programming* 22, no. 2
+//! (March 1, 2012): 181–216, <https://doi.org/10.1017/S0956796812000093>.
 
 // Hygiene data is stored in a global variable and accessed via TLS, which
 // means that accesses are somewhat expensive. (`HygieneData::with`
@@ -25,9 +24,10 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
+use crate::def_id::{DefId, CRATE_DEF_INDEX};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
-use crate::GLOBALS;
+use crate::SESSION_GLOBALS;
 use crate::{Span, DUMMY_SP};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -155,7 +155,12 @@ crate struct HygieneData {
 impl HygieneData {
     crate fn new(edition: Edition) -> Self {
         HygieneData {
-            expn_data: vec![Some(ExpnData::default(ExpnKind::Root, DUMMY_SP, edition))],
+            expn_data: vec![Some(ExpnData::default(
+                ExpnKind::Root,
+                DUMMY_SP,
+                edition,
+                Some(DefId::local(CRATE_DEF_INDEX)),
+            ))],
             syntax_context_data: vec![SyntaxContextData {
                 outer_expn: ExpnId::root(),
                 outer_transparency: Transparency::Opaque,
@@ -169,7 +174,7 @@ impl HygieneData {
     }
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
+        SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.hygiene_data.borrow_mut()))
     }
 
     fn fresh_expn(&mut self, expn_data: Option<ExpnData>) -> ExpnId {
@@ -389,10 +394,11 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
             data.expn_data.iter().enumerate().for_each(|(id, expn_info)| {
                 let expn_info = expn_info.as_ref().expect("no expansion data for an expansion ID");
                 s.push_str(&format!(
-                    "\n{}: parent: {:?}, call_site_ctxt: {:?}, kind: {:?}",
+                    "\n{}: parent: {:?}, call_site_ctxt: {:?}, def_site_ctxt: {:?}, kind: {:?}",
                     id,
                     expn_info.parent,
                     expn_info.call_site.ctxt(),
+                    expn_info.def_site.ctxt(),
                     expn_info.kind,
                 ));
             });
@@ -661,7 +667,7 @@ pub struct ExpnData {
     /// The span of the macro definition (possibly dummy).
     /// This span serves only informational purpose and is not used for resolution.
     pub def_site: Span,
-    /// List of #[unstable]/feature-gated features that the macro is allowed to use
+    /// List of `#[unstable]`/feature-gated features that the macro is allowed to use
     /// internally without forcing the whole crate to opt-in
     /// to them.
     pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
@@ -673,11 +679,19 @@ pub struct ExpnData {
     pub local_inner_macros: bool,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
+    /// The `DefId` of the macro being invoked,
+    /// if this `ExpnData` corresponds to a macro invocation
+    pub macro_def_id: Option<DefId>,
 }
 
 impl ExpnData {
     /// Constructs expansion data with default properties.
-    pub fn default(kind: ExpnKind, call_site: Span, edition: Edition) -> ExpnData {
+    pub fn default(
+        kind: ExpnKind,
+        call_site: Span,
+        edition: Edition,
+        macro_def_id: Option<DefId>,
+    ) -> ExpnData {
         ExpnData {
             kind,
             parent: ExpnId::root(),
@@ -687,6 +701,7 @@ impl ExpnData {
             allow_internal_unsafe: false,
             local_inner_macros: false,
             edition,
+            macro_def_id,
         }
     }
 
@@ -695,10 +710,11 @@ impl ExpnData {
         call_site: Span,
         edition: Edition,
         allow_internal_unstable: Lrc<[Symbol]>,
+        macro_def_id: Option<DefId>,
     ) -> ExpnData {
         ExpnData {
             allow_internal_unstable: Some(allow_internal_unstable),
-            ..ExpnData::default(kind, call_site, edition)
+            ..ExpnData::default(kind, call_site, edition, macro_def_id)
         }
     }
 
@@ -806,7 +822,14 @@ pub enum DesugaringKind {
     OpaqueTy,
     Async,
     Await,
-    ForLoop,
+    ForLoop(ForLoopLoc),
+}
+
+/// A location in the desugaring of a `for` loop
+#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
+pub enum ForLoopLoc {
+    Head,
+    IntoIter,
 }
 
 impl DesugaringKind {
@@ -819,7 +842,7 @@ impl DesugaringKind {
             DesugaringKind::QuestionMark => "operator `?`",
             DesugaringKind::TryBlock => "`try` block",
             DesugaringKind::OpaqueTy => "`impl Trait`",
-            DesugaringKind::ForLoop => "`for` loop",
+            DesugaringKind::ForLoop(_) => "`for` loop",
         }
     }
 }

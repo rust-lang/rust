@@ -173,7 +173,7 @@ struct Node<O> {
     /// must all be in a non-pending state.
     dependents: Vec<usize>,
 
-    /// If true, dependents[0] points to a "parent" node, which requires
+    /// If true, `dependents[0]` points to a "parent" node, which requires
     /// special treatment upon error but is otherwise treated the same.
     /// (It would be more idiomatic to store the parent node in a separate
     /// `Option<usize>` field, but that slows down the common case of
@@ -412,9 +412,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         // be computed with the initial length, and we would miss the appended
         // nodes. Therefore we use a `while` loop.
         let mut index = 0;
-        while index < self.nodes.len() {
-            let node = &mut self.nodes[index];
-
+        while let Some(node) = self.nodes.get_mut(index) {
             // `processor.process_obligation` can modify the predicate within
             // `node.obligation`, and that predicate is the key used for
             // `self.active_cache`. This means that `self.active_cache` can get
@@ -666,8 +664,8 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         for node in &mut self.nodes {
             let mut i = 0;
-            while i < node.dependents.len() {
-                let new_index = node_rewrites[node.dependents[i]];
+            while let Some(dependent) = node.dependents.get_mut(i) {
+                let new_index = node_rewrites[*dependent];
                 if new_index >= orig_nodes_len {
                     node.dependents.swap_remove(i);
                     if i == 0 && node.has_parent {
@@ -675,7 +673,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                         node.has_parent = false;
                     }
                 } else {
-                    node.dependents[i] = new_index;
+                    *dependent = new_index;
                     i += 1;
                 }
             }

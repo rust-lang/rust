@@ -13,11 +13,11 @@ fn set(x: &mut usize) { *x = 42; }
 fn main() {
     {
         let mut x = 0_usize;
-        move || x += 1;
+        move || x += 1; //~ WARN unused variable: `x`
     }
     {
         let mut x = 0_usize;
-        move || x += 1;
+        move || x += 1; //~ WARN unused variable: `x`
     }
     {
         let mut x = 0_usize;

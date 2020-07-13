@@ -36,20 +36,20 @@
 // lldb-command:run
 
 // lldb-command:print packed
-// lldbg-check:[...]$0 = Packed { x: 123, y: 234, z: 345 }
-// lldbr-check:(packed_struct::Packed) packed = Packed { x: 123, y: 234, z: 345 }
+// lldbg-check:[...]$0 = { x = 123 y = 234 z = 345 }
+// lldbr-check:(packed_struct::Packed) packed = { x = 123 y = 234 z = 345 }
 
 // lldb-command:print packedInPacked
-// lldbg-check:[...]$1 = PackedInPacked { a: 1111, b: Packed { x: 2222, y: 3333, z: 4444 }, c: 5555, d: Packed { x: 6666, y: 7777, z: 8888 } }
-// lldbr-check:(packed_struct::PackedInPacked) packedInPacked = PackedInPacked { a: 1111, b: Packed { x: 2222, y: 3333, z: 4444 }, c: 5555, d: Packed { x: 6666, y: 7777, z: 8888 } }
+// lldbg-check:[...]$1 = { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
+// lldbr-check:(packed_struct::PackedInPacked) packedInPacked = { a = 1111 b = { x = 2222 y = 3333 z = 4444 } c = 5555 d = { x = 6666 y = 7777 z = 8888 } }
 
 // lldb-command:print packedInUnpacked
-// lldbg-check:[...]$2 = PackedInUnpacked { a: -1111, b: Packed { x: -2222, y: -3333, z: -4444 }, c: -5555, d: Packed { x: -6666, y: -7777, z: -8888 } }
-// lldbr-check:(packed_struct::PackedInUnpacked) packedInUnpacked = PackedInUnpacked { a: -1111, b: Packed { x: -2222, y: -3333, z: -4444 }, c: -5555, d: Packed { x: -6666, y: -7777, z: -8888 } }
+// lldbg-check:[...]$2 = { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
+// lldbr-check:(packed_struct::PackedInUnpacked) packedInUnpacked = { a = -1111 b = { x = -2222 y = -3333 z = -4444 } c = -5555 d = { x = -6666 y = -7777 z = -8888 } }
 
 // lldb-command:print unpackedInPacked
-// lldbg-check:[...]$3 = UnpackedInPacked { a: 987, b: Unpacked { x: 876, y: 765, z: 654, w: 543 }, c: Unpacked { x: 432, y: 321, z: 210, w: 109 }, d: -98 }
-// lldbr-check:(packed_struct::UnpackedInPacked) unpackedInPacked = UnpackedInPacked { a: 987, b: Unpacked { x: 876, y: 765, z: 654, w: 543 }, c: Unpacked { x: 432, y: 321, z: 210, w: 109 }, d: -98 }
+// lldbg-check:[...]$3 = { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
+// lldbr-check:(packed_struct::UnpackedInPacked) unpackedInPacked = { a = 987 b = { x = 876 y = 765 z = 654 w = 543 } c = { x = 432 y = 321 z = 210 w = 109 } d = -98 }
 
 // lldb-command:print sizeof(packed)
 // lldbg-check:[...]$4 = 14

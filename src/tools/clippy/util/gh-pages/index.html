@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+    <title>ALL the Clippy Lints</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/styles/github.min.css"/>
+    <style>
+        blockquote { font-size: 1em; }
+        [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak { display: none !important; }
+
+        .form-inline .checkbox { margin-right: 0.6em }
+
+        .panel-heading { cursor: pointer; }
+        .panel-heading:hover { background-color: #eee; }
+
+        .panel-title { display: flex; }
+        .panel-title .label { display: inline-block; }
+
+        .panel-title-name { flex: 1; }
+        .panel-title-name span { vertical-align: bottom; }
+
+        .panel .panel-title-name .anchor { display: none; }
+        .panel:hover .panel-title-name .anchor { display: inline; color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="container" ng-app="clippy" ng-controller="lintList">
+        <div class="page-header">
+            <h1>ALL the Clippy Lints</h1>
+        </div>
+
+        <noscript>
+            <div class="alert alert-danger" role="alert">
+                Sorry, this site only works with JavaScript! :(
+            </div>
+        </noscript>
+
+        <div ng-cloak>
+
+            <div class="alert alert-info" role="alert" ng-if="loading">
+                Loading&#x2026;
+            </div>
+            <div class="alert alert-danger" role="alert" ng-if="error">
+                Error loading lints!
+            </div>
+
+            <div class="panel panel-default" ng-show="data">
+                <div class="panel-body row">
+                    <div class="col-md-6 form-inline">
+                        <div class="form-group form-group-lg">
+                            <p class="h4">Lint levels</p>
+                            <div class="checkbox" ng-repeat="(level, enabled) in levels">
+                                <label>
+                                    <input type="checkbox" ng-model="levels[level]" />
+                                    {{level}}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 form-inline">
+                        <div class="form-group form-group-lg">
+                            <p class="h4">Lint groups</p>
+                            <div class="checkbox" ng-repeat="(group, enabled) in groups">
+                                <label class="text-capitalize">
+                                    <input type="checkbox" ng-model="groups[group]" />
+                                    {{group}}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-body row">
+                    <div class="col-md-12 form-horizontal">
+                        <div class="input-group">
+                            <label class="input-group-addon" id="filter-label" for="filter-input">Filter:</label>
+                            <input type="text" class="form-control" placeholder="Keywords or search string" id="filter-input" ng-model="search" />
+                            <span class="input-group-btn">
+                                <button class="btn btn-default" type="button" ng-click="search = ''">
+                                    Clear
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <article class="panel panel-default" id="{{lint.id}}"
+                ng-repeat="lint in data | filter:byLevels | filter:byGroups | filter:search | orderBy:'id' track by lint.id" on-finish-render="ngRepeatFinished">
+                <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
+                    <h2 class="panel-title">
+                        <div class="panel-title-name">
+                            <span>{{lint.id}}</span>
+                            <a href="#{{lint.id}}" class="anchor label label-default" ng-click="open[lint.id] = true; $event.stopPropagation()">&para;</a>
+                        </div>
+
+                        <div class="panel-title-addons">
+                            <span class="label label-default text-capitalize">{{lint.group}}</span>
+
+                            <span ng-if="lint.level == 'Allow'" class="label label-success">Allow</span>
+                            <span ng-if="lint.level == 'Warn'" class="label label-warning">Warn</span>
+                            <span ng-if="lint.level == 'Deny'" class="label label-danger">Deny</span>
+                            <span ng-if="lint.level == 'Deprecated'" class="label label-default">Deprecated</span>
+
+                            <button class="btn btn-default btn-xs">
+                                <span ng-show="open[lint.id]">&minus;</span>
+                                <span ng-hide="open[lint.id]">&plus;</span>
+                            </button>
+                        </div>
+                    </h2>
+                </header>
+
+                <ul class="list-group lint-docs" ng-if="lint.docs" ng-class="{collapse: true, in: open[lint.id]}">
+                    <li class="list-group-item" ng-repeat="(title, text) in lint.docs">
+                        <h4 class="list-group-item-heading">
+                            {{title}}
+                        </h4>
+                        <div class="list-group-item-text" ng-bind-html="text | markdown"></div>
+                    </li>
+                </ul>
+            </article>
+        </div>
+    </div>
+
+    <a href="https://github.com/rust-lang/rust-clippy">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on Github"/>
+    </a>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/7.0.0/markdown-it.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/languages/rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.12/angular.min.js"></script>
+    <script>
+    (function () {
+        var md = window.markdownit({
+            html: true,
+            linkify: true,
+            typographer: true,
+            highlight: function (str, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return '<pre class="hljs"><code>' +
+                            hljs.highlight(lang, str, true).value +
+                            '</code></pre>';
+                    } catch (__) {}
+                }
+
+                return '<pre class="hljs"><code>' + md.utils.escapeHtml(str) + '</code></pre>';
+            }
+        });
+
+        function scrollToLint(lintId) {
+            var target = document.getElementById(lintId);
+            if (!target) {
+                return;
+            }
+            target.scrollIntoView();
+        }
+
+        function scrollToLintByURL($scope) {
+            var removeListener = $scope.$on('ngRepeatFinished', function(ngRepeatFinishedEvent) {
+                scrollToLint(window.location.hash.slice(1));
+                removeListener();
+            });
+        }
+
+        function selectGroup($scope, selectedGroup) {
+            var groups = $scope.groups;
+            for (var group in groups) {
+                if (groups.hasOwnProperty(group)) {
+                    if (group === selectedGroup) {
+                        groups[group] = true;
+                    } else {
+                        groups[group] = false;
+                    }
+                }
+            }
+        }
+
+        angular.module("clippy", [])
+        .filter('markdown', function ($sce) {
+            return function (text) {
+                return $sce.trustAsHtml(
+                    md.render(text || '')
+                    // Oh deer, what a hack :O
+                    .replace('<table', '<table class="table"')
+                );
+            };
+        })
+        .directive('onFinishRender', function ($timeout) {
+            return {
+                restrict: 'A',
+                link: function (scope, element, attr) {
+                    if (scope.$last === true) {
+                        $timeout(function () {
+                            scope.$emit(attr.onFinishRender);
+                        });
+                    }
+                }
+            };
+        })
+        .controller("lintList", function ($scope, $http, $timeout) {
+            // Level filter
+            var LEVEL_FILTERS_DEFAULT = {Allow: true, Warn: true, Deny: true, Deprecated: true};
+            $scope.levels = LEVEL_FILTERS_DEFAULT;
+            $scope.byLevels = function (lint) {
+                return $scope.levels[lint.level];
+            };
+
+            $scope.groups = {};
+            $scope.byGroups = function (lint) {
+                return $scope.groups[lint.group];
+            };
+
+            // Get data
+            $scope.open = {};
+            $scope.loading = true;
+
+            if (window.location.hash.length > 1) {
+                $scope.search = window.location.hash.slice(1);
+                $scope.open[window.location.hash.slice(1)] = true;
+                scrollToLintByURL($scope);
+            }
+
+            $http.get('./lints.json')
+            .success(function (data) {
+                $scope.data = data;
+                $scope.loading = false;
+
+                // Initialize lint groups (the same structure is also used to enable filtering)
+                $scope.groups = data.reduce(function (result, val) {
+                    result[val.group] = true;
+                    return result;
+                }, {});
+
+                var selectedGroup = getQueryVariable("sel");
+                if (selectedGroup) {
+                    selectGroup($scope, selectedGroup.toLowerCase());
+                }
+
+                scrollToLintByURL($scope);
+            })
+            .error(function (data) {
+                $scope.error = data;
+                $scope.loading = false;
+            });
+
+            window.addEventListener('hashchange', function () {
+                // trigger re-render
+                $timeout(function () {
+                    $scope.levels = LEVEL_FILTERS_DEFAULT;
+                    $scope.search = window.location.hash.slice(1);
+                    $scope.open[window.location.hash.slice(1)] = true;
+
+                    scrollToLintByURL($scope);
+                });
+                return true;
+            }, false);
+        });
+    })();
+
+    function getQueryVariable(variable) {
+        var query = window.location.search.substring(1);
+        var vars = query.split('&');
+        for (var i = 0; i < vars.length; i++) {
+            var pair = vars[i].split('=');
+            if (decodeURIComponent(pair[0]) == variable) {
+                return decodeURIComponent(pair[1]);
+            }
+        }
+    }
+    </script>
+</body>
+</html>

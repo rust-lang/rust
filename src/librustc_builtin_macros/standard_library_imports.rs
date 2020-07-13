@@ -1,6 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::{ast, attr};
-use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
@@ -10,7 +10,7 @@ use rustc_span::DUMMY_SP;
 
 pub fn inject(
     mut krate: ast::Crate,
-    resolver: &mut dyn Resolver,
+    resolver: &mut dyn ResolverExpand,
     sess: &ParseSess,
     alt_std_name: Option<Symbol>,
 ) -> (ast::Crate, Option<Symbol>) {
@@ -60,17 +60,17 @@ pub fn inject(
     let name = names[0];
 
     let import_path = if rust_2018 {
-        [name, sym::prelude, sym::v1].iter().map(|symbol| ast::Ident::new(*symbol, span)).collect()
+        [name, sym::prelude, sym::v1].iter().map(|symbol| Ident::new(*symbol, span)).collect()
     } else {
         [kw::PathRoot, name, sym::prelude, sym::v1]
             .iter()
-            .map(|symbol| ast::Ident::new(*symbol, span))
+            .map(|symbol| Ident::new(*symbol, span))
             .collect()
     };
 
     let use_item = cx.item(
         span,
-        ast::Ident::invalid(),
+        Ident::invalid(),
         vec![cx.attribute(cx.meta_word(span, sym::prelude_import))],
         ast::ItemKind::Use(P(ast::UseTree {
             prefix: cx.path(span, import_path),

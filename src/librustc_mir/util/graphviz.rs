@@ -1,3 +1,4 @@
+use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
@@ -76,7 +77,7 @@ where
 /// Write a graphviz HTML-styled label for the given basic block, with
 /// all necessary escaping already performed. (This is suitable for
 /// emitting directly, as is done in this module, or for use with the
-/// LabelText::HtmlStr from libgraphviz.)
+/// LabelText::HtmlStr from librustc_graphviz.)
 ///
 /// `init` and `fini` are callbacks for emitting additional rows of
 /// data (using HTML enclosed with `<tr>` in the emitted text).

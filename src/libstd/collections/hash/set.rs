@@ -105,6 +105,7 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
 /// [`RefCell`]: ../../std/cell/struct.RefCell.html
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "hashset_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashSet<T, S = RandomState> {
     map: HashMap<T, (), S>,
@@ -272,6 +273,9 @@ impl<T, S> HashSet<T, S> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -282,6 +286,8 @@ impl<T, S> HashSet<T, S> {
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hasher: S) -> HashSet<T, S> {
@@ -299,6 +305,9 @@ impl<T, S> HashSet<T, S> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -309,6 +318,8 @@ impl<T, S> HashSet<T, S> {
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashSet<T, S> {
@@ -959,6 +970,16 @@ where
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         self.map.extend(iter.into_iter().map(|k| (k, ())));
     }
+
+    #[inline]
+    fn extend_one(&mut self, item: T) {
+        self.map.insert(item, ());
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.map.extend_reserve(additional);
+    }
 }
 
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
@@ -970,6 +991,16 @@ where
     #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &item: &'a T) {
+        self.map.insert(item, ());
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        Extend::<T>::extend_reserve(self, additional)
     }
 }
 

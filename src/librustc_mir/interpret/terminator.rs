@@ -19,15 +19,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
-                self.frame().return_place.map(|r| self.dump_place(*r));
                 self.pop_stack_frame(/* unwinding */ false)?
             }
 
             Goto { target } => self.go_to_block(target),
 
-            SwitchInt { ref discr, ref values, ref targets, .. } => {
+            SwitchInt { ref discr, ref values, ref targets, switch_ty } => {
                 let discr = self.read_immediate(self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
+                assert_eq!(discr.layout.ty, switch_ty);
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 assert!(!targets.is_empty());
@@ -51,9 +51,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call { ref func, ref args, destination, ref cleanup, .. } => {
+            Call { ref func, ref args, destination, ref cleanup, from_hir_call: _, fn_span: _ } => {
                 let old_stack = self.frame_idx();
-                let old_bb = self.frame().block;
+                let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
@@ -80,15 +80,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
                 // did a jump to another block.
-                if self.frame_idx() == old_stack && self.frame().block == old_bb {
+                if self.frame_idx() == old_stack && self.frame().loc == old_loc {
                     span_bug!(terminator.source_info.span, "evaluating this call made no progress");
                 }
             }
 
-            Drop { location, target, unwind } => {
-                let place = self.eval_place(location)?;
+            Drop { place, target, unwind } => {
+                let place = self.eval_place(place)?;
                 let ty = place.layout.ty;
-                trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
+                trace!("TerminatorKind::drop: {:?}, type {}", place, ty);
 
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_in_place(place, instance, target, unwind)?;
@@ -124,7 +124,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // These should never occur for MIR we actually run.
             DropAndReplace { .. }
-            | FalseEdges { .. }
+            | FalseEdge { .. }
             | FalseUnwind { .. }
             | Yield { .. }
             | GeneratorDrop => span_bug!(
@@ -132,6 +132,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 "{:#?} should have been eliminated by MIR pass",
                 terminator.kind
             ),
+
+            // Inline assembly can't be interpreted.
+            InlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
         }
 
         Ok(())
@@ -223,7 +226,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
                     ty::Closure(..) => Abi::RustCall,
                     ty::Generator(..) => Abi::Rust,
-                    _ => bug!("unexpected callee ty: {:?}", instance_ty),
+                    _ => span_bug!(self.cur_span(), "unexpected callee ty: {:?}", instance_ty),
                 }
             };
             let normalize_abi = |abi| match abi {

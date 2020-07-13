@@ -255,8 +255,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Return { .. }
             | ExprKind::Literal { .. }
             | ExprKind::StaticRef { .. }
+            | ExprKind::InlineAsm { .. }
             | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::Yield { .. }
+            | ExprKind::ThreadLocalRef(_)
             | ExprKind::Call { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(match Category::of(&expr.kind) {
@@ -383,7 +385,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let fake_borrow_ty =
                             tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                         let fake_borrow_temp =
-                            self.local_decls.push(LocalDecl::new_temp(fake_borrow_ty, expr_span));
+                            self.local_decls.push(LocalDecl::new(fake_borrow_ty, expr_span));
                         let projection = tcx.intern_place_elems(&base_place.projection[..idx]);
                         self.cfg.push_assign(
                             block,

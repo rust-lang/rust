@@ -1,0 +1,11 @@
+error: unexpected closing delimiter: `}`
+  --> $DIR/issue-70583-block-is-empty-2.rs:14:1
+   |
+LL |             ErrorHandled::Reported => {}}
+   |                                       -- block is empty, you might have not meant to close it
+...
+LL | }
+   | ^ unexpected closing delimiter
+
+error: aborting due to previous error
+

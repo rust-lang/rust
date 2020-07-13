@@ -246,7 +246,7 @@ pub enum EvalResult {
 fn skip_stability_check_due_to_privacy(tcx: TyCtxt<'_>, mut def_id: DefId) -> bool {
     // Check if `def_id` is a trait method.
     match tcx.def_kind(def_id) {
-        Some(DefKind::AssocFn) | Some(DefKind::AssocTy) | Some(DefKind::AssocConst) => {
+        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
             if let ty::TraitContainer(trait_def_id) = tcx.associated_item(def_id).container {
                 // Trait methods do not declare visibility (even
                 // for visibility info in cstore). Use containing
@@ -286,7 +286,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
                 let parent_def_id = self.hir().local_def_id(self.hir().get_parent_item(id));
                 let skip = self
-                    .lookup_deprecation_entry(parent_def_id)
+                    .lookup_deprecation_entry(parent_def_id.to_def_id())
                     .map_or(false, |parent_depr| parent_depr.same_origin(&depr_entry));
 
                 if !skip {

@@ -100,6 +100,9 @@ h1.fqn {
 	border-bottom: 1px dashed;
 	margin-top: 0;
 }
+h1.fqn > .in-band > a:hover {
+	text-decoration: underline;
+}
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	border-bottom: 1px solid;
 }
@@ -625,7 +628,7 @@ a {
 	display: initial;
 }
 
-.in-band:hover > .anchor {
+.in-band:hover > .anchor, .impl:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
@@ -1089,7 +1092,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	border-style: solid;
 }
 
-.tooltip.compile_fail, .tooltip.ignore {
+.tooltip.compile_fail, .tooltip.should_panic, .tooltip.ignore {
 	font-weight: bold;
 	font-size: 20px;
 }

@@ -123,7 +123,6 @@ functions.
 )]
 
 pub use self::decoder::{decode, DecodableFloat, Decoded, FullDecoded};
-use crate::i16;
 
 pub mod decoder;
 pub mod estimator;

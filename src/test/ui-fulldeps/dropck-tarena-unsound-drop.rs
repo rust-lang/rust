@@ -11,9 +11,9 @@
 
 #![feature(rustc_private)]
 
-extern crate arena;
+extern crate rustc_arena;
 
-use arena::TypedArena;
+use rustc_arena::TypedArena;
 
 trait HasId { fn count(&self) -> usize; }
 

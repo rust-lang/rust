@@ -28,20 +28,20 @@
 
 // lldb-command:run
 // lldb-command:print simple
-// lldbg-check:[...]$0 = WithDestructor { x: 10, y: 20 }
-// lldbr-check:(struct_with_destructor::WithDestructor) simple = WithDestructor { x: 10, y: 20 }
+// lldbg-check:[...]$0 = { x = 10 y = 20 }
+// lldbr-check:(struct_with_destructor::WithDestructor) simple = { x = 10 y = 20 }
 
 // lldb-command:print noDestructor
-// lldbg-check:[...]$1 = NoDestructorGuarded { a: NoDestructor { x: 10, y: 20 }, guard: -1 }
-// lldbr-check:(struct_with_destructor::NoDestructorGuarded) noDestructor = NoDestructorGuarded { a: NoDestructor { x: 10, y: 20 }, guard: -1 }
+// lldbg-check:[...]$1 = { a = { x = 10 y = 20 } guard = -1 }
+// lldbr-check:(struct_with_destructor::NoDestructorGuarded) noDestructor = { a = { x = 10 y = 20 } guard = -1 }
 
 // lldb-command:print withDestructor
-// lldbg-check:[...]$2 = WithDestructorGuarded { a: WithDestructor { x: 10, y: 20 }, guard: -1 }
-// lldbr-check:(struct_with_destructor::WithDestructorGuarded) withDestructor = WithDestructorGuarded { a: WithDestructor { x: 10, y: 20 }, guard: -1 }
+// lldbg-check:[...]$2 = { a = { x = 10 y = 20 } guard = -1 }
+// lldbr-check:(struct_with_destructor::WithDestructorGuarded) withDestructor = { a = { x = 10 y = 20 } guard = -1 }
 
 // lldb-command:print nested
-// lldbg-check:[...]$3 = NestedOuter { a: NestedInner { a: WithDestructor { x: 7890, y: 9870 } } }
-// lldbr-check:(struct_with_destructor::NestedOuter) nested = NestedOuter { a: NestedInner { a: WithDestructor { x: 7890, y: 9870 } } }
+// lldbg-check:[...]$3 = { a = { a = { x = 7890 y = 9870 } } }
+// lldbr-check:(struct_with_destructor::NestedOuter) nested = { a = { a = { x = 7890 y = 9870 } } }
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

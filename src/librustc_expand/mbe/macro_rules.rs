@@ -21,7 +21,7 @@ use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, MacroRulesNormalizedIdent, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent, Symbol};
 use rustc_span::Span;
 
 use log::debug;
@@ -39,7 +39,7 @@ crate struct ParserAnyMacro<'a> {
     /// Span of the expansion site of the macro this parser is for
     site_span: Span,
     /// The ident of the macro we're parsing
-    macro_ident: ast::Ident,
+    macro_ident: Ident,
     arm_span: Span,
 }
 
@@ -88,7 +88,7 @@ fn emit_frag_parse_err(
     parser: &Parser<'_>,
     orig_parser: &mut Parser<'_>,
     site_span: Span,
-    macro_ident: ast::Ident,
+    macro_ident: Ident,
     arm_span: Span,
     kind: AstFragmentKind,
 ) {
@@ -166,7 +166,7 @@ impl<'a> ParserAnyMacro<'a> {
 }
 
 struct MacroRulesMacroExpander {
-    name: ast::Ident,
+    name: Ident,
     span: Span,
     transparency: Transparency,
     lhses: Vec<mbe::TokenTree>,
@@ -215,7 +215,7 @@ fn generic_extension<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,
-    name: ast::Ident,
+    name: Ident,
     transparency: Transparency,
     arg: TokenStream,
     lhses: &[mbe::TokenTree],
@@ -224,7 +224,7 @@ fn generic_extension<'cx>(
     let sess = cx.parse_sess;
 
     if cx.trace_macros() {
-        let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(arg.clone()));
+        let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(&arg));
         trace_macros_note(&mut cx.expansions, sp, msg);
     }
 
@@ -300,7 +300,7 @@ fn generic_extension<'cx>(
                 }
 
                 if cx.trace_macros() {
-                    let msg = format!("to `{}`", pprust::tts_to_string(tts.clone()));
+                    let msg = format!("to `{}`", pprust::tts_to_string(&tts));
                     trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
@@ -387,6 +387,7 @@ pub fn compile_declarative_macro(
     def: &ast::Item,
     edition: Edition,
 ) -> SyntaxExtension {
+    debug!("compile_declarative_macro: {:?}", def);
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
             sess,
@@ -400,9 +401,9 @@ pub fn compile_declarative_macro(
     };
 
     let diag = &sess.span_diagnostic;
-    let lhs_nm = ast::Ident::new(sym::lhs, def.span);
-    let rhs_nm = ast::Ident::new(sym::rhs, def.span);
-    let tt_spec = ast::Ident::new(sym::tt, def.span);
+    let lhs_nm = Ident::new(sym::lhs, def.span);
+    let rhs_nm = Ident::new(sym::rhs, def.span);
+    let tt_spec = Ident::new(sym::tt, def.span);
 
     // Parse the macro_rules! invocation
     let (macro_rules, body) = match &def.kind {
@@ -474,7 +475,9 @@ pub fn compile_declarative_macro(
             .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        let tt = mbe::quoted::parse(tt.clone().into(), true, sess).pop().unwrap();
+                        let tt = mbe::quoted::parse(tt.clone().into(), true, sess, def.id)
+                            .pop()
+                            .unwrap();
                         valid &= check_lhs_nt_follows(sess, features, &def.attrs, &tt);
                         return tt;
                     }
@@ -491,7 +494,9 @@ pub fn compile_declarative_macro(
             .map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        return mbe::quoted::parse(tt.clone().into(), false, sess).pop().unwrap();
+                        return mbe::quoted::parse(tt.clone().into(), false, sess, def.id)
+                            .pop()
+                            .unwrap();
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
@@ -509,9 +514,7 @@ pub fn compile_declarative_macro(
         valid &= check_lhs_no_empty_seq(sess, slice::from_ref(lhs));
     }
 
-    // We use CRATE_NODE_ID instead of `def.id` otherwise we may emit buffered lints for a node id
-    // that is not lint-checked and trigger the "failed to process buffered lint here" bug.
-    valid &= macro_check::check_meta_variables(sess, ast::CRATE_NODE_ID, def.span, &lhses, &rhses);
+    valid &= macro_check::check_meta_variables(sess, def.id, def.span, &lhses, &rhses);
 
     let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {

@@ -17,7 +17,7 @@ fn max_len() -> usize {
     // The maximum read limit on most posix-like systems is `SSIZE_MAX`,
     // with the man page quoting that if the count of bytes to read is
     // greater than `SSIZE_MAX` the result is "unspecified".
-    <ssize_t>::max_value() as usize
+    <ssize_t>::MAX as usize
 }
 
 impl FileDesc {
@@ -48,10 +48,15 @@ impl FileDesc {
             libc::readv(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::max_value() as usize) as c_int,
+                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
             )
         })?;
         Ok(ret as usize)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        true
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -93,10 +98,15 @@ impl FileDesc {
             libc::writev(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::max_value() as usize) as c_int,
+                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
             )
         })?;
         Ok(ret as usize)
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {

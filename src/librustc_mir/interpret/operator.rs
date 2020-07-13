@@ -61,7 +61,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Le => l <= r,
             Gt => l > r,
             Ge => l >= r,
-            _ => bug!("Invalid operation on char: {:?}", bin_op),
+            _ => span_bug!(self.cur_span(), "Invalid operation on char: {:?}", bin_op),
         };
         (Scalar::from_bool(res), false, self.tcx.types.bool)
     }
@@ -84,7 +84,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             BitAnd => l & r,
             BitOr => l | r,
             BitXor => l ^ r,
-            _ => bug!("Invalid operation on bool: {:?}", bin_op),
+            _ => span_bug!(self.cur_span(), "Invalid operation on bool: {:?}", bin_op),
         };
         (Scalar::from_bool(res), false, self.tcx.types.bool)
     }
@@ -110,7 +110,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Mul => ((l * r).value.into(), ty),
             Div => ((l / r).value.into(), ty),
             Rem => ((l % r).value.into(), ty),
-            _ => bug!("invalid float op: `{:?}`", bin_op),
+            _ => span_bug!(self.cur_span(), "invalid float op: `{:?}`", bin_op),
         };
         (val, false, ty)
     }
@@ -154,7 +154,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // For the remaining ops, the types must be the same on both sides
         if left_layout.ty != right_layout.ty {
-            bug!(
+            span_bug!(
+                self.cur_span(),
                 "invalid asymmetric binary op {:?}: {:?} ({:?}), {:?} ({:?})",
                 bin_op,
                 l,
@@ -251,7 +252,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ));
             }
 
-            _ => bug!(
+            _ => span_bug!(
+                self.cur_span(),
                 "invalid binary op {:?}: {:?}, {:?} (both {:?})",
                 bin_op,
                 l,
@@ -333,7 +335,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 M::binary_ptr_op(self, bin_op, left, right)
             }
-            _ => bug!("Invalid MIR: bad LHS type for binop: {:?}", left.layout.ty),
+            _ => span_bug!(
+                self.cur_span(),
+                "Invalid MIR: bad LHS type for binop: {:?}",
+                left.layout.ty
+            ),
         }
     }
 
@@ -367,7 +373,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = val.to_bool()?;
                 let res = match un_op {
                     Not => !val,
-                    _ => bug!("Invalid bool op {:?}", un_op),
+                    _ => span_bug!(self.cur_span(), "Invalid bool op {:?}", un_op),
                 };
                 Ok((Scalar::from_bool(res), false, self.tcx.types.bool))
             }
@@ -375,7 +381,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let res = match (un_op, fty) {
                     (Neg, FloatTy::F32) => Scalar::from_f32(-val.to_f32()?),
                     (Neg, FloatTy::F64) => Scalar::from_f64(-val.to_f64()?),
-                    _ => bug!("Invalid float op {:?}", un_op),
+                    _ => span_bug!(self.cur_span(), "Invalid float op {:?}", un_op),
                 };
                 Ok((res, false, layout.ty))
             }

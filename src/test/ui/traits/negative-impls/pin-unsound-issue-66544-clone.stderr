@@ -1,4 +1,4 @@
-error[E0748]: found both positive and negative implementation of trait `std::clone::Clone` for type `&mut MyType<'_>`:
+error[E0751]: found both positive and negative implementation of trait `std::clone::Clone` for type `&mut MyType<'_>`:
   --> $DIR/pin-unsound-issue-66544-clone.rs:7:1
    |
 LL | impl<'a> Clone for &'a mut MyType<'a> {
@@ -8,4 +8,4 @@ LL | impl<'a> Clone for &'a mut MyType<'a> {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0748`.
+For more information about this error, try `rustc --explain E0751`.

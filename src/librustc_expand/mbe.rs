@@ -9,10 +9,10 @@ crate mod macro_rules;
 crate mod quoted;
 crate mod transcribe;
 
-use rustc_ast::ast;
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::DelimSpan;
 
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use rustc_data_structures::sync::Lrc;
@@ -82,13 +82,9 @@ enum TokenTree {
     /// A kleene-style repetition sequence
     Sequence(DelimSpan, Lrc<SequenceRepetition>),
     /// e.g., `$var`
-    MetaVar(Span, ast::Ident),
+    MetaVar(Span, Ident),
     /// e.g., `$var:expr`. This is only used in the left hand side of MBE macros.
-    MetaVarDecl(
-        Span,
-        ast::Ident, /* name to bind */
-        ast::Ident, /* kind of nonterminal */
-    ),
+    MetaVarDecl(Span, Ident /* name to bind */, Ident /* kind of nonterminal */),
 }
 
 impl TokenTree {

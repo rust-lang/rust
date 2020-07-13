@@ -1,30 +1,19 @@
 error[E0277]: expected a `std::ops::Fn<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
-  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:13:21
+  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:21:21
    |
-LL | fn call_it<F:Fn(&isize)->isize>(_: &F, _: isize) -> isize { 0 }
-   |              ----------------- required by this bound in `call_it`
+LL | fn call_it<F: Fn(&isize) -> isize>(_: &F, _: isize) -> isize {
+   |               ------------------- required by this bound in `call_it`
 ...
 LL |     let x = call_it(&square, 22);
    |                     ^^^^^^^ expected an `Fn<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
    |
    = help: the trait `for<'r> std::ops::Fn<(&'r isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
 
-error[E0277]: expected a `std::ops::FnOnce<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
-  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:13:21
-   |
-LL | fn call_it<F:Fn(&isize)->isize>(_: &F, _: isize) -> isize { 0 }
-   |                          ----- required by this bound in `call_it`
-...
-LL |     let x = call_it(&square, 22);
-   |                     ^^^^^^^ expected an `FnOnce<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
-   |
-   = help: the trait `std::ops::FnOnce<(&isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
-
 error[E0277]: expected a `std::ops::FnMut<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
-  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:19:25
+  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:26:25
    |
-LL | fn call_it_mut<F:FnMut(&isize)->isize>(_: &mut F, _: isize) -> isize { 0 }
-   |                  -------------------- required by this bound in `call_it_mut`
+LL | fn call_it_mut<F: FnMut(&isize) -> isize>(_: &mut F, _: isize) -> isize {
+   |                   ---------------------- required by this bound in `call_it_mut`
 ...
 LL |     let y = call_it_mut(&mut square, 22);
    |                         ^^^^^^^^^^^ expected an `FnMut<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
@@ -32,27 +21,16 @@ LL |     let y = call_it_mut(&mut square, 22);
    = help: the trait `for<'r> std::ops::FnMut<(&'r isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
 
 error[E0277]: expected a `std::ops::FnOnce<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
-  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:19:25
+  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:31:26
    |
-LL | fn call_it_mut<F:FnMut(&isize)->isize>(_: &mut F, _: isize) -> isize { 0 }
-   |                                 ----- required by this bound in `call_it_mut`
-...
-LL |     let y = call_it_mut(&mut square, 22);
-   |                         ^^^^^^^^^^^ expected an `FnOnce<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
-   |
-   = help: the trait `std::ops::FnOnce<(&isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
-
-error[E0277]: expected a `std::ops::FnOnce<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
-  --> $DIR/unboxed-closures-wrong-arg-type-extern-fn.rs:25:26
-   |
-LL | fn call_it_once<F:FnOnce(&isize)->isize>(_: F, _: isize) -> isize { 0 }
-   |                                   ----- required by this bound in `call_it_once`
+LL | fn call_it_once<F: FnOnce(&isize) -> isize>(_: F, _: isize) -> isize {
+   |                    ----------------------- required by this bound in `call_it_once`
 ...
 LL |     let z = call_it_once(square, 22);
    |                          ^^^^^^ expected an `FnOnce<(&isize,)>` closure, found `unsafe fn(isize) -> isize {square}`
    |
-   = help: the trait `std::ops::FnOnce<(&isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
+   = help: the trait `for<'r> std::ops::FnOnce<(&'r isize,)>` is not implemented for `unsafe fn(isize) -> isize {square}`
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

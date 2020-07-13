@@ -46,9 +46,12 @@ error[E0423]: expected value, found struct variant `E::V`
   --> $DIR/struct-literal-variant-in-if.rs:10:13
    |
 LL |     if x == E::V { field } {}
-   |             ^^^^----------
-   |             |
-   |             help: surround the struct literal with parenthesis: `(E::V { field })`
+   |             ^^^^
+   |
+help: surround the struct literal with parentheses
+   |
+LL |     if x == (E::V { field }) {}
+   |             ^              ^
 
 error[E0308]: mismatched types
   --> $DIR/struct-literal-variant-in-if.rs:10:20

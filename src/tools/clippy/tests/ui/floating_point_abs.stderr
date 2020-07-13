@@ -1,0 +1,80 @@
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:10:5
+   |
+LL | /     if num >= 0.0 {
+LL | |         num
+LL | |     } else {
+LL | |         -num
+LL | |     }
+   | |_____^ help: try: `num.abs()`
+   |
+   = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
+
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:18:5
+   |
+LL | /     if 0.0 < num {
+LL | |         num
+LL | |     } else {
+LL | |         -num
+LL | |     }
+   | |_____^ help: try: `num.abs()`
+
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:26:5
+   |
+LL | /     if a.a > 0.0 {
+LL | |         a.a
+LL | |     } else {
+LL | |         -a.a
+LL | |     }
+   | |_____^ help: try: `a.a.abs()`
+
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:34:5
+   |
+LL | /     if 0.0 >= num {
+LL | |         -num
+LL | |     } else {
+LL | |         num
+LL | |     }
+   | |_____^ help: try: `num.abs()`
+
+error: manual implementation of `abs` method
+  --> $DIR/floating_point_abs.rs:42:5
+   |
+LL | /     if a.a < 0.0 {
+LL | |         -a.a
+LL | |     } else {
+LL | |         a.a
+LL | |     }
+   | |_____^ help: try: `a.a.abs()`
+
+error: manual implementation of negation of `abs` method
+  --> $DIR/floating_point_abs.rs:50:5
+   |
+LL | /     if num < 0.0 {
+LL | |         num
+LL | |     } else {
+LL | |         -num
+LL | |     }
+   | |_____^ help: try: `-num.abs()`
+
+error: manual implementation of negation of `abs` method
+  --> $DIR/floating_point_abs.rs:58:5
+   |
+LL | /     if 0.0 >= num {
+LL | |         num
+LL | |     } else {
+LL | |         -num
+LL | |     }
+   | |_____^ help: try: `-num.abs()`
+
+error: manual implementation of negation of `abs` method
+  --> $DIR/floating_point_abs.rs:67:12
+   |
+LL |         a: if a.a >= 0.0 { -a.a } else { a.a },
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-a.a.abs()`
+
+error: aborting due to 8 previous errors
+

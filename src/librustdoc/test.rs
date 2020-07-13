@@ -1,18 +1,22 @@
 use rustc_ast::ast;
-use rustc_ast::with_globals;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
+use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
-use rustc_session::{self, config, DiagnosticOutput, Session};
+use rustc_middle::ty::TyCtxt;
+use rustc_session::config::{self, CrateType};
+use rustc_session::{lint, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::TargetTriple;
+use tempfile::Builder as TempFileBuilder;
+
 use std::collections::HashMap;
 use std::env;
 use std::io::{self, Write};
@@ -20,11 +24,12 @@ use std::panic;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
-use tempfile::Builder as TempFileBuilder;
 
 use crate::clean::Attributes;
 use crate::config::Options;
+use crate::core::init_lints;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
+use crate::passes::span_of_attrs;
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -37,23 +42,35 @@ pub struct TestOptions {
     pub attrs: Vec<String>,
 }
 
-pub fn run(options: Options) -> i32 {
+pub fn run(options: Options) -> Result<(), String> {
     let input = config::Input::File(options.input.clone());
 
-    let crate_types = if options.proc_macro_crate {
-        vec![config::CrateType::ProcMacro]
-    } else {
-        vec![config::CrateType::Rlib]
-    };
+    let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
+
+    // In addition to those specific lints, we also need to allow those given through
+    // command line, otherwise they'll get ignored and we don't want that.
+    let allowed_lints = vec![invalid_codeblock_attribute_name.to_owned()];
+
+    let (lint_opts, lint_caps) = init_lints(allowed_lints, options.lint_opts.clone(), |lint| {
+        if lint.name == invalid_codeblock_attribute_name {
+            None
+        } else {
+            Some((lint.name_lower(), lint::Allow))
+        }
+    });
+
+    let crate_types =
+        if options.proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
 
     let sessopts = config::Options {
         maybe_sysroot: options.maybe_sysroot.clone(),
         search_paths: options.libs.clone(),
         crate_types,
+        lint_opts: if !options.display_warnings { lint_opts } else { vec![] },
+        lint_cap: Some(options.lint_cap.clone().unwrap_or_else(|| lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
-        lint_cap: Some(rustc_session::lint::Level::Allow),
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions { ..config::basic_debugging_options() },
         edition: options.edition,
@@ -75,7 +92,7 @@ pub fn run(options: Options) -> i32 {
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         crate_name: options.crate_name.clone(),
-        lint_caps: Default::default(),
+        lint_caps,
         register_lints: None,
         override_queries: None,
         registry: rustc_driver::diagnostics_registry(),
@@ -96,7 +113,7 @@ pub fn run(options: Options) -> i32 {
                 options,
                 false,
                 opts,
-                Some(compiler.source_map().clone()),
+                Some(compiler.session().parse_sess.clone_source_map()),
                 None,
                 enable_per_target_ignores,
             );
@@ -105,6 +122,7 @@ pub fn run(options: Options) -> i32 {
 
             global_ctxt.enter(|tcx| {
                 let krate = tcx.hir().krate();
+
                 let mut hir_collector = HirCollector {
                     sess: compiler.session(),
                     collector: &mut collector,
@@ -112,10 +130,17 @@ pub fn run(options: Options) -> i32 {
                     codes: ErrorCodes::from(
                         compiler.session().opts.unstable_features.is_nightly_build(),
                     ),
+                    tcx,
                 };
-                hir_collector.visit_testable("".to_string(), &krate.item.attrs, |this| {
-                    intravisit::walk_crate(this, krate);
-                });
+                hir_collector.visit_testable(
+                    "".to_string(),
+                    &krate.item.attrs,
+                    CRATE_HIR_ID,
+                    krate.item.span,
+                    |this| {
+                        intravisit::walk_crate(this, krate);
+                    },
+                );
             });
             compiler.session().abort_if_errors();
 
@@ -125,7 +150,7 @@ pub fn run(options: Options) -> i32 {
     });
     let tests = match tests {
         Ok(tests) => tests,
-        Err(ErrorReported) => return 1,
+        Err(ErrorReported) => return Err(String::new()),
     };
 
     test_args.insert(0, "rustdoctest".to_string());
@@ -136,11 +161,11 @@ pub fn run(options: Options) -> i32 {
         Some(testing::Options::new().display_output(display_warnings)),
     );
 
-    0
+    Ok(())
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(krate: &::rustc_hir::Crate) -> TestOptions {
+fn scrape_test_config(krate: &::rustc_hir::Crate<'_>) -> TestOptions {
     use rustc_ast_pretty::pprust;
 
     let mut opts =
@@ -229,8 +254,7 @@ fn run_test(
 
     let rustc_binary = options
         .test_builder
-        .as_ref()
-        .map(|v| &**v)
+        .as_deref()
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = Command::new(&rustc_binary);
     compiler.arg("--crate-type").arg("bin");
@@ -374,7 +398,7 @@ pub fn make_test(
     // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
-        with_globals(edition, || {
+        rustc_ast::with_session_globals(edition, || {
             use rustc_errors::emitter::EmitterWriter;
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
@@ -651,7 +675,11 @@ impl Collector {
     }
 
     fn generate_name(&self, line: usize, filename: &FileName) -> String {
-        format!("{} - {} (line {})", filename, self.names.join("::"), line)
+        let mut item_path = self.names.join("::");
+        if !item_path.is_empty() {
+            item_path.push(' ');
+        }
+        format!("{} - {}(line {})", filename, item_path, line)
     }
 
     pub fn set_position(&mut self, position: Span) {
@@ -663,7 +691,7 @@ impl Collector {
             let filename = source_map.span_to_filename(self.position);
             if let FileName::Real(ref filename) = filename {
                 if let Ok(cur_dir) = env::current_dir() {
-                    if let Ok(path) = filename.strip_prefix(&cur_dir) {
+                    if let Ok(path) = filename.local_path().strip_prefix(&cur_dir) {
                         return path.to_owned().into();
                     }
                 }
@@ -693,7 +721,7 @@ impl Tester for Collector {
         // FIXME(#44940): if doctests ever support path remapping, then this filename
         // needs to be the result of `SourceMap::span_to_unmapped_path`.
         let path = match &filename {
-            FileName::Real(path) => path.clone(),
+            FileName::Real(path) => path.local_path().to_path_buf(),
             _ => PathBuf::from(r"doctest.rs"),
         };
 
@@ -881,18 +909,21 @@ impl Tester for Collector {
     }
 }
 
-struct HirCollector<'a, 'hir> {
+struct HirCollector<'a, 'hir, 'tcx> {
     sess: &'a Session,
     collector: &'a mut Collector,
     map: Map<'hir>,
     codes: ErrorCodes,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'hir> HirCollector<'a, 'hir> {
+impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
     fn visit_testable<F: FnOnce(&mut Self)>(
         &mut self,
         name: String,
         attrs: &[ast::Attribute],
+        hir_id: HirId,
+        sp: Span,
         nested: F,
     ) {
         let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
@@ -918,6 +949,11 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
                 self.collector,
                 self.codes,
                 self.collector.enable_per_target_ignores,
+                Some(&crate::html::markdown::ExtraInfo::new(
+                    &self.tcx,
+                    hir_id,
+                    span_of_attrs(&attrs).unwrap_or(sp),
+                )),
             );
         }
 
@@ -929,62 +965,68 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
     }
 }
 
-impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
+impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> {
     type Map = Map<'hir>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
         intravisit::NestedVisitorMap::All(self.map)
     }
 
-    fn visit_item(&mut self, item: &'hir hir::Item) {
+    fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
         let name = if let hir::ItemKind::Impl { ref self_ty, .. } = item.kind {
             rustc_hir_pretty::id_to_string(&self.map, self_ty.hir_id)
         } else {
             item.ident.to_string()
         };
 
-        self.visit_testable(name, &item.attrs, |this| {
+        self.visit_testable(name, &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_item(this, item);
         });
     }
 
-    fn visit_trait_item(&mut self, item: &'hir hir::TraitItem) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
+    fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
+        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
-    fn visit_impl_item(&mut self, item: &'hir hir::ImplItem) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
+    fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
+        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }
 
-    fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
+    fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
+        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_foreign_item(this, item);
         });
     }
 
     fn visit_variant(
         &mut self,
-        v: &'hir hir::Variant,
-        g: &'hir hir::Generics,
+        v: &'hir hir::Variant<'_>,
+        g: &'hir hir::Generics<'_>,
         item_id: hir::HirId,
     ) {
-        self.visit_testable(v.ident.to_string(), &v.attrs, |this| {
+        self.visit_testable(v.ident.to_string(), &v.attrs, v.id, v.span, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }
 
-    fn visit_struct_field(&mut self, f: &'hir hir::StructField) {
-        self.visit_testable(f.ident.to_string(), &f.attrs, |this| {
+    fn visit_struct_field(&mut self, f: &'hir hir::StructField<'_>) {
+        self.visit_testable(f.ident.to_string(), &f.attrs, f.hir_id, f.span, |this| {
             intravisit::walk_struct_field(this, f);
         });
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef) {
-        self.visit_testable(macro_def.ident.to_string(), &macro_def.attrs, |_| ());
+    fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef<'_>) {
+        self.visit_testable(
+            macro_def.ident.to_string(),
+            &macro_def.attrs,
+            macro_def.hir_id,
+            macro_def.span,
+            |_| (),
+        );
     }
 }
 

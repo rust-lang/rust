@@ -82,6 +82,46 @@ fn test_binary_search_implementation_details() {
 }
 
 #[test]
+fn test_partition_point() {
+    let b: [i32; 0] = [];
+    assert_eq!(b.partition_point(|&x| x < 5), 0);
+
+    let b = [4];
+    assert_eq!(b.partition_point(|&x| x < 3), 0);
+    assert_eq!(b.partition_point(|&x| x < 4), 0);
+    assert_eq!(b.partition_point(|&x| x < 5), 1);
+
+    let b = [1, 2, 4, 6, 8, 9];
+    assert_eq!(b.partition_point(|&x| x < 5), 3);
+    assert_eq!(b.partition_point(|&x| x < 6), 3);
+    assert_eq!(b.partition_point(|&x| x < 7), 4);
+    assert_eq!(b.partition_point(|&x| x < 8), 4);
+
+    let b = [1, 2, 4, 5, 6, 8];
+    assert_eq!(b.partition_point(|&x| x < 9), 6);
+
+    let b = [1, 2, 4, 6, 7, 8, 9];
+    assert_eq!(b.partition_point(|&x| x < 6), 3);
+    assert_eq!(b.partition_point(|&x| x < 5), 3);
+    assert_eq!(b.partition_point(|&x| x < 8), 5);
+
+    let b = [1, 2, 4, 5, 6, 8, 9];
+    assert_eq!(b.partition_point(|&x| x < 7), 5);
+    assert_eq!(b.partition_point(|&x| x < 0), 0);
+
+    let b = [1, 3, 3, 3, 7];
+    assert_eq!(b.partition_point(|&x| x < 0), 0);
+    assert_eq!(b.partition_point(|&x| x < 1), 0);
+    assert_eq!(b.partition_point(|&x| x < 2), 1);
+    assert_eq!(b.partition_point(|&x| x < 3), 1);
+    assert_eq!(b.partition_point(|&x| x < 4), 4);
+    assert_eq!(b.partition_point(|&x| x < 5), 4);
+    assert_eq!(b.partition_point(|&x| x < 6), 4);
+    assert_eq!(b.partition_point(|&x| x < 7), 4);
+    assert_eq!(b.partition_point(|&x| x < 8), 5);
+}
+
+#[test]
 fn test_iterator_nth() {
     let v: &[_] = &[0, 1, 2, 3, 4];
     for i in 0..v.len() {
@@ -1227,15 +1267,9 @@ fn sort_unstable() {
     use core::slice::heapsort;
     use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 
-    #[cfg(not(miri))] // Miri is too slow
-    let large_range = 500..510;
-    #[cfg(not(miri))] // Miri is too slow
-    let rounds = 100;
-
-    #[cfg(miri)]
-    let large_range = 0..0; // empty range
-    #[cfg(miri)]
-    let rounds = 1;
+    // Miri is too slow
+    let large_range = if cfg!(miri) { 0..0 } else { 500..510 };
+    let rounds = if cfg!(miri) { 1 } else { 100 };
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
@@ -1697,8 +1731,8 @@ fn test_copy_within_panics_src_inverted() {
 #[should_panic(expected = "attempted to index slice up to maximum usize")]
 fn test_copy_within_panics_src_out_of_bounds() {
     let mut bytes = *b"Hello, World!";
-    // an inclusive range ending at usize::max_value() would make src_end overflow
-    bytes.copy_within(usize::max_value()..=usize::max_value(), 0);
+    // an inclusive range ending at usize::MAX would make src_end overflow
+    bytes.copy_within(usize::MAX..=usize::MAX, 0);
 }
 
 #[test]

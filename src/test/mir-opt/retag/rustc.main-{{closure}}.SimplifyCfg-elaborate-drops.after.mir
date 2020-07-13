@@ -9,14 +9,14 @@ fn main::{{closure}}#0(_1: &[closure@main::{{closure}}#0], _2: &i32) -> &i32 {
     }
 
     bb0: {
-        Retag([fn entry] _1);            // bb0[0]: scope 0 at $DIR/retag.rs:40:31: 43:6
-        Retag([fn entry] _2);            // bb0[1]: scope 0 at $DIR/retag.rs:40:31: 43:6
-        StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/retag.rs:41:13: 41:15
-        _3 = _2;                         // bb0[3]: scope 0 at $DIR/retag.rs:41:18: 41:19
-        Retag(_3);                       // bb0[4]: scope 0 at $DIR/retag.rs:41:18: 41:19
-        _0 = _2;                         // bb0[5]: scope 1 at $DIR/retag.rs:42:9: 42:10
-        Retag(_0);                       // bb0[6]: scope 1 at $DIR/retag.rs:42:9: 42:10
-        StorageDead(_3);                 // bb0[7]: scope 0 at $DIR/retag.rs:43:5: 43:6
-        return;                          // bb0[8]: scope 0 at $DIR/retag.rs:43:6: 43:6
+        Retag([fn entry] _1);            // scope 0 at $DIR/retag.rs:40:31: 43:6
+        Retag([fn entry] _2);            // scope 0 at $DIR/retag.rs:40:31: 43:6
+        StorageLive(_3);                 // scope 0 at $DIR/retag.rs:41:13: 41:15
+        _3 = _2;                         // scope 0 at $DIR/retag.rs:41:18: 41:19
+        Retag(_3);                       // scope 0 at $DIR/retag.rs:41:18: 41:19
+        _0 = _2;                         // scope 1 at $DIR/retag.rs:42:9: 42:10
+        Retag(_0);                       // scope 1 at $DIR/retag.rs:42:9: 42:10
+        StorageDead(_3);                 // scope 0 at $DIR/retag.rs:43:5: 43:6
+        return;                          // scope 0 at $DIR/retag.rs:43:6: 43:6
     }
 }

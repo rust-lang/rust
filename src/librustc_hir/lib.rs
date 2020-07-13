@@ -3,12 +3,12 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 #![feature(crate_visibility_modifier)]
-#![feature(const_if_match)]
+#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)] // For the unsizing cast on `&[]`
 #![feature(const_panic)]
 #![feature(in_band_lifetimes)]
 #![feature(or_patterns)]
-#![feature(specialization)]
+#![feature(min_specialization)]
 #![recursion_limit = "256"]
 
 #[macro_use]

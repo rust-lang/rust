@@ -133,7 +133,11 @@ impl<CTX: QueryContext> QueryJob<CTX> {
     /// as there are no concurrent jobs which could be waiting on us
     pub fn signal_complete(self) {
         #[cfg(parallel_compiler)]
-        self.latch.map(|latch| latch.set());
+        {
+            if let Some(latch) = self.latch {
+                latch.set();
+            }
+        }
     }
 }
 
@@ -448,7 +452,9 @@ fn remove_cycle<CTX: QueryContext>(
 
         // Remove the queries in our cycle from the list of jobs to look at
         for r in &stack {
-            jobs.remove_item(&r.1);
+            if let Some(pos) = jobs.iter().position(|j| j == &r.1) {
+                jobs.remove(pos);
+            }
         }
 
         // Find the queries in the cycle which are

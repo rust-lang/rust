@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-70453-generics-in-discr-ice-2.rs:9:15
+   |
+LL |     Some(T) = std::mem::size_of::<T>(),
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+

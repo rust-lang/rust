@@ -23,6 +23,7 @@ pub fn opts() -> TargetOptions {
         pre_link_args: args,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
+        use_ctors_section: true,
         ..Default::default()
     }
 }

@@ -17,11 +17,11 @@
 #![feature(pattern)]
 #![feature(range_is_empty)]
 #![feature(raw)]
-#![feature(saturating_neg)]
 #![feature(sort_internals)]
 #![feature(slice_partition_at_index)]
-#![feature(specialization)]
+#![feature(min_specialization)]
 #![feature(step_trait)]
+#![feature(step_trait_ext)]
 #![feature(str_internals)]
 #![feature(test)]
 #![feature(trusted_len)]
@@ -40,8 +40,11 @@
 #![feature(const_raw_ptr_deref)]
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
-#![feature(leading_trailing_ones)]
-#![feature(const_forget)]
+#![feature(option_unwrap_none)]
+#![feature(peekable_next_if)]
+#![feature(partition_point)]
+#![feature(unsafe_block_in_unsafe_fn)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;
 

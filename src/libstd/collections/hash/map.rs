@@ -198,6 +198,7 @@ use crate::sys;
 /// ```
 
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashMap<K, V, S = RandomState> {
     base: base::HashMap<K, V, S>,
@@ -250,6 +251,9 @@ impl<K, V, S> HashMap<K, V, S> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -260,6 +264,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// let mut map = HashMap::with_hasher(s);
     /// map.insert(1, 2);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
@@ -277,6 +283,9 @@ impl<K, V, S> HashMap<K, V, S> {
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
+    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// the HashMap to be useful, see its documentation for details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -287,6 +296,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
     /// map.insert(1, 2);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
@@ -2415,6 +2426,24 @@ where
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         self.base.extend(iter)
     }
+
+    #[inline]
+    fn extend_one(&mut self, (k, v): (K, V)) {
+        self.base.insert(k, v);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        // self.base.extend_reserve(additional);
+        // FIXME: hashbrown should implement this method.
+        // But until then, use the same reservation logic:
+
+        // Reserve the entire hint lower bound if the map is empty.
+        // Otherwise reserve half the hint (rounded up), so the map
+        // will only resize twice in the worst case.
+        let reserve = if self.is_empty() { additional } else { (additional + 1) / 2 };
+        self.base.reserve(reserve);
+    }
 }
 
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
@@ -2427,6 +2456,16 @@ where
     #[inline]
     fn extend<T: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: T) {
         self.base.extend(iter)
+    }
+
+    #[inline]
+    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
+        self.base.insert(k, v);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        Extend::<(K, V)>::extend_reserve(self, additional)
     }
 }
 

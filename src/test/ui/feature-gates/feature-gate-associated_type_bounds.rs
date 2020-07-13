@@ -1,3 +1,6 @@
+// compile-flags: -Zsave-analysis
+// This is also a regression test for #69415 and the above flag is needed.
+
 #![feature(untagged_unions)]
 
 trait Tr1 { type As1: Copy; }

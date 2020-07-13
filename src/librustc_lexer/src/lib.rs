@@ -1,16 +1,23 @@
 //! Low-level Rust lexer.
 //!
-//! Tokens produced by this lexer are not yet ready for parsing the Rust syntax,
-//! for that see `librustc_parse::lexer`, which converts this basic token stream
+//! The idea with `librustc_lexer` is to make a reusable library,
+//! by separating out pure lexing and rustc-specific concerns, like spans,
+//! error reporting an interning.  So, rustc_lexer operates directly on `&str`,
+//! produces simple tokens which are a pair of type-tag and a bit of original text,
+//! and does not report errors, instead storing them as flags on the token.
+//!
+//! Tokens produced by this lexer are not yet ready for parsing the Rust syntax.
+//! For that see [`librustc_parse::lexer`], which converts this basic token stream
 //! into wide tokens used by actual parser.
 //!
 //! The purpose of this crate is to convert raw sources into a labeled sequence
 //! of well-known token types, so building an actual Rust token stream will
 //! be easier.
 //!
-//! Main entity of this crate is [`TokenKind`] enum which represents common
+//! The main entity of this crate is the [`TokenKind`] enum which represents common
 //! lexeme types.
-
+//!
+//! [`librustc_parse::lexer`]: ../rustc_parse/lexer/index.html
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 
@@ -23,7 +30,7 @@ mod tests;
 use self::LiteralKind::*;
 use self::TokenKind::*;
 use crate::cursor::{Cursor, EOF_CHAR};
-use std::convert::TryInto;
+use std::convert::TryFrom;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,
@@ -45,8 +52,9 @@ pub enum TokenKind {
     // Multi-char tokens:
     /// "// comment"
     LineComment,
-    /// "/* block comment */"
-    /// Block comments can be recursive, so the sequence like "/* /* */"
+    /// `/* block comment */`
+    ///
+    /// Block comments can be recursive, so the sequence like `/* /* */`
     /// will not be considered terminated and will result in a parsing error.
     BlockComment { terminated: bool },
     /// Any whitespace characters sequence.
@@ -136,84 +144,24 @@ pub enum LiteralKind {
     /// "b"abc"", "b"abc"
     ByteStr { terminated: bool },
     /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a"
-    RawStr(UnvalidatedRawStr),
+    RawStr { n_hashes: u16, err: Option<RawStrError> },
     /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a"
-    RawByteStr(UnvalidatedRawStr),
-}
-
-/// Represents something that looks like a raw string, but may have some
-/// problems. Use `.validate()` to convert it into something
-/// usable.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct UnvalidatedRawStr {
-    /// The prefix (`r###"`) is valid
-    valid_start: bool,
-
-    /// The postfix (`"###`) is valid
-    valid_end: bool,
-
-    /// The number of leading `#`
-    n_start_hashes: usize,
-    /// The number of trailing `#`. `n_end_hashes` <= `n_start_hashes`
-    n_end_hashes: usize,
-    /// The offset starting at `r` or `br` where the user may have intended to end the string.
-    /// Currently, it is the longest sequence of pattern `"#+"`.
-    possible_terminator_offset: Option<usize>,
+    RawByteStr { n_hashes: u16, err: Option<RawStrError> },
 }
 
 /// Error produced validating a raw string. Represents cases like:
-/// - `r##~"abcde"##`: `LexRawStrError::InvalidStarter`
-/// - `r###"abcde"##`: `LexRawStrError::NoTerminator { expected: 3, found: 2, possible_terminator_offset: Some(11)`
-/// - Too many `#`s (>65536): `TooManyDelimiters`
+/// - `r##~"abcde"##`: `InvalidStarter`
+/// - `r###"abcde"##`: `NoTerminator { expected: 3, found: 2, possible_terminator_offset: Some(11)`
+/// - Too many `#`s (>65535): `TooManyDelimiters`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum LexRawStrError {
+pub enum RawStrError {
     /// Non `#` characters exist between `r` and `"` eg. `r#~"..`
-    InvalidStarter,
+    InvalidStarter { bad_char: char },
     /// The string was never terminated. `possible_terminator_offset` is the number of characters after `r` or `br` where they
     /// may have intended to terminate it.
     NoTerminator { expected: usize, found: usize, possible_terminator_offset: Option<usize> },
-    /// More than 65536 `#`s exist.
-    TooManyDelimiters,
-}
-
-/// Raw String that contains a valid prefix (`#+"`) and postfix (`"#+`) where
-/// there are a matching number of `#` characters in both. Note that this will
-/// not consume extra trailing `#` characters: `r###"abcde"####` is lexed as a
-/// `ValidatedRawString { n_hashes: 3 }` followed by a `#` token.
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub struct ValidatedRawStr {
-    n_hashes: u16,
-}
-
-impl ValidatedRawStr {
-    pub fn num_hashes(&self) -> u16 {
-        self.n_hashes
-    }
-}
-
-impl UnvalidatedRawStr {
-    pub fn validate(self) -> Result<ValidatedRawStr, LexRawStrError> {
-        if !self.valid_start {
-            return Err(LexRawStrError::InvalidStarter);
-        }
-
-        // Only up to 65535 `#`s are allowed in raw strings
-        let n_start_safe: u16 =
-            self.n_start_hashes.try_into().map_err(|_| LexRawStrError::TooManyDelimiters)?;
-
-        if self.n_start_hashes > self.n_end_hashes || !self.valid_end {
-            Err(LexRawStrError::NoTerminator {
-                expected: self.n_start_hashes,
-                found: self.n_end_hashes,
-                possible_terminator_offset: self.possible_terminator_offset,
-            })
-        } else {
-            // Since the lexer should never produce a literal with n_end > n_start, if n_start <= n_end,
-            // they must be equal.
-            debug_assert_eq!(self.n_start_hashes, self.n_end_hashes);
-            Ok(ValidatedRawStr { n_hashes: n_start_safe })
-        }
-    }
+    /// More than 65535 `#`s exist.
+    TooManyDelimiters { found: usize },
 }
 
 /// Base of numeric literal encoding according to its prefix.
@@ -230,16 +178,24 @@ pub enum Base {
 }
 
 /// `rustc` allows files to have a shebang, e.g. "#!/usr/bin/rustrun",
-/// but shebang isn't a part of rust syntax, so this function
-/// skips the line if it starts with a shebang ("#!").
-/// Line won't be skipped if it represents a valid Rust syntax
-/// (e.g. "#![deny(missing_docs)]").
+/// but shebang isn't a part of rust syntax.
 pub fn strip_shebang(input: &str) -> Option<usize> {
-    debug_assert!(!input.is_empty());
-    if !input.starts_with("#!") || input.starts_with("#![") {
-        return None;
+    // Shebang must start with `#!` literally, without any preceding whitespace.
+    // For simplicity we consider any line starting with `#!` a shebang,
+    // regardless of restrictions put on shebangs by specific platforms.
+    if let Some(input_tail) = input.strip_prefix("#!") {
+        // Ok, this is a shebang but if the next non-whitespace token is `[` or maybe
+        // a doc comment (due to `TokenKind::(Line,Block)Comment` ambiguity at lexer level),
+        // then it may be valid Rust code, so consider it Rust code.
+        let next_non_whitespace_token = tokenize(input_tail).map(|tok| tok.kind).find(|tok|
+            !matches!(tok, TokenKind::Whitespace | TokenKind::LineComment | TokenKind::BlockComment { .. })
+        );
+        if next_non_whitespace_token != Some(TokenKind::OpenBracket) {
+            // No other choice than to consider this a shebang.
+            return Some(2 + input_tail.lines().next().unwrap_or_default().len());
+        }
     }
-    Some(input.find('\n').unwrap_or(input.len()))
+    None
 }
 
 /// Parses the first token from the provided input string.
@@ -337,12 +293,12 @@ impl Cursor<'_> {
             'r' => match (self.first(), self.second()) {
                 ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
-                    let raw_str_i = self.raw_double_quoted_string(1);
+                    let (n_hashes, err) = self.raw_double_quoted_string(1);
                     let suffix_start = self.len_consumed();
-                    if raw_str_i.n_end_hashes == raw_str_i.n_start_hashes {
+                    if err.is_none() {
                         self.eat_literal_suffix();
                     }
-                    let kind = RawStr(raw_str_i);
+                    let kind = RawStr { n_hashes, err };
                     Literal { kind, suffix_start }
                 }
                 _ => self.ident(),
@@ -372,14 +328,12 @@ impl Cursor<'_> {
                 }
                 ('r', '"') | ('r', '#') => {
                     self.bump();
-                    let raw_str_i = self.raw_double_quoted_string(2);
+                    let (n_hashes, err) = self.raw_double_quoted_string(2);
                     let suffix_start = self.len_consumed();
-                    let terminated = raw_str_i.n_start_hashes == raw_str_i.n_end_hashes;
-                    if terminated {
+                    if err.is_none() {
                         self.eat_literal_suffix();
                     }
-
-                    let kind = RawByteStr(raw_str_i);
+                    let kind = RawByteStr { n_hashes, err };
                     Literal { kind, suffix_start }
                 }
                 _ => self.ident(),
@@ -675,27 +629,34 @@ impl Cursor<'_> {
         false
     }
 
-    /// Eats the double-quoted string and returns an `UnvalidatedRawStr`.
-    fn raw_double_quoted_string(&mut self, prefix_len: usize) -> UnvalidatedRawStr {
+    /// Eats the double-quoted string and returns `n_hashes` and an error if encountered.
+    fn raw_double_quoted_string(&mut self, prefix_len: usize) -> (u16, Option<RawStrError>) {
+        // Wrap the actual function to handle the error with too many hashes.
+        // This way, it eats the whole raw string.
+        let (n_hashes, err) = self.raw_string_unvalidated(prefix_len);
+        // Only up to 65535 `#`s are allowed in raw strings
+        match u16::try_from(n_hashes) {
+            Ok(num) => (num, err),
+            // We lie about the number of hashes here :P
+            Err(_) => (0, Some(RawStrError::TooManyDelimiters { found: n_hashes })),
+        }
+    }
+
+    fn raw_string_unvalidated(&mut self, prefix_len: usize) -> (usize, Option<RawStrError>) {
         debug_assert!(self.prev() == 'r');
-        let mut valid_start: bool = false;
         let start_pos = self.len_consumed();
-        let (mut possible_terminator_offset, mut max_hashes) = (None, 0);
+        let mut possible_terminator_offset = None;
+        let mut max_hashes = 0;
 
         // Count opening '#' symbols.
         let n_start_hashes = self.eat_while(|c| c == '#');
 
         // Check that string is started.
         match self.bump() {
-            Some('"') => valid_start = true,
-            _ => {
-                return UnvalidatedRawStr {
-                    valid_start,
-                    valid_end: false,
-                    n_start_hashes,
-                    n_end_hashes: 0,
-                    possible_terminator_offset,
-                };
+            Some('"') => (),
+            c => {
+                let c = c.unwrap_or(EOF_CHAR);
+                return (n_start_hashes, Some(RawStrError::InvalidStarter { bad_char: c }));
             }
         }
 
@@ -705,13 +666,14 @@ impl Cursor<'_> {
             self.eat_while(|c| c != '"');
 
             if self.is_eof() {
-                return UnvalidatedRawStr {
-                    valid_start,
-                    valid_end: false,
+                return (
                     n_start_hashes,
-                    n_end_hashes: max_hashes,
-                    possible_terminator_offset,
-                };
+                    Some(RawStrError::NoTerminator {
+                        expected: n_start_hashes,
+                        found: max_hashes,
+                        possible_terminator_offset,
+                    }),
+                );
             }
 
             // Eat closing double quote.
@@ -719,6 +681,9 @@ impl Cursor<'_> {
 
             // Check that amount of closing '#' symbols
             // is equal to the amount of opening ones.
+            // Note that this will not consume extra trailing `#` characters:
+            // `r###"abcde"####` is lexed as a `RawStr { n_hashes: 3 }`
+            // followed by a `#` token.
             let mut hashes_left = n_start_hashes;
             let is_closing_hash = |c| {
                 if c == '#' && hashes_left != 0 {
@@ -731,16 +696,10 @@ impl Cursor<'_> {
             let n_end_hashes = self.eat_while(is_closing_hash);
 
             if n_end_hashes == n_start_hashes {
-                return UnvalidatedRawStr {
-                    valid_start,
-                    valid_end: true,
-                    n_start_hashes,
-                    n_end_hashes,
-                    possible_terminator_offset: None,
-                };
+                return (n_start_hashes, None);
             } else if n_end_hashes > max_hashes {
-                // Keep track of possible terminators to give a hint about where there might be
-                // a missing terminator
+                // Keep track of possible terminators to give a hint about
+                // where there might be a missing terminator
                 possible_terminator_offset =
                     Some(self.len_consumed() - start_pos - n_end_hashes + prefix_len);
                 max_hashes = n_end_hashes;

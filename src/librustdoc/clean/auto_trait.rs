@@ -315,11 +315,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         pred: ty::Predicate<'tcx>,
     ) -> FxHashSet<GenericParamDef> {
-        let regions = match pred {
-            ty::Predicate::Trait(poly_trait_pred, _) => {
+        let regions = match pred.kind() {
+            ty::PredicateKind::Trait(poly_trait_pred, _) => {
                 tcx.collect_referenced_late_bound_regions(&poly_trait_pred)
             }
-            ty::Predicate::Projection(poly_proj_pred) => {
+            ty::PredicateKind::Projection(poly_proj_pred) => {
                 tcx.collect_referenced_late_bound_regions(&poly_proj_pred)
             }
             _ => return FxHashSet::default(),
@@ -459,14 +459,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let mut replacer = RegionReplacer { vid_to_region: &vid_to_region, tcx };
 
         let orig_bounds: FxHashSet<_> =
-            self.cx.tcx.param_env(param_env_def_id).caller_bounds.iter().collect();
+            self.cx.tcx.param_env(param_env_def_id).caller_bounds().iter().collect();
         let clean_where_predicates = param_env
-            .caller_bounds
+            .caller_bounds()
             .iter()
             .filter(|p| {
                 !orig_bounds.contains(p)
-                    || match p {
-                        ty::Predicate::Trait(pred, _) => pred.def_id() == sized_trait,
+                    || match p.kind() {
+                        ty::PredicateKind::Trait(pred, _) => pred.def_id() == sized_trait,
                         _ => false,
                     }
             })

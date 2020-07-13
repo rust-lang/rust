@@ -11,10 +11,8 @@
 //! These values are then translated to file URLs if possible and then the
 //! destination is asserted to exist.
 //!
-//! A few whitelisted exceptions are allowed as there's known bugs in rustdoc,
-//! but this should catch the majority of "broken link" cases.
-
-#![deny(warnings)]
+//! A few exceptions are allowed as there's known bugs in rustdoc, but this
+//! should catch the majority of "broken link" cases.
 
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -114,13 +112,13 @@ fn walk(cache: &mut Cache, root: &Path, dir: &Path, errors: &mut bool) {
 }
 
 fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Option<PathBuf> {
-    // Ignore none HTML files.
+    // Ignore non-HTML files.
     if file.extension().and_then(|s| s.to_str()) != Some("html") {
         return None;
     }
 
     // Unfortunately we're not 100% full of valid links today to we need a few
-    // whitelists to get this past `make check` today.
+    // exceptions to get this past `make check` today.
     // FIXME(#32129)
     if file.ends_with("std/io/struct.IoSlice.html")
         || file.ends_with("std/string/struct.String.html")

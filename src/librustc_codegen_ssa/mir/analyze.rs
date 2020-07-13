@@ -104,7 +104,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     ) {
         let cx = self.fx.cx;
 
-        if let [proj_base @ .., elem] = place_ref.projection {
+        if let &[ref proj_base @ .., elem] = place_ref.projection {
             let mut base_context = if context.is_mutating_use() {
                 PlaceContext::MutatingUse(MutatingUseContext::Projection)
             } else {
@@ -120,7 +120,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             };
             if is_consume {
                 let base_ty =
-                    mir::Place::ty_from(place_ref.local, proj_base, *self.fx.mir, cx.tcx());
+                    mir::Place::ty_from(place_ref.local, proj_base, self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
@@ -186,7 +186,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             // now that we have moved to the "slice of projections" representation.
             if let mir::ProjectionElem::Index(local) = elem {
                 self.visit_local(
-                    local,
+                    &local,
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location,
                 );
@@ -204,7 +204,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 };
             }
 
-            self.visit_place_base(&place_ref.local, context, location);
+            self.visit_local(&place_ref.local, context, location);
             self.visit_projection(place_ref.local, place_ref.projection, context, location);
         }
     }
@@ -234,8 +234,8 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         self.visit_rvalue(rvalue, location);
     }
 
-    fn visit_terminator_kind(&mut self, kind: &mir::TerminatorKind<'tcx>, location: Location) {
-        let check = match *kind {
+    fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
+        let check = match terminator.kind {
             mir::TerminatorKind::Call { func: mir::Operand::Constant(ref c), ref args, .. } => {
                 match c.literal.ty.kind {
                     ty::FnDef(did, _) => Some((did, args)),
@@ -259,7 +259,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
         }
 
-        self.super_terminator_kind(kind, location);
+        self.super_terminator(terminator, location);
     }
 
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
@@ -269,7 +269,8 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
     fn visit_local(&mut self, &local: &mir::Local, context: PlaceContext, location: Location) {
         match context {
-            PlaceContext::MutatingUse(MutatingUseContext::Call) => {
+            PlaceContext::MutatingUse(MutatingUseContext::Call)
+            | PlaceContext::MutatingUse(MutatingUseContext::Yield) => {
                 self.assign(local, location);
             }
 
@@ -356,8 +357,9 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::Unreachable
                 | TerminatorKind::SwitchInt { .. }
                 | TerminatorKind::Yield { .. }
-                | TerminatorKind::FalseEdges { .. }
-                | TerminatorKind::FalseUnwind { .. } => { /* nothing to do */ }
+                | TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::FalseUnwind { .. }
+                | TerminatorKind::InlineAsm { .. } => { /* nothing to do */ }
                 TerminatorKind::Call { cleanup: unwind, .. }
                 | TerminatorKind::Assert { cleanup: unwind, .. }
                 | TerminatorKind::DropAndReplace { unwind, .. }

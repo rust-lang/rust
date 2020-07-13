@@ -9,9 +9,11 @@ use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
+use rustc_ast::ast;
 use rustc_hir::lang_items;
 use rustc_index::vec::Idx;
 use rustc_middle::mir;
+use rustc_middle::mir::interpret::{AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
@@ -152,7 +154,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     // a loop.
     fn maybe_sideeffect<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        mir: mir::ReadOnlyBodyAndCache<'tcx, 'tcx>,
+        mir: &'tcx mir::Body<'tcx>,
         bx: &mut Bx,
         targets: &[mir::BasicBlock],
     ) {
@@ -198,6 +200,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         targets: &Vec<mir::BasicBlock>,
     ) {
         let discr = self.codegen_operand(&mut bx, &discr);
+        // `switch_ty` is redundant, sanity-check that.
+        assert_eq!(discr.layout.ty, switch_ty);
         if targets.len() == 2 {
             // If there are two targets, emit br instead of switch
             let lltrue = helper.llblock(self, targets[0]);
@@ -306,7 +310,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) {
-        let ty = location.ty(*self.mir, bx.tcx()).ty;
+        let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(&ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
@@ -376,7 +380,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.check_overflow() {
-            if let AssertKind::OverflowNeg = *msg {
+            if let AssertKind::OverflowNeg(_) = *msg {
                 const_cond = Some(expected);
             }
         }
@@ -528,6 +532,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         args: &Vec<mir::Operand<'tcx>>,
         destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
+        fn_span: Span,
     ) {
         let span = terminator.source_info.span;
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
@@ -537,6 +542,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ty::FnDef(def_id, substs) => (
                 Some(
                     ty::Instance::resolve(bx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs)
+                        .unwrap()
                         .unwrap(),
                 ),
                 None,
@@ -571,7 +577,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let extra_args = extra_args
             .iter()
             .map(|op_arg| {
-                let op_ty = op_arg.ty(*self.mir, bx.tcx());
+                let op_ty = op_arg.ty(self.mir, bx.tcx());
                 self.monomorphize(&op_ty)
             })
             .collect::<Vec<_>>();
@@ -631,7 +637,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if intrinsic == Some("caller_location") {
             if let Some((_, target)) = destination.as_ref() {
-                let location = self.get_caller_location(&mut bx, span);
+                let location = self.get_caller_location(&mut bx, fn_span);
 
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
                     location.val.store(&mut bx, tmp);
@@ -645,6 +651,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         if intrinsic.is_some() && intrinsic != Some("drop_in_place") {
+            let intrinsic = intrinsic.unwrap();
+
+            // `is_codegen_intrinsic()` allows the backend implementation to perform compile-time
+            // operations before converting the `args` to backend values.
+            if !bx.is_codegen_intrinsic(intrinsic, &args, self.instance) {
+                // If the intrinsic call was fully addressed by the `is_codegen_intrinsic()` call
+                // (as a compile-time operation), return immediately. This avoids the need to
+                // convert the arguments, the call to `codegen_intrinsic_call()`, and the return
+                // value handling.
+                return;
+            }
+
             let dest = match ret_dest {
                 _ if fn_abi.ret.is_indirect() => llargs[0],
                 ReturnDest::Nothing => {
@@ -664,7 +682,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // third argument must be constant. This is
                     // checked by const-qualification, which also
                     // promotes any complex rvalues to constants.
-                    if i == 2 && intrinsic.unwrap().starts_with("simd_shuffle") {
+                    if i == 2 && intrinsic.starts_with("simd_shuffle") {
                         if let mir::Operand::Constant(constant) = arg {
                             let c = self.eval_mir_constant(constant);
                             let (llval, ty) = self.simd_shuffle_indices(
@@ -689,6 +707,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &args,
                 dest,
                 terminator.source_info.span,
+                self.instance,
             );
 
             if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
@@ -795,7 +814,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args.len() + 1,
                 "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
             );
-            let location = self.get_caller_location(&mut bx, span);
+            let location = self.get_caller_location(&mut bx, fn_span);
+            debug!(
+                "codegen_call_terminator({:?}): location={:?} (fn_span {:?})",
+                terminator, location, fn_span
+            );
+
             let last_arg = fn_abi.args.last().unwrap();
             self.codegen_argument(&mut bx, location, &mut llargs, last_arg);
         }
@@ -818,6 +842,119 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             destination.as_ref().map(|&(_, target)| (ret_dest, target)),
             cleanup,
         );
+    }
+
+    fn codegen_asm_terminator(
+        &mut self,
+        helper: TerminatorCodegenHelper<'tcx>,
+        mut bx: Bx,
+        terminator: &mir::Terminator<'tcx>,
+        template: &[ast::InlineAsmTemplatePiece],
+        operands: &[mir::InlineAsmOperand<'tcx>],
+        options: ast::InlineAsmOptions,
+        line_spans: &[Span],
+        destination: Option<mir::BasicBlock>,
+    ) {
+        let span = terminator.source_info.span;
+
+        let operands: Vec<_> = operands
+            .iter()
+            .map(|op| match *op {
+                mir::InlineAsmOperand::In { reg, ref value } => {
+                    let value = self.codegen_operand(&mut bx, value);
+                    InlineAsmOperandRef::In { reg, value }
+                }
+                mir::InlineAsmOperand::Out { reg, late, ref place } => {
+                    let place = place.map(|place| self.codegen_place(&mut bx, place.as_ref()));
+                    InlineAsmOperandRef::Out { reg, late, place }
+                }
+                mir::InlineAsmOperand::InOut { reg, late, ref in_value, ref out_place } => {
+                    let in_value = self.codegen_operand(&mut bx, in_value);
+                    let out_place =
+                        out_place.map(|out_place| self.codegen_place(&mut bx, out_place.as_ref()));
+                    InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
+                }
+                mir::InlineAsmOperand::Const { ref value } => {
+                    if let mir::Operand::Constant(constant) = value {
+                        let const_value = self
+                            .eval_mir_constant(constant)
+                            .unwrap_or_else(|_| span_bug!(span, "asm const cannot be resolved"));
+                        let ty = constant.literal.ty;
+                        let size = bx.layout_of(ty).size;
+                        let scalar = match const_value {
+                            // Promoted constants are evaluated into a ByRef instead of a Scalar,
+                            // but we want the scalar value here.
+                            ConstValue::ByRef { alloc, offset } => {
+                                let ptr = Pointer::new(AllocId(0), offset);
+                                alloc
+                                    .read_scalar(&bx, ptr, size)
+                                    .and_then(|s| s.not_undef())
+                                    .unwrap_or_else(|e| {
+                                        bx.tcx().sess.span_err(
+                                            span,
+                                            &format!("Could not evaluate asm const: {}", e),
+                                        );
+
+                                        // We are erroring out, just emit a dummy constant.
+                                        Scalar::from_u64(0)
+                                    })
+                            }
+                            _ => span_bug!(span, "expected ByRef for promoted asm const"),
+                        };
+                        let value = scalar.assert_bits(size);
+                        let string = match ty.kind {
+                            ty::Uint(_) => value.to_string(),
+                            ty::Int(int_ty) => {
+                                match int_ty.normalize(bx.tcx().sess.target.ptr_width) {
+                                    ast::IntTy::I8 => (value as i8).to_string(),
+                                    ast::IntTy::I16 => (value as i16).to_string(),
+                                    ast::IntTy::I32 => (value as i32).to_string(),
+                                    ast::IntTy::I64 => (value as i64).to_string(),
+                                    ast::IntTy::I128 => (value as i128).to_string(),
+                                    ast::IntTy::Isize => unreachable!(),
+                                }
+                            }
+                            ty::Float(ast::FloatTy::F32) => {
+                                f32::from_bits(value as u32).to_string()
+                            }
+                            ty::Float(ast::FloatTy::F64) => {
+                                f64::from_bits(value as u64).to_string()
+                            }
+                            _ => span_bug!(span, "asm const has bad type {}", ty),
+                        };
+                        InlineAsmOperandRef::Const { string }
+                    } else {
+                        span_bug!(span, "asm const is not a constant");
+                    }
+                }
+                mir::InlineAsmOperand::SymFn { ref value } => {
+                    let literal = self.monomorphize(&value.literal);
+                    if let ty::FnDef(def_id, substs) = literal.ty.kind {
+                        let instance = ty::Instance::resolve_for_fn_ptr(
+                            bx.tcx(),
+                            ty::ParamEnv::reveal_all(),
+                            def_id,
+                            substs,
+                        )
+                        .unwrap();
+                        InlineAsmOperandRef::SymFn { instance }
+                    } else {
+                        span_bug!(span, "invalid type for asm sym (fn)");
+                    }
+                }
+                mir::InlineAsmOperand::SymStatic { def_id } => {
+                    InlineAsmOperandRef::SymStatic { def_id }
+                }
+            })
+            .collect();
+
+        bx.codegen_inline_asm(template, &operands, options, line_spans);
+
+        if let Some(target) = destination {
+            helper.funclet_br(self, &mut bx, target);
+        } else {
+            bx.unreachable();
+        }
     }
 }
 
@@ -876,8 +1013,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.unreachable();
             }
 
-            mir::TerminatorKind::Drop { location, target, unwind } => {
-                self.codegen_drop_terminator(helper, bx, location, target, unwind);
+            mir::TerminatorKind::Drop { place, target, unwind } => {
+                self.codegen_drop_terminator(helper, bx, place, target, unwind);
             }
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
@@ -896,6 +1033,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ref destination,
                 cleanup,
                 from_hir_call: _,
+                fn_span,
             } => {
                 self.codegen_call_terminator(
                     helper,
@@ -905,13 +1043,33 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     args,
                     destination,
                     cleanup,
+                    fn_span,
                 );
             }
             mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {
                 bug!("generator ops in codegen")
             }
-            mir::TerminatorKind::FalseEdges { .. } | mir::TerminatorKind::FalseUnwind { .. } => {
+            mir::TerminatorKind::FalseEdge { .. } | mir::TerminatorKind::FalseUnwind { .. } => {
                 bug!("borrowck false edges in codegen")
+            }
+
+            mir::TerminatorKind::InlineAsm {
+                template,
+                ref operands,
+                options,
+                line_spans,
+                destination,
+            } => {
+                self.codegen_asm_terminator(
+                    helper,
+                    bx,
+                    terminator,
+                    template,
+                    operands,
+                    options,
+                    line_spans,
+                    destination,
+                );
             }
         }
     }

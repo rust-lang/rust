@@ -6,13 +6,14 @@
 // http://smallcultfollowing.com/babysteps/blog/2016/11/03/
 // associated-type-constructors-part-2-family-traits/
 
+// run-pass
+
 trait Collection<T> {
-    type Iter<'iter>: Iterator<Item=&'iter T>;
+    type Iter<'iter>: Iterator<Item=&'iter T> where T: 'iter;
     type Family: CollectionFamily;
     // Test associated type defaults with parameters
     type Sibling<U>: Collection<U> =
         <<Self as Collection<T>>::Family as CollectionFamily>::Member<U>;
-    //~^^ ERROR type-generic associated types are not yet implemented
 
     fn empty() -> Self;
 
@@ -23,7 +24,6 @@ trait Collection<T> {
 
 trait CollectionFamily {
     type Member<T>: Collection<T, Family = Self>;
-    //~^ ERROR type-generic associated types are not yet implemented
 }
 
 struct VecFamily;
@@ -33,7 +33,7 @@ impl CollectionFamily for VecFamily {
 }
 
 impl<T> Collection<T> for Vec<T> {
-    type Iter<'iter> = std::slice::Iter<'iter, T>;
+    type Iter<'iter> where T: 'iter = std::slice::Iter<'iter, T>;
     type Family = VecFamily;
 
     fn empty() -> Self {
@@ -53,18 +53,7 @@ fn floatify<C>(ints: &C) -> <<C as Collection<i32>>::Family as CollectionFamily>
 where
     C: Collection<i32>,
 {
-    let mut res = C::Family::Member::<f32>::empty();
-    for &v in ints.iterate() {
-        res.add(v as f32);
-    }
-    res
-}
-
-fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
-where
-    C: Collection<i32>,
-{
-    let mut res = C::Family::Member::<f32>::empty();
+    let mut res = <C::Family as CollectionFamily>::Member::<f32>::empty();
     for &v in ints.iterate() {
         res.add(v as f32);
     }
@@ -72,11 +61,11 @@ where
 }
 
 fn use_floatify() {
-    let a = vec![1i32, 2, 3];
-    let b = floatify(a);
-    println!("{}", b.iterate().next());
-    let c = floatify_sibling(a);
-    println!("{}", c.iterate().next());
+    let a = vec![1, 2, 3];
+    let b = floatify(&a);
+    assert_eq!(Some(&1.0), b.iterate().next());
 }
 
-fn main() {}
+fn main() {
+    use_floatify();
+}

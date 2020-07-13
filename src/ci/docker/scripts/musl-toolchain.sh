@@ -3,7 +3,7 @@
 #
 # Versions of the toolchain components are configurable in `musl-cross-make/Makefile` and
 # musl unlike GLIBC is forward compatible so upgrading it shouldn't break old distributions.
-# Right now we have: Binutils 2.27, GCC 6.4.0, musl 1.1.22.
+# Right now we have: Binutils 2.31.1, GCC 9.2.0, musl 1.1.24.
 set -ex
 
 hide_output() {
@@ -33,11 +33,13 @@ shift
 # Apparently applying `-fPIC` everywhere allows them to link successfully.
 export CFLAGS="-fPIC $CFLAGS"
 
-git clone https://github.com/richfelker/musl-cross-make -b v0.9.8
+git clone https://github.com/richfelker/musl-cross-make # -b v0.9.9
 cd musl-cross-make
+# A few commits ahead of v0.9.9 to include the cowpatch fix:
+git checkout a54eb56f33f255dfca60be045f12a5cfaf5a72a9
 
-hide_output make -j$(nproc) TARGET=$TARGET
-hide_output make install TARGET=$TARGET OUTPUT=$OUTPUT
+hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.1.24
+hide_output make install TARGET=$TARGET MUSL_VER=1.1.24 OUTPUT=$OUTPUT
 
 cd -
 

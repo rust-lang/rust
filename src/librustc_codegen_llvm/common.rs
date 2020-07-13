@@ -206,7 +206,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let len = s.as_str().len();
         let cs = consts::ptrcast(
             self.const_cstr(s, false),
-            self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(self)),
+            self.type_ptr_to(self.layout_of(self.tcx.types.str_).llvm_type(self)),
         );
         (cs, self.const_usize(len as u64))
     }
@@ -244,9 +244,8 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
             Scalar::Ptr(ptr) => {
-                let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
-                let base_addr = match alloc_kind {
-                    Some(GlobalAlloc::Memory(alloc)) => {
+                let base_addr = match self.tcx.global_alloc(ptr.alloc_id) {
+                    GlobalAlloc::Memory(alloc) => {
                         let init = const_alloc_to_llvm(self, alloc);
                         let value = match alloc.mutability {
                             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
@@ -257,12 +256,12 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         }
                         value
                     }
-                    Some(GlobalAlloc::Function(fn_instance)) => self.get_fn_addr(fn_instance),
-                    Some(GlobalAlloc::Static(def_id)) => {
+                    GlobalAlloc::Function(fn_instance) => self.get_fn_addr(fn_instance),
+                    GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
+                        assert!(!self.tcx.is_thread_local_static(def_id));
                         self.get_static(def_id)
                     }
-                    None => bug!("missing allocation {:?}", ptr.alloc_id),
                 };
                 let llval = unsafe {
                     llvm::LLVMConstInBoundsGEP(

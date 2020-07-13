@@ -8,7 +8,7 @@ LL |     type Pointer<T>: Deref<Target = T>;
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: generic associated types are unstable
-  --> $DIR/feature-gate-generic_associated_types.rs:7:5
+  --> $DIR/feature-gate-generic_associated_types.rs:6:5
    |
 LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: where clauses on associated types are unstable
-  --> $DIR/feature-gate-generic_associated_types.rs:7:5
+  --> $DIR/feature-gate-generic_associated_types.rs:6:5
    |
 LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: generic associated types are unstable
-  --> $DIR/feature-gate-generic_associated_types.rs:16:5
+  --> $DIR/feature-gate-generic_associated_types.rs:14:5
    |
 LL |     type Pointer<Usize> = Box<Usize>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL |     type Pointer<Usize> = Box<Usize>;
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: generic associated types are unstable
-  --> $DIR/feature-gate-generic_associated_types.rs:18:5
+  --> $DIR/feature-gate-generic_associated_types.rs:16:5
    |
 LL |     type Pointer2<U32> = Box<U32>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     type Pointer2<U32> = Box<U32>;
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: where clauses on associated types are unstable
-  --> $DIR/feature-gate-generic_associated_types.rs:23:5
+  --> $DIR/feature-gate-generic_associated_types.rs:21:5
    |
 LL |     type Assoc where Self: Sized;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL |     type Assoc where Self: Sized;
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
 error[E0658]: where clauses on associated types are unstable
-  --> $DIR/feature-gate-generic_associated_types.rs:28:5
+  --> $DIR/feature-gate-generic_associated_types.rs:26:5
    |
 LL |     type Assoc where Self: Sized = Foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,22 +61,6 @@ LL |     type Assoc where Self: Sized = Foo;
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
    = help: add `#![feature(generic_associated_types)]` to the crate attributes to enable
 
-error: type-generic associated types are not yet implemented
-  --> $DIR/feature-gate-generic_associated_types.rs:4:5
-   |
-LL |     type Pointer<T>: Deref<Target = T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
-
-error: type-generic associated types are not yet implemented
-  --> $DIR/feature-gate-generic_associated_types.rs:7:5
-   |
-LL |     type Pointer2<T>: Deref<Target = T> where T: Clone, U: Clone;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: for more information, see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
-
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

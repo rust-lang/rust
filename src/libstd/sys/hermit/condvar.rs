@@ -12,9 +12,8 @@ impl Condvar {
         Condvar { identifier: 0 }
     }
 
-    #[inline]
     pub unsafe fn init(&mut self) {
-        // nothing to do
+        let _ = abi::init_queue(self.id());
     }
 
     pub unsafe fn notify_one(&self) {
@@ -36,7 +35,7 @@ impl Condvar {
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         let nanos = dur.as_nanos();
-        let nanos = cmp::min(i64::max_value() as u128, nanos);
+        let nanos = cmp::min(i64::MAX as u128, nanos);
 
         // add current task to the wait queue
         let _ = abi::add_queue(self.id(), nanos as i64);
@@ -50,7 +49,6 @@ impl Condvar {
         ret
     }
 
-    #[inline]
     pub unsafe fn destroy(&self) {
         let _ = abi::destroy_queue(self.id());
     }

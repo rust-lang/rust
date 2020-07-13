@@ -10,8 +10,8 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
 
 use super::{
-    AllocId, Allocation, AllocationExtra, Frame, ImmTy, InterpCx, InterpResult, Memory, MemoryKind,
-    OpTy, Operand, PlaceTy, Pointer, Scalar,
+    AllocId, Allocation, AllocationExtra, CheckInAllocMsg, Frame, ImmTy, InterpCx, InterpResult,
+    LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -84,6 +84,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Tag tracked alongside every pointer. This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
+    /// The `Debug` formatting is used for displaying pointers; we cannot use `Display`
+    /// as `()` does not implement that, but it should be "nice" output.
     type PointerTag: ::std::fmt::Debug + Copy + Eq + Hash + 'static;
 
     /// Machines can define extra (non-instance) things that represent values of function pointers.
@@ -190,6 +192,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx>;
 
     /// Called to read the specified `local` from the `frame`.
+    /// Since reading a ZST is not actually accessing memory or locals, this is never invoked
+    /// for ZST reads.
     #[inline]
     fn access_local(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
@@ -197,6 +201,21 @@ pub trait Machine<'mir, 'tcx>: Sized {
         local: mir::Local,
     ) -> InterpResult<'tcx, Operand<Self::PointerTag>> {
         frame.locals[local].access()
+    }
+
+    /// Called to write the specified `local` from the `frame`.
+    /// Since writing a ZST is not actually accessing memory or locals, this is never invoked
+    /// for ZST reads.
+    #[inline]
+    fn access_local_mut<'a>(
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+        frame: usize,
+        local: mir::Local,
+    ) -> InterpResult<'tcx, Result<&'a mut LocalValue<Self::PointerTag>, MemPlace<Self::PointerTag>>>
+    where
+        'tcx: 'mir,
+    {
+        ecx.stack_mut()[frame].locals[local].access_mut()
     }
 
     /// Called before a basic block terminator is executed.
@@ -344,7 +363,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         Err((if int == 0 {
             // This is UB, seriously.
-            err_ub!(InvalidIntPointerUsage(0))
+            err_ub!(DanglingIntPointer(0, CheckInAllocMsg::InboundsTest))
         } else {
             // This is just something we cannot support during const-eval.
             err_unsup!(ReadBytesAsPointer)
@@ -356,4 +375,75 @@ pub trait Machine<'mir, 'tcx>: Sized {
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64>;
+
+    fn thread_local_alloc_id(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        did: DefId,
+    ) -> InterpResult<'tcx, AllocId> {
+        throw_unsup!(ThreadLocalStatic(did))
+    }
+}
+
+// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
+// (CTFE and ConstProp) use the same instance.  Here, we share that code.
+pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
+    type PointerTag = ();
+    type ExtraFnVal = !;
+
+    type MemoryKind = !;
+    type MemoryMap = rustc_data_structures::fx::FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
+    const GLOBAL_KIND: Option<!> = None; // no copying of globals from `tcx` to machine memory
+
+    type AllocExtra = ();
+    type FrameExtra = ();
+
+    #[inline(always)]
+    fn enforce_alignment(_memory_extra: &Self::MemoryExtra) -> bool {
+        // We do not check for alignment to avoid having to carry an `Align`
+        // in `ConstValue::ByRef`.
+        false
+    }
+
+    #[inline(always)]
+    fn enforce_validity(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        false // for now, we don't enforce validity
+    }
+
+    #[inline(always)]
+    fn call_extra_fn(
+        _ecx: &mut InterpCx<$mir, $tcx, Self>,
+        fn_val: !,
+        _args: &[OpTy<$tcx>],
+        _ret: Option<(PlaceTy<$tcx>, mir::BasicBlock)>,
+        _unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<$tcx> {
+        match fn_val {}
+    }
+
+    #[inline(always)]
+    fn init_allocation_extra<'b>(
+        _memory_extra: &Self::MemoryExtra,
+        _id: AllocId,
+        alloc: Cow<'b, Allocation>,
+        _kind: Option<MemoryKind<!>>,
+    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
+        // We do not use a tag so we can just cheaply forward the allocation
+        (alloc, ())
+    }
+
+    #[inline(always)]
+    fn tag_global_base_pointer(
+        _memory_extra: &Self::MemoryExtra,
+        _id: AllocId,
+    ) -> Self::PointerTag {
+        ()
+    }
+
+    #[inline(always)]
+    fn init_frame_extra(
+        _ecx: &mut InterpCx<$mir, $tcx, Self>,
+        frame: Frame<$mir, $tcx>,
+    ) -> InterpResult<$tcx, Frame<$mir, $tcx>> {
+        Ok(frame)
+    }
 }

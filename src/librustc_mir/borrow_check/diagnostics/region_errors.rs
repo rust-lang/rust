@@ -5,9 +5,9 @@ use rustc_infer::infer::{
     error_reporting::nice_region_error::NiceRegionError,
     error_reporting::unexpected_hidden_region_diagnostic, NLLRegionVariableOrigin,
 };
-use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 
 use crate::util::borrowck_errors;
@@ -26,7 +26,7 @@ impl ConstraintDescription for ConstraintCategory {
         // Must end with a space. Allows for empty names to be provided.
         match self {
             ConstraintCategory::Assignment => "assignment ",
-            ConstraintCategory::Return => "returning this value ",
+            ConstraintCategory::Return(_) => "returning this value ",
             ConstraintCategory::Yield => "yielding this value ",
             ConstraintCategory::UseAsConst => "using this value as a constant ",
             ConstraintCategory::UseAsStatic => "using this value as a static ",
@@ -37,6 +37,7 @@ impl ConstraintDescription for ConstraintCategory {
             ConstraintCategory::SizedBound => "proving this value is `Sized` ",
             ConstraintCategory::CopyBound => "copying this value ",
             ConstraintCategory::OpaqueType => "opaque type ",
+            ConstraintCategory::ClosureUpvar(_) => "closure capture ",
             ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal => "",
@@ -121,7 +122,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if self.regioncx.universal_regions().is_universal_region(r) {
             Some(r)
         } else {
-            let upper_bound = self.regioncx.universal_upper_bound(r);
+            // We just want something nameable, even if it's not
+            // actually an upper bound.
+            let upper_bound = self.regioncx.approx_universal_upper_bound(r);
 
             if self.regioncx.upper_bound_in_region_scc(r, upper_bound) {
                 self.to_error_region_vid(upper_bound)
@@ -162,10 +165,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let type_test_span = type_test.locations.span(&self.body);
 
                     if let Some(lower_bound_region) = lower_bound_region {
-                        let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
                         self.infcx
                             .construct_generic_bound_failure(
-                                region_scope_tree,
                                 type_test_span,
                                 None,
                                 type_test.generic_kind,
@@ -194,12 +195,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
 
                 RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, member_region } => {
-                    let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
                     unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
-                        Some(region_scope_tree),
                         span,
                         named_ty,
                         named_region,
@@ -310,8 +309,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
 
         let diag = match (category, fr_is_local, outlived_fr_is_local) {
-            (ConstraintCategory::Return, true, false) if self.is_closure_fn_mut(fr) => {
-                self.report_fnmut_error(&errci)
+            (ConstraintCategory::Return(kind), true, false) if self.is_closure_fn_mut(fr) => {
+                self.report_fnmut_error(&errci, kind)
             }
             (ConstraintCategory::Assignment, true, false)
             | (ConstraintCategory::CallArgument, true, false) => {
@@ -351,7 +350,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///            executing...
     ///    = note: ...therefore, returned references to captured variables will escape the closure
     /// ```
-    fn report_fnmut_error(&self, errci: &ErrorConstraintInfo) -> DiagnosticBuilder<'tcx> {
+    fn report_fnmut_error(
+        &self,
+        errci: &ErrorConstraintInfo,
+        kind: ReturnConstraint,
+    ) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut diag = self
@@ -360,18 +363,38 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .sess
             .struct_span_err(*span, "captured variable cannot escape `FnMut` closure body");
 
-        // We should check if the return type of this closure is in fact a closure - in that
-        // case, we can special case the error further.
-        let return_type_is_closure =
-            self.regioncx.universal_regions().unnormalized_output_ty.is_closure();
-        let message = if return_type_is_closure {
-            "returns a closure that contains a reference to a captured variable, which then \
-             escapes the closure body"
-        } else {
-            "returns a reference to a captured variable which escapes the closure body"
+        let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
+        if let ty::Opaque(def_id, _) = output_ty.kind {
+            output_ty = self.infcx.tcx.type_of(def_id)
+        };
+
+        debug!("report_fnmut_error: output_ty={:?}", output_ty);
+
+        let message = match output_ty.kind {
+            ty::Closure(_, _) => {
+                "returns a closure that contains a reference to a captured variable, which then \
+                 escapes the closure body"
+            }
+            ty::Adt(def, _) if self.infcx.tcx.is_diagnostic_item(sym::gen_future, def.did) => {
+                "returns an `async` block that contains a reference to a captured variable, which then \
+                 escapes the closure body"
+            }
+            _ => "returns a reference to a captured variable which escapes the closure body",
         };
 
         diag.span_label(*span, message);
+
+        if let ReturnConstraint::ClosureUpvar(upvar) = kind {
+            let def_id = match self.regioncx.universal_regions().defining_ty {
+                DefiningTy::Closure(def_id, _) => def_id,
+                ty @ _ => bug!("unexpected DefiningTy {:?}", ty),
+            };
+
+            let upvar_def_span = self.infcx.tcx.hir().span(upvar);
+            let upvar_span = self.infcx.tcx.upvars_mentioned(def_id).unwrap()[&upvar].span;
+            diag.span_label(upvar_def_span, "variable defined here");
+            diag.span_label(upvar_span, "variable captured here");
+        }
 
         match self.give_region_a_name(*outlived_fr).unwrap().source {
             RegionNameSource::NamedEarlyBoundRegion(fr_span)
@@ -502,7 +525,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut diag =
             self.infcx.tcx.sess.struct_span_err(*span, "lifetime may not live long enough");
 
-        let (_, mir_def_name) = self.infcx.tcx.article_and_description(self.mir_def_id);
+        let (_, mir_def_name) = self.infcx.tcx.article_and_description(self.mir_def_id.to_def_id());
 
         let fr_name = self.give_region_a_name(*fr).unwrap();
         fr_name.highlight_region_name(&mut diag);
@@ -510,7 +533,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         outlived_fr_name.highlight_region_name(&mut diag);
 
         match (category, outlived_fr_is_local, fr_is_local) {
-            (ConstraintCategory::Return, true, _) => {
+            (ConstraintCategory::Return(_), true, _) => {
                 diag.span_label(
                     *span,
                     format!(
@@ -558,7 +581,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let (Some(f), Some(ty::RegionKind::ReStatic)) =
             (self.to_error_region(fr), self.to_error_region(outlived_fr))
         {
-            if let Some((ty::TyS { kind: ty::Opaque(did, substs), .. }, _)) = self
+            if let Some((&ty::TyS { kind: ty::Opaque(did, substs), .. }, _)) = self
                 .infcx
                 .tcx
                 .is_suitable_region(f)
@@ -571,12 +594,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 //
                 // eg. check for `impl Trait + 'static` instead of `impl Trait`.
                 let has_static_predicate = {
-                    let predicates_of = self.infcx.tcx.predicates_of(*did);
+                    let predicates_of = self.infcx.tcx.predicates_of(did);
                     let bounds = predicates_of.instantiate(self.infcx.tcx, substs);
 
                     let mut found = false;
                     for predicate in bounds.predicates {
-                        if let ty::Predicate::TypeOutlives(binder) = predicate {
+                        if let ty::PredicateKind::TypeOutlives(binder) = predicate.kind() {
                             if let ty::OutlivesPredicate(_, ty::RegionKind::ReStatic) =
                                 binder.skip_binder()
                             {
@@ -604,7 +627,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     diag.help(&format!("consider replacing `{}` with `{}`", fr_name, static_str));
                 } else {
                     // Otherwise, we should suggest adding a constraint on the return type.
-                    let span = self.infcx.tcx.def_span(*did);
+                    let span = self.infcx.tcx.def_span(did);
                     if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
                         let suggestable_fr_name = if fr_name.was_named() {
                             fr_name.to_string()

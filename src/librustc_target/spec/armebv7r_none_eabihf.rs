@@ -1,6 +1,7 @@
 // Targets the Cortex-R4F/R5F processor (ARMv7-R)
 
-use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
+use crate::spec::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -18,11 +19,11 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             executables: true,
             linker: Some("rust-lld".to_owned()),
-            relocation_model: "static".to_string(),
+            relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
             features: "+vfp3,-d32,-fp16".to_string(),
             max_atomic_width: Some(32),
-            abi_blacklist: super::arm_base::abi_blacklist(),
+            unsupported_abis: super::arm_base::unsupported_abis(),
             emit_debug_gdb_scripts: false,
             ..Default::default()
         },

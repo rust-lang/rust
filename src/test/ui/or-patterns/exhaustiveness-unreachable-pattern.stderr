@@ -53,52 +53,64 @@ LL |         (1, 4 | 5) => {}
    |         ^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:34:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:37:9
    |
 LL |         (Some(1),) => {}
    |         ^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:35:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:38:9
    |
 LL |         (None,) => {}
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:40:9
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:43:9
    |
 LL |         ((1..=4,),) => {}
    |         ^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:45:14
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:48:14
    |
 LL |         (1 | 1,) => {}
    |              ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:52:15
-   |
-LL |             | 0] => {}
-   |               ^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:50:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:53:15
    |
 LL |             | 0
    |               ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:60:10
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:55:15
+   |
+LL |             | 0] => {}
+   |               ^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:63:10
    |
 LL |         [1
    |          ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:66:14
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:69:14
    |
 LL |         Some(0
    |              ^
 
-error: aborting due to 16 previous errors
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:89:15
+   |
+LL |             | true) => {}
+   |               ^^^^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:95:15
+   |
+LL |             | true,
+   |               ^^^^
+
+error: aborting due to 18 previous errors
 

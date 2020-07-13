@@ -5,7 +5,7 @@
 // The win64 ABI is used. It differs from the sysv64 ABI, so we must use a windows target with
 // LLVM. "x86_64-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
+use crate::spec::{CodeModel, LinkerFlavor, LldFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::uefi_msvc_base::opts();
@@ -26,7 +26,7 @@ pub fn target() -> TargetResult {
     // UEFI systems run without a host OS, hence we cannot assume any code locality. We must tell
     // LLVM to expect code to reference any address in the address-space. The "large" code-model
     // places no locality-restrictions, so it fits well here.
-    base.code_model = Some("large".to_string());
+    base.code_model = Some(CodeModel::Large);
 
     Ok(Target {
         llvm_target: "x86_64-unknown-windows".to_string(),

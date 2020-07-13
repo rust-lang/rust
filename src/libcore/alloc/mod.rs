@@ -18,7 +18,7 @@ use crate::ptr::{self, NonNull};
 /// something wrong when combining the given input arguments with this
 /// allocator.
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct AllocErr;
 
 // (we need this for downstream impl of trait Error)
@@ -54,7 +54,9 @@ impl AllocInit {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn init(self, memory: MemoryBlock) {
-        self.init_offset(memory, 0)
+        // SAFETY: the safety contract for `init_offset` must be
+        // upheld by the caller.
+        unsafe { self.init_offset(memory, 0) }
     }
 
     /// Initialize the memory block like specified by `init` at the specified `offset`.
@@ -78,7 +80,10 @@ impl AllocInit {
         match self {
             AllocInit::Uninitialized => (),
             AllocInit::Zeroed => {
-                memory.ptr.as_ptr().add(offset).write_bytes(0, memory.size - offset)
+                // SAFETY: the caller must guarantee that `offset` is smaller than or equal to `memory.size`,
+                // so the memory from `memory.ptr + offset` of length `memory.size - offset`
+                // is guaranteed to be contaned in `memory` and thus valid for writes.
+                unsafe { memory.ptr.as_ptr().add(offset).write_bytes(0, memory.size - offset) }
             }
         }
     }
@@ -281,11 +286,23 @@ pub unsafe trait AllocRef {
                     return Ok(MemoryBlock { ptr, size });
                 }
 
-                let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+                let new_layout =
+                    // SAFETY: the caller must ensure that the `new_size` does not overflow.
+                    // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid for a Layout.
+                    // The caller must ensure that `new_size` is greater than zero.
+                    unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
                 let new_memory = self.alloc(new_layout, init)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), size);
-                self.dealloc(ptr, layout);
-                Ok(new_memory)
+
+                // SAFETY: because `new_size` must be greater than or equal to `size`, both the old and new
+                // memory allocation are valid for reads and writes for `size` bytes. Also, because the old
+                // allocation wasn't yet deallocated, it cannot overlap `new_memory`. Thus, the call to
+                // `copy_nonoverlapping` is safe.
+                // The safety contract for `dealloc` must be upheld by the caller.
+                unsafe {
+                    ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), size);
+                    self.dealloc(ptr, layout);
+                    Ok(new_memory)
+                }
             }
         }
     }
@@ -356,12 +373,74 @@ pub unsafe trait AllocRef {
                     return Ok(MemoryBlock { ptr, size });
                 }
 
-                let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
+                let new_layout =
+                // SAFETY: the caller must ensure that the `new_size` does not overflow.
+                // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid for a Layout.
+                // The caller must ensure that `new_size` is greater than zero.
+                    unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
                 let new_memory = self.alloc(new_layout, AllocInit::Uninitialized)?;
-                ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), new_size);
-                self.dealloc(ptr, layout);
-                Ok(new_memory)
+
+                // SAFETY: because `new_size` must be lower than or equal to `size`, both the old and new
+                // memory allocation are valid for reads and writes for `new_size` bytes. Also, because the
+                // old allocation wasn't yet deallocated, it cannot overlap `new_memory`. Thus, the call to
+                // `copy_nonoverlapping` is safe.
+                // The safety contract for `dealloc` must be upheld by the caller.
+                unsafe {
+                    ptr::copy_nonoverlapping(ptr.as_ptr(), new_memory.ptr.as_ptr(), new_size);
+                    self.dealloc(ptr, layout);
+                    Ok(new_memory)
+                }
             }
         }
+    }
+
+    /// Creates a "by reference" adaptor for this instance of `AllocRef`.
+    ///
+    /// The returned adaptor also implements `AllocRef` and will simply borrow this.
+    #[inline(always)]
+    fn by_ref(&mut self) -> &mut Self {
+        self
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<A> AllocRef for &mut A
+where
+    A: AllocRef + ?Sized,
+{
+    #[inline]
+    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
+        (**self).alloc(layout, init)
+    }
+
+    #[inline]
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).dealloc(ptr, layout) }
+    }
+
+    #[inline]
+    unsafe fn grow(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+        placement: ReallocPlacement,
+        init: AllocInit,
+    ) -> Result<MemoryBlock, AllocErr> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).grow(ptr, layout, new_size, placement, init) }
+    }
+
+    #[inline]
+    unsafe fn shrink(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+        placement: ReallocPlacement,
+    ) -> Result<MemoryBlock, AllocErr> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).shrink(ptr, layout, new_size, placement) }
     }
 }

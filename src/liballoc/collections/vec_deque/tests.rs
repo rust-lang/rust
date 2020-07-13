@@ -1,9 +1,7 @@
 use super::*;
 
-use test;
-
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_push_back_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::with_capacity(101);
     b.iter(|| {
@@ -16,7 +14,7 @@ fn bench_push_back_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_push_front_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::with_capacity(101);
     b.iter(|| {
@@ -29,7 +27,7 @@ fn bench_push_front_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_pop_back_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::<i32>::with_capacity(101);
 
@@ -43,7 +41,7 @@ fn bench_pop_back_100(b: &mut test::Bencher) {
 }
 
 #[bench]
-#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_pop_front_100(b: &mut test::Bencher) {
     let mut deq = VecDeque::<i32>::with_capacity(101);
 
@@ -249,6 +247,65 @@ fn test_remove() {
 }
 
 #[test]
+fn test_range() {
+    let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
+
+    let cap = tester.capacity();
+    for len in 0..=cap {
+        for tail in 0..=cap {
+            for start in 0..=len {
+                for end in start..=len {
+                    tester.tail = tail;
+                    tester.head = tail;
+                    for i in 0..len {
+                        tester.push_back(i);
+                    }
+
+                    // Check that we iterate over the correct values
+                    let range: VecDeque<_> = tester.range(start..end).copied().collect();
+                    let expected: VecDeque<_> = (start..end).collect();
+                    assert_eq!(range, expected);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn test_range_mut() {
+    let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
+
+    let cap = tester.capacity();
+    for len in 0..=cap {
+        for tail in 0..=cap {
+            for start in 0..=len {
+                for end in start..=len {
+                    tester.tail = tail;
+                    tester.head = tail;
+                    for i in 0..len {
+                        tester.push_back(i);
+                    }
+
+                    let head_was = tester.head;
+                    let tail_was = tester.tail;
+
+                    // Check that we iterate over the correct values
+                    let range: VecDeque<_> = tester.range_mut(start..end).map(|v| *v).collect();
+                    let expected: VecDeque<_> = (start..end).collect();
+                    assert_eq!(range, expected);
+
+                    // We shouldn't have changed the capacity or made the
+                    // head or tail out of bounds
+                    assert_eq!(tester.capacity(), cap);
+                    assert_eq!(tester.tail, tail_was);
+                    assert_eq!(tester.head, head_was);
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn test_drain() {
     let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
 
@@ -386,10 +443,8 @@ fn test_vec_from_vecdeque() {
         assert!(vec.into_iter().eq(vd));
     }
 
-    #[cfg(not(miri))] // Miri is too slow
-    let max_pwr = 7;
-    #[cfg(miri)]
-    let max_pwr = 5;
+    // Miri is too slow
+    let max_pwr = if cfg!(miri) { 5 } else { 7 };
 
     for cap_pwr in 0..max_pwr {
         // Make capacity as a (2^x)-1, so that the ring size is 2^x

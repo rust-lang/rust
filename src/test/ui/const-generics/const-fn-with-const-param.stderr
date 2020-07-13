@@ -1,10 +1,11 @@
-warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/const-fn-with-const-param.rs:2:12
    |
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
 warning: 1 warning emitted
 

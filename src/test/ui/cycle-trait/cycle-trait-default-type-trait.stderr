@@ -1,23 +1,23 @@
-error[E0391]: cycle detected when processing `Foo::X`
+error[E0391]: cycle detected when computing type of `Foo::X`
   --> $DIR/cycle-trait-default-type-trait.rs:4:23
    |
 LL | trait Foo<X = Box<dyn Foo>> {
    |                       ^^^
    |
-   = note: ...which again requires processing `Foo::X`, completing the cycle
+   = note: ...which again requires computing type of `Foo::X`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/cycle-trait-default-type-trait.rs:4:1
    |
 LL | trait Foo<X = Box<dyn Foo>> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0391]: cycle detected when processing `Foo::X`
+error[E0391]: cycle detected when computing type of `Foo::X`
   --> $DIR/cycle-trait-default-type-trait.rs:4:23
    |
 LL | trait Foo<X = Box<dyn Foo>> {
    |                       ^^^
    |
-   = note: ...which again requires processing `Foo::X`, completing the cycle
+   = note: ...which again requires computing type of `Foo::X`, completing the cycle
 note: cycle used when collecting item types in top-level module
   --> $DIR/cycle-trait-default-type-trait.rs:4:1
    |

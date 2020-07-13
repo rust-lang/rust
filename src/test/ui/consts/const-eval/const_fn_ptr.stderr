@@ -1,20 +1,20 @@
 warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
   --> $DIR/const_fn_ptr.rs:12:5
    |
 LL |     X(x)
    |     ^^^^
-
-warning: skipping const checks
+help: skipping check that does not even have a feature gate
   --> $DIR/const_fn_ptr.rs:16:5
    |
 LL |     X_CONST(x)
    |     ^^^^^^^^^^
-
-warning: skipping const checks
+help: skipping check that does not even have a feature gate
   --> $DIR/const_fn_ptr.rs:20:5
    |
 LL |     x(y)
    |     ^^^^
 
-warning: 3 warnings emitted
+warning: 1 warning emitted
 

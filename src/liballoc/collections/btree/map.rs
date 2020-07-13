@@ -215,59 +215,6 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
             clone_subtree(self.root.as_ref().unwrap().as_ref())
         }
     }
-
-    fn clone_from(&mut self, other: &Self) {
-        BTreeClone::clone_from(self, other);
-    }
-}
-
-trait BTreeClone {
-    fn clone_from(&mut self, other: &Self);
-}
-
-impl<K: Clone, V: Clone> BTreeClone for BTreeMap<K, V> {
-    default fn clone_from(&mut self, other: &Self) {
-        *self = other.clone();
-    }
-}
-
-impl<K: Clone + Ord, V: Clone> BTreeClone for BTreeMap<K, V> {
-    fn clone_from(&mut self, other: &Self) {
-        // This truncates `self` to `other.len()` by calling `split_off` on
-        // the first key after `other.len()` elements if it exists.
-        let split_off_key = if self.len() > other.len() {
-            let diff = self.len() - other.len();
-            if diff <= other.len() {
-                self.iter().nth_back(diff - 1).map(|pair| (*pair.0).clone())
-            } else {
-                self.iter().nth(other.len()).map(|pair| (*pair.0).clone())
-            }
-        } else {
-            None
-        };
-        if let Some(key) = split_off_key {
-            self.split_off(&key);
-        }
-
-        let mut siter = self.range_mut(..);
-        let mut oiter = other.iter();
-        // After truncation, `self` is at most as long as `other` so this loop
-        // replaces every key-value pair in `self`. Since `oiter` is in sorted
-        // order and the structure of the `BTreeMap` stays the same,
-        // the BTree invariants are maintained at the end of the loop.
-        while !siter.is_empty() {
-            if let Some((ok, ov)) = oiter.next() {
-                // SAFETY: This is safe because `siter` is nonempty.
-                let (sk, sv) = unsafe { siter.next_unchecked() };
-                sk.clone_from(ok);
-                sv.clone_from(ov);
-            } else {
-                break;
-            }
-        }
-        // If `other` is longer than `self`, the remaining elements are inserted.
-        self.extend(oiter.map(|(k, v)| ((*k).clone(), (*v).clone())));
-    }
 }
 
 impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
@@ -541,7 +488,9 @@ struct MergeIter<K, V, I: Iterator<Item = (K, V)>> {
 }
 
 impl<K: Ord, V> BTreeMap<K, V> {
-    /// Makes a new empty BTreeMap with a reasonable choice for B.
+    /// Makes a new empty BTreeMap.
+    ///
+    /// Does not allocate anything on its own.
     ///
     /// # Examples
     ///
@@ -556,7 +505,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// map.insert(1, "a");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> BTreeMap<K, V> {
+    #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
+    pub const fn new() -> BTreeMap<K, V> {
         BTreeMap { root: None, length: 0 }
     }
 
@@ -923,7 +873,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(btreemap_remove_entry)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
@@ -931,7 +880,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.remove_entry(&1), Some((1, "a")));
     /// assert_eq!(map.remove_entry(&1), None);
     /// ```
-    #[unstable(feature = "btreemap_remove_entry", issue = "66714")]
+    #[stable(feature = "btreemap_remove_entry", since = "1.45.0")]
     pub fn remove_entry<Q: ?Sized>(&mut self, key: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q>,
@@ -1034,9 +983,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         R: RangeBounds<T>,
     {
         if let Some(root) = &self.root {
-            let root1 = root.as_ref();
-            let root2 = root.as_ref();
-            let (f, b) = range_search(root1, root2, range);
+            let (f, b) = range_search(root.as_ref(), range);
 
             Range { front: Some(f), back: Some(b) }
         } else {
@@ -1082,9 +1029,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         R: RangeBounds<T>,
     {
         if let Some(root) = &mut self.root {
-            let root1 = root.as_mut();
-            let root2 = unsafe { ptr::read(&root1) };
-            let (f, b) = range_search(root1, root2, range);
+            let (f, b) = range_search(root.as_mut(), range);
 
             RangeMut { front: Some(f), back: Some(b), _marker: PhantomData }
         } else {
@@ -1451,6 +1396,14 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
     fn last(mut self) -> Option<(&'a K, &'a V)> {
         self.next_back()
     }
+
+    fn min(mut self) -> Option<(&'a K, &'a V)> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<(&'a K, &'a V)> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1513,6 +1466,14 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
     fn last(mut self) -> Option<(&'a K, &'a mut V)> {
         self.next_back()
     }
+
+    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1545,16 +1506,10 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 
     fn into_iter(self) -> IntoIter<K, V> {
         let mut me = ManuallyDrop::new(self);
-        if let Some(root) = me.root.as_mut() {
-            let root1 = unsafe { ptr::read(root).into_ref() };
-            let root2 = unsafe { ptr::read(root).into_ref() };
-            let len = me.length;
+        if let Some(root) = me.root.take() {
+            let (f, b) = full_range_search(root.into_ref());
 
-            IntoIter {
-                front: Some(root1.first_leaf_edge()),
-                back: Some(root2.last_leaf_edge()),
-                length: len,
-            }
+            IntoIter { front: Some(f), back: Some(b), length: me.length }
         } else {
             IntoIter { front: None, back: None, length: 0 }
         }
@@ -1654,6 +1609,14 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     }
 
     fn last(mut self) -> Option<&'a K> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<&'a K> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<&'a K> {
         self.next_back()
     }
 }
@@ -1788,7 +1751,7 @@ impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
         &mut self,
     ) -> Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>> {
         let edge = self.cur_leaf_edge.as_ref()?;
-        ptr::read(edge).next_kv().ok()
+        unsafe { ptr::read(edge).next_kv().ok() }
     }
 
     /// Implementation of a typical `DrainFilter::next` method, given the predicate.
@@ -1827,6 +1790,14 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
     }
 
     fn last(mut self) -> Option<(&'a K, &'a V)> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<(&'a K, &'a V)> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<(&'a K, &'a V)> {
         self.next_back()
     }
 }
@@ -1871,7 +1842,7 @@ impl<'a, K, V> Range<'a, K, V> {
     }
 
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        unwrap_unchecked(self.front.as_mut()).next_unchecked()
+        unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
     }
 }
 
@@ -1884,7 +1855,7 @@ impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
 
 impl<'a, K, V> Range<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        unwrap_unchecked(self.back.as_mut()).next_back_unchecked()
+        unsafe { unwrap_unchecked(self.back.as_mut()).next_back_unchecked() }
     }
 }
 
@@ -1914,6 +1885,14 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     fn last(mut self) -> Option<(&'a K, &'a mut V)> {
         self.next_back()
     }
+
+    fn min(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<(&'a K, &'a mut V)> {
+        self.next_back()
+    }
 }
 
 impl<'a, K, V> RangeMut<'a, K, V> {
@@ -1922,7 +1901,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
     }
 
     unsafe fn next_unchecked(&mut self) -> (&'a mut K, &'a mut V) {
-        unwrap_unchecked(self.front.as_mut()).next_unchecked()
+        unsafe { unwrap_unchecked(self.front.as_mut()).next_unchecked() }
     }
 }
 
@@ -1943,7 +1922,7 @@ impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 impl<'a, K, V> RangeMut<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a mut K, &'a mut V) {
-        unwrap_unchecked(self.back.as_mut()).next_back_unchecked()
+        unsafe { unwrap_unchecked(self.back.as_mut()).next_back_unchecked() }
     }
 }
 
@@ -1964,12 +1943,22 @@ impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
             self.insert(k, v);
         });
     }
+
+    #[inline]
+    fn extend_one(&mut self, (k, v): (K, V)) {
+        self.insert(k, v);
+    }
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, K: Ord + Copy, V: Copy> Extend<(&'a K, &'a V)> for BTreeMap<K, V> {
     fn extend<I: IntoIterator<Item = (&'a K, &'a V)>>(&mut self, iter: I) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
+    }
+
+    #[inline]
+    fn extend_one(&mut self, (&k, &v): (&'a K, &'a V)) {
+        self.insert(k, v);
     }
 }
 
@@ -2042,9 +2031,9 @@ where
     }
 }
 
+/// Finds the leaf edges delimiting a specified range in or underneath a node.
 fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
-    root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
+    root: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     range: R,
 ) -> (
     Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
@@ -2064,8 +2053,10 @@ where
         _ => {}
     };
 
-    let mut min_node = root1;
-    let mut max_node = root2;
+    // We duplicate the root NodeRef here -- we will never access it in a way
+    // that overlaps references obtained from the root.
+    let mut min_node = unsafe { ptr::read(&root) };
+    let mut max_node = root;
     let mut min_found = false;
     let mut max_found = false;
 
@@ -2126,6 +2117,33 @@ where
     }
 }
 
+/// Equivalent to `range_search(k, v, ..)` without the `Ord` bound.
+fn full_range_search<BorrowType, K, V>(
+    root: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
+) -> (
+    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
+) {
+    // We duplicate the root NodeRef here -- we will never access it in a way
+    // that overlaps references obtained from the root.
+    let mut min_node = unsafe { ptr::read(&root) };
+    let mut max_node = root;
+    loop {
+        let front = min_node.first_edge();
+        let back = max_node.last_edge();
+        match (front.force(), back.force()) {
+            (Leaf(f), Leaf(b)) => {
+                return (f, b);
+            }
+            (Internal(min_int), Internal(max_int)) => {
+                min_node = min_int.descend();
+                max_node = max_int.descend();
+            }
+            _ => unreachable!("BTreeMap has different depths"),
+        };
+    }
+}
+
 impl<K, V> BTreeMap<K, V> {
     /// Gets an iterator over the entries of the map, sorted by key.
     ///
@@ -2150,12 +2168,12 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, K, V> {
-        Iter {
-            range: Range {
-                front: self.root.as_ref().map(|r| r.as_ref().first_leaf_edge()),
-                back: self.root.as_ref().map(|r| r.as_ref().last_leaf_edge()),
-            },
-            length: self.length,
+        if let Some(root) = &self.root {
+            let (f, b) = full_range_search(root.as_ref());
+
+            Iter { range: Range { front: Some(f), back: Some(b) }, length: self.length }
+        } else {
+            Iter { range: Range { front: None, back: None }, length: 0 }
         }
     }
 
@@ -2182,19 +2200,15 @@ impl<K, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
-        IterMut {
-            range: if let Some(root) = &mut self.root {
-                let root1 = root.as_mut();
-                let root2 = unsafe { ptr::read(&root1) };
-                RangeMut {
-                    front: Some(root1.first_leaf_edge()),
-                    back: Some(root2.last_leaf_edge()),
-                    _marker: PhantomData,
-                }
-            } else {
-                RangeMut { front: None, back: None, _marker: PhantomData }
-            },
-            length: self.length,
+        if let Some(root) = &mut self.root {
+            let (f, b) = full_range_search(root.as_mut());
+
+            IterMut {
+                range: RangeMut { front: Some(f), back: Some(b), _marker: PhantomData },
+                length: self.length,
+            }
+        } else {
+            IterMut { range: RangeMut { front: None, back: None, _marker: PhantomData }, length: 0 }
         }
     }
 
@@ -2503,15 +2517,14 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     ///
     /// ```
     /// use std::collections::BTreeMap;
+    /// use std::collections::btree_map::Entry;
     ///
-    /// let mut count: BTreeMap<&str, usize> = BTreeMap::new();
+    /// let mut map: BTreeMap<&str, u32> = BTreeMap::new();
     ///
-    /// // count the number of occurrences of letters in the vec
-    /// for x in vec!["a","b","a","c","a","b"] {
-    ///     *count.entry(x).or_insert(0) += 1;
+    /// if let Entry::Vacant(o) = map.entry("poneyland") {
+    ///     o.insert(37);
     /// }
-    ///
-    /// assert_eq!(count["a"], 3);
+    /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {

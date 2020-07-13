@@ -2,11 +2,11 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-use rustc_ast::ast::{self, Ident};
+use rustc_ast::ast;
 use rustc_ast::ast::{Expr, MetaItem};
 use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
 pub fn expand_deriving_debug(
@@ -88,7 +88,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
 
                 // Use `let _ = expr;` to avoid triggering the
                 // unused_results lint.
-                stmts.push(stmt_let_undescore(cx, span, expr));
+                stmts.push(stmt_let_underscore(cx, span, expr));
             }
         }
         ast::VariantData::Struct(..) => {
@@ -112,7 +112,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                     Ident::new(sym::field, span),
                     vec![name, field],
                 );
-                stmts.push(stmt_let_undescore(cx, span, expr));
+                stmts.push(stmt_let_underscore(cx, span, expr));
             }
         }
     }
@@ -124,7 +124,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     cx.expr_block(block)
 }
 
-fn stmt_let_undescore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> ast::Stmt {
+fn stmt_let_underscore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> ast::Stmt {
     let local = P(ast::Local {
         pat: cx.pat_wild(sp),
         ty: None,

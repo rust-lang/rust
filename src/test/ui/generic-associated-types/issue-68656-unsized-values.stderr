@@ -1,0 +1,30 @@
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-68656-unsized-values.rs:3:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0271]: type mismatch resolving `<T as std::ops::Deref>::Target == T`
+  --> $DIR/issue-68656-unsized-values.rs:16:5
+   |
+LL |     type Item<'a>: std::ops::Deref<Target = T>;
+   |     ------------------------------------------- required by `UnsafeCopy::Item`
+...
+LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<T> for T {
+   |      - this type parameter
+LL |     type Item<'a> = T;
+   |     ^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found associated type
+   |
+   = note: expected type parameter `T`
+             found associated type `<T as std::ops::Deref>::Target`
+help: consider further restricting this bound
+   |
+LL | impl<T: Copy + std::ops::Deref + std::ops::Deref<Target = T>> UnsafeCopy<T> for T {
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0271`.

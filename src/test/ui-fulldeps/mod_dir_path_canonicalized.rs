@@ -1,6 +1,7 @@
 // run-pass
 // Testing that a librustc_ast can parse modules with canonicalized base path
 // ignore-cross-compile
+// ignore-remote
 
 #![feature(rustc_private)]
 
@@ -18,7 +19,7 @@ use std::path::Path;
 mod gravy;
 
 pub fn main() {
-    rustc_ast::with_default_globals(|| parse());
+    rustc_ast::with_default_session_globals(|| parse());
 
     assert_eq!(gravy::foo(), 10);
 }

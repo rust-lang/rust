@@ -860,15 +860,8 @@ impl<K: DepKind> DepGraph<K> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct WorkProduct {
     pub cgu_name: String,
-    /// Saved files associated with this CGU.
-    pub saved_files: Vec<(WorkProductFileKind, String)>,
-}
-
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, PartialEq)]
-pub enum WorkProductFileKind {
-    Object,
-    Bytecode,
-    BytecodeCompressed,
+    /// Saved file associated with this CGU.
+    pub saved_file: Option<String>,
 }
 
 #[derive(Clone)]

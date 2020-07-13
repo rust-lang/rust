@@ -2,7 +2,9 @@ error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:9:60
    |
 LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                            ^^^^^^^^ statics cannot evaluate destructors
+   |                                                            ^^^^^^^^- value is dropped here
+   |                                                            |
+   |                                                            statics cannot evaluate destructors
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-drop-scope.rs:9:60
@@ -18,7 +20,9 @@ error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:13:59
    |
 LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                           ^^^^^^^^ constants cannot evaluate destructors
+   |                                                           ^^^^^^^^- value is dropped here
+   |                                                           |
+   |                                                           constants cannot evaluate destructors
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-drop-scope.rs:13:59
@@ -34,37 +38,50 @@ error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:17:28
    |
 LL | static EARLY_DROP_S: i32 = (WithDtor, 0).1;
-   |                            ^^^^^^^^^^^^^ statics cannot evaluate destructors
+   |                            ^^^^^^^^^^^^^ - value is dropped here
+   |                            |
+   |                            statics cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:20:27
    |
 LL | const EARLY_DROP_C: i32 = (WithDtor, 0).1;
-   |                           ^^^^^^^^^^^^^ constants cannot evaluate destructors
+   |                           ^^^^^^^^^^^^^ - value is dropped here
+   |                           |
+   |                           constants cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:23:24
    |
 LL | const fn const_drop<T>(_: T) {}
-   |                        ^ constant functions cannot evaluate destructors
+   |                        ^      - value is dropped here
+   |                        |
+   |                        constant functions cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:27:5
    |
 LL |     (x, ()).1
    |     ^^^^^^^ constant functions cannot evaluate destructors
+LL |
+LL | }
+   | - value is dropped here
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:31:34
    |
 LL | const EARLY_DROP_C_OPTION: i32 = (Some(WithDtor), 0).1;
-   |                                  ^^^^^^^^^^^^^^^^^^^ constants cannot evaluate destructors
+   |                                  ^^^^^^^^^^^^^^^^^^^ - value is dropped here
+   |                                  |
+   |                                  constants cannot evaluate destructors
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:36:43
    |
 LL | const EARLY_DROP_C_OPTION_CONSTANT: i32 = (HELPER, 0).1;
-   |                                           ^^^^^^^^^^^ constants cannot evaluate destructors
+   |                                           ^^^^^^^^^^^ - value is dropped here
+   |                                           |
+   |                                           constants cannot evaluate destructors
 
 error: aborting due to 10 previous errors
 

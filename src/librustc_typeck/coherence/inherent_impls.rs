@@ -9,7 +9,7 @@
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::{self, CrateInherentImpls, TyCtxt};
 
@@ -17,13 +17,13 @@ use rustc_ast::ast;
 use rustc_span::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
-pub fn crate_inherent_impls(tcx: TyCtxt<'_>, crate_num: CrateNum) -> &CrateInherentImpls {
+pub fn crate_inherent_impls(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateInherentImpls {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     let krate = tcx.hir().krate();
     let mut collect = InherentCollect { tcx, impls_map: Default::default() };
     krate.visit_all_item_likes(&mut collect);
-    tcx.arena.alloc(collect.impls_map)
+    collect.impls_map
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
@@ -296,7 +296,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                     item.span,
                 );
             }
-            ty::Error => {}
+            ty::Error(_) => {}
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
@@ -327,7 +327,7 @@ impl InherentCollect<'tcx> {
             // the implementation does not have any associated traits.
             let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
             let vec = self.impls_map.inherent_impls.entry(def_id).or_default();
-            vec.push(impl_def_id);
+            vec.push(impl_def_id.to_def_id());
         } else {
             struct_span_err!(
                 self.tcx.sess,
@@ -344,7 +344,7 @@ impl InherentCollect<'tcx> {
 
     fn check_primitive_impl(
         &self,
-        impl_def_id: DefId,
+        impl_def_id: LocalDefId,
         lang_def_id: Option<DefId>,
         lang_def_id2: Option<DefId>,
         lang: &str,
@@ -352,10 +352,10 @@ impl InherentCollect<'tcx> {
         span: Span,
     ) {
         match (lang_def_id, lang_def_id2) {
-            (Some(lang_def_id), _) if lang_def_id == impl_def_id => {
+            (Some(lang_def_id), _) if lang_def_id == impl_def_id.to_def_id() => {
                 // OK
             }
-            (_, Some(lang_def_id)) if lang_def_id == impl_def_id => {
+            (_, Some(lang_def_id)) if lang_def_id == impl_def_id.to_def_id() => {
                 // OK
             }
             _ => {

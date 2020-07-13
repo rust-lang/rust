@@ -31,6 +31,17 @@ pub fn opts() -> TargetOptions {
         has_elf_tls: version >= (10, 7),
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
+
+        // This environment variable is pretty magical but is intended for
+        // producing deterministic builds. This was first discovered to be used
+        // by the `ar` tool as a way to control whether or not mtime entries in
+        // the archive headers were set to zero or not. It appears that
+        // eventually the linker got updated to do the same thing and now reads
+        // this environment variable too in recent versions.
+        //
+        // For some more info see the commentary on #47086
+        link_env: vec![("ZERO_AR_DATE".to_string(), "1".to_string())],
+
         ..Default::default()
     }
 }

@@ -1,56 +1,43 @@
-error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:108:15
+error[E0599]: no method named `filterx` found for struct `Map<Repeat, [closure@$DIR/issue-30786.rs:127:27: 127:36]>` in the current scope
+  --> $DIR/issue-30786.rs:128:22
    |
-LL |     let map = source.map(|x: &_| x);
-   |               ^^^^^^^^^^^^^^^^^^^^^
-
-error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:114:18
+LL | pub struct Map<S, F> {
+   | --------------------
+   | |
+   | method `filterx` not found for this
+   | doesn't satisfy `_: StreamExt`
+...
+LL |     let filter = map.filterx(|x: &_| true);
+   |                      ^^^^^^^ method not found in `Map<Repeat, [closure@$DIR/issue-30786.rs:127:27: 127:36]>`
    |
-LL |     let filter = map.filter(|x: &_| true);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the method `filterx` exists but the following trait bounds were not satisfied:
+           `&'a mut Map<Repeat, [closure@$DIR/issue-30786.rs:127:27: 127:36]>: Stream`
+           which is required by `Map<Repeat, [closure@$DIR/issue-30786.rs:127:27: 127:36]>: StreamExt`
+           `&'a mut &Map<Repeat, [closure@$DIR/issue-30786.rs:127:27: 127:36]>: Stream`
+           which is required by `&Map<Repeat, [closure@$DIR/issue-30786.rs:127:27: 127:36]>: StreamExt`
+           `&'a mut &mut Map<Repeat, [closure@$DIR/issue-30786.rs:127:27: 127:36]>: Stream`
+           which is required by `&mut Map<Repeat, [closure@$DIR/issue-30786.rs:127:27: 127:36]>: StreamExt`
 
-error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:114:18
+error[E0599]: no method named `countx` found for struct `Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:140:30: 140:42]>` in the current scope
+  --> $DIR/issue-30786.rs:141:24
    |
-LL |     let filter = map.filter(|x: &_| true);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:114:18
+LL | pub struct Filter<S, F> {
+   | -----------------------
+   | |
+   | method `countx` not found for this
+   | doesn't satisfy `_: StreamExt`
+...
+LL |     let count = filter.countx();
+   |                        ^^^^^^ method not found in `Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:140:30: 140:42]>`
    |
-LL |     let filter = map.filter(|x: &_| true);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the method `countx` exists but the following trait bounds were not satisfied:
+           `&'a mut Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:140:30: 140:42]>: Stream`
+           which is required by `Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:140:30: 140:42]>: StreamExt`
+           `&'a mut &Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:140:30: 140:42]>: Stream`
+           which is required by `&Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:140:30: 140:42]>: StreamExt`
+           `&'a mut &mut Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:140:30: 140:42]>: Stream`
+           which is required by `&mut Filter<Map<Repeat, for<'r> fn(&'r u64) -> &'r u64 {identity::<u64>}>, [closure@$DIR/issue-30786.rs:140:30: 140:42]>: StreamExt`
 
-error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:114:18
-   |
-LL |     let filter = map.filter(|x: &_| true);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to 2 previous errors
 
-error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:119:17
-   |
-LL |     let count = filter.count(); // Assert that we still have a valid stream.
-   |                 ^^^^^^^^^^^^^^
-
-error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:119:17
-   |
-LL |     let count = filter.count(); // Assert that we still have a valid stream.
-   |                 ^^^^^^^^^^^^^^
-
-error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:119:17
-   |
-LL |     let count = filter.count(); // Assert that we still have a valid stream.
-   |                 ^^^^^^^^^^^^^^
-
-error: higher-ranked subtype error
-  --> $DIR/issue-30786.rs:119:17
-   |
-LL |     let count = filter.count(); // Assert that we still have a valid stream.
-   |                 ^^^^^^^^^^^^^^
-
-error: aborting due to 9 previous errors
-
+For more information about this error, try `rustc --explain E0599`.

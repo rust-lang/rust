@@ -22,13 +22,13 @@ impl<'tcx> TypeWalker<'tcx> {
     /// Skips the subtree corresponding to the last type
     /// returned by `next()`.
     ///
-    /// Example: Imagine you are walking `Foo<Bar<int>, usize>`.
+    /// Example: Imagine you are walking `Foo<Bar<i32>, usize>`.
     ///
     /// ```
     /// let mut iter: TypeWalker = ...;
     /// iter.next(); // yields Foo
-    /// iter.next(); // yields Bar<int>
-    /// iter.skip_current_subtree(); // skips int
+    /// iter.next(); // yields Bar<i32>
+    /// iter.skip_current_subtree(); // skips i32
     /// iter.next(); // yields usize
     /// ```
     pub fn skip_current_subtree(&mut self) {
@@ -108,7 +108,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             | ty::Infer(_)
             | ty::Param(_)
             | ty::Never
-            | ty::Error
+            | ty::Error(_)
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Foreign(..) => {}
@@ -127,13 +127,13 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 stack.push(ty.into());
                 stack.push(lt.into());
             }
-            ty::Projection(data) | ty::UnnormalizedProjection(data) => {
-                stack.extend(data.substs.iter().copied().rev());
+            ty::Projection(data) => {
+                stack.extend(data.substs.iter().rev());
             }
             ty::Dynamic(obj, lt) => {
                 stack.push(lt.into());
                 stack.extend(obj.iter().rev().flat_map(|predicate| {
-                    let (substs, opt_ty) = match *predicate.skip_binder() {
+                    let (substs, opt_ty) = match predicate.skip_binder() {
                         ty::ExistentialPredicate::Trait(tr) => (tr.substs, None),
                         ty::ExistentialPredicate::Projection(p) => (p.substs, Some(p.ty)),
                         ty::ExistentialPredicate::AutoTrait(_) =>
@@ -143,7 +143,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                         }
                     };
 
-                    substs.iter().copied().rev().chain(opt_ty.map(|ty| ty.into()))
+                    substs.iter().rev().chain(opt_ty.map(|ty| ty.into()))
                 }));
             }
             ty::Adt(_, substs)
@@ -152,14 +152,14 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             | ty::Generator(_, substs, _)
             | ty::Tuple(substs)
             | ty::FnDef(_, substs) => {
-                stack.extend(substs.iter().copied().rev());
+                stack.extend(substs.iter().rev());
             }
             ty::GeneratorWitness(ts) => {
-                stack.extend(ts.skip_binder().iter().cloned().rev().map(|ty| ty.into()));
+                stack.extend(ts.skip_binder().iter().rev().map(|ty| ty.into()));
             }
             ty::FnPtr(sig) => {
                 stack.push(sig.skip_binder().output().into());
-                stack.extend(sig.skip_binder().inputs().iter().cloned().rev().map(|ty| ty.into()));
+                stack.extend(sig.skip_binder().inputs().iter().copied().rev().map(|ty| ty.into()));
             }
         },
         GenericArgKind::Lifetime(_) => {}
@@ -171,10 +171,10 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 | ty::ConstKind::Placeholder(_)
                 | ty::ConstKind::Bound(..)
                 | ty::ConstKind::Value(_)
-                | ty::ConstKind::Error => {}
+                | ty::ConstKind::Error(_) => {}
 
                 ty::ConstKind::Unevaluated(_, substs, _) => {
-                    stack.extend(substs.iter().copied().rev());
+                    stack.extend(substs.iter().rev());
                 }
             }
         }

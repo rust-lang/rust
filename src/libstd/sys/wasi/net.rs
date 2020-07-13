@@ -48,12 +48,20 @@ impl TcpStream {
         unsupported()
     }
 
+    pub fn is_read_vectored(&self) -> bool {
+        true
+    }
+
     pub fn write(&self, _: &[u8]) -> io::Result<usize> {
         unsupported()
     }
 
     pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
         unsupported()
+    }
+
+    pub fn is_write_vectored(&self) -> bool {
+        true
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {

@@ -1,0 +1,23 @@
+error: This function has a large number of lines.
+  --> $DIR/test.rs:18:1
+   |
+LL | / fn too_many_lines() {
+LL | |     println!("This is bad.");
+LL | |     println!("This is bad.");
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::too-many-lines` implied by `-D warnings`
+
+error: This function has a large number of lines.
+  --> $DIR/test.rs:38:1
+   |
+LL | / fn comment_before_code() {
+LL | |     let _ = "test";
+LL | |     /* This comment extends to the front of
+LL | |     the code but this line should still count. */ let _ = 5;
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+

@@ -5,13 +5,7 @@ LL | struct Foo<T> {
    |            - help: consider adding an explicit lifetime bound...: `T: 'static`
 LL |     // needs T: 'static
 LL |     x: dyn Object<&'static T>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: ...so that the reference type `&'static T` does not outlive the data it points at
-  --> $DIR/wf-in-obj-type-static.rs:14:5
-   |
-LL |     x: dyn Object<&'static T>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the reference type `&'static T` does not outlive the data it points at
 
 error: aborting due to previous error
 

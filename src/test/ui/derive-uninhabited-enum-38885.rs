@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // compile-flags: -Wunused
 
 // ensure there are no special warnings about uninhabited types

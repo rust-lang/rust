@@ -1,0 +1,22 @@
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/ice-3969.rs:25:17
+   |
+LL |     for<'a> Dst<A + 'a>: Sized,
+   |                 ^^^^^^ help: use `dyn`: `dyn A + 'a`
+   |
+   = note: `-D bare-trait-objects` implied by `-D warnings`
+
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/ice-3969.rs:27:16
+   |
+LL |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
+   |                ^ help: use `dyn`: `dyn A`
+
+error: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/ice-3969.rs:27:57
+   |
+LL |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
+   |                                                         ^ help: use `dyn`: `dyn A`
+
+error: aborting due to 3 previous errors
+

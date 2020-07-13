@@ -473,7 +473,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Discriminant(ref place) => {
-                let discr_ty = rvalue.ty(*self.mir, bx.tcx());
+                let discr_ty = rvalue.ty(self.mir, bx.tcx());
                 let discr = self
                     .codegen_place(&mut bx, place.as_ref())
                     .codegen_get_discr(&mut bx, discr_ty);
@@ -522,6 +522,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let operand = OperandRef { val: OperandValue::Immediate(val), layout: box_layout };
                 (bx, operand)
             }
+            mir::Rvalue::ThreadLocalRef(def_id) => {
+                assert!(bx.cx().tcx().is_static(def_id));
+                let static_ = bx.get_static(def_id);
+                let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
+                let operand = OperandRef::from_immediate_or_packed_pair(&mut bx, static_, layout);
+                (bx, operand)
+            }
             mir::Rvalue::Use(ref operand) => {
                 let operand = self.codegen_operand(&mut bx, operand);
                 (bx, operand)
@@ -529,7 +536,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Repeat(..) | mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
-                let ty = rvalue.ty(*self.mir, self.cx.tcx());
+                let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let operand =
                     OperandRef::new_zst(&mut bx, self.cx.layout_of(self.monomorphize(&ty)));
                 (bx, operand)
@@ -745,11 +752,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::UnaryOp(..) |
             mir::Rvalue::Discriminant(..) |
             mir::Rvalue::NullaryOp(..) |
+            mir::Rvalue::ThreadLocalRef(_) |
             mir::Rvalue::Use(..) => // (*)
                 true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                let ty = rvalue.ty(*self.mir, self.cx.tcx());
+                let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let ty = self.monomorphize(&ty);
                 self.cx.spanned_layout_of(ty, span).is_zst()
             }
@@ -766,11 +774,16 @@ fn cast_float_to_int<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     float_ty: Bx::Type,
     int_ty: Bx::Type,
 ) -> Bx::Value {
-    let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
-
-    if !bx.cx().sess().opts.debugging_opts.saturating_float_casts {
-        return fptosui_result;
+    if let Some(false) = bx.cx().sess().opts.debugging_opts.saturating_float_casts {
+        return if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
     }
+
+    let try_sat_result = if signed { bx.fptosi_sat(x, int_ty) } else { bx.fptoui_sat(x, int_ty) };
+    if let Some(try_sat_result) = try_sat_result {
+        return try_sat_result;
+    }
+
+    let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
 
     let int_width = bx.cx().int_width(int_ty);
     let float_width = bx.cx().float_width(float_ty);

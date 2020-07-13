@@ -1,33 +1,33 @@
 error[E0308]: mismatched types
-  --> $DIR/hr-subtype.rs:39:26
+  --> $DIR/hr-subtype.rs:45:26
    |
 LL |               gimme::<$t1>(None::<$t2>);
    |                            ^^^^^^^^^^^ lifetime mismatch
 ...
 LL | / check! { free_x_vs_free_y: (fn(&'x u32),
-LL | |                             fn(&'y u32)) }
-   | |__________________________________________- in this macro invocation
+LL | | fn(&'y u32)) }
+   | |______________- in this macro invocation
    |
    = note: expected enum `std::option::Option<fn(&'x u32)>`
               found enum `std::option::Option<fn(&'y u32)>`
-note: the lifetime `'x` as defined on the function body at 38:22...
-  --> $DIR/hr-subtype.rs:38:22
+note: the lifetime `'x` as defined on the function body at 44:22...
+  --> $DIR/hr-subtype.rs:44:22
    |
-LL |           fn supertype<'x,'y:'x,'z:'y>() {
+LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {
    |                        ^^
 ...
 LL | / check! { free_x_vs_free_y: (fn(&'x u32),
-LL | |                             fn(&'y u32)) }
-   | |__________________________________________- in this macro invocation
-note: ...does not necessarily outlive the lifetime `'y` as defined on the function body at 38:25
-  --> $DIR/hr-subtype.rs:38:25
+LL | | fn(&'y u32)) }
+   | |______________- in this macro invocation
+note: ...does not necessarily outlive the lifetime `'y` as defined on the function body at 44:26
+  --> $DIR/hr-subtype.rs:44:26
    |
-LL |           fn supertype<'x,'y:'x,'z:'y>() {
-   |                           ^^
+LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {
+   |                            ^^
 ...
 LL | / check! { free_x_vs_free_y: (fn(&'x u32),
-LL | |                             fn(&'y u32)) }
-   | |__________________________________________- in this macro invocation
+LL | | fn(&'y u32)) }
+   | |______________- in this macro invocation
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error

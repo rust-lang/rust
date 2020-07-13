@@ -1,8 +1,10 @@
 // check-pass
+// run-rustfix
+
+#![allow(incomplete_features)]
 #![warn(unused_braces)]
 
 #![feature(const_generics)]
-//~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
 
 struct A<const N: usize>;
 

@@ -115,7 +115,7 @@ fn optgroups() -> getopts::Options {
         .optflagopt(
             "",
             "report-time",
-            "Show execution time of each test. Awailable values:
+            "Show execution time of each test. Available values:
             plain   = do not colorize the execution time (default);
             colored = colorize output according to the `color` parameter value;
 
@@ -331,7 +331,7 @@ fn get_format(
     quiet: bool,
     allow_unstable: bool,
 ) -> OptPartRes<OutputFormat> {
-    let format = match matches.opt_str("format").as_ref().map(|s| &**s) {
+    let format = match matches.opt_str("format").as_deref() {
         None if quiet => OutputFormat::Terse,
         Some("pretty") | None => OutputFormat::Pretty,
         Some("terse") => OutputFormat::Terse,
@@ -355,7 +355,7 @@ fn get_format(
 }
 
 fn get_color_config(matches: &getopts::Matches) -> OptPartRes<ColorConfig> {
-    let color = match matches.opt_str("color").as_ref().map(|s| &**s) {
+    let color = match matches.opt_str("color").as_deref() {
         Some("auto") | None => ColorConfig::AutoColor,
         Some("always") => ColorConfig::AlwaysColor,
         Some("never") => ColorConfig::NeverColor,

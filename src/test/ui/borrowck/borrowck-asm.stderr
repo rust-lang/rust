@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/borrowck-asm.rs:24:17
+  --> $DIR/borrowck-asm.rs:25:17
    |
 LL |         let x = &mut 0isize;
    |             - move occurs because `x` has type `&mut isize`, which does not implement the `Copy` trait
@@ -11,7 +11,7 @@ LL |         let z = x;
    |                 ^ value used here after move
 
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/borrowck-asm.rs:31:37
+  --> $DIR/borrowck-asm.rs:32:37
    |
 LL |         let y = &mut x;
    |                 ------ borrow of `x` occurs here
@@ -23,7 +23,7 @@ LL |         let z = y;
    |                 - borrow later used here
 
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-asm.rs:39:36
+  --> $DIR/borrowck-asm.rs:40:36
    |
 LL |         let x = 3;
    |             -
@@ -35,7 +35,7 @@ LL |             llvm_asm!("nop" : "=r"(x));
    |                                    ^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/borrowck-asm.rs:53:36
+  --> $DIR/borrowck-asm.rs:54:36
    |
 LL |         let x = 3;
    |             -
@@ -47,13 +47,13 @@ LL |             llvm_asm!("nop" : "+r"(x));
    |                                    ^ cannot assign twice to immutable variable
 
 error[E0381]: use of possibly-uninitialized variable: `x`
-  --> $DIR/borrowck-asm.rs:60:37
+  --> $DIR/borrowck-asm.rs:61:37
    |
 LL |             llvm_asm!("nop" : "=*r"(x));
    |                                     ^ use of possibly-uninitialized `x`
 
 error[E0506]: cannot assign to `x` because it is borrowed
-  --> $DIR/borrowck-asm.rs:68:36
+  --> $DIR/borrowck-asm.rs:69:36
    |
 LL |         let y = &*x;
    |                 --- borrow of `x` occurs here
@@ -65,7 +65,7 @@ LL |         let z = y;
    |                 - borrow later used here
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/borrowck-asm.rs:76:45
+  --> $DIR/borrowck-asm.rs:77:45
    |
 LL |         let x = &mut 2;
    |             - move occurs because `x` has type `&mut i32`, which does not implement the `Copy` trait

@@ -1,7 +1,7 @@
 use rustc_data_structures::graph::iterate::{
     ControlFlow, NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::mir::{BasicBlock, Body, Operand, TerminatorKind};
@@ -10,8 +10,8 @@ use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 
-crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: LocalDefId) {
+    let hir_id = tcx.hir().as_local_hir_id(def_id);
 
     if let Some(fn_like_node) = FnLikeNode::from_node(tcx.hir().get(hir_id)) {
         if let FnKind::Closure(_) = fn_like_node.kind() {
@@ -20,12 +20,12 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId) {
         }
 
         // If this is trait/impl method, extract the trait's substs.
-        let trait_substs = match tcx.opt_associated_item(def_id) {
+        let trait_substs = match tcx.opt_associated_item(def_id.to_def_id()) {
             Some(AssocItem {
                 container: AssocItemContainer::TraitContainer(trait_def_id), ..
             }) => {
-                let trait_substs_count = tcx.generics_of(trait_def_id).count();
-                &InternalSubsts::identity_for_item(tcx, def_id)[..trait_substs_count]
+                let trait_substs_count = tcx.generics_of(*trait_def_id).count();
+                &InternalSubsts::identity_for_item(tcx, def_id.to_def_id())[..trait_substs_count]
             }
             _ => &[],
         };
@@ -37,7 +37,7 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId) {
 
         vis.reachable_recursive_calls.sort();
 
-        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        let hir_id = tcx.hir().as_local_hir_id(def_id);
         let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span(hir_id));
         tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
             let mut db = lint.build("function cannot return without recursing");
@@ -57,7 +57,7 @@ struct NonRecursive;
 struct Search<'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'mir Body<'tcx>,
-    def_id: DefId,
+    def_id: LocalDefId,
     trait_substs: &'tcx [GenericArg<'tcx>],
 
     reachable_recursive_calls: Vec<Span>,
@@ -72,7 +72,7 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
         let func_ty = func.ty(body, tcx);
         if let ty::FnDef(fn_def_id, substs) = func_ty.kind {
             let (call_fn_id, call_substs) =
-                if let Some(instance) = Instance::resolve(tcx, param_env, fn_def_id, substs) {
+                if let Ok(Some(instance)) = Instance::resolve(tcx, param_env, fn_def_id, substs) {
                     (instance.def_id(), instance.substs)
                 } else {
                     (fn_def_id, substs)
@@ -84,7 +84,8 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
             // calling into an entirely different method (for example, a call from the default
             // method in the trait to `<A as Trait<B>>::method`, where `A` and/or `B` are
             // specific types).
-            return call_fn_id == def_id && &call_substs[..trait_substs.len()] == trait_substs;
+            return call_fn_id == def_id.to_def_id()
+                && &call_substs[..trait_substs.len()] == trait_substs;
         }
 
         false
@@ -113,12 +114,21 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),
 
+            // A diverging InlineAsm is treated as non-recursing
+            TerminatorKind::InlineAsm { destination, .. } => {
+                if destination.is_some() {
+                    ControlFlow::Continue
+                } else {
+                    ControlFlow::Break(NonRecursive)
+                }
+            }
+
             // These do not.
             TerminatorKind::Assert { .. }
             | TerminatorKind::Call { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Goto { .. }
             | TerminatorKind::SwitchInt { .. } => ControlFlow::Continue,
@@ -143,7 +153,7 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
             TerminatorKind::Call { ref func, .. } => self.is_recursive_call(func),
 
             TerminatorKind::FalseUnwind { unwind: Some(imaginary_target), .. }
-            | TerminatorKind::FalseEdges { imaginary_target, .. } => imaginary_target == target,
+            | TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
 
             _ => false,
         }

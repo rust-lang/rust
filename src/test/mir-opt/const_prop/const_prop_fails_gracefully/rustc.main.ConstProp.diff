@@ -13,24 +13,24 @@
       }
   
       bb0: {
-          StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/const_prop_fails_gracefully.rs:7:9: 7:10
-          StorageLive(_2);                 // bb0[1]: scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:30
-          StorageLive(_3);                 // bb0[2]: scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
-          _3 = const main::FOO;            // bb0[3]: scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
+          StorageLive(_1);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:9: 7:10
+          StorageLive(_2);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:30
+          StorageLive(_3);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
+          _3 = const main::FOO;            // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
                                            // ty::Const
                                            // + ty: &i32
                                            // + val: Unevaluated(DefId(0:5 ~ const_prop_fails_gracefully[317d]::main[0]::FOO[0]), [], None)
                                            // mir::Constant
                                            // + span: $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
                                            // + literal: Const { ty: &i32, val: Unevaluated(DefId(0:5 ~ const_prop_fails_gracefully[317d]::main[0]::FOO[0]), [], None) }
-          _2 = &raw const (*_3);           // bb0[4]: scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
-          _1 = move _2 as usize (Misc);    // bb0[5]: scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:39
-          StorageDead(_2);                 // bb0[6]: scope 0 at $DIR/const_prop_fails_gracefully.rs:7:38: 7:39
-          StorageDead(_3);                 // bb0[7]: scope 0 at $DIR/const_prop_fails_gracefully.rs:7:39: 7:40
-          StorageLive(_4);                 // bb0[8]: scope 1 at $DIR/const_prop_fails_gracefully.rs:8:5: 8:12
-          StorageLive(_5);                 // bb0[9]: scope 1 at $DIR/const_prop_fails_gracefully.rs:8:10: 8:11
-          _5 = _1;                         // bb0[10]: scope 1 at $DIR/const_prop_fails_gracefully.rs:8:10: 8:11
-          _4 = const read(move _5) -> bb1; // bb0[11]: scope 1 at $DIR/const_prop_fails_gracefully.rs:8:5: 8:12
+          _2 = &raw const (*_3);           // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:16
+          _1 = move _2 as usize (Misc);    // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:13: 7:39
+          StorageDead(_2);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:38: 7:39
+          StorageDead(_3);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:7:39: 7:40
+          StorageLive(_4);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:5: 8:12
+          StorageLive(_5);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:10: 8:11
+          _5 = _1;                         // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:10: 8:11
+          _4 = const read(move _5) -> bb1; // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:5: 8:12
                                            // ty::Const
                                            // + ty: fn(usize) {read}
                                            // + val: Value(Scalar(<ZST>))
@@ -40,17 +40,17 @@
       }
   
       bb1: {
-          StorageDead(_5);                 // bb1[0]: scope 1 at $DIR/const_prop_fails_gracefully.rs:8:11: 8:12
-          StorageDead(_4);                 // bb1[1]: scope 1 at $DIR/const_prop_fails_gracefully.rs:8:12: 8:13
-          _0 = const ();                   // bb1[2]: scope 0 at $DIR/const_prop_fails_gracefully.rs:5:11: 9:2
+          StorageDead(_5);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:11: 8:12
+          StorageDead(_4);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:12: 8:13
+          _0 = const ();                   // scope 0 at $DIR/const_prop_fails_gracefully.rs:5:11: 9:2
                                            // ty::Const
                                            // + ty: ()
                                            // + val: Value(Scalar(<ZST>))
                                            // mir::Constant
                                            // + span: $DIR/const_prop_fails_gracefully.rs:5:11: 9:2
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
-          StorageDead(_1);                 // bb1[3]: scope 0 at $DIR/const_prop_fails_gracefully.rs:9:1: 9:2
-          return;                          // bb1[4]: scope 0 at $DIR/const_prop_fails_gracefully.rs:9:2: 9:2
+          StorageDead(_1);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:9:1: 9:2
+          return;                          // scope 0 at $DIR/const_prop_fails_gracefully.rs:9:2: 9:2
       }
   }
   

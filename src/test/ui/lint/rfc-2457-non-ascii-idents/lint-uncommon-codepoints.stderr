@@ -22,11 +22,5 @@ error: identifier contains uncommon Unicode codepoints
 LL |     let ㇻㇲㇳ = "rust";
    |         ^^^^^^
 
-error: identifier contains uncommon Unicode codepoints
-  --> $DIR/lint-uncommon-codepoints.rs:10:20
-   |
-LL |     println!("{}", ㇻㇲㇳ);
-   |                    ^^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

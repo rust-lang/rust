@@ -10,7 +10,7 @@ error[E0412]: cannot find type `u8` in the crate root
 LL |     let _: ::u8;
    |              ^^ not found in the crate root
    |
-help: possible candidate is found in another module, you can import it into scope
+help: consider importing this builtin type
    |
 LL | use std::primitive::u8;
    |

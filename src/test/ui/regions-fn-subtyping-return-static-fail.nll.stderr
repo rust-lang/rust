@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/regions-fn-subtyping-return-static-fail.rs:48:5
+   |
+LL |     want_G(baz);
+   |     ^^^^^^^^^^^
+
+error: aborting due to previous error
+

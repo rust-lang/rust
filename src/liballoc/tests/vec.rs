@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
+use std::fmt::Debug;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::vec::{Drain, IntoIter};
@@ -16,7 +17,7 @@ impl Drop for DropCounter<'_> {
 
 #[test]
 fn test_small_vec_struct() {
-    assert!(size_of::<Vec<u8>>() == size_of::<usize>() * 3);
+    assert_eq!(size_of::<Vec<u8>>(), size_of::<usize>() * 3);
 }
 
 #[test]
@@ -68,7 +69,7 @@ fn test_reserve() {
 
 #[test]
 fn test_zst_capacity() {
-    assert_eq!(Vec::<()>::new().capacity(), usize::max_value());
+    assert_eq!(Vec::<()>::new().capacity(), usize::MAX);
 }
 
 #[test]
@@ -129,21 +130,6 @@ fn test_extend_ref() {
 
     assert_eq!(v.len(), 7);
     assert_eq!(v, [1, 2, 3, 4, 5, 6, 7]);
-}
-
-#[test]
-fn test_remove_item() {
-    let mut v = vec![1, 2, 3];
-    v.remove_item(&1);
-
-    assert_eq!(v.len(), 2);
-    assert_eq!(v, [2, 3]);
-
-    let mut w = vec![1, 2, 3];
-    w.remove_item(&4);
-
-    assert_eq!(w.len(), 3);
-    w.remove_item(&4);
 }
 
 #[test]
@@ -563,19 +549,19 @@ fn test_drain_inclusive_range() {
 
 #[test]
 fn test_drain_max_vec_size() {
-    let mut v = Vec::<()>::with_capacity(usize::max_value());
+    let mut v = Vec::<()>::with_capacity(usize::MAX);
     unsafe {
-        v.set_len(usize::max_value());
+        v.set_len(usize::MAX);
     }
-    for _ in v.drain(usize::max_value() - 1..) {}
-    assert_eq!(v.len(), usize::max_value() - 1);
+    for _ in v.drain(usize::MAX - 1..) {}
+    assert_eq!(v.len(), usize::MAX - 1);
 
-    let mut v = Vec::<()>::with_capacity(usize::max_value());
+    let mut v = Vec::<()>::with_capacity(usize::MAX);
     unsafe {
-        v.set_len(usize::max_value());
+        v.set_len(usize::MAX);
     }
-    for _ in v.drain(usize::max_value() - 1..=usize::max_value() - 1) {}
-    assert_eq!(v.len(), usize::max_value() - 1);
+    for _ in v.drain(usize::MAX - 1..=usize::MAX - 1) {}
+    assert_eq!(v.len(), usize::MAX - 1);
 }
 
 #[test]
@@ -1472,4 +1458,172 @@ fn vec_macro_repeating_null_raw_fat_pointer() {
         data: *mut (),
         vtable: *mut (),
     }
+}
+
+// This test will likely fail if you change the capacities used in
+// `RawVec::grow_amortized`.
+#[test]
+fn test_push_growth_strategy() {
+    // If the element size is 1, we jump from 0 to 8, then double.
+    {
+        let mut v1: Vec<u8> = vec![];
+        assert_eq!(v1.capacity(), 0);
+
+        for _ in 0..8 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 8);
+        }
+
+        for _ in 8..16 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 16);
+        }
+
+        for _ in 16..32 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 32);
+        }
+
+        for _ in 32..64 {
+            v1.push(0);
+            assert_eq!(v1.capacity(), 64);
+        }
+    }
+
+    // If the element size is 2..=1024, we jump from 0 to 4, then double.
+    {
+        let mut v2: Vec<u16> = vec![];
+        let mut v1024: Vec<[u8; 1024]> = vec![];
+        assert_eq!(v2.capacity(), 0);
+        assert_eq!(v1024.capacity(), 0);
+
+        for _ in 0..4 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 4);
+            assert_eq!(v1024.capacity(), 4);
+        }
+
+        for _ in 4..8 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 8);
+            assert_eq!(v1024.capacity(), 8);
+        }
+
+        for _ in 8..16 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 16);
+            assert_eq!(v1024.capacity(), 16);
+        }
+
+        for _ in 16..32 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 32);
+            assert_eq!(v1024.capacity(), 32);
+        }
+
+        for _ in 32..64 {
+            v2.push(0);
+            v1024.push([0; 1024]);
+            assert_eq!(v2.capacity(), 64);
+            assert_eq!(v1024.capacity(), 64);
+        }
+    }
+
+    // If the element size is > 1024, we jump from 0 to 1, then double.
+    {
+        let mut v1025: Vec<[u8; 1025]> = vec![];
+        assert_eq!(v1025.capacity(), 0);
+
+        for _ in 0..1 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 1);
+        }
+
+        for _ in 1..2 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 2);
+        }
+
+        for _ in 2..4 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 4);
+        }
+
+        for _ in 4..8 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 8);
+        }
+
+        for _ in 8..16 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 16);
+        }
+
+        for _ in 16..32 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 32);
+        }
+
+        for _ in 32..64 {
+            v1025.push([0; 1025]);
+            assert_eq!(v1025.capacity(), 64);
+        }
+    }
+}
+
+macro_rules! generate_assert_eq_vec_and_prim {
+    ($name:ident<$B:ident>($type:ty)) => {
+        fn $name<A: PartialEq<$B> + Debug, $B: Debug>(a: Vec<A>, b: $type) {
+            assert!(a == b);
+            assert_eq!(a, b);
+        }
+    };
+}
+
+generate_assert_eq_vec_and_prim! { assert_eq_vec_and_slice  <B>(&[B])   }
+generate_assert_eq_vec_and_prim! { assert_eq_vec_and_array_3<B>([B; 3]) }
+
+#[test]
+fn partialeq_vec_and_prim() {
+    assert_eq_vec_and_slice(vec![1, 2, 3], &[1, 2, 3]);
+    assert_eq_vec_and_array_3(vec![1, 2, 3], [1, 2, 3]);
+}
+
+macro_rules! assert_partial_eq_valid {
+    ($a2:ident, $a3:ident; $b2:ident, $b3: ident) => {
+        assert!($a2 == $b2);
+        assert!($a2 != $b3);
+        assert!($a3 != $b2);
+        assert!($a3 == $b3);
+        assert_eq!($a2, $b2);
+        assert_ne!($a2, $b3);
+        assert_ne!($a3, $b2);
+        assert_eq!($a3, $b3);
+    };
+}
+
+#[test]
+fn partialeq_vec_full() {
+    let vec2: Vec<_> = vec![1, 2];
+    let vec3: Vec<_> = vec![1, 2, 3];
+    let slice2: &[_] = &[1, 2];
+    let slice3: &[_] = &[1, 2, 3];
+    let slicemut2: &[_] = &mut [1, 2];
+    let slicemut3: &[_] = &mut [1, 2, 3];
+    let array2: [_; 2] = [1, 2];
+    let array3: [_; 3] = [1, 2, 3];
+    let arrayref2: &[_; 2] = &[1, 2];
+    let arrayref3: &[_; 3] = &[1, 2, 3];
+
+    assert_partial_eq_valid!(vec2,vec3; vec2,vec3);
+    assert_partial_eq_valid!(vec2,vec3; slice2,slice3);
+    assert_partial_eq_valid!(vec2,vec3; slicemut2,slicemut3);
+    assert_partial_eq_valid!(slice2,slice3; vec2,vec3);
+    assert_partial_eq_valid!(slicemut2,slicemut3; vec2,vec3);
+    assert_partial_eq_valid!(vec2,vec3; array2,array3);
+    assert_partial_eq_valid!(vec2,vec3; arrayref2,arrayref3);
 }

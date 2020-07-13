@@ -665,6 +665,34 @@ impl<T: Ord> BinaryHeap<T> {
     pub fn drain_sorted(&mut self) -> DrainSorted<'_, T> {
         DrainSorted { inner: self }
     }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns
+    /// `false`. The elements are visited in unsorted (and unspecified) order.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_retain)]
+    /// use std::collections::BinaryHeap;
+    ///
+    /// let mut heap = BinaryHeap::from(vec![-10, -5, 1, 2, 4, 13]);
+    ///
+    /// heap.retain(|x| x % 2 == 0); // only keep even numbers
+    ///
+    /// assert_eq!(heap.into_sorted_vec(), [-10, 2, 4])
+    /// ```
+    #[unstable(feature = "binary_heap_retain", issue = "71503")]
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&T) -> bool,
+    {
+        self.data.retain(f);
+        self.rebuild();
+    }
 }
 
 impl<T> BinaryHeap<T> {
@@ -975,7 +1003,7 @@ impl<'a, T> Hole<'a, T> {
     unsafe fn new(data: &'a mut [T], pos: usize) -> Self {
         debug_assert!(pos < data.len());
         // SAFE: pos should be inside the slice
-        let elt = ptr::read(data.get_unchecked(pos));
+        let elt = unsafe { ptr::read(data.get_unchecked(pos)) };
         Hole { data, elt: ManuallyDrop::new(elt), pos }
     }
 
@@ -997,7 +1025,7 @@ impl<'a, T> Hole<'a, T> {
     unsafe fn get(&self, index: usize) -> &T {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
-        self.data.get_unchecked(index)
+        unsafe { self.data.get_unchecked(index) }
     }
 
     /// Move hole to new location
@@ -1007,9 +1035,11 @@ impl<'a, T> Hole<'a, T> {
     unsafe fn move_to(&mut self, index: usize) {
         debug_assert!(index != self.pos);
         debug_assert!(index < self.data.len());
-        let index_ptr: *const _ = self.data.get_unchecked(index);
-        let hole_ptr = self.data.get_unchecked_mut(self.pos);
-        ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
+        unsafe {
+            let index_ptr: *const _ = self.data.get_unchecked(index);
+            let hole_ptr = self.data.get_unchecked_mut(self.pos);
+            ptr::copy_nonoverlapping(index_ptr, hole_ptr, 1);
+        }
         self.pos = index;
     }
 }
@@ -1241,7 +1271,7 @@ impl<'a, T: Ord> Drop for DrainSorted<'a, T> {
 
         impl<'r, 'a, T: Ord> Drop for DropGuard<'r, 'a, T> {
             fn drop(&mut self) {
-                while let Some(_) = self.0.inner.pop() {}
+                while self.0.inner.pop().is_some() {}
             }
         }
 
@@ -1348,6 +1378,16 @@ impl<T: Ord> Extend<T> for BinaryHeap<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<I>>::spec_extend(self, iter);
     }
+
+    #[inline]
+    fn extend_one(&mut self, item: T) {
+        self.push(item);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
+    }
 }
 
 impl<T: Ord, I: IntoIterator<Item = T>> SpecExtend<I> for BinaryHeap<T> {
@@ -1377,5 +1417,15 @@ impl<T: Ord> BinaryHeap<T> {
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BinaryHeap<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &item: &'a T) {
+        self.push(item);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.reserve(additional);
     }
 }

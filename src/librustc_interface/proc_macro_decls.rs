@@ -16,7 +16,7 @@ fn proc_macro_decls_static(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
     let mut finder = Finder { decls: None };
     tcx.hir().krate().visit_all_item_likes(&mut finder);
 
-    finder.decls.map(|id| tcx.hir().local_def_id(id))
+    finder.decls.map(|id| tcx.hir().local_def_id(id).to_def_id())
 }
 
 struct Finder {
@@ -35,6 +35,6 @@ impl<'v> ItemLikeVisitor<'v> for Finder {
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
 }
 
-pub(crate) fn provide(providers: &mut Providers<'_>) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { proc_macro_decls_static, ..*providers };
 }

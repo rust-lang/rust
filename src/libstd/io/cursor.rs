@@ -266,6 +266,10 @@ where
         Ok(nread)
     }
 
+    fn is_read_vectored(&self) -> bool {
+        true
+    }
+
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         let n = buf.len();
         Read::read_exact(&mut self.fill_buf()?, buf)?;
@@ -373,6 +377,11 @@ impl Write for Cursor<&mut [u8]> {
     }
 
     #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -386,6 +395,11 @@ impl Write for Cursor<&mut Vec<u8>> {
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         vec_write_vectored(&mut self.pos, self.inner, bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 
     #[inline]
@@ -405,6 +419,11 @@ impl Write for Cursor<Vec<u8>> {
     }
 
     #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -420,6 +439,11 @@ impl Write for Cursor<Box<[u8]>> {
     #[inline]
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         slice_write_vectored(&mut self.pos, &mut self.inner, bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 
     #[inline]
@@ -939,7 +963,7 @@ mod tests {
     #[cfg(target_pointer_width = "32")]
     fn vec_seek_and_write_past_usize_max() {
         let mut c = Cursor::new(Vec::new());
-        c.set_position(<usize>::max_value() as u64 + 1);
+        c.set_position(usize::MAX as u64 + 1);
         assert!(c.write_all(&[1, 2, 3]).is_err());
     }
 

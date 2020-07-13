@@ -25,7 +25,6 @@ mod imp {
 
 #[cfg(unix)]
 mod imp {
-    use libc;
     use std::io;
     use std::io::prelude::*;
     use std::mem;

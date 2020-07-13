@@ -34,8 +34,9 @@
 use crate::hir::*;
 use crate::hir_id::CRATE_HIR_ID;
 use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
-use rustc_ast::ast::{Attribute, Ident, Label, Name};
+use rustc_ast::ast::{Attribute, Label};
 use rustc_ast::walk_list;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
 pub struct DeepVisitor<'v, V> {
@@ -317,7 +318,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_id(&mut self, _hir_id: HirId) {
         // Nothing to do.
     }
-    fn visit_name(&mut self, _span: Span, _name: Name) {
+    fn visit_name(&mut self, _span: Span, _name: Symbol) {
         // Nothing to do.
     }
     fn visit_ident(&mut self, ident: Ident) {
@@ -395,7 +396,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_variant_data(
         &mut self,
         s: &'v VariantData<'v>,
-        _: Name,
+        _: Symbol,
         _: &'v Generics<'v>,
         _parent_id: HirId,
         _: Span,
@@ -689,7 +690,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         TyKind::Path(ref qpath) => {
             visitor.visit_qpath(qpath, typ.hir_id, typ.span);
         }
-        TyKind::Def(item_id, lifetimes) => {
+        TyKind::OpaqueDef(item_id, lifetimes) => {
             visitor.visit_nested_item(item_id);
             walk_list!(visitor, visit_generic_arg, lifetimes);
         }
@@ -1006,10 +1007,6 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_id(impl_item.hir_id);
             visitor.visit_ty(ty);
         }
-        ImplItemKind::OpaqueTy(bounds) => {
-            visitor.visit_id(impl_item.hir_id);
-            walk_list!(visitor, visit_param_bound, bounds);
-        }
     }
 }
 
@@ -1089,7 +1086,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
         }
-        ExprKind::MethodCall(ref segment, _, arguments) => {
+        ExprKind::MethodCall(ref segment, _, arguments, _) => {
             visitor.visit_path_segment(expression.span, segment);
             walk_list!(visitor, visit_expr, arguments);
         }
@@ -1155,6 +1152,27 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         }
         ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
+        }
+        ExprKind::InlineAsm(ref asm) => {
+            for op in asm.operands {
+                match op {
+                    InlineAsmOperand::In { expr, .. }
+                    | InlineAsmOperand::InOut { expr, .. }
+                    | InlineAsmOperand::Const { expr, .. }
+                    | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
+                    InlineAsmOperand::Out { expr, .. } => {
+                        if let Some(expr) = expr {
+                            visitor.visit_expr(expr);
+                        }
+                    }
+                    InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                        visitor.visit_expr(in_expr);
+                        if let Some(out_expr) = out_expr {
+                            visitor.visit_expr(out_expr);
+                        }
+                    }
+                }
+            }
         }
         ExprKind::LlvmInlineAsm(ref asm) => {
             walk_list!(visitor, visit_expr, asm.outputs_exprs);

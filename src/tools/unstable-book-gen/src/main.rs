@@ -1,7 +1,5 @@
 //! Auto-generate stub docs for the unstable book
 
-#![deny(warnings)]
-
 use std::collections::BTreeSet;
 use std::env;
 use std::fs::{self, File};

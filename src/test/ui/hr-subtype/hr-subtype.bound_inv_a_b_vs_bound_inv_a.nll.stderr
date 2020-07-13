@@ -1,0 +1,26 @@
+error: higher-ranked subtype error
+  --> $DIR/hr-subtype.rs:45:13
+   |
+LL |               gimme::<$t1>(None::<$t2>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | / check! { bound_inv_a_b_vs_bound_inv_a: (for<'a,'b> fn(Inv<'a>, Inv<'b>),
+LL | | for<'a>    fn(Inv<'a>, Inv<'a>)) }
+   | |__________________________________- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: higher-ranked subtype error
+  --> $DIR/hr-subtype.rs:45:13
+   |
+LL |               gimme::<$t1>(None::<$t2>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | / check! { bound_inv_a_b_vs_bound_inv_a: (for<'a,'b> fn(Inv<'a>, Inv<'b>),
+LL | | for<'a>    fn(Inv<'a>, Inv<'a>)) }
+   | |__________________________________- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

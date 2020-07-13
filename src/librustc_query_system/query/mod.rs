@@ -7,7 +7,9 @@ pub use self::job::deadlock;
 pub use self::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 
 mod caches;
-pub use self::caches::{CacheSelector, DefaultCacheSelector, QueryCache};
+pub use self::caches::{
+    ArenaCacheSelector, CacheSelector, DefaultCacheSelector, QueryCache, QueryStorage,
+};
 
 mod config;
 pub use self::config::{QueryAccessors, QueryConfig, QueryDescription};

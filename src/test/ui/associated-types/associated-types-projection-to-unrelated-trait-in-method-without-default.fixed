@@ -7,7 +7,7 @@ trait Get {
 }
 
 trait Other {
-    fn okay<U:Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Get ;
+    fn okay<U:Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Get;
     //~^ ERROR E0277
 }
 

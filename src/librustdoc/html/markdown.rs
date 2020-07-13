@@ -20,7 +20,12 @@
 #![allow(non_camel_case_types)]
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::DefId;
+use rustc_hir::HirId;
+use rustc_middle::ty::TyCtxt;
+use rustc_session::lint;
 use rustc_span::edition::Edition;
+use rustc_span::Span;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -39,7 +44,7 @@ use pulldown_cmark::{html, CodeBlockKind, CowStr, Event, Options, Parser, Tag};
 mod tests;
 
 fn opts() -> Options {
-    Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES
+    Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES | Options::ENABLE_STRIKETHROUGH
 }
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
@@ -187,12 +192,13 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
         let compile_fail;
+        let should_panic;
         let ignore;
         let edition;
         if let Some(Event::Start(Tag::CodeBlock(kind))) = event {
             let parse_result = match kind {
                 CodeBlockKind::Fenced(ref lang) => {
-                    LangString::parse(&lang, self.check_error_codes, false)
+                    LangString::parse_without_check(&lang, self.check_error_codes, false)
                 }
                 CodeBlockKind::Indented => LangString::all_false(),
             };
@@ -200,6 +206,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 return Some(Event::Start(Tag::CodeBlock(kind)));
             }
             compile_fail = parse_result.compile_fail;
+            should_panic = parse_result.should_panic;
             ignore = parse_result.ignore;
             edition = parse_result.edition;
         } else {
@@ -275,6 +282,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             Some(("This example is not tested".to_owned(), "ignore"))
         } else if compile_fail {
             Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+        } else if should_panic {
+            Some(("This example panics".to_owned(), "should_panic"))
         } else if explicit_edition {
             Some((format!("This code runs with edition {}", edition), "edition"))
         } else {
@@ -290,6 +299,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         " ignore"
                     } else if compile_fail {
                         " compile_fail"
+                    } else if should_panic {
+                        " should_panic"
                     } else if explicit_edition {
                         " edition "
                     } else {
@@ -309,6 +320,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                         " ignore"
                     } else if compile_fail {
                         " compile_fail"
+                    } else if should_panic {
+                        " should_panic"
                     } else if explicit_edition {
                         " edition "
                     } else {
@@ -560,6 +573,7 @@ pub fn find_testable_code<T: test::Tester>(
     tests: &mut T,
     error_codes: ErrorCodes,
     enable_per_target_ignores: bool,
+    extra_info: Option<&ExtraInfo<'_, '_>>,
 ) {
     let mut parser = Parser::new(doc).into_offset_iter();
     let mut prev_offset = 0;
@@ -573,7 +587,12 @@ pub fn find_testable_code<T: test::Tester>(
                         if lang.is_empty() {
                             LangString::all_false()
                         } else {
-                            LangString::parse(lang, error_codes, enable_per_target_ignores)
+                            LangString::parse(
+                                lang,
+                                error_codes,
+                                enable_per_target_ignores,
+                                extra_info,
+                            )
                         }
                     }
                     CodeBlockKind::Indented => LangString::all_false(),
@@ -615,6 +634,49 @@ pub fn find_testable_code<T: test::Tester>(
     }
 }
 
+pub struct ExtraInfo<'a, 'b> {
+    hir_id: Option<HirId>,
+    item_did: Option<DefId>,
+    sp: Span,
+    tcx: &'a TyCtxt<'b>,
+}
+
+impl<'a, 'b> ExtraInfo<'a, 'b> {
+    pub fn new(tcx: &'a TyCtxt<'b>, hir_id: HirId, sp: Span) -> ExtraInfo<'a, 'b> {
+        ExtraInfo { hir_id: Some(hir_id), item_did: None, sp, tcx }
+    }
+
+    pub fn new_did(tcx: &'a TyCtxt<'b>, did: DefId, sp: Span) -> ExtraInfo<'a, 'b> {
+        ExtraInfo { hir_id: None, item_did: Some(did), sp, tcx }
+    }
+
+    fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
+        let hir_id = match (self.hir_id, self.item_did) {
+            (Some(h), _) => h,
+            (None, Some(item_did)) => {
+                match item_did.as_local() {
+                    Some(item_did) => self.tcx.hir().as_local_hir_id(item_did),
+                    None => {
+                        // If non-local, no need to check anything.
+                        return;
+                    }
+                }
+            }
+            (None, None) => return,
+        };
+        self.tcx.struct_span_lint_hir(
+            lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES,
+            hir_id,
+            self.sp,
+            |lint| {
+                let mut diag = lint.build(msg);
+                diag.help(help);
+                diag.emit();
+            },
+        );
+    }
+}
+
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct LangString {
     original: String,
@@ -652,10 +714,19 @@ impl LangString {
         }
     }
 
+    fn parse_without_check(
+        string: &str,
+        allow_error_code_check: ErrorCodes,
+        enable_per_target_ignores: bool,
+    ) -> LangString {
+        Self::parse(string, allow_error_code_check, enable_per_target_ignores, None)
+    }
+
     fn parse(
         string: &str,
         allow_error_code_check: ErrorCodes,
         enable_per_target_ignores: bool,
+        extra: Option<&ExtraInfo<'_, '_>>,
     ) -> LangString {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
@@ -714,6 +785,53 @@ impl LangString {
                     } else {
                         seen_other_tags = true;
                     }
+                }
+                x if extra.is_some() => {
+                    let s = x.to_lowercase();
+                    match if s == "compile-fail" || s == "compile_fail" || s == "compilefail" {
+                        Some((
+                            "compile_fail",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or won't fail if it compiles successfully",
+                        ))
+                    } else if s == "should-panic" || s == "should_panic" || s == "shouldpanic" {
+                        Some((
+                            "should_panic",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or won't fail if it doesn't panic when running",
+                        ))
+                    } else if s == "no-run" || s == "no_run" || s == "norun" {
+                        Some((
+                            "no_run",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or will be run (which you might not want)",
+                        ))
+                    } else if s == "allow-fail" || s == "allow_fail" || s == "allowfail" {
+                        Some((
+                            "allow_fail",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or will be run (which you might not want)",
+                        ))
+                    } else if s == "test-harness" || s == "test_harness" || s == "testharness" {
+                        Some((
+                            "test_harness",
+                            "the code block will either not be tested if not marked as a rust one \
+                             or the code will be wrapped inside a main function",
+                        ))
+                    } else {
+                        None
+                    } {
+                        Some((flag, help)) => {
+                            if let Some(ref extra) = extra {
+                                extra.error_invalid_codeblock_attr(
+                                    &format!("unknown attribute `{}`. Did you mean `{}`?", x, flag),
+                                    help,
+                                );
+                            }
+                        }
+                        None => {}
+                    }
+                    seen_other_tags = true;
                 }
                 _ => seen_other_tags = true,
             }
@@ -823,7 +941,11 @@ impl MarkdownSummaryLine<'_> {
             }
         };
 
-        let p = Parser::new_with_broken_link_callback(md, Options::empty(), Some(&replacer));
+        let p = Parser::new_with_broken_link_callback(
+            md,
+            Options::ENABLE_STRIKETHROUGH,
+            Some(&replacer),
+        );
 
         let mut s = String::new();
 
@@ -865,7 +987,11 @@ pub fn plain_summary_line(md: &str) -> String {
         }
     }
     let mut s = String::with_capacity(md.len() * 3 / 2);
-    let p = ParserWrapper { inner: Parser::new(md), is_in: 0, is_first: true };
+    let p = ParserWrapper {
+        inner: Parser::new_ext(md, Options::ENABLE_STRIKETHROUGH),
+        is_in: 0,
+        is_first: true,
+    };
     p.filter(|t| !t.is_empty()).for_each(|i| s.push_str(&i));
     s
 }
@@ -934,7 +1060,7 @@ crate struct RustCodeBlock {
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
 /// untagged (and assumed to be rust).
-crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
+crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_, '_>) -> Vec<RustCodeBlock> {
     let mut code_blocks = vec![];
 
     if md.is_empty() {
@@ -951,7 +1077,7 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
                     let lang_string = if syntax.is_empty() {
                         LangString::all_false()
                     } else {
-                        LangString::parse(&*syntax, ErrorCodes::Yes, false)
+                        LangString::parse(&*syntax, ErrorCodes::Yes, false, Some(extra_info))
                     };
                     if !lang_string.rust {
                         continue;
@@ -1019,9 +1145,36 @@ pub struct IdMap {
     map: FxHashMap<String, usize>,
 }
 
+fn init_id_map() -> FxHashMap<String, usize> {
+    let mut map = FxHashMap::default();
+    // This is the list of IDs used by rustdoc templates.
+    map.insert("mainThemeStyle".to_owned(), 1);
+    map.insert("themeStyle".to_owned(), 1);
+    map.insert("theme-picker".to_owned(), 1);
+    map.insert("theme-choices".to_owned(), 1);
+    map.insert("settings-menu".to_owned(), 1);
+    map.insert("main".to_owned(), 1);
+    map.insert("search".to_owned(), 1);
+    map.insert("crate-search".to_owned(), 1);
+    map.insert("render-detail".to_owned(), 1);
+    map.insert("toggle-all-docs".to_owned(), 1);
+    map.insert("all-types".to_owned(), 1);
+    // This is the list of IDs used by rustdoc sections.
+    map.insert("fields".to_owned(), 1);
+    map.insert("variants".to_owned(), 1);
+    map.insert("implementors-list".to_owned(), 1);
+    map.insert("synthetic-implementors-list".to_owned(), 1);
+    map.insert("implementations".to_owned(), 1);
+    map.insert("trait-implementations".to_owned(), 1);
+    map.insert("synthetic-implementations".to_owned(), 1);
+    map.insert("blanket-implementations".to_owned(), 1);
+    map.insert("deref-methods".to_owned(), 1);
+    map
+}
+
 impl IdMap {
     pub fn new() -> Self {
-        IdMap::default()
+        IdMap { map: init_id_map() }
     }
 
     pub fn populate<I: IntoIterator<Item = String>>(&mut self, ids: I) {
@@ -1031,7 +1184,7 @@ impl IdMap {
     }
 
     pub fn reset(&mut self) {
-        self.map = FxHashMap::default();
+        self.map = init_id_map();
     }
 
     pub fn derive(&mut self, candidate: String) -> String {

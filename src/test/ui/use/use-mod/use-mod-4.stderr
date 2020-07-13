@@ -1,20 +1,38 @@
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-mod-4.rs:1:5
+  --> $DIR/use-mod-4.rs:1:8
    |
 LL | use foo::self;
-   |     ^^^^^^^^^
+   |        ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL | use foo;
+   |       --
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL | use foo::{self};
+   |          ^    ^
 
 error[E0429]: `self` imports are only allowed within a { } list
-  --> $DIR/use-mod-4.rs:4:5
+  --> $DIR/use-mod-4.rs:4:13
    |
 LL | use std::mem::self;
-   |     ^^^^^^^^^^^^^^
+   |             ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL | use std::mem;
+   |            --
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL | use std::mem::{self};
+   |               ^    ^
 
 error[E0432]: unresolved import `foo`
   --> $DIR/use-mod-4.rs:1:5
    |
 LL | use foo::self;
-   |     ^^^ maybe a missing crate `foo`?
+   |     ^^^^^^^^^ no `foo` in the root
 
 error: aborting due to 3 previous errors
 

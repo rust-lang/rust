@@ -133,7 +133,7 @@ pub trait FileExt {
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
     ///
-    /// [`File::write`]: ../../../../std/fs/struct.File.html#write.v
+    /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write
     ///
     /// # Examples
     ///
@@ -242,7 +242,8 @@ pub trait PermissionsExt {
     ///     let permissions = metadata.permissions();
     ///
     ///     println!("permissions: {:o}", permissions.mode());
-    ///     Ok(()) }
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
@@ -262,7 +263,8 @@ pub trait PermissionsExt {
     ///
     ///     permissions.set_mode(0o644); // Read/write for owner and read for others.
     ///     assert_eq!(permissions.mode(), 0o644);
-    ///     Ok(()) }
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn set_mode(&mut self, mode: u32);

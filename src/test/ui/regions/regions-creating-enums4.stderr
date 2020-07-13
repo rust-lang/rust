@@ -14,8 +14,8 @@ note: ...so that the expression is assignable
    |
 LL |     Ast::Add(x, y)
    |              ^
-   = note: expected  `&Ast<'_>`
-              found  `&Ast<'a>`
+   = note: expected `&Ast<'_>`
+              found `&Ast<'a>`
 note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 6:19...
   --> $DIR/regions-creating-enums4.rs:6:19
    |
@@ -26,8 +26,8 @@ note: ...so that the expression is assignable
    |
 LL |     Ast::Add(x, y)
    |     ^^^^^^^^^^^^^^
-   = note: expected  `Ast<'b>`
-              found  `Ast<'_>`
+   = note: expected `Ast<'b>`
+              found `Ast<'_>`
 
 error: aborting due to previous error
 

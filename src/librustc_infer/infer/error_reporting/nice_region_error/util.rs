@@ -3,7 +3,7 @@
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, DefIdTree, Region, Ty};
 use rustc_span::Span;
 
@@ -51,44 +51,40 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         };
 
         let hir = &self.tcx().hir();
-        let hir_id = hir.as_local_hir_id(id)?;
+        let hir_id = hir.as_local_hir_id(id.as_local()?);
         let body_id = hir.maybe_body_owned_by(hir_id)?;
         let body = hir.body(body_id);
         let owner_id = hir.body_owner(body_id);
         let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
         let poly_fn_sig = self.tcx().fn_sig(id);
         let fn_sig = self.tcx().liberate_late_bound_regions(id, &poly_fn_sig);
-        body.params
-            .iter()
-            .enumerate()
-            .filter_map(|(index, param)| {
-                // May return None; sometimes the tables are not yet populated.
-                let ty = fn_sig.inputs()[index];
-                let mut found_anon_region = false;
-                let new_param_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
-                    if *r == *anon_region {
-                        found_anon_region = true;
-                        replace_region
-                    } else {
-                        r
-                    }
-                });
-                if found_anon_region {
-                    let ty_hir_id = fn_decl.inputs[index].hir_id;
-                    let param_ty_span = hir.span(ty_hir_id);
-                    let is_first = index == 0;
-                    Some(AnonymousParamInfo {
-                        param,
-                        param_ty: new_param_ty,
-                        param_ty_span,
-                        bound_region,
-                        is_first,
-                    })
+        body.params.iter().enumerate().find_map(|(index, param)| {
+            // May return None; sometimes the tables are not yet populated.
+            let ty = fn_sig.inputs()[index];
+            let mut found_anon_region = false;
+            let new_param_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {
+                if *r == *anon_region {
+                    found_anon_region = true;
+                    replace_region
                 } else {
-                    None
+                    r
                 }
-            })
-            .next()
+            });
+            if found_anon_region {
+                let ty_hir_id = fn_decl.inputs[index].hir_id;
+                let param_ty_span = hir.span(ty_hir_id);
+                let is_first = index == 0;
+                Some(AnonymousParamInfo {
+                    param,
+                    param_ty: new_param_ty,
+                    param_ty_span,
+                    bound_region,
+                    is_first,
+                })
+            } else {
+                None
+            }
+        })
     }
 
     // Here, we check for the case where the anonymous region
@@ -96,7 +92,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     // FIXME(#42703) - Need to handle certain cases here.
     pub(super) fn is_return_type_anon(
         &self,
-        scope_def_id: DefId,
+        scope_def_id: LocalDefId,
         br: ty::BoundRegion,
         decl: &hir::FnDecl<'_>,
     ) -> Option<Span> {
@@ -116,9 +112,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     // corresponds to self and if yes, we display E0312.
     // FIXME(#42700) - Need to format self properly to
     // enable E0621 for it.
-    pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
+    pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: LocalDefId) -> bool {
         is_first
-            && self.tcx().opt_associated_item(scope_def_id).map(|i| i.fn_has_self_parameter)
+            && self
+                .tcx()
+                .opt_associated_item(scope_def_id.to_def_id())
+                .map(|i| i.fn_has_self_parameter)
                 == Some(true)
     }
 }
