@@ -1,5 +1,5 @@
 use super::*;
-use crate::config::Config;
+use crate::config::{Config, TargetSelection};
 use std::thread;
 
 use pretty_assertions::assert_eq;
@@ -17,16 +17,16 @@ fn configure(host: &[&str], target: &[&str]) -> Config {
         .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
     t!(fs::create_dir_all(&dir));
     config.out = dir;
-    config.build = INTERNER.intern_str("A");
+    config.build = TargetSelection::from_user("A");
     config.hosts = vec![config.build]
         .into_iter()
-        .chain(host.iter().map(|s| INTERNER.intern_str(s)))
+        .chain(host.iter().map(|s| TargetSelection::from_user(s)))
         .collect::<Vec<_>>();
     config.targets = config
         .hosts
         .clone()
         .into_iter()
-        .chain(target.iter().map(|s| INTERNER.intern_str(s)))
+        .chain(target.iter().map(|s| TargetSelection::from_user(s)))
         .collect::<Vec<_>>();
     config
 }
@@ -41,7 +41,7 @@ fn dist_baseline() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
+    let a = TargetSelection::from_user("A");
 
     assert_eq!(first(builder.cache.all::<dist::Docs>()), &[dist::Docs { host: a },]);
     assert_eq!(first(builder.cache.all::<dist::Mingw>()), &[dist::Mingw { host: a },]);
@@ -67,8 +67,8 @@ fn dist_with_targets() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -98,8 +98,8 @@ fn dist_with_hosts() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -128,8 +128,8 @@ fn dist_with_hosts() {
 
 #[test]
 fn dist_only_cross_host() {
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
     let mut build = Build::new(configure(&["B"], &[]));
     build.config.docs = false;
     build.config.extended = true;
@@ -156,9 +156,9 @@ fn dist_with_targets_and_hosts() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
-    let c = INTERNER.intern_str("C");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
+    let c = TargetSelection::from_user("C");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -194,9 +194,9 @@ fn dist_with_target_flag() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
-    let c = INTERNER.intern_str("C");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
+    let c = TargetSelection::from_user("C");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -224,8 +224,8 @@ fn dist_with_same_targets_and_hosts() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -277,9 +277,9 @@ fn build_default() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
-    let c = INTERNER.intern_str("C");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
+    let c = TargetSelection::from_user("C");
 
     assert_eq!(
         first(builder.cache.all::<compile::Std>()),
@@ -318,9 +318,9 @@ fn build_with_target_flag() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
-    let c = INTERNER.intern_str("C");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
+    let c = TargetSelection::from_user("C");
 
     assert_eq!(
         first(builder.cache.all::<compile::Std>()),
@@ -374,7 +374,7 @@ fn test_with_no_doc_stage0() {
     let build = Build::new(config);
     let mut builder = Builder::new(&build);
 
-    let host = INTERNER.intern_str("A");
+    let host = TargetSelection::from_user("A");
 
     builder
         .run_step_descriptions(&[StepDescription::from::<test::Crate>()], &["src/libstd".into()]);
@@ -428,7 +428,7 @@ fn doc_default() {
     let build = Build::new(config);
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
-    let a = INTERNER.intern_str("A");
+    let a = TargetSelection::from_user("A");
 
     // error_index_generator uses stage 1 to share rustdoc artifacts with the
     // rustdoc tool.
@@ -466,7 +466,7 @@ fn test_docs() {
     let build = Build::new(config);
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
-    let a = INTERNER.intern_str("A");
+    let a = TargetSelection::from_user("A");
 
     // error_index_generator uses stage 1 to share rustdoc artifacts with the
     // rustdoc tool.
