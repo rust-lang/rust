@@ -5,10 +5,7 @@
 //!  - Building the type for an item: This happens through the `type_for_def` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
-use std::iter;
-use std::sync::Arc;
-
-use smallvec::SmallVec;
+use std::{iter, sync::Arc};
 
 use hir_def::{
     adt::StructKind,
@@ -24,6 +21,8 @@ use hir_def::{
 use hir_expand::name::Name;
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
+use smallvec::SmallVec;
+use stdx::impl_from;
 use test_utils::mark;
 
 use crate::{
@@ -1110,7 +1109,7 @@ pub enum CallableDef {
     StructId(StructId),
     EnumVariantId(EnumVariantId),
 }
-impl_froms!(CallableDef: FunctionId, StructId, EnumVariantId);
+impl_from!(FunctionId, StructId, EnumVariantId for CallableDef);
 
 impl CallableDef {
     pub fn krate(self, db: &dyn HirDatabase) -> CrateId {
@@ -1140,7 +1139,7 @@ pub enum TyDefId {
     AdtId(AdtId),
     TypeAliasId(TypeAliasId),
 }
-impl_froms!(TyDefId: BuiltinType, AdtId(StructId, EnumId, UnionId), TypeAliasId);
+impl_from!(BuiltinType, AdtId(StructId, EnumId, UnionId), TypeAliasId for TyDefId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ValueTyDefId {
@@ -1150,7 +1149,7 @@ pub enum ValueTyDefId {
     ConstId(ConstId),
     StaticId(StaticId),
 }
-impl_froms!(ValueTyDefId: FunctionId, StructId, EnumVariantId, ConstId, StaticId);
+impl_from!(FunctionId, StructId, EnumVariantId, ConstId, StaticId for ValueTyDefId);
 
 /// Build the declared type of an item. This depends on the namespace; e.g. for
 /// `struct Foo(usize)`, we have two types: The type of the struct itself, and

@@ -38,6 +38,7 @@ use ra_syntax::{
     AstNode,
 };
 use rustc_hash::FxHashSet;
+use stdx::impl_from;
 
 use crate::{
     db::{DefDatabase, HirDatabase},
@@ -142,8 +143,8 @@ pub enum ModuleDef {
     TypeAlias(TypeAlias),
     BuiltinType(BuiltinType),
 }
-impl_froms!(
-    ModuleDef: Module,
+impl_from!(
+    Module,
     Function,
     Adt(Struct, Enum, Union),
     EnumVariant,
@@ -152,6 +153,7 @@ impl_froms!(
     Trait,
     TypeAlias,
     BuiltinType
+    for ModuleDef
 );
 
 impl ModuleDef {
@@ -541,7 +543,7 @@ pub enum Adt {
     Union(Union),
     Enum(Enum),
 }
-impl_froms!(Adt: Struct, Union, Enum);
+impl_from!(Struct, Union, Enum for Adt);
 
 impl Adt {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
@@ -584,7 +586,7 @@ pub enum VariantDef {
     Union(Union),
     EnumVariant(EnumVariant),
 }
-impl_froms!(VariantDef: Struct, Union, EnumVariant);
+impl_from!(Struct, Union, EnumVariant for VariantDef);
 
 impl VariantDef {
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
@@ -627,8 +629,7 @@ pub enum DefWithBody {
     Static(Static),
     Const(Const),
 }
-
-impl_froms!(DefWithBody: Function, Const, Static);
+impl_from!(Function, Const, Static for DefWithBody);
 
 impl DefWithBody {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -930,14 +931,15 @@ pub enum GenericDef {
     // consts can have type parameters from their parents (i.e. associated consts of traits)
     Const(Const),
 }
-impl_froms!(
-    GenericDef: Function,
+impl_from!(
+    Function,
     Adt(Struct, Enum, Union),
     Trait,
     TypeAlias,
     ImplDef,
     EnumVariant,
     Const
+    for GenericDef
 );
 
 impl GenericDef {
@@ -1578,8 +1580,8 @@ pub enum AttrDef {
     MacroDef(MacroDef),
 }
 
-impl_froms!(
-    AttrDef: Module,
+impl_from!(
+    Module,
     Field,
     Adt(Struct, Enum, Union),
     EnumVariant,
@@ -1589,6 +1591,7 @@ impl_froms!(
     Trait,
     TypeAlias,
     MacroDef
+    for AttrDef
 );
 
 pub trait HasAttrs {

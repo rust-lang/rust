@@ -65,6 +65,7 @@ use item_tree::{
     Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, ModItem, Static, Struct, Trait,
     TypeAlias, Union,
 };
+use stdx::impl_from;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
@@ -223,25 +224,6 @@ pub struct TypeParamId {
 
 pub type LocalTypeParamId = Idx<generics::TypeParamData>;
 
-macro_rules! impl_froms {
-    ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {
-        $(
-            impl From<$v> for $e {
-                fn from(it: $v) -> $e {
-                    $e::$v(it)
-                }
-            }
-            $($(
-                impl From<$sv> for $e {
-                    fn from(it: $sv) -> $e {
-                        $e::$v($v::$sv(it))
-                    }
-                }
-            )*)?
-        )*
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContainerId {
     ModuleId(ModuleId),
@@ -254,7 +236,7 @@ pub enum AssocContainerId {
     ImplId(ImplId),
     TraitId(TraitId),
 }
-impl_froms!(AssocContainerId: ContainerId);
+impl_from!(ContainerId for AssocContainerId);
 
 /// A Data Type
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -263,7 +245,7 @@ pub enum AdtId {
     UnionId(UnionId),
     EnumId(EnumId),
 }
-impl_froms!(AdtId: StructId, UnionId, EnumId);
+impl_from!(StructId, UnionId, EnumId for AdtId);
 
 /// The defs which can be visible in the module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -279,8 +261,8 @@ pub enum ModuleDefId {
     TypeAliasId(TypeAliasId),
     BuiltinType(BuiltinType),
 }
-impl_froms!(
-    ModuleDefId: ModuleId,
+impl_from!(
+    ModuleId,
     FunctionId,
     AdtId(StructId, EnumId, UnionId),
     EnumVariantId,
@@ -289,6 +271,7 @@ impl_froms!(
     TraitId,
     TypeAliasId,
     BuiltinType
+    for ModuleDefId
 );
 
 /// The defs which have a body.
@@ -299,7 +282,7 @@ pub enum DefWithBodyId {
     ConstId(ConstId),
 }
 
-impl_froms!(DefWithBodyId: FunctionId, ConstId, StaticId);
+impl_from!(FunctionId, ConstId, StaticId for DefWithBodyId);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItemId {
@@ -311,7 +294,7 @@ pub enum AssocItemId {
 // sure that you can only turn actual assoc items into AssocItemIds. This would
 // require not implementing From, and instead having some checked way of
 // casting them, and somehow making the constructors private, which would be annoying.
-impl_froms!(AssocItemId: FunctionId, ConstId, TypeAliasId);
+impl_from!(FunctionId, ConstId, TypeAliasId for AssocItemId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GenericDefId {
@@ -326,14 +309,15 @@ pub enum GenericDefId {
     // consts can have type parameters from their parents (i.e. associated consts of traits)
     ConstId(ConstId),
 }
-impl_froms!(
-    GenericDefId: FunctionId,
+impl_from!(
+    FunctionId,
     AdtId(StructId, EnumId, UnionId),
     TraitId,
     TypeAliasId,
     ImplId,
     EnumVariantId,
     ConstId
+    for GenericDefId
 );
 
 impl From<AssocItemId> for GenericDefId {
@@ -361,8 +345,8 @@ pub enum AttrDefId {
     ImplId(ImplId),
 }
 
-impl_froms!(
-    AttrDefId: ModuleId,
+impl_from!(
+    ModuleId,
     FieldId,
     AdtId(StructId, EnumId, UnionId),
     EnumVariantId,
@@ -373,6 +357,7 @@ impl_froms!(
     TypeAliasId,
     MacroDefId,
     ImplId
+    for AttrDefId
 );
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -381,7 +366,7 @@ pub enum VariantId {
     StructId(StructId),
     UnionId(UnionId),
 }
-impl_froms!(VariantId: EnumVariantId, StructId, UnionId);
+impl_from!(EnumVariantId, StructId, UnionId for VariantId);
 
 trait Intern {
     type ID;

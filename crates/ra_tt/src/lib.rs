@@ -1,23 +1,12 @@
 //! `tt` crate defines a `TokenTree` data structure: this is the interface (both
 //! input and output) of macros. It closely mirrors `proc_macro` crate's
 //! `TokenTree`.
-
-macro_rules! impl_froms {
-    ($e:ident: $($v:ident), *) => {
-        $(
-            impl From<$v> for $e {
-                fn from(it: $v) -> $e {
-                    $e::$v(it)
-                }
-            }
-        )*
-    }
-}
-
 use std::{
     fmt::{self, Debug},
     panic::RefUnwindSafe,
 };
+
+use stdx::impl_from;
 
 pub use smol_str::SmolStr;
 
@@ -41,7 +30,7 @@ pub enum TokenTree {
     Leaf(Leaf),
     Subtree(Subtree),
 }
-impl_froms!(TokenTree: Leaf, Subtree);
+impl_from!(Leaf, Subtree for TokenTree);
 
 impl TokenTree {
     pub fn empty() -> Self {
@@ -55,7 +44,7 @@ pub enum Leaf {
     Punct(Punct),
     Ident(Ident),
 }
-impl_froms!(Leaf: Literal, Punct, Ident);
+impl_from!(Literal, Punct, Ident for Leaf);
 
 #[derive(Clone, PartialEq, Eq, Hash, Default)]
 pub struct Subtree {

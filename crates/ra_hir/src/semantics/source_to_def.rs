@@ -16,6 +16,7 @@ use ra_syntax::{
     match_ast, AstNode, SyntaxNode,
 };
 use rustc_hash::FxHashMap;
+use stdx::impl_from;
 
 use crate::{db::HirDatabase, InFile, MacroDefId};
 
@@ -255,8 +256,7 @@ pub(crate) enum ChildContainer {
     /// here the children generic parameters, and not, eg enum variants.
     GenericDefId(GenericDefId),
 }
-impl_froms! {
-    ChildContainer:
+impl_from! {
     DefWithBodyId,
     ModuleId,
     TraitId,
@@ -265,6 +265,7 @@ impl_froms! {
     VariantId,
     TypeAliasId,
     GenericDefId
+    for ChildContainer
 }
 
 impl ChildContainer {

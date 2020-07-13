@@ -8,6 +8,7 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
+stdx = { path = "../stdx" }
 # ideally, `serde` should be enabled by `rust-analyzer`, but we enable it here
 # to reduce number of compilations
 smol_str = { version = "0.1.15", features = ["serde"] }
