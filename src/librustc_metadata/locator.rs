@@ -219,7 +219,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_middle::middle::cstore::{CrateSource, MetadataLoader};
 use rustc_session::config::{self, CrateType};
 use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
@@ -1068,6 +1068,14 @@ impl CrateError {
                         err.note(&format!("the `{}` target may not be installed", locator.triple));
                     } else if crate_name == sym::profiler_builtins {
                         err.note(&"the compiler may have been built without the profiler runtime");
+                    } else if crate_name == sym::meta {
+                        err.note(&"meta is a reserved crate name");
+                        err.span_suggestion(
+                                span,
+                                "you can use `crate::` or `self::` if you intended to refer to a local module and not a crate",
+                                "crate::meta".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
                     }
                     err.span_label(span, "can't find crate");
                     err

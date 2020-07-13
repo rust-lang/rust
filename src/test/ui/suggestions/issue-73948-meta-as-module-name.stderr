@@ -1,13 +1,13 @@
 error[E0463]: can't find crate for `meta`
-  --> $DIR/meta.rs:5:5
+  --> $DIR/issue-73948-meta-as-module-name.rs:13:5
    |
-LL | use meta;
+LL | use meta::FOO;
    |     ^^^^ can't find crate
    |
    = note: meta is a reserved crate name
 help: you can use `crate::` or `self::` if you intended to refer to a local module and not a crate
    |
-LL | use crate::meta;
+LL | use crate::meta::FOO;
    |     ^^^^^^^^^^^
 
 error: aborting due to previous error
