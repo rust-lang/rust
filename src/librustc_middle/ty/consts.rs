@@ -164,6 +164,16 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
+    pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
+        self.val.eval(tcx, param_env).try_to_bool()
+    }
+
+    #[inline]
+    pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
+        self.val.eval(tcx, param_env).try_to_machine_usize(tcx)
+    }
+
+    #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
@@ -175,16 +185,6 @@ impl<'tcx> Const<'tcx> {
         } else {
             self
         }
-    }
-
-    #[inline]
-    pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.val.eval(tcx, param_env).try_to_bool()
-    }
-
-    #[inline]
-    pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
-        self.val.eval(tcx, param_env).try_to_machine_usize(tcx)
     }
 
     #[inline]
