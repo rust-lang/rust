@@ -18,8 +18,6 @@ use std::mem;
 use std::ops::Index;
 use std::sync::Arc;
 
-use rustc_hash::FxHashMap;
-
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -35,6 +33,8 @@ use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 use ra_syntax::SmolStr;
+use rustc_hash::FxHashMap;
+use stdx::impl_from;
 
 use super::{
     primitive::{FloatTy, IntTy},
@@ -84,8 +84,7 @@ enum ExprOrPatId {
     ExprId(ExprId),
     PatId(PatId),
 }
-
-impl_froms!(ExprOrPatId: ExprId, PatId);
+impl_from!(ExprId, PatId for ExprOrPatId);
 
 /// Binding modes inferred for patterns.
 /// https://doc.rust-lang.org/reference/patterns.html#binding-modes
