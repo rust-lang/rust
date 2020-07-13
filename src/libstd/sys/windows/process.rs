@@ -378,6 +378,7 @@ impl ExitStatus {
     }
 }
 
+/// Converts a raw `c::DWORD` to a type-safe `ExitStatus` by wrapping it without copying.
 impl From<c::DWORD> for ExitStatus {
     fn from(u: c::DWORD) -> ExitStatus {
         ExitStatus(u)
