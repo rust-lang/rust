@@ -7,8 +7,6 @@ LL | trait From<Src> {
 LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
    |                                                 ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Self`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider further restricting `Self`
    |
 LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: std::marker::Sized {

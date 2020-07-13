@@ -151,12 +151,14 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::VariableType(id) => Some(super::VariableType(id)),
             super::ReturnValue(id) => Some(super::ReturnValue(id)),
             super::ReturnType => Some(super::ReturnType),
-            super::SizedArgumentType => Some(super::SizedArgumentType),
+            super::SizedArgumentType(sp) => Some(super::SizedArgumentType(sp)),
             super::SizedReturnType => Some(super::SizedReturnType),
             super::SizedYieldType => Some(super::SizedYieldType),
             super::InlineAsmSized => Some(super::InlineAsmSized),
             super::RepeatVec(suggest_flag) => Some(super::RepeatVec(suggest_flag)),
-            super::FieldSized { adt_kind, last } => Some(super::FieldSized { adt_kind, last }),
+            super::FieldSized { adt_kind, span, last } => {
+                Some(super::FieldSized { adt_kind, span, last })
+            }
             super::ConstSized => Some(super::ConstSized),
             super::ConstPatternStructural => Some(super::ConstPatternStructural),
             super::SharedStatic => Some(super::SharedStatic),

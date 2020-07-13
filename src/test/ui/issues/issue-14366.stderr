@@ -5,7 +5,6 @@ LL |     let _x = "test" as &dyn (::std::any::Any);
    |              ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn std::any::Any`
 
 error: aborting due to previous error

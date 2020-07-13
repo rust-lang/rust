@@ -376,7 +376,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
                             err.span_label(span, s.as_str());
-                            err.help(&explanation);
+                            if !matches!(trait_ref.skip_binder().self_ty().kind, ty::Param(_)) {
+                                // When the self type is a type param We don't need to "the trait
+                                // `std::marker::Sized` is not implemented for `T`" as we will point
+                                // at the type param with a label to suggest constraining it.
+                                err.help(&explanation);
+                            }
                         } else {
                             err.span_label(span, explanation);
                         }
@@ -403,7 +408,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         }
 
                         self.suggest_dereferences(&obligation, &mut err, &trait_ref, points_at_arg);
-                        self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
                         self.suggest_fn_call(&obligation, &mut err, &trait_ref, points_at_arg);
                         self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
                         self.suggest_semicolon_removal(&obligation, &mut err, span, &trait_ref);

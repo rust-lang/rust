@@ -17,7 +17,6 @@ LL |         asm!("{}", in(reg) v[..]);
    |                            ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u64]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: all inline asm arguments must have a statically known size
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
@@ -27,7 +26,6 @@ LL |         asm!("{}", out(reg) v[..]);
    |                             ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u64]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: all inline asm arguments must have a statically known size
 
 error[E0277]: the size for values of type `[u64]` cannot be known at compilation time
@@ -37,7 +35,6 @@ LL |         asm!("{}", inout(reg) v[..]);
    |                               ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u64]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: all inline asm arguments must have a statically known size
 
 error: aborting due to 5 previous errors

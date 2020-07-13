@@ -5,10 +5,10 @@ LL |     z: Box<dyn Is<'a>+'b+'c>,
    |                          ^^
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:5
+  --> $DIR/region-bounds-on-objects-and-type-parameters.rs:21:8
    |
 LL |     z: Box<dyn Is<'a>+'b+'c>,
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime `'b` as defined on the struct at 11:15
   --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:15

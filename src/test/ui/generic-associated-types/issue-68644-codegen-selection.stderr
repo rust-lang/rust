@@ -16,7 +16,6 @@ LL |     type F<'a>: Fn() -> u32;
 LL |     type F<'a> = Self;
    |     ^^^^^^^^^^^^^^^^^^ expected an `Fn<()>` closure, found `T`
    |
-   = help: the trait `std::ops::Fn<()>` is not implemented for `T`
    = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }
 help: consider restricting type parameter `T`
    |

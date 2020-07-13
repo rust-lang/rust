@@ -6,8 +6,6 @@ LL | fn test1<T: ?Sized + Foo>(t: &T) {
 LL |     let u: &dyn Foo = t;
    |                       ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
@@ -18,8 +16,6 @@ LL | fn test2<T: ?Sized + Foo>(t: &T) {
 LL |     let v: &dyn Foo = t as &dyn Foo;
    |                       ^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `T`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
@@ -29,7 +25,6 @@ LL |     let _: &[&dyn Foo] = &["hi"];
    |                            ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
@@ -39,7 +34,6 @@ LL |     let _: &dyn Foo = x as &dyn Foo;
    |                       ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required for the cast to the object type `dyn Foo`
 
 error: aborting due to 4 previous errors

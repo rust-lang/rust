@@ -7,7 +7,6 @@ LL | struct X<F> where F: FnOnce() + 'static + Send {
 LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
    |                      ^^^^ `F` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `F`
 help: consider further restricting this bound
    |
 LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static + std::marker::Send {

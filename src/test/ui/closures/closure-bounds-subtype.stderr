@@ -7,7 +7,6 @@ LL | fn take_const_owned<F>(_: F) where F: FnOnce() + Sync + Send {
 LL |     take_const_owned(f);
    |                      ^ `F` cannot be shared between threads safely
    |
-   = help: the trait `std::marker::Sync` is not implemented for `F`
 help: consider further restricting this bound
    |
 LL | fn give_owned<F>(f: F) where F: FnOnce() + Send + std::marker::Sync {

@@ -9,8 +9,6 @@ LL |     f2::<X>(x);
 LL | fn f2<X>(x: &X) {
    |       - required by this bound in `f2`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f2<X: ?Sized>(x: &X) {
@@ -27,8 +25,6 @@ LL |     f4::<X>(x);
 LL | fn f4<X: T>(x: &X) {
    |       - required by this bound in `f4`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f4<X: T + ?Sized>(x: &X) {
@@ -45,8 +41,6 @@ LL | fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
 LL |     f5(x1);
    |        ^^ doesn't have a size known at compile-time
    |
-   = help: within `S<X>`, the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `S<X>`
 help: consider relaxing the implicit `Sized` restriction
    |
@@ -61,8 +55,6 @@ LL | fn f9<X: ?Sized>(x1: Box<S<X>>) {
 LL |     f5(&(*x1, 34));
    |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `S<X>`, the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `S<X>`
    = note: only the last element of a tuple may have a dynamically sized type
 
@@ -74,8 +66,6 @@ LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
 LL |     f5(&(32, *x1));
    |         ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `({integer}, S<X>)`, the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `S<X>`
    = note: required because it appears within the type `({integer}, S<X>)`
    = note: tuples must have a statically known size to be initialized
@@ -91,8 +81,6 @@ LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
 LL |     f5(&(32, *x1));
    |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `({integer}, S<X>)`, the trait `std::marker::Sized` is not implemented for `X`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `S<X>`
    = note: required because it appears within the type `({integer}, S<X>)`
 help: consider relaxing the implicit `Sized` restriction

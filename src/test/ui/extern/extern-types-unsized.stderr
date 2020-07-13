@@ -8,7 +8,6 @@ LL |     assert_sized::<A>();
    |                    ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `A`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn assert_sized<T: ?Sized>() { }
@@ -24,7 +23,6 @@ LL |     assert_sized::<Foo>();
    |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Foo`, the trait `std::marker::Sized` is not implemented for `A`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Foo`
 help: consider relaxing the implicit `Sized` restriction
    |
@@ -41,7 +39,6 @@ LL |     assert_sized::<Bar<A>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Bar<A>`, the trait `std::marker::Sized` is not implemented for `A`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Bar<A>`
 help: consider relaxing the implicit `Sized` restriction
    |
@@ -58,7 +55,6 @@ LL |     assert_sized::<Bar<Bar<A>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Bar<Bar<A>>`, the trait `std::marker::Sized` is not implemented for `A`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Bar<A>`
    = note: required because it appears within the type `Bar<Bar<A>>`
 help: consider relaxing the implicit `Sized` restriction
