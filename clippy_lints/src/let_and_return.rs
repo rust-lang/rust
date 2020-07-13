@@ -1,6 +1,5 @@
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -9,7 +8,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::{in_macro, match_qpath, snippet_opt, span_lint_and_then};
+use crate::utils::{fn_def_id, in_macro, match_qpath, snippet_opt, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `let`-bindings, which are subsequently
@@ -97,22 +96,6 @@ struct BorrowVisitor<'a, 'tcx> {
     borrows: bool,
 }
 
-impl BorrowVisitor<'_, '_> {
-    fn fn_def_id(&self, expr: &Expr<'_>) -> Option<DefId> {
-        match &expr.kind {
-            ExprKind::MethodCall(..) => self.cx.tables().type_dependent_def_id(expr.hir_id),
-            ExprKind::Call(
-                Expr {
-                    kind: ExprKind::Path(qpath),
-                    ..
-                },
-                ..,
-            ) => self.cx.qpath_res(qpath, expr.hir_id).opt_def_id(),
-            _ => None,
-        }
-    }
-}
-
 impl<'tcx> Visitor<'tcx> for BorrowVisitor<'_, 'tcx> {
     type Map = Map<'tcx>;
 
@@ -121,7 +104,7 @@ impl<'tcx> Visitor<'tcx> for BorrowVisitor<'_, 'tcx> {
             return;
         }
 
-        if let Some(def_id) = self.fn_def_id(expr) {
+        if let Some(def_id) = fn_def_id(self.cx, expr) {
             self.borrows = self
                 .cx
                 .tcx

@@ -7,6 +7,7 @@ fn f() -> usize {
 }
 
 #[warn(clippy::range_plus_one)]
+#[warn(clippy::range_minus_one)]
 fn main() {
     for _ in 0..2 {}
     for _ in 0..=2 {}

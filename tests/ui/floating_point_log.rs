@@ -25,11 +25,11 @@ fn check_ln1p() {
     let _ = (1f32 + 2.0).ln();
     let _ = (1.0 + x).ln();
     let _ = (1.0 + x / 2.0).ln();
-    let _ = (1.0 + x.powi(2)).ln();
-    let _ = (1.0 + x.powi(2) / 2.0).ln();
+    let _ = (1.0 + x.powi(3)).ln();
+    let _ = (1.0 + x.powi(3) / 2.0).ln();
     let _ = (1.0 + (std::f32::consts::E - 1.0)).ln();
     let _ = (x + 1.0).ln();
-    let _ = (x.powi(2) + 1.0).ln();
+    let _ = (x.powi(3) + 1.0).ln();
     let _ = (x + 2.0 + 1.0).ln();
     let _ = (x / 2.0 + 1.0).ln();
     // Cases where the lint shouldn't be applied
@@ -43,9 +43,9 @@ fn check_ln1p() {
     let _ = (1f64 + 2.0).ln();
     let _ = (1.0 + x).ln();
     let _ = (1.0 + x / 2.0).ln();
-    let _ = (1.0 + x.powi(2)).ln();
+    let _ = (1.0 + x.powi(3)).ln();
     let _ = (x + 1.0).ln();
-    let _ = (x.powi(2) + 1.0).ln();
+    let _ = (x.powi(3) + 1.0).ln();
     let _ = (x + 2.0 + 1.0).ln();
     let _ = (x / 2.0 + 1.0).ln();
     // Cases where the lint shouldn't be applied

@@ -52,6 +52,11 @@ declare_clippy_lint! {
     /// exclusive ranges, because they essentially add an extra branch that
     /// LLVM may fail to hoist out of the loop.
     ///
+    /// This will cause a warning that cannot be fixed if the consumer of the
+    /// range only accepts a specific range type, instead of the generic
+    /// `RangeBounds` trait
+    /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
+    ///
     /// **Example:**
     /// ```rust,ignore
     /// for x..(y+1) { .. }
@@ -72,7 +77,10 @@ declare_clippy_lint! {
     /// **Why is this bad?** The code is more readable with an exclusive range
     /// like `x..y`.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** This will cause a warning that cannot be fixed if
+    /// the consumer of the range only accepts a specific range type, instead of
+    /// the generic `RangeBounds` trait
+    /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// **Example:**
     /// ```rust,ignore
@@ -83,7 +91,7 @@ declare_clippy_lint! {
     /// for x..y { .. }
     /// ```
     pub RANGE_MINUS_ONE,
-    complexity,
+    pedantic,
     "`x..=(y-1)` reads better as `x..y`"
 }
 
