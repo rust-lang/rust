@@ -399,7 +399,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub INVALID_CODEBLOCK_ATTRIBUTE,
+    pub INVALID_CODEBLOCK_ATTRIBUTES,
     Warn,
     "codeblock attribute looks a lot like a known one"
 }
@@ -585,7 +585,7 @@ declare_lint_pass! {
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
         INTRA_DOC_LINK_RESOLUTION_FAILURE,
-        INVALID_CODEBLOCK_ATTRIBUTE,
+        INVALID_CODEBLOCK_ATTRIBUTES,
         MISSING_CRATE_LEVEL_DOCS,
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS,
