@@ -55,7 +55,6 @@
 //!
 //! [`Iterator`]: trait.Iterator.html
 //! [`next`]: trait.Iterator.html#tymethod.next
-//! [`Option`]: ../../std/option/enum.Option.html
 //! [`TryIter`]: ../../std/sync/mpsc/struct.TryIter.html
 //!
 //! # The three forms of iteration
