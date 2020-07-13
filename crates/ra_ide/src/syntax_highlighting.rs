@@ -566,10 +566,31 @@ fn highlight_element(
                 | T![return]
                 | T![while]
                 | T![in] => h | HighlightModifier::ControlFlow,
-                T![for] if !is_child_of_impl(element) => h | HighlightModifier::ControlFlow,
+                T![for] if !is_child_of_impl(&element) => h | HighlightModifier::ControlFlow,
                 T![unsafe] => h | HighlightModifier::Unsafe,
                 T![true] | T![false] => HighlightTag::BoolLiteral.into(),
-                T![self] => HighlightTag::SelfKeyword.into(),
+                T![self] => {
+                    let self_param_is_mut = element
+                        .parent()
+                        .and_then(ast::SelfParam::cast)
+                        .and_then(|p| p.mut_token())
+                        .is_some();
+                    // closure to enforce lazyness
+                    let self_path = || {
+                        sema.resolve_path(&element.parent()?.parent().and_then(ast::Path::cast)?)
+                    };
+                    if self_param_is_mut
+                        || matches!(self_path(),
+                            Some(hir::PathResolution::Local(local))
+                                if local.is_self(db)
+                                    && (local.is_mut(db) || local.ty(db).is_mutable_reference())
+                        )
+                    {
+                        HighlightTag::SelfKeyword | HighlightModifier::Mutable
+                    } else {
+                        HighlightTag::SelfKeyword.into()
+                    }
+                }
                 _ => h,
             }
         }
@@ -592,7 +613,7 @@ fn highlight_element(
     }
 }
 
-fn is_child_of_impl(element: SyntaxElement) -> bool {
+fn is_child_of_impl(element: &SyntaxElement) -> bool {
     match element.parent() {
         Some(e) => e.kind() == IMPL_DEF,
         _ => false,
