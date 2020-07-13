@@ -1356,6 +1356,21 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
     )
 }
 
+/// Returns the `DefId` of the callee if the given expression is a function or method call.
+pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
+    match &expr.kind {
+        ExprKind::MethodCall(..) => cx.tables().type_dependent_def_id(expr.hir_id),
+        ExprKind::Call(
+            Expr {
+                kind: ExprKind::Path(qpath),
+                ..
+            },
+            ..,
+        ) => cx.tables().qpath_res(qpath, expr.hir_id).opt_def_id(),
+        _ => None,
+    }
+}
+
 pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bool {
     lints.iter().any(|lint| {
         matches!(
