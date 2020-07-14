@@ -641,9 +641,8 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn current() -> Thread {
     thread_info::current_thread().expect(
-        "use of std::thread::current() is not \
-                                          possible after the thread's local \
-                                          data has been destroyed",
+        "use of std::thread::current() is not possible \
+         after the thread's local data has been destroyed",
     )
 }
 
