@@ -127,6 +127,7 @@
 #![feature(unwind_attributes)]
 #![cfg_attr(not(bootstrap), feature(variant_count))]
 #![feature(doc_alias)]
+#![feature(marker_trait_attr)]
 #![feature(mmx_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(sse4a_target_feature)]

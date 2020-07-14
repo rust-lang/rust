@@ -387,6 +387,81 @@ where
     }
 }
 
+/// A trait implemented by all arrays which are either empty or contain a type implementing `Default`.
+#[unstable(feature = "array_default_internals", reason = "implementation detail", issue = "none")]
+#[marker]
+pub trait ArrayDefault {}
+
+#[unstable(feature = "array_default_internals", reason = "implementation detail", issue = "none")]
+impl<T> ArrayDefault for [T; 0] {}
+
+#[unstable(feature = "array_default_internals", reason = "implementation detail", issue = "none")]
+impl<T: Default, const N: usize> ArrayDefault for [T; N] {}
+
+trait DefaultHack {
+    fn default_hack() -> Self;
+}
+
+impl<T> DefaultHack for T {
+    default fn default_hack() -> Self {
+        unreachable!();
+    }
+}
+
+impl<T: Default> DefaultHack for T {
+    #[inline(always)]
+    fn default_hack() -> Self {
+        Default::default()
+    }
+}
+
+#[stable(since = "1.4.0", feature = "array_default")]
+impl<T, const N: usize> Default for [T; N]
+where
+    [T; N]: ArrayDefault + LengthAtMost32,
+{
+    #[inline]
+    fn default() -> [T; N] {
+        use crate::mem::MaybeUninit;
+        let mut data: MaybeUninit<[T; N]> = MaybeUninit::uninit();
+        // Invariant: first `init` items are initialized
+        struct Guard<T, const N: usize> {
+            data: *mut T,
+            init: usize,
+        }
+
+        impl<T, const N: usize> Drop for Guard<T, N> {
+            #[inline]
+            fn drop(&mut self) {
+                debug_assert!(self.init <= N);
+
+                let initialized_part = crate::ptr::slice_from_raw_parts_mut(self.data, self.init);
+                // SAFETY: this raw slice will contain only initialized objects
+                // that's why, it is allowed to drop it.
+                unsafe {
+                    crate::ptr::drop_in_place(initialized_part);
+                }
+            }
+        }
+
+        let mut w = Guard::<T, N> { data: data.as_mut_ptr() as *mut T, init: 0 };
+        // SAFETY: in fact we go from &mut MaybeUninit<[T; N]> to &mut [MaybeUninit<T>; N].
+        // it is always correct.
+        let slots = unsafe { &mut *(data.as_mut_ptr() as *mut [MaybeUninit<T>; N]) };
+        for slot in slots.iter_mut() {
+            slot.write(T::default_hack());
+            // now, when slot is filled with value, we can increment
+            // `init`.
+            w.init += 1;
+        }
+
+        // Prevent double-read in callee and Wrapper::drop
+        crate::mem::forget(w);
+        // SAFETY: at this point whole array is initialized.
+        unsafe { data.assume_init() }
+    }
+}
+
 /// Implemented for lengths where trait impls are allowed on arrays in core/std
 #[rustc_on_unimplemented(message = "arrays only have std trait implementations for lengths 0..=32")]
 #[unstable(
@@ -411,26 +486,3 @@ array_impls! {
     20 21 22 23 24 25 26 27 28 29
     30 31 32
 }
-
-// The Default impls cannot be generated using the array_impls! macro because
-// they require array literals.
-
-macro_rules! array_impl_default {
-    {$n:expr, $t:ident $($ts:ident)*} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
-            fn default() -> [T; $n] {
-                [$t::default(), $($ts::default()),*]
-            }
-        }
-        array_impl_default!{($n - 1), $($ts)*}
-    };
-    {$n:expr,} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] {
-            fn default() -> [T; $n] { [] }
-        }
-    };
-}
-
-array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
