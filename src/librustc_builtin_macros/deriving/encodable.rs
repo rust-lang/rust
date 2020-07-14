@@ -128,7 +128,7 @@ pub fn expand_deriving_rustc_encodable(
                 "s",
             )],
             ret_ty: Literal(Path::new_(
-                pathvec_std!(cx, result::Result),
+                pathvec_std!(result::Result),
                 None,
                 vec![
                     Box::new(Tuple(Vec::new())),

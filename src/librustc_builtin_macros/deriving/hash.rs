@@ -15,7 +15,7 @@ pub fn expand_deriving_hash(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let path = Path::new_(pathvec_std!(cx, hash::Hash), None, vec![], PathKind::Std);
+    let path = Path::new_(pathvec_std!(hash::Hash), None, vec![], PathKind::Std);
 
     let typaram = "__H";
 
@@ -32,7 +32,7 @@ pub fn expand_deriving_hash(
             name: sym::hash,
             generics: LifetimeBounds {
                 lifetimes: Vec::new(),
-                bounds: vec![(typaram, vec![path_std!(cx, hash::Hasher)])],
+                bounds: vec![(typaram, vec![path_std!(hash::Hasher)])],
             },
             explicit_self: borrowed_explicit_self(),
             args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), "state")],

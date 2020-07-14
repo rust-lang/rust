@@ -37,9 +37,9 @@ pub fn expand_deriving_partial_ord(
         }};
     }
 
-    let ordering_ty = Literal(path_std!(cx, cmp::Ordering));
+    let ordering_ty = Literal(path_std!(cmp::Ordering));
     let ret_ty = Literal(Path::new_(
-        pathvec_std!(cx, option::Option),
+        pathvec_std!(option::Option),
         None,
         vec![Box::new(ordering_ty)],
         PathKind::Std,
@@ -80,7 +80,7 @@ pub fn expand_deriving_partial_ord(
     let trait_def = TraitDef {
         span,
         attributes: vec![],
-        path: path_std!(cx, cmp::PartialOrd),
+        path: path_std!(cmp::PartialOrd),
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

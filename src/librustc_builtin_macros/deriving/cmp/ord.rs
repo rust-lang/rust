@@ -20,7 +20,7 @@ pub fn expand_deriving_ord(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, cmp::Ord),
+        path: path_std!(cmp::Ord),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
@@ -30,7 +30,7 @@ pub fn expand_deriving_ord(
             generics: LifetimeBounds::empty(),
             explicit_self: borrowed_explicit_self(),
             args: vec![(borrowed_self(), "other")],
-            ret_ty: Literal(path_std!(cx, cmp::Ordering)),
+            ret_ty: Literal(path_std!(cmp::Ordering)),
             attributes: attrs,
             is_unsafe: false,
             unify_fieldless_variants: true,

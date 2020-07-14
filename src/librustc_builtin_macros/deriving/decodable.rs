@@ -44,7 +44,7 @@ pub fn expand_deriving_rustc_decodable(
                 "d",
             )],
             ret_ty: Literal(Path::new_(
-                pathvec_std!(cx, result::Result),
+                pathvec_std!(result::Result),
                 None,
                 vec![
                     Box::new(Self_),

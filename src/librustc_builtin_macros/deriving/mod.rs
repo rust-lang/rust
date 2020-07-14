@@ -10,7 +10,7 @@ macro path_local($x:ident) {
     generic::ty::Path::new_local(stringify!($x))
 }
 
-macro pathvec_std($cx:expr, $($rest:ident)::+) {{
+macro pathvec_std($($rest:ident)::+) {{
     vec![ $( stringify!($rest) ),+ ]
 }}
 

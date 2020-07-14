@@ -85,7 +85,7 @@ pub fn expand_deriving_partial_eq(
         cx,
         span,
         item,
-        path_std!(cx, marker::StructuralPartialEq),
+        path_std!(marker::StructuralPartialEq),
         push,
     );
 
@@ -100,7 +100,7 @@ pub fn expand_deriving_partial_eq(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, cmp::PartialEq),
+        path: path_std!(cmp::PartialEq),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

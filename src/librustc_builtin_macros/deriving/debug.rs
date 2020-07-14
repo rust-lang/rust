@@ -18,12 +18,12 @@ pub fn expand_deriving_debug(
 ) {
     // &mut ::std::fmt::Formatter
     let fmtr =
-        Ptr(Box::new(Literal(path_std!(cx, fmt::Formatter))), Borrowed(None, ast::Mutability::Mut));
+        Ptr(Box::new(Literal(path_std!(fmt::Formatter))), Borrowed(None, ast::Mutability::Mut));
 
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, fmt::Debug),
+        path: path_std!(fmt::Debug),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
@@ -33,7 +33,7 @@ pub fn expand_deriving_debug(
             generics: LifetimeBounds::empty(),
             explicit_self: borrowed_explicit_self(),
             args: vec![(fmtr, "f")],
-            ret_ty: Literal(path_std!(cx, fmt::Result)),
+            ret_ty: Literal(path_std!(fmt::Result)),
             attributes: Vec::new(),
             is_unsafe: false,
             unify_fieldless_variants: false,

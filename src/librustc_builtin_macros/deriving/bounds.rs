@@ -16,7 +16,7 @@ pub fn expand_deriving_copy(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, marker::Copy),
+        path: path_std!(marker::Copy),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

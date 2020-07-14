@@ -21,7 +21,7 @@ pub fn expand_deriving_default(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, default::Default),
+        path: path_std!(default::Default),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

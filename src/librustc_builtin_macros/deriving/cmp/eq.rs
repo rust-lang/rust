@@ -22,7 +22,7 @@ pub fn expand_deriving_eq(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, cmp::Eq),
+        path: path_std!(cmp::Eq),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
@@ -47,7 +47,7 @@ pub fn expand_deriving_eq(
         cx,
         span,
         item,
-        path_std!(cx, marker::StructuralEq),
+        path_std!(marker::StructuralEq),
         push,
     );
 
