@@ -1844,10 +1844,10 @@ fn lint_expect_fun_call(
                         ty::Ref(ty::ReStatic, ..)
                     )
                 }),
-            hir::ExprKind::Path(ref p) => match cx.qpath_res(p, arg.hir_id) {
-                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _) => true,
-                _ => false,
-            },
+            hir::ExprKind::Path(ref p) => matches!(
+                cx.qpath_res(p, arg.hir_id),
+                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _)
+            ),
             _ => false,
         }
     }
@@ -2028,13 +2028,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Exp
                     .tables()
                     .expr_adjustments(arg)
                     .iter()
-                    .filter(|adj| {
-                        if let ty::adjustment::Adjust::Deref(_) = adj.kind {
-                            true
-                        } else {
-                            false
-                        }
-                    })
+                    .filter(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(_)))
                     .count();
                 let derefs: String = iter::repeat('*').take(deref_count).collect();
                 snip = Some(("try dereferencing it", format!("{}{}", derefs, snippet)));
@@ -2044,7 +2038,7 @@ fn lint_clone_on_copy(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Exp
         }
         span_lint_and_then(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type", |diag| {
             if let Some((text, snip)) = snip {
-                diag.span_suggestion(expr.span, text, snip, Applicability::Unspecified);
+                diag.span_suggestion(expr.span, text, snip, Applicability::MachineApplicable);
             }
         });
     }
@@ -2460,13 +2454,9 @@ fn derefs_to_slice<'tcx>(
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym!(vec_type)),
-            ty::Array(_, size) => {
-                if let Some(size) = size.try_eval_usize(cx.tcx, cx.param_env) {
-                    size < 32
-                } else {
-                    false
-                }
-            },
+            ty::Array(_, size) => size
+                .try_eval_usize(cx.tcx, cx.param_env)
+                .map_or(false, |size| size < 32),
             ty::Ref(_, inner, _) => may_slice(cx, inner),
             _ => false,
         }

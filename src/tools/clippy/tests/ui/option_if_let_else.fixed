@@ -1,0 +1,74 @@
+// run-rustfix
+#![warn(clippy::option_if_let_else)]
+
+fn bad1(string: Option<&str>) -> (bool, &str) {
+    string.map_or((false, "hello"), |x| (true, x))
+}
+
+fn else_if_option(string: Option<&str>) -> Option<(bool, &str)> {
+    if string.is_none() {
+        None
+    } else { string.map_or(Some((false, "")), |x| Some((true, x))) }
+}
+
+fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
+    let _ = string.map_or(0, |s| s.len());
+    let _ = num.as_ref().map_or(&0, |s| s);
+    let _ = num.as_mut().map_or(&mut 0, |s| {
+        *s += 1;
+        s
+    });
+    let _ = num.as_ref().map_or(&0, |s| s);
+    let _ = num.map_or(0, |mut s| {
+        s += 1;
+        s
+    });
+    let _ = num.as_mut().map_or(&mut 0, |s| {
+        *s += 1;
+        s
+    });
+}
+
+fn longer_body(arg: Option<u32>) -> u32 {
+    arg.map_or(13, |x| {
+        let y = x * x;
+        y * y
+    })
+}
+
+fn test_map_or_else(arg: Option<u32>) {
+    let _ = arg.map_or_else(|| {
+        let mut y = 1;
+        y = (y + 2 / y) / 2;
+        y = (y + 2 / y) / 2;
+        y
+    }, |x| x * x * x * x);
+}
+
+fn negative_tests(arg: Option<u32>) -> u32 {
+    let _ = if let Some(13) = arg { "unlucky" } else { "lucky" };
+    for _ in 0..10 {
+        let _ = if let Some(x) = arg {
+            x
+        } else {
+            continue;
+        };
+    }
+    let _ = if let Some(x) = arg {
+        return x;
+    } else {
+        5
+    };
+    7
+}
+
+fn main() {
+    let optional = Some(5);
+    let _ = optional.map_or(5, |x| x + 2);
+    let _ = bad1(None);
+    let _ = else_if_option(None);
+    unop_bad(&None, None);
+    let _ = longer_body(None);
+    test_map_or_else(None);
+    let _ = negative_tests(None);
+}

@@ -95,6 +95,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -164,7 +170,7 @@ version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d6d530bdd2d52966a6d03b7a964add7ae1a288d25214066fd4b600f0f796400"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.4.7",
  "constant_time_eq",
 ]
 
@@ -714,7 +720,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fedcd6772e37f3da2a9af9bf12ebe046c0dfe657992377b4df982a2b54cd37a9"
 dependencies = [
- "arrayvec",
+ "arrayvec 0.4.7",
  "cfg-if",
  "crossbeam-utils 0.6.5",
  "lazy_static",
@@ -3494,8 +3500,8 @@ dependencies = [
 name = "rustc_index"
 version = "0.0.0"
 dependencies = [
+ "arrayvec 0.5.1",
  "rustc_serialize",
- "smallvec 1.4.0",
 ]
 
 [[package]]
@@ -3996,6 +4002,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
+ "rustc_hir_pretty",
  "rustc_index",
  "rustc_infer",
  "rustc_middle",

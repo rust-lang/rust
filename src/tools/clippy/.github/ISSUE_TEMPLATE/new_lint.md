@@ -12,7 +12,7 @@ labels: L-lint
 
 - Kind: *See <https://github.com/rust-lang/rust-clippy/blob/master/README.md#clippy> for list of lint kinds*
 
-*What benefit of this lint over old code?*
+*What is the advantage of the recommended code over the original code*
 
 For example:
 - Remove bounce checking inserted by ...

@@ -20,6 +20,7 @@ use crate::core::new_handler;
 use crate::externalfiles::ExternalHtml;
 use crate::html;
 use crate::html::markdown::IdMap;
+use crate::html::render::StylePath;
 use crate::html::static_files;
 use crate::opts;
 use crate::passes::{self, Condition, DefaultPassOption};
@@ -207,7 +208,7 @@ pub struct RenderOptions {
     pub sort_modules_alphabetically: bool,
     /// List of themes to extend the docs with. Original argument name is included to assist in
     /// displaying errors if it fails a theme check.
-    pub themes: Vec<PathBuf>,
+    pub themes: Vec<StylePath>,
     /// If present, CSS file that contains rules to add to the default CSS.
     pub extension_css: Option<PathBuf>,
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
@@ -410,7 +411,7 @@ impl Options {
                     ))
                     .emit();
                 }
-                themes.push(theme_file);
+                themes.push(StylePath { path: theme_file, disabled: true });
             }
         }
 

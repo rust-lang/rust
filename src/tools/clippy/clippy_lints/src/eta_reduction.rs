@@ -175,10 +175,7 @@ fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_a
 fn match_borrow_depth(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
     match (&lhs.kind, &rhs.kind) {
         (ty::Ref(_, t1, mut1), ty::Ref(_, t2, mut2)) => mut1 == mut2 && match_borrow_depth(&t1, &t2),
-        (l, r) => match (l, r) {
-            (ty::Ref(_, _, _), _) | (_, ty::Ref(_, _, _)) => false,
-            (_, _) => true,
-        },
+        (l, r) => !matches!((l, r), (ty::Ref(_, _, _), _) | (_, ty::Ref(_, _, _))),
     }
 }
 

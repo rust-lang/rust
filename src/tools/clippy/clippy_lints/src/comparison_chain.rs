@@ -122,8 +122,5 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
 }
 
 fn kind_is_cmp(kind: BinOpKind) -> bool {
-    match kind {
-        BinOpKind::Lt | BinOpKind::Gt | BinOpKind::Eq => true,
-        _ => false,
-    }
+    matches!(kind, BinOpKind::Lt | BinOpKind::Gt | BinOpKind::Eq)
 }

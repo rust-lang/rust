@@ -240,7 +240,8 @@ jobs:
         - 'Geal/nom'
         - 'rust-lang/stdarch'
         - 'serde-rs/serde'
-        - 'chronotope/chrono'
+        # FIXME: chrono currently cannot be compiled with `--all-targets`
+        # - 'chronotope/chrono'
         - 'hyperium/hyper'
         - 'rust-random/rand'
         - 'rust-lang/futures-rs'

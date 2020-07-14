@@ -1082,20 +1082,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|ident| !used_fields.contains_key(&ident))
             .collect::<Vec<_>>();
 
-        if !inexistent_fields.is_empty() && !variant.recovered {
-            self.error_inexistent_fields(
+        let inexistent_fields_err = if !inexistent_fields.is_empty() && !variant.recovered {
+            Some(self.error_inexistent_fields(
                 adt.variant_descr(),
                 &inexistent_fields,
                 &mut unmentioned_fields,
                 variant,
-            );
-        }
+            ))
+        } else {
+            None
+        };
 
         // Require `..` if struct has non_exhaustive attribute.
         if variant.is_field_list_non_exhaustive() && !adt.did.is_local() && !etc {
             self.error_foreign_non_exhaustive_spat(pat, adt.variant_descr(), fields.is_empty());
         }
 
+        let mut unmentioned_err = None;
         // Report an error if incorrect number of the fields were specified.
         if adt.is_union() {
             if fields.len() != 1 {
@@ -1107,7 +1110,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.struct_span_err(pat.span, "`..` cannot be used in union patterns").emit();
             }
         } else if !etc && !unmentioned_fields.is_empty() {
-            self.error_unmentioned_fields(pat.span, &unmentioned_fields, variant);
+            unmentioned_err = Some(self.error_unmentioned_fields(pat.span, &unmentioned_fields));
+        }
+        match (inexistent_fields_err, unmentioned_err) {
+            (Some(mut i), Some(mut u)) => {
+                if let Some(mut e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
+                    // We don't want to show the inexistent fields error when this was
+                    // `Foo { a, b }` when it should have been `Foo(a, b)`.
+                    i.delay_as_bug();
+                    u.delay_as_bug();
+                    e.emit();
+                } else {
+                    i.emit();
+                    u.emit();
+                }
+            }
+            (None, Some(mut err)) | (Some(mut err), None) => {
+                err.emit();
+            }
+            (None, None) => {}
         }
         no_field_errors
     }
@@ -1154,7 +1175,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inexistent_fields: &[Ident],
         unmentioned_fields: &mut Vec<Ident>,
         variant: &ty::VariantDef,
-    ) {
+    ) -> DiagnosticBuilder<'tcx> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if inexistent_fields.len() == 1 {
             (format!("a field named `{}`", inexistent_fields[0]), "this", "")
@@ -1221,15 +1242,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     it explicitly.",
             );
         }
-        err.emit();
+        err
+    }
+
+    fn error_tuple_variant_as_struct_pat(
+        &self,
+        pat: &Pat<'_>,
+        fields: &'tcx [hir::FieldPat<'tcx>],
+        variant: &ty::VariantDef,
+    ) -> Option<DiagnosticBuilder<'tcx>> {
+        if let (CtorKind::Fn, PatKind::Struct(qpath, ..)) = (variant.ctor_kind, &pat.kind) {
+            let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                s.print_qpath(qpath, false)
+            });
+            let mut err = struct_span_err!(
+                self.tcx.sess,
+                pat.span,
+                E0769,
+                "tuple variant `{}` written as struct variant",
+                path
+            );
+            let (sugg, appl) = if fields.len() == variant.fields.len() {
+                (
+                    fields
+                        .iter()
+                        .map(|f| match self.tcx.sess.source_map().span_to_snippet(f.pat.span) {
+                            Ok(f) => f,
+                            Err(_) => rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                                s.print_pat(f.pat)
+                            }),
+                        })
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    Applicability::MachineApplicable,
+                )
+            } else {
+                (
+                    variant.fields.iter().map(|_| "_").collect::<Vec<&str>>().join(", "),
+                    Applicability::MaybeIncorrect,
+                )
+            };
+            err.span_suggestion(
+                pat.span,
+                "use the tuple variant pattern syntax instead",
+                format!("{}({})", path, sugg),
+                appl,
+            );
+            return Some(err);
+        }
+        None
     }
 
     fn error_unmentioned_fields(
         &self,
         span: Span,
         unmentioned_fields: &[Ident],
-        variant: &ty::VariantDef,
-    ) {
+    ) -> DiagnosticBuilder<'tcx> {
         let field_names = if unmentioned_fields.len() == 1 {
             format!("field `{}`", unmentioned_fields[0])
         } else {
@@ -1248,9 +1316,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             field_names
         );
         diag.span_label(span, format!("missing {}", field_names));
-        if variant.ctor_kind == CtorKind::Fn {
-            diag.note("trying to match a tuple variant with a struct variant pattern");
-        }
         if self.tcx.sess.teach(&diag.get_code().unwrap()) {
             diag.note(
                 "This error indicates that a pattern for a struct fails to specify a \
@@ -1259,7 +1324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ignore unwanted fields.",
             );
         }
-        diag.emit();
+        diag
     }
 
     fn check_pat_box(
