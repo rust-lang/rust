@@ -158,6 +158,9 @@ fn add_missing_impl_members_inner(
             .map(|it| ast_transform::apply(&*ast_transform, it))
             .map(|it| match it {
                 ast::AssocItem::FnDef(def) => ast::AssocItem::FnDef(add_body(def)),
+                ast::AssocItem::TypeAliasDef(def) => {
+                    ast::AssocItem::TypeAliasDef(def.remove_bounds())
+                }
                 _ => it,
             })
             .map(|it| edit::remove_attrs_and_docs(&it));
@@ -681,6 +684,28 @@ impl Foo<T> for S<T> {
     fn bar(&self, this: &T, that: &Self) {
         ${0:todo!()}
     }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_assoc_type_bounds_are_removed() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Tr {
+    type Ty: Copy + 'static;
+}
+
+impl Tr for ()<|> {
+}"#,
+            r#"
+trait Tr {
+    type Ty: Copy + 'static;
+}
+
+impl Tr for () {
+    $0type Ty;
 }"#,
         )
     }

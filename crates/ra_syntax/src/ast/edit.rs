@@ -189,6 +189,21 @@ impl ast::RecordFieldList {
     }
 }
 
+impl ast::TypeAliasDef {
+    #[must_use]
+    pub fn remove_bounds(&self) -> ast::TypeAliasDef {
+        let colon = match self.colon_token() {
+            Some(it) => it,
+            None => return self.clone(),
+        };
+        let end = match self.type_bound_list() {
+            Some(it) => it.syntax().clone().into(),
+            None => colon.clone().into(),
+        };
+        self.replace_children(colon.into()..=end, iter::empty())
+    }
+}
+
 impl ast::TypeParam {
     #[must_use]
     pub fn remove_bounds(&self) -> ast::TypeParam {
