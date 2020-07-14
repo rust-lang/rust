@@ -489,4 +489,27 @@ fn f() {
 "#,
         )
     }
+
+    #[test]
+    fn enum_variant_type_macro() {
+        check_diagnostics(
+            r#"
+macro_rules! Type {
+    () => { u32 };
+}
+enum Foo {
+    Bar(Type![])
+}
+impl Foo {
+    fn new() {
+        Foo::Bar(0);
+        Foo::Bar(0, 1);
+      //^^^^^^^^^^^^^^ Expected 1 argument, found 2
+        Foo::Bar();
+      //^^^^^^^^^^ Expected 1 argument, found 0
+    }
+}
+        "#,
+        );
+    }
 }

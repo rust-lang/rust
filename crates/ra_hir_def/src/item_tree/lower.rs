@@ -219,21 +219,20 @@ impl Ctx {
     fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldDefList) -> IdRange<Field> {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
-            if let Some(data) = self.lower_tuple_field(i, &field) {
-                let idx = self.data().fields.alloc(data);
-                self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
-            }
+            let data = self.lower_tuple_field(i, &field);
+            let idx = self.data().fields.alloc(data);
+            self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
         }
         let end = self.next_field_idx();
         IdRange::new(start..end)
     }
 
-    fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleFieldDef) -> Option<Field> {
+    fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleFieldDef) -> Field {
         let name = Name::new_tuple_field(idx);
         let visibility = self.lower_visibility(field);
-        let type_ref = self.lower_type_ref(&field.type_ref()?);
+        let type_ref = self.lower_type_ref_opt(field.type_ref());
         let res = Field { name, type_ref, visibility };
-        Some(res)
+        res
     }
 
     fn lower_union(&mut self, union: &ast::UnionDef) -> Option<FileItemTreeId<Union>> {
