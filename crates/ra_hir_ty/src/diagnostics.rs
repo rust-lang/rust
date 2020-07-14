@@ -6,11 +6,24 @@ pub mod unsafe_check;
 use std::any::Any;
 
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
+use ra_prof::profile;
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
 
-pub use hir_def::{diagnostics::UnresolvedModule, expr::MatchArm, path::Path};
+pub use hir_def::{diagnostics::UnresolvedModule, expr::MatchArm, path::Path, DefWithBodyId};
 pub use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
+
+use crate::db::HirDatabase;
+
+pub fn validate_body(db: &dyn HirDatabase, owner: DefWithBodyId, sink: &mut DiagnosticSink<'_>) {
+    let _p = profile("validate_body");
+    let infer = db.infer(owner);
+    infer.add_diagnostics(db, owner, sink);
+    let mut validator = expr::ExprValidator::new(owner, infer.clone(), sink);
+    validator.validate_body(db);
+    let mut validator = unsafe_check::UnsafeValidator::new(owner, infer, sink);
+    validator.validate_body(db);
+}
 
 #[derive(Debug)]
 pub struct NoSuchField {

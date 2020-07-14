@@ -168,7 +168,7 @@ impl InferenceResult {
     pub fn add_diagnostics(
         &self,
         db: &dyn HirDatabase,
-        owner: FunctionId,
+        owner: DefWithBodyId,
         sink: &mut DiagnosticSink,
     ) {
         self.diagnostics.iter().for_each(|it| it.add_to(db, owner, sink))
@@ -760,7 +760,7 @@ impl std::ops::BitOrAssign for Diverges {
 }
 
 mod diagnostics {
-    use hir_def::{expr::ExprId, FunctionId};
+    use hir_def::{expr::ExprId, DefWithBodyId};
     use hir_expand::diagnostics::DiagnosticSink;
 
     use crate::{
@@ -778,17 +778,17 @@ mod diagnostics {
         pub(super) fn add_to(
             &self,
             db: &dyn HirDatabase,
-            owner: FunctionId,
+            owner: DefWithBodyId,
             sink: &mut DiagnosticSink,
         ) {
             match self {
                 InferenceDiagnostic::NoSuchField { expr, field } => {
-                    let (_, source_map) = db.body_with_source_map(owner.into());
+                    let (_, source_map) = db.body_with_source_map(owner);
                     let field = source_map.field_syntax(*expr, *field);
                     sink.push(NoSuchField { file: field.file_id, field: field.value })
                 }
                 InferenceDiagnostic::BreakOutsideOfLoop { expr } => {
-                    let (_, source_map) = db.body_with_source_map(owner.into());
+                    let (_, source_map) = db.body_with_source_map(owner);
                     let ptr = source_map
                         .expr_syntax(*expr)
                         .expect("break outside of loop in synthetic syntax");

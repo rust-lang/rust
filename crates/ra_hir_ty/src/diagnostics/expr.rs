@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{path::path, resolver::HasResolver, AdtId, FunctionId};
+use hir_def::{path::path, resolver::HasResolver, AdtId, DefWithBodyId};
 use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashSet;
@@ -30,23 +30,23 @@ pub use hir_def::{
     LocalFieldId, Lookup, VariantId,
 };
 
-pub struct ExprValidator<'a, 'b: 'a> {
-    func: FunctionId,
+pub(super) struct ExprValidator<'a, 'b: 'a> {
+    owner: DefWithBodyId,
     infer: Arc<InferenceResult>,
     sink: &'a mut DiagnosticSink<'b>,
 }
 
 impl<'a, 'b> ExprValidator<'a, 'b> {
-    pub fn new(
-        func: FunctionId,
+    pub(super) fn new(
+        owner: DefWithBodyId,
         infer: Arc<InferenceResult>,
         sink: &'a mut DiagnosticSink<'b>,
     ) -> ExprValidator<'a, 'b> {
-        ExprValidator { func, infer, sink }
+        ExprValidator { owner, infer, sink }
     }
 
-    pub fn validate_body(&mut self, db: &dyn HirDatabase) {
-        let body = db.body(self.func.into());
+    pub(super) fn validate_body(&mut self, db: &dyn HirDatabase) {
+        let body = db.body(self.owner.into());
 
         for (id, expr) in body.exprs.iter() {
             if let Some((variant_def, missed_fields, true)) =
@@ -96,7 +96,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         missed_fields: Vec<LocalFieldId>,
     ) {
         // XXX: only look at source_map if we do have missing fields
-        let (_, source_map) = db.body_with_source_map(self.func.into());
+        let (_, source_map) = db.body_with_source_map(self.owner.into());
 
         if let Ok(source_ptr) = source_map.expr_syntax(id) {
             let root = source_ptr.file_syntax(db.upcast());
@@ -125,7 +125,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         missed_fields: Vec<LocalFieldId>,
     ) {
         // XXX: only look at source_map if we do have missing fields
-        let (_, source_map) = db.body_with_source_map(self.func.into());
+        let (_, source_map) = db.body_with_source_map(self.owner.into());
 
         if let Ok(source_ptr) = source_map.pat_syntax(id) {
             if let Some(expr) = source_ptr.value.as_ref().left() {
@@ -181,7 +181,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let mut arg_count = args.len();
 
         if arg_count != param_count {
-            let (_, source_map) = db.body_with_source_map(self.func.into());
+            let (_, source_map) = db.body_with_source_map(self.owner.into());
             if let Ok(source_ptr) = source_map.expr_syntax(call_id) {
                 if is_method_call {
                     param_count -= 1;
@@ -208,7 +208,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         infer: Arc<InferenceResult>,
     ) {
         let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
-            db.body_with_source_map(self.func.into());
+            db.body_with_source_map(self.owner.into());
 
         let match_expr_ty = match infer.type_of_expr.get(match_expr) {
             Some(ty) => ty,
@@ -289,7 +289,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let core_result_path = path![core::result::Result];
 
-        let resolver = self.func.resolver(db.upcast());
+        let resolver = self.owner.resolver(db.upcast());
         let core_result_enum = match resolver.resolve_known_enum(db.upcast(), &core_result_path) {
             Some(it) => it,
             _ => return,
@@ -304,7 +304,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         };
 
         if params.len() == 2 && params[0] == mismatch.actual {
-            let (_, source_map) = db.body_with_source_map(self.func.into());
+            let (_, source_map) = db.body_with_source_map(self.owner.into());
 
             if let Ok(source_ptr) = source_map.expr_syntax(id) {
                 self.sink

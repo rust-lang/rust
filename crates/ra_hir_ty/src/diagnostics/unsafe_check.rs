@@ -6,7 +6,7 @@ use std::sync::Arc;
 use hir_def::{
     body::Body,
     expr::{Expr, ExprId, UnaryOp},
-    DefWithBodyId, FunctionId,
+    DefWithBodyId,
 };
 use hir_expand::diagnostics::DiagnosticSink;
 
@@ -15,26 +15,29 @@ use crate::{
     InferenceResult, Ty, TypeCtor,
 };
 
-pub struct UnsafeValidator<'a, 'b: 'a> {
-    func: FunctionId,
+pub(super) struct UnsafeValidator<'a, 'b: 'a> {
+    owner: DefWithBodyId,
     infer: Arc<InferenceResult>,
     sink: &'a mut DiagnosticSink<'b>,
 }
 
 impl<'a, 'b> UnsafeValidator<'a, 'b> {
-    pub fn new(
-        func: FunctionId,
+    pub(super) fn new(
+        owner: DefWithBodyId,
         infer: Arc<InferenceResult>,
         sink: &'a mut DiagnosticSink<'b>,
     ) -> UnsafeValidator<'a, 'b> {
-        UnsafeValidator { func, infer, sink }
+        UnsafeValidator { owner, infer, sink }
     }
 
-    pub fn validate_body(&mut self, db: &dyn HirDatabase) {
-        let def = self.func.into();
+    pub(super) fn validate_body(&mut self, db: &dyn HirDatabase) {
+        let def = self.owner.into();
         let unsafe_expressions = unsafe_expressions(db, self.infer.as_ref(), def);
-        let func_data = db.function_data(self.func);
-        if func_data.is_unsafe
+        let is_unsafe = match self.owner {
+            DefWithBodyId::FunctionId(it) => db.function_data(it).is_unsafe,
+            DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) => false,
+        };
+        if is_unsafe
             || unsafe_expressions
                 .iter()
                 .filter(|unsafe_expr| !unsafe_expr.inside_unsafe_block)
