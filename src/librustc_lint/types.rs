@@ -531,23 +531,23 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match ty.kind {
             ty::FnPtr(_) => true,
             ty::Ref(..) => true,
-            ty::Adt(field_def, substs) if field_def.repr.transparent() && !field_def.is_union() => {
-                for field in field_def.all_fields() {
-                    let field_ty = self.cx.tcx.normalize_erasing_regions(
-                        self.cx.param_env,
-                        field.ty(self.cx.tcx, substs),
-                    );
-                    if field_ty.is_zst(self.cx.tcx, field.did) {
-                        continue;
-                    }
+            ty::Adt(def, substs) if def.repr.transparent() && !def.is_union() => {
+                let guaranteed_nonnull_optimization = self
+                    .cx
+                    .tcx
+                    .get_attrs(def.did)
+                    .iter()
+                    .any(|a| a.check_name(sym::rustc_nonnull_optimization_guaranteed));
 
-                    let attrs = self.cx.tcx.get_attrs(field_def.did);
-                    if attrs
-                        .iter()
-                        .any(|a| a.check_name(sym::rustc_nonnull_optimization_guaranteed))
-                        || self.ty_is_known_nonnull(field_ty)
-                    {
-                        return true;
+                if guaranteed_nonnull_optimization {
+                    return true;
+                }
+
+                for variant in &def.variants {
+                    if let Some(field) = variant.transparent_newtype_field(self.cx.tcx) {
+                        if self.ty_is_known_nonnull(field.ty(self.cx.tcx, substs)) {
+                            return true;
+                        }
                     }
                 }
 
