@@ -72,9 +72,9 @@
 //! # Implementing Iterator
 //!
 //! Creating an iterator of your own involves two steps: creating a `struct` to
-//! hold the iterator's state, and then `impl`ementing [`Iterator`] for that
-//! `struct`. This is why there are so many `struct`s in this module: there is
-//! one for each iterator and iterator adapter.
+//! hold the iterator's state, and then implementing [`Iterator`] for that `struct`.
+//! This is why there are so many `struct`s in this module: there is one for
+//! each iterator and iterator adapter.
 //!
 //! Let's make an iterator named `Counter` which counts from `1` to `5`:
 //!
