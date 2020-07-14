@@ -41,9 +41,9 @@
 //! ```ignore
 //! // x: (Option<bool>, Result<()>)
 //! match x {
-//!     (Some(true), _) => {}
-//!     (None, Err(())) => {}
-//!     (None, Err(_)) => {}
+//!     (Some(true), _) => (),
+//!     (None, Err(())) => (),
+//!     (None, Err(_)) => (),
 //! }
 //! ```
 //!
@@ -837,630 +837,226 @@ fn enum_variant_matches(cx: &MatchCheckCtx, pat_id: PatId, enum_variant_id: Enum
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_snapshot;
-    use ra_db::fixture::WithFixture;
-
-    use crate::{diagnostics::MissingMatchArms, test_db::TestDB};
-
-    fn check_diagnostic_message(ra_fixture: &str) -> String {
-        TestDB::with_single_file(ra_fixture).0.diagnostic::<MissingMatchArms>().0
-    }
-
-    fn check_diagnostic(ra_fixture: &str) {
-        let diagnostic_count =
-            TestDB::with_single_file(ra_fixture).0.diagnostic::<MissingMatchArms>().1;
-
-        assert_eq!(1, diagnostic_count, "no diagnostic reported");
-    }
-
-    fn check_no_diagnostic(ra_fixture: &str) {
-        let (s, diagnostic_count) =
-            TestDB::with_single_file(ra_fixture).0.diagnostic::<MissingMatchArms>();
-
-        assert_eq!(0, diagnostic_count, "expected no diagnostic, found one: {}", s);
-    }
+    use crate::diagnostics::check_diagnostics;
 
     #[test]
-    fn empty_tuple_no_arms_diagnostic_message() {
-        assert_snapshot!(
-            check_diagnostic_message(r"
-                fn test_fn() {
-                    match () {
-                    }
-                }
-            "),
-            @"\"()\": Missing match arm\n"
+    fn empty_tuple() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match () { }
+        //^^ Missing match arm
+   match (()) { }
+       //^^^^ Missing match arm
+
+    match () { _ => (), }
+    match () { () => (), }
+    match (()) { (()) => (), }
+}
+"#,
         );
     }
 
     #[test]
-    fn empty_tuple_no_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match () {
-                }
-            }
-        ",
+    fn tuple_of_two_empty_tuple() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match ((), ()) { }
+        //^^^^^^^^ Missing match arm
+
+    match ((), ()) { ((), ()) => (), }
+}
+"#,
         );
     }
 
     #[test]
-    fn empty_tuple_wild() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match () {
-                    _ => {}
-                }
-            }
-        ",
+    fn boolean() {
+        check_diagnostics(
+            r#"
+fn test_main() {
+    match false { }
+        //^^^^^ Missing match arm
+    match false { true => (), }
+        //^^^^^ Missing match arm
+    match (false, true) {}
+        //^^^^^^^^^^^^^ Missing match arm
+    match (false, true) { (true, true) => (), }
+        //^^^^^^^^^^^^^ Missing match arm
+    match (false, true) {
+        //^^^^^^^^^^^^^ Missing match arm
+        (false, true) => (),
+        (false, false) => (),
+        (true, false) => (),
+    }
+    match (false, true) { (true, _x) => (), }
+        //^^^^^^^^^^^^^ Missing match arm
+
+    match false { true => (), false => (), }
+    match (false, true) {
+        (false, _) => (),
+        (true, false) => (),
+        (_, true) => (),
+    }
+    match (false, true) {
+        (true, true) => (),
+        (true, false) => (),
+        (false, true) => (),
+        (false, false) => (),
+    }
+    match (false, true) {
+        (true, _x) => (),
+        (false, true) => (),
+        (false, false) => (),
+    }
+    match (false, true, false) {
+        (false, ..) => (),
+        (true, ..) => (),
+    }
+    match (false, true, false) {
+        (.., false) => (),
+        (.., true) => (),
+    }
+    match (false, true, false) { (..) => (), }
+}
+"#,
         );
     }
 
     #[test]
-    fn empty_tuple_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match () {
-                    () => {}
-                }
-            }
-        ",
+    fn tuple_of_tuple_and_bools() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match (false, ((), false)) {}
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+    match (false, ((), false)) { (true, ((), true)) => (), }
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+    match (false, ((), false)) { (true, _) => (), }
+        //^^^^^^^^^^^^^^^^^^^^ Missing match arm
+
+    match (false, ((), false)) {
+        (true, ((), true)) => (),
+        (true, ((), false)) => (),
+        (false, ((), true)) => (),
+        (false, ((), false)) => (),
+    }
+    match (false, ((), false)) {
+        (true, ((), true)) => (),
+        (true, ((), false)) => (),
+        (false, _) => (),
+    }
+}
+"#,
         );
     }
 
     #[test]
-    fn tuple_of_empty_tuple_no_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match (()) {
-                }
-            }
-        ",
+    fn enums() {
+        check_diagnostics(
+            r#"
+enum Either { A, B, }
+
+fn main() {
+    match Either::A { }
+        //^^^^^^^^^ Missing match arm
+    match Either::B { Either::A => (), }
+        //^^^^^^^^^ Missing match arm
+
+    match &Either::B {
+        //^^^^^^^^^^ Missing match arm
+        Either::A => (),
+    }
+
+    match Either::B {
+        Either::A => (), Either::B => (),
+    }
+    match &Either::B {
+        Either::A => (), Either::B => (),
+    }
+}
+"#,
         );
     }
 
     #[test]
-    fn tuple_of_empty_tuple_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (()) {
-                    (()) => {}
-                }
-            }
-        ",
+    fn enum_containing_bool() {
+        check_diagnostics(
+            r#"
+enum Either { A(bool), B }
+
+fn main() {
+    match Either::B { }
+        //^^^^^^^^^ Missing match arm
+    match Either::B {
+        //^^^^^^^^^ Missing match arm
+        Either::A(true) => (), Either::B => ()
+    }
+
+    match Either::B {
+        Either::A(true) => (),
+        Either::A(false) => (),
+        Either::B => (),
+    }
+    match Either::B {
+        Either::B => (),
+        _ => (),
+    }
+    match Either::B {
+        Either::A(_) => (),
+        Either::B => (),
+    }
+
+}
+        "#,
         );
     }
 
     #[test]
-    fn tuple_of_two_empty_tuple_no_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match ((), ()) {
-                }
-            }
-        ",
-        );
+    fn enum_different_sizes() {
+        check_diagnostics(
+            r#"
+enum Either { A(bool), B(bool, bool) }
+
+fn main() {
+    match Either::A(false) {
+        //^^^^^^^^^^^^^^^^ Missing match arm
+        Either::A(_) => (),
+        Either::B(false, _) => (),
     }
 
-    #[test]
-    fn tuple_of_two_empty_tuple_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match ((), ()) {
-                    ((), ()) => {}
-                }
-            }
-        ",
-        );
+    match Either::A(false) {
+        Either::A(_) => (),
+        Either::B(true, _) => (),
+        Either::B(false, _) => (),
     }
-
-    #[test]
-    fn bool_no_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match false {
-                }
-            }
-        ",
-        );
+    match Either::A(false) {
+        Either::A(true) | Either::A(false) => (),
+        Either::B(true, _) => (),
+        Either::B(false, _) => (),
     }
-
-    #[test]
-    fn bool_missing_arm() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match false {
-                    true => {}
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn bool_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match false {
-                    true => {}
-                    false => {}
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_no_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true) {
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_missing_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true) {
-                    (true, true) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_missing_arm() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true) {
-                    (false, true) => {},
-                    (false, false) => {},
-                    (true, false) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_with_wilds() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true) {
-                    (false, _) => {},
-                    (true, false) => {},
-                    (_, true) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true) {
-                    (true, true) => {},
-                    (true, false) => {},
-                    (false, true) => {},
-                    (false, false) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_binding_missing_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true) {
-                    (true, _x) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_binding_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true) {
-                    (true, _x) => {},
-                    (false, true) => {},
-                    (false, false) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_with_ellipsis_at_end_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true, false) {
-                    (false, ..) => {},
-                    (true, ..) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_with_ellipsis_at_beginning_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true, false) {
-                    (.., false) => {},
-                    (.., true) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_bools_with_ellipsis_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, true, false) {
-                    (..) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_tuple_and_bools_no_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, ((), false)) {
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_tuple_and_bools_missing_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, ((), false)) {
-                    (true, ((), true)) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_tuple_and_bools_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, ((), false)) {
-                    (true, ((), true)) => {},
-                    (true, ((), false)) => {},
-                    (false, ((), true)) => {},
-                    (false, ((), false)) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_tuple_and_bools_wildcard_missing_arms() {
-        check_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, ((), false)) {
-                    (true, _) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn tuple_of_tuple_and_bools_wildcard_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (false, ((), false)) {
-                    (true, ((), true)) => {},
-                    (true, ((), false)) => {},
-                    (false, _) => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_no_arms() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match Either::A {
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_missing_arms() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A => {},
-                    Either::B => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_ref_missing_arms() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match &Either::B {
-                    Either::A => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_ref_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match &Either::B {
-                    Either::A => {},
-                    Either::B => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_containing_bool_no_arms() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A(bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_containing_bool_missing_arms() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A(bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A(true) => (),
-                    Either::B => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_containing_bool_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A(bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A(true) => (),
-                    Either::A(false) => (),
-                    Either::B => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_containing_bool_with_wild_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A(bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::B => (),
-                    _ => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_containing_bool_with_wild_2_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A(bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A(_) => (),
-                    Either::B => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_different_sizes_missing_arms() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A(bool),
-                B(bool, bool),
-            }
-            fn test_fn() {
-                match Either::A(false) {
-                    Either::A(_) => (),
-                    Either::B(false, _) => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_different_sizes_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A(bool),
-                B(bool, bool),
-            }
-            fn test_fn() {
-                match Either::A(false) {
-                    Either::A(_) => (),
-                    Either::B(true, _) => (),
-                    Either::B(false, _) => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn or_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A(bool),
-                B(bool, bool),
-            }
-            fn test_fn() {
-                match Either::A(false) {
-                    Either::A(true) | Either::A(false) => (),
-                    Either::B(true, _) => (),
-                    Either::B(false, _) => (),
-                }
-            }
-        ",
+}
+"#,
         );
     }
 
     #[test]
     fn tuple_of_enum_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A(bool),
-                B(bool, bool),
-            }
-            enum Either2 {
-                C,
-                D,
-            }
-            fn test_fn() {
-                match (Either::A(false), Either2::C) {
-                    (Either::A(true), _) | (Either::A(false), _) => (),
-                    (Either::B(true, _), Either2::C) => (),
-                    (Either::B(false, _), Either2::C) => (),
-                    (Either::B(_, _), Either2::D) => (),
-                }
-            }
-        ",
+        check_diagnostics(
+            r#"
+enum Either { A(bool), B(bool, bool) }
+enum Either2 { C, D }
+
+fn main() {
+    match (Either::A(false), Either2::C) {
+        (Either::A(true), _) | (Either::A(false), _) => (),
+        (Either::B(true, _), Either2::C) => (),
+        (Either::B(false, _), Either2::C) => (),
+        (Either::B(_, _), Either2::D) => (),
+    }
+}
+"#,
         );
     }
 
@@ -1468,54 +1064,24 @@ mod tests {
     fn mismatched_types() {
         // Match statements with arms that don't match the
         // expression pattern do not fire this diagnostic.
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A,
-                B,
-            }
-            enum Either2 {
-                C,
-                D,
-            }
-            fn test_fn() {
-                match Either::A {
-                    Either2::C => (),
-                    Either2::D => (),
-                }
-            }
-        ",
-        );
-    }
+        check_diagnostics(
+            r#"
+enum Either { A, B }
+enum Either2 { C, D }
 
-    #[test]
-    fn mismatched_types_with_different_arity() {
-        // Match statements with arms that don't match the
-        // expression pattern do not fire this diagnostic.
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (true, false) {
-                    (true, false, true) => (),
-                    (true) => (),
-                }
-            }
-        ",
-        );
+fn main() {
+    match Either::A {
+        Either2::C => (),
+        Either2::D => (),
     }
-
-    #[test]
-    fn malformed_match_arm_tuple_missing_pattern() {
-        // Match statements with arms that don't match the
-        // expression pattern do not fire this diagnostic.
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match (0) {
-                    () => (),
-                }
-            }
-        ",
+    match (true, false) {
+        (true, false, true) => (),
+        (true) => (),
+    }
+    match (0) { () => () }
+    match Unresolved::Bar { Unresolved::Baz => () }
+}
+        "#,
         );
     }
 
@@ -1523,517 +1089,247 @@ mod tests {
     fn malformed_match_arm_tuple_enum_missing_pattern() {
         // We are testing to be sure we don't panic here when the match
         // arm `Either::B` is missing its pattern.
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A,
-                B(u32),
-            }
-            fn test_fn() {
-                match Either::A {
-                    Either::A => (),
-                    Either::B() => (),
-                }
-            }
-        ",
-        );
-    }
+        check_diagnostics(
+            r#"
+enum Either { A, B(u32) }
 
-    #[test]
-    fn enum_not_in_scope() {
-        // The enum is not in scope so we don't perform exhaustiveness
-        // checking, but we want to be sure we don't panic here (and
-        // we don't create a diagnostic).
-        check_no_diagnostic(
-            r"
-            fn test_fn() {
-                match Foo::Bar {
-                    Foo::Baz => (),
-                }
-            }
-        ",
+fn main() {
+    match Either::A {
+        Either::A => (),
+        Either::B() => (),
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn expr_diverges() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match loop {} {
-                    Either::A => (),
-                    Either::B => (),
-                }
-            }
-        ",
-        );
-    }
+        check_diagnostics(
+            r#"
+enum Either { A, B }
 
-    #[test]
-    fn expr_loop_with_break() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match loop { break Foo::A } {
-                    Either::A => (),
-                    Either::B => (),
-                }
-            }
-        ",
+fn main() {
+    match loop {} {
+        Either::A => (),
+        Either::B => (),
+    }
+    match loop {} {
+        Either::A => (),
+    }
+    match loop { break Foo::A } {
+        //^^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        Either::A => (),
+    }
+    match loop { break Foo::A } {
+        Either::A => (),
+        Either::B => (),
+    }
+}
+"#,
         );
     }
 
     #[test]
     fn expr_partially_diverges() {
-        check_no_diagnostic(
-            r"
-            enum Either<T> {
-                A(T),
-                B,
-            }
-            fn foo() -> Either<!> {
-                Either::B
-            }
-            fn test_fn() -> u32 {
-                match foo() {
-                    Either::A(val) => val,
-                    Either::B => 0,
-                }
-            }
-        ",
+        check_diagnostics(
+            r#"
+enum Either<T> { A(T), B }
+
+fn foo() -> Either<!> { Either::B }
+fn main() -> u32 {
+    match foo() {
+        Either::A(val) => val,
+        Either::B => 0,
+    }
+}
+"#,
         );
     }
 
     #[test]
-    fn enum_record_no_arms() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::A { foo: true };
-                match a {
-                }
-            }
-        ",
+    fn enum_record() {
+        check_diagnostics(
+            r#"
+enum Either { A { foo: bool }, B }
+
+fn main() {
+    let a = Either::A { foo: true };
+    match a { }
+        //^ Missing match arm
+    match a { Either::A { foo: true } => () }
+        //^ Missing match arm
+    match a {
+        Either::A { } => (),
+                //^^^ Missing structure fields:
+        Either::B => (),
+    }
+    match a {
+        //^ Missing match arm
+        Either::A { } => (),
+    }           //^^^ Missing structure fields:
+
+    match a {
+        Either::A { foo: true } => (),
+        Either::A { foo: false } => (),
+        Either::B => (),
+    }
+    match a {
+        Either::A { foo: _ } => (),
+        Either::B => (),
+    }
+}
+"#,
         );
     }
 
     #[test]
-    fn enum_record_missing_arms() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::A { foo: true };
-                match a {
-                    Either::A { foo: true } => (),
-                }
-            }
-        ",
+    fn enum_record_fields_out_of_order() {
+        check_diagnostics(
+            r#"
+enum Either {
+    A { foo: bool, bar: () },
+    B,
+}
+
+fn main() {
+    let a = Either::A { foo: true, bar: () };
+    match a {
+        //^ Missing match arm
+        Either::A { bar: (), foo: false } => (),
+        Either::A { foo: true, bar: () } => (),
+    }
+
+    match a {
+        Either::A { bar: (), foo: false } => (),
+        Either::A { foo: true, bar: () } => (),
+        Either::B => (),
+    }
+}
+"#,
         );
     }
 
     #[test]
-    fn enum_record_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::A { foo: true };
-                match a {
-                    Either::A { foo: true } => (),
-                    Either::A { foo: false } => (),
-                    Either::B => (),
-                }
-            }
-        ",
+    fn enum_record_ellipsis() {
+        check_diagnostics(
+            r#"
+enum Either {
+    A { foo: bool, bar: bool },
+    B,
+}
+
+fn main() {
+    let a = Either::B;
+    match a {
+        //^ Missing match arm
+        Either::A { foo: true, .. } => (),
+        Either::B => (),
+    }
+    match a {
+        //^ Missing match arm
+        Either::A { .. } => (),
+    }
+
+    match a {
+        Either::A { foo: true, .. } => (),
+        Either::A { foo: false, .. } => (),
+        Either::B => (),
+    }
+
+    match a {
+        Either::A { .. } => (),
+        Either::B => (),
+    }
+}
+"#,
         );
     }
 
     #[test]
-    fn enum_record_missing_field_no_diagnostic() {
-        // When `Either::A` is missing a struct member, we don't want
-        // to fire the missing match arm diagnostic. This should fire
-        // some other diagnostic.
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::B;
-                match a {
-                    Either::A { } => (),
-                    Either::B => (),
-                }
-            }
-        ",
+    fn enum_tuple_partial_ellipsis() {
+        check_diagnostics(
+            r#"
+enum Either {
+    A(bool, bool, bool, bool),
+    B,
+}
+
+fn main() {
+    match Either::B {
+        //^^^^^^^^^ Missing match arm
+        Either::A(true, .., true) => (),
+        Either::A(true, .., false) => (),
+        Either::A(false, .., false) => (),
+        Either::B => (),
+    }
+    match Either::B {
+        //^^^^^^^^^ Missing match arm
+        Either::A(true, .., true) => (),
+        Either::A(true, .., false) => (),
+        Either::A(.., true) => (),
+        Either::B => (),
+    }
+
+    match Either::B {
+        Either::A(true, .., true) => (),
+        Either::A(true, .., false) => (),
+        Either::A(false, .., true) => (),
+        Either::A(false, .., false) => (),
+        Either::B => (),
+    }
+    match Either::B {
+        Either::A(true, .., true) => (),
+        Either::A(true, .., false) => (),
+        Either::A(.., true) => (),
+        Either::A(.., false) => (),
+        Either::B => (),
+    }
+}
+"#,
         );
     }
 
     #[test]
-    fn enum_record_missing_field_missing_match_arm() {
-        // Even though `Either::A` is missing fields, we still want to fire
-        // the missing arm diagnostic here, since we know `Either::B` is missing.
-        check_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::B;
-                match a {
-                    Either::A { } => (),
-                }
-            }
-        ",
-        );
-    }
+    fn never() {
+        check_diagnostics(
+            r#"
+enum Never {}
 
-    #[test]
-    fn enum_record_no_diagnostic_wild() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::A { foo: true };
-                match a {
-                    Either::A { foo: _ } => (),
-                    Either::B => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_record_fields_out_of_order_missing_arm() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool, bar: () },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::A { foo: true };
-                match a {
-                    Either::A { bar: (), foo: false } => (),
-                    Either::A { foo: true, bar: () } => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_record_fields_out_of_order_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool, bar: () },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::A { foo: true };
-                match a {
-                    Either::A { bar: (), foo: false } => (),
-                    Either::A { foo: true, bar: () } => (),
-                    Either::B => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_record_ellipsis_missing_arm() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool, bar: bool },
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A { foo: true, .. } => (),
-                    Either::B => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_record_ellipsis_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool, bar: bool },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::A { foo: true };
-                match a {
-                    Either::A { foo: true, .. } => (),
-                    Either::A { foo: false, .. } => (),
-                    Either::B => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_record_ellipsis_all_fields_missing_arm() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool, bar: bool },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::B;
-                match a {
-                    Either::A { .. } => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_record_ellipsis_all_fields_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A { foo: bool, bar: bool },
-                B,
-            }
-            fn test_fn() {
-                let a = Either::B;
-                match a {
-                    Either::A { .. } => (),
-                    Either::B => (),
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_tuple_partial_ellipsis_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A(bool, bool, bool, bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A(true, .., true) => {},
-                    Either::A(true, .., false) => {},
-                    Either::A(false, .., true) => {},
-                    Either::A(false, .., false) => {},
-                    Either::B => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_tuple_partial_ellipsis_2_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A(bool, bool, bool, bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A(true, .., true) => {},
-                    Either::A(true, .., false) => {},
-                    Either::A(.., true) => {},
-                    Either::A(.., false) => {},
-                    Either::B => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_tuple_partial_ellipsis_missing_arm() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A(bool, bool, bool, bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A(true, .., true) => {},
-                    Either::A(true, .., false) => {},
-                    Either::A(false, .., false) => {},
-                    Either::B => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_tuple_partial_ellipsis_2_missing_arm() {
-        check_diagnostic(
-            r"
-            enum Either {
-                A(bool, bool, bool, bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A(true, .., true) => {},
-                    Either::A(true, .., false) => {},
-                    Either::A(.., true) => {},
-                    Either::B => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_tuple_ellipsis_no_diagnostic() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A(bool, bool, bool, bool),
-                B,
-            }
-            fn test_fn() {
-                match Either::B {
-                    Either::A(..) => {},
-                    Either::B => {},
-                }
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_never() {
-        check_no_diagnostic(
-            r"
-            enum Never {}
-
-            fn test_fn(never: Never) {
-                match never {}
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn type_never() {
-        check_no_diagnostic(
-            r"
-            fn test_fn(never: !) {
-                match never {}
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn enum_never_ref() {
-        check_no_diagnostic(
-            r"
-            enum Never {}
-
-            fn test_fn(never: &Never) {
-                match never {}
-            }
-        ",
-        );
-    }
-
-    #[test]
-    fn expr_diverges_missing_arm() {
-        check_no_diagnostic(
-            r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match loop {} {
-                    Either::A => (),
-                }
-            }
-        ",
+fn enum_(never: Never) {
+    match never {}
+}
+fn enum_ref(never: &Never) {
+    match never {}
+}
+fn bang(never: !) {
+    match never {}
+}
+"#,
         );
     }
 
     #[test]
     fn or_pattern_panic() {
-        check_no_diagnostic(
-            r"
-            pub enum Category {
-                Infinity,
-                Zero,
-            }
+        check_diagnostics(
+            r#"
+pub enum Category { Infinity, Zero }
 
-            fn panic(a: Category, b: Category) {
-                match (a, b) {
-                    (Category::Zero | Category::Infinity, _) => {}
-                    (_, Category::Zero | Category::Infinity) => {}
-                }
-            }
-        ",
-        );
+fn panic(a: Category, b: Category) {
+    match (a, b) {
+        (Category::Zero | Category::Infinity, _) => (),
+        (_, Category::Zero | Category::Infinity) => (),
     }
 
-    #[test]
-    fn or_pattern_panic_2() {
-        // FIXME: This is a false positive, but the code used to cause a panic in the match checker,
-        // so this acts as a regression test for that.
-        check_diagnostic(
-            r"
-            pub enum Category {
-                Infinity,
-                Zero,
-            }
-
-            fn panic(a: Category, b: Category) {
-                match (a, b) {
-                    (Category::Infinity, Category::Infinity) | (Category::Zero, Category::Zero) => {}
-
-                    (Category::Infinity | Category::Zero, _) => {}
-                }
-            }
-        ",
+    // FIXME: This is a false positive, but the code used to cause a panic in the match checker,
+    // so this acts as a regression test for that.
+    match (a, b) {
+        //^^^^^^ Missing match arm
+        (Category::Infinity, Category::Infinity) | (Category::Zero, Category::Zero) => (),
+        (Category::Infinity | Category::Zero, _) => (),
+    }
+}
+"#,
         );
     }
 
@@ -2051,105 +1347,72 @@ mod tests {
 
         #[test]
         fn integers() {
-            // This is a false negative.
             // We don't currently check integer exhaustiveness.
-            check_no_diagnostic(
-                r"
-            fn test_fn() {
-                match 5 {
-                    10 => (),
-                    11..20 => (),
-                }
-            }
-        ",
+            check_diagnostics(
+                r#"
+fn main() {
+    match 5 {
+        10 => (),
+        11..20 => (),
+    }
+}
+"#,
             );
         }
 
         #[test]
         fn internal_or() {
-            // This is a false negative.
             // We do not currently handle patterns with internal `or`s.
-            check_no_diagnostic(
-                r"
-            fn test_fn() {
-                enum Either {
-                    A(bool),
-                    B,
-                }
-                match Either::B {
-                    Either::A(true | false) => (),
-                }
-            }
-        ",
-            );
-        }
-
-        #[test]
-        fn expr_loop_missing_arm() {
-            // This is a false negative.
-            // We currently infer the type of `loop { break Foo::A }` to `!`, which
-            // causes us to skip the diagnostic since `Either::A` doesn't type check
-            // with `!`.
-            check_diagnostic(
-                r"
-            enum Either {
-                A,
-                B,
-            }
-            fn test_fn() {
-                match loop { break Foo::A } {
-                    Either::A => (),
-                }
-            }
-        ",
+            check_diagnostics(
+                r#"
+fn main() {
+    enum Either { A(bool), B }
+    match Either::B {
+        Either::A(true | false) => (),
+    }
+}
+"#,
             );
         }
 
         #[test]
         fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
-            // This is a false negative.
             // We don't currently handle tuple patterns with ellipsis.
-            check_no_diagnostic(
-                r"
-            fn test_fn() {
-                match (false, true, false) {
-                    (false, ..) => {},
-                }
-            }
-        ",
+            check_diagnostics(
+                r#"
+fn main() {
+    match (false, true, false) {
+        (false, ..) => (),
+    }
+}
+"#,
             );
         }
 
         #[test]
         fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
-            // This is a false negative.
             // We don't currently handle tuple patterns with ellipsis.
-            check_no_diagnostic(
-                r"
-            fn test_fn() {
-                match (false, true, false) {
-                    (.., false) => {},
-                }
-            }
-        ",
+            check_diagnostics(
+                r#"
+fn main() {
+    match (false, true, false) {
+        (.., false) => (),
+    }
+}
+"#,
             );
         }
 
         #[test]
         fn struct_missing_arm() {
-            // This is a false negative.
             // We don't currently handle structs.
-            check_no_diagnostic(
-                r"
-            struct Foo {
-                a: bool,
-            }
-            fn test_fn(f: Foo) {
-                match f {
-                    Foo { a: true } => {},
-                }
-            }
-        ",
+            check_diagnostics(
+                r#"
+struct Foo { a: bool }
+fn main(f: Foo) {
+    match f { Foo { a: true } => () }
+}
+"#,
             );
         }
     }
