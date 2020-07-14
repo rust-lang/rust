@@ -24,7 +24,7 @@ mod parser;
 const DIFF_CONTEXT_SIZE: usize = 3;
 
 // A list of files on which we want to skip testing.
-const SKIP_FILE_WHITE_LIST: &[&str] = &[
+const FILE_SKIP_LIST: &[&str] = &[
     // We want to make sure that the `skip_children` is correctly working,
     // so we do not want to test this file directly.
     "configs/skip_children/foo/mod.rs",
@@ -90,7 +90,7 @@ where
 }
 
 fn is_file_skip(path: &Path) -> bool {
-    SKIP_FILE_WHITE_LIST
+    FILE_SKIP_LIST
         .iter()
         .any(|file_path| is_subpath(path, file_path))
 }
