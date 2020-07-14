@@ -872,8 +872,11 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
-/// Equivalent to the [`input`] method except that
-/// a prompt is printed before capturing input.
+/// Equivalent to the [`input`] method except that a prompt
+/// is printed before capturing input. This function returns
+/// either success ([`Ok`]) or failure ([`Err`]) containing
+/// the input. See the [`std::result`] module documentation
+/// for details.
 ///
 /// # Note
 ///
@@ -884,7 +887,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// # Panics
 ///
 /// This function currently panics if it does not receive input,
-/// or when input is empty without newline
+/// or when input is empty (end of file / `ctrl + d`).
 ///
 /// # Examples
 ///
@@ -905,14 +908,15 @@ impl fmt::Debug for StderrLock<'_> {
     issue = "none"
 )]
 pub fn prompt(prompt: &str) -> Result<String> {
-    stdout().write(prompt.as_bytes()).expect("failed to write to stdout");
-    Ok(input()?)
+    stdout().write(prompt.as_bytes())?;
+    input()
 }
 
 /// Constructs a new handle to the standard input of the current
-/// process, locks this handle and reads a line of input,
-/// returning a `String` containing the input. For automatic
-/// prompt handling, see the [`prompt`] method.
+/// process, locks this handle and reads a line of input, returning
+/// either success ([`Ok`]) or failure ([`Err`]) containing the input.
+/// See the [`std::result`] module documentation for details. For
+/// automatic prompt handling, see the [`prompt`] method.
 ///
 /// If you need more explicit control over
 /// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
@@ -949,9 +953,9 @@ pub fn prompt(prompt: &str) -> Result<String> {
     issue = "none"
 )]
 pub fn input() -> Result<String> {
+    stdout().flush()?;
     let mut input = String::new();
-    stdout().flush().expect("failed to flush stdout");
-    match stdin().read_line(&mut input).expect("failed to read from stdin") {
+    match stdin().read_line(&mut input)? {
         0 => panic!("unexpected end of file"),
         _ => Ok(String::from(input.trim_end_matches(&['\n', '\r'][..]))),
     }
