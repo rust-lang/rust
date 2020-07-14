@@ -188,8 +188,8 @@ crate struct SharedContext {
     /// This flag indicates whether listings of modules (in the side bar and documentation itself)
     /// should be ordered alphabetically or in order of appearance (in the source code).
     pub sort_modules_alphabetically: bool,
-    /// Additional themes to be added to the generated docs.
-    pub themes: Vec<PathBuf>,
+    /// Additional CSS files to be added to the generated docs.
+    pub style_files: Vec<StylePath>,
     /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
     /// "light-v2.css").
     pub resource_suffix: String,
@@ -418,6 +418,14 @@ impl Serialize for TypeWithKind {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct StylePath {
+    /// The path to the theme
+    pub path: PathBuf,
+    /// What the `disabled` attribute should be set to in the HTML tag
+    pub disabled: bool,
+}
+
 thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
 thread_local!(pub static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
 
@@ -461,7 +469,7 @@ pub fn run(
         id_map,
         playground_url,
         sort_modules_alphabetically,
-        themes,
+        themes: style_files,
         extension_css,
         extern_html_root_urls,
         resource_suffix,
@@ -531,7 +539,7 @@ pub fn run(
         layout,
         created_dirs: Default::default(),
         sort_modules_alphabetically,
-        themes,
+        style_files,
         resource_suffix,
         static_root_path,
         fs: DocFS::new(&errors),
@@ -539,6 +547,19 @@ pub fn run(
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
         playground,
     };
+
+    // Add the default themes to the `Vec` of stylepaths
+    //
+    // Note that these must be added before `sources::render` is called
+    // so that the resulting source pages are styled
+    //
+    // `light.css` is not disabled because it is the stylesheet that stays loaded
+    // by the browser as the theme stylesheet. The theme system (hackily) works by
+    // changing the href to this stylesheet. All other themes are disabled to
+    // prevent rule conflicts
+    scx.style_files.push(StylePath { path: PathBuf::from("light.css"), disabled: false });
+    scx.style_files.push(StylePath { path: PathBuf::from("dark.css"), disabled: true });
+    scx.style_files.push(StylePath { path: PathBuf::from("ayu.css"), disabled: true });
 
     let dst = output;
     scx.ensure_dir(&dst)?;
@@ -616,11 +637,40 @@ fn write_shared(
     // then we'll run over the "official" styles.
     let mut themes: FxHashSet<String> = FxHashSet::default();
 
-    for entry in &cx.shared.themes {
-        let content = try_err!(fs::read(&entry), &entry);
-        let theme = try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry);
-        let extension = try_none!(try_none!(entry.extension(), &entry).to_str(), &entry);
-        cx.shared.fs.write(cx.path(&format!("{}.{}", theme, extension)), content.as_slice())?;
+    for entry in &cx.shared.style_files {
+        let theme = try_none!(try_none!(entry.path.file_stem(), &entry.path).to_str(), &entry.path);
+        let extension =
+            try_none!(try_none!(entry.path.extension(), &entry.path).to_str(), &entry.path);
+
+        // Handle the official themes
+        match theme {
+            "light" => write_minify(
+                &cx.shared.fs,
+                cx.path("light.css"),
+                static_files::themes::LIGHT,
+                options.enable_minification,
+            )?,
+            "dark" => write_minify(
+                &cx.shared.fs,
+                cx.path("dark.css"),
+                static_files::themes::DARK,
+                options.enable_minification,
+            )?,
+            "ayu" => write_minify(
+                &cx.shared.fs,
+                cx.path("ayu.css"),
+                static_files::themes::AYU,
+                options.enable_minification,
+            )?,
+            _ => {
+                // Handle added third-party themes
+                let content = try_err!(fs::read(&entry.path), &entry.path);
+                cx.shared
+                    .fs
+                    .write(cx.path(&format!("{}.{}", theme, extension)), content.as_slice())?;
+            }
+        };
+
         themes.insert(theme.to_owned());
     }
 
@@ -634,20 +684,6 @@ fn write_shared(
     write(cx.path("brush.svg"), static_files::BRUSH_SVG)?;
     write(cx.path("wheel.svg"), static_files::WHEEL_SVG)?;
     write(cx.path("down-arrow.svg"), static_files::DOWN_ARROW_SVG)?;
-    write_minify(
-        &cx.shared.fs,
-        cx.path("light.css"),
-        static_files::themes::LIGHT,
-        options.enable_minification,
-    )?;
-    themes.insert("light".to_owned());
-    write_minify(
-        &cx.shared.fs,
-        cx.path("dark.css"),
-        static_files::themes::DARK,
-        options.enable_minification,
-    )?;
-    themes.insert("dark".to_owned());
 
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();
@@ -958,7 +994,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                     })
                     .collect::<String>()
             );
-            let v = layout::render(&cx.shared.layout, &page, "", content, &cx.shared.themes);
+            let v = layout::render(&cx.shared.layout, &page, "", content, &cx.shared.style_files);
             cx.shared.fs.write(&dst, v.as_bytes())?;
         }
     }
@@ -1376,7 +1412,7 @@ impl Context {
             &page,
             sidebar,
             |buf: &mut Buffer| all.print(buf),
-            &self.shared.themes,
+            &self.shared.style_files,
         );
         self.shared.fs.write(&final_file, v.as_bytes())?;
 
@@ -1385,9 +1421,9 @@ impl Context {
         page.description = "Settings of Rustdoc";
         page.root_path = "./";
 
-        let mut themes = self.shared.themes.clone();
+        let mut style_files = self.shared.style_files.clone();
         let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
-        themes.push(PathBuf::from("settings.css"));
+        style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
         let v = layout::render(
             &self.shared.layout,
             &page,
@@ -1396,7 +1432,7 @@ impl Context {
                 self.shared.static_root_path.as_deref().unwrap_or("./"),
                 &self.shared.resource_suffix,
             ),
-            &themes,
+            &style_files,
         );
         self.shared.fs.write(&settings_file, v.as_bytes())?;
 
@@ -1458,7 +1494,7 @@ impl Context {
                 &page,
                 |buf: &mut _| print_sidebar(self, it, buf),
                 |buf: &mut _| print_item(self, it, buf),
-                &self.shared.themes,
+                &self.shared.style_files,
             )
         } else {
             let mut url = self.root_path();

@@ -123,7 +123,7 @@ impl<'a> SourceCollector<'a> {
             &page,
             "",
             |buf: &mut _| print_src(buf, &contents),
-            &self.scx.themes,
+            &self.scx.style_files,
         );
         self.scx.fs.write(&cur, v.as_bytes())?;
         self.scx.local_sources.insert(p, href);
