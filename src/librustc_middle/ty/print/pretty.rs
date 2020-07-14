@@ -1440,12 +1440,12 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
         // FIXME(eddyb) `name` should never be empty, but it
         // currently is for `extern { ... }` "foreign modules".
-        let name = disambiguated_data.data.as_symbol().as_str();
-        if !name.is_empty() {
+        let name = disambiguated_data.data.as_symbol();
+        if name != kw::Invalid {
             if !self.empty_path {
                 write!(self, "::")?;
             }
-            if Ident::from_str(&name).is_raw_guess() {
+            if Ident::with_dummy_span(name).is_raw_guess() {
                 write!(self, "r#")?;
             }
             write!(self, "{}", name)?;
