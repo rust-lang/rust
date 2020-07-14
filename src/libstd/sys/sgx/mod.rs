@@ -30,7 +30,7 @@ pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
-pub mod thread_local;
+pub mod thread_local_key;
 pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;

@@ -300,9 +300,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Spanned<Symbol>>) {
-        if !field_names.is_empty() {
-            self.r.field_names.insert(def_id, field_names);
-        }
+        self.r.field_names.insert(def_id, field_names);
     }
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
@@ -1428,6 +1426,8 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         let ctor_kind = CtorKind::from_ast(&variant.data);
         let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
         self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
+        // Record field names for error reporting.
+        self.insert_field_names_local(ctor_def_id, &variant.data);
 
         visit::walk_variant(self, variant);
     }

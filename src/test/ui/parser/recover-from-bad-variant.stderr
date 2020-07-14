@@ -16,7 +16,7 @@ LL |     Foo { a: usize, b: usize },
    |     -------------------------- `Enum::Foo` defined here
 ...
 LL |         Enum::Foo(a, b) => {}
-   |         ^^^^^^^^^ did you mean `Enum::Foo { /* fields */ }`?
+   |         ^^^^^^^^^^^^^^^ help: use struct pattern syntax instead: `Enum::Foo { a, b }`
 
 error: aborting due to 2 previous errors
 

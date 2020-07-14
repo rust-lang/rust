@@ -7,7 +7,7 @@ LL | | }
    | |_- `Monster` defined here
 ...
 LL |       let _m = Monster();
-   |                ^^^^^^^ did you mean `Monster { /* fields */ }`?
+   |                ^^^^^^^^^ help: use struct literal syntax instead: `Monster { damage: val }`
 
 error: aborting due to previous error
 

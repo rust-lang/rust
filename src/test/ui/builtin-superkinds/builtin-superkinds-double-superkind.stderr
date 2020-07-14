@@ -7,7 +7,6 @@ LL |
 LL | impl <T: Sync+'static> Foo for (T,) { }
    |                        ^^^ `T` cannot be sent between threads safely
    |
-   = help: within `(T,)`, the trait `std::marker::Send` is not implemented for `T`
    = note: required because it appears within the type `(T,)`
 help: consider further restricting this bound
    |
@@ -23,7 +22,6 @@ LL | trait Foo : Send+Sync { }
 LL | impl <T: Send> Foo for (T,T) { }
    |                ^^^ `T` cannot be shared between threads safely
    |
-   = help: within `(T, T)`, the trait `std::marker::Sync` is not implemented for `T`
    = note: required because it appears within the type `(T, T)`
 help: consider further restricting this bound
    |

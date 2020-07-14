@@ -103,7 +103,7 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::{
     FutureTraitLangItem, PinTypeLangItem, SizedTraitLangItem, VaListTypeLangItem,
 };
-use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
+use rustc_hir::{ExprKind, GenericArg, HirIdMap, ItemKind, Node, PatKind, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_infer::infer;
@@ -1342,14 +1342,15 @@ fn check_fn<'a, 'tcx>(
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
-        fcx.check_pat_top(&param.pat, param_ty, try { inputs_hir?.get(idx)?.span }, false);
+        let ty_span = try { inputs_hir?.get(idx)?.span };
+        fcx.check_pat_top(&param.pat, param_ty, ty_span, false);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
         if param.pat.simple_ident().is_none() && !tcx.features().unsized_locals {
-            fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType);
+            fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType(ty_span));
         }
 
         fcx.write_ty(param.hir_id, param_ty);
@@ -2624,34 +2625,31 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
                     "packed type cannot transitively contain a `#[repr(align)]` type"
                 );
 
-                let hir = tcx.hir();
-                let hir_id = hir.as_local_hir_id(def_spans[0].0.expect_local());
-                if let Node::Item(Item { ident, .. }) = hir.get(hir_id) {
-                    err.span_note(
-                        tcx.def_span(def_spans[0].0),
-                        &format!("`{}` has a `#[repr(align)]` attribute", ident),
-                    );
-                }
+                err.span_note(
+                    tcx.def_span(def_spans[0].0),
+                    &format!(
+                        "`{}` has a `#[repr(align)]` attribute",
+                        tcx.item_name(def_spans[0].0)
+                    ),
+                );
 
                 if def_spans.len() > 2 {
                     let mut first = true;
                     for (adt_def, span) in def_spans.iter().skip(1).rev() {
-                        let hir_id = hir.as_local_hir_id(adt_def.expect_local());
-                        if let Node::Item(Item { ident, .. }) = hir.get(hir_id) {
-                            err.span_note(
-                                *span,
-                                &if first {
-                                    format!(
-                                        "`{}` contains a field of type `{}`",
-                                        tcx.type_of(def.did),
-                                        ident
-                                    )
-                                } else {
-                                    format!("...which contains a field of type `{}`", ident)
-                                },
-                            );
-                            first = false;
-                        }
+                        let ident = tcx.item_name(*adt_def);
+                        err.span_note(
+                            *span,
+                            &if first {
+                                format!(
+                                    "`{}` contains a field of type `{}`",
+                                    tcx.type_of(def.did),
+                                    ident
+                                )
+                            } else {
+                                format!("...which contains a field of type `{}`", ident)
+                            },
+                        );
+                        first = false;
                     }
                 }
 

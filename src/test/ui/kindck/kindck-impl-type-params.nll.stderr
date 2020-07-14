@@ -4,7 +4,6 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a = &t as &dyn Gettable<T>;
    |             ^^ `T` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `T`
    = note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
@@ -31,7 +30,6 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a: &dyn Gettable<T> = &t;
    |                               ^^ `T` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `T`
    = note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`

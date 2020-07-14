@@ -4,7 +4,6 @@ error[E0277]: `impl Sized` doesn't implement `std::fmt::Debug`
 LL |     println!("{:?}", t);
    |                      ^ `impl Sized` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `impl Sized`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
@@ -18,7 +17,6 @@ error[E0277]: `T` doesn't implement `std::fmt::Debug`
 LL |     println!("{:?}", t);
    |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `T`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider restricting type parameter `T`
@@ -32,7 +30,6 @@ error[E0277]: `T` doesn't implement `std::fmt::Debug`
 LL |     println!("{:?}", t);
    |                      ^ `T` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `T`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
@@ -46,7 +43,6 @@ error[E0277]: `Y` doesn't implement `std::fmt::Debug`
 LL |     println!("{:?} {:?}", x, y);
    |                              ^ `Y` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `Y`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `Y`
@@ -60,7 +56,6 @@ error[E0277]: `X` doesn't implement `std::fmt::Debug`
 LL |     println!("{:?}", x);
    |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `X`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting this bound
@@ -74,7 +69,6 @@ error[E0277]: `X` doesn't implement `std::fmt::Debug`
 LL |     println!("{:?}", x);
    |                      ^ `X` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
    |
-   = help: the trait `std::fmt::Debug` is not implemented for `X`
    = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting type parameter `X`

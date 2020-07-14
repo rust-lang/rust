@@ -5,7 +5,6 @@ LL |     for item in *things { *item = 0 }
    |                 ^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `dyn std::iter::Iterator<Item = &'a mut u8>`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required by `std::iter::IntoIterator::into_iter`
 
 error: aborting due to previous error

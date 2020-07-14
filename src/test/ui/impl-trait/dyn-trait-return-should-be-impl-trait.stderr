@@ -16,7 +16,6 @@ LL | fn fuz() -> (usize, Trait) { (42, Struct) }
    |             doesn't have a size known at compile-time
    |
    = help: within `(usize, (dyn Trait + 'static))`, the trait `std::marker::Sized` is not implemented for `(dyn Trait + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
    = note: the return type of a function must have a statically known size
 
@@ -38,7 +37,6 @@ LL | fn bar() -> (usize, dyn Trait) { (42, Struct) }
    |             doesn't have a size known at compile-time
    |
    = help: within `(usize, (dyn Trait + 'static))`, the trait `std::marker::Sized` is not implemented for `(dyn Trait + 'static)`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `(usize, (dyn Trait + 'static))`
    = note: the return type of a function must have a statically known size
 
