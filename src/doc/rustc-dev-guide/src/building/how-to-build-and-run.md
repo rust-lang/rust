@@ -30,23 +30,56 @@ settings (and possibly others, such as `llvm.ccache`):
 
 ```toml
 [llvm]
-# Enables LLVM assertions, which will check that the LLVM bitcode generated
-# by the compiler is internally consistent. These are particularly helpful
-# if you edit `codegen`.
+# Indicates whether the LLVM assertions are enabled or not
 assertions = true
 
 [rust]
-# This will make your build more parallel; it costs a bit of runtime
-# performance perhaps (less inlining) but it's worth it.
+# Indicates that the build should be configured for debugging Rust. A
+# `debug`-enabled compiler and standard library will be somewhat
+# slower (due to e.g. checking of debug assertions) but should remain
+# usable.
+#
+# Note: If this value is set to `true`, it will affect a number of
+#       configuration options below as well, if they have been left
+#       unconfigured in this file.
+#
+# Note: changes to the `debug` setting do *not* affect `optimize`
+#       above. In theory, a "maximally debuggable" environment would
+#       set `optimize` to `false` above to assist the introspection
+#       facilities of debuggers like lldb and gdb. To recreate such an
+#       environment, explicitly set `optimize` to `false` and `debug`
+#       to `true`. In practice, everyone leaves `optimize` set to
+#       `true`, because an unoptimized rustc with debugging
+#       enabled becomes *unusably slow* (e.g. rust-lang/rust#24840
+#       reported a 25x slowdown) and bootstrapping the supposed
+#       "maximally debuggable" environment (notably libstd) takes
+#       hours to build.
+#
+debug = true
+
+# Number of codegen units to use for each compiler invocation. A value of 0
+# means "the number of cores on this machine", and 1+ is passed through to the
+# compiler.
 codegen-units = 0
 
-# This enables full debuginfo and debug assertions. The line debuginfo is also
-# enabled by `debuginfo-level = 1`. Full debuginfo is also enabled by
-# `debuginfo-level = 2`. Debug assertions can also be enabled with
-# `debug-assertions = true`. Note that `debug = true` will make your build
-# slower, so you may want to try individually enabling debuginfo and assertions
-# or enable only line debuginfo which is basically free.
-debug = true
+# Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
+# `0` - no debug info
+# `1` - line tables only - sufficient to generate backtraces that include line
+#       information and inlined functions, set breakpoints at source code
+#       locations, and step through execution in a debugger.
+# `2` - full debug info with variable and type information
+# Can be overridden for specific subsets of Rust code (rustc, std or tools).
+# Debuginfo for tests run with compiletest is not controlled by this option
+# and needs to be enabled separately with `debuginfo-level-tests`.
+#
+# Defaults to 2 if debug is true
+debuginfo-level = 1
+
+# Whether to always use incremental compilation when building rustc
+incremental = true
+
+# Emits extra output from tests so test failures are debuggable just from logfiles.
+verbose-tests = true
 ```
 
 If you have already built `rustc`, then you may have to execute `rm -rf build` for subsequent
