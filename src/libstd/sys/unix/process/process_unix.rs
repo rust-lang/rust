@@ -1,3 +1,4 @@
+use crate::convert::TryInto;
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::ptr;
@@ -17,7 +18,7 @@ impl Command {
         default: Stdio,
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
-        const CLOEXEC_MSG_FOOTER: &[u8] = b"NOEX";
+        const CLOEXEC_MSG_FOOTER: [u8; 4] = *b"NOEX";
 
         let envp = self.capture_env();
 
@@ -52,11 +53,12 @@ impl Command {
                     drop(input);
                     let Err(err) = self.do_exec(theirs, envp.as_ref());
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
+                    let errno = errno.to_be_bytes();
                     let bytes = [
-                        (errno >> 24) as u8,
-                        (errno >> 16) as u8,
-                        (errno >> 8) as u8,
-                        (errno >> 0) as u8,
+                        errno[0],
+                        errno[1],
+                        errno[2],
+                        errno[3],
                         CLOEXEC_MSG_FOOTER[0],
                         CLOEXEC_MSG_FOOTER[1],
                         CLOEXEC_MSG_FOOTER[2],
@@ -81,12 +83,13 @@ impl Command {
             match input.read(&mut bytes) {
                 Ok(0) => return Ok((p, ours)),
                 Ok(8) => {
+                    let (errno, footer) = bytes.split_at(4);
                     assert!(
-                        combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4..8]),
+                        combine(CLOEXEC_MSG_FOOTER) == combine(footer.try_into().unwrap()),
                         "Validation on the CLOEXEC pipe failed: {:?}",
                         bytes
                     );
-                    let errno = combine(&bytes[0..4]);
+                    let errno = combine(errno.try_into().unwrap());
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
                     return Err(Error::from_raw_os_error(errno));
                 }
@@ -103,13 +106,8 @@ impl Command {
             }
         }
 
-        fn combine(arr: &[u8]) -> i32 {
-            let a = arr[0] as u32;
-            let b = arr[1] as u32;
-            let c = arr[2] as u32;
-            let d = arr[3] as u32;
-
-            ((a << 24) | (b << 16) | (c << 8) | (d << 0)) as i32
+        fn combine(arr: [u8; 4]) -> i32 {
+            i32::from_be_bytes(arr)
         }
     }
 
