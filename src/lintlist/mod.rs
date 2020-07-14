@@ -1887,6 +1887,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "reference",
     },
     Lint {
+        name: "repeat_once",
+        group: "complexity",
+        desc: "using `.repeat(1)` instead of `String.clone()`, `str.to_string()` or `slice.to_vec()` ",
+        deprecation: None,
+        module: "repeat_once",
+    },
+    Lint {
         name: "rest_pat_in_fully_bound_structs",
         group: "restriction",
         desc: "a match on a struct that binds all fields but still uses the wildcard pattern",
