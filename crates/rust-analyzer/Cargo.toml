@@ -65,3 +65,4 @@ tt = { path = "../ra_tt", package = "ra_tt" }
 
 [features]
 jemalloc = [ "ra_prof/jemalloc" ]
+mimalloc = [ "ra_prof/mimalloc" ]
