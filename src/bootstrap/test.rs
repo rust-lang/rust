@@ -759,7 +759,9 @@ impl Step for RustdocGUI {
             if let Some(linker) = builder.linker(self.compiler.host, true) {
                 cmd.env("RUSTC_TARGET_LINKER", linker);
             }
+            cmd.current_dir(builder.out.join("test-rust-docs-ui/test-docs")).arg("src/lib.rs");
             try_run(builder, &mut cmd);
+
             // Last step: running tests.
             let mut command = Command::new(nodejs);
             command
