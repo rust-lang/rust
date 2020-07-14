@@ -315,6 +315,7 @@ impl Completions {
         }
 
         if variant_kind == StructKind::Tuple {
+            mark::hit!(inserts_parens_for_tuple_enums);
             let params = Params::Anonymous(variant.fields(ctx.db).len());
             res = res.add_call_parens(ctx, qualified_name, params)
         }
@@ -865,6 +866,7 @@ fn main() { foo(${1:foo}, ${2:bar}, ${3:ho_ge_})$0 }
 
     #[test]
     fn inserts_parens_for_tuple_enums() {
+        mark::check!(inserts_parens_for_tuple_enums);
         check_edit(
             "Some",
             r#"
