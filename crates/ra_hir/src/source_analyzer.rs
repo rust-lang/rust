@@ -18,7 +18,7 @@ use hir_def::{
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
-    diagnostics::expr::{record_literal_missing_fields, record_pattern_missing_fields},
+    diagnostics::{record_literal_missing_fields, record_pattern_missing_fields},
     InferenceResult, Substs, Ty,
 };
 use ra_syntax::{
