@@ -2,7 +2,7 @@
 
 #![feature(const_result)]
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(unused)]
+#![allow(clippy::match_like_matches_macro, unused)]
 
 // Test that results are linted with the feature enabled.
 

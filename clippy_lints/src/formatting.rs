@@ -305,18 +305,10 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
 }
 
 fn is_block(expr: &Expr) -> bool {
-    if let ExprKind::Block(..) = expr.kind {
-        true
-    } else {
-        false
-    }
+    matches!(expr.kind, ExprKind::Block(..))
 }
 
 /// Check if the expression is an `if` or `if let`
 fn is_if(expr: &Expr) -> bool {
-    if let ExprKind::If(..) = expr.kind {
-        true
-    } else {
-        false
-    }
+    matches!(expr.kind, ExprKind::If(..))
 }
