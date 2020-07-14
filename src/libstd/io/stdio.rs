@@ -5,7 +5,7 @@ use crate::io::prelude::*;
 use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
-use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter, Result, Write};
+use crate::io::{self, BufReader, Error, ErrorKind, Initializer, IoSlice, IoSliceMut, LineWriter, Result, Write};
 use crate::sync::{Arc, Mutex, MutexGuard, Once};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -954,7 +954,7 @@ pub fn input() -> Result<String> {
     stdout().flush()?;
     let mut input = String::new();
     match stdin().read_line(&mut input)? {
-        0 => panic!("unexpected end of file"),
+        0 => Err(Error::new(ErrorKind::UnexpectedEof, "input reached eof unexpectedly.")),
         _ => Ok(String::from(input.trim_end_matches(&['\n', '\r'][..]))),
     }
 }
