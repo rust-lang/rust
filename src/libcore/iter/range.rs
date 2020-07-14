@@ -504,9 +504,6 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
             // SAFETY: just checked precondition
-            // We use the unchecked version here, because
-            // this helps LLVM vectorize loops for some ranges
-            // that don't get vectorized otherwise.
             let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
             Some(mem::replace(&mut self.start, n))
         } else {
@@ -528,7 +525,8 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn nth(&mut self, n: usize) -> Option<A> {
         if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
             if plus_n < self.end {
-                self.start = Step::forward(plus_n.clone(), 1);
+                // SAFETY: just checked precondition
+                self.start = unsafe { Step::forward_unchecked(plus_n.clone(), 1) };
                 return Some(plus_n);
             }
         }
@@ -589,7 +587,8 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
-            self.end = Step::backward(self.end.clone(), 1);
+            // SAFETY: just checked precondition
+            self.end = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
             Some(self.end.clone())
         } else {
             None
@@ -600,7 +599,8 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     fn nth_back(&mut self, n: usize) -> Option<A> {
         if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
             if minus_n > self.start {
-                self.end = Step::backward(minus_n, 1);
+                // SAFETY: just checked precondition
+                self.end = unsafe { Step::backward_unchecked(minus_n, 1) };
                 return Some(self.end.clone());
             }
         }
@@ -657,9 +657,6 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         let is_iterating = self.start < self.end;
         Some(if is_iterating {
             // SAFETY: just checked precondition
-            // We use the unchecked version here, because
-            // otherwise `for _ in '\0'..=char::MAX`
-            // does not successfully remove panicking code.
             let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
             mem::replace(&mut self.start, n)
         } else {
@@ -722,7 +719,8 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         let mut accum = init;
 
         while self.start < self.end {
-            let n = Step::forward(self.start.clone(), 1);
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
             let n = mem::replace(&mut self.start, n);
             accum = f(accum, n)?;
         }
@@ -775,7 +773,8 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         }
         let is_iterating = self.start < self.end;
         Some(if is_iterating {
-            let n = Step::backward(self.end.clone(), 1);
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
             mem::replace(&mut self.end, n)
         } else {
             self.exhausted = true;
@@ -825,7 +824,8 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         let mut accum = init;
 
         while self.start < self.end {
-            let n = Step::backward(self.end.clone(), 1);
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
             let n = mem::replace(&mut self.end, n);
             accum = f(accum, n)?;
         }
