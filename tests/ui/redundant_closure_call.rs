@@ -8,13 +8,20 @@ fn main() {
 
     k = (|a, b| a * b)(1, 5);
 
-    let closure = || 32;
-    i = closure();
-
+    // don't lint here, the closure is used more than once
     let closure = |i| i + 1;
     i = closure(3);
-
     i = closure(4);
+
+    // lint here
+    let redun_closure = || 1;
+    i = redun_closure();
+
+    // the lint is applicable here but the lint doesn't support redefinition
+    let redefined_closure = || 1;
+    i = redefined_closure();
+    let redefined_closure = || 2;
+    i = redefined_closure();
 
     #[allow(clippy::needless_return)]
     (|| return 2)();

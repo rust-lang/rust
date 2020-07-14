@@ -14,6 +14,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for structure field patterns bound to wildcards.
@@ -493,6 +494,29 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &Block) {
+        fn count_closure_usage(block: &Block, ident: &Ident) -> usize {
+            struct ClosureUsageCount<'ast> {
+                ident: &'ast Ident,
+                count: usize,
+            };
+            impl<'ast> Visitor<'ast> for ClosureUsageCount<'ast> {
+                fn visit_expr(&mut self, expr: &'ast Expr) {
+                    if_chain! {
+                        if let ExprKind::Call(ref closure, _) = expr.kind;
+                        if let ExprKind::Path(_, ref path) = closure.kind;
+                        if self.ident == &path.segments[0].ident;
+                        then {
+                            self.count += 1;
+                        }
+                    }
+                    walk_expr(self, expr);
+                }
+            }
+            let mut closure_usage_count = ClosureUsageCount { ident, count: 0 };
+            closure_usage_count.visit_block(block);
+            closure_usage_count.count
+        }
+
         for w in block.stmts.windows(2) {
             if_chain! {
                 if let StmtKind::Local(ref local) = w[0].kind;
@@ -503,15 +527,15 @@ impl EarlyLintPass for MiscEarlyLints {
                 if let ExprKind::Assign(_, ref call, _) = second.kind;
                 if let ExprKind::Call(ref closure, _) = call.kind;
                 if let ExprKind::Path(_, ref path) = closure.kind;
+                if ident == path.segments[0].ident;
+                if  count_closure_usage(block, &ident) == 1;
                 then {
-                    if ident == path.segments[0].ident {
-                        span_lint(
-                            cx,
-                            REDUNDANT_CLOSURE_CALL,
-                            second.span,
-                            "Closure called just once immediately after it was declared",
-                        );
-                    }
+                    span_lint(
+                        cx,
+                        REDUNDANT_CLOSURE_CALL,
+                        second.span,
+                        "Closure called just once immediately after it was declared",
+                    );
                 }
             }
         }
