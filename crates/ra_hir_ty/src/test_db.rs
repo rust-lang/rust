@@ -82,7 +82,7 @@ impl FileLoader for TestDB {
 }
 
 impl TestDB {
-    pub fn module_for_file(&self, file_id: FileId) -> ModuleId {
+    pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (local_id, data) in crate_def_map.modules.iter() {
@@ -94,7 +94,7 @@ impl TestDB {
         panic!("Can't find module for file")
     }
 
-    fn diag<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
+    pub(crate) fn diag<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {
             let crate_def_map = self.crate_def_map(krate);
@@ -124,7 +124,7 @@ impl TestDB {
         }
     }
 
-    pub fn diagnostics(&self) -> (String, u32) {
+    pub(crate) fn diagnostics(&self) -> (String, u32) {
         let mut buf = String::new();
         let mut count = 0;
         self.diag(|d| {
@@ -134,22 +134,7 @@ impl TestDB {
         (buf, count)
     }
 
-    /// Like `diagnostics`, but filtered for a single diagnostic.
-    pub fn diagnostic<D: Diagnostic>(&self) -> (String, u32) {
-        let mut buf = String::new();
-        let mut count = 0;
-        self.diag(|d| {
-            // We want to filter diagnostics by the particular one we are testing for, to
-            // avoid surprising results in tests.
-            if d.downcast_ref::<D>().is_some() {
-                format_to!(buf, "{:?}: {}\n", d.syntax_node(self).text(), d.message());
-                count += 1;
-            };
-        });
-        (buf, count)
-    }
-
-    pub fn extract_annotations(&self) -> FxHashMap<FileId, Vec<(TextRange, String)>> {
+    pub(crate) fn extract_annotations(&self) -> FxHashMap<FileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {

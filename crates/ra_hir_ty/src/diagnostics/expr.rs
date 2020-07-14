@@ -376,146 +376,117 @@ pub fn record_pattern_missing_fields(
 
 #[cfg(test)]
 mod tests {
-    use expect::{expect, Expect};
-    use ra_db::fixture::WithFixture;
-
-    use crate::{diagnostics::MismatchedArgCount, test_db::TestDB};
-
-    fn check_diagnostic(ra_fixture: &str, expect: Expect) {
-        let msg = TestDB::with_single_file(ra_fixture).0.diagnostic::<MismatchedArgCount>().0;
-        expect.assert_eq(&msg);
-    }
-
-    fn check_no_diagnostic(ra_fixture: &str) {
-        let (s, diagnostic_count) =
-            TestDB::with_single_file(ra_fixture).0.diagnostic::<MismatchedArgCount>();
-
-        assert_eq!(0, diagnostic_count, "expected no diagnostic, found one: {}", s);
-    }
+    use crate::diagnostics::check_diagnostics;
 
     #[test]
     fn simple_free_fn_zero() {
-        check_diagnostic(
-            r"
-            fn zero() {}
-            fn f() { zero(1); }
-            ",
-            expect![["\"zero(1)\": Expected 0 arguments, found 1\n"]],
+        check_diagnostics(
+            r#"
+fn zero() {}
+fn f() { zero(1); }
+       //^^^^^^^ Expected 0 arguments, found 1
+"#,
         );
 
-        check_no_diagnostic(
-            r"
-            fn zero() {}
-            fn f() { zero(); }
-            ",
+        check_diagnostics(
+            r#"
+fn zero() {}
+fn f() { zero(); }
+"#,
         );
     }
 
     #[test]
     fn simple_free_fn_one() {
-        check_diagnostic(
-            r"
-            fn one(arg: u8) {}
-            fn f() { one(); }
-            ",
-            expect![["\"one()\": Expected 1 argument, found 0\n"]],
+        check_diagnostics(
+            r#"
+fn one(arg: u8) {}
+fn f() { one(); }
+       //^^^^^ Expected 1 argument, found 0
+"#,
         );
 
-        check_no_diagnostic(
-            r"
-            fn one(arg: u8) {}
-            fn f() { one(1); }
-            ",
+        check_diagnostics(
+            r#"
+fn one(arg: u8) {}
+fn f() { one(1); }
+"#,
         );
     }
 
     #[test]
     fn method_as_fn() {
-        check_diagnostic(
-            r"
-            struct S;
-            impl S {
-                fn method(&self) {}
-            }
+        check_diagnostics(
+            r#"
+struct S;
+impl S { fn method(&self) {} }
 
-            fn f() {
-                S::method();
-            }
-            ",
-            expect![["\"S::method()\": Expected 1 argument, found 0\n"]],
+fn f() {
+    S::method();
+} //^^^^^^^^^^^ Expected 1 argument, found 0
+"#,
         );
 
-        check_no_diagnostic(
-            r"
-            struct S;
-            impl S {
-                fn method(&self) {}
-            }
+        check_diagnostics(
+            r#"
+struct S;
+impl S { fn method(&self) {} }
 
-            fn f() {
-                S::method(&S);
-                S.method();
-            }
-            ",
+fn f() {
+    S::method(&S);
+    S.method();
+}
+"#,
         );
     }
 
     #[test]
     fn method_with_arg() {
-        check_diagnostic(
-            r"
-            struct S;
-            impl S {
-                fn method(&self, arg: u8) {}
-            }
+        check_diagnostics(
+            r#"
+struct S;
+impl S { fn method(&self, arg: u8) {} }
 
             fn f() {
                 S.method();
-            }
-            ",
-            expect![["\"S.method()\": Expected 1 argument, found 0\n"]],
+            } //^^^^^^^^^^ Expected 1 argument, found 0
+            "#,
         );
 
-        check_no_diagnostic(
-            r"
-            struct S;
-            impl S {
-                fn method(&self, arg: u8) {}
-            }
+        check_diagnostics(
+            r#"
+struct S;
+impl S { fn method(&self, arg: u8) {} }
 
-            fn f() {
-                S::method(&S, 0);
-                S.method(1);
-            }
-            ",
+fn f() {
+    S::method(&S, 0);
+    S.method(1);
+}
+"#,
         );
     }
 
     #[test]
     fn tuple_struct() {
-        check_diagnostic(
-            r"
-            struct Tup(u8, u16);
-            fn f() {
-                Tup(0);
-            }
-            ",
-            expect![["\"Tup(0)\": Expected 2 arguments, found 1\n"]],
+        check_diagnostics(
+            r#"
+struct Tup(u8, u16);
+fn f() {
+    Tup(0);
+} //^^^^^^ Expected 2 arguments, found 1
+"#,
         )
     }
 
     #[test]
     fn enum_variant() {
-        check_diagnostic(
-            r"
-            enum En {
-                Variant(u8, u16),
-            }
-            fn f() {
-                En::Variant(0);
-            }
-            ",
-            expect![["\"En::Variant(0)\": Expected 2 arguments, found 1\n"]],
+        check_diagnostics(
+            r#"
+enum En { Variant(u8, u16), }
+fn f() {
+    En::Variant(0);
+} //^^^^^^^^^^^^^^ Expected 2 arguments, found 1
+"#,
         )
     }
 }

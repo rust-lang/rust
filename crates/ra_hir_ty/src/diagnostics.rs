@@ -244,3 +244,28 @@ impl AstDiagnostic for MismatchedArgCount {
         ast::CallExpr::cast(node).unwrap()
     }
 }
+
+#[cfg(test)]
+fn check_diagnostics(ra_fixture: &str) {
+    use ra_db::{fixture::WithFixture, FileId};
+    use ra_syntax::TextRange;
+    use rustc_hash::FxHashMap;
+
+    use crate::test_db::TestDB;
+
+    let db = TestDB::with_files(ra_fixture);
+    let annotations = db.extract_annotations();
+
+    let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
+    db.diag(|d| {
+        // FXIME: macros...
+        let file_id = d.source().file_id.original_file(&db);
+        let range = d.syntax_node(&db).text_range();
+        // FIXME: support multi-line messages in annotations
+        let message = d.message().lines().next().unwrap().to_owned();
+        actual.entry(file_id).or_default().push((range, message));
+    });
+    actual.values_mut().for_each(|diags| diags.sort_by_key(|it| it.0.start()));
+
+    assert_eq!(annotations, actual);
+}
