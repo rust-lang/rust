@@ -76,6 +76,10 @@ fn main() {
         cmd.env("RUST_BACKTRACE", "1");
     }
 
+    if let Ok(lint_flags) = env::var("RUSTC_LINT_FLAGS") {
+        cmd.args(lint_flags.split_whitespace());
+    }
+
     if target.is_some() {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option,
