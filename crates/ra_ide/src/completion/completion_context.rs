@@ -63,6 +63,8 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) dot_receiver_is_ambiguous_float_literal: bool,
     /// If this is a call (method or function) in particular, i.e. the () are already there.
     pub(super) is_call: bool,
+    /// Like `is_call`, but for tuple patterns.
+    pub(super) is_pattern_call: bool,
     /// If this is a macro call, i.e. the () are already there.
     pub(super) is_macro_call: bool,
     pub(super) is_path_type: bool,
@@ -136,6 +138,7 @@ impl<'a> CompletionContext<'a> {
             is_new_item: false,
             dot_receiver: None,
             is_call: false,
+            is_pattern_call: false,
             is_macro_call: false,
             is_path_type: false,
             has_type_args: false,
@@ -370,6 +373,8 @@ impl<'a> CompletionContext<'a> {
                 .and_then(|it| it.syntax().parent().and_then(ast::CallExpr::cast))
                 .is_some();
             self.is_macro_call = path.syntax().parent().and_then(ast::MacroCall::cast).is_some();
+            self.is_pattern_call =
+                path.syntax().parent().and_then(ast::TupleStructPat::cast).is_some();
 
             self.is_path_type = path.syntax().parent().and_then(ast::PathType::cast).is_some();
             self.has_type_args = segment.type_arg_list().is_some();
