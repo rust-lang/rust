@@ -1509,7 +1509,16 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         Weak { ptr: NonNull::new(usize::MAX as *mut ArcInner<T>).expect("MAX is not 0") }
     }
+}
 
+/// Helper type to allow accessing the reference counts without
+/// making any assertions about the data field.
+struct WeakInner<'a> {
+    weak: &'a atomic::AtomicUsize,
+    strong: &'a atomic::AtomicUsize,
+}
+
+impl<T: ?Sized> Weak<T> {
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -1642,16 +1651,7 @@ impl<T> Weak<T> {
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
         unsafe { Weak { ptr: NonNull::new_unchecked(ptr) } }
     }
-}
 
-/// Helper type to allow accessing the reference counts without
-/// making any assertions about the data field.
-struct WeakInner<'a> {
-    weak: &'a atomic::AtomicUsize,
-    strong: &'a atomic::AtomicUsize,
-}
-
-impl<T: ?Sized> Weak<T> {
     /// Attempts to upgrade the `Weak` pointer to an [`Arc`], delaying
     /// dropping of the inner value if successful.
     ///
