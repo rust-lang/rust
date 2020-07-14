@@ -20,7 +20,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     codegen::Mode,
-    not_bash::{fs2, pushd, pushenv, rm_rf, run},
+    not_bash::{fs2, pushd, pushenv, rm_rf},
 };
 
 pub use anyhow::{bail, Context as _, Result};

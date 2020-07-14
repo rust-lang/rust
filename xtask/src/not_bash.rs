@@ -54,7 +54,8 @@ pub mod fs2 {
     }
 }
 
-macro_rules! _run {
+#[macro_export]
+macro_rules! run {
     ($($expr:expr),*) => {
         run!($($expr),*; echo = true)
     };
@@ -65,7 +66,7 @@ macro_rules! _run {
         $crate::not_bash::run_process(format!($($expr),*), false, Some($stdin))
     };
 }
-pub(crate) use _run as run;
+pub use crate::run;
 
 pub struct Pushd {
     _p: (),
