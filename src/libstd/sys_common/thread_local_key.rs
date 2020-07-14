@@ -4,7 +4,7 @@
 //! using the native OS-provided facilities (think `TlsAlloc` or
 //! `pthread_setspecific`). The interface of this differs from the other types
 //! of thread-local-storage provided in this crate in that OS-based TLS can only
-//! get/set pointers,
+//! get/set pointer-sized data, possibly with an associated destructor.
 //!
 //! This module also provides two flavors of TLS. One is intended for static
 //! initialization, and does not contain a `Drop` implementation to deallocate
@@ -14,7 +14,7 @@
 //! # Usage
 //!
 //! This module should likely not be used directly unless other primitives are
-//! being built on. types such as `thread_local::spawn::Key` are likely much
+//! being built on. Types such as `thread_local::spawn::Key` are likely much
 //! more useful in practice than this OS-based version which likely requires
 //! unsafe code to interoperate with.
 //!
@@ -48,9 +48,8 @@
 #![unstable(feature = "thread_local_internals", issue = "none")]
 #![allow(dead_code)] // sys isn't exported yet
 
-use crate::ptr;
 use crate::sync::atomic::{self, AtomicUsize, Ordering};
-use crate::sys::thread_local as imp;
+use crate::sys::thread_local_key as imp;
 use crate::sys_common::mutex::Mutex;
 
 /// A type for TLS keys that are statically allocated.
@@ -230,38 +229,6 @@ impl Drop for Key {
         // Right now Windows doesn't support TLS key destruction, but this also
         // isn't used anywhere other than tests, so just leak the TLS key.
         // unsafe { imp::destroy(self.key) }
-    }
-}
-
-pub unsafe fn register_dtor_fallback(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
-    // The fallback implementation uses a vanilla OS-based TLS key to track
-    // the list of destructors that need to be run for this thread. The key
-    // then has its own destructor which runs all the other destructors.
-    //
-    // The destructor for DTORS is a little special in that it has a `while`
-    // loop to continuously drain the list of registered destructors. It
-    // *should* be the case that this loop always terminates because we
-    // provide the guarantee that a TLS key cannot be set after it is
-    // flagged for destruction.
-
-    static DTORS: StaticKey = StaticKey::new(Some(run_dtors));
-    type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
-    if DTORS.get().is_null() {
-        let v: Box<List> = box Vec::new();
-        DTORS.set(Box::into_raw(v) as *mut u8);
-    }
-    let list: &mut List = &mut *(DTORS.get() as *mut List);
-    list.push((t, dtor));
-
-    unsafe extern "C" fn run_dtors(mut ptr: *mut u8) {
-        while !ptr.is_null() {
-            let list: Box<List> = Box::from_raw(ptr as *mut List);
-            for (ptr, dtor) in list.into_iter() {
-                dtor(ptr);
-            }
-            ptr = DTORS.get();
-            DTORS.set(ptr::null_mut());
-        }
     }
 }
 
