@@ -5,7 +5,6 @@
 /// # Examples
 ///
 /// ```
-/// #![feature(future_readiness_fns)]
 /// #![feature(ready_macro)]
 ///
 /// use core::task::{ready, Context, Poll};
@@ -27,7 +26,6 @@
 /// The `ready!` call expands to:
 ///
 /// ```
-/// # #![feature(future_readiness_fns)]
 /// # #![feature(ready_macro)]
 /// #
 /// # use core::task::{Context, Poll};
