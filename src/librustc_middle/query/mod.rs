@@ -740,7 +740,8 @@ rustc_queries! {
     }
 
     Other {
-        query reachable_set(_: CrateNum) -> &'tcx HirIdSet {
+        query reachable_set(_: CrateNum) -> FxHashSet<LocalDefId> {
+            storage(ArenaCacheSelector<'tcx>)
             desc { "reachability" }
         }
 

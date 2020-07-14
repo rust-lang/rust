@@ -12,11 +12,11 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{HirIdSet, Node};
+use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::config::CrateType;
 use rustc_target::spec::abi::Abi;
 
@@ -65,10 +65,11 @@ struct ReachableContext<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     // The set of items which must be exported in the linkage sense.
-    reachable_symbols: HirIdSet,
+    reachable_symbols: FxHashSet<LocalDefId>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
-    worklist: Vec<hir::HirId>,
+    // FIXME(eddyb) benchmark if this would be faster as a `VecDeque`.
+    worklist: Vec<LocalDefId>,
     // Whether any output of this compilation is a library
     any_library: bool,
 }
@@ -100,37 +101,27 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
             _ => None,
         };
 
-        match res {
-            Some(Res::Local(hir_id)) => {
-                self.reachable_symbols.insert(hir_id);
-            }
-            Some(res) => {
-                if let Some((hir_id, def_id)) = res.opt_def_id().and_then(|def_id| {
-                    def_id
-                        .as_local()
-                        .map(|def_id| (self.tcx.hir().local_def_id_to_hir_id(def_id), def_id))
-                }) {
-                    if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
-                        self.worklist.push(hir_id);
-                    } else {
-                        match res {
-                            // If this path leads to a constant, then we need to
-                            // recurse into the constant to continue finding
-                            // items that are reachable.
-                            Res::Def(DefKind::Const | DefKind::AssocConst, _) => {
-                                self.worklist.push(hir_id);
-                            }
+        if let Some(res) = res {
+            if let Some(def_id) = res.opt_def_id().and_then(|def_id| def_id.as_local()) {
+                if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
+                    self.worklist.push(def_id);
+                } else {
+                    match res {
+                        // If this path leads to a constant, then we need to
+                        // recurse into the constant to continue finding
+                        // items that are reachable.
+                        Res::Def(DefKind::Const | DefKind::AssocConst, _) => {
+                            self.worklist.push(def_id);
+                        }
 
-                            // If this wasn't a static, then the destination is
-                            // surely reachable.
-                            _ => {
-                                self.reachable_symbols.insert(hir_id);
-                            }
+                        // If this wasn't a static, then the destination is
+                        // surely reachable.
+                        _ => {
+                            self.reachable_symbols.insert(def_id);
                         }
                     }
                 }
             }
-            _ => {}
         }
 
         intravisit::walk_expr(self, expr)
@@ -209,13 +200,15 @@ impl<'tcx> ReachableContext<'tcx> {
                 continue;
             }
 
-            if let Some(ref item) = self.tcx.hir().find(search_item) {
+            if let Some(ref item) =
+                self.tcx.hir().find(self.tcx.hir().local_def_id_to_hir_id(search_item))
+            {
                 self.propagate_node(item, search_item);
             }
         }
     }
 
-    fn propagate_node(&mut self, node: &Node<'tcx>, search_item: hir::HirId) {
+    fn propagate_node(&mut self, node: &Node<'tcx>, search_item: LocalDefId) {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
@@ -297,8 +290,9 @@ impl<'tcx> ReachableContext<'tcx> {
                     self.visit_nested_body(body);
                 }
                 hir::ImplItemKind::Fn(_, body) => {
-                    let did = self.tcx.hir().get_parent_did(search_item);
-                    if method_might_be_inlined(self.tcx, impl_item, did) {
+                    let impl_def_id =
+                        self.tcx.parent(search_item.to_def_id()).unwrap().expect_local();
+                    if method_might_be_inlined(self.tcx, impl_item, impl_def_id) {
                         self.visit_nested_body(body)
                     }
                 }
@@ -317,7 +311,9 @@ impl<'tcx> ReachableContext<'tcx> {
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",
-                    self.tcx.hir().node_to_string(search_item),
+                    self.tcx
+                        .hir()
+                        .node_to_string(self.tcx.hir().local_def_id_to_hir_id(search_item)),
                     node,
                 );
             }
@@ -336,7 +332,7 @@ impl<'tcx> ReachableContext<'tcx> {
 struct CollectPrivateImplItemsVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     access_levels: &'a privacy::AccessLevels,
-    worklist: &'a mut Vec<hir::HirId>,
+    worklist: &'a mut Vec<LocalDefId>,
 }
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
@@ -349,13 +345,16 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         if codegen_attrs.contains_extern_indicator()
             || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
         {
-            self.worklist.push(item.hir_id);
+            self.worklist.push(def_id);
         }
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
         if let hir::ItemKind::Impl { of_trait: Some(ref trait_ref), ref items, .. } = item.kind {
             if !self.access_levels.is_reachable(item.hir_id) {
-                self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.hir_id));
+                // FIXME(#53488) remove `let`
+                let tcx = self.tcx;
+                self.worklist
+                    .extend(items.iter().map(|ii_ref| tcx.hir().local_def_id(ii_ref.id.hir_id)));
 
                 let trait_def_id = match trait_ref.path.res {
                     Res::Def(DefKind::Trait, def_id) => def_id,
@@ -366,12 +365,10 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
                     return;
                 }
 
-                // FIXME(#53488) remove `let`
-                let tcx = self.tcx;
-                self.worklist
-                    .extend(tcx.provided_trait_methods(trait_def_id).map(|assoc| {
-                        tcx.hir().local_def_id_to_hir_id(assoc.def_id.expect_local())
-                    }));
+                self.worklist.extend(
+                    tcx.provided_trait_methods(trait_def_id)
+                        .map(|assoc| assoc.def_id.expect_local()),
+                );
             }
         }
     }
@@ -383,7 +380,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
     }
 }
 
-fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet {
+fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> FxHashSet<LocalDefId> {
     debug_assert!(crate_num == LOCAL_CRATE);
 
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
@@ -405,11 +402,13 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
     //         If other crates link to us, they're going to expect to be able to
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
-    reachable_context.worklist.extend(access_levels.map.iter().map(|(id, _)| *id));
+    reachable_context
+        .worklist
+        .extend(access_levels.map.iter().map(|(id, _)| tcx.hir().local_def_id(*id)));
     for item in tcx.lang_items().items().iter() {
-        if let Some(did) = *item {
-            if let Some(hir_id) = did.as_local().map(|did| tcx.hir().local_def_id_to_hir_id(did)) {
-                reachable_context.worklist.push(hir_id);
+        if let Some(def_id) = *item {
+            if let Some(def_id) = def_id.as_local() {
+                reachable_context.worklist.push(def_id);
             }
         }
     }
@@ -428,7 +427,7 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
     debug!("Inline reachability shows: {:?}", reachable_context.reachable_symbols);
 
     // Return the set of reachable symbols.
-    tcx.arena.alloc(reachable_context.reachable_symbols)
+    reachable_context.reachable_symbols
 }
 
 pub fn provide(providers: &mut Providers) {
