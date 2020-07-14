@@ -19,10 +19,10 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu --set rust.ignore-git=false
-ENV SCRIPT python3 ../x.py test distcheck
+ENV SCRIPT python3 ../x.py --stage 2 test distcheck
 ENV DIST_SRC 1
 
-# The purpose of this builder is to test that we can `./x.py test` successfully
+# The purpose of this builder is to test that we can `./x.py --stage 2 test` successfully
 # from a tarball, not to test LLVM/rustc's own set of assertions. These cause a
 # significant hit to CI compile time (over a half hour as observed in #61185),
 # so disable assertions for this builder.

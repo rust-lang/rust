@@ -23,4 +23,4 @@ ENV RUST_CONFIGURE_ARGS \
  --enable-sanitizers \
  --enable-profiler \
  --enable-compiler-docs
-ENV SCRIPT python3 ../x.py test
+ENV SCRIPT python3 ../x.py --stage 2 test

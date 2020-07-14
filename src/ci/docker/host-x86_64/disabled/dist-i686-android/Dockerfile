@@ -33,7 +33,7 @@ ENV RUST_CONFIGURE_ARGS \
 # build to finish we use --warn-unresolved-symbols. Note that the missing
 # symbols does not affect std, only the compiler (llvm) and cargo (openssl).
 ENV SCRIPT \
-  python3 ../x.py build src/llvm --host $HOSTS --target $HOSTS && \
+  python3 ../x.py --stage 2 build src/llvm --host $HOSTS --target $HOSTS && \
   (export RUSTFLAGS="\"-C link-arg=-Wl,--warn-unresolved-symbols\""; \
     rm /android/ndk/x86 && \
     ln -s /android/ndk/x86-14 /android/ndk/x86 && \
