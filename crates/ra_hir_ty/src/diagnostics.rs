@@ -246,25 +246,233 @@ impl AstDiagnostic for MismatchedArgCount {
 }
 
 #[cfg(test)]
-fn check_diagnostics(ra_fixture: &str) {
-    use ra_db::{fixture::WithFixture, FileId};
-    use ra_syntax::TextRange;
+mod tests {
+    use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId};
+    use hir_expand::diagnostics::{Diagnostic, DiagnosticSink};
+    use ra_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
+    use ra_syntax::{TextRange, TextSize};
     use rustc_hash::FxHashMap;
 
-    use crate::test_db::TestDB;
+    use crate::{diagnostics::validate_body, test_db::TestDB};
 
-    let db = TestDB::with_files(ra_fixture);
-    let annotations = db.extract_annotations();
+    impl TestDB {
+        fn diagnostics<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
+            let crate_graph = self.crate_graph();
+            for krate in crate_graph.iter() {
+                let crate_def_map = self.crate_def_map(krate);
 
-    let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
-    db.diag(|d| {
-        // FXIME: macros...
-        let file_id = d.source().file_id.original_file(&db);
-        let range = d.syntax_node(&db).text_range();
-        let message = d.message().to_owned();
-        actual.entry(file_id).or_default().push((range, message));
-    });
-    actual.values_mut().for_each(|diags| diags.sort_by_key(|it| it.0.start()));
+                let mut fns = Vec::new();
+                for (module_id, _) in crate_def_map.modules.iter() {
+                    for decl in crate_def_map[module_id].scope.declarations() {
+                        if let ModuleDefId::FunctionId(f) = decl {
+                            fns.push(f)
+                        }
+                    }
 
-    assert_eq!(annotations, actual);
+                    for impl_id in crate_def_map[module_id].scope.impls() {
+                        let impl_data = self.impl_data(impl_id);
+                        for item in impl_data.items.iter() {
+                            if let AssocItemId::FunctionId(f) = item {
+                                fns.push(*f)
+                            }
+                        }
+                    }
+                }
+
+                for f in fns {
+                    let mut sink = DiagnosticSink::new(&mut cb);
+                    validate_body(self, f.into(), &mut sink);
+                }
+            }
+        }
+    }
+
+    pub(crate) fn check_diagnostics(ra_fixture: &str) {
+        let db = TestDB::with_files(ra_fixture);
+        let annotations = db.extract_annotations();
+
+        let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
+        db.diagnostics(|d| {
+            // FXIME: macros...
+            let file_id = d.source().file_id.original_file(&db);
+            let range = d.syntax_node(&db).text_range();
+            let message = d.message().to_owned();
+            actual.entry(file_id).or_default().push((range, message));
+        });
+
+        for (file_id, diags) in actual.iter_mut() {
+            diags.sort_by_key(|it| it.0.start());
+            let text = db.file_text(*file_id);
+            // For multiline spans, place them on line start
+            for (range, content) in diags {
+                if text[*range].contains('\n') {
+                    *range = TextRange::new(range.start(), range.start() + TextSize::from(1));
+                    *content = format!("... {}", content);
+                }
+            }
+        }
+
+        assert_eq!(annotations, actual);
+    }
+
+    #[test]
+    fn no_such_field_diagnostics() {
+        check_diagnostics(
+            r#"
+struct S { foo: i32, bar: () }
+impl S {
+    fn new() -> S {
+        S {
+        //^... Missing structure fields:
+        //|    - bar
+            foo: 92,
+            baz: 62,
+          //^^^^^^^ no such field
+        }
+    }
+}
+"#,
+        );
+    }
+    #[test]
+    fn no_such_field_with_feature_flag_diagnostics() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo cfg:feature=foo
+struct MyStruct {
+    my_val: usize,
+    #[cfg(feature = "foo")]
+    bar: bool,
+}
+
+impl MyStruct {
+    #[cfg(feature = "foo")]
+    pub(crate) fn new(my_val: usize, bar: bool) -> Self {
+        Self { my_val, bar }
+    }
+    #[cfg(not(feature = "foo"))]
+    pub(crate) fn new(my_val: usize, _bar: bool) -> Self {
+        Self { my_val }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_such_field_enum_with_feature_flag_diagnostics() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo cfg:feature=foo
+enum Foo {
+    #[cfg(not(feature = "foo"))]
+    Buz,
+    #[cfg(feature = "foo")]
+    Bar,
+    Baz
+}
+
+fn test_fn(f: Foo) {
+    match f {
+        Foo::Bar => {},
+        Foo::Baz => {},
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_such_field_with_feature_flag_diagnostics_on_struct_lit() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo cfg:feature=foo
+struct S {
+    #[cfg(feature = "foo")]
+    foo: u32,
+    #[cfg(not(feature = "foo"))]
+    bar: u32,
+}
+
+impl S {
+    #[cfg(feature = "foo")]
+    fn new(foo: u32) -> Self {
+        Self { foo }
+    }
+    #[cfg(not(feature = "foo"))]
+    fn new(bar: u32) -> Self {
+        Self { bar }
+    }
+    fn new2(bar: u32) -> Self {
+        #[cfg(feature = "foo")]
+        { Self { foo: bar } }
+        #[cfg(not(feature = "foo"))]
+        { Self { bar } }
+    }
+    fn new2(val: u32) -> Self {
+        Self {
+            #[cfg(feature = "foo")]
+            foo: val,
+            #[cfg(not(feature = "foo"))]
+            bar: val,
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_such_field_with_type_macro() {
+        check_diagnostics(
+            r#"
+macro_rules! Type { () => { u32 }; }
+struct Foo { bar: Type![] }
+
+impl Foo {
+    fn new() -> Self {
+        Foo { bar: 0 }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn missing_record_pat_field_diagnostic() {
+        check_diagnostics(
+            r#"
+struct S { foo: i32, bar: () }
+fn baz(s: S) {
+    let S { foo: _ } = s;
+        //^^^^^^^^^^ Missing structure fields:
+        //         | - bar
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn missing_record_pat_field_no_diagnostic_if_not_exhaustive() {
+        check_diagnostics(
+            r"
+struct S { foo: i32, bar: () }
+fn baz(s: S) -> i32 {
+    match s {
+        S { foo, .. } => foo,
+    }
+}
+",
+        )
+    }
+
+    #[test]
+    fn break_outside_of_loop() {
+        check_diagnostics(
+            r#"
+fn foo() { break; }
+         //^^^^^ break outside of loop
+"#,
+        );
+    }
 }

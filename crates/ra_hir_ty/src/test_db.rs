@@ -5,18 +5,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId, ModuleId};
-use hir_expand::{
-    db::AstDatabase,
-    diagnostics::{Diagnostic, DiagnosticSink},
-};
+use hir_def::{db::DefDatabase, ModuleId};
+use hir_expand::db::AstDatabase;
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast};
 use ra_syntax::TextRange;
 use rustc_hash::{FxHashMap, FxHashSet};
-use stdx::format_to;
 use test_utils::extract_annotations;
-
-use crate::diagnostics::validate_body;
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
@@ -92,46 +86,6 @@ impl TestDB {
             }
         }
         panic!("Can't find module for file")
-    }
-
-    pub(crate) fn diag<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
-        let crate_graph = self.crate_graph();
-        for krate in crate_graph.iter() {
-            let crate_def_map = self.crate_def_map(krate);
-
-            let mut fns = Vec::new();
-            for (module_id, _) in crate_def_map.modules.iter() {
-                for decl in crate_def_map[module_id].scope.declarations() {
-                    if let ModuleDefId::FunctionId(f) = decl {
-                        fns.push(f)
-                    }
-                }
-
-                for impl_id in crate_def_map[module_id].scope.impls() {
-                    let impl_data = self.impl_data(impl_id);
-                    for item in impl_data.items.iter() {
-                        if let AssocItemId::FunctionId(f) = item {
-                            fns.push(*f)
-                        }
-                    }
-                }
-            }
-
-            for f in fns {
-                let mut sink = DiagnosticSink::new(&mut cb);
-                validate_body(self, f.into(), &mut sink);
-            }
-        }
-    }
-
-    pub(crate) fn diagnostics(&self) -> (String, u32) {
-        let mut buf = String::new();
-        let mut count = 0;
-        self.diag(|d| {
-            format_to!(buf, "{:?}: {}\n", d.syntax_node(self).text(), d.message());
-            count += 1;
-        });
-        (buf, count)
     }
 
     pub(crate) fn extract_annotations(&self) -> FxHashMap<FileId, Vec<(TextRange, String)>> {
