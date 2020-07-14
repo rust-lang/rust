@@ -48,17 +48,17 @@ error: union patterns should have exactly one field
 LL |     let U { a, b } = u;
    |         ^^^^^^^^^^
 
-error[E0026]: union `U` does not have a field named `c`
-  --> $DIR/union-fields-2.rs:18:19
-   |
-LL |     let U { a, b, c } = u;
-   |                   ^ union `U` does not have this field
-
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:18:9
    |
 LL |     let U { a, b, c } = u;
    |         ^^^^^^^^^^^^^
+
+error[E0026]: union `U` does not have a field named `c`
+  --> $DIR/union-fields-2.rs:18:19
+   |
+LL |     let U { a, b, c } = u;
+   |                   ^ union `U` does not have this field
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:20:9
