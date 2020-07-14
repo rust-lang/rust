@@ -6,14 +6,17 @@ use std::{
 };
 
 use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId, ModuleId};
-use hir_expand::{db::AstDatabase, diagnostics::DiagnosticSink};
+use hir_expand::{
+    db::AstDatabase,
+    diagnostics::{Diagnostic, DiagnosticSink},
+};
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast};
 use ra_syntax::TextRange;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::format_to;
 use test_utils::extract_annotations;
 
-use crate::diagnostics::{validate_body, Diagnostic};
+use crate::diagnostics::validate_body;
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
