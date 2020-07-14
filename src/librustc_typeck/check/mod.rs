@@ -103,7 +103,7 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::{
     FutureTraitLangItem, PinTypeLangItem, SizedTraitLangItem, VaListTypeLangItem,
 };
-use rustc_hir::{ExprKind, GenericArg, HirIdMap, Item, ItemKind, Node, PatKind, QPath};
+use rustc_hir::{ExprKind, GenericArg, HirIdMap, ItemKind, Node, PatKind, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_infer::infer;
@@ -2625,34 +2625,31 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
                     "packed type cannot transitively contain a `#[repr(align)]` type"
                 );
 
-                let hir = tcx.hir();
-                let hir_id = hir.as_local_hir_id(def_spans[0].0.expect_local());
-                if let Node::Item(Item { ident, .. }) = hir.get(hir_id) {
-                    err.span_note(
-                        tcx.def_span(def_spans[0].0),
-                        &format!("`{}` has a `#[repr(align)]` attribute", ident),
-                    );
-                }
+                err.span_note(
+                    tcx.def_span(def_spans[0].0),
+                    &format!(
+                        "`{}` has a `#[repr(align)]` attribute",
+                        tcx.item_name(def_spans[0].0)
+                    ),
+                );
 
                 if def_spans.len() > 2 {
                     let mut first = true;
                     for (adt_def, span) in def_spans.iter().skip(1).rev() {
-                        let hir_id = hir.as_local_hir_id(adt_def.expect_local());
-                        if let Node::Item(Item { ident, .. }) = hir.get(hir_id) {
-                            err.span_note(
-                                *span,
-                                &if first {
-                                    format!(
-                                        "`{}` contains a field of type `{}`",
-                                        tcx.type_of(def.did),
-                                        ident
-                                    )
-                                } else {
-                                    format!("...which contains a field of type `{}`", ident)
-                                },
-                            );
-                            first = false;
-                        }
+                        let ident = tcx.item_name(*adt_def);
+                        err.span_note(
+                            *span,
+                            &if first {
+                                format!(
+                                    "`{}` contains a field of type `{}`",
+                                    tcx.type_of(def.did),
+                                    ident
+                                )
+                            } else {
+                                format!("...which contains a field of type `{}`", ident)
+                            },
+                        );
+                        first = false;
                     }
                 }
 
