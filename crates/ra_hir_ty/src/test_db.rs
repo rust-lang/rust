@@ -94,7 +94,7 @@ impl TestDB {
         panic!("Can't find module for file")
     }
 
-    fn diag<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
+    pub(crate) fn diag<F: FnMut(&dyn Diagnostic)>(&self, mut cb: F) {
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {
             let crate_def_map = self.crate_def_map(krate);
