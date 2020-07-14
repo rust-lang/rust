@@ -1,18 +1,9 @@
-error[E0026]: variant `X::Y` does not have a field named `number`
-  --> $DIR/issue-41314.rs:7:16
-   |
-LL |         X::Y { number } => {}
-   |                ^^^^^^ variant `X::Y` does not have this field
-
-error[E0027]: pattern does not mention field `0`
+error[E0769]: tuple variant `X::Y` written as struct variant
   --> $DIR/issue-41314.rs:7:9
    |
 LL |         X::Y { number } => {}
-   |         ^^^^^^^^^^^^^^^ missing field `0`
-   |
-   = note: trying to match a tuple variant with a struct variant pattern
+   |         ^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `X::Y(number)`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0026, E0027.
-For more information about an error, try `rustc --explain E0026`.
+For more information about this error, try `rustc --explain E0769`.
