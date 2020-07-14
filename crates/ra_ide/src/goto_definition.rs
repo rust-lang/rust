@@ -866,4 +866,22 @@ type Alias<T> = T<|>;
 "#,
         )
     }
+
+    #[test]
+    fn goto_def_for_macro_container() {
+        check(
+            r#"
+//- /lib.rs
+foo::module<|>::mac!();
+
+//- /foo/lib.rs
+pub mod module {
+      //^^^^^^
+    #[macro_export]
+    macro_rules! _mac { () => { () } }
+    pub use crate::_mac as mac;
+}
+"#,
+        );
+    }
 }
