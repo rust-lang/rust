@@ -307,6 +307,7 @@
 #![feature(stdsimd)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
+#![feature(task_yield_now)]
 #![feature(test)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
@@ -478,11 +479,15 @@ pub mod task {
 
     #[doc(inline)]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    pub use core::task::*;
+    pub use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
     #[doc(inline)]
     #[unstable(feature = "wake_trait", issue = "69912")]
-    pub use alloc::task::*;
+    pub use alloc::task::Wake;
+
+    #[doc(inline)]
+    #[unstable(feature = "task_yield_now", issue = "74331")]
+    pub use core::task::{yield_now, YieldNow};
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
