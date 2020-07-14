@@ -62,7 +62,7 @@ pub struct MarkChecker {
 
 impl MarkChecker {
     pub fn new(mark: &'static AtomicUsize) -> MarkChecker {
-        let value_on_entry = mark.load(Ordering::SeqCst);
+        let value_on_entry = mark.load(Ordering::Relaxed);
         MarkChecker { mark, value_on_entry }
     }
 }
@@ -72,7 +72,7 @@ impl Drop for MarkChecker {
         if std::thread::panicking() {
             return;
         }
-        let value_on_exit = self.mark.load(Ordering::SeqCst);
+        let value_on_exit = self.mark.load(Ordering::Relaxed);
         assert!(value_on_exit > self.value_on_entry, "mark was not hit")
     }
 }
