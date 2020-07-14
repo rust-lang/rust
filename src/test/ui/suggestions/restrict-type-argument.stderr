@@ -7,7 +7,6 @@ LL | fn is_send<T: Send>(val: T) {}
 LL |     is_send(val);
    |             ^^^ `impl Sync` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `impl Sync`
 help: consider further restricting this bound
    |
 LL | fn use_impl_sync(val: impl Sync + std::marker::Send) {
@@ -22,7 +21,6 @@ LL | fn is_send<T: Send>(val: T) {}
 LL |     is_send(val);
    |             ^^^ `S` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `S`
 help: consider further restricting this bound
    |
 LL | fn use_where<S>(val: S) where S: Sync + std::marker::Send {
@@ -37,7 +35,6 @@ LL | fn is_send<T: Send>(val: T) {}
 LL |     is_send(val);
    |             ^^^ `S` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `S`
 help: consider further restricting this bound
    |
 LL | fn use_bound<S: Sync + std::marker::Send>(val: S) {
@@ -52,7 +49,6 @@ LL | fn is_send<T: Send>(val: T) {}
 LL |     is_send(val);
    |             ^^^ `S` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `S`
 help: consider further restricting this bound
    |
 LL |     Sync + std::marker::Send
@@ -67,7 +63,6 @@ LL | fn is_send<T: Send>(val: T) {}
 LL |     is_send(val);
    |             ^^^ `S` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `S`
 help: consider further restricting this bound
    |
 LL | fn use_bound_and_where<S: Sync>(val: S) where S: std::fmt::Debug + std::marker::Send {
@@ -82,7 +77,6 @@ LL | fn is_send<T: Send>(val: T) {}
 LL |     is_send(val);
    |             ^^^ `S` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `S`
 help: consider restricting type parameter `S`
    |
 LL | fn use_unbound<S: std::marker::Send>(val: S) {

@@ -1342,14 +1342,15 @@ fn check_fn<'a, 'tcx>(
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
-        fcx.check_pat_top(&param.pat, param_ty, try { inputs_hir?.get(idx)?.span }, false);
+        let ty_span = try { inputs_hir?.get(idx)?.span };
+        fcx.check_pat_top(&param.pat, param_ty, ty_span, false);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
         if param.pat.simple_ident().is_none() && !tcx.features().unsized_locals {
-            fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType);
+            fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType(ty_span));
         }
 
         fcx.write_ty(param.hir_id, param_ty);
