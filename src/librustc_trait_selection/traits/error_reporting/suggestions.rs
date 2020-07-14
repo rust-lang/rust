@@ -1882,7 +1882,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable,
                 );
                 err.multipart_suggestion(
-                    "heap allocated types always have a statically known size",
+                    "the `Box` type always has a statically known size and allocates its contents \
+                     in the heap",
                     vec![
                         (span.shrink_to_lo(), "Box<".to_string()),
                         (span.shrink_to_hi(), ">".to_string()),

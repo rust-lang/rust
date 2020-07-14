@@ -13,7 +13,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VA(&W),
    |        ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VA(Box<W>),
    |        ^^^^ ^
@@ -33,7 +33,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VB{x: &X},
    |           ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VB{x: Box<X>},
    |           ^^^^ ^
@@ -53,7 +53,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VC(isize, &Y),
    |               ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VC(isize, Box<Y>),
    |               ^^^^ ^
@@ -73,7 +73,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VD{u: isize, x: &Z},
    |                     ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VD{u: isize, x: Box<Z>},
    |                     ^^^^ ^
@@ -91,7 +91,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VE(&[u8]),
    |        ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VE(Box<[u8]>),
    |        ^^^^    ^
@@ -109,7 +109,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VF{x: &str},
    |           ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VF{x: Box<str>},
    |           ^^^^   ^
@@ -127,7 +127,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VG(isize, &[f32]),
    |               ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VG(isize, Box<[f32]>),
    |               ^^^^     ^
@@ -145,7 +145,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VH{u: isize, x: &[u32]},
    |                     ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VH{u: isize, x: Box<[u32]>},
    |                     ^^^^     ^
@@ -163,7 +163,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VM(&dyn Foo),
    |        ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VM(Box<dyn Foo>),
    |        ^^^^       ^
@@ -181,7 +181,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VN{x: &dyn Bar},
    |           ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VN{x: Box<dyn Bar>},
    |           ^^^^       ^
@@ -199,7 +199,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VO(isize, &dyn FooBar),
    |               ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VO(isize, Box<dyn FooBar>),
    |               ^^^^          ^
@@ -217,7 +217,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VP{u: isize, x: &dyn BarFoo},
    |                     ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VP{u: isize, x: Box<dyn BarFoo>},
    |                     ^^^^          ^
@@ -235,7 +235,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VQ(&<&'static [i8] as Deref>::Target),
    |        ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VQ(Box<<&'static [i8] as Deref>::Target>),
    |        ^^^^                                ^
@@ -253,7 +253,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VR{x: &<&'static [char] as Deref>::Target},
    |           ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VR{x: Box<<&'static [char] as Deref>::Target>},
    |           ^^^^                                  ^
@@ -271,7 +271,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VS(isize, &<&'static [f64] as Deref>::Target),
    |               ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VS(isize, Box<<&'static [f64] as Deref>::Target>),
    |               ^^^^                                 ^
@@ -289,7 +289,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VT{u: isize, x: &<&'static [i32] as Deref>::Target},
    |                     ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VT{u: isize, x: Box<<&'static [i32] as Deref>::Target>},
    |                     ^^^^                                 ^
@@ -308,7 +308,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VI(&Path1),
    |        ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VI(Box<Path1>),
    |        ^^^^     ^
@@ -327,7 +327,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VJ{x: &Path2},
    |           ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VJ{x: Box<Path2>},
    |           ^^^^     ^
@@ -346,7 +346,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VK(isize, &Path3),
    |               ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VK(isize, Box<Path3>),
    |               ^^^^     ^
@@ -365,7 +365,7 @@ help: borrowed types always have a statically known size
    |
 LL |     VL{u: isize, x: &Path4},
    |                     ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     VL{u: isize, x: Box<Path4>},
    |                     ^^^^     ^

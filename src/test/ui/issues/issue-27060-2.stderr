@@ -12,7 +12,7 @@ help: borrowed types always have a statically known size
    |
 LL |     data: &T,
    |           ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     data: Box<T>,
    |           ^^^^ ^

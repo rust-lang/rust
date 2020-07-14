@@ -12,7 +12,7 @@ help: borrowed types always have a statically known size
    |
 LL |     value: &T,
    |            ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     value: Box<T>,
    |            ^^^^ ^
@@ -31,7 +31,7 @@ help: borrowed types always have a statically known size
    |
 LL |     value: &T,
    |            ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     value: Box<T>,
    |            ^^^^ ^
@@ -50,7 +50,7 @@ help: borrowed types always have a statically known size
    |
 LL |     Value(&T),
    |           ^
-help: heap allocated types always have a statically known size
+help: the `Box` type always has a statically known size and allocates its contents in the heap
    |
 LL |     Value(Box<T>),
    |           ^^^^ ^
