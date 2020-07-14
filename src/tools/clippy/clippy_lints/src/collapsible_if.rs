@@ -115,7 +115,7 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
                 COLLAPSIBLE_IF,
                 block.span,
                 "this `else { if .. }` block can be collapsed",
-                "try",
+                "collapse nested if block",
                 snippet_block_with_applicability(cx, else_.span, "..", Some(block.span), &mut applicability).into_owned(),
                 applicability,
             );
@@ -142,7 +142,7 @@ fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &
                 let rhs = Sugg::ast(cx, check_inner, "..");
                 diag.span_suggestion(
                     expr.span,
-                    "try",
+                    "collapse nested if block",
                     format!(
                         "if {} {}",
                         lhs.and(&rhs),

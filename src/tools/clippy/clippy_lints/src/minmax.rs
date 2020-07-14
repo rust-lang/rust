@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for MinMaxPass {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum MinMax {
     Min,
     Max,
@@ -86,16 +86,15 @@ fn fetch_const<'a>(cx: &LateContext<'_>, args: &'a [Expr<'a>], m: MinMax) -> Opt
     if args.len() != 2 {
         return None;
     }
-    if let Some(c) = constant_simple(cx, cx.tables(), &args[0]) {
-        if constant_simple(cx, cx.tables(), &args[1]).is_none() {
-            // otherwise ignore
-            Some((m, c, &args[1]))
-        } else {
-            None
-        }
-    } else if let Some(c) = constant_simple(cx, cx.tables(), &args[1]) {
-        Some((m, c, &args[0]))
-    } else {
-        None
-    }
+    constant_simple(cx, cx.tables(), &args[0]).map_or_else(
+        || constant_simple(cx, cx.tables(), &args[1]).map(|c| (m, c, &args[0])),
+        |c| {
+            if constant_simple(cx, cx.tables(), &args[1]).is_none() {
+                // otherwise ignore
+                Some((m, c, &args[1]))
+            } else {
+                None
+            }
+        },
+    )
 }

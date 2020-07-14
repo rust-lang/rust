@@ -11,7 +11,7 @@ fn main() {
     let _ = std::f32::consts::E.powf(-3.1);
     let _ = x.powf(1.0 / 2.0);
     let _ = x.powf(1.0 / 3.0);
-    let _ = x.powf(2.0);
+    let _ = x.powf(3.0);
     let _ = x.powf(-2.0);
     let _ = x.powf(16_777_215.0);
     let _ = x.powf(-16_777_215.0);
@@ -30,7 +30,7 @@ fn main() {
     let _ = std::f64::consts::E.powf(-3.1);
     let _ = x.powf(1.0 / 2.0);
     let _ = x.powf(1.0 / 3.0);
-    let _ = x.powf(2.0);
+    let _ = x.powf(3.0);
     let _ = x.powf(-2.0);
     let _ = x.powf(-2_147_483_648.0);
     let _ = x.powf(2_147_483_647.0);

@@ -703,6 +703,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                     for segment in path.segments {
                         segment.ident.name.hash(&mut self.s);
+                        self.hash_generic_args(segment.generic_args().args);
                     }
                 },
                 QPath::TypeRelative(ref ty, ref segment) => {
@@ -711,13 +712,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 },
             },
             TyKind::OpaqueDef(_, arg_list) => {
-                for arg in *arg_list {
-                    match arg {
-                        GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
-                        GenericArg::Type(ref ty) => self.hash_ty(&ty),
-                        GenericArg::Const(ref ca) => self.hash_body(ca.value.body),
-                    }
-                }
+                self.hash_generic_args(arg_list);
             },
             TyKind::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
@@ -734,5 +729,15 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         let old_maybe_typeck_tables = self.maybe_typeck_tables.replace(self.cx.tcx.body_tables(body_id));
         self.hash_expr(&self.cx.tcx.hir().body(body_id).value);
         self.maybe_typeck_tables = old_maybe_typeck_tables;
+    }
+
+    fn hash_generic_args(&mut self, arg_list: &[GenericArg<'_>]) {
+        for arg in arg_list {
+            match arg {
+                GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
+                GenericArg::Type(ref ty) => self.hash_ty(&ty),
+                GenericArg::Const(ref ca) => self.hash_body(ca.value.body),
+            }
+        }
     }
 }

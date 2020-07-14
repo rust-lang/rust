@@ -214,20 +214,20 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
 }
 
 fn is_valid_operator(op: BinOp) -> bool {
-    match op.node {
+    matches!(
+        op.node,
         BinOpKind::Sub
-        | BinOpKind::Div
-        | BinOpKind::Eq
-        | BinOpKind::Lt
-        | BinOpKind::Le
-        | BinOpKind::Gt
-        | BinOpKind::Ge
-        | BinOpKind::Ne
-        | BinOpKind::And
-        | BinOpKind::Or
-        | BinOpKind::BitXor
-        | BinOpKind::BitAnd
-        | BinOpKind::BitOr => true,
-        _ => false,
-    }
+            | BinOpKind::Div
+            | BinOpKind::Eq
+            | BinOpKind::Lt
+            | BinOpKind::Le
+            | BinOpKind::Gt
+            | BinOpKind::Ge
+            | BinOpKind::Ne
+            | BinOpKind::And
+            | BinOpKind::Or
+            | BinOpKind::BitXor
+            | BinOpKind::BitAnd
+            | BinOpKind::BitOr
+    )
 }

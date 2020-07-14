@@ -1,0 +1,19 @@
+error: type of pattern does not match the expression type
+  --> $DIR/mutability.rs:9:9
+   |
+LL |         Some(_) => (),
+   |         ^^^^^^^
+   |
+   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/mutability.rs:15:9
+   |
+LL |         Some(_) => (),
+   |         ^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&mut _` pattern and adjust the enclosed variable bindings
+
+error: aborting due to 2 previous errors
+

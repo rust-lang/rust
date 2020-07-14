@@ -775,11 +775,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitArg {
                     .iter()
                     .filter(|arg| {
                         if is_unit(cx.tables().expr_ty(arg)) && !is_unit_literal(arg) {
-                            if let ExprKind::Match(.., MatchSource::TryDesugar) = &arg.kind {
-                                false
-                            } else {
-                                true
-                            }
+                            !matches!(&arg.kind, ExprKind::Match(.., MatchSource::TryDesugar))
                         } else {
                             false
                         }
@@ -899,17 +895,11 @@ fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
 }
 
 fn is_unit(ty: Ty<'_>) -> bool {
-    match ty.kind {
-        ty::Tuple(slice) if slice.is_empty() => true,
-        _ => false,
-    }
+    matches!(ty.kind, ty::Tuple(slice) if slice.is_empty())
 }
 
 fn is_unit_literal(expr: &Expr<'_>) -> bool {
-    match expr.kind {
-        ExprKind::Tup(ref slice) if slice.is_empty() => true,
-        _ => false,
-    }
+    matches!(expr.kind, ExprKind::Tup(ref slice) if slice.is_empty())
 }
 
 declare_clippy_lint! {
@@ -1154,10 +1144,7 @@ fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_>) -> u64 {
 }
 
 fn is_isize_or_usize(typ: Ty<'_>) -> bool {
-    match typ.kind {
-        ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => true,
-        _ => false,
-    }
+    matches!(typ.kind, ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
 }
 
 fn span_precision_loss_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to_f64: bool) {
@@ -1205,16 +1192,19 @@ fn span_lossless_lint(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast
     // has parens on the outside, they are no longer needed.
     let mut applicability = Applicability::MachineApplicable;
     let opt = snippet_opt(cx, op.span);
-    let sugg = if let Some(ref snip) = opt {
-        if should_strip_parens(op, snip) {
-            &snip[1..snip.len() - 1]
-        } else {
-            snip.as_str()
-        }
-    } else {
-        applicability = Applicability::HasPlaceholders;
-        ".."
-    };
+    let sugg = opt.as_ref().map_or_else(
+        || {
+            applicability = Applicability::HasPlaceholders;
+            ".."
+        },
+        |snip| {
+            if should_strip_parens(op, snip) {
+                &snip[1..snip.len() - 1]
+            } else {
+                snip.as_str()
+            }
+        },
+    );
 
     span_lint_and_sugg(
         cx,
@@ -1734,10 +1724,10 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
 
             TyKind::TraitObject(ref param_bounds, _) => {
                 let has_lifetime_parameters = param_bounds.iter().any(|bound| {
-                    bound.bound_generic_params.iter().any(|gen| match gen.kind {
-                        GenericParamKind::Lifetime { .. } => true,
-                        _ => false,
-                    })
+                    bound
+                        .bound_generic_params
+                        .iter()
+                        .any(|gen| matches!(gen.kind, GenericParamKind::Lifetime { .. }))
                 });
                 if has_lifetime_parameters {
                     // complex trait bounds like A<'a, 'b>

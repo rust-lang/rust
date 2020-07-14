@@ -18,4 +18,9 @@ fn main() {
 
     let _ = a.mul_add(b, c) * a.mul_add(b, c) + a.mul_add(b, c) + c;
     let _ = 1234.567_f64 * 45.67834_f64 + 0.0004_f64;
+
+    let _ = (a * a + b).sqrt();
+
+    // Cases where the lint shouldn't be applied
+    let _ = (a * a + b * b).sqrt();
 }

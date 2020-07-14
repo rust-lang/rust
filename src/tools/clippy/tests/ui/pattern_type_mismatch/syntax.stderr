@@ -1,0 +1,79 @@
+error: type of pattern does not match the expression type
+  --> $DIR/syntax.rs:11:9
+   |
+LL |         Some(_) => (),
+   |         ^^^^^^^
+   |
+   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/syntax.rs:30:12
+   |
+LL |     if let Some(_) = ref_value {}
+   |            ^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/syntax.rs:41:15
+   |
+LL |     while let Some(_) = ref_value {
+   |               ^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/syntax.rs:59:9
+   |
+LL |     for (_a, _b) in slice.iter() {}
+   |         ^^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/syntax.rs:69:9
+   |
+LL |     let (_n, _m) = ref_value;
+   |         ^^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/syntax.rs:78:12
+   |
+LL |     fn foo((_a, _b): &(i32, i32)) {}
+   |            ^^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/syntax.rs:92:10
+   |
+LL |     foo(|(_a, _b)| ());
+   |          ^^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/syntax.rs:108:9
+   |
+LL |         Some(_) => (),
+   |         ^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/syntax.rs:128:17
+   |
+LL |                 Some(_) => (),
+   |                 ^^^^^^^
+...
+LL |     matching_macro!(value);
+   |     ----------------------- in this macro invocation
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 9 previous errors
+

@@ -73,9 +73,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
 fn lint_deref(cx: &LateContext<'_>, method_name: &str, call_expr: &Expr<'_>, var_span: Span, expr_span: Span) {
     match method_name {
         "deref" => {
-            if cx.tcx.lang_items().deref_trait().map_or(false, |id| {
+            let impls_deref_trait = cx.tcx.lang_items().deref_trait().map_or(false, |id| {
                 implements_trait(cx, cx.tables().expr_ty(&call_expr), id, &[])
-            }) {
+            });
+            if impls_deref_trait {
                 span_lint_and_sugg(
                     cx,
                     EXPLICIT_DEREF_METHODS,
@@ -88,9 +89,10 @@ fn lint_deref(cx: &LateContext<'_>, method_name: &str, call_expr: &Expr<'_>, var
             }
         },
         "deref_mut" => {
-            if cx.tcx.lang_items().deref_mut_trait().map_or(false, |id| {
+            let impls_deref_mut_trait = cx.tcx.lang_items().deref_mut_trait().map_or(false, |id| {
                 implements_trait(cx, cx.tables().expr_ty(&call_expr), id, &[])
-            }) {
+            });
+            if impls_deref_mut_trait {
                 span_lint_and_sugg(
                     cx,
                     EXPLICIT_DEREF_METHODS,
