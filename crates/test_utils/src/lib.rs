@@ -180,7 +180,7 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
     let mut prev_line_start: Option<TextSize> = None;
     let mut line_start: TextSize = 0.into();
     for line in lines_with_ends(text) {
-        if let Some(idx) = line.find("//^") {
+        if let Some(idx) = line.find("//") {
             let offset = prev_line_start.unwrap() + TextSize::of(&line[..idx + "//".len()]);
             for (line_range, text) in extract_line_annotations(&line[idx + "//".len()..]) {
                 res.push((line_range + offset, text))
@@ -195,7 +195,15 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
 fn extract_line_annotations(mut line: &str) -> Vec<(TextRange, String)> {
     let mut res = Vec::new();
     let mut offset: TextSize = 0.into();
-    while !line.is_empty() {
+    loop {
+        match line.find('^') {
+            Some(idx) => {
+                offset += TextSize::try_from(idx).unwrap();
+                line = &line[idx..];
+            }
+            None => break,
+        };
+
         let len = line.chars().take_while(|&it| it == '^').count();
         assert!(len > 0);
         let range = TextRange::at(offset, len.try_into().unwrap());
