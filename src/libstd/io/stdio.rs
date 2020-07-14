@@ -875,8 +875,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// Equivalent to the [`input`] method except that a prompt
 /// is printed before capturing input. This function returns
 /// either success ([`Ok`]) or failure ([`Err`]) containing
-/// the input. See the [`io::result`] module documentation
-/// for details.
+/// the input.
 ///
 /// # Note
 ///
@@ -915,8 +914,7 @@ pub fn prompt(prompt: &str) -> Result<String> {
 /// Constructs a new handle to the standard input of the current
 /// process, locks this handle and reads a line of input, returning
 /// either success ([`Ok`]) or failure ([`Err`]) containing the input.
-/// See the [`io::result`] module documentation for details. For
-/// automatic prompt handling, see the [`prompt`] method.
+/// For automatic prompt handling, see the [`prompt`] method.
 ///
 /// If you need more explicit control over
 /// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
