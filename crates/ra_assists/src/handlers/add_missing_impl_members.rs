@@ -159,7 +159,7 @@ fn add_missing_impl_members_inner(
             .map(|it| match it {
                 ast::AssocItem::FnDef(def) => ast::AssocItem::FnDef(add_body(def)),
                 ast::AssocItem::TypeAliasDef(def) => {
-                    ast::AssocItem::TypeAliasDef(remove_bounds(def))
+                    ast::AssocItem::TypeAliasDef(def.remove_bounds())
                 }
                 _ => it,
             })
@@ -189,14 +189,6 @@ fn add_missing_impl_members_inner(
             }
         };
     })
-}
-
-fn remove_bounds(ty_def: ast::TypeAliasDef) -> ast::TypeAliasDef {
-    if let Some(name) = ty_def.name() {
-        make::type_alias_def(name, None, ty_def.type_ref())
-    } else {
-        ty_def
-    }
 }
 
 fn add_body(fn_def: ast::FnDef) -> ast::FnDef {

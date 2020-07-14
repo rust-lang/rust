@@ -64,19 +64,6 @@ pub fn use_item(use_tree: ast::UseTree) -> ast::UseItem {
     ast_from_text(&format!("use {};", use_tree))
 }
 
-pub fn type_alias_def(
-    name: ast::Name,
-    bounds: Option<ast::TypeBoundList>,
-    ty: Option<ast::TypeRef>,
-) -> ast::TypeAliasDef {
-    match (bounds, ty) {
-        (None, None) => ast_from_text(&format!("type {};", name)),
-        (None, Some(ty)) => ast_from_text(&format!("type {} = {};", name, ty)),
-        (Some(bounds), None) => ast_from_text(&format!("type {}: {};", name, bounds)),
-        (Some(bounds), Some(ty)) => ast_from_text(&format!("type {}: {} = {};", name, bounds, ty)),
-    }
-}
-
 pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
     return match expr {
         Some(expr) => from_text(&format!("{}: {}", name, expr)),
