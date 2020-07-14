@@ -376,7 +376,7 @@ pub fn record_pattern_missing_fields(
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::check_diagnostics;
+    use crate::diagnostics::tests::check_diagnostics;
 
     #[test]
     fn simple_free_fn_zero() {

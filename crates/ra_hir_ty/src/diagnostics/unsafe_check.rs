@@ -121,3 +121,53 @@ fn walk_unsafe(
         walk_unsafe(unsafe_exprs, db, infer, body, child, inside_unsafe_block);
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::diagnostics::tests::check_diagnostics;
+
+    #[test]
+    fn missing_unsafe_diagnostic_with_raw_ptr() {
+        check_diagnostics(
+            r#"
+fn main() {
+    let x = &5 as *const usize;
+    unsafe { let y = *x; }
+    let z = *x;
+}         //^^ This operation is unsafe and requires an unsafe function or block
+"#,
+        )
+    }
+
+    #[test]
+    fn missing_unsafe_diagnostic_with_unsafe_call() {
+        check_diagnostics(
+            r#"
+struct HasUnsafe;
+
+impl HasUnsafe {
+    unsafe fn unsafe_fn(&self) {
+        let x = &5 as *const usize;
+        let y = *x;
+    }
+}
+
+unsafe fn unsafe_fn() {
+    let x = &5 as *const usize;
+    let y = *x;
+}
+
+fn main() {
+    unsafe_fn();
+  //^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
+    HasUnsafe.unsafe_fn();
+  //^^^^^^^^^^^^^^^^^^^^^ This operation is unsafe and requires an unsafe function or block
+    unsafe {
+        unsafe_fn();
+        HasUnsafe.unsafe_fn();
+    }
+}
+"#,
+        );
+    }
+}

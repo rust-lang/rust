@@ -837,7 +837,7 @@ fn enum_variant_matches(cx: &MatchCheckCtx, pat_id: PatId, enum_variant_id: Enum
 
 #[cfg(test)]
 mod tests {
-    use crate::diagnostics::check_diagnostics;
+    use crate::diagnostics::tests::check_diagnostics;
 
     #[test]
     fn empty_tuple() {
