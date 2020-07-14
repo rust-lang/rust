@@ -420,6 +420,7 @@ fn test_codegen_options_tracking_hash() {
     // Make sure that changing a [TRACKED] option changes the hash.
     // This list is in alphabetical order.
     tracked!(code_model, Some(CodeModel::Large));
+    tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
     tracked!(debuginfo, 0xdeadbeef);
     tracked!(embed_bitcode, false);
@@ -537,7 +538,6 @@ fn test_debugging_options_tracking_hash() {
     tracked!(binary_dep_depinfo, true);
     tracked!(chalk, true);
     tracked!(codegen_backend, Some("abc".to_string()));
-    tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);

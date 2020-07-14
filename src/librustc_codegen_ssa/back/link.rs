@@ -1700,7 +1700,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    if sess.opts.debugging_opts.control_flow_guard != CFGuard::Disabled {
+    if sess.opts.cg.control_flow_guard != CFGuard::Disabled {
         cmd.control_flow_guard();
     }
 
