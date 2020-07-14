@@ -179,31 +179,80 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
     let mut res = Vec::new();
     let mut prev_line_start: Option<TextSize> = None;
     let mut line_start: TextSize = 0.into();
+    let mut prev_line_annotations: Vec<(TextSize, usize)> = Vec::new();
     for line in lines_with_ends(text) {
-        if let Some(idx) = line.find("//^") {
-            let offset = prev_line_start.unwrap() + TextSize::of(&line[..idx + "//".len()]);
-            for (line_range, text) in extract_line_annotations(&line[idx + "//".len()..]) {
-                res.push((line_range + offset, text))
+        let mut this_line_annotations = Vec::new();
+        if let Some(idx) = line.find("//") {
+            let annotation_offset = TextSize::of(&line[..idx + "//".len()]);
+            for annotation in extract_line_annotations(&line[idx + "//".len()..]) {
+                match annotation {
+                    LineAnnotation::Annotation { mut range, content } => {
+                        range += annotation_offset;
+                        this_line_annotations.push((range.end(), res.len()));
+                        res.push((range + prev_line_start.unwrap(), content))
+                    }
+                    LineAnnotation::Continuation { mut offset, content } => {
+                        offset += annotation_offset;
+                        let &(_, idx) = prev_line_annotations
+                            .iter()
+                            .find(|&&(off, _idx)| off == offset)
+                            .unwrap();
+                        res[idx].1.push('\n');
+                        res[idx].1.push_str(&content);
+                        res[idx].1.push('\n');
+                    }
+                }
             }
         }
+
         prev_line_start = Some(line_start);
         line_start += TextSize::of(line);
+
+        prev_line_annotations = this_line_annotations;
     }
     res
 }
 
-fn extract_line_annotations(mut line: &str) -> Vec<(TextRange, String)> {
+enum LineAnnotation {
+    Annotation { range: TextRange, content: String },
+    Continuation { offset: TextSize, content: String },
+}
+
+fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
     let mut res = Vec::new();
     let mut offset: TextSize = 0.into();
-    while !line.is_empty() {
-        let len = line.chars().take_while(|&it| it == '^').count();
-        assert!(len > 0);
+    let marker: fn(char) -> bool = if line.contains('^') { |c| c == '^' } else { |c| c == '|' };
+    loop {
+        match line.find(marker) {
+            Some(idx) => {
+                offset += TextSize::try_from(idx).unwrap();
+                line = &line[idx..];
+            }
+            None => break,
+        };
+
+        let mut len = line.chars().take_while(|&it| it == '^').count();
+        let mut continuation = false;
+        if len == 0 {
+            assert!(line.starts_with('|'));
+            continuation = true;
+            len = 1;
+        }
         let range = TextRange::at(offset, len.try_into().unwrap());
-        let next = line[len..].find('^').map_or(line.len(), |it| it + len);
-        res.push((range, line[len..][..next - len].trim().to_string()));
+        let next = line[len..].find(marker).map_or(line.len(), |it| it + len);
+        let content = line[len..][..next - len].trim().to_string();
+
+        let annotation = if continuation {
+            LineAnnotation::Continuation { offset: range.end(), content }
+        } else {
+            LineAnnotation::Annotation { range, content }
+        };
+        res.push(annotation);
+
         line = &line[next..];
         offset += TextSize::try_from(next).unwrap();
     }
+
     res
 }
 
@@ -215,14 +264,18 @@ fn main() {
     let (x,     y) = (9, 2);
        //^ def  ^ def
     zoo + 1
-} //^^^ i32
+} //^^^ type:
+  //  | i32
     "#,
     );
     let res = extract_annotations(&text)
         .into_iter()
         .map(|(range, ann)| (&text[range], ann))
         .collect::<Vec<_>>();
-    assert_eq!(res, vec![("x", "def".into()), ("y", "def".into()), ("zoo", "i32".into()),]);
+    assert_eq!(
+        res,
+        vec![("x", "def".into()), ("y", "def".into()), ("zoo", "type:\ni32\n".into()),]
+    );
 }
 
 // Comparison functionality borrowed from cargo:

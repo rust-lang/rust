@@ -261,8 +261,7 @@ fn check_diagnostics(ra_fixture: &str) {
         // FXIME: macros...
         let file_id = d.source().file_id.original_file(&db);
         let range = d.syntax_node(&db).text_range();
-        // FIXME: support multi-line messages in annotations
-        let message = d.message().lines().next().unwrap().to_owned();
+        let message = d.message().to_owned();
         actual.entry(file_id).or_default().push((range, message));
     });
     actual.values_mut().for_each(|diags| diags.sort_by_key(|it| it.0.start()));

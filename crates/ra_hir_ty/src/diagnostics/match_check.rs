@@ -1162,12 +1162,14 @@ fn main() {
     match a {
         Either::A { } => (),
                 //^^^ Missing structure fields:
+                //  | - foo
         Either::B => (),
     }
     match a {
         //^ Missing match arm
         Either::A { } => (),
     }           //^^^ Missing structure fields:
+                //  | - foo
 
     match a {
         Either::A { foo: true } => (),
