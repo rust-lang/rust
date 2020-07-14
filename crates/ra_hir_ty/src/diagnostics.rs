@@ -1,4 +1,7 @@
 //! FIXME: write short doc here
+pub mod expr;
+mod match_check;
+pub mod unsafe_check;
 
 use std::any::Any;
 

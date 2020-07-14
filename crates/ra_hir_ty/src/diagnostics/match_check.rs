@@ -218,15 +218,16 @@
 //!   ```
 use std::sync::Arc;
 
+use hir_def::{
+    adt::VariantData,
+    body::Body,
+    expr::{Expr, Literal, Pat, PatId},
+    AdtId, EnumVariantId, VariantId,
+};
+use ra_arena::Idx;
 use smallvec::{smallvec, SmallVec};
 
-use crate::{
-    db::HirDatabase,
-    expr::{Body, Expr, Literal, Pat, PatId},
-    ApplicationTy, InferenceResult, Ty, TypeCtor,
-};
-use hir_def::{adt::VariantData, AdtId, EnumVariantId, VariantId};
-use ra_arena::Idx;
+use crate::{db::HirDatabase, ApplicationTy, InferenceResult, Ty, TypeCtor};
 
 #[derive(Debug, Clone, Copy)]
 /// Either a pattern from the source code being analyzed, represented as

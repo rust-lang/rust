@@ -24,12 +24,10 @@ use hir_expand::{
 };
 use hir_ty::{
     autoderef,
+    diagnostics::{expr::ExprValidator, unsafe_check::UnsafeValidator},
     display::{HirDisplayError, HirFormatter},
-    expr::ExprValidator,
-    method_resolution,
-    unsafe_validation::UnsafeValidator,
-    ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs, TraitEnvironment, Ty,
-    TyDefId, TypeCtor,
+    method_resolution, ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs,
+    TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;

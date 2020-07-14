@@ -10,9 +10,9 @@ use rustc_hash::FxHashSet;
 use crate::{
     db::HirDatabase,
     diagnostics::{
+        match_check::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
         MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkInTailExpr, MissingPatFields,
     },
-    match_checking::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
     utils::variant_data,
     ApplicationTy, InferenceResult, Ty, TypeCtor,
 };

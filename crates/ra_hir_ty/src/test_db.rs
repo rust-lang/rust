@@ -14,8 +14,8 @@ use stdx::format_to;
 use test_utils::extract_annotations;
 
 use crate::{
-    db::HirDatabase, diagnostics::Diagnostic, expr::ExprValidator,
-    unsafe_validation::UnsafeValidator,
+    db::HirDatabase,
+    diagnostics::{expr::ExprValidator, unsafe_check::UnsafeValidator, Diagnostic},
 };
 
 #[salsa::database(
