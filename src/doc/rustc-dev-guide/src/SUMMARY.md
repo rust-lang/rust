@@ -145,7 +145,7 @@
 
 ---
 
-[Appendix A: Background material](./appendix/background.md)
+[Appendix A: Background topics](./appendix/background.md)
 [Appendix B: Glossary](./appendix/glossary.md)
 [Appendix C: Code Index](./appendix/code-index.md)
 [Appendix D: Compiler Lecture Series](./appendix/compiler-lecture.md)
