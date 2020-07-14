@@ -96,7 +96,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
-                            substs,
+                            substs.as_closure(),
                             ty::ClosureKind::FnOnce,
                         );
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));

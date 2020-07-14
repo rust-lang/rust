@@ -224,7 +224,6 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         if let hir::ExprKind::Closure(..) = expr.kind {
             let def_id = self.tcx.hir().local_def_id(expr.hir_id);
             self.tcx.ensure().generics_of(def_id);
-            self.tcx.ensure().type_of(def_id);
         }
         intravisit::walk_expr(self, expr);
     }
@@ -1361,29 +1360,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             None
         }
     }));
-
-    // provide junk type parameter defs - the only place that
-    // cares about anything but the length is instantiation,
-    // and we don't do that for closures.
-    if let Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(.., gen), .. }) = node {
-        let dummy_args = if gen.is_some() {
-            &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
-        } else {
-            &["<closure_kind>", "<closure_signature>", "<upvars>"][..]
-        };
-
-        params.extend(dummy_args.iter().enumerate().map(|(i, &arg)| ty::GenericParamDef {
-            index: type_start + i as u32,
-            name: Symbol::intern(arg),
-            def_id,
-            pure_wrt_drop: false,
-            kind: ty::GenericParamDefKind::Type {
-                has_default: false,
-                object_lifetime_default: rl::Set1::Empty,
-                synthetic: None,
-            },
-        }));
-    }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
 

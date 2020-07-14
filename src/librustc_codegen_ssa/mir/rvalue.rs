@@ -211,7 +211,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 let instance = Instance::resolve_closure(
                                     bx.cx().tcx(),
                                     def_id,
-                                    substs,
+                                    substs.as_closure(),
                                     ty::ClosureKind::FnOnce,
                                 );
                                 OperandValue::Immediate(bx.cx().get_fn_addr(instance))

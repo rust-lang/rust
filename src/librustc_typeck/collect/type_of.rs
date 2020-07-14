@@ -177,13 +177,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Field(field) => icx.to_ty(&field.ty),
 
-        Node::Expr(&Expr { kind: ExprKind::Closure(.., gen), .. }) => {
-            let substs = InternalSubsts::identity_for_item(tcx, def_id);
-            if let Some(movability) = gen {
-                tcx.mk_generator(def_id, substs, movability)
-            } else {
-                tcx.mk_closure(def_id, substs)
-            }
+        Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => {
+            tcx.typeck_tables_of(def_id.expect_local()).node_type(hir_id)
         }
 
         Node::AnonConst(_) => {

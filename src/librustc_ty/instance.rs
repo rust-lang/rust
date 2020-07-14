@@ -190,7 +190,7 @@ fn resolve_associated_item<'tcx>(
             Some(Instance::resolve_closure(
                 tcx,
                 closure_data.closure_def_id,
-                closure_data.substs,
+                closure_data.substs.as_closure(),
                 trait_closure_kind,
             ))
         }
