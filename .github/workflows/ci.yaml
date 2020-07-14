@@ -95,6 +95,40 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: Remove-Item ./target/debug/xtask.exe, ./target/debug/deps/xtask.exe
 
+  # Weird target to catch non-portable code
+  rust-power:
+    name: Rust Power
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        target: 'powerpc-unknown-linux-gnu'
+
+    - run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
+
+    - name: Cache cargo registry
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo index
+      uses: actions/cache@v1
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Check
+      run: cargo check --target=powerpc-unknown-linux-gnu --all-targets
+
   typescript:
     name: TypeScript
     strategy:
@@ -103,7 +137,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
