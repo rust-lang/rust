@@ -1,0 +1,10 @@
+warning: `[PrivateType]` public documentation for `public_item` links to a private item
+  --> $DIR/issue-74134.rs:19:10
+   |
+LL |     /// [`PrivateType`]
+   |          ^^^^^^^^^^^^^ this item is private
+   |
+   = note: `#[warn(intra_doc_link_resolution_failure)]` on by default
+
+warning: 1 warning emitted
+
