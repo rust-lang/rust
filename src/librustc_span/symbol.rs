@@ -564,6 +564,7 @@ symbols! {
         nomem,
         non_ascii_idents,
         None,
+        none_error,
         non_exhaustive,
         non_modrs_mods,
         nontemporal_store,
