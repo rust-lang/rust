@@ -4,7 +4,6 @@ use std::thread;
 
 fn configure(host: &[&str], target: &[&str]) -> Config {
     let mut config = Config::default_opts();
-    config.stage = Some(2);
     // don't save toolstates
     config.save_toolstates = None;
     config.skip_only_host_steps = false;
@@ -34,10 +33,100 @@ fn first<A, B>(v: Vec<(A, B)>) -> Vec<A> {
     v.into_iter().map(|(a, _)| a).collect::<Vec<_>>()
 }
 
-mod dist {
+mod defaults {
     use super::{configure, first};
     use crate::builder::*;
+    use crate::Config;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn build_default() {
+        let build = Build::new(configure(&[], &[]));
+        let mut builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
+
+        let a = TargetSelection::from_user("A");
+        assert_eq!(
+            first(builder.cache.all::<compile::Std>()),
+            &[
+                compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },
+                compile::Std { compiler: Compiler { host: a, stage: 1 }, target: a },
+            ]
+        );
+        assert!(!builder.cache.all::<compile::Assemble>().is_empty());
+        // Make sure rustdoc is only built once.
+        assert_eq!(
+            first(builder.cache.all::<tool::Rustdoc>()),
+            // Recall that rustdoc stages are off-by-one
+            // - this is the compiler it's _linked_ to, not built with.
+            &[tool::Rustdoc { compiler: Compiler { host: a, stage: 1 } }],
+        );
+        assert_eq!(
+            first(builder.cache.all::<compile::Rustc>()),
+            &[compile::Rustc { compiler: Compiler { host: a, stage: 0 }, target: a },]
+        );
+    }
+
+    #[test]
+    fn build_stage_0() {
+        let config = Config { stage: Some(0), ..configure(&[], &[]) };
+        let build = Build::new(config);
+        let mut builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
+
+        let a = TargetSelection::from_user("A");
+        assert_eq!(
+            first(builder.cache.all::<compile::Std>()),
+            &[compile::Std { compiler: Compiler { host: a, stage: 0 }, target: a },]
+        );
+        assert!(!builder.cache.all::<compile::Assemble>().is_empty());
+        assert_eq!(
+            first(builder.cache.all::<tool::Rustdoc>()),
+            // This is the beta rustdoc.
+            // Add an assert here to make sure this is the only rustdoc built.
+            &[tool::Rustdoc { compiler: Compiler { host: a, stage: 0 } }],
+        );
+        assert!(builder.cache.all::<compile::Rustc>().is_empty());
+    }
+
+    #[test]
+    fn doc_default() {
+        let mut config = configure(&[], &[]);
+        config.compiler_docs = true;
+        config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
+        let build = Build::new(config);
+        let mut builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
+        let a = TargetSelection::from_user("A");
+
+        // error_index_generator uses stage 0 to share rustdoc artifacts with the
+        // rustdoc tool.
+        assert_eq!(
+            first(builder.cache.all::<doc::ErrorIndex>()),
+            &[doc::ErrorIndex { compiler: Compiler { host: a, stage: 0 }, target: a },]
+        );
+        assert_eq!(
+            first(builder.cache.all::<tool::ErrorIndex>()),
+            &[tool::ErrorIndex { compiler: Compiler { host: a, stage: 0 } }]
+        );
+        // docs should be built with the beta compiler, not with the stage0 artifacts.
+        // recall that rustdoc is off-by-one: `stage` is the compiler rustdoc is _linked_ to,
+        // not the one it was built by.
+        assert_eq!(
+            first(builder.cache.all::<tool::Rustdoc>()),
+            &[tool::Rustdoc { compiler: Compiler { host: a, stage: 0 } },]
+        );
+    }
+}
+
+mod dist {
+    use super::{first, Config};
+    use crate::builder::*;
+    use pretty_assertions::assert_eq;
+
+    fn configure(host: &[&str], target: &[&str]) -> Config {
+        Config { stage: Some(2), ..super::configure(host, target) }
+    }
 
     #[test]
     fn dist_baseline() {
@@ -276,7 +365,7 @@ mod dist {
     }
 
     #[test]
-    fn build_default() {
+    fn build_all() {
         let build = Build::new(configure(&["B"], &["C"]));
         let mut builder = Builder::new(&build);
         builder.run_step_descriptions(
