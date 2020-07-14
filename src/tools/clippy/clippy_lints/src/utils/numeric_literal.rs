@@ -51,7 +51,7 @@ impl<'a> NumericLiteral<'a> {
     pub fn from_lit_kind(src: &'a str, lit_kind: &LitKind) -> Option<NumericLiteral<'a>> {
         if lit_kind.is_numeric() && src.chars().next().map_or(false, |c| c.is_digit(10)) {
             let (unsuffixed, suffix) = split_suffix(&src, lit_kind);
-            let float = if let LitKind::Float(..) = lit_kind { true } else { false };
+            let float = matches!(lit_kind, LitKind::Float(..));
             Some(NumericLiteral::new(unsuffixed, suffix, float))
         } else {
             None
@@ -200,12 +200,10 @@ impl<'a> NumericLiteral<'a> {
 
 fn split_suffix<'a>(src: &'a str, lit_kind: &LitKind) -> (&'a str, Option<&'a str>) {
     debug_assert!(lit_kind.is_numeric());
-    if let Some(suffix_length) = lit_suffix_length(lit_kind) {
+    lit_suffix_length(lit_kind).map_or((src, None), |suffix_length| {
         let (unsuffixed, suffix) = src.split_at(src.len() - suffix_length);
         (unsuffixed, Some(suffix))
-    } else {
-        (src, None)
-    }
+    })
 }
 
 fn lit_suffix_length(lit_kind: &LitKind) -> Option<usize> {

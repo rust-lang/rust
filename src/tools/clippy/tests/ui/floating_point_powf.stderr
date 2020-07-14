@@ -53,8 +53,8 @@ LL |     let _ = x.powf(1.0 / 3.0);
 error: exponentiation with integer powers can be computed more efficiently
   --> $DIR/floating_point_powf.rs:14:13
    |
-LL |     let _ = x.powf(2.0);
-   |             ^^^^^^^^^^^ help: consider using: `x.powi(2)`
+LL |     let _ = x.powf(3.0);
+   |             ^^^^^^^^^^^ help: consider using: `x.powi(3)`
 
 error: exponentiation with integer powers can be computed more efficiently
   --> $DIR/floating_point_powf.rs:15:13
@@ -125,8 +125,8 @@ LL |     let _ = x.powf(1.0 / 3.0);
 error: exponentiation with integer powers can be computed more efficiently
   --> $DIR/floating_point_powf.rs:33:13
    |
-LL |     let _ = x.powf(2.0);
-   |             ^^^^^^^^^^^ help: consider using: `x.powi(2)`
+LL |     let _ = x.powf(3.0);
+   |             ^^^^^^^^^^^ help: consider using: `x.powi(3)`
 
 error: exponentiation with integer powers can be computed more efficiently
   --> $DIR/floating_point_powf.rs:34:13

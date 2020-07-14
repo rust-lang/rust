@@ -77,14 +77,14 @@ LL |     let _ = (1.0 + x / 2.0).ln();
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:28:13
    |
-LL |     let _ = (1.0 + x.powi(2)).ln();
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(2).ln_1p()`
+LL |     let _ = (1.0 + x.powi(3)).ln();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(3).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:29:13
    |
-LL |     let _ = (1.0 + x.powi(2) / 2.0).ln();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x.powi(2) / 2.0).ln_1p()`
+LL |     let _ = (1.0 + x.powi(3) / 2.0).ln();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x.powi(3) / 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:30:13
@@ -101,8 +101,8 @@ LL |     let _ = (x + 1.0).ln();
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:32:13
    |
-LL |     let _ = (x.powi(2) + 1.0).ln();
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(2).ln_1p()`
+LL |     let _ = (x.powi(3) + 1.0).ln();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(3).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:33:13
@@ -143,8 +143,8 @@ LL |     let _ = (1.0 + x / 2.0).ln();
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:46:13
    |
-LL |     let _ = (1.0 + x.powi(2)).ln();
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(2).ln_1p()`
+LL |     let _ = (1.0 + x.powi(3)).ln();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(3).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:47:13
@@ -155,8 +155,8 @@ LL |     let _ = (x + 1.0).ln();
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:48:13
    |
-LL |     let _ = (x.powi(2) + 1.0).ln();
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(2).ln_1p()`
+LL |     let _ = (x.powi(3) + 1.0).ln();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(3).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:49:13

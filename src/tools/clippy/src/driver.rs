@@ -382,13 +382,8 @@ pub fn main() {
 
         let should_describe_lints = || {
             let args: Vec<_> = env::args().collect();
-            args.windows(2).any(|args| {
-                args[1] == "help"
-                    && match args[0].as_str() {
-                        "-W" | "-A" | "-D" | "-F" => true,
-                        _ => false,
-                    }
-            })
+            args.windows(2)
+                .any(|args| args[1] == "help" && matches!(args[0].as_str(), "-W" | "-A" | "-D" | "-F"))
         };
 
         if !wrapper_mode && should_describe_lints() {

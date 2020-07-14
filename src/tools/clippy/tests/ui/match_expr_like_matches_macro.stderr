@@ -1,0 +1,52 @@
+error: match expression looks like `matches!` macro
+  --> $DIR/match_expr_like_matches_macro.rs:10:14
+   |
+LL |       let _y = match x {
+   |  ______________^
+LL | |         Some(0) => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^ help: try this: `matches!(x, Some(0))`
+   |
+   = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
+
+error: match expression looks like `matches!` macro
+  --> $DIR/match_expr_like_matches_macro.rs:16:14
+   |
+LL |       let _w = match x {
+   |  ______________^
+LL | |         Some(_) => true,
+LL | |         _ => false,
+LL | |     };
+   | |_____^ help: try this: `matches!(x, Some(_))`
+
+error: redundant pattern matching, consider using `is_none()`
+  --> $DIR/match_expr_like_matches_macro.rs:22:14
+   |
+LL |       let _z = match x {
+   |  ______________^
+LL | |         Some(_) => false,
+LL | |         None => true,
+LL | |     };
+   | |_____^ help: try this: `x.is_none()`
+   |
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+
+error: match expression looks like `matches!` macro
+  --> $DIR/match_expr_like_matches_macro.rs:28:15
+   |
+LL |       let _zz = match x {
+   |  _______________^
+LL | |         Some(r) if r == 0 => false,
+LL | |         _ => true,
+LL | |     };
+   | |_____^ help: try this: `!matches!(x, Some(r) if r == 0)`
+
+error: if let .. else expression looks like `matches!` macro
+  --> $DIR/match_expr_like_matches_macro.rs:34:16
+   |
+LL |     let _zzz = if let Some(5) = x { true } else { false };
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `matches!(x, Some(5))`
+
+error: aborting due to 5 previous errors
+

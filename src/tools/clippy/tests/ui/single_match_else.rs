@@ -1,4 +1,6 @@
 #![warn(clippy::single_match_else)]
+#![allow(clippy::needless_return)]
+#![allow(clippy::no_effect)]
 
 enum ExprNode {
     ExprAddrOf,
@@ -30,6 +32,55 @@ macro_rules! unwrap_addr {
     };
 }
 
+#[rustfmt::skip]
 fn main() {
     unwrap_addr!(ExprNode::Unicorns);
+
+    //
+    // don't lint single exprs/statements
+    //
+
+    // don't lint here
+    match Some(1) {
+        Some(a) => println!("${:?}", a),
+        None => return,
+    }
+
+    // don't lint here
+    match Some(1) {
+        Some(a) => println!("${:?}", a),
+        None => {
+            return
+        },
+    }
+
+    // don't lint here
+    match Some(1) {
+        Some(a) => println!("${:?}", a),
+        None => {
+            return;
+        },
+    }
+
+    //
+    // lint multiple exprs/statements "else" blocks
+    //
+
+    // lint here
+    match Some(1) {
+        Some(a) => println!("${:?}", a),
+        None => {
+            println!("else block");
+            return
+        },
+    }
+
+    // lint here
+    match Some(1) {
+        Some(a) => println!("${:?}", a),
+        None => {
+            println!("else block");
+            return;
+        },
+    }
 }

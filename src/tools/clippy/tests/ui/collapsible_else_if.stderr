@@ -10,7 +10,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::collapsible-if` implied by `-D warnings`
-help: try
+help: collapse nested if block
    |
 LL |     } else if y == "world" {
 LL |         println!("world!")
@@ -28,7 +28,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-help: try
+help: collapse nested if block
    |
 LL |     } else if let Some(42) = Some(42) {
 LL |         println!("world!")
@@ -48,7 +48,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-help: try
+help: collapse nested if block
    |
 LL |     } else if y == "world" {
 LL |         println!("world")
@@ -71,7 +71,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-help: try
+help: collapse nested if block
    |
 LL |     } else if let Some(42) = Some(42) {
 LL |         println!("world")
@@ -94,7 +94,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-help: try
+help: collapse nested if block
    |
 LL |     } else if let Some(42) = Some(42) {
 LL |         println!("world")
@@ -117,7 +117,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-help: try
+help: collapse nested if block
    |
 LL |     } else if x == "hello" {
 LL |         println!("world")
@@ -140,7 +140,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-help: try
+help: collapse nested if block
    |
 LL |     } else if let Some(42) = Some(42) {
 LL |         println!("world")
