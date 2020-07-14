@@ -31,6 +31,7 @@ impl ToChalk for Ty {
                 TypeCtor::Ref(m) => ref_to_chalk(db, m, apply_ty.parameters),
                 TypeCtor::Array => array_to_chalk(db, apply_ty.parameters),
                 TypeCtor::FnPtr { num_args: _, is_varargs: _ } => {
+                    // FIXME: handle is_varargs
                     let substitution = apply_ty.parameters.to_chalk(db).shifted_in(&Interner);
                     chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: 0, substitution })
                         .intern(&Interner)
