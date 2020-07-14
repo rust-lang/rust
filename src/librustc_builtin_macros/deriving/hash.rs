@@ -17,7 +17,7 @@ pub fn expand_deriving_hash(
 ) {
     let path = Path::new_(pathvec_std!(hash::Hash), None, vec![], PathKind::Std);
 
-    let typaram = "__H";
+    let typaram = sym::__H;
 
     let arg = Path::new_local(typaram);
     let hash_trait_def = TraitDef {
@@ -32,7 +32,7 @@ pub fn expand_deriving_hash(
             name: sym::hash,
             generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
             explicit_self: borrowed_explicit_self(),
-            args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), "state")],
+            args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), sym::state)],
             ret_ty: nil_ty(),
             attributes: vec![],
             is_unsafe: false,

@@ -29,7 +29,7 @@ pub fn expand_deriving_ord(
             name: sym::cmp,
             generics: Bounds::empty(),
             explicit_self: borrowed_explicit_self(),
-            args: vec![(borrowed_self(), "other")],
+            args: vec![(borrowed_self(), sym::other)],
             ret_ty: Literal(path_std!(cmp::Ordering)),
             attributes: attrs,
             is_unsafe: false,

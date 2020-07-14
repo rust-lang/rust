@@ -8,7 +8,7 @@ use rustc_ast::ast::{self, Expr, GenericArg, GenericParamKind, Generics, SelfKin
 use rustc_ast::ptr::P;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::source_map::{respan, DUMMY_SP};
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 
 /// The types of pointers
@@ -24,10 +24,10 @@ pub enum PtrTy {
 /// A path, e.g., `::std::option::Option::<i32>` (global). Has support
 /// for type parameters and a lifetime.
 #[derive(Clone)]
-pub struct Path<'a> {
-    path: Vec<&'a str>,
+pub struct Path {
+    path: Vec<Symbol>,
     lifetime: Option<Ident>,
-    params: Vec<Box<Ty<'a>>>,
+    params: Vec<Box<Ty>>,
     kind: PathKind,
 }
 
@@ -38,19 +38,19 @@ pub enum PathKind {
     Std,
 }
 
-impl<'a> Path<'a> {
-    pub fn new(path: Vec<&str>) -> Path<'_> {
+impl Path {
+    pub fn new(path: Vec<Symbol>) -> Path {
         Path::new_(path, None, Vec::new(), PathKind::Std)
     }
-    pub fn new_local(path: &str) -> Path<'_> {
+    pub fn new_local(path: Symbol) -> Path {
         Path::new_(vec![path], None, Vec::new(), PathKind::Local)
     }
-    pub fn new_<'r>(
-        path: Vec<&'r str>,
+    pub fn new_(
+        path: Vec<Symbol>,
         lifetime: Option<Ident>,
-        params: Vec<Box<Ty<'r>>>,
+        params: Vec<Box<Ty>>,
         kind: PathKind,
-    ) -> Path<'r> {
+    ) -> Path {
         Path { path, lifetime, params, kind }
     }
 
@@ -70,7 +70,7 @@ impl<'a> Path<'a> {
         self_ty: Ident,
         self_generics: &Generics,
     ) -> ast::Path {
-        let mut idents = self.path.iter().map(|s| cx.ident_of(*s, span)).collect();
+        let mut idents = self.path.iter().map(|s| Ident::new(*s, span)).collect();
         let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys: Vec<P<ast::Ty>> =
             self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
@@ -94,21 +94,21 @@ impl<'a> Path<'a> {
 
 /// A type. Supports pointers, Self, and literals.
 #[derive(Clone)]
-pub enum Ty<'a> {
+pub enum Ty {
     Self_,
     /// &/Box/ Ty
-    Ptr(Box<Ty<'a>>, PtrTy),
+    Ptr(Box<Ty>, PtrTy),
     /// `mod::mod::Type<[lifetime], [Params...]>`, including a plain type
     /// parameter, and things like `i32`
-    Literal(Path<'a>),
+    Literal(Path),
     /// includes unit
-    Tuple(Vec<Ty<'a>>),
+    Tuple(Vec<Ty>),
 }
 
 pub fn borrowed_ptrty() -> PtrTy {
     Borrowed(None, ast::Mutability::Not)
 }
-pub fn borrowed(ty: Box<Ty<'_>>) -> Ty<'_> {
+pub fn borrowed(ty: Box<Ty>) -> Ty {
     Ptr(ty, borrowed_ptrty())
 }
 
@@ -116,11 +116,11 @@ pub fn borrowed_explicit_self() -> Option<Option<PtrTy>> {
     Some(Some(borrowed_ptrty()))
 }
 
-pub fn borrowed_self<'r>() -> Ty<'r> {
+pub fn borrowed_self() -> Ty {
     borrowed(Box::new(Self_))
 }
 
-pub fn nil_ty<'r>() -> Ty<'r> {
+pub fn nil_ty() -> Ty {
     Tuple(Vec::new())
 }
 
@@ -132,7 +132,7 @@ fn mk_lifetimes(cx: &ExtCtxt<'_>, span: Span, lt: &Option<Ident>) -> Vec<ast::Li
     mk_lifetime(cx, span, lt).into_iter().collect()
 }
 
-impl<'a> Ty<'a> {
+impl Ty {
     pub fn to_ty(
         &self,
         cx: &ExtCtxt<'_>,
@@ -199,9 +199,9 @@ impl<'a> Ty<'a> {
 fn mk_ty_param(
     cx: &ExtCtxt<'_>,
     span: Span,
-    name: &str,
+    name: Symbol,
     attrs: &[ast::Attribute],
-    bounds: &[Path<'_>],
+    bounds: &[Path],
     self_ident: Ident,
     self_generics: &Generics,
 ) -> ast::GenericParam {
@@ -212,7 +212,7 @@ fn mk_ty_param(
             cx.trait_bound(path)
         })
         .collect();
-    cx.typaram(span, cx.ident_of(name, span), attrs.to_owned(), bounds, None)
+    cx.typaram(span, Ident::new(name, span), attrs.to_owned(), bounds, None)
 }
 
 fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
@@ -225,12 +225,12 @@ fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
 
 /// Bounds on type parameters.
 #[derive(Clone)]
-pub struct Bounds<'a> {
-    pub bounds: Vec<(&'a str, Vec<Path<'a>>)>,
+pub struct Bounds {
+    pub bounds: Vec<(Symbol, Vec<Path>)>,
 }
 
-impl<'a> Bounds<'a> {
-    pub fn empty() -> Bounds<'a> {
+impl Bounds {
+    pub fn empty() -> Bounds {
         Bounds { bounds: Vec::new() }
     }
     pub fn to_generics(

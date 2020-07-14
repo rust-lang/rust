@@ -58,7 +58,7 @@ impl AllocFnFactory<'_, '_> {
         let mut abi_args = Vec::new();
         let mut i = 0;
         let mut mk = || {
-            let name = self.cx.ident_of(&format!("arg{}", i), self.span);
+            let name = Ident::from_str_and_span(&format!("arg{}", i), self.span);
             i += 1;
             name
         };
@@ -72,7 +72,7 @@ impl AllocFnFactory<'_, '_> {
         let kind = ItemKind::Fn(ast::Defaultness::Final, sig, Generics::default(), block);
         let item = self.cx.item(
             self.span,
-            self.cx.ident_of(&self.kind.fn_name(method.name), self.span),
+            Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),
             self.attrs(),
             kind,
         );

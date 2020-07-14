@@ -1,6 +1,5 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-use crate::deriving::path_std;
 
 use rustc_ast::ast::{Expr, MetaItem};
 use rustc_ast::ptr::P;
@@ -21,7 +20,7 @@ pub fn expand_deriving_default(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(default::Default),
+        path: Path::new(vec![kw::Default, sym::Default]),
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         is_unsafe: false,
