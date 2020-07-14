@@ -272,7 +272,7 @@ impl From<&PatId> for PatIdOrWild {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum MatchCheckErr {
+pub(super) enum MatchCheckErr {
     NotImplemented,
     MalformedMatchArm,
     /// Used when type inference cannot resolve the type of
@@ -287,21 +287,21 @@ pub enum MatchCheckErr {
 ///
 /// The `std::result::Result` type is used here rather than a custom enum
 /// to allow the use of `?`.
-pub type MatchCheckResult<T> = Result<T, MatchCheckErr>;
+pub(super) type MatchCheckResult<T> = Result<T, MatchCheckErr>;
 
 #[derive(Debug)]
 /// A row in a Matrix.
 ///
 /// This type is modeled from the struct of the same name in `rustc`.
-pub(crate) struct PatStack(PatStackInner);
+pub(super) struct PatStack(PatStackInner);
 type PatStackInner = SmallVec<[PatIdOrWild; 2]>;
 
 impl PatStack {
-    pub(crate) fn from_pattern(pat_id: PatId) -> PatStack {
+    pub(super) fn from_pattern(pat_id: PatId) -> PatStack {
         Self(smallvec!(pat_id.into()))
     }
 
-    pub(crate) fn from_wild() -> PatStack {
+    pub(super) fn from_wild() -> PatStack {
         Self(smallvec!(PatIdOrWild::Wild))
     }
 
@@ -510,14 +510,14 @@ impl PatStack {
 /// A collection of PatStack.
 ///
 /// This type is modeled from the struct of the same name in `rustc`.
-pub(crate) struct Matrix(Vec<PatStack>);
+pub(super) struct Matrix(Vec<PatStack>);
 
 impl Matrix {
-    pub(crate) fn empty() -> Self {
+    pub(super) fn empty() -> Self {
         Self(vec![])
     }
 
-    pub(crate) fn push(&mut self, cx: &MatchCheckCtx, row: PatStack) {
+    pub(super) fn push(&mut self, cx: &MatchCheckCtx, row: PatStack) {
         if let Some(Pat::Or(pat_ids)) = row.get_head().map(|pat_id| pat_id.as_pat(cx)) {
             // Or patterns are expanded here
             for pat_id in pat_ids {
@@ -579,16 +579,16 @@ impl Matrix {
 /// not matched by an prior match arms.
 ///
 /// We may eventually need an `Unknown` variant here.
-pub enum Usefulness {
+pub(super) enum Usefulness {
     Useful,
     NotUseful,
 }
 
-pub struct MatchCheckCtx<'a> {
-    pub match_expr: Idx<Expr>,
-    pub body: Arc<Body>,
-    pub infer: Arc<InferenceResult>,
-    pub db: &'a dyn HirDatabase,
+pub(super) struct MatchCheckCtx<'a> {
+    pub(super) match_expr: Idx<Expr>,
+    pub(super) body: Arc<Body>,
+    pub(super) infer: Arc<InferenceResult>,
+    pub(super) db: &'a dyn HirDatabase,
 }
 
 /// Given a set of patterns `matrix`, and pattern to consider `v`, determines
@@ -599,7 +599,7 @@ pub struct MatchCheckCtx<'a> {
 /// expected that you have already type checked the match arms. All patterns in
 /// matrix should be the same type as v, as well as they should all be the same
 /// type as the match expression.
-pub(crate) fn is_useful(
+pub(super) fn is_useful(
     cx: &MatchCheckCtx,
     matrix: &Matrix,
     v: &PatStack,
@@ -837,23 +837,23 @@ fn enum_variant_matches(cx: &MatchCheckCtx, pat_id: PatId, enum_variant_id: Enum
 
 #[cfg(test)]
 mod tests {
-    pub(super) use insta::assert_snapshot;
-    pub(super) use ra_db::fixture::WithFixture;
+    use insta::assert_snapshot;
+    use ra_db::fixture::WithFixture;
 
-    pub(super) use crate::{diagnostics::MissingMatchArms, test_db::TestDB};
+    use crate::{diagnostics::MissingMatchArms, test_db::TestDB};
 
-    pub(super) fn check_diagnostic_message(ra_fixture: &str) -> String {
+    fn check_diagnostic_message(ra_fixture: &str) -> String {
         TestDB::with_single_file(ra_fixture).0.diagnostic::<MissingMatchArms>().0
     }
 
-    pub(super) fn check_diagnostic(ra_fixture: &str) {
+    fn check_diagnostic(ra_fixture: &str) {
         let diagnostic_count =
             TestDB::with_single_file(ra_fixture).0.diagnostic::<MissingMatchArms>().1;
 
         assert_eq!(1, diagnostic_count, "no diagnostic reported");
     }
 
-    pub(super) fn check_no_diagnostic(ra_fixture: &str) {
+    fn check_no_diagnostic(ra_fixture: &str) {
         let (s, diagnostic_count) =
             TestDB::with_single_file(ra_fixture).0.diagnostic::<MissingMatchArms>();
 
@@ -2036,28 +2036,25 @@ mod tests {
         ",
         );
     }
-}
 
-#[cfg(test)]
-mod false_negatives {
-    //! The implementation of match checking here is a work in progress. As we roll this out, we
-    //! prefer false negatives to false positives (ideally there would be no false positives). This
-    //! test module should document known false negatives. Eventually we will have a complete
-    //! implementation of match checking and this module will be empty.
-    //!
-    //! The reasons for documenting known false negatives:
-    //!
-    //!   1. It acts as a backlog of work that can be done to improve the behavior of the system.
-    //!   2. It ensures the code doesn't panic when handling these cases.
+    mod false_negatives {
+        //! The implementation of match checking here is a work in progress. As we roll this out, we
+        //! prefer false negatives to false positives (ideally there would be no false positives). This
+        //! test module should document known false negatives. Eventually we will have a complete
+        //! implementation of match checking and this module will be empty.
+        //!
+        //! The reasons for documenting known false negatives:
+        //!
+        //!   1. It acts as a backlog of work that can be done to improve the behavior of the system.
+        //!   2. It ensures the code doesn't panic when handling these cases.
+        use super::*;
 
-    use super::tests::*;
-
-    #[test]
-    fn integers() {
-        // This is a false negative.
-        // We don't currently check integer exhaustiveness.
-        check_no_diagnostic(
-            r"
+        #[test]
+        fn integers() {
+            // This is a false negative.
+            // We don't currently check integer exhaustiveness.
+            check_no_diagnostic(
+                r"
             fn test_fn() {
                 match 5 {
                     10 => (),
@@ -2065,15 +2062,15 @@ mod false_negatives {
                 }
             }
         ",
-        );
-    }
+            );
+        }
 
-    #[test]
-    fn internal_or() {
-        // This is a false negative.
-        // We do not currently handle patterns with internal `or`s.
-        check_no_diagnostic(
-            r"
+        #[test]
+        fn internal_or() {
+            // This is a false negative.
+            // We do not currently handle patterns with internal `or`s.
+            check_no_diagnostic(
+                r"
             fn test_fn() {
                 enum Either {
                     A(bool),
@@ -2084,17 +2081,17 @@ mod false_negatives {
                 }
             }
         ",
-        );
-    }
+            );
+        }
 
-    #[test]
-    fn expr_loop_missing_arm() {
-        // This is a false negative.
-        // We currently infer the type of `loop { break Foo::A }` to `!`, which
-        // causes us to skip the diagnostic since `Either::A` doesn't type check
-        // with `!`.
-        check_diagnostic(
-            r"
+        #[test]
+        fn expr_loop_missing_arm() {
+            // This is a false negative.
+            // We currently infer the type of `loop { break Foo::A }` to `!`, which
+            // causes us to skip the diagnostic since `Either::A` doesn't type check
+            // with `!`.
+            check_diagnostic(
+                r"
             enum Either {
                 A,
                 B,
@@ -2105,45 +2102,45 @@ mod false_negatives {
                 }
             }
         ",
-        );
-    }
+            );
+        }
 
-    #[test]
-    fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
-        // This is a false negative.
-        // We don't currently handle tuple patterns with ellipsis.
-        check_no_diagnostic(
-            r"
+        #[test]
+        fn tuple_of_bools_with_ellipsis_at_end_missing_arm() {
+            // This is a false negative.
+            // We don't currently handle tuple patterns with ellipsis.
+            check_no_diagnostic(
+                r"
             fn test_fn() {
                 match (false, true, false) {
                     (false, ..) => {},
                 }
             }
         ",
-        );
-    }
+            );
+        }
 
-    #[test]
-    fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
-        // This is a false negative.
-        // We don't currently handle tuple patterns with ellipsis.
-        check_no_diagnostic(
-            r"
+        #[test]
+        fn tuple_of_bools_with_ellipsis_at_beginning_missing_arm() {
+            // This is a false negative.
+            // We don't currently handle tuple patterns with ellipsis.
+            check_no_diagnostic(
+                r"
             fn test_fn() {
                 match (false, true, false) {
                     (.., false) => {},
                 }
             }
         ",
-        );
-    }
+            );
+        }
 
-    #[test]
-    fn struct_missing_arm() {
-        // This is a false negative.
-        // We don't currently handle structs.
-        check_no_diagnostic(
-            r"
+        #[test]
+        fn struct_missing_arm() {
+            // This is a false negative.
+            // We don't currently handle structs.
+            check_no_diagnostic(
+                r"
             struct Foo {
                 a: bool,
             }
@@ -2153,6 +2150,7 @@ mod false_negatives {
                 }
             }
         ",
-        );
+            );
+        }
     }
 }
