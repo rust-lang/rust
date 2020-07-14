@@ -2,6 +2,7 @@ use super::*;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics;
 use crate::mem;
+use crate::slice::SliceIndex;
 
 #[lang = "const_ptr"]
 impl<T: ?Sized> *const T {
@@ -825,6 +826,55 @@ impl<T> *const [T] {
         // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
         // Only `std` can make this guarantee.
         unsafe { Repr { rust: self }.raw }.len
+    }
+
+    /// Returns a raw pointer to the slice's buffer.
+    ///
+    /// This is equivalent to casting `self` to `*const T`, but more type-safe.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_get)]
+    /// use std::ptr;
+    ///
+    /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
+    /// assert_eq!(slice.as_ptr(), 0 as *const i8);
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
+    pub const fn as_ptr(self) -> *const T {
+        self as *const T
+    }
+
+    /// Returns a raw pointer to an element or subslice, without doing bounds
+    /// checking.
+    ///
+    /// Calling this method with an out-of-bounds index or when `self` is not dereferencable
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_ptr_get)]
+    ///
+    /// let x = &[1, 2, 4] as *const [i32];
+    ///
+    /// unsafe {
+    ///     assert_eq!(x.get_unchecked(1), x.as_ptr().add(1));
+    /// }
+    /// ```
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[inline]
+    pub unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
+    where
+        I: SliceIndex<[T]>,
+    {
+        // SAFETY: the caller ensures that `self` is dereferencable and `index` in-bounds.
+        unsafe { index.get_unchecked(self) }
     }
 }
 
