@@ -645,13 +645,7 @@ fn is_mutated_static(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
     use hir::ExprKind::{Field, Index, Path};
 
     match e.kind {
-        Path(ref qpath) => {
-            if let Res::Local(_) = qpath_res(cx, qpath, e.hir_id) {
-                false
-            } else {
-                true
-            }
-        },
+        Path(ref qpath) => !matches!(qpath_res(cx, qpath, e.hir_id), Res::Local(_)),
         Field(ref inner, _) | Index(ref inner, _) => is_mutated_static(cx, inner),
         _ => false,
     }

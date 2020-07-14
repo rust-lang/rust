@@ -1,0 +1,19 @@
+// run-rustfix
+#![warn(clippy::suboptimal_flops)]
+
+fn main() {
+    let one = 1;
+    let x = 3f32;
+    let _ = x * x;
+    let _ = x * x;
+
+    let y = 4f32;
+    let _ = x.mul_add(x, y);
+    let _ = y.mul_add(y, x);
+    let _ = x.mul_add(x, y).sqrt();
+    let _ = y.mul_add(y, x).sqrt();
+    // Cases where the lint shouldn't be applied
+    let _ = x.powi(3);
+    let _ = x.powi(one + 1);
+    let _ = (x.powi(2) + y.powi(2)).sqrt();
+}

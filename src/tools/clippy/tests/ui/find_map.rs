@@ -19,6 +19,7 @@ fn main() {
 
     let _: Option<i32> = a.iter().find(|s| s.parse::<i32>().is_ok()).map(|s| s.parse().unwrap());
 
+    #[allow(clippy::match_like_matches_macro)]
     let _: Option<Flavor> = desserts_of_the_week
         .iter()
         .find(|dessert| match *dessert {

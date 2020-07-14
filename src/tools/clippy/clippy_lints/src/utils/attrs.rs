@@ -65,42 +65,45 @@ pub fn get_attr<'a>(
         };
         let attr_segments = &attr.path.segments;
         if attr_segments.len() == 2 && attr_segments[0].ident.to_string() == "clippy" {
-            if let Some(deprecation_status) =
-                BUILTIN_ATTRIBUTES
-                    .iter()
-                    .find_map(|(builtin_name, deprecation_status)| {
-                        if *builtin_name == attr_segments[1].ident.to_string() {
-                            Some(deprecation_status)
-                        } else {
-                            None
+            BUILTIN_ATTRIBUTES
+                .iter()
+                .find_map(|(builtin_name, deprecation_status)| {
+                    if *builtin_name == attr_segments[1].ident.to_string() {
+                        Some(deprecation_status)
+                    } else {
+                        None
+                    }
+                })
+                .map_or_else(
+                    || {
+                        sess.span_err(attr_segments[1].ident.span, "Usage of unknown attribute");
+                        false
+                    },
+                    |deprecation_status| {
+                        let mut diag =
+                            sess.struct_span_err(attr_segments[1].ident.span, "Usage of deprecated attribute");
+                        match *deprecation_status {
+                            DeprecationStatus::Deprecated => {
+                                diag.emit();
+                                false
+                            },
+                            DeprecationStatus::Replaced(new_name) => {
+                                diag.span_suggestion(
+                                    attr_segments[1].ident.span,
+                                    "consider using",
+                                    new_name.to_string(),
+                                    Applicability::MachineApplicable,
+                                );
+                                diag.emit();
+                                false
+                            },
+                            DeprecationStatus::None => {
+                                diag.cancel();
+                                attr_segments[1].ident.to_string() == name
+                            },
                         }
-                    })
-            {
-                let mut diag = sess.struct_span_err(attr_segments[1].ident.span, "Usage of deprecated attribute");
-                match *deprecation_status {
-                    DeprecationStatus::Deprecated => {
-                        diag.emit();
-                        false
                     },
-                    DeprecationStatus::Replaced(new_name) => {
-                        diag.span_suggestion(
-                            attr_segments[1].ident.span,
-                            "consider using",
-                            new_name.to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                        diag.emit();
-                        false
-                    },
-                    DeprecationStatus::None => {
-                        diag.cancel();
-                        attr_segments[1].ident.to_string() == name
-                    },
-                }
-            } else {
-                sess.span_err(attr_segments[1].ident.span, "Usage of unknown attribute");
-                false
-            }
+                )
         } else {
             false
         }

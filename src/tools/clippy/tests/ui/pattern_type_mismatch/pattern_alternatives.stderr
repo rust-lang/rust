@@ -1,0 +1,27 @@
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_alternatives.rs:15:12
+   |
+LL |     if let Value::B | Value::A(_) = ref_value {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_alternatives.rs:16:34
+   |
+LL |     if let &Value::B | &Value::A(Some(_)) = ref_value {}
+   |                                  ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_alternatives.rs:17:32
+   |
+LL |     if let Value::B | Value::A(Some(_)) = *ref_value {}
+   |                                ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: aborting due to 3 previous errors
+

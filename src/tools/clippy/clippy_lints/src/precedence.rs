@@ -148,17 +148,11 @@ fn is_arith_expr(expr: &Expr) -> bool {
 #[must_use]
 fn is_bit_op(op: BinOpKind) -> bool {
     use rustc_ast::ast::BinOpKind::{BitAnd, BitOr, BitXor, Shl, Shr};
-    match op {
-        BitXor | BitAnd | BitOr | Shl | Shr => true,
-        _ => false,
-    }
+    matches!(op, BitXor | BitAnd | BitOr | Shl | Shr)
 }
 
 #[must_use]
 fn is_arith_op(op: BinOpKind) -> bool {
     use rustc_ast::ast::BinOpKind::{Add, Div, Mul, Rem, Sub};
-    match op {
-        Add | Sub | Mul | Div | Rem => true,
-        _ => false,
-    }
+    matches!(op, Add | Sub | Mul | Div | Rem)
 }

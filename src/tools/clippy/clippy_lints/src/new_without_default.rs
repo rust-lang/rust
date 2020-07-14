@@ -80,10 +80,12 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // can't be implemented for unsafe new
                             return;
                         }
-                        if impl_item.generics.params.iter().any(|gen| match gen.kind {
-                            hir::GenericParamKind::Type { .. } => true,
-                            _ => false,
-                        }) {
+                        if impl_item
+                            .generics
+                            .params
+                            .iter()
+                            .any(|gen| matches!(gen.kind, hir::GenericParamKind::Type { .. }))
+                        {
                             // when the result of `new()` depends on a type parameter we should not require
                             // an
                             // impl of `Default`

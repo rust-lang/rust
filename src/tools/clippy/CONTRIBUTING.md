@@ -245,7 +245,7 @@ this to work, you will need the fix of `git subtree` available
 [here][gitgitgadget-pr].
 
 [gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
-[subtree]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#external-dependencies-subtree
+[subtree]: https://rustc-dev-guide.rust-lang.org/contributing.html#external-dependencies-subtree
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
 
 ## Issue and PR triage

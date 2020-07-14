@@ -11,7 +11,7 @@ fn main() {
     let _ = (-3.1f32).exp();
     let _ = x.sqrt();
     let _ = x.cbrt();
-    let _ = x.powi(2);
+    let _ = x.powi(3);
     let _ = x.powi(-2);
     let _ = x.powi(16_777_215);
     let _ = x.powi(-16_777_215);
@@ -30,7 +30,7 @@ fn main() {
     let _ = (-3.1f64).exp();
     let _ = x.sqrt();
     let _ = x.cbrt();
-    let _ = x.powi(2);
+    let _ = x.powi(3);
     let _ = x.powi(-2);
     let _ = x.powi(-2_147_483_648);
     let _ = x.powi(2_147_483_647);

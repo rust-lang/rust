@@ -129,10 +129,10 @@ fn check_fn_inner<'tcx>(
     }
 
     let mut bounds_lts = Vec::new();
-    let types = generics.params.iter().filter(|param| match param.kind {
-        GenericParamKind::Type { .. } => true,
-        _ => false,
-    });
+    let types = generics
+        .params
+        .iter()
+        .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
     for typ in types {
         for bound in typ.bounds {
             let mut visitor = RefVisitor::new(cx);
@@ -337,10 +337,10 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath<'_>, ty: &Ty<'_>) {
         if let Some(ref last_path_segment) = last_path_segment(qpath).args {
             if !last_path_segment.parenthesized
-                && !last_path_segment.args.iter().any(|arg| match arg {
-                    GenericArg::Lifetime(_) => true,
-                    _ => false,
-                })
+                && !last_path_segment
+                    .args
+                    .iter()
+                    .any(|arg| matches!(arg, GenericArg::Lifetime(_)))
             {
                 let hir_id = ty.hir_id;
                 match self.cx.qpath_res(qpath, hir_id) {

@@ -1,0 +1,67 @@
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_structs.rs:13:9
+   |
+LL |     let Struct { .. } = ref_value;
+   |         ^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::pattern-type-mismatch` implied by `-D warnings`
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_structs.rs:14:33
+   |
+LL |     if let &Struct { ref_inner: Some(_) } = ref_value {}
+   |                                 ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_structs.rs:15:32
+   |
+LL |     if let Struct { ref_inner: Some(_) } = *ref_value {}
+   |                                ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_structs.rs:32:12
+   |
+LL |     if let StructEnum::Var { .. } = ref_value {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_structs.rs:33:12
+   |
+LL |     if let StructEnum::Var { inner_ref: Some(_) } = ref_value {}
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_structs.rs:34:42
+   |
+LL |     if let &StructEnum::Var { inner_ref: Some(_) } = ref_value {}
+   |                                          ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_structs.rs:35:41
+   |
+LL |     if let StructEnum::Var { inner_ref: Some(_) } = *ref_value {}
+   |                                         ^^^^^^^
+   |
+   = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: type of pattern does not match the expression type
+  --> $DIR/pattern_structs.rs:36:12
+   |
+LL |     if let StructEnum::Empty = ref_value {}
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
+
+error: aborting due to 8 previous errors
+
