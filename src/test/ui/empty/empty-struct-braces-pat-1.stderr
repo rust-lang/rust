@@ -5,21 +5,27 @@ LL |     Empty3 {}
    |     --------- `E::Empty3` defined here
 ...
 LL |         E::Empty3 => ()
-   |         ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
+   |         ^^^^^^^^^ help: use struct pattern syntax instead: `E::Empty3 {}`
 
 error[E0532]: expected unit struct, unit variant or constant, found struct variant `XE::XEmpty3`
   --> $DIR/empty-struct-braces-pat-1.rs:31:9
    |
 LL |         XE::XEmpty3 => ()
-   |         ^^^^-------
-   |         |   |
-   |         |   help: a unit variant with a similar name exists: `XEmpty4`
-   |         did you mean `XE::XEmpty3 { /* fields */ }`?
+   |         ^^^^^^^^^^^
    | 
   ::: $DIR/auxiliary/empty-struct.rs:7:5
    |
 LL |     XEmpty4,
    |     ------- similarly named unit variant `XEmpty4` defined here
+   |
+help: a unit variant with a similar name exists
+   |
+LL |         XE::XEmpty4 => ()
+   |             ^^^^^^^
+help: use struct pattern syntax instead
+   |
+LL |         XE::XEmpty3 { /* fields */ } => ()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

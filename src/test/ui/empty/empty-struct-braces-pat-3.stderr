@@ -5,21 +5,22 @@ LL |     Empty3 {}
    |     --------- `E::Empty3` defined here
 ...
 LL |         E::Empty3() => ()
-   |         ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
+   |         ^^^^^^^^^^^ help: use struct pattern syntax instead: `E::Empty3 {}`
 
 error[E0532]: expected tuple struct or tuple variant, found struct variant `XE::XEmpty3`
   --> $DIR/empty-struct-braces-pat-3.rs:21:9
    |
 LL |         XE::XEmpty3() => ()
-   |         ^^^^-------
-   |         |   |
-   |         |   help: a tuple variant with a similar name exists: `XEmpty5`
-   |         did you mean `XE::XEmpty3 { /* fields */ }`?
-   | 
-  ::: $DIR/auxiliary/empty-struct.rs:8:5
+   |         ^^^^^^^^^^^^^
    |
-LL |     XEmpty5(),
-   |     --------- similarly named tuple variant `XEmpty5` defined here
+help: a tuple variant with a similar name exists
+   |
+LL |         XE::XEmpty5() => ()
+   |             ^^^^^^^
+help: use struct pattern syntax instead
+   |
+LL |         XE::XEmpty3 { /* fields */ } => ()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0532]: expected tuple struct or tuple variant, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-pat-3.rs:25:9
@@ -28,21 +29,22 @@ LL |     Empty3 {}
    |     --------- `E::Empty3` defined here
 ...
 LL |         E::Empty3(..) => ()
-   |         ^^^^^^^^^ did you mean `E::Empty3 { /* fields */ }`?
+   |         ^^^^^^^^^^^^^ help: use struct pattern syntax instead: `E::Empty3 {}`
 
 error[E0532]: expected tuple struct or tuple variant, found struct variant `XE::XEmpty3`
   --> $DIR/empty-struct-braces-pat-3.rs:29:9
    |
 LL |         XE::XEmpty3(..) => ()
-   |         ^^^^-------
-   |         |   |
-   |         |   help: a tuple variant with a similar name exists: `XEmpty5`
-   |         did you mean `XE::XEmpty3 { /* fields */ }`?
-   | 
-  ::: $DIR/auxiliary/empty-struct.rs:8:5
+   |         ^^^^^^^^^^^^^^^
    |
-LL |     XEmpty5(),
-   |     --------- similarly named tuple variant `XEmpty5` defined here
+help: a tuple variant with a similar name exists
+   |
+LL |         XE::XEmpty5(..) => ()
+   |             ^^^^^^^
+help: use struct pattern syntax instead
+   |
+LL |         XE::XEmpty3 { /* fields */ } => ()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

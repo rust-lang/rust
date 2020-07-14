@@ -51,12 +51,16 @@ LL |         TV(),
    |         ---- similarly named tuple variant `TV` defined here
 ...
 LL |     check(m7::V);
-   |           ^^^^^ did you mean `m7::V { /* fields */ }`?
+   |           ^^^^^
    |
 help: a tuple variant with a similar name exists
    |
 LL |     check(m7::TV);
    |               ^^
+help: use struct literal syntax instead
+   |
+LL |     check(m7::V {});
+   |           ^^^^^^^^
 help: consider importing one of these items instead
    |
 LL | use m8::V;
@@ -68,7 +72,7 @@ error[E0423]: expected value, found struct variant `xm7::V`
   --> $DIR/namespace-mix.rs:106:11
    |
 LL |     check(xm7::V);
-   |           ^^^^^^ did you mean `xm7::V { /* fields */ }`?
+   |           ^^^^^^
    | 
   ::: $DIR/auxiliary/namespace-mix.rs:7:9
    |
@@ -79,6 +83,10 @@ help: a tuple variant with a similar name exists
    |
 LL |     check(xm7::TV);
    |                ^^
+help: use struct literal syntax instead
+   |
+LL |     check(xm7::V { /* fields */ });
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
 help: consider importing one of these items instead
    |
 LL | use m8::V;

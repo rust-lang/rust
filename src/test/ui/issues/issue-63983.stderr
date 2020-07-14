@@ -14,7 +14,7 @@ LL |     Struct{ s: i32 },
    |     ---------------- `MyEnum::Struct` defined here
 ...
 LL |         MyEnum::Struct => "",
-   |         ^^^^^^^^^^^^^^ did you mean `MyEnum::Struct { /* fields */ }`?
+   |         ^^^^^^^^^^^^^^ help: use struct pattern syntax instead: `MyEnum::Struct { s }`
 
 error: aborting due to 2 previous errors
 

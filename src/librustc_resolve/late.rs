@@ -184,7 +184,7 @@ crate enum PathSource<'a> {
     // Paths in struct expressions and patterns `Path { .. }`.
     Struct,
     // Paths in tuple struct patterns `Path(..)`.
-    TupleStruct,
+    TupleStruct(Span),
     // `m::A::B` in `<T as m::A>::B::C`.
     TraitItem(Namespace),
 }
@@ -193,7 +193,7 @@ impl<'a> PathSource<'a> {
     fn namespace(self) -> Namespace {
         match self {
             PathSource::Type | PathSource::Trait(_) | PathSource::Struct => TypeNS,
-            PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct => ValueNS,
+            PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct(_) => ValueNS,
             PathSource::TraitItem(ns) => ns,
         }
     }
@@ -204,7 +204,7 @@ impl<'a> PathSource<'a> {
             | PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::Struct
-            | PathSource::TupleStruct => true,
+            | PathSource::TupleStruct(_) => true,
             PathSource::Trait(_) | PathSource::TraitItem(..) => false,
         }
     }
@@ -215,7 +215,7 @@ impl<'a> PathSource<'a> {
             PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct, unit variant or constant",
             PathSource::Struct => "struct, variant or union type",
-            PathSource::TupleStruct => "tuple struct or tuple variant",
+            PathSource::TupleStruct(_) => "tuple struct or tuple variant",
             PathSource::TraitItem(ns) => match ns {
                 TypeNS => "associated type",
                 ValueNS => "method or associated constant",
@@ -301,7 +301,7 @@ impl<'a> PathSource<'a> {
                 | Res::SelfCtor(..) => true,
                 _ => false,
             },
-            PathSource::TupleStruct => match res {
+            PathSource::TupleStruct(_) => match res {
                 Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..) => true,
                 _ => false,
             },
@@ -336,8 +336,8 @@ impl<'a> PathSource<'a> {
             (PathSource::Struct, false) => error_code!(E0422),
             (PathSource::Expr(..), true) => error_code!(E0423),
             (PathSource::Expr(..), false) => error_code!(E0425),
-            (PathSource::Pat | PathSource::TupleStruct, true) => error_code!(E0532),
-            (PathSource::Pat | PathSource::TupleStruct, false) => error_code!(E0531),
+            (PathSource::Pat | PathSource::TupleStruct(_), true) => error_code!(E0532),
+            (PathSource::Pat | PathSource::TupleStruct(_), false) => error_code!(E0531),
             (PathSource::TraitItem(..), true) => error_code!(E0575),
             (PathSource::TraitItem(..), false) => error_code!(E0576),
         }
@@ -1483,7 +1483,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                 }
                 PatKind::TupleStruct(ref path, ..) => {
-                    self.smart_resolve_path(pat.id, None, path, PathSource::TupleStruct);
+                    self.smart_resolve_path(pat.id, None, path, PathSource::TupleStruct(pat.span));
                 }
                 PatKind::Path(ref qself, ref path) => {
                     self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Pat);

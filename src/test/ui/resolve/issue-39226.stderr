@@ -6,9 +6,15 @@ LL | struct Handle {}
 ...
 LL |         handle: Handle
    |                 ^^^^^^
-   |                 |
-   |                 did you mean `Handle { /* fields */ }`?
-   |                 help: a local variable with a similar name exists: `handle`
+   |
+help: a local variable with a similar name exists
+   |
+LL |         handle: handle
+   |                 ^^^^^^
+help: use struct literal syntax instead
+   |
+LL |         handle: Handle {}
+   |                 ^^^^^^^^^
 
 error: aborting due to previous error
 
