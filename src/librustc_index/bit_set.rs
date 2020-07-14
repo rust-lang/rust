@@ -1,5 +1,5 @@
 use crate::vec::{Idx, IndexVec};
-use smallvec::SmallVec;
+use arrayvec::ArrayVec;
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
@@ -355,20 +355,19 @@ where
 const SPARSE_MAX: usize = 8;
 
 /// A fixed-size bitset type with a sparse representation and a maximum of
-/// `SPARSE_MAX` elements. The elements are stored as a sorted `SmallVec` with
-/// no duplicates; although `SmallVec` can spill its elements to the heap, that
-/// never happens within this type because of the `SPARSE_MAX` limit.
+/// `SPARSE_MAX` elements. The elements are stored as a sorted `ArrayVec` with
+/// no duplicates.
 ///
 /// This type is used by `HybridBitSet`; do not use directly.
 #[derive(Clone, Debug)]
 pub struct SparseBitSet<T: Idx> {
     domain_size: usize,
-    elems: SmallVec<[T; SPARSE_MAX]>,
+    elems: ArrayVec<[T; SPARSE_MAX]>,
 }
 
 impl<T: Idx> SparseBitSet<T> {
     fn new_empty(domain_size: usize) -> Self {
-        SparseBitSet { domain_size, elems: SmallVec::new() }
+        SparseBitSet { domain_size, elems: ArrayVec::new() }
     }
 
     fn len(&self) -> usize {
