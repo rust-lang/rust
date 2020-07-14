@@ -1,0 +1,11 @@
+error: `let` expressions are not supported here
+  --> $DIR/non-implemented.rs:5:17
+   |
+LL |         true if let [1, 2, 3, ..] = a => true,
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+error: aborting due to previous error
+
