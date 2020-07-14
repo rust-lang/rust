@@ -13,10 +13,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::format_to;
 use test_utils::extract_annotations;
 
-use crate::{
-    db::HirDatabase, diagnostics::Diagnostic, expr::ExprValidator,
-    unsafe_validation::UnsafeValidator,
-};
+use crate::diagnostics::{validate_body, Diagnostic};
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
@@ -118,13 +115,8 @@ impl TestDB {
             }
 
             for f in fns {
-                let infer = self.infer(f.into());
                 let mut sink = DiagnosticSink::new(&mut cb);
-                infer.add_diagnostics(self, f, &mut sink);
-                let mut validator = ExprValidator::new(f, infer.clone(), &mut sink);
-                validator.validate_body(self);
-                let mut validator = UnsafeValidator::new(f, infer, &mut sink);
-                validator.validate_body(self);
+                validate_body(self, f.into(), &mut sink);
             }
         }
     }

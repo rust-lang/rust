@@ -25,11 +25,8 @@ use hir_expand::{
 use hir_ty::{
     autoderef,
     display::{HirDisplayError, HirFormatter},
-    expr::ExprValidator,
-    method_resolution,
-    unsafe_validation::UnsafeValidator,
-    ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs, TraitEnvironment, Ty,
-    TyDefId, TypeCtor,
+    method_resolution, ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs,
+    TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
@@ -680,13 +677,7 @@ impl Function {
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
-        let _p = profile("Function::diagnostics");
-        let infer = db.infer(self.id.into());
-        infer.add_diagnostics(db, self.id, sink);
-        let mut validator = ExprValidator::new(self.id, infer.clone(), sink);
-        validator.validate_body(db);
-        let mut validator = UnsafeValidator::new(self.id, infer, sink);
-        validator.validate_body(db);
+        hir_ty::diagnostics::validate_body(db, self.id.into(), sink)
     }
 }
 

@@ -12,15 +12,12 @@ pub mod traits;
 pub mod method_resolution;
 mod op;
 mod lower;
-mod match_checking;
 pub(crate) mod infer;
 pub(crate) mod utils;
 
 pub mod display;
 pub mod db;
 pub mod diagnostics;
-pub mod expr;
-pub mod unsafe_validation;
 
 #[cfg(test)]
 mod tests;
