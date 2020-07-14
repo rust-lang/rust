@@ -256,9 +256,23 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 /// [`BufRead`]: trait.BufRead.html
 ///
 /// ### Note: Windows Portability Consideration
+///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::io::{self, Read};
+///
+/// fn main() -> io::Result<()> {
+///     let mut buffer = String::new();
+///     let mut stdin = io::stdin(); // We get `Stdin` here.
+///     stdin.read_to_string(&mut buffer)?;
+///     Ok(())
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
     inner: Arc<Mutex<BufReader<Maybe<StdinRaw>>>>,
@@ -274,9 +288,26 @@ pub struct Stdin {
 /// [`Stdin::lock`]: struct.Stdin.html#method.lock
 ///
 /// ### Note: Windows Portability Consideration
+///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::io::{self, Read};
+///
+/// fn main() -> io::Result<()> {
+///     let mut buffer = String::new();
+///     let stdin = io::stdin(); // We get `Stdin` here.
+///     {
+///         let mut stdin_lock = stdin.lock(); // We get `StdinLock` here.
+///         stdin_lock.read_to_string(&mut buffer)?;
+///     } // `StdinLock` is dropped here.
+///     Ok(())
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdinLock<'a> {
     inner: MutexGuard<'a, BufReader<Maybe<StdinRaw>>>,
