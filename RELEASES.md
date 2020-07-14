@@ -1,3 +1,166 @@
+Version 1.45.0 (2020-07-16)
+==========================
+
+Language
+--------
+- [Out of range float to int conversions using `as` has been defined as a saturating
+  conversion.][71269] This was previously undefined behaviour, but you can use the
+   `{f64, f32}::to_int_unchecked` methods to continue using the current behaviour, which
+   may be desirable in rare performance sensitive situations.
+- [`mem::Discriminant<T>` now uses `T`'s discriminant type instead of always
+  using `u64`.][70705]
+- [Function like procedural macros can now be used in expression, pattern, and  statement
+  positions.][68717] This means you can now use a function-like procedural macro
+  anywhere you can use a declarative (`macro_rules!`) macro.
+
+Compiler
+--------
+- [You can now override individual target features through the `target-feature`
+  flag.][72094] E.g. `-C target-feature=+avx2 -C target-feature=+fma` is now
+  equivalent to `-C target-feature=+avx2,+fma`.
+- [Added the `force-unwind-tables` flag.][69984] This option allows
+  rustc to always generate unwind tables regardless of panic strategy.
+- [Added the `embed-bitcode` flag.][71716] This codegen flag allows rustc
+  to include LLVM bitcode into generated `rlib`s (this is on by default).
+- [Added the `tiny` value to the `code-model` codegen flag.][72397]
+- [Added tier 3 support\* for the `mipsel-sony-psp` target.][72062]
+- [Added tier 3 support for the `thumbv7a-uwp-windows-msvc` target.][72133]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+
+Libraries
+---------
+- [`net::{SocketAddr, SocketAddrV4, SocketAddrV6}` now implements `PartialOrd`
+  and `Ord`.][72239]
+- [`proc_macro::TokenStream` now implements `Default`.][72234]
+- [You can now use `char` with
+  `ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo}` to iterate over
+  a range of codepoints.][72413] E.g.
+  you can now write the following;
+  ```rust
+  for ch in 'a'..='z' {
+      print!("{}", ch);
+  }
+  println!();
+  // Prints "abcdefghijklmnopqrstuvwxyz"
+  ```
+- [`OsString` now implements `FromStr`.][71662]
+- [The `saturating_neg` method as been added to all signed integer primitive
+  types, and the `saturating_abs` method has been added for all integer
+  primitive types.][71886]
+- [`Arc<T>`, `Rc<T>` now implement  `From<Cow<'_, T>>`, and `Box` now
+  implements `From<Cow>` when `T` is `[T: Copy]`, `str`, `CStr`, `OsStr`,
+  or `Path`.][71447]
+- [`Box<[T]>` now implements `From<[T; N]>`.][71095]
+- [`BitOr` and `BitOrAssign` are implemented for all `NonZero`
+  integer types.][69813]
+- [The `fetch_min`, and `fetch_max` methods have been added to all atomic
+  integer types.][72324]
+- [The `fetch_update` method has been added to all atomic integer types.][71843]
+
+Stabilized APIs
+---------------
+- [`Arc::as_ptr`]
+- [`BTreeMap::remove_entry`]
+- [`Rc::as_ptr`]
+- [`rc::Weak::as_ptr`]
+- [`rc::Weak::from_raw`]
+- [`rc::Weak::into_raw`]
+- [`str::strip_prefix`]
+- [`str::strip_suffix`]
+- [`sync::Weak::as_ptr`]
+- [`sync::Weak::from_raw`]
+- [`sync::Weak::into_raw`]
+- [`char::UNICODE_VERSION`]
+- [`Span::resolved_at`]
+- [`Span::located_at`]
+- [`Span::mixed_site`]
+- [`unix::process::CommandExt::arg0`]
+
+Cargo
+-----
+
+Misc
+----
+- [Rustdoc now supports strikethrough text in Markdown.][71928] E.g.
+  `~~outdated information~~` becomes "~~outdated information~~".
+- [Added an emoji to Rustdoc's deprecated API message.][72014]
+
+Compatibility Notes
+-------------------
+- [Trying to self initialize a static value (that is creating a value using
+  itself) is unsound and now causes a compile error.][71140]
+- [`{f32, f64}::powi` now returns a slightly different value on Windows.][73420]
+  This is due to changes in LLVM's intrinsics which `{f32, f64}::powi` uses.
+- [Rustdoc's CLI's extra error exit codes have been removed.][71900] These were
+  previously undocumented and not intended for public use. Rustdoc still provides
+  a non-zero exit code on errors.
+
+Internals Only
+--------------
+- [Make clippy a git subtree instead of a git submodule][70655]
+- [Unify the undo log of all snapshot types][69464]
+
+[73420]: https://github.com/rust-lang/rust/issues/73420/
+[72324]: https://github.com/rust-lang/rust/pull/72324/
+[71843]: https://github.com/rust-lang/rust/pull/71843/
+[71886]: https://github.com/rust-lang/rust/pull/71886/
+[72234]: https://github.com/rust-lang/rust/pull/72234/
+[72239]: https://github.com/rust-lang/rust/pull/72239/
+[72397]: https://github.com/rust-lang/rust/pull/72397/
+[72413]: https://github.com/rust-lang/rust/pull/72413/
+[72014]: https://github.com/rust-lang/rust/pull/72014/
+[72062]: https://github.com/rust-lang/rust/pull/72062/
+[72094]: https://github.com/rust-lang/rust/pull/72094/
+[72133]: https://github.com/rust-lang/rust/pull/72133/
+[71900]: https://github.com/rust-lang/rust/pull/71900/
+[71928]: https://github.com/rust-lang/rust/pull/71928/
+[71662]: https://github.com/rust-lang/rust/pull/71662/
+[71716]: https://github.com/rust-lang/rust/pull/71716/
+[71447]: https://github.com/rust-lang/rust/pull/71447/
+[71269]: https://github.com/rust-lang/rust/pull/71269/
+[71095]: https://github.com/rust-lang/rust/pull/71095/
+[71140]: https://github.com/rust-lang/rust/pull/71140/
+[70655]: https://github.com/rust-lang/rust/pull/70655/
+[70705]: https://github.com/rust-lang/rust/pull/70705/
+[69984]: https://github.com/rust-lang/rust/pull/69984/
+[69813]: https://github.com/rust-lang/rust/pull/69813/
+[69464]: https://github.com/rust-lang/rust/pull/69464/
+[68717]: https://github.com/rust-lang/rust/pull/68717/
+[`Arc::as_ptr`]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.as_ptr
+[`BTreeMap::remove_entry`]: https://doc.rust-lang.org/stable/std/collections/struct.BTreeMap.html#method.remove_entry
+[`Rc::as_ptr`]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.as_ptr
+[`rc::Weak::as_ptr`]: https://doc.rust-lang.org/stable/std/rc/struct.Weak.html#method.as_ptr
+[`rc::Weak::from_raw`]: https://doc.rust-lang.org/stable/std/rc/struct.Weak.html#method.from_raw
+[`rc::Weak::into_raw`]: https://doc.rust-lang.org/stable/std/rc/struct.Weak.html#method.into_raw
+[`sync::Weak::as_ptr`]: https://doc.rust-lang.org/stable/std/sync/struct.Weak.html#method.as_ptr
+[`sync::Weak::from_raw`]: https://doc.rust-lang.org/stable/std/sync/struct.Weak.html#method.from_raw
+[`sync::Weak::into_raw`]: https://doc.rust-lang.org/stable/std/sync/struct.Weak.html#method.into_raw
+[`str::strip_prefix`]: https://doc.rust-lang.org/stable/std/primitive.str.html#method.strip_prefix
+[`str::strip_suffix`]: https://doc.rust-lang.org/stable/std/primitive.str.html#method.strip_suffix
+[`char::UNICODE_VERSION`]: https://doc.rust-lang.org/stable/std/char/constant.UNICODE_VERSION.html
+[`Span::resolved_at`]: https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.resolved_at
+[`Span::located_at`]: https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.located_at
+[`Span::mixed_site`]: https://doc.rust-lang.org/stable/proc_macro/struct.Span.html#method.mixed_site
+[`unix::process::CommandExt::arg0`]: https://doc.rust-lang.org/std/os/unix/process/trait.CommandExt.html#tymethod.arg0
+
+
+Version 1.44.1 (2020-06-18)
+===========================
+
+* [rustfmt accepts rustfmt_skip in cfg_attr again.][73078]
+* [Don't hash executable filenames on apple platforms, fixing backtraces.][cargo/8329]
+* [Fix crashes when finding backtrace on macOS.][71397]
+* [Clippy applies lint levels into different files.][clippy/5356]
+
+[71397]: https://github.com/rust-lang/rust/issues/71397
+[73078]: https://github.com/rust-lang/rust/issues/73078
+[cargo/8329]: https://github.com/rust-lang/cargo/pull/8329
+[clippy/5356]: https://github.com/rust-lang/rust-clippy/issues/5356
+
+
 Version 1.44.0 (2020-06-04)
 ==========================
 
