@@ -384,8 +384,15 @@ impl Builder {
         if !ctx.config.add_call_parenthesis {
             return self;
         }
-        if ctx.use_item_syntax.is_some() || ctx.is_call {
+        if ctx.use_item_syntax.is_some() {
             mark::hit!(no_parens_in_use_item);
+            return self;
+        }
+        if ctx.is_pattern_call {
+            mark::hit!(dont_duplicate_pattern_parens);
+            return self;
+        }
+        if ctx.is_call {
             return self;
         }
 
@@ -901,6 +908,30 @@ use Option::*;
 fn main(value: Option<i32>) {
     match value {
         Some($0)
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn dont_duplicate_pattern_parens() {
+        mark::check!(dont_duplicate_pattern_parens);
+        check_edit(
+            "Var",
+            r#"
+enum E { Var(i32) }
+fn main() {
+    match E::Var(92) {
+        E::<|>(92) => (),
+    }
+}
+"#,
+            r#"
+enum E { Var(i32) }
+fn main() {
+    match E::Var(92) {
+        E::Var(92) => (),
     }
 }
 "#,
