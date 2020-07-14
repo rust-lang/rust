@@ -191,8 +191,9 @@ impl<K, V> Root<K, V> {
     }
 
     /// Adds a new internal node with a single edge, pointing to the previous root, and make that
-    /// new node the root. This increases the height by 1 and is the opposite of `pop_level`.
-    pub fn push_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
+    /// new node the root. This increases the height by 1 and is the opposite of
+    /// `pop_internal_level`.
+    pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         let mut new_node = Box::new(unsafe { InternalNode::new() });
         new_node.edges[0].write(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
 
@@ -213,11 +214,12 @@ impl<K, V> Root<K, V> {
         ret
     }
 
-    /// Removes the root node, using its first child as the new root. This cannot be called when
-    /// the tree consists only of a leaf node. As it is intended only to be called when the root
-    /// has only one edge, no cleanup is done on any of the other children of the root.
-    /// This decreases the height by 1 and is the opposite of `push_level`.
-    pub fn pop_level(&mut self) {
+    /// Removes the internal root node, using its first child as the new root.
+    /// As it is intended only to be called when the root has only one child,
+    /// no cleanup is done on any of the other children of the root.
+    /// This decreases the height by 1 and is the opposite of `push_internal_level`.
+    /// Panics if there is no internal level, i.e. if the root is a leaf.
+    pub fn pop_internal_level(&mut self) {
         assert!(self.height > 0);
 
         let top = self.node.ptr;
