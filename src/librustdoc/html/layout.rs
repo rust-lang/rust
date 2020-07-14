@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::externalfiles::ExternalHtml;
 use crate::html::escape::Escape;
 use crate::html::format::{Buffer, Print};
-use crate::html::render::ensure_trailing_slash;
+use crate::html::render::{ensure_trailing_slash, StylePath};
 
 #[derive(Clone)]
 pub struct Layout {
@@ -36,7 +36,7 @@ pub fn render<T: Print, S: Print>(
     page: &Page<'_>,
     sidebar: S,
     t: T,
-    themes: &[PathBuf],
+    style_files: &[StylePath],
 ) -> String {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
     format!(
@@ -52,10 +52,7 @@ pub fn render<T: Print, S: Print>(
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}normalize{suffix}.css\">\
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}rustdoc{suffix}.css\" \
           id=\"mainThemeStyle\">\
-    {themes}\
-    <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}dark{suffix}.css\">\
-    <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}light{suffix}.css\" \
-          id=\"themeStyle\">\
+    {style_files}\
     <script src=\"{static_root_path}storage{suffix}.js\"></script>\
     <noscript><link rel=\"stylesheet\" href=\"{static_root_path}noscript{suffix}.css\"></noscript>\
     {css_extension}\
@@ -172,13 +169,19 @@ pub fn render<T: Print, S: Print>(
         after_content = layout.external_html.after_content,
         sidebar = Buffer::html().to_display(sidebar),
         krate = layout.krate,
-        themes = themes
+        style_files = style_files
             .iter()
-            .filter_map(|t| t.file_stem())
-            .filter_map(|t| t.to_str())
+            .filter_map(|t| {
+                if let Some(stem) = t.path.file_stem() { Some((stem, t.disabled)) } else { None }
+            })
+            .filter_map(|t| {
+                if let Some(path) = t.0.to_str() { Some((path, t.1)) } else { None }
+            })
             .map(|t| format!(
-                r#"<link rel="stylesheet" type="text/css" href="{}.css">"#,
-                Escape(&format!("{}{}{}", static_root_path, t, page.resource_suffix))
+                r#"<link rel="stylesheet" type="text/css" href="{}.css" {} {}>"#,
+                Escape(&format!("{}{}{}", static_root_path, t.0, page.resource_suffix)),
+                if t.1 { "disabled" } else { "" },
+                if t.0 == "light" { "id=\"themeStyle\"" } else { "" }
             ))
             .collect::<String>(),
         suffix = page.resource_suffix,
