@@ -1820,7 +1820,7 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         let pat = self.parse_top_pat(GateOr::No)?;
-        let guard = if self.eat_keyword(kw::If) { Some(self.parse_expr()?) } else { None };
+        let guard = if self.eat_keyword(kw::If) { Some(self.parse_cond_expr()?) } else { None };
         let arrow_span = self.token.span;
         self.expect(&token::FatArrow)?;
         let arm_start_span = self.token.span;
