@@ -112,7 +112,7 @@ pub enum TypeCtor {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    FnPtr { num_args: u16 },
+    FnPtr { num_args: u16, is_varargs: bool },
 
     /// The never type `!`.
     Never,
@@ -187,7 +187,7 @@ impl TypeCtor {
                     }
                 }
             }
-            TypeCtor::FnPtr { num_args } => num_args as usize + 1,
+            TypeCtor::FnPtr { num_args, is_varargs: _ } => num_args as usize + 1,
             TypeCtor::Tuple { cardinality } => cardinality as usize,
         }
     }
@@ -667,19 +667,20 @@ pub enum TyKind {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FnSig {
     params_and_return: Arc<[Ty]>,
+    is_varargs: bool,
 }
 
 /// A polymorphic function signature.
 pub type PolyFnSig = Binders<FnSig>;
 
 impl FnSig {
-    pub fn from_params_and_return(mut params: Vec<Ty>, ret: Ty) -> FnSig {
+    pub fn from_params_and_return(mut params: Vec<Ty>, ret: Ty, is_varargs: bool) -> FnSig {
         params.push(ret);
-        FnSig { params_and_return: params.into() }
+        FnSig { params_and_return: params.into(), is_varargs }
     }
 
-    pub fn from_fn_ptr_substs(substs: &Substs) -> FnSig {
-        FnSig { params_and_return: Arc::clone(&substs.0) }
+    pub fn from_fn_ptr_substs(substs: &Substs, is_varargs: bool) -> FnSig {
+        FnSig { params_and_return: Arc::clone(&substs.0), is_varargs }
     }
 
     pub fn params(&self) -> &[Ty] {
@@ -724,7 +725,7 @@ impl Ty {
     }
     pub fn fn_ptr(sig: FnSig) -> Self {
         Ty::apply(
-            TypeCtor::FnPtr { num_args: sig.params().len() as u16 },
+            TypeCtor::FnPtr { num_args: sig.params().len() as u16, is_varargs: sig.is_varargs },
             Substs(sig.params_and_return),
         )
     }
@@ -821,7 +822,9 @@ impl Ty {
     fn callable_sig(&self, db: &dyn HirDatabase) -> Option<FnSig> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::FnPtr { .. } => Some(FnSig::from_fn_ptr_substs(&a_ty.parameters)),
+                TypeCtor::FnPtr { is_varargs, .. } => {
+                    Some(FnSig::from_fn_ptr_substs(&a_ty.parameters, is_varargs))
+                }
                 TypeCtor::FnDef(def) => {
                     let sig = db.callable_item_signature(def);
                     Some(sig.subst(&a_ty.parameters))

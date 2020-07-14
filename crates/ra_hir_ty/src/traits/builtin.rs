@@ -121,7 +121,7 @@ fn closure_fn_trait_impl_datum(
             .build(),
     );
     let sig_ty = Ty::apply(
-        TypeCtor::FnPtr { num_args },
+        TypeCtor::FnPtr { num_args, is_varargs: false },
         Substs::builder(num_args as usize + 1)
             .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
             .build(),

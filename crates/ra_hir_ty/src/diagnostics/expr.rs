@@ -175,6 +175,10 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         };
 
         let sig = db.callable_item_signature(callee);
+        if sig.value.is_varargs {
+            return None;
+        }
+
         let params = sig.value.params();
 
         let mut param_count = params.len();
@@ -511,5 +515,31 @@ impl Foo {
 }
         "#,
         );
+    }
+
+    #[test]
+    fn varargs() {
+        check_diagnostics(
+            r#"
+extern "C" {
+    fn fixed(fixed: u8);
+    fn varargs(fixed: u8, ...);
+    fn varargs2(...);
+}
+
+fn f() {
+    unsafe {
+        fixed(0);
+        fixed(0, 1);
+      //^^^^^^^^^^^ Expected 1 argument, found 2
+        varargs(0);
+        varargs(0, 1);
+        varargs2();
+        varargs2(0);
+        varargs2(0, 1);
+    }
+}
+        "#,
+        )
     }
 }
