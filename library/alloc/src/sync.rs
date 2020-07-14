@@ -1629,17 +1629,18 @@ impl<T> Weak<T> {
     /// [`forget`]: std::mem::forget
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        if ptr.is_null() {
-            Self::new()
-        } else {
-            // See Arc::from_raw for details
-            unsafe {
-                let offset = data_offset(ptr);
-                let fake_ptr = ptr as *mut ArcInner<T>;
-                let ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
-                Weak { ptr: NonNull::new(ptr).expect("Invalid pointer passed to from_raw") }
-            }
-        }
+        // SAFETY: data_offset is safe to call, because this pointer originates from a Weak.
+        // See Weak::as_ptr for context on how the input pointer is derived.
+        let offset = unsafe { data_offset(ptr) };
+
+        // Reverse the offset to find the original ArcInner.
+        // SAFETY: we use wrapping_offset here because the pointer may be dangling (iff T: Sized)
+        let ptr = unsafe {
+            set_data_ptr(ptr as *mut ArcInner<T>, (ptr as *mut u8).wrapping_offset(-offset))
+        };
+
+        // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
+        unsafe { Weak { ptr: NonNull::new_unchecked(ptr) } }
     }
 }
 
