@@ -333,7 +333,7 @@ fn run_test(
         (true, false) => {}
         (false, true) => {
             if !error_codes.is_empty() {
-                error_codes.retain(|err| !out.contains(&format!("error[{}]: ", err)));
+                error_codes.retain(|err| !out.contains(&format!("error[{}]", err)));
 
                 if !error_codes.is_empty() {
                     return Err(TestFailure::MissingErrorCodes(error_codes));
