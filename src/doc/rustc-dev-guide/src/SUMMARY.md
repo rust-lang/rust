@@ -59,7 +59,7 @@
 - [Parallel Compilation](./parallel-rustc.md)
 - [Rustdoc](./rustdoc-internals.md)
 
-# Source Code Representations
+# Source Code Representation
 
 - [Prologue](./part-3-intro.md)
 - [Command-line arguments](./cli.md)
