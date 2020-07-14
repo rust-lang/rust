@@ -1211,8 +1211,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
             }
         }
 
-        Self::fix_right_border(left_root);
-        Self::fix_left_border(right_root);
+        left_root.fix_right_border();
+        right_root.fix_left_border();
 
         if left_root.height() < right_root.height() {
             self.recalc_length();
@@ -1295,63 +1295,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
 
         self.length = dfs(self.root.as_ref().unwrap().as_ref());
-    }
-
-    /// Removes empty levels on the top.
-    fn fix_top(root: &mut node::Root<K, V>) {
-        while root.height() > 0 && root.as_ref().len() == 0 {
-            root.pop_level();
-        }
-    }
-
-    fn fix_right_border(root: &mut node::Root<K, V>) {
-        Self::fix_top(root);
-
-        {
-            let mut cur_node = root.as_mut();
-
-            while let Internal(node) = cur_node.force() {
-                let mut last_kv = node.last_kv();
-
-                if last_kv.can_merge() {
-                    cur_node = last_kv.merge().descend();
-                } else {
-                    let right_len = last_kv.reborrow().right_edge().descend().len();
-                    // `MINLEN + 1` to avoid readjust if merge happens on the next level.
-                    if right_len < node::MIN_LEN + 1 {
-                        last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
-                    }
-                    cur_node = last_kv.right_edge().descend();
-                }
-            }
-        }
-
-        Self::fix_top(root);
-    }
-
-    /// The symmetric clone of `fix_right_border`.
-    fn fix_left_border(root: &mut node::Root<K, V>) {
-        Self::fix_top(root);
-
-        {
-            let mut cur_node = root.as_mut();
-
-            while let Internal(node) = cur_node.force() {
-                let mut first_kv = node.first_kv();
-
-                if first_kv.can_merge() {
-                    cur_node = first_kv.merge().descend();
-                } else {
-                    let left_len = first_kv.reborrow().left_edge().descend().len();
-                    if left_len < node::MIN_LEN + 1 {
-                        first_kv.bulk_steal_right(node::MIN_LEN + 1 - left_len);
-                    }
-                    cur_node = first_kv.left_edge().descend();
-                }
-            }
-        }
-
-        Self::fix_top(root);
     }
 }
 
@@ -2811,6 +2754,65 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
         }
 
         (old_key, old_val, pos)
+    }
+}
+
+impl<K, V> node::Root<K, V> {
+    /// Removes empty levels on the top, but keep an empty leaf if the entire tree is empty.
+    fn fix_top(&mut self) {
+        while self.height() > 0 && self.as_ref().len() == 0 {
+            self.pop_level();
+        }
+    }
+
+    fn fix_right_border(&mut self) {
+        self.fix_top();
+
+        {
+            let mut cur_node = self.as_mut();
+
+            while let Internal(node) = cur_node.force() {
+                let mut last_kv = node.last_kv();
+
+                if last_kv.can_merge() {
+                    cur_node = last_kv.merge().descend();
+                } else {
+                    let right_len = last_kv.reborrow().right_edge().descend().len();
+                    // `MINLEN + 1` to avoid readjust if merge happens on the next level.
+                    if right_len < node::MIN_LEN + 1 {
+                        last_kv.bulk_steal_left(node::MIN_LEN + 1 - right_len);
+                    }
+                    cur_node = last_kv.right_edge().descend();
+                }
+            }
+        }
+
+        self.fix_top();
+    }
+
+    /// The symmetric clone of `fix_right_border`.
+    fn fix_left_border(&mut self) {
+        self.fix_top();
+
+        {
+            let mut cur_node = self.as_mut();
+
+            while let Internal(node) = cur_node.force() {
+                let mut first_kv = node.first_kv();
+
+                if first_kv.can_merge() {
+                    cur_node = first_kv.merge().descend();
+                } else {
+                    let left_len = first_kv.reborrow().left_edge().descend().len();
+                    if left_len < node::MIN_LEN + 1 {
+                        first_kv.bulk_steal_right(node::MIN_LEN + 1 - left_len);
+                    }
+                    cur_node = first_kv.left_edge().descend();
+                }
+            }
+        }
+
+        self.fix_top();
     }
 }
 
