@@ -5,7 +5,7 @@ use std::{
 
 use xtask::{
     codegen::{self, Mode},
-    not_bash::fs2,
+    not_bash::{fs2, run},
     project_root, run_rustfmt, rust_files,
 };
 
@@ -47,6 +47,45 @@ fn rust_files_are_tidy() {
         tidy_docs.visit(&path, &text);
     }
     tidy_docs.finish();
+}
+
+#[test]
+fn check_licenses() {
+    let expected = "
+0BSD OR MIT OR Apache-2.0
+Apache-2.0
+Apache-2.0 / MIT
+Apache-2.0 OR BSL-1.0
+Apache-2.0 OR MIT
+Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
+Apache-2.0/MIT
+BSD-2-Clause
+BSD-3-Clause
+CC0-1.0
+ISC
+MIT
+MIT / Apache-2.0
+MIT OR Apache-2.0
+MIT/Apache-2.0
+MIT/Apache-2.0 AND BSD-2-Clause
+Unlicense OR MIT
+Unlicense/MIT
+Zlib
+"
+    .lines()
+    .filter(|it| !it.is_empty())
+    .collect::<Vec<_>>();
+
+    let meta = run!("cargo metadata --format-version 1"; echo = false).unwrap();
+    let mut licenses = meta
+        .split(|c| c == ',' || c == '{' || c == '}')
+        .filter(|it| it.contains(r#""license""#))
+        .map(|it| it.trim())
+        .map(|it| it[r#""license":"#.len()..].trim_matches('"'))
+        .collect::<Vec<_>>();
+    licenses.sort();
+    licenses.dedup();
+    assert_eq!(licenses, expected);
 }
 
 fn check_todo(path: &Path, text: &str) {
