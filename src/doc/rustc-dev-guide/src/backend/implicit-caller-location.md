@@ -84,7 +84,7 @@ the approach: as we grow the stack down we pass an additional argument to calls 
 rather than walking up the stack when the intrinsic is called. That additional argument can be
 returned wherever the caller location is queried.
 
-The argument we append is of type `&'static core::panic::Location<'staic>`. A reference was chosen
+The argument we append is of type `&'static core::panic::Location<'static>`. A reference was chosen
 to avoid unnecessary copying because a pointer is a third the size of 
 `std::mem::size_of::<core::panic::Location>() == 24` at time of writing.
 

@@ -38,7 +38,7 @@ LLVM's `mem2reg` for those variables. The analysis can be found in
 [`rustc_codegen_ssa::mir::analyze`][mirana].
 
 [mirana]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/analyze/index.html
-  
+
 Usually a single MIR basic block will map to a LLVM basic block, with very few
 exceptions: intrinsic or function calls and less basic MIR statements like
 `assert` can result in multiple basic blocks. This is a perfect lede into the

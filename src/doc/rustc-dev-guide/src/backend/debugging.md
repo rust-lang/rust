@@ -117,7 +117,7 @@ tutorial above):
 - The `-Cno-prepopulate-passes` will avoid pre-populate the LLVM pass
   manager with a list of passes.  This will allow you to view the LLVM
   IR that rustc generates, not the LLVM IR after optimizations.
-- The `-Cpasses=val` option allows you to supply a (space seprated) list of extra LLVM passes to run
+- The `-Cpasses=val` option allows you to supply a space separated list of extra LLVM passes to run
 - The `-Csave-temps` option saves all temporary output files during compilation
 - The `-Zprint-llvm-passes` option will print out LLVM optimization passes being run
 - The `-Ztime-llvm-passes` option measures the time of each LLVM pass
