@@ -172,8 +172,8 @@ fn resolve_128bit_value_imm(func: &Function, val: Value) -> Option<u128> {
         return None;
     };
 
-    let lsb = resolve_normal_value_imm(func, lsb)? as u64 as u128;
-    let msb = resolve_normal_value_imm(func, msb)? as u64 as u128;
+    let lsb = u128::from(resolve_normal_value_imm(func, lsb)? as u64);
+    let msb = u128::from(resolve_normal_value_imm(func, msb)? as u64);
 
     Some(msb << 64 | lsb)
 }
@@ -182,7 +182,7 @@ pub(crate) fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
     if func.dfg.value_type(val) == types::I128 {
         resolve_128bit_value_imm(func, val)
     } else {
-        resolve_normal_value_imm(func, val).map(|imm| imm as u64 as u128)
+        resolve_normal_value_imm(func, val).map(|imm| u128::from(imm as u64))
     }
 }
 
@@ -217,21 +217,21 @@ pub(crate) fn type_min_max_value(bcx: &mut FunctionBuilder<'_>, ty: Type, signed
         (types::I8, false) | (types::I16, false) | (types::I32, false) | (types::I64, false) => {
             0i64
         }
-        (types::I8, true) => i8::MIN as i64,
-        (types::I16, true) => i16::MIN as i64,
-        (types::I32, true) => i32::MIN as i64,
+        (types::I8, true) => i64::from(i8::MIN),
+        (types::I16, true) => i64::from(i16::MIN),
+        (types::I32, true) => i64::from(i32::MIN),
         (types::I64, true) => i64::MIN,
         _ => unreachable!(),
     };
 
     let max = match (ty, signed) {
-        (types::I8, false) => u8::MAX as i64,
-        (types::I16, false) => u16::MAX as i64,
-        (types::I32, false) => u32::MAX as i64,
+        (types::I8, false) => i64::from(u8::MAX),
+        (types::I16, false) => i64::from(u16::MAX),
+        (types::I32, false) => i64::from(u32::MAX),
         (types::I64, false) => u64::MAX as i64,
-        (types::I8, true) => i8::MAX as i64,
-        (types::I16, true) => i16::MAX as i64,
-        (types::I32, true) => i32::MAX as i64,
+        (types::I8, true) => i64::from(i8::MAX),
+        (types::I16, true) => i64::from(i16::MAX),
+        (types::I32, true) => i64::from(i32::MAX),
         (types::I64, true) => i64::MAX,
         _ => unreachable!(),
     };

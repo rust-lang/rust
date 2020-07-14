@@ -433,7 +433,7 @@ fn translate_loc(isa: &dyn TargetIsa, loc: ValueLoc, stack_slots: &StackSlots) -
         ValueLoc::Stack(ss) => {
             if let Some(ss_offset) = stack_slots[ss].offset {
                 let mut expr = Expression::new();
-                expr.op_breg(X86_64::RBP, ss_offset as i64 + 16);
+                expr.op_breg(X86_64::RBP, i64::from(ss_offset) + 16);
                 Some(expr)
             } else {
                 None

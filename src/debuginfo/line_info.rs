@@ -197,7 +197,7 @@ impl<'tcx> DebugContext<'tcx> {
 
         if let Some(ref mcr) = &context.mach_compile_result {
             for &MachSrcLoc { start, end, loc } in mcr.buffer.get_srclocs_sorted() {
-                line_program.row().address_offset = start as u64;
+                line_program.row().address_offset = u64::from(start);
                 if !loc.is_default() {
                     let source_info = *source_info_set.get_index(loc.bits() as usize).unwrap();
                     create_row_for_span(line_program, source_info.span);
@@ -207,7 +207,7 @@ impl<'tcx> DebugContext<'tcx> {
                 func_end = end;
             }
 
-            line_program.end_sequence(func_end as u64);
+            line_program.end_sequence(u64::from(func_end));
 
             func_end = mcr.buffer.total_size();
         } else {
@@ -218,7 +218,7 @@ impl<'tcx> DebugContext<'tcx> {
             for block in blocks {
                 for (offset, inst, size) in func.inst_offsets(block, &encinfo) {
                     let srcloc = func.srclocs[inst];
-                    line_program.row().address_offset = offset as u64;
+                    line_program.row().address_offset = u64::from(offset);
                     if !srcloc.is_default() {
                         let source_info = *source_info_set.get_index(srcloc.bits() as usize).unwrap();
                         create_row_for_span(line_program, source_info.span);
@@ -228,7 +228,7 @@ impl<'tcx> DebugContext<'tcx> {
                     func_end = offset + size;
                 }
             }
-            line_program.end_sequence(func_end as u64);
+            line_program.end_sequence(u64::from(func_end));
         }
 
         assert_ne!(func_end, 0);
@@ -241,7 +241,7 @@ impl<'tcx> DebugContext<'tcx> {
                 addend: 0,
             }),
         );
-        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(func_end as u64));
+        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(func_end)));
 
         self.emit_location(entry_id, function_span);
 

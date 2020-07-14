@@ -273,7 +273,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
         let ret_vals = self.lib_call(name, input_tys, return_tys, &args);
         match *ret_vals {
             [] => CValue::by_ref(
-                Pointer::const_addr(self, self.pointer_type.bytes() as i64),
+                Pointer::const_addr(self, i64::from(self.pointer_type.bytes())),
                 return_layout,
             ),
             [val] => CValue::by_val(val, return_layout),

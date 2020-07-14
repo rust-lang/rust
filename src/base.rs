@@ -778,10 +778,10 @@ pub(crate) fn trans_place<'tcx>(
                 from_end,
             } => {
                 let index = if !from_end {
-                    fx.bcx.ins().iconst(fx.pointer_type, offset as i64)
+                    fx.bcx.ins().iconst(fx.pointer_type, i64::from(offset))
                 } else {
                     let len = codegen_array_len(fx, cplace);
-                    fx.bcx.ins().iadd_imm(len, -(offset as i64))
+                    fx.bcx.ins().iadd_imm(len, -i64::from(offset))
                 };
                 cplace = cplace.place_index(fx, index);
             }
@@ -795,8 +795,8 @@ pub(crate) fn trans_place<'tcx>(
                         let elem_layout = fx.layout_of(elem_ty);
                         let ptr = cplace.to_ptr();
                         cplace = CPlace::for_ptr(
-                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * from as i64),
-                            fx.layout_of(fx.tcx.mk_array(elem_ty, to as u64 - from as u64)),
+                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * i64::from(from)),
+                            fx.layout_of(fx.tcx.mk_array(elem_ty, u64::from(to) - u64::from(from))),
                         );
                     }
                     ty::Slice(elem_ty) => {
@@ -805,8 +805,8 @@ pub(crate) fn trans_place<'tcx>(
                         let (ptr, len) = cplace.to_ptr_maybe_unsized();
                         let len = len.unwrap();
                         cplace = CPlace::for_ptr_with_extra(
-                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * from as i64),
-                            fx.bcx.ins().iadd_imm(len, -(from as i64 + to as i64)),
+                            ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * i64::from(from)),
+                            fx.bcx.ins().iadd_imm(len, -(i64::from(from) + i64::from(to))),
                             cplace.layout(),
                         );
                     }
