@@ -503,6 +503,7 @@ pub struct Function {
     pub has_self_param: bool,
     pub is_unsafe: bool,
     pub params: Box<[TypeRef]>,
+    pub is_varargs: bool,
     pub ret_type: TypeRef,
     pub ast_id: FileAstId<ast::FnDef>,
 }

@@ -176,9 +176,12 @@ impl Ty {
                 Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
             }
             TypeRef::Placeholder => Ty::Unknown,
-            TypeRef::Fn(params) => {
+            TypeRef::Fn(params, is_varargs) => {
                 let sig = Substs(params.iter().map(|tr| Ty::from_hir(ctx, tr)).collect());
-                Ty::apply(TypeCtor::FnPtr { num_args: sig.len() as u16 - 1 }, sig)
+                Ty::apply(
+                    TypeCtor::FnPtr { num_args: sig.len() as u16 - 1, is_varargs: *is_varargs },
+                    sig,
+                )
             }
             TypeRef::DynTrait(bounds) => {
                 let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
@@ -996,7 +999,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
     let ret = Ty::from_hir(&ctx_ret, &data.ret_type);
     let generics = generics(db.upcast(), def.into());
     let num_binders = generics.len();
-    Binders::new(num_binders, FnSig::from_params_and_return(params, ret))
+    Binders::new(num_binders, FnSig::from_params_and_return(params, ret, data.is_varargs))
 }
 
 /// Build the declared type of a function. This should not need to look at the
@@ -1047,7 +1050,7 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
     let params =
         fields.iter().map(|(_, field)| Ty::from_hir(&ctx, &field.type_ref)).collect::<Vec<_>>();
     let ret = type_for_adt(db, def.into());
-    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value))
+    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value, false))
 }
 
 /// Build the type of a tuple struct constructor.
@@ -1071,7 +1074,7 @@ fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId)
     let params =
         fields.iter().map(|(_, field)| Ty::from_hir(&ctx, &field.type_ref)).collect::<Vec<_>>();
     let ret = type_for_adt(db, def.parent.into());
-    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value))
+    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value, false))
 }
 
 /// Build the type of a tuple enum variant constructor.

@@ -243,10 +243,17 @@ impl HirDisplay for ApplicationTy {
                     write!(f, ")")?;
                 }
             }
-            TypeCtor::FnPtr { .. } => {
-                let sig = FnSig::from_fn_ptr_substs(&self.parameters);
+            TypeCtor::FnPtr { is_varargs, .. } => {
+                let sig = FnSig::from_fn_ptr_substs(&self.parameters, is_varargs);
                 write!(f, "fn(")?;
                 f.write_joined(sig.params(), ", ")?;
+                if is_varargs {
+                    if sig.params().is_empty() {
+                        write!(f, "...")?;
+                    } else {
+                        write!(f, ", ...")?;
+                    }
+                }
                 write!(f, ")")?;
                 let ret = sig.ret();
                 if *ret != Ty::unit() {

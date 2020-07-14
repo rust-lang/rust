@@ -313,6 +313,14 @@ impl Ctx {
                 params.push(type_ref);
             }
         }
+
+        let mut is_varargs = false;
+        if let Some(params) = func.param_list() {
+            if let Some(last) = params.params().last() {
+                is_varargs = last.dotdotdot_token().is_some();
+            }
+        }
+
         let ret_type = match func.ret_type().and_then(|rt| rt.type_ref()) {
             Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
             _ => TypeRef::unit(),
@@ -334,6 +342,7 @@ impl Ctx {
             has_self_param,
             is_unsafe: func.unsafe_token().is_some(),
             params: params.into_boxed_slice(),
+            is_varargs,
             ret_type,
             ast_id,
         };

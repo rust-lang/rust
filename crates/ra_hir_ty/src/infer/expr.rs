@@ -220,7 +220,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = Ty::apply(
-                    TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
+                    TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1, is_varargs: false },
                     Substs(sig_tys.clone().into()),
                 );
                 let closure_ty =

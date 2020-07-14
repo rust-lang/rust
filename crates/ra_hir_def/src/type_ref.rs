@@ -63,7 +63,7 @@ pub enum TypeRef {
     Array(Box<TypeRef> /*, Expr*/),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
-    Fn(Vec<TypeRef>),
+    Fn(Vec<TypeRef>, bool /*varargs*/),
     // For
     ImplTrait(Vec<TypeBound>),
     DynTrait(Vec<TypeBound>),
@@ -118,7 +118,12 @@ impl TypeRef {
                     .and_then(|rt| rt.type_ref())
                     .map(|it| TypeRef::from_ast(ctx, it))
                     .unwrap_or_else(|| TypeRef::Tuple(Vec::new()));
+                let mut is_varargs = false;
                 let mut params = if let Some(pl) = inner.param_list() {
+                    if let Some(param) = pl.params().last() {
+                        is_varargs = param.dotdotdot_token().is_some();
+                    }
+
                     pl.params()
                         .map(|p| p.ascribed_type())
                         .map(|it| TypeRef::from_ast_opt(&ctx, it))
@@ -127,7 +132,7 @@ impl TypeRef {
                     Vec::new()
                 };
                 params.push(ret_ty);
-                TypeRef::Fn(params)
+                TypeRef::Fn(params, is_varargs)
             }
             // for types are close enough for our purposes to the inner type for now...
             ast::TypeRef::ForType(inner) => TypeRef::from_ast_opt(&ctx, inner.type_ref()),
@@ -158,7 +163,9 @@ impl TypeRef {
         fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
             f(type_ref);
             match type_ref {
-                TypeRef::Fn(types) | TypeRef::Tuple(types) => types.iter().for_each(|t| go(t, f)),
+                TypeRef::Fn(types, _) | TypeRef::Tuple(types) => {
+                    types.iter().for_each(|t| go(t, f))
+                }
                 TypeRef::RawPtr(type_ref, _)
                 | TypeRef::Reference(type_ref, _)
                 | TypeRef::Array(type_ref)
