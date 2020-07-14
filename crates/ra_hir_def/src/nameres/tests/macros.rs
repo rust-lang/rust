@@ -660,3 +660,27 @@ fn expand_multiple_derive() {
     );
     assert_eq!(map.modules[map.root].scope.impls().len(), 2);
 }
+
+#[test]
+fn macro_expansion_overflow() {
+    mark::check!(macro_expansion_overflow);
+    compute_crate_def_map(
+        "
+macro_rules! a {
+    ($e:expr; $($t:tt)*) => {
+        b!($($t)*);
+    };
+    () => {};
+}
+
+macro_rules! b {
+    (static = $e:expr; $($t:tt)*) => {
+        a!($e; $($t)*);
+    };
+    () => {};
+}
+
+b! { static = #[] (); }
+",
+    );
+}

@@ -717,6 +717,11 @@ impl DefCollector<'_> {
         macro_call_id: MacroCallId,
         depth: usize,
     ) {
+        if depth > 100 {
+            mark::hit!(macro_expansion_overflow);
+            log::warn!("macro expansion is too deep");
+            return;
+        }
         let file_id: HirFileId = macro_call_id.as_file();
         let item_tree = self.db.item_tree(file_id);
         let mod_dir = self.mod_dirs[&module_id].clone();
