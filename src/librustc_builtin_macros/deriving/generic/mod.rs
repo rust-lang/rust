@@ -191,7 +191,7 @@ use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
-use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
+use ty::{Bounds, Path, Ptr, PtrTy, Self_, Ty};
 
 use crate::deriving;
 
@@ -211,7 +211,7 @@ pub struct TraitDef<'a> {
     pub additional_bounds: Vec<Ty<'a>>,
 
     /// Any extra lifetimes and/or bounds, e.g., `D: serialize::Decoder`
-    pub generics: LifetimeBounds<'a>,
+    pub generics: Bounds<'a>,
 
     /// Is it an `unsafe` trait?
     pub is_unsafe: bool,
@@ -228,7 +228,7 @@ pub struct MethodDef<'a> {
     /// name of the method
     pub name: Symbol,
     /// List of generics, e.g., `R: rand::Rng`
-    pub generics: LifetimeBounds<'a>,
+    pub generics: Bounds<'a>,
 
     /// Whether there is a self argument (outer Option) i.e., whether
     /// this is a static function, and whether it is a pointer (inner

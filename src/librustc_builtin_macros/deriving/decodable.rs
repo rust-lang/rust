@@ -26,13 +26,12 @@ pub fn expand_deriving_rustc_decodable(
         attributes: Vec::new(),
         path: Path::new_(vec![krate, "Decodable"], None, vec![], PathKind::Global),
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::decode,
-            generics: LifetimeBounds {
-                lifetimes: Vec::new(),
+            generics: Bounds {
                 bounds: vec![(
                     typaram,
                     vec![Path::new_(vec![krate, "Decoder"], None, vec![], PathKind::Global)],

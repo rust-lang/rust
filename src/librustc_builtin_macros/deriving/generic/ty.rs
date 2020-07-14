@@ -223,16 +223,15 @@ fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
     }
 }
 
-/// Lifetimes and bounds on type parameters
+/// Bounds on type parameters.
 #[derive(Clone)]
-pub struct LifetimeBounds<'a> {
-    pub lifetimes: Vec<(&'a str, Vec<&'a str>)>,
+pub struct Bounds<'a> {
     pub bounds: Vec<(&'a str, Vec<Path<'a>>)>,
 }
 
-impl<'a> LifetimeBounds<'a> {
-    pub fn empty() -> LifetimeBounds<'a> {
-        LifetimeBounds { lifetimes: Vec::new(), bounds: Vec::new() }
+impl<'a> Bounds<'a> {
+    pub fn empty() -> Bounds<'a> {
+        Bounds { bounds: Vec::new() }
     }
     pub fn to_generics(
         &self,
@@ -242,18 +241,12 @@ impl<'a> LifetimeBounds<'a> {
         self_generics: &Generics,
     ) -> Generics {
         let generic_params = self
-            .lifetimes
+            .bounds
             .iter()
-            .map(|&(lt, ref bounds)| {
-                let bounds = bounds
-                    .iter()
-                    .map(|b| ast::GenericBound::Outlives(cx.lifetime(span, Ident::from_str(b))));
-                cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds.collect())
-            })
-            .chain(self.bounds.iter().map(|t| {
+            .map(|t| {
                 let (name, ref bounds) = *t;
                 mk_ty_param(cx, span, name, &[], &bounds, self_ty, self_generics)
-            }))
+            })
             .collect();
 
         mk_generics(generic_params, span)

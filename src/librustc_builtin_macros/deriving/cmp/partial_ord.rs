@@ -23,7 +23,7 @@ pub fn expand_deriving_partial_ord(
             let attrs = vec![cx.attribute(inline)];
             MethodDef {
                 name: $name,
-                generics: LifetimeBounds::empty(),
+                generics: Bounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec![(borrowed_self(), "other")],
                 ret_ty: Literal(path_local!(bool)),
@@ -50,7 +50,7 @@ pub fn expand_deriving_partial_ord(
 
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         explicit_self: borrowed_explicit_self(),
         args: vec![(borrowed_self(), "other")],
         ret_ty,
@@ -82,7 +82,7 @@ pub fn expand_deriving_partial_ord(
         attributes: vec![],
         path: path_std!(cmp::PartialOrd),
         additional_bounds: vec![],
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods,

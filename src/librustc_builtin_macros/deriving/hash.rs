@@ -25,15 +25,12 @@ pub fn expand_deriving_hash(
         attributes: Vec::new(),
         path,
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::hash,
-            generics: LifetimeBounds {
-                lifetimes: Vec::new(),
-                bounds: vec![(typaram, vec![path_std!(hash::Hasher)])],
-            },
+            generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
             explicit_self: borrowed_explicit_self(),
             args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), "state")],
             ret_ty: nil_ty(),

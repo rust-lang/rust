@@ -18,7 +18,7 @@ pub fn expand_deriving_copy(
         attributes: Vec::new(),
         path: path_std!(marker::Copy),
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: true,
         methods: Vec::new(),

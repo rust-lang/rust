@@ -69,7 +69,7 @@ pub fn expand_deriving_partial_eq(
             let attrs = vec![cx.attribute(inline)];
             MethodDef {
                 name: $name,
-                generics: LifetimeBounds::empty(),
+                generics: Bounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec![(borrowed_self(), "other")],
                 ret_ty: Literal(path_local!(bool)),
@@ -102,7 +102,7 @@ pub fn expand_deriving_partial_eq(
         attributes: Vec::new(),
         path: path_std!(cmp::PartialEq),
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods,
