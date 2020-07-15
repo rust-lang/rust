@@ -21,7 +21,10 @@ use ra_db::{
 use ra_syntax::AstNode;
 use stdx::format_to;
 
-use crate::cli::{load_cargo::load_cargo, progress_report::ProgressReport, Result, Verbosity};
+use crate::{
+    cli::{load_cargo::load_cargo, progress_report::ProgressReport, Result, Verbosity},
+    print_memory_usage,
+};
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
@@ -43,7 +46,7 @@ pub fn analysis_stats(
     with_proc_macro: bool,
 ) -> Result<()> {
     let db_load_time = Instant::now();
-    let (mut host, vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
+    let (host, vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
     println!("Database loaded {:?}", db_load_time.elapsed());
     let analysis_time = Instant::now();
@@ -273,22 +276,7 @@ pub fn analysis_stats(
     println!("Total: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 
     if memory_usage {
-        let mut mem = host.per_query_memory_usage();
-
-        let before = ra_prof::memory_usage();
-        drop(vfs);
-        let vfs = before.allocated - ra_prof::memory_usage().allocated;
-        mem.push(("VFS".into(), vfs));
-
-        let before = ra_prof::memory_usage();
-        drop(host);
-        mem.push(("Unaccounted".into(), before.allocated - ra_prof::memory_usage().allocated));
-
-        mem.push(("Remaining".into(), ra_prof::memory_usage().allocated));
-
-        for (name, bytes) in mem {
-            println!("{:>8} {}", bytes, name)
-        }
+        print_memory_usage(host, vfs);
     }
 
     Ok(())
