@@ -18,7 +18,6 @@ use rustc_session::{output::find_crate_name, Session};
 use rustc_span::symbol::sym;
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
-use std::mem;
 use std::rc::Rc;
 
 /// Represent the result of a query.
@@ -394,38 +393,5 @@ impl Compiler {
         _timer = Some(self.session().timer("free_global_ctxt"));
 
         ret
-    }
-
-    // This method is different to all the other methods in `Compiler` because
-    // it lacks a `Queries` entry. It's also not currently used. It does serve
-    // as an example of how `Compiler` can be used, with additional steps added
-    // between some passes. And see `rustc_driver::run_compiler` for a more
-    // complex example.
-    pub fn compile(&self) -> Result<()> {
-        let linker = self.enter(|queries| {
-            queries.prepare_outputs()?;
-
-            if self.session().opts.output_types.contains_key(&OutputType::DepInfo)
-                && self.session().opts.output_types.len() == 1
-            {
-                return Ok(None);
-            }
-
-            queries.global_ctxt()?;
-
-            // Drop AST after creating GlobalCtxt to free memory.
-            mem::drop(queries.expansion()?.take());
-
-            queries.ongoing_codegen()?;
-
-            let linker = queries.linker()?;
-            Ok(Some(linker))
-        })?;
-
-        if let Some(linker) = linker {
-            linker.link()?
-        }
-
-        Ok(())
     }
 }
