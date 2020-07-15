@@ -877,18 +877,13 @@ impl fmt::Debug for StderrLock<'_> {
 /// Equivalent to the [`input`] method except that a prompt
 /// is printed before capturing input. This function returns
 /// either success ([`Ok`]) or failure ([`Err`]) containing
-/// the input.
+/// the input. See the [`io::Result`] module documentation
+/// for details.
 ///
 /// # Note
 ///
-/// This function is not the recommended solution to get user input, it should
-/// only be used for simple actions. If you require more explicit control over
-/// getting user input, see the [`Stdin::read_line`] method.
-///
-/// # Panics
-///
-/// This function currently panics if it does not receive input,
-/// or when input is empty (end of file / `ctrl + d`).
+/// If you require more explicit control over capturing
+/// user input, see the [`Stdin::read_line`] method.
 ///
 /// # Examples
 ///
@@ -916,21 +911,16 @@ pub fn prompt(prompt: &str) -> Result<String> {
 /// Constructs a new handle to the standard input of the current
 /// process, locks this handle and reads a line of input, returning
 /// either success ([`Ok`]) or failure ([`Err`]) containing the input.
-/// For automatic prompt handling, see the [`prompt`] method.
+/// See the [`io::Result`] module documentation for details. For
+/// automatic prompt handling, see the [`prompt`] method.
 ///
 /// If you need more explicit control over
 /// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
 ///
 /// # Note
 ///
-/// This function is not the recommended solution to get user input, it should
-/// only be used for simple actions. If you require more explicit control over
-/// getting user input, see the [`Stdin::read_line`] method.
-///
-/// # Panics
-///
-/// This function currently panics if it does not receive input
-/// or when input is empty (end of file / `ctrl + d`).
+/// If you require more explicit control over capturing
+/// user input, see the [`Stdin::read_line`] method.
 ///
 /// # Examples
 ///
