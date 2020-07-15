@@ -1103,6 +1103,9 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
+                if exp == 0 {
+                    return Some(1);
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -1113,15 +1116,11 @@ $EndFeature, "
                     exp /= 2;
                     base = try_opt!(base.checked_mul(base));
                 }
-
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = try_opt!(acc.checked_mul(base));
-                }
-
-                Some(acc)
+                Some(try_opt!(acc.checked_mul(base)))
             }
         }
 
@@ -1631,6 +1630,9 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_pow(self, mut exp: u32) -> Self {
+                if exp == 0 {
+                    return 1;
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -1642,14 +1644,11 @@ $EndFeature, "
                     base = base.wrapping_mul(base);
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = acc.wrapping_mul(base);
-                }
-
-                acc
+                acc.wrapping_mul(base)
             }
         }
 
@@ -1999,6 +1998,9 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+                if exp == 0 {
+                    return (1,false);
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
                 let mut overflown = false;
@@ -2017,16 +2019,13 @@ $EndFeature, "
                     overflown |= r.1;
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    r = acc.overflowing_mul(base);
-                    acc = r.0;
-                    overflown |= r.1;
-                }
-
-                (acc, overflown)
+                r = acc.overflowing_mul(base);
+                r.1 |= overflown;
+                r
             }
         }
 
@@ -2050,6 +2049,9 @@ $EndFeature, "
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub const fn pow(self, mut exp: u32) -> Self {
+                if exp == 0 {
+                    return 1;
+                }
                 let mut base = self;
                 let mut acc = 1;
 
@@ -2061,14 +2063,11 @@ $EndFeature, "
                     base = base * base;
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = acc * base;
-                }
-
-                acc
+                acc * base
             }
         }
 
@@ -3306,6 +3305,9 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
+                if exp == 0 {
+                    return Some(1);
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -3317,14 +3319,12 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);", $EndFeature, "
                     base = try_opt!(base.checked_mul(base));
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = try_opt!(acc.checked_mul(base));
-                }
 
-                Some(acc)
+                Some(try_opt!(acc.checked_mul(base)))
             }
         }
 
@@ -3715,6 +3715,9 @@ assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_pow(self, mut exp: u32) -> Self {
+                if exp == 0 {
+                    return 1;
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -3726,14 +3729,11 @@ assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
                     base = base.wrapping_mul(base);
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = acc.wrapping_mul(base);
-                }
-
-                acc
+                acc.wrapping_mul(base)
             }
         }
 
@@ -4040,6 +4040,9 @@ assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+                if exp == 0{
+                    return (1,false);
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
                 let mut overflown = false;
@@ -4058,16 +4061,14 @@ assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
                     overflown |= r.1;
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    r = acc.overflowing_mul(base);
-                    acc = r.0;
-                    overflown |= r.1;
-                }
+                r = acc.overflowing_mul(base);
+                r.1 |= overflown;
 
-                (acc, overflown)
+                r
             }
         }
 
@@ -4088,6 +4089,9 @@ Basic usage:
         #[inline]
         #[rustc_inherit_overflow_checks]
         pub const fn pow(self, mut exp: u32) -> Self {
+            if exp == 0 {
+                return 1;
+            }
             let mut base = self;
             let mut acc = 1;
 
@@ -4099,14 +4103,11 @@ Basic usage:
                 base = base * base;
             }
 
+            // since exp!=0, finally the exp must be 1.
             // Deal with the final bit of the exponent separately, since
             // squaring the base afterwards is not necessary and may cause a
             // needless overflow.
-            if exp == 1 {
-                acc = acc * base;
-            }
-
-            acc
+            acc * base
         }
     }
 
