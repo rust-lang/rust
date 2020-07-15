@@ -63,9 +63,9 @@ mod dl {
         })
     }
 
-    fn check_for_errors_in<T, F>(f: F) -> Result<T, String>
+    fn check_for_errors_in<T, F>(f: F) -> Result<*mut T, String>
     where
-        F: FnOnce() -> T,
+        F: FnOnce() -> *mut T,
     {
         use std::sync::{Mutex, Once};
         static INIT: Once = Once::new();
@@ -77,16 +77,35 @@ mod dl {
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence
             let _guard = (*LOCK).lock();
+
+            // dlerror reports the most recent failure that occured during a
+            // dynamic linking operation and then clears that error; we call
+            // once in advance of our operation in an attempt to discard any
+            // stale prior error report that may exist:
             let _old_error = libc::dlerror();
 
             let result = f();
 
-            let last_error = libc::dlerror() as *const _;
-            if ptr::null() == last_error {
+            // We should only check dlerror() in the event that the operation
+            // fails, which we determine by checking for a NULL return.  This
+            // covers at least dlopen() and dlsym().
+            //
+            // While we are able to exclude other callers within this library,
+            // we are not able to exclude external callers such as those in the
+            // system libraries.  If dynamic linking activity is induced in
+            // another thread, it may destroy our dlerror() report or it may
+            // inject one that does not apply to us -- this error report must be
+            // treated as advisory.
+            if ptr::null() != result {
                 Ok(result)
             } else {
-                let s = CStr::from_ptr(last_error).to_bytes();
-                Err(str::from_utf8(s).unwrap().to_owned())
+                let last_error = libc::dlerror() as *const _;
+                if ptr::null() == last_error {
+                    Err("unknown dl error".to_string())
+                } else {
+                    let s = CStr::from_ptr(last_error).to_bytes();
+                    Err(str::from_utf8(s).unwrap().to_owned())
+                }
             }
         }
     }
