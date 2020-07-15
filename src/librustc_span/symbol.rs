@@ -327,6 +327,7 @@ symbols! {
         diagnostic,
         direct,
         discriminant_kind,
+        discriminant_type,
         discriminant_value,
         dispatch_from_dyn,
         div,
