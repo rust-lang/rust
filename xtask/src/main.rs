@@ -14,7 +14,7 @@ use pico_args::Arguments;
 use xtask::{
     codegen::{self, Mode},
     dist::run_dist,
-    install::{ClientOpt, InstallCmd, ServerOpt},
+    install::{ClientOpt, InstallCmd, Malloc, ServerOpt},
     not_bash::pushd,
     pre_commit, project_root,
     release::{PromoteCmd, ReleaseCmd},
@@ -46,6 +46,7 @@ FLAGS:
         --client-code    Install only VS Code plugin
         --server         Install only the language server
         --jemalloc       Use jemalloc for server
+        --mimalloc       Use mimalloc for server
     -h, --help           Prints help information
         "
                 );
@@ -61,13 +62,21 @@ FLAGS:
                 return Ok(());
             }
 
-            let jemalloc = args.contains("--jemalloc");
+            let malloc = match (args.contains("--jemalloc"), args.contains("--mimalloc")) {
+                (false, false) => Malloc::System,
+                (true, false) => Malloc::Jemalloc,
+                (false, true) => Malloc::Mimalloc,
+                (true, true) => {
+                    eprintln!("error: Cannot use both `--jemalloc` and `--mimalloc`");
+                    return Ok(());
+                }
+            };
 
             args.finish()?;
 
             InstallCmd {
                 client: if server { None } else { Some(ClientOpt::VsCode) },
-                server: if client_code { None } else { Some(ServerOpt { jemalloc }) },
+                server: if client_code { None } else { Some(ServerOpt { malloc }) },
             }
             .run()
         }

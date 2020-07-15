@@ -19,7 +19,13 @@ pub enum ClientOpt {
 }
 
 pub struct ServerOpt {
-    pub jemalloc: bool,
+    pub malloc: Malloc,
+}
+
+pub enum Malloc {
+    System,
+    Jemalloc,
+    Mimalloc,
 }
 
 impl InstallCmd {
@@ -130,8 +136,12 @@ fn install_server(opts: ServerOpt) -> Result<()> {
         )
     }
 
-    let jemalloc = if opts.jemalloc { "--features jemalloc" } else { "" };
-    let res = run!("cargo install --path crates/rust-analyzer --locked --force {}", jemalloc);
+    let malloc_feature = match opts.malloc {
+        Malloc::System => "",
+        Malloc::Jemalloc => "--features jemalloc",
+        Malloc::Mimalloc => "--features mimalloc",
+    };
+    let res = run!("cargo install --path crates/rust-analyzer --locked --force {}", malloc_feature);
 
     if res.is_err() && old_rust {
         eprintln!(

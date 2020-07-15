@@ -13,6 +13,7 @@ doctest = false
 ra_arena = { path = "../ra_arena" }
 once_cell = "1.3.1"
 backtrace = { version = "0.3.44", optional = true }
+mimalloc = { version = "0.1.19", default-features = false, optional = true }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version = "0.3.2", optional = true }
@@ -25,4 +26,5 @@ cpu_profiler = []
 # Uncomment to enable for the whole crate graph
 # default = [ "backtrace" ]
 # default = [ "jemalloc" ]
+# default = [ "mimalloc" ]
 # default = [ "cpu_profiler" ]
