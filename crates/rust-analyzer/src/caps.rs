@@ -4,7 +4,7 @@ use std::env;
 use lsp_types::{
     CallHierarchyServerCapability, ClientCapabilities, CodeActionKind, CodeActionOptions,
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
-    DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
+    DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability, HoverProviderCapability,
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
     SelectionRangeProviderCapability, SemanticTokensDocumentProvider, SemanticTokensLegend,
     SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
@@ -30,7 +30,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
             will_save_wait_until: None,
             save: Some(SaveOptions::default().into()),
         })),
-        hover_provider: Some(true),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: None,
             trigger_characters: Some(vec![":".to_string(), ".".to_string()]),
