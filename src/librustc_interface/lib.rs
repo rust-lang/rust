@@ -14,6 +14,7 @@ mod queries;
 pub mod util;
 
 pub use interface::{run_compiler, Config};
+pub use passes::{DEFAULT_EXTERN_QUERY_PROVIDERS, DEFAULT_QUERY_PROVIDERS};
 pub use queries::Queries;
 
 #[cfg(test)]

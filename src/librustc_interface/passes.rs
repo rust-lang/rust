@@ -3,6 +3,7 @@ use crate::proc_macro_decls;
 use crate::util;
 
 use log::{info, log_enabled, warn};
+use once_cell::sync::Lazy;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
@@ -19,6 +20,7 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
@@ -719,7 +721,8 @@ pub fn prepare_outputs(
     Ok(outputs)
 }
 
-pub fn default_provide(providers: &mut ty::query::Providers) {
+pub static DEFAULT_QUERY_PROVIDERS: Lazy<Providers> = Lazy::new(|| {
+    let providers = &mut Providers::default();
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
@@ -738,12 +741,15 @@ pub fn default_provide(providers: &mut ty::query::Providers) {
     rustc_lint::provide(providers);
     rustc_symbol_mangling::provide(providers);
     rustc_codegen_ssa::provide(providers);
-}
+    *providers
+});
 
-pub fn default_provide_extern(providers: &mut ty::query::Providers) {
-    rustc_metadata::provide_extern(providers);
-    rustc_codegen_ssa::provide_extern(providers);
-}
+pub static DEFAULT_EXTERN_QUERY_PROVIDERS: Lazy<Providers> = Lazy::new(|| {
+    let mut extern_providers = *DEFAULT_QUERY_PROVIDERS;
+    rustc_metadata::provide_extern(&mut extern_providers);
+    rustc_codegen_ssa::provide_extern(&mut extern_providers);
+    extern_providers
+});
 
 pub struct QueryContext<'tcx>(&'tcx GlobalCtxt<'tcx>);
 
@@ -780,12 +786,11 @@ pub fn create_global_ctxt<'tcx>(
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
-    let mut local_providers = ty::query::Providers::default();
-    default_provide(&mut local_providers);
+    let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
     codegen_backend.provide(&mut local_providers);
 
-    let mut extern_providers = local_providers;
-    default_provide_extern(&mut extern_providers);
+    let mut extern_providers = *DEFAULT_EXTERN_QUERY_PROVIDERS;
+    codegen_backend.provide(&mut extern_providers);
     codegen_backend.provide_extern(&mut extern_providers);
 
     if let Some(callback) = compiler.override_queries {
