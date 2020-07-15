@@ -70,11 +70,6 @@ pre {
 	scrollbar-color: #5c6773 transparent;
 }
 
-.logo-container > img {
-	/* Make dark logos better visible in supported browsers */
-	filter: drop-shadow(0 0 30px rgba(255,255,255,0.7));
-}
-
 /* Improve the scrollbar display on webkit-based browsers */
 ::-webkit-scrollbar-track {
 	background-color: transparent;
