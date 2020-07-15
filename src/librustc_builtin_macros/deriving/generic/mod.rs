@@ -226,7 +226,7 @@ pub struct TraitDef<'a> {
 
 pub struct MethodDef<'a> {
     /// name of the method
-    pub name: &'a str,
+    pub name: Symbol,
     /// List of generics, e.g., `R: rand::Rng`
     pub generics: LifetimeBounds<'a>,
 
@@ -681,7 +681,7 @@ impl<'a> TraitDef<'a> {
         let opt_trait_ref = Some(trait_ref);
         let unused_qual = {
             let word = rustc_ast::attr::mk_nested_word_item(Ident::new(
-                Symbol::intern("unused_qualifications"),
+                sym::unused_qualifications,
                 self.span,
             ));
             let list = rustc_ast::attr::mk_list_item(Ident::new(sym::allow, self.span), vec![word]);
@@ -818,7 +818,7 @@ impl<'a> MethodDef<'a> {
     ) -> P<Expr> {
         let substructure = Substructure {
             type_ident,
-            method_ident: cx.ident_of(self.name, trait_.span),
+            method_ident: Ident::new(self.name, trait_.span),
             self_args,
             nonself_args,
             fields,
@@ -913,7 +913,7 @@ impl<'a> MethodDef<'a> {
 
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
 
-        let method_ident = cx.ident_of(self.name, trait_.span);
+        let method_ident = Ident::new(self.name, trait_.span);
         let fn_decl = cx.fn_decl(args, ast::FnRetTy::Ty(ret_type));
         let body_block = cx.block_expr(body);
 
@@ -1315,7 +1315,7 @@ impl<'a> MethodDef<'a> {
                 // Since we know that all the arguments will match if we reach
                 // the match expression we add the unreachable intrinsics as the
                 // result of the catch all which should help llvm in optimizing it
-                Some(deriving::call_intrinsic(cx, sp, "unreachable", vec![]))
+                Some(deriving::call_intrinsic(cx, sp, sym::unreachable, vec![]))
             }
             _ => None,
         };
@@ -1363,7 +1363,7 @@ impl<'a> MethodDef<'a> {
             for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
                 let self_addr = cx.expr_addr_of(sp, self_arg.clone());
                 let variant_value =
-                    deriving::call_intrinsic(cx, sp, "discriminant_value", vec![self_addr]);
+                    deriving::call_intrinsic(cx, sp, sym::discriminant_value, vec![self_addr]);
                 let let_stmt = cx.stmt_let(sp, false, ident, variant_value);
                 index_let_stmts.push(let_stmt);
 
@@ -1464,7 +1464,7 @@ impl<'a> MethodDef<'a> {
             // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
-            deriving::call_intrinsic(cx, sp, "unreachable", vec![])
+            deriving::call_intrinsic(cx, sp, sym::unreachable, vec![])
         } else {
             // Final wrinkle: the self_args are expressions that deref
             // down to desired places, but we cannot actually deref

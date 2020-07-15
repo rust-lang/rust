@@ -1041,10 +1041,10 @@ pub fn find_transparency(
                 break;
             } else if let Some(value) = attr.value_str() {
                 transparency = Some((
-                    match &*value.as_str() {
-                        "transparent" => Transparency::Transparent,
-                        "semitransparent" => Transparency::SemiTransparent,
-                        "opaque" => Transparency::Opaque,
+                    match value {
+                        sym::transparent => Transparency::Transparent,
+                        sym::semitransparent => Transparency::SemiTransparent,
+                        sym::opaque => Transparency::Opaque,
                         _ => {
                             error = Some(TransparencyError::UnknownTransparency(value, attr.span));
                             continue;

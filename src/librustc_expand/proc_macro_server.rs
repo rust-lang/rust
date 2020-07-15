@@ -149,8 +149,8 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             }
             Literal(lit) => tt!(Literal { lit }),
             DocComment(c) => {
-                let style = comments::doc_comment_style(&c.as_str());
-                let stripped = comments::strip_doc_comment_decoration(&c.as_str());
+                let style = comments::doc_comment_style(c);
+                let stripped = comments::strip_doc_comment_decoration(c);
                 let mut escaped = String::new();
                 for ch in stripped.chars() {
                     escaped.extend(ch.escape_debug());

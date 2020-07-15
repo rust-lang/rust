@@ -811,7 +811,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
 
         match find_best_match_for_name(
             names.iter().map(|suggestion| &suggestion.candidate),
-            &name.as_str(),
+            name,
             None,
         ) {
             Some(found) if found != name => {
@@ -1054,7 +1054,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
             .filter(|(id, _)| id.span.ctxt() == label.span.ctxt())
             .map(|(id, _)| &id.name);
 
-        find_best_match_for_name(names, &label.as_str(), None).map(|symbol| {
+        find_best_match_for_name(names, label.name, None).map(|symbol| {
             // Upon finding a similar name, get the ident that it was from - the span
             // contained within helps make a useful diagnostic. In addition, determine
             // whether this candidate is within scope.

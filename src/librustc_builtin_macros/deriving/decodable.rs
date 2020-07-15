@@ -8,7 +8,7 @@ use rustc_ast::ast;
 use rustc_ast::ast::{Expr, MetaItem, Mutability};
 use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 pub fn expand_deriving_rustc_decodable(
@@ -30,7 +30,7 @@ pub fn expand_deriving_rustc_decodable(
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-            name: "decode",
+            name: sym::decode,
             generics: LifetimeBounds {
                 lifetimes: Vec::new(),
                 bounds: vec![(

@@ -421,7 +421,11 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMet
                             .iter()
                             .map(|l| Symbol::intern(&l.name_lower()))
                             .collect::<Vec<_>>();
-                        let sugg = find_best_match_for_name(symbols.iter(), &format!("clippy::{}", name_lower), None);
+                        let sugg = find_best_match_for_name(
+                            symbols.iter(),
+                            Symbol::intern(&format!("clippy::{}", name_lower)),
+                            None,
+                        );
                         if lint_name.chars().any(char::is_uppercase)
                             && lint_store.find_lints(&format!("clippy::{}", name_lower)).is_ok()
                         {

@@ -16,6 +16,7 @@ use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::config::{CrateType, SanitizerSet};
+use rustc_span::symbol::sym;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types())
@@ -107,7 +108,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
         })
         .map(|def_id| {
             let export_level = if special_runtime_crate {
-                let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name.as_str();
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
                 // We can probably do better here by just ensuring that
                 // it has hidden visibility rather than public
                 // visibility, as this is primarily here to ensure it's
@@ -115,13 +116,12 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
                 //
                 // In general though we won't link right if these
                 // symbols are stripped, and LTO currently strips them.
-                if name == "rust_eh_personality"
-                    || name == "rust_eh_register_frames"
-                    || name == "rust_eh_unregister_frames"
-                {
-                    SymbolExportLevel::C
-                } else {
-                    SymbolExportLevel::Rust
+                match name {
+                    sym::rust_eh_personality
+                    | sym::rust_eh_register_frames
+                    | sym::rust_eh_unregister_frames =>
+                        SymbolExportLevel::C,
+                    _ => SymbolExportLevel::Rust,
                 }
             } else {
                 symbol_export_level(tcx, def_id.to_def_id())

@@ -423,70 +423,81 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
     };
 
     let def_id = tcx.hir().local_def_id(it.hir_id).to_def_id();
-    let name = it.ident.as_str();
+    let name = it.ident.name;
 
-    let (n_tps, inputs, output) = match &*name {
-        "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {
+    let (n_tps, inputs, output) = match name {
+        sym::simd_eq | sym::simd_ne | sym::simd_lt | sym::simd_le | sym::simd_gt | sym::simd_ge => {
             (2, vec![param(0), param(0)], param(1))
         }
-        "simd_add"
-        | "simd_sub"
-        | "simd_mul"
-        | "simd_rem"
-        | "simd_div"
-        | "simd_shl"
-        | "simd_shr"
-        | "simd_and"
-        | "simd_or"
-        | "simd_xor"
-        | "simd_fmin"
-        | "simd_fmax"
-        | "simd_fpow"
-        | "simd_saturating_add"
-        | "simd_saturating_sub" => (1, vec![param(0), param(0)], param(0)),
-        "simd_fsqrt" | "simd_fsin" | "simd_fcos" | "simd_fexp" | "simd_fexp2" | "simd_flog2"
-        | "simd_flog10" | "simd_flog" | "simd_fabs" | "simd_floor" | "simd_ceil" => {
-            (1, vec![param(0)], param(0))
+        sym::simd_add
+        | sym::simd_sub
+        | sym::simd_mul
+        | sym::simd_rem
+        | sym::simd_div
+        | sym::simd_shl
+        | sym::simd_shr
+        | sym::simd_and
+        | sym::simd_or
+        | sym::simd_xor
+        | sym::simd_fmin
+        | sym::simd_fmax
+        | sym::simd_fpow
+        | sym::simd_saturating_add
+        | sym::simd_saturating_sub => (1, vec![param(0), param(0)], param(0)),
+        sym::simd_fsqrt
+        | sym::simd_fsin
+        | sym::simd_fcos
+        | sym::simd_fexp
+        | sym::simd_fexp2
+        | sym::simd_flog2
+        | sym::simd_flog10
+        | sym::simd_flog
+        | sym::simd_fabs
+        | sym::simd_floor
+        | sym::simd_ceil => (1, vec![param(0)], param(0)),
+        sym::simd_fpowi => (1, vec![param(0), tcx.types.i32], param(0)),
+        sym::simd_fma => (1, vec![param(0), param(0), param(0)], param(0)),
+        sym::simd_gather => (3, vec![param(0), param(1), param(2)], param(0)),
+        sym::simd_scatter => (3, vec![param(0), param(1), param(2)], tcx.mk_unit()),
+        sym::simd_insert => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
+        sym::simd_extract => (2, vec![param(0), tcx.types.u32], param(1)),
+        sym::simd_cast => (2, vec![param(0)], param(1)),
+        sym::simd_bitmask => (2, vec![param(0)], param(1)),
+        sym::simd_select | sym::simd_select_bitmask => {
+            (2, vec![param(0), param(1), param(1)], param(1))
         }
-        "simd_fpowi" => (1, vec![param(0), tcx.types.i32], param(0)),
-        "simd_fma" => (1, vec![param(0), param(0), param(0)], param(0)),
-        "simd_gather" => (3, vec![param(0), param(1), param(2)], param(0)),
-        "simd_scatter" => (3, vec![param(0), param(1), param(2)], tcx.mk_unit()),
-        "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
-        "simd_extract" => (2, vec![param(0), tcx.types.u32], param(1)),
-        "simd_cast" => (2, vec![param(0)], param(1)),
-        "simd_bitmask" => (2, vec![param(0)], param(1)),
-        "simd_select" | "simd_select_bitmask" => (2, vec![param(0), param(1), param(1)], param(1)),
-        "simd_reduce_all" | "simd_reduce_any" => (1, vec![param(0)], tcx.types.bool),
-        "simd_reduce_add_ordered" | "simd_reduce_mul_ordered" => {
+        sym::simd_reduce_all | sym::simd_reduce_any => (1, vec![param(0)], tcx.types.bool),
+        sym::simd_reduce_add_ordered | sym::simd_reduce_mul_ordered => {
             (2, vec![param(0), param(1)], param(1))
         }
-        "simd_reduce_add_unordered"
-        | "simd_reduce_mul_unordered"
-        | "simd_reduce_and"
-        | "simd_reduce_or"
-        | "simd_reduce_xor"
-        | "simd_reduce_min"
-        | "simd_reduce_max"
-        | "simd_reduce_min_nanless"
-        | "simd_reduce_max_nanless" => (2, vec![param(0)], param(1)),
-        name if name.starts_with("simd_shuffle") => match name["simd_shuffle".len()..].parse() {
-            Ok(n) => {
-                let params = vec![param(0), param(0), tcx.mk_array(tcx.types.u32, n)];
-                (2, params, param(1))
+        sym::simd_reduce_add_unordered
+        | sym::simd_reduce_mul_unordered
+        | sym::simd_reduce_and
+        | sym::simd_reduce_or
+        | sym::simd_reduce_xor
+        | sym::simd_reduce_min
+        | sym::simd_reduce_max
+        | sym::simd_reduce_min_nanless
+        | sym::simd_reduce_max_nanless => (2, vec![param(0)], param(1)),
+        name if name.as_str().starts_with("simd_shuffle") => {
+            match name.as_str()["simd_shuffle".len()..].parse() {
+                Ok(n) => {
+                    let params = vec![param(0), param(0), tcx.mk_array(tcx.types.u32, n)];
+                    (2, params, param(1))
+                }
+                Err(_) => {
+                    struct_span_err!(
+                        tcx.sess,
+                        it.span,
+                        E0439,
+                        "invalid `simd_shuffle`, needs length: `{}`",
+                        name
+                    )
+                    .emit();
+                    return;
+                }
             }
-            Err(_) => {
-                struct_span_err!(
-                    tcx.sess,
-                    it.span,
-                    E0439,
-                    "invalid `simd_shuffle`, needs length: `{}`",
-                    name
-                )
-                .emit();
-                return;
-            }
-        },
+        }
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{}`", name);
             tcx.sess.struct_span_err(it.span, &msg).emit();

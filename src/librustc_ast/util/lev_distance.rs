@@ -47,12 +47,13 @@ pub fn lev_distance(a: &str, b: &str) -> usize {
 /// a lower(upper)case letters mismatch.
 pub fn find_best_match_for_name<'a, T>(
     iter_names: T,
-    lookup: &str,
+    lookup: Symbol,
     dist: Option<usize>,
 ) -> Option<Symbol>
 where
     T: Iterator<Item = &'a Symbol>,
 {
+    let lookup = &lookup.as_str();
     let max_dist = dist.map_or_else(|| cmp::max(lookup.len(), 3) / 3, |d| d);
     let name_vec: Vec<&Symbol> = iter_names.collect();
 

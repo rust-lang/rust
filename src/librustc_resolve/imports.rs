@@ -1034,8 +1034,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         let initial_res = source_bindings[ns].get().map(|initial_binding| {
                             all_ns_err = false;
                             if let Some(target_binding) = target_bindings[ns].get() {
-                                // Note that as_str() de-gensyms the Symbol
-                                if target.name.as_str() == "_"
+                                if target.name == kw::Underscore
                                     && initial_binding.is_extern_crate()
                                     && !initial_binding.is_import()
                                 {
@@ -1133,7 +1132,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 });
 
                 let lev_suggestion =
-                    find_best_match_for_name(names, &ident.as_str(), None).map(|suggestion| {
+                    find_best_match_for_name(names, ident.name, None).map(|suggestion| {
                         (
                             vec![(ident.span, suggestion.to_string())],
                             String::from("a similar name exists in the module"),

@@ -92,9 +92,9 @@ pub fn expand_deriving_partial_eq(
     // avoid defining `ne` if we can
     // c-like enums, enums without any fields and structs without fields
     // can safely define only `eq`.
-    let mut methods = vec![md!("eq", cs_eq)];
+    let mut methods = vec![md!(sym::eq, cs_eq)];
     if !is_type_without_fields(item) {
-        methods.push(md!("ne", cs_ne));
+        methods.push(md!(sym::ne, cs_ne));
     }
 
     let trait_def = TraitDef {

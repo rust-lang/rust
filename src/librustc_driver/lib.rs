@@ -698,7 +698,7 @@ impl RustcDefaultCalls {
                         .parse_sess
                         .config
                         .iter()
-                        .filter_map(|&(name, ref value)| {
+                        .filter_map(|&(name, value)| {
                             // Note that crt-static is a specially recognized cfg
                             // directive that's printed out here as part of
                             // rust-lang/rust#37406, but in general the
@@ -707,9 +707,7 @@ impl RustcDefaultCalls {
                             // specifically allowing the crt-static cfg and that's
                             // it, this is intended to get into Cargo and then go
                             // through to build scripts.
-                            let value = value.as_ref().map(|s| s.as_str());
-                            let value = value.as_ref().map(|s| s.as_ref());
-                            if (name != sym::target_feature || value != Some("crt-static"))
+                            if (name != sym::target_feature || value != Some(sym::crt_dash_static))
                                 && !allow_unstable_cfg
                                 && find_gated_cfg(|cfg_sym| cfg_sym == name).is_some()
                             {

@@ -658,7 +658,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // `nontrapping-fptoint` target feature is activated. We'll use those if
         // they are available.
         if self.sess().target.target.arch == "wasm32"
-            && self.sess().target_features.contains(&sym::nontrapping_fptoint)
+            && self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
         {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);
@@ -683,7 +683,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // `nontrapping-fptoint` target feature is activated. We'll use those if
         // they are available.
         if self.sess().target.target.arch == "wasm32"
-            && self.sess().target_features.contains(&sym::nontrapping_fptoint)
+            && self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
         {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);

@@ -84,7 +84,7 @@ pub fn expand_deriving_clone(
         is_unsafe: false,
         supports_unions: true,
         methods: vec![MethodDef {
-            name: "clone",
+            name: sym::clone,
             generics: LifetimeBounds::empty(),
             explicit_self: borrowed_explicit_self(),
             args: Vec::new(),

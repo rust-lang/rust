@@ -114,7 +114,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
                         if attr.check_name(sym::primitive) {
-                            prim = PrimitiveType::from_str(&v.as_str());
+                            prim = PrimitiveType::from_symbol(v);
                             if prim.is_some() {
                                 break;
                             }

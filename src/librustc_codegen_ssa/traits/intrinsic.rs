@@ -2,7 +2,7 @@ use super::BackendTypes;
 use crate::mir::operand::OperandRef;
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::call::FnAbi;
 
 pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
@@ -24,7 +24,7 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     /// the intrinsic does not need code generation.
     fn is_codegen_intrinsic(
         &mut self,
-        intrinsic: &str,
+        intrinsic: Symbol,
         args: &Vec<Operand<'tcx>>,
         caller_instance: ty::Instance<'tcx>,
     ) -> bool;

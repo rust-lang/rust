@@ -13,7 +13,7 @@ use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, 
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable, TypeVisitor,
 };
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 
@@ -702,16 +702,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let (opname, trait_did) = if let Op::Binary(op, IsAssign::Yes) = op {
             match op.node {
-                hir::BinOpKind::Add => ("add_assign", lang.add_assign_trait()),
-                hir::BinOpKind::Sub => ("sub_assign", lang.sub_assign_trait()),
-                hir::BinOpKind::Mul => ("mul_assign", lang.mul_assign_trait()),
-                hir::BinOpKind::Div => ("div_assign", lang.div_assign_trait()),
-                hir::BinOpKind::Rem => ("rem_assign", lang.rem_assign_trait()),
-                hir::BinOpKind::BitXor => ("bitxor_assign", lang.bitxor_assign_trait()),
-                hir::BinOpKind::BitAnd => ("bitand_assign", lang.bitand_assign_trait()),
-                hir::BinOpKind::BitOr => ("bitor_assign", lang.bitor_assign_trait()),
-                hir::BinOpKind::Shl => ("shl_assign", lang.shl_assign_trait()),
-                hir::BinOpKind::Shr => ("shr_assign", lang.shr_assign_trait()),
+                hir::BinOpKind::Add => (sym::add_assign, lang.add_assign_trait()),
+                hir::BinOpKind::Sub => (sym::sub_assign, lang.sub_assign_trait()),
+                hir::BinOpKind::Mul => (sym::mul_assign, lang.mul_assign_trait()),
+                hir::BinOpKind::Div => (sym::div_assign, lang.div_assign_trait()),
+                hir::BinOpKind::Rem => (sym::rem_assign, lang.rem_assign_trait()),
+                hir::BinOpKind::BitXor => (sym::bitxor_assign, lang.bitxor_assign_trait()),
+                hir::BinOpKind::BitAnd => (sym::bitand_assign, lang.bitand_assign_trait()),
+                hir::BinOpKind::BitOr => (sym::bitor_assign, lang.bitor_assign_trait()),
+                hir::BinOpKind::Shl => (sym::shl_assign, lang.shl_assign_trait()),
+                hir::BinOpKind::Shr => (sym::shr_assign, lang.shr_assign_trait()),
                 hir::BinOpKind::Lt
                 | hir::BinOpKind::Le
                 | hir::BinOpKind::Ge
@@ -725,30 +725,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else if let Op::Binary(op, IsAssign::No) = op {
             match op.node {
-                hir::BinOpKind::Add => ("add", lang.add_trait()),
-                hir::BinOpKind::Sub => ("sub", lang.sub_trait()),
-                hir::BinOpKind::Mul => ("mul", lang.mul_trait()),
-                hir::BinOpKind::Div => ("div", lang.div_trait()),
-                hir::BinOpKind::Rem => ("rem", lang.rem_trait()),
-                hir::BinOpKind::BitXor => ("bitxor", lang.bitxor_trait()),
-                hir::BinOpKind::BitAnd => ("bitand", lang.bitand_trait()),
-                hir::BinOpKind::BitOr => ("bitor", lang.bitor_trait()),
-                hir::BinOpKind::Shl => ("shl", lang.shl_trait()),
-                hir::BinOpKind::Shr => ("shr", lang.shr_trait()),
-                hir::BinOpKind::Lt => ("lt", lang.partial_ord_trait()),
-                hir::BinOpKind::Le => ("le", lang.partial_ord_trait()),
-                hir::BinOpKind::Ge => ("ge", lang.partial_ord_trait()),
-                hir::BinOpKind::Gt => ("gt", lang.partial_ord_trait()),
-                hir::BinOpKind::Eq => ("eq", lang.eq_trait()),
-                hir::BinOpKind::Ne => ("ne", lang.eq_trait()),
+                hir::BinOpKind::Add => (sym::add, lang.add_trait()),
+                hir::BinOpKind::Sub => (sym::sub, lang.sub_trait()),
+                hir::BinOpKind::Mul => (sym::mul, lang.mul_trait()),
+                hir::BinOpKind::Div => (sym::div, lang.div_trait()),
+                hir::BinOpKind::Rem => (sym::rem, lang.rem_trait()),
+                hir::BinOpKind::BitXor => (sym::bitxor, lang.bitxor_trait()),
+                hir::BinOpKind::BitAnd => (sym::bitand, lang.bitand_trait()),
+                hir::BinOpKind::BitOr => (sym::bitor, lang.bitor_trait()),
+                hir::BinOpKind::Shl => (sym::shl, lang.shl_trait()),
+                hir::BinOpKind::Shr => (sym::shr, lang.shr_trait()),
+                hir::BinOpKind::Lt => (sym::lt, lang.partial_ord_trait()),
+                hir::BinOpKind::Le => (sym::le, lang.partial_ord_trait()),
+                hir::BinOpKind::Ge => (sym::ge, lang.partial_ord_trait()),
+                hir::BinOpKind::Gt => (sym::gt, lang.partial_ord_trait()),
+                hir::BinOpKind::Eq => (sym::eq, lang.eq_trait()),
+                hir::BinOpKind::Ne => (sym::ne, lang.eq_trait()),
                 hir::BinOpKind::And | hir::BinOpKind::Or => {
                     span_bug!(span, "&& and || are not overloadable")
                 }
             }
         } else if let Op::Unary(hir::UnOp::UnNot, _) = op {
-            ("not", lang.not_trait())
+            (sym::not, lang.not_trait())
         } else if let Op::Unary(hir::UnOp::UnNeg, _) = op {
-            ("neg", lang.neg_trait())
+            (sym::neg, lang.neg_trait())
         } else {
             bug!("lookup_op_method: op not supported: {:?}", op)
         };
@@ -759,7 +759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let method = trait_did.and_then(|trait_did| {
-            let opname = Ident::from_str(opname);
+            let opname = Ident::with_dummy_span(opname);
             self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys))
         });
 

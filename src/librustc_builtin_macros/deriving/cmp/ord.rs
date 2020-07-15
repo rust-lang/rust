@@ -26,7 +26,7 @@ pub fn expand_deriving_ord(
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-            name: "cmp",
+            name: sym::cmp,
             generics: LifetimeBounds::empty(),
             explicit_self: borrowed_explicit_self(),
             args: vec![(borrowed_self(), "other")],

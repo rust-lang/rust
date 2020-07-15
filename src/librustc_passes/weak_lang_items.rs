@@ -81,7 +81,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
             // `core::intrinsics::code_count_region()` is (currently) the only `extern` lang item
             // that is never actually linked. It is not a `weak_lang_item` that can be registered
             // when used, and should be registered here instead.
-            if let Some((item_index, _)) = ITEM_REFS.get(&*name.as_str()).cloned() {
+            if let Some((item_index, _)) = ITEM_REFS.get(&name).cloned() {
                 if self.items.items[item_index].is_none() {
                     let item_def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
                     self.items.items[item_index] = Some(item_def_id);

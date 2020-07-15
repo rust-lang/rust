@@ -79,12 +79,8 @@ impl AllocFnFactory<'_, '_> {
         self.cx.stmt_item(self.span, item)
     }
 
-    fn call_allocator(&self, method: &str, mut args: Vec<P<Expr>>) -> P<Expr> {
-        let method = self.cx.std_path(&[
-            Symbol::intern("alloc"),
-            Symbol::intern("GlobalAlloc"),
-            Symbol::intern(method),
-        ]);
+    fn call_allocator(&self, method: Symbol, mut args: Vec<P<Expr>>) -> P<Expr> {
+        let method = self.cx.std_path(&[sym::alloc, sym::GlobalAlloc, method]);
         let method = self.cx.expr_path(self.cx.path(self.span, method));
         let allocator = self.cx.path_ident(self.span, self.global);
         let allocator = self.cx.expr_path(allocator);
@@ -115,11 +111,8 @@ impl AllocFnFactory<'_, '_> {
                 args.push(self.cx.param(self.span, size, ty_usize.clone()));
                 args.push(self.cx.param(self.span, align, ty_usize));
 
-                let layout_new = self.cx.std_path(&[
-                    Symbol::intern("alloc"),
-                    Symbol::intern("Layout"),
-                    Symbol::intern("from_size_align_unchecked"),
-                ]);
+                let layout_new =
+                    self.cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
                 let layout_new = self.cx.expr_path(self.cx.path(self.span, layout_new));
                 let size = self.cx.expr_ident(self.span, size);
                 let align = self.cx.expr_ident(self.span, align);

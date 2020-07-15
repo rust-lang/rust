@@ -29,7 +29,7 @@ pub fn expand_deriving_debug(
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-            name: "fmt",
+            name: sym::fmt,
             generics: LifetimeBounds::empty(),
             explicit_self: borrowed_explicit_self(),
             args: vec![(fmtr, "f")],

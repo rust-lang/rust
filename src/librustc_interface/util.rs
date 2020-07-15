@@ -53,7 +53,7 @@ pub fn add_configuration(
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
 
     if sess.crt_static(None) {
-        cfg.insert((tf, Some(Symbol::intern("crt-static"))));
+        cfg.insert((tf, Some(sym::crt_dash_static)));
     }
 }
 
@@ -427,11 +427,8 @@ pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut 
 
                 if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().kind {
                     let span = spanned.span;
-                    let lev_candidate = find_best_match_for_name(
-                        CRATE_TYPES.iter().map(|(k, _)| k),
-                        &n.as_str(),
-                        None,
-                    );
+                    let lev_candidate =
+                        find_best_match_for_name(CRATE_TYPES.iter().map(|(k, _)| k), n, None);
                     if let Some(candidate) = lev_candidate {
                         lint_buffer.buffer_lint_with_diagnostic(
                             lint::builtin::UNKNOWN_CRATE_TYPES,

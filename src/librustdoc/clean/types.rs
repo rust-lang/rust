@@ -21,7 +21,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::middle::stability;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
@@ -540,7 +540,7 @@ impl Attributes {
             .filter_map(|attr| {
                 if let Some(value) = attr.doc_str() {
                     let (value, mk_fragment): (_, fn(_, _, _) -> _) = if attr.is_doc_comment() {
-                        (strip_doc_comment_decoration(&value.as_str()), DocFragment::SugaredDoc)
+                        (strip_doc_comment_decoration(value), DocFragment::SugaredDoc)
                     } else {
                         (value.to_string(), DocFragment::RawDoc)
                     };
@@ -1230,33 +1230,33 @@ impl GetDefId for Type {
 }
 
 impl PrimitiveType {
-    pub fn from_str(s: &str) -> Option<PrimitiveType> {
+    pub fn from_symbol(s: Symbol) -> Option<PrimitiveType> {
         match s {
-            "isize" => Some(PrimitiveType::Isize),
-            "i8" => Some(PrimitiveType::I8),
-            "i16" => Some(PrimitiveType::I16),
-            "i32" => Some(PrimitiveType::I32),
-            "i64" => Some(PrimitiveType::I64),
-            "i128" => Some(PrimitiveType::I128),
-            "usize" => Some(PrimitiveType::Usize),
-            "u8" => Some(PrimitiveType::U8),
-            "u16" => Some(PrimitiveType::U16),
-            "u32" => Some(PrimitiveType::U32),
-            "u64" => Some(PrimitiveType::U64),
-            "u128" => Some(PrimitiveType::U128),
-            "bool" => Some(PrimitiveType::Bool),
-            "char" => Some(PrimitiveType::Char),
-            "str" => Some(PrimitiveType::Str),
-            "f32" => Some(PrimitiveType::F32),
-            "f64" => Some(PrimitiveType::F64),
-            "array" => Some(PrimitiveType::Array),
-            "slice" => Some(PrimitiveType::Slice),
-            "tuple" => Some(PrimitiveType::Tuple),
-            "unit" => Some(PrimitiveType::Unit),
-            "pointer" => Some(PrimitiveType::RawPointer),
-            "reference" => Some(PrimitiveType::Reference),
-            "fn" => Some(PrimitiveType::Fn),
-            "never" => Some(PrimitiveType::Never),
+            sym::isize => Some(PrimitiveType::Isize),
+            sym::i8 => Some(PrimitiveType::I8),
+            sym::i16 => Some(PrimitiveType::I16),
+            sym::i32 => Some(PrimitiveType::I32),
+            sym::i64 => Some(PrimitiveType::I64),
+            sym::i128 => Some(PrimitiveType::I128),
+            sym::usize => Some(PrimitiveType::Usize),
+            sym::u8 => Some(PrimitiveType::U8),
+            sym::u16 => Some(PrimitiveType::U16),
+            sym::u32 => Some(PrimitiveType::U32),
+            sym::u64 => Some(PrimitiveType::U64),
+            sym::u128 => Some(PrimitiveType::U128),
+            sym::bool => Some(PrimitiveType::Bool),
+            sym::char => Some(PrimitiveType::Char),
+            sym::str => Some(PrimitiveType::Str),
+            sym::f32 => Some(PrimitiveType::F32),
+            sym::f64 => Some(PrimitiveType::F64),
+            sym::array => Some(PrimitiveType::Array),
+            sym::slice => Some(PrimitiveType::Slice),
+            sym::tuple => Some(PrimitiveType::Tuple),
+            sym::unit => Some(PrimitiveType::Unit),
+            sym::pointer => Some(PrimitiveType::RawPointer),
+            sym::reference => Some(PrimitiveType::Reference),
+            kw::Fn => Some(PrimitiveType::Fn),
+            sym::never => Some(PrimitiveType::Never),
             _ => None,
         }
     }

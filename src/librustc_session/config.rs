@@ -717,18 +717,20 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     let mut ret = FxHashSet::default();
     ret.reserve(6); // the minimum number of insertions
     // Target bindings.
-    ret.insert((Symbol::intern("target_os"), Some(Symbol::intern(os))));
+    ret.insert((sym::target_os, Some(Symbol::intern(os))));
     if let Some(ref fam) = sess.target.target.options.target_family {
-        ret.insert((Symbol::intern("target_family"), Some(Symbol::intern(fam))));
-        if fam == "windows" || fam == "unix" {
-            ret.insert((Symbol::intern(fam), None));
+        ret.insert((sym::target_family, Some(Symbol::intern(fam))));
+        if fam == "windows" {
+            ret.insert((sym::windows, None));
+        } else if fam == "unix" {
+            ret.insert((sym::unix, None));
         }
     }
-    ret.insert((Symbol::intern("target_arch"), Some(Symbol::intern(arch))));
-    ret.insert((Symbol::intern("target_endian"), Some(Symbol::intern(end))));
-    ret.insert((Symbol::intern("target_pointer_width"), Some(Symbol::intern(wordsz))));
-    ret.insert((Symbol::intern("target_env"), Some(Symbol::intern(env))));
-    ret.insert((Symbol::intern("target_vendor"), Some(Symbol::intern(vendor))));
+    ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
+    ret.insert((sym::target_endian, Some(Symbol::intern(end))));
+    ret.insert((sym::target_pointer_width, Some(Symbol::intern(wordsz))));
+    ret.insert((sym::target_env, Some(Symbol::intern(env))));
+    ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
     if sess.target.target.options.has_elf_tls {
         ret.insert((sym::target_thread_local, None));
     }
@@ -754,7 +756,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     }
 
     if sess.opts.debug_assertions {
-        ret.insert((Symbol::intern("debug_assertions"), None));
+        ret.insert((sym::debug_assertions, None));
     }
     if sess.opts.crate_types.contains(&CrateType::ProcMacro) {
         ret.insert((sym::proc_macro, None));

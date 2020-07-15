@@ -1247,7 +1247,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .generic_args()
                             .bindings
                             .iter()
-                            .find_map(|b| match (b.ident.as_str() == "Output", &b.kind) {
+                            .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
                                 (true, hir::TypeBindingKind::Equality { ty }) => {
                                     sess.source_map().span_to_snippet(ty.span).ok()
                                 }
@@ -2254,7 +2254,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .collect();
 
         if let (Some(suggested_name), true) = (
-            find_best_match_for_name(all_candidate_names.iter(), &assoc_name.as_str(), None),
+            find_best_match_for_name(all_candidate_names.iter(), assoc_name.name, None),
             assoc_name.span != DUMMY_SP,
         ) {
             err.span_suggestion(
@@ -2354,7 +2354,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggested_name) = find_best_match_for_name(
                         adt_def.variants.iter().map(|variant| &variant.ident.name),
-                        &assoc_ident.as_str(),
+                        assoc_ident.name,
                         None,
                     ) {
                         err.span_suggestion(

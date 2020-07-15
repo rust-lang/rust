@@ -394,8 +394,11 @@ impl LintStore {
                     let symbols =
                         self.by_name.keys().map(|name| Symbol::intern(&name)).collect::<Vec<_>>();
 
-                    let suggestion =
-                        find_best_match_for_name(symbols.iter(), &lint_name.to_lowercase(), None);
+                    let suggestion = find_best_match_for_name(
+                        symbols.iter(),
+                        Symbol::intern(&lint_name.to_lowercase()),
+                        None,
+                    );
 
                     CheckLintNameResult::NoLint(suggestion)
                 }

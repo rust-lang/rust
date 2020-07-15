@@ -234,7 +234,7 @@ impl DirtyCleanVisitor<'tcx> {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(LABEL) {
                 let value = expect_associated_value(self.tcx, &item);
-                return Some(self.resolve_labels(&item, &value.as_str()));
+                return Some(self.resolve_labels(&item, value));
             }
         }
         None
@@ -245,7 +245,7 @@ impl DirtyCleanVisitor<'tcx> {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(EXCEPT) {
                 let value = expect_associated_value(self.tcx, &item);
-                return self.resolve_labels(&item, &value.as_str());
+                return self.resolve_labels(&item, value);
             }
         }
         // if no `label` or `except` is given, only the node's group are asserted
@@ -347,9 +347,9 @@ impl DirtyCleanVisitor<'tcx> {
         (name, labels)
     }
 
-    fn resolve_labels(&self, item: &NestedMetaItem, value: &str) -> Labels {
+    fn resolve_labels(&self, item: &NestedMetaItem, value: Symbol) -> Labels {
         let mut out = Labels::default();
-        for label in value.split(',') {
+        for label in value.as_str().split(',') {
             let label = label.trim();
             if DepNode::has_label_string(label) {
                 if out.contains(label) {
