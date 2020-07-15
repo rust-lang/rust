@@ -1,7 +1,7 @@
 #![crate_name = "inner"]
 /// this is a trait
 pub trait SomeTrait {
-    /// this is a method for [SomeTrait]
+    /// this is a method for [a trait][SomeTrait]
     fn foo();
 }
 
