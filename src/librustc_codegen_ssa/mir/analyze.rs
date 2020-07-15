@@ -69,10 +69,6 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
         analyzer
     }
 
-    fn first_assignment(&self, local: mir::Local) -> Option<Location> {
-        self.first_assignment[local]
-    }
-
     fn not_ssa(&mut self, local: mir::Local) {
         debug!("marking {:?} as non-SSA", local);
         self.non_ssa_locals.insert(local);
@@ -220,7 +216,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 // optimizations) require locals to be in (uninitialized) memory.
                 // N.B., there can be uninitialized reads of a local visited after
                 // an assignment to that local, if they happen on disjoint paths.
-                let ssa_read = match self.first_assignment(local) {
+                let ssa_read = match self.first_assignment[local] {
                     Some(assignment_location) => {
                         assignment_location.dominates(location, &self.dominators)
                     }
