@@ -41,8 +41,8 @@ pub fn f<B: UnknownBound>(a: UnknownType, b: B) {
             can_define_macros_here_too!();
 
             /// This also is documented.
-            pub fn doubly_nested(c: UnknownTypeShouldBeIgnored) {
-
+            pub fn doubly_nested(c: UnknownType) {
+            //~^ ERROR cannot find type `UnknownType` in this scope
             }
         }
     }

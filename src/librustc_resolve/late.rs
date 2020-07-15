@@ -407,7 +407,10 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
 impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     fn visit_item(&mut self, item: &'ast Item) {
         let prev = replace(&mut self.diagnostic_metadata.current_item, Some(item));
+        // Always report errors in items we just entered.
+        let old_ignore = replace(&mut self.in_func_body, false);
         self.resolve_item(item);
+        self.in_func_body = old_ignore;
         self.diagnostic_metadata.current_item = prev;
     }
     fn visit_arm(&mut self, arm: &'ast Arm) {
@@ -1174,8 +1177,6 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         impl_items: &'ast [P<AssocItem>],
     ) {
         debug!("resolve_implementation");
-        // Never ignore errors in trait implementations.
-        let old_ignore = replace(&mut self.in_func_body, false);
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
             // Dummy self type for better errors if `Self` is used in the trait path.
@@ -1271,7 +1272,6 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             });
         });
-        self.in_func_body = old_ignore;
     }
 
     fn check_trait_item<F>(&mut self, ident: Ident, ns: Namespace, span: Span, err: F)
