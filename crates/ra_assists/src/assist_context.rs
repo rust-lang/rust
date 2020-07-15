@@ -19,7 +19,7 @@ use ra_text_edit::TextEditBuilder;
 
 use crate::{
     assist_config::{AssistConfig, SnippetCap},
-    Assist, AssistId, GroupLabel, ResolvedAssist,
+    Assist, AssistId, AssistKind, GroupLabel, ResolvedAssist,
 };
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
@@ -103,14 +103,26 @@ pub(crate) struct Assists {
     resolve: bool,
     file: FileId,
     buf: Vec<(Assist, Option<SourceChange>)>,
+    allowed: Option<Vec<AssistKind>>,
 }
 
 impl Assists {
     pub(crate) fn new_resolved(ctx: &AssistContext) -> Assists {
-        Assists { resolve: true, file: ctx.frange.file_id, buf: Vec::new() }
+        Assists {
+            resolve: true,
+            file: ctx.frange.file_id,
+            buf: Vec::new(),
+            allowed: ctx.config.allowed.clone(),
+        }
     }
+
     pub(crate) fn new_unresolved(ctx: &AssistContext) -> Assists {
-        Assists { resolve: false, file: ctx.frange.file_id, buf: Vec::new() }
+        Assists {
+            resolve: false,
+            file: ctx.frange.file_id,
+            buf: Vec::new(),
+            allowed: ctx.config.allowed.clone(),
+        }
     }
 
     pub(crate) fn finish_unresolved(self) -> Vec<Assist> {
@@ -139,9 +151,13 @@ impl Assists {
         target: TextRange,
         f: impl FnOnce(&mut AssistBuilder),
     ) -> Option<()> {
+        if !self.is_allowed(&id) {
+            return None;
+        }
         let label = Assist::new(id, label.into(), None, target);
         self.add_impl(label, f)
     }
+
     pub(crate) fn add_group(
         &mut self,
         group: &GroupLabel,
@@ -150,9 +166,14 @@ impl Assists {
         target: TextRange,
         f: impl FnOnce(&mut AssistBuilder),
     ) -> Option<()> {
+        if !self.is_allowed(&id) {
+            return None;
+        }
+
         let label = Assist::new(id, label.into(), Some(group.clone()), target);
         self.add_impl(label, f)
     }
+
     fn add_impl(&mut self, label: Assist, f: impl FnOnce(&mut AssistBuilder)) -> Option<()> {
         let source_change = if self.resolve {
             let mut builder = AssistBuilder::new(self.file);
@@ -169,6 +190,13 @@ impl Assists {
     fn finish(mut self) -> Vec<(Assist, Option<SourceChange>)> {
         self.buf.sort_by_key(|(label, _edit)| label.target.len());
         self.buf
+    }
+
+    fn is_allowed(&self, id: &AssistId) -> bool {
+        match &self.allowed {
+            Some(allowed) => allowed.iter().any(|kind| kind.contains(id.1)),
+            None => true,
+        }
     }
 }
 

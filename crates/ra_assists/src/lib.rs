@@ -37,6 +37,25 @@ pub enum AssistKind {
     RefactorRewrite,
 }
 
+impl AssistKind {
+    pub fn contains(self, other: AssistKind) -> bool {
+        if self == other {
+            return true;
+        }
+
+        match self {
+            AssistKind::None | AssistKind::Generate => return true,
+            AssistKind::Refactor => match other {
+                AssistKind::RefactorExtract
+                | AssistKind::RefactorInline
+                | AssistKind::RefactorRewrite => return true,
+                _ => return false,
+            },
+            _ => return false,
+        }
+    }
+}
+
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

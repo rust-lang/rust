@@ -6,7 +6,7 @@ use ra_ide_db::RootDatabase;
 use ra_syntax::TextRange;
 use test_utils::{assert_eq_text, extract_offset, extract_range};
 
-use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, Assists};
+use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, Assists};
 use stdx::trim_indent;
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
@@ -133,4 +133,47 @@ fn assist_order_if_expr() {
 
     assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");
     assert_eq!(assists.next().expect("expected assist").assist.label, "Replace with match");
+}
+
+#[test]
+fn assist_filter_works() {
+    let before = "
+    pub fn test_some_range(a: int) -> bool {
+        if let 2..6 = <|>5<|> {
+            true
+        } else {
+            false
+        }
+    }";
+    let (range, before) = extract_range(before);
+    let (db, file_id) = with_single_file(&before);
+    let frange = FileRange { file_id, range };
+
+    {
+        let mut cfg = AssistConfig::default();
+        cfg.allowed = Some(vec![AssistKind::Refactor]);
+
+        let assists = Assist::resolved(&db, &cfg, frange);
+        let mut assists = assists.iter();
+
+        assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");
+        assert_eq!(assists.next().expect("expected assist").assist.label, "Replace with match");
+    }
+
+    {
+        let mut cfg = AssistConfig::default();
+        cfg.allowed = Some(vec![AssistKind::RefactorExtract]);
+        let assists = Assist::resolved(&db, &cfg, frange);
+        assert_eq!(assists.len(), 1);
+
+        let mut assists = assists.iter();
+        assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");
+    }
+
+    {
+        let mut cfg = AssistConfig::default();
+        cfg.allowed = Some(vec![AssistKind::QuickFix]);
+        let assists = Assist::resolved(&db, &cfg, frange);
+        assert!(assists.is_empty(), "All asserts but quickfixes should be filtered out");
+    }
 }

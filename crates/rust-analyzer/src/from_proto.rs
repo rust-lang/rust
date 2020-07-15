@@ -2,7 +2,7 @@
 use std::convert::TryFrom;
 
 use ra_db::{FileId, FilePosition, FileRange};
-use ra_ide::{LineCol, LineIndex};
+use ra_ide::{AssistKind, LineCol, LineIndex};
 use ra_syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
 
@@ -51,4 +51,18 @@ pub(crate) fn file_range(
     let line_index = world.analysis.file_line_index(file_id)?;
     let range = text_range(&line_index, range);
     Ok(FileRange { file_id, range })
+}
+
+pub(crate) fn assist_kind(kind: lsp_types::CodeActionKind) -> Option<AssistKind> {
+    let assist_kind = match &kind {
+        k if k == &lsp_types::CodeActionKind::EMPTY => AssistKind::None,
+        k if k == &lsp_types::CodeActionKind::QUICKFIX => AssistKind::QuickFix,
+        k if k == &lsp_types::CodeActionKind::REFACTOR => AssistKind::Refactor,
+        k if k == &lsp_types::CodeActionKind::REFACTOR_EXTRACT => AssistKind::RefactorExtract,
+        k if k == &lsp_types::CodeActionKind::REFACTOR_INLINE => AssistKind::RefactorInline,
+        k if k == &lsp_types::CodeActionKind::REFACTOR_REWRITE => AssistKind::RefactorRewrite,
+        _ => return None,
+    };
+
+    Some(assist_kind)
 }
