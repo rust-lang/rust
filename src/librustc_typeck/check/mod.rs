@@ -3560,11 +3560,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ast_c: &hir::AnonConst,
         param_def_id: DefId,
     ) -> &'tcx ty::Const<'tcx> {
-        let const_def = ty::WithOptParam {
+        let const_def = ty::WithOptConstParam {
             did: self.tcx.hir().local_def_id(ast_c.hir_id),
-            param_did: Some(param_def_id),
+            const_param_did: Some(param_def_id),
         };
-        let c = ty::Const::const_arg_from_anon_const(self.tcx, const_def);
+        let c = ty::Const::from_opt_const_arg_anon_const(self.tcx, const_def);
         self.register_wf_obligation(
             c.into(),
             self.tcx.hir().span(ast_c.hir_id),

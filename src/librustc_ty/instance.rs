@@ -21,24 +21,26 @@ fn resolve_instance<'tcx>(
         }
     }
 
-    inner_resolve_instance(tcx, param_env.and((ty::WithOptParam::dummy(did), substs)))
+    inner_resolve_instance(tcx, param_env.and((ty::WithOptConstParam::dummy(did), substs)))
 }
 
 fn resolve_instance_of_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
-    let (param_env, (did, param_did, substs)) = key.into_parts();
+    let (param_env, (did, const_param_did, substs)) = key.into_parts();
     inner_resolve_instance(
         tcx,
-        param_env
-            .and((ty::WithOptParam { did: did.to_def_id(), param_did: Some(param_did) }, substs)),
+        param_env.and((
+            ty::WithOptConstParam { did: did.to_def_id(), const_param_did: Some(const_param_did) },
+            substs,
+        )),
     )
 }
 
 fn inner_resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::ParamEnvAnd<'tcx, (ty::WithOptParam<DefId>, SubstsRef<'tcx>)>,
+    key: ty::ParamEnvAnd<'tcx, (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
     let (param_env, (def, substs)) = key.into_parts();
 
@@ -208,7 +210,9 @@ fn resolve_associated_item<'tcx>(
             Some(ty::Instance::new(leaf_def.item.def_id, substs))
         }
         traits::ImplSourceGenerator(generator_data) => Some(Instance {
-            def: ty::InstanceDef::Item(ty::WithOptParam::dummy(generator_data.generator_def_id)),
+            def: ty::InstanceDef::Item(ty::WithOptConstParam::dummy(
+                generator_data.generator_def_id,
+            )),
             substs: generator_data.substs,
         }),
         traits::ImplSourceClosure(closure_data) => {

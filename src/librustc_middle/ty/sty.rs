@@ -2210,12 +2210,12 @@ impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
-        Self::const_arg_from_anon_const(tcx, ty::WithOptParam::dummy(def_id))
+        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::dummy(def_id))
     }
 
-    pub fn const_arg_from_anon_const(
+    pub fn from_opt_const_arg_anon_const(
         tcx: TyCtxt<'tcx>,
-        def: ty::WithOptParam<LocalDefId>,
+        def: ty::WithOptConstParam<LocalDefId>,
     ) -> &'tcx Self {
         debug!("Const::from_anon_const(def={:?})", def);
 
@@ -2433,7 +2433,7 @@ pub enum ConstKind<'tcx> {
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
-    Unevaluated(ty::WithOptParam<DefId>, SubstsRef<'tcx>, Option<Promoted>),
+    Unevaluated(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>, Option<Promoted>),
 
     /// Used to hold computed value.
     Value(ConstValue<'tcx>),

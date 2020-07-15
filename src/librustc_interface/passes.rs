@@ -892,7 +892,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 
             if tcx.hir().body_const_context(def_id).is_some() {
                 tcx.ensure()
-                    .mir_drops_elaborated_and_const_checked(ty::WithOptParam::dummy(def_id));
+                    .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::dummy(def_id));
             }
         }
     });

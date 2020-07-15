@@ -424,7 +424,7 @@ fn check_type_defn<'tcx, F>(
                     cause,
                     fcx.param_env,
                     ty::PredicateKind::ConstEvaluatable(
-                        ty::WithOptParam::dummy(discr_def_id.to_def_id()),
+                        ty::WithOptConstParam::dummy(discr_def_id.to_def_id()),
                         discr_substs,
                     )
                     .to_predicate(fcx.tcx),

@@ -59,7 +59,7 @@ crate struct NllOutput<'tcx> {
 /// `compute_regions`.
 pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def: ty::WithOptParam<LocalDefId>,
+    def: ty::WithOptConstParam<LocalDefId>,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,

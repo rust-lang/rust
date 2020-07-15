@@ -227,7 +227,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// known between those regions.
     pub fn new(
         infcx: &InferCtxt<'_, 'tcx>,
-        mir_def: ty::WithOptParam<LocalDefId>,
+        mir_def: ty::WithOptConstParam<LocalDefId>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
         let tcx = infcx.tcx;
@@ -388,7 +388,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 
 struct UniversalRegionsBuilder<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
-    mir_def: ty::WithOptParam<LocalDefId>,
+    mir_def: ty::WithOptConstParam<LocalDefId>,
     mir_hir_id: HirId,
     param_env: ty::ParamEnv<'tcx>,
 }

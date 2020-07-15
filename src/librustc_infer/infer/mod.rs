@@ -1536,7 +1536,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        def: ty::WithOptParam<DefId>,
+        def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
         promoted: Option<mir::Promoted>,
         span: Option<Span>,

@@ -936,7 +936,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     fn promote_candidate(
         mut self,
-        def: ty::WithOptParam<DefId>,
+        def: ty::WithOptConstParam<DefId>,
         candidate: Candidate,
         next_promoted_id: usize,
     ) -> Option<Body<'tcx>> {
@@ -1099,7 +1099,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 }
 
 pub fn promote_candidates<'tcx>(
-    def: ty::WithOptParam<DefId>,
+    def: ty::WithOptConstParam<DefId>,
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,

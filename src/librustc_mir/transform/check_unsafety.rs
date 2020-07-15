@@ -491,10 +491,13 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         unsafety_check_result: |tcx, def_id| {
-            unsafety_check_result(tcx, ty::WithOptParam::dummy(def_id))
+            unsafety_check_result(tcx, ty::WithOptConstParam::dummy(def_id))
         },
         unsafety_check_result_const_arg: |tcx, (did, param_did)| {
-            unsafety_check_result(tcx, ty::WithOptParam { did, param_did: Some(param_did) })
+            unsafety_check_result(
+                tcx,
+                ty::WithOptConstParam { did, const_param_did: Some(param_did) },
+            )
         },
         unsafe_derive_on_repr_packed,
         ..*providers
@@ -546,9 +549,9 @@ fn check_unused_unsafe(
 
 fn unsafety_check_result<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptParam<LocalDefId>,
+    def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx UnsafetyCheckResult {
-    if def.param_did.is_none() {
+    if def.const_param_did.is_none() {
         if let Some(param_did) = tcx.opt_const_param_of(def.did) {
             return tcx.unsafety_check_result_const_arg((def.did, param_did));
         }

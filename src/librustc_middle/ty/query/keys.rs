@@ -105,7 +105,7 @@ impl Key for DefId {
     }
 }
 
-impl Key for ty::WithOptParam<LocalDefId> {
+impl Key for ty::WithOptConstParam<LocalDefId> {
     type CacheSelector = DefaultCacheSelector;
 
     fn query_crate(&self) -> CrateNum {

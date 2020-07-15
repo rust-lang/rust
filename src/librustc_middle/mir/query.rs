@@ -328,17 +328,20 @@ pub struct CoverageInfo {
 impl<'tcx> TyCtxt<'tcx> {
     pub fn mir_borrowck_opt_const_arg(
         self,
-        def: ty::WithOptParam<LocalDefId>,
+        def: ty::WithOptConstParam<LocalDefId>,
     ) -> &'tcx BorrowCheckResult<'tcx> {
-        if let Some(param_did) = def.param_did {
+        if let Some(param_did) = def.const_param_did {
             self.mir_borrowck_const_arg((def.did, param_did))
         } else {
             self.mir_borrowck(def.did)
         }
     }
 
-    pub fn mir_const_qualif_opt_const_arg(self, def: ty::WithOptParam<LocalDefId>) -> ConstQualifs {
-        if let Some(param_did) = def.param_did {
+    pub fn mir_const_qualif_opt_const_arg(
+        self,
+        def: ty::WithOptConstParam<LocalDefId>,
+    ) -> ConstQualifs {
+        if let Some(param_did) = def.const_param_did {
             self.mir_const_qualif_const_arg((def.did, param_did))
         } else {
             self.mir_const_qualif(def.did)
@@ -347,7 +350,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn promoted_mir_of_opt_const_arg(
         self,
-        def: ty::WithOptParam<DefId>,
+        def: ty::WithOptConstParam<DefId>,
     ) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
         if let Some((did, param_did)) = def.as_const_arg() {
             self.promoted_mir_of_const_arg((did, param_did))

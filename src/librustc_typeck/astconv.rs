@@ -886,11 +886,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }
                 (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                    ty::Const::const_arg_from_anon_const(
+                    ty::Const::from_opt_const_arg_anon_const(
                         tcx,
-                        ty::WithOptParam {
+                        ty::WithOptConstParam {
                             did: tcx.hir().local_def_id(ct.value.hir_id),
-                            param_did: Some(param.def_id),
+                            const_param_did: Some(param.def_id),
                         },
                     )
                     .into()

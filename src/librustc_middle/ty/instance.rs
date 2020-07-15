@@ -29,7 +29,7 @@ pub enum InstanceDef<'tcx> {
     /// - `fn` items
     /// - closures
     /// - generators
-    Item(ty::WithOptParam<DefId>),
+    Item(ty::WithOptConstParam<DefId>),
 
     /// An intrinsic `fn` item (with `"rust-intrinsic"` or `"platform-intrinsic"` ABI).
     ///
@@ -186,7 +186,7 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn with_opt_param(self) -> ty::WithOptParam<DefId> {
+    pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
         match self {
             InstanceDef::Item(def) => def,
             InstanceDef::VtableShim(def_id)
@@ -196,7 +196,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id }
             | InstanceDef::DropGlue(def_id, _)
-            | InstanceDef::CloneShim(def_id, _) => ty::WithOptParam::dummy(def_id),
+            | InstanceDef::CloneShim(def_id, _) => ty::WithOptConstParam::dummy(def_id),
         }
     }
 
@@ -298,7 +298,7 @@ impl<'tcx> Instance<'tcx> {
             def_id,
             substs
         );
-        Instance { def: InstanceDef::Item(ty::WithOptParam::dummy(def_id)), substs }
+        Instance { def: InstanceDef::Item(ty::WithOptConstParam::dummy(def_id)), substs }
     }
 
     pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
@@ -355,7 +355,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_const_arg(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        def: ty::WithOptParam<DefId>,
+        def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
         let substs = tcx.erase_regions(&substs);

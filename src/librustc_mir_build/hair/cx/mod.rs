@@ -52,7 +52,7 @@ crate struct Cx<'a, 'tcx> {
 impl<'a, 'tcx> Cx<'a, 'tcx> {
     crate fn new(
         infcx: &'a InferCtxt<'a, 'tcx>,
-        def: ty::WithOptParam<LocalDefId>,
+        def: ty::WithOptConstParam<LocalDefId>,
         src_id: hir::HirId,
     ) -> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;

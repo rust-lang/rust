@@ -1099,7 +1099,7 @@ pub enum PredicateKind<'tcx> {
     Subtype(PolySubtypePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(ty::WithOptParam<DefId>, SubstsRef<'tcx>),
+    ConstEvaluatable(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
@@ -1601,40 +1601,42 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 #[derive(Copy, Clone, Debug, TypeFoldable, Lift, RustcEncodable, RustcDecodable)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Hash, HashStable)]
-pub struct WithOptParam<T> {
+pub struct WithOptConstParam<T> {
     pub did: T,
     /// The `DefId` of the corresponding generic paramter in case `did` is
     /// a const argument.
     ///
     /// Note that even if `did` is a const argument, this may still be `None`.
-    /// All queries taking `WithOptParam` start by calling `tcx.opt_const_param_of(def.did)`
+    /// All queries taking `WithOptConstParam` start by calling `tcx.opt_const_param_of(def.did)`
     /// to potentially update `param_did` in case it `None`.
-    pub param_did: Option<DefId>,
+    pub const_param_did: Option<DefId>,
 }
 
-impl<T> WithOptParam<T> {
-    pub fn dummy(did: T) -> WithOptParam<T> {
-        WithOptParam { did, param_did: None }
+impl<T> WithOptConstParam<T> {
+    pub fn dummy(did: T) -> WithOptConstParam<T> {
+        WithOptConstParam { did, const_param_did: None }
     }
 }
 
-impl WithOptParam<LocalDefId> {
-    pub fn to_global(self) -> WithOptParam<DefId> {
-        WithOptParam { did: self.did.to_def_id(), param_did: self.param_did }
+impl WithOptConstParam<LocalDefId> {
+    pub fn to_global(self) -> WithOptConstParam<DefId> {
+        WithOptConstParam { did: self.did.to_def_id(), const_param_did: self.const_param_did }
     }
 
     pub fn ty_def_id(self) -> DefId {
-        if let Some(did) = self.param_did { did } else { self.did.to_def_id() }
+        if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
     }
 }
 
-impl WithOptParam<DefId> {
-    pub fn as_local(self) -> Option<WithOptParam<LocalDefId>> {
-        self.did.as_local().map(|did| WithOptParam { did, param_did: self.param_did })
+impl WithOptConstParam<DefId> {
+    pub fn as_local(self) -> Option<WithOptConstParam<LocalDefId>> {
+        self.did
+            .as_local()
+            .map(|did| WithOptConstParam { did, const_param_did: self.const_param_did })
     }
 
     pub fn as_const_arg(self) -> Option<(LocalDefId, DefId)> {
-        if let Some(param_did) = self.param_did {
+        if let Some(param_did) = self.const_param_did {
             if let Some(did) = self.did.as_local() {
                 return Some((did, param_did));
             }
@@ -1643,7 +1645,7 @@ impl WithOptParam<DefId> {
         None
     }
 
-    pub fn expect_local(self) -> WithOptParam<LocalDefId> {
+    pub fn expect_local(self) -> WithOptConstParam<LocalDefId> {
         self.as_local().unwrap()
     }
 
@@ -1652,7 +1654,7 @@ impl WithOptParam<DefId> {
     }
 
     pub fn ty_def_id(self) -> DefId {
-        self.param_did.unwrap_or(self.did)
+        self.const_param_did.unwrap_or(self.did)
     }
 }
 

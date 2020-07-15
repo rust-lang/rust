@@ -105,7 +105,7 @@ rustc_queries! {
         /// ```
         query opt_const_param_of(key: LocalDefId) -> Option<DefId> {
             desc { |tcx| "computing the optional const parameter of `{}`", tcx.def_path_str(key.to_def_id()) }
-            // FIXME: consider storing this query on disk.
+            // FIXME(#74113): consider storing this query on disk.
         }
 
         /// Records the type of every item.
@@ -219,7 +219,7 @@ rustc_queries! {
 
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
-        query mir_built(key: ty::WithOptParam<LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_built(key: ty::WithOptConstParam<LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
             desc { |tcx| "building MIR for `{}`", tcx.def_path_str(key.did.to_def_id()) }
         }
 
@@ -227,23 +227,23 @@ rustc_queries! {
         /// ready for const qualification.
         ///
         /// See the README for the `mir` module for details.
-        query mir_const(key: ty::WithOptParam<LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_const(key: ty::WithOptConstParam<LocalDefId>) -> &'tcx Steal<mir::Body<'tcx>> {
             desc {
                 |tcx| "processing MIR for {}`{}`",
-                if key.param_did.is_some() { "the const argument " } else { "" },
+                if key.const_param_did.is_some() { "the const argument " } else { "" },
                 tcx.def_path_str(key.did.to_def_id()),
             }
             no_hash
         }
 
         query mir_drops_elaborated_and_const_checked(
-            key: ty::WithOptParam<LocalDefId>
+            key: ty::WithOptConstParam<LocalDefId>
         ) -> &'tcx Steal<mir::Body<'tcx>> {
             no_hash
             desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.did.to_def_id()) }
         }
 
-        query mir_validated(key: ty::WithOptParam<LocalDefId>) ->
+        query mir_validated(key: ty::WithOptConstParam<LocalDefId>) ->
             (
                 &'tcx Steal<mir::Body<'tcx>>,
                 &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
@@ -251,7 +251,7 @@ rustc_queries! {
             no_hash
             desc {
                 |tcx| "processing {}`{}`",
-                if key.param_did.is_some() { "the const argument " } else { "" },
+                if key.const_param_did.is_some() { "the const argument " } else { "" },
                 tcx.def_path_str(key.did.to_def_id()),
             }
         }

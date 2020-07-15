@@ -88,9 +88,9 @@ const DEREF_PROJECTION: &[PlaceElem<'_>; 1] = &[ProjectionElem::Deref];
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        mir_borrowck: |tcx, did| mir_borrowck(tcx, ty::WithOptParam::dummy(did)),
+        mir_borrowck: |tcx, did| mir_borrowck(tcx, ty::WithOptConstParam::dummy(did)),
         mir_borrowck_const_arg: |tcx, (did, param_did)| {
-            mir_borrowck(tcx, ty::WithOptParam { did, param_did: Some(param_did) })
+            mir_borrowck(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
         },
         ..*providers
     };
@@ -98,9 +98,9 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_borrowck<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: ty::WithOptParam<LocalDefId>,
+    def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx BorrowCheckResult<'tcx> {
-    if def.param_did.is_none() {
+    if def.const_param_did.is_none() {
         if let Some(param_did) = tcx.opt_const_param_of(def.did) {
             return tcx.mir_borrowck_const_arg((def.did, param_did));
         }
@@ -123,7 +123,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
     input_promoted: &IndexVec<Promoted, Body<'tcx>>,
-    def: ty::WithOptParam<LocalDefId>,
+    def: ty::WithOptConstParam<LocalDefId>,
 ) -> BorrowCheckResult<'tcx> {
     debug!("do_mir_borrowck(def = {:?})", def);
 

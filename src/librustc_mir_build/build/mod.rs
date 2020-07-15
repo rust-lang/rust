@@ -21,10 +21,10 @@ use rustc_target::spec::PanicStrategy;
 
 use super::lints;
 
-crate fn mir_built<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptParam<LocalDefId>) -> &'tcx ty::steal::Steal<Body<'tcx>> {
-    if def.param_did.is_none() {
-        if let param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
-            return tcx.mir_built(ty::WithOptParam { param_did, ..def });
+crate fn mir_built<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) -> &'tcx ty::steal::Steal<Body<'tcx>> {
+    if def.const_param_did.is_none() {
+        if let const_param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            return tcx.mir_built(ty::WithOptConstParam { const_param_did, ..def });
         }
     }
 
@@ -32,7 +32,7 @@ crate fn mir_built<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptParam<LocalDefId>) -
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptParam<LocalDefId>) -> Body<'_> {
+fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
     let id = tcx.hir().as_local_hir_id(def.did);
 
     // Figure out what primary body this item has.

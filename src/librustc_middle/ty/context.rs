@@ -982,9 +982,9 @@ pub struct GlobalCtxt<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     pub fn typeck_tables_of_opt_const_arg(
         self,
-        def: ty::WithOptParam<LocalDefId>,
+        def: ty::WithOptConstParam<LocalDefId>,
     ) -> &'tcx TypeckTables<'tcx> {
-        if let Some(param_did) = def.param_did {
+        if let Some(param_did) = def.const_param_did {
             self.typeck_tables_of_const_arg((def.did, param_did))
         } else {
             self.typeck_tables_of(def.did)
