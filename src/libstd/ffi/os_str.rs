@@ -1097,6 +1097,22 @@ impl_cmp!(Cow<'a, OsStr>, OsStr);
 impl_cmp!(Cow<'a, OsStr>, &'b OsStr);
 impl_cmp!(Cow<'a, OsStr>, OsString);
 
+#[stable(feature = "partialeq_option_osstr_str", since = "1.45.0")]
+impl PartialEq<Option<&str>> for Option<&OsStr> {
+    #[inline]
+    fn eq(&self, other: &Option<&str>) -> bool {
+        self.as_ref().zip(other.as_ref()).map_or(false, |(x, y)| x == y)
+    }
+}
+
+#[stable(feature = "partialeq_option_osstr_str", since = "1.45.0")]
+impl PartialEq<Option<&OsStr>> for Option<&str> {
+    #[inline]
+    fn eq(&self, other: &Option<&OsStr>) -> bool {
+        self.as_ref().zip(other.as_ref()).map_or(false, |(x, y)| x == y)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for OsStr {
     #[inline]
