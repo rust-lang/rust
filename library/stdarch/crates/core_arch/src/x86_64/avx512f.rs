@@ -66,6 +66,201 @@ mod tests {
     }
 
     #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmplt_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., f64::MAX, f64::NAN, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let m = _mm512_cmplt_pd_mask(a, b);
+        assert_eq!(m, 0b00000101);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmplt_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., f64::MAX, f64::NAN, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let mask = 0b01100110;
+        let r = _mm512_mask_cmplt_pd_mask(mask, a, b);
+        assert_eq!(r, 0b00000100);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmpnlt_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., f64::MAX, f64::NAN, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        assert_eq!(_mm512_cmpnlt_pd_mask(a, b), !_mm512_cmplt_pd_mask(a, b));
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmpnlt_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., f64::MAX, f64::NAN, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let mask = 0b01111010;
+        assert_eq!(_mm512_mask_cmpnlt_pd_mask(mask, a, b), 0b01111010);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmple_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., f64::MAX, f64::NAN, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        assert_eq!(_mm512_cmple_pd_mask(a, b), 0b00100101);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmple_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., f64::MAX, f64::NAN, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let mask = 0b01111010;
+        assert_eq!(_mm512_mask_cmple_pd_mask(mask, a, b), 0b00100000);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmpnle_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., f64::MAX, f64::NAN, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let m = _mm512_cmpnle_pd_mask(b, a);
+        assert_eq!(m, 0b00001101);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmpnle_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., f64::MAX, f64::NAN, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let mask = 0b01100110;
+        let r = _mm512_mask_cmpnle_pd_mask(mask, b, a);
+        assert_eq!(r, 0b00000100);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmpeq_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., 13., f64::MAX, f64::MIN, f64::NAN, -100.);
+        #[rustfmt::skip]
+        let b = _mm512_set_pd(0., 1., 13., 42., f64::MAX, f64::MIN, f64::NAN, -100.);
+        let m = _mm512_cmpeq_pd_mask(b, a);
+        assert_eq!(m, 0b11001101);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmpeq_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., 13., f64::MAX, f64::MIN, f64::NAN, -100.);
+        #[rustfmt::skip]
+        let b = _mm512_set_pd(0., 1., 13., 42., f64::MAX, f64::MIN, f64::NAN, -100.);
+        let mask = 0b01111010;
+        let r = _mm512_mask_cmpeq_pd_mask(mask, b, a);
+        assert_eq!(r, 0b01001000);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmpneq_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., 13., f64::MAX, f64::MIN, f64::NAN, -100.);
+        #[rustfmt::skip]
+        let b = _mm512_set_pd(0., 1., 13., 42., f64::MAX, f64::MIN, f64::NAN, -100.);
+        let m = _mm512_cmpneq_pd_mask(b, a);
+        assert_eq!(m, 0b00110010);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmpneq_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., 13., f64::MAX, f64::MIN, f64::NAN, -100.);
+        #[rustfmt::skip]
+        let b = _mm512_set_pd(0., 1., 13., 42., f64::MAX, f64::MIN, f64::NAN, -100.);
+        let mask = 0b01111010;
+        let r = _mm512_mask_cmpneq_pd_mask(mask, b, a);
+        assert_eq!(r, 0b00110010)
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmp_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., 13., f64::MAX, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let m = _mm512_cmp_pd_mask(a, b, _CMP_LT_OQ);
+        assert_eq!(m, 0b00000101);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmp_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., 13., f64::MAX, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let mask = 0b01100110;
+        let r = _mm512_mask_cmp_pd_mask(mask, a, b, _CMP_LT_OQ);
+        assert_eq!(r, 0b00000100);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmp_round_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., 13., f64::MAX, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let m = _mm512_cmp_round_pd_mask(a, b, _CMP_LT_OQ, _MM_FROUND_CUR_DIRECTION);
+        assert_eq!(m, 0b00000101);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmp_round_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(0., 1., -1., 13., f64::MAX, f64::MIN, 100., -100.);
+        let b = _mm512_set1_pd(-1.);
+        let mask = 0b01100110;
+        let r = _mm512_mask_cmp_round_pd_mask(mask, a, b, _CMP_LT_OQ, _MM_FROUND_CUR_DIRECTION);
+        assert_eq!(r, 0b00000100);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmpord_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(f64::NAN, f64::MAX, f64::NAN, f64::MIN, f64::NAN, -1., f64::NAN, 0.);
+        #[rustfmt::skip]
+        let b = _mm512_set_pd(f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::MIN, f64::MAX, -1., 0.);
+        let m = _mm512_cmpord_pd_mask(a, b);
+        assert_eq!(m, 0b00000101);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmpord_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(f64::NAN, f64::MAX, f64::NAN, f64::MIN, f64::NAN, -1., f64::NAN, 0.);
+        #[rustfmt::skip]
+        let b = _mm512_set_pd(f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::MIN, f64::MAX, -1., 0.);
+        let mask = 0b11000011;
+        let m = _mm512_mask_cmpord_pd_mask(mask, a, b);
+        assert_eq!(m, 0b00000001);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_cmpunord_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(f64::NAN, f64::MAX, f64::NAN, f64::MIN, f64::NAN, -1., f64::NAN, 0.);
+        #[rustfmt::skip]
+        let b = _mm512_set_pd(f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::MIN, f64::MAX, -1., 0.);
+        let m = _mm512_cmpunord_pd_mask(a, b);
+
+        assert_eq!(m, 0b11111010);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_cmpunord_pd_mask() {
+        #[rustfmt::skip]
+        let a = _mm512_set_pd(f64::NAN, f64::MAX, f64::NAN, f64::MIN, f64::NAN, -1., f64::NAN, 0.);
+        #[rustfmt::skip]
+        let b = _mm512_set_pd(f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::MIN, f64::MAX, -1., 0.);
+        let mask = 0b00001111;
+        let m = _mm512_mask_cmpunord_pd_mask(mask, a, b);
+        assert_eq!(m, 0b000001010);
+    }
+
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_cmplt_epu64_mask() {
         let a = _mm512_set_epi64(0, 1, -1, u64::MAX as i64, i64::MAX, i64::MIN, 100, -100);
         let b = _mm512_set1_epi64(-1);

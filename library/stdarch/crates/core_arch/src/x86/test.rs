@@ -145,19 +145,15 @@ pub unsafe fn assert_eq_m512i(a: __m512i, b: __m512i) {
 }
 
 pub unsafe fn assert_eq_m512(a: __m512, b: __m512) {
-    // TODO: This should use `_mm512_cmpeq_ps_mask`, but that isn't yet implemented.
-    union A {
-        a: __m512,
-        b: [f32; 16],
+    let cmp = _mm512_cmp_ps_mask(a, b, _CMP_EQ_OQ);
+    if cmp != 0b11111111_11111111 {
+        panic!("{:?} != {:?}", a, b);
     }
-    assert_eq!(A { a }.b, A { a: b }.b)
 }
 
 pub unsafe fn assert_eq_m512d(a: __m512d, b: __m512d) {
-    // TODO: This should use `_mm512_cmpeq_pd_mask`, but that isn't yet implemented.
-    union A {
-        a: __m512d,
-        b: [f64; 8],
+    let cmp = _mm512_cmp_pd_mask(a, b, _CMP_EQ_OQ);
+    if cmp != 0b11111111 {
+        panic!("{:?} != {:?}", a, b);
     }
-    assert_eq!(A { a }.b, A { a: b }.b)
 }
