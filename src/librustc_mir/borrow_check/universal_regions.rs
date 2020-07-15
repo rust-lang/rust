@@ -636,7 +636,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // For a constant body, there are no inputs, and one
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
-                let ty = tcx.type_of(self.mir_def.ty_def_id());
+                let ty = tcx.type_of(self.mir_def.def_id_for_type_of());
                 let ty = indices.fold_to_region_vids(tcx, &ty);
                 ty::Binder::dummy(tcx.intern_type_list(&[ty]))
             }

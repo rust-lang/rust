@@ -1623,7 +1623,7 @@ impl WithOptConstParam<LocalDefId> {
         WithOptConstParam { did: self.did.to_def_id(), const_param_did: self.const_param_did }
     }
 
-    pub fn ty_def_id(self) -> DefId {
+    pub fn def_id_for_type_of(self) -> DefId {
         if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
     }
 }
@@ -1653,7 +1653,7 @@ impl WithOptConstParam<DefId> {
         self.did.is_local()
     }
 
-    pub fn ty_def_id(self) -> DefId {
+    pub fn def_id_for_type_of(self) -> DefId {
         self.const_param_did.unwrap_or(self.did)
     }
 }

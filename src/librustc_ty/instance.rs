@@ -50,7 +50,7 @@ fn inner_resolve_instance<'tcx>(
         let item = tcx.associated_item(def.did);
         resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
     } else {
-        let ty = tcx.type_of(def.ty_def_id());
+        let ty = tcx.type_of(def.def_id_for_type_of());
         let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, &ty);
 
         let def = match item_type.kind {
