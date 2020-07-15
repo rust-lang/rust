@@ -213,169 +213,187 @@ impl CallInfo {
 
 #[cfg(test)]
 mod tests {
+    use expect::{expect, Expect};
     use test_utils::mark;
 
     use crate::mock_analysis::analysis_and_position;
 
-    use super::*;
-
-    // These are only used when testing
-    impl CallInfo {
-        fn doc(&self) -> Option<hir::Documentation> {
-            self.signature.doc.clone()
-        }
-
-        fn label(&self) -> String {
-            self.signature.to_string()
-        }
-    }
-
-    fn call_info_helper(text: &str) -> Option<CallInfo> {
-        let (analysis, position) = analysis_and_position(text);
-        analysis.call_info(position).unwrap()
-    }
-
-    fn call_info(text: &str) -> CallInfo {
-        let info = call_info_helper(text);
-        assert!(info.is_some());
-        info.unwrap()
-    }
-
-    fn no_call_info(text: &str) {
-        let info = call_info_helper(text);
-        assert!(info.is_none());
-    }
-
-    #[test]
-    fn test_fn_signature_two_args_firstx() {
-        let info = call_info(
-            r#"fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(<|>3, ); }"#,
-        );
-
-        assert_eq!(info.parameters(), ["x: u32", "y: u32"]);
-        assert_eq!(info.active_parameter, Some(0));
+    fn check(ra_fixture: &str, expect: Expect) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
+        let call_info = analysis.call_info(position).unwrap();
+        let actual = match call_info {
+            Some(call_info) => {
+                let docs = match &call_info.signature.doc {
+                    None => "".to_string(),
+                    Some(docs) => format!("{}\n------\n", docs.as_str()),
+                };
+                let params = call_info
+                    .parameters()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, param)| {
+                        if Some(i) == call_info.active_parameter {
+                            format!("<{}>", param)
+                        } else {
+                            param.clone()
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("{}{}\n({})\n", docs, call_info.signature, params)
+            }
+            None => String::new(),
+        };
+        expect.assert_eq(&actual);
     }
 
     #[test]
-    fn test_fn_signature_two_args_second() {
-        let info = call_info(
-            r#"fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(3, <|>); }"#,
+    fn test_fn_signature_two_args() {
+        check(
+            r#"
+fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo(<|>3, ); }
+"#,
+            expect![[r#"
+                fn foo(x: u32, y: u32) -> u32
+                (<x: u32>, y: u32)
+            "#]],
         );
-
-        assert_eq!(info.parameters(), ["x: u32", "y: u32"]);
-        assert_eq!(info.active_parameter, Some(1));
+        check(
+            r#"
+fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo(3<|>, ); }
+"#,
+            expect![[r#"
+                fn foo(x: u32, y: u32) -> u32
+                (<x: u32>, y: u32)
+            "#]],
+        );
+        check(
+            r#"
+fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo(3,<|> ); }
+"#,
+            expect![[r#"
+                fn foo(x: u32, y: u32) -> u32
+                (<x: u32>, y: u32)
+            "#]],
+        );
+        check(
+            r#"
+fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo(3, <|>); }
+"#,
+            expect![[r#"
+                fn foo(x: u32, y: u32) -> u32
+                (x: u32, <y: u32>)
+            "#]],
+        );
     }
 
     #[test]
     fn test_fn_signature_two_args_empty() {
-        let info = call_info(
-            r#"fn foo(x: u32, y: u32) -> u32 {x + y}
-fn bar() { foo(<|>); }"#,
+        check(
+            r#"
+fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo(<|>); }
+"#,
+            expect![[r#"
+                fn foo(x: u32, y: u32) -> u32
+                (<x: u32>, y: u32)
+            "#]],
         );
-
-        assert_eq!(info.parameters(), ["x: u32", "y: u32"]);
-        assert_eq!(info.active_parameter, Some(0));
     }
 
     #[test]
     fn test_fn_signature_two_args_first_generics() {
-        let info = call_info(
-            r#"fn foo<T, U: Copy + Display>(x: T, y: U) -> u32 where T: Copy + Display, U: Debug {x + y}
-fn bar() { foo(<|>3, ); }"#,
-        );
-
-        assert_eq!(info.parameters(), ["x: T", "y: U"]);
-        assert_eq!(
-            info.label(),
+        check(
             r#"
 fn foo<T, U: Copy + Display>(x: T, y: U) -> u32
-where T: Copy + Display,
-      U: Debug
-    "#
-            .trim()
+    where T: Copy + Display, U: Debug
+{ x + y }
+
+fn bar() { foo(<|>3, ); }
+"#,
+            expect![[r#"
+                fn foo<T, U: Copy + Display>(x: T, y: U) -> u32
+                where T: Copy + Display,
+                      U: Debug
+                (<x: T>, y: U)
+            "#]],
         );
-        assert_eq!(info.active_parameter, Some(0));
     }
 
     #[test]
     fn test_fn_signature_no_params() {
-        let info = call_info(
-            r#"fn foo<T>() -> T where T: Copy + Display {}
-fn bar() { foo(<|>); }"#,
-        );
-
-        assert!(info.parameters().is_empty());
-        assert_eq!(
-            info.label(),
+        check(
             r#"
-fn foo<T>() -> T
-where T: Copy + Display
-    "#
-            .trim()
+fn foo<T>() -> T where T: Copy + Display {}
+fn bar() { foo(<|>); }
+"#,
+            expect![[r#"
+                fn foo<T>() -> T
+                where T: Copy + Display
+                ()
+            "#]],
         );
-        assert!(info.active_parameter.is_none());
     }
 
     #[test]
     fn test_fn_signature_for_impl() {
-        let info = call_info(
-            r#"struct F; impl F { pub fn new() { F{}} }
-fn bar() {let _ : F = F::new(<|>);}"#,
+        check(
+            r#"
+struct F; impl F { pub fn new() { F{}} }
+fn bar() {let _ : F = F::new(<|>);}
+"#,
+            expect![[r#"
+                pub fn new()
+                ()
+            "#]],
         );
-
-        assert!(info.parameters().is_empty());
-        assert_eq!(info.active_parameter, None);
     }
 
     #[test]
     fn test_fn_signature_for_method_self() {
-        let info = call_info(
-            r#"struct F;
-impl F {
-    pub fn new() -> F{
-        F{}
-    }
-
-    pub fn do_it(&self) {}
-}
+        check(
+            r#"
+struct S;
+impl S { pub fn do_it(&self) {} }
 
 fn bar() {
-    let f : F = F::new();
-    f.do_it(<|>);
-}"#,
+    let s: S = S;
+    s.do_it(<|>);
+}
+"#,
+            expect![[r#"
+                pub fn do_it(&self)
+                (&self)
+            "#]],
         );
-
-        assert_eq!(info.parameters(), ["&self"]);
-        assert_eq!(info.active_parameter, None);
     }
 
     #[test]
     fn test_fn_signature_for_method_with_arg() {
-        let info = call_info(
-            r#"struct F;
-impl F {
-    pub fn new() -> F{
-        F{}
-    }
-
-    pub fn do_it(&self, x: i32) {}
-}
+        check(
+            r#"
+struct S;
+impl S { pub fn do_it(&self, x: i32) {} }
 
 fn bar() {
-    let f : F = F::new();
-    f.do_it(<|>);
-}"#,
+    let s: S = S;
+    s.do_it(<|>);
+}
+"#,
+            expect![[r#"
+                pub fn do_it(&self, x: i32)
+                (&self, <x: i32>)
+            "#]],
         );
-
-        assert_eq!(info.parameters(), ["&self", "x: i32"]);
-        assert_eq!(info.active_parameter, Some(1));
     }
 
     #[test]
     fn test_fn_signature_with_docs_simple() {
-        let info = call_info(
+        check(
             r#"
 /// test
 // non-doc-comment
@@ -387,17 +405,18 @@ fn bar() {
     let _ = foo(<|>);
 }
 "#,
+            expect![[r#"
+                test
+                ------
+                fn foo(j: u32) -> u32
+                (<j: u32>)
+            "#]],
         );
-
-        assert_eq!(info.parameters(), ["j: u32"]);
-        assert_eq!(info.active_parameter, Some(0));
-        assert_eq!(info.label(), "fn foo(j: u32) -> u32");
-        assert_eq!(info.doc().map(|it| it.into()), Some("test".to_string()));
     }
 
     #[test]
     fn test_fn_signature_with_docs() {
-        let info = call_info(
+        check(
             r#"
 /// Adds one to the number given.
 ///
@@ -415,31 +434,26 @@ pub fn add_one(x: i32) -> i32 {
 pub fn do() {
     add_one(<|>
 }"#,
-        );
+            expect![[r##"
+                Adds one to the number given.
 
-        assert_eq!(info.parameters(), ["x: i32"]);
-        assert_eq!(info.active_parameter, Some(0));
-        assert_eq!(info.label(), "pub fn add_one(x: i32) -> i32");
-        assert_eq!(
-            info.doc().map(|it| it.into()),
-            Some(
-                r#"Adds one to the number given.
+                # Examples
 
-# Examples
+                ```
+                let five = 5;
 
-```
-let five = 5;
-
-assert_eq!(6, my_crate::add_one(5));
-```"#
-                    .to_string()
-            )
+                assert_eq!(6, my_crate::add_one(5));
+                ```
+                ------
+                pub fn add_one(x: i32) -> i32
+                (<x: i32>)
+            "##]],
         );
     }
 
     #[test]
     fn test_fn_signature_with_docs_impl() {
-        let info = call_info(
+        check(
             r#"
 struct addr;
 impl addr {
@@ -460,32 +474,28 @@ impl addr {
 pub fn do_it() {
     addr {};
     addr::add_one(<|>);
-}"#,
-        );
+}
+"#,
+            expect![[r##"
+                Adds one to the number given.
 
-        assert_eq!(info.parameters(), ["x: i32"]);
-        assert_eq!(info.active_parameter, Some(0));
-        assert_eq!(info.label(), "pub fn add_one(x: i32) -> i32");
-        assert_eq!(
-            info.doc().map(|it| it.into()),
-            Some(
-                r#"Adds one to the number given.
+                # Examples
 
-# Examples
+                ```
+                let five = 5;
 
-```
-let five = 5;
-
-assert_eq!(6, my_crate::add_one(5));
-```"#
-                    .to_string()
-            )
+                assert_eq!(6, my_crate::add_one(5));
+                ```
+                ------
+                pub fn add_one(x: i32) -> i32
+                (<x: i32>)
+            "##]],
         );
     }
 
     #[test]
     fn test_fn_signature_with_docs_from_actix() {
-        let info = call_info(
+        check(
             r#"
 struct WriteHandler<E>;
 
@@ -509,101 +519,102 @@ impl<E> WriteHandler<E> {
 pub fn foo(mut r: WriteHandler<()>) {
     r.finished(<|>);
 }
-
 "#,
-        );
+            expect![[r#"
+                Method is called when writer finishes.
 
-        assert_eq!(info.label(), "fn finished(&mut self, ctx: &mut Self::Context)".to_string());
-        assert_eq!(info.parameters(), ["&mut self", "ctx: &mut Self::Context"]);
-        assert_eq!(info.active_parameter, Some(1));
-        assert_eq!(
-            info.doc().map(|it| it.into()),
-            Some(
-                r#"Method is called when writer finishes.
-
-By default this method stops actor's `Context`."#
-                    .to_string()
-            )
+                By default this method stops actor's `Context`.
+                ------
+                fn finished(&mut self, ctx: &mut Self::Context)
+                (&mut self, <ctx: &mut Self::Context>)
+            "#]],
         );
     }
 
     #[test]
     fn call_info_bad_offset() {
         mark::check!(call_info_bad_offset);
-        let (analysis, position) = analysis_and_position(
-            r#"fn foo(x: u32, y: u32) -> u32 {x + y}
-               fn bar() { foo <|> (3, ); }"#,
+        check(
+            r#"
+fn foo(x: u32, y: u32) -> u32 {x + y}
+fn bar() { foo <|> (3, ); }
+"#,
+            expect![[""]],
         );
-        let call_info = analysis.call_info(position).unwrap();
-        assert!(call_info.is_none());
     }
 
     #[test]
-    fn test_nested_method_in_lamba() {
-        let info = call_info(
-            r#"struct Foo;
-
-impl Foo {
-    fn bar(&self, _: u32) { }
-}
+    fn test_nested_method_in_lambda() {
+        check(
+            r#"
+struct Foo;
+impl Foo { fn bar(&self, _: u32) { } }
 
 fn bar(_: u32) { }
 
 fn main() {
     let foo = Foo;
     std::thread::spawn(move || foo.bar(<|>));
-}"#,
+}
+"#,
+            expect![[r#"
+                fn bar(&self, _: u32)
+                (&self, <_: u32>)
+            "#]],
         );
-
-        assert_eq!(info.parameters(), ["&self", "_: u32"]);
-        assert_eq!(info.active_parameter, Some(1));
-        assert_eq!(info.label(), "fn bar(&self, _: u32)");
     }
 
     #[test]
     fn works_for_tuple_structs() {
-        let info = call_info(
+        check(
             r#"
 /// A cool tuple struct
 struct TS(u32, i32);
 fn main() {
     let s = TS(0, <|>);
-}"#,
+}
+"#,
+            expect![[r#"
+                A cool tuple struct
+                ------
+                struct TS(u32, i32) -> TS
+                (u32, <i32>)
+            "#]],
         );
-
-        assert_eq!(info.label(), "struct TS(u32, i32) -> TS");
-        assert_eq!(info.doc().map(|it| it.into()), Some("A cool tuple struct".to_string()));
-        assert_eq!(info.active_parameter, Some(1));
     }
 
     #[test]
     fn generic_struct() {
-        let info = call_info(
+        check(
             r#"
 struct TS<T>(T);
 fn main() {
     let s = TS(<|>);
-}"#,
+}
+"#,
+            expect![[r#"
+                struct TS<T>(T) -> TS
+                (<T>)
+            "#]],
         );
-
-        assert_eq!(info.label(), "struct TS<T>(T) -> TS");
-        assert_eq!(info.active_parameter, Some(0));
     }
 
     #[test]
     fn cant_call_named_structs() {
-        no_call_info(
+        check(
             r#"
 struct TS { x: u32, y: i32 }
 fn main() {
     let s = TS(<|>);
-}"#,
+}
+"#,
+            expect![[""]],
         );
     }
 
     #[test]
     fn works_for_enum_variants() {
-        let info = call_info(
+        check(
             r#"
 enum E {
     /// A Variant
@@ -617,17 +628,19 @@ enum E {
 fn main() {
     let a = E::A(<|>);
 }
-            "#,
+"#,
+            expect![[r#"
+                A Variant
+                ------
+                E::A(0: i32)
+                (<0: i32>)
+            "#]],
         );
-
-        assert_eq!(info.label(), "E::A(0: i32)");
-        assert_eq!(info.doc().map(|it| it.into()), Some("A Variant".to_string()));
-        assert_eq!(info.active_parameter, Some(0));
     }
 
     #[test]
     fn cant_call_enum_records() {
-        no_call_info(
+        check(
             r#"
 enum E {
     /// A Variant
@@ -641,13 +654,14 @@ enum E {
 fn main() {
     let a = E::C(<|>);
 }
-            "#,
+"#,
+            expect![[""]],
         );
     }
 
     #[test]
     fn fn_signature_for_macro() {
-        let info = call_info(
+        check(
             r#"
 /// empty macro
 macro_rules! foo {
@@ -657,31 +671,30 @@ macro_rules! foo {
 fn f() {
     foo!(<|>);
 }
-        "#,
+"#,
+            expect![[r#"
+                empty macro
+                ------
+                foo!()
+                ()
+            "#]],
         );
-
-        assert_eq!(info.label(), "foo!()");
-        assert_eq!(info.doc().map(|it| it.into()), Some("empty macro".to_string()));
     }
 
     #[test]
     fn fn_signature_for_call_in_macro() {
-        let info = call_info(
+        check(
             r#"
-            macro_rules! id {
-                ($($tt:tt)*) => { $($tt)* }
-            }
-            fn foo() {
-
-            }
-            id! {
-                fn bar() {
-                    foo(<|>);
-                }
-            }
-            "#,
+macro_rules! id { ($($tt:tt)*) => { $($tt)* } }
+fn foo() { }
+id! {
+    fn bar() { foo(<|>); }
+}
+"#,
+            expect![[r#"
+                fn foo()
+                ()
+            "#]],
         );
-
-        assert_eq!(info.label(), "fn foo()");
     }
 }
