@@ -66,8 +66,8 @@ macro_rules! yield250 {
 }
 
 fn cycle(
-    gen: impl Generator<()> + Unpin + DiscriminantKind<Discriminant = i32>,
-    expected_max_discr: i32
+    gen: impl Generator<()> + Unpin + DiscriminantKind<Discriminant = u32>,
+    expected_max_discr: u32
 ) {
     let mut gen = Box::pin(gen);
     let mut max_discr = 0;
