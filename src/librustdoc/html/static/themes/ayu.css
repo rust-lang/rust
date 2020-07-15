@@ -10,7 +10,8 @@ body {
 	color: #c5c5c5;
 }
 
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
+h4:not(.method):not(.type):not(.tymethod) {
 	color: white;
 }
 h1.fqn {
@@ -41,7 +42,7 @@ h3 > code, h4 > code, h5 > code {
 	color: #e6e1cf;
 }
 pre > code {
-	color: #e6e1cf; 
+	color: #e6e1cf;
 }
 span code {
 	color: #e6e1cf;
@@ -192,7 +193,7 @@ pre {
 	color: #a37acc;
 }
 
-pre.rust .comment, pre.rust .doccomment { 
+pre.rust .comment, pre.rust .doccomment {
 	color: #788797;
 	font-style: italic;
 }
@@ -423,12 +424,13 @@ pre.ignore:hover, .information:hover + pre.ignore {
 /* rules that this theme does not need to set, here to satisfy the rule checker */
 /* note that a lot of these are partially set in some way (meaning they are set
 individually rather than as a group) */
-/* TODO: these rules should be at the bottom of the file but currently must be
+/* FIXME: these rules should be at the bottom of the file but currently must be
 above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 /* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
 .content .highlighted.mod, .content .highlighted.externcrate {}
 .search-input:focus {}
-.content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,.block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
+.content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,
+.block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
 .content .highlighted.trait {}
 .content span.struct,.content a.struct,.block a.current.struct {}
 #titles>div:hover,#titles>div.selected {}
@@ -443,16 +445,20 @@ pre.rust .lifetime {}
 .content .highlighted.fn,.content .highlighted.method,.content .highlighted.tymethod {}
 h2,h3:not(.impl):not(.method):not(.type):not(.tymethod),h4:not(.method):not(.type):not(.tymethod) {}
 .content span.enum,.content a.enum,.block a.current.enum {}
-.content span.constant,.content a.constant,.block a.current.constant,.content span.static,.content a.static,.block a.current.static {}
+.content span.constant,.content a.constant,.block a.current.constant,.content span.static,
+.content a.static,.block a.current.static {}
 .content span.keyword,.content a.keyword,.block a.current.keyword {}
 pre.rust .comment {}
 .content .highlighted.enum {}
 .content .highlighted.struct {}
 .content .highlighted.keyword {}
 .content span.traitalias,.content a.traitalias,.block a.current.traitalias {}
-.content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,.block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,.content .fnname {}
+.content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,
+.block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
+.content .fnname {}
 pre.rust .kw {}
-pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute,pre.rust .attribute .ident {}
+pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute,
+pre.rust .attribute .ident {}
 .content span.foreigntype,.content a.foreigntype,.block a.current.foreigntype {}
 pre.rust .doccomment {}
 .stab.deprecated {}
