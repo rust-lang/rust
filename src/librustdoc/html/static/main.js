@@ -365,7 +365,6 @@ function defocusSearchBar() {
     function handleEscape(ev) {
         var help = getHelpElement();
         var search = getSearchElement();
-        hideModal();
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
@@ -398,7 +397,6 @@ function defocusSearchBar() {
             case "s":
             case "S":
                 displayHelp(false, ev);
-                hideModal();
                 ev.preventDefault();
                 focusSearchBar();
                 break;
@@ -411,7 +409,6 @@ function defocusSearchBar() {
 
             case "?":
                 if (ev.shiftKey) {
-                    hideModal();
                     displayHelp(true, ev);
                 }
                 break;
@@ -2639,13 +2636,10 @@ function defocusSearchBar() {
         });
     }());
 
-    function showImportantTraits(content) {
-        let list = content.classList
-    }
-
     onEachLazy(document.getElementsByClassName("important-traits"), function(e) {
         e.onclick = function() {
-            e.getElementsByClassName('important-traits-tooltiptext')[0].classList.toggle("force-tooltip")
+            this.getElementsByClassName('important-traits-tooltiptext')[0]
+                .classList.toggle("force-tooltip");
         };
     });
 
