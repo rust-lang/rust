@@ -790,7 +790,7 @@ fn handle_fixes(
 }
 
 pub(crate) fn handle_code_action(
-    snap: GlobalStateSnapshot,
+    mut snap: GlobalStateSnapshot,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<Vec<lsp_ext::CodeAction>>> {
     let _p = profile("handle_code_action");
@@ -806,25 +806,24 @@ pub(crate) fn handle_code_action(
     let range = from_proto::text_range(&line_index, params.range);
     let frange = FileRange { file_id, range };
 
+    snap.config.assist.allowed = params
+        .clone()
+        .context
+        .only
+        .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
+
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
     handle_fixes(&snap, &params, &mut res)?;
 
-    let only =
-        params.context.only.map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
-
     if snap.config.client_caps.resolve_code_action {
-        for (index, assist) in snap
-            .analysis
-            .unresolved_assists(&snap.config.assist, frange, only)?
-            .into_iter()
-            .enumerate()
+        for (index, assist) in
+            snap.analysis.unresolved_assists(&snap.config.assist, frange)?.into_iter().enumerate()
         {
             res.push(to_proto::unresolved_code_action(&snap, assist, index)?);
         }
     } else {
-        for assist in snap.analysis.resolved_assists(&snap.config.assist, frange, only)?.into_iter()
-        {
+        for assist in snap.analysis.resolved_assists(&snap.config.assist, frange)?.into_iter() {
             res.push(to_proto::resolved_code_action(&snap, assist)?);
         }
     }
@@ -833,7 +832,7 @@ pub(crate) fn handle_code_action(
 }
 
 pub(crate) fn handle_resolve_code_action(
-    snap: GlobalStateSnapshot,
+    mut snap: GlobalStateSnapshot,
     params: lsp_ext::ResolveCodeActionParams,
 ) -> Result<Option<lsp_ext::SnippetWorkspaceEdit>> {
     let _p = profile("handle_resolve_code_action");
@@ -841,13 +840,14 @@ pub(crate) fn handle_resolve_code_action(
     let line_index = snap.analysis.file_line_index(file_id)?;
     let range = from_proto::text_range(&line_index, params.code_action_params.range);
     let frange = FileRange { file_id, range };
-    let only = params
+
+    snap.config.assist.allowed = params
         .code_action_params
         .context
         .only
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
-    let assists = snap.analysis.resolved_assists(&snap.config.assist, frange, only)?;
+    let assists = snap.analysis.resolved_assists(&snap.config.assist, frange)?;
     let (id_string, index) = split_delim(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];

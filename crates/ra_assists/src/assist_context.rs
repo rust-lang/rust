@@ -57,7 +57,6 @@ pub(crate) struct AssistContext<'a> {
     pub(crate) sema: Semantics<'a, RootDatabase>,
     pub(crate) frange: FileRange,
     source_file: SourceFile,
-    allowed: Option<Vec<AssistKind>>,
 }
 
 impl<'a> AssistContext<'a> {
@@ -65,10 +64,9 @@ impl<'a> AssistContext<'a> {
         sema: Semantics<'a, RootDatabase>,
         config: &'a AssistConfig,
         frange: FileRange,
-        allowed: Option<Vec<AssistKind>>,
     ) -> AssistContext<'a> {
         let source_file = sema.parse(frange.file_id);
-        AssistContext { config, sema, frange, source_file, allowed }
+        AssistContext { config, sema, frange, source_file }
     }
 
     pub(crate) fn db(&self) -> &RootDatabase {
@@ -114,7 +112,7 @@ impl Assists {
             resolve: true,
             file: ctx.frange.file_id,
             buf: Vec::new(),
-            allowed: ctx.allowed.clone(),
+            allowed: ctx.config.allowed.clone(),
         }
     }
 
@@ -123,7 +121,7 @@ impl Assists {
             resolve: false,
             file: ctx.frange.file_id,
             buf: Vec::new(),
-            allowed: ctx.allowed.clone(),
+            allowed: ctx.config.allowed.clone(),
         }
     }
 

@@ -86,14 +86,9 @@ impl Assist {
     ///
     /// Assists are returned in the "unresolved" state, that is only labels are
     /// returned, without actual edits.
-    pub fn unresolved(
-        db: &RootDatabase,
-        config: &AssistConfig,
-        range: FileRange,
-        allowed: Option<Vec<AssistKind>>,
-    ) -> Vec<Assist> {
+    pub fn unresolved(db: &RootDatabase, config: &AssistConfig, range: FileRange) -> Vec<Assist> {
         let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, config, range, allowed);
+        let ctx = AssistContext::new(sema, config, range);
         let mut acc = Assists::new_unresolved(&ctx);
         handlers::all().iter().for_each(|handler| {
             handler(&mut acc, &ctx);
@@ -109,10 +104,9 @@ impl Assist {
         db: &RootDatabase,
         config: &AssistConfig,
         range: FileRange,
-        allowed: Option<Vec<AssistKind>>,
     ) -> Vec<ResolvedAssist> {
         let sema = Semantics::new(db);
-        let ctx = AssistContext::new(sema, config, range, allowed);
+        let ctx = AssistContext::new(sema, config, range);
         let mut acc = Assists::new_resolved(&ctx);
         handlers::all().iter().for_each(|handler| {
             handler(&mut acc, &ctx);

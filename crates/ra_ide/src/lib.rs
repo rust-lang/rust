@@ -476,9 +476,8 @@ impl Analysis {
         &self,
         config: &AssistConfig,
         frange: FileRange,
-        allowed: Option<Vec<AssistKind>>,
     ) -> Cancelable<Vec<ResolvedAssist>> {
-        self.with_db(|db| ra_assists::Assist::resolved(db, config, frange, allowed))
+        self.with_db(|db| ra_assists::Assist::resolved(db, config, frange))
     }
 
     /// Computes unresolved assists (aka code actions aka intentions) for the given
@@ -487,9 +486,8 @@ impl Analysis {
         &self,
         config: &AssistConfig,
         frange: FileRange,
-        allowed: Option<Vec<AssistKind>>,
     ) -> Cancelable<Vec<Assist>> {
-        self.with_db(|db| Assist::unresolved(db, config, frange, allowed))
+        self.with_db(|db| Assist::unresolved(db, config, frange))
     }
 
     /// Computes the set of diagnostics for the given file.

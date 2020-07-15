@@ -35,14 +35,14 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let before = db.file_text(file_id).to_string();
     let frange = FileRange { file_id, range: selection.into() };
 
-    let mut assist = Assist::resolved(&db, &AssistConfig::default(), frange, None)
+    let mut assist = Assist::resolved(&db, &AssistConfig::default(), frange)
         .into_iter()
         .find(|assist| assist.assist.id.0 == assist_id)
         .unwrap_or_else(|| {
             panic!(
                 "\n\nAssist is not applicable: {}\nAvailable assists: {}",
                 assist_id,
-                Assist::resolved(&db, &AssistConfig::default(), frange, None)
+                Assist::resolved(&db, &AssistConfig::default(), frange)
                     .into_iter()
                     .map(|assist| assist.assist.id.0)
                     .collect::<Vec<_>>()
@@ -73,7 +73,7 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult) {
 
     let sema = Semantics::new(&db);
     let config = AssistConfig::default();
-    let ctx = AssistContext::new(sema, &config, frange, None);
+    let ctx = AssistContext::new(sema, &config, frange);
     let mut acc = Assists::new_resolved(&ctx);
     handler(&mut acc, &ctx);
     let mut res = acc.finish_resolved();
@@ -105,7 +105,7 @@ fn assist_order_field_struct() {
     let (before_cursor_pos, before) = extract_offset(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
-    let assists = Assist::resolved(&db, &AssistConfig::default(), frange, None);
+    let assists = Assist::resolved(&db, &AssistConfig::default(), frange);
     let mut assists = assists.iter();
 
     assert_eq!(
@@ -128,7 +128,7 @@ fn assist_order_if_expr() {
     let (range, before) = extract_range(before);
     let (db, file_id) = with_single_file(&before);
     let frange = FileRange { file_id, range };
-    let assists = Assist::resolved(&db, &AssistConfig::default(), frange, None);
+    let assists = Assist::resolved(&db, &AssistConfig::default(), frange);
     let mut assists = assists.iter();
 
     assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");
@@ -150,9 +150,10 @@ fn assist_filter_works() {
     let frange = FileRange { file_id, range };
 
     {
-        let allowed = Some(vec![AssistKind::Refactor]);
+        let mut cfg = AssistConfig::default();
+        cfg.allowed = Some(vec![AssistKind::Refactor]);
 
-        let assists = Assist::resolved(&db, &AssistConfig::default(), frange, allowed);
+        let assists = Assist::resolved(&db, &cfg, frange);
         let mut assists = assists.iter();
 
         assert_eq!(assists.next().expect("expected assist").assist.label, "Extract into variable");
@@ -160,8 +161,9 @@ fn assist_filter_works() {
     }
 
     {
-        let allowed = Some(vec![AssistKind::RefactorExtract]);
-        let assists = Assist::resolved(&db, &AssistConfig::default(), frange, allowed);
+        let mut cfg = AssistConfig::default();
+        cfg.allowed = Some(vec![AssistKind::RefactorExtract]);
+        let assists = Assist::resolved(&db, &cfg, frange);
         assert_eq!(assists.len(), 1);
 
         let mut assists = assists.iter();
@@ -169,8 +171,9 @@ fn assist_filter_works() {
     }
 
     {
-        let allowed = Some(vec![AssistKind::QuickFix]);
-        let assists = Assist::resolved(&db, &AssistConfig::default(), frange, allowed);
+        let mut cfg = AssistConfig::default();
+        cfg.allowed = Some(vec![AssistKind::QuickFix]);
+        let assists = Assist::resolved(&db, &cfg, frange);
         assert!(assists.is_empty(), "All asserts but quickfixes should be filtered out");
     }
 }
