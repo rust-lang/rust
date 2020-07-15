@@ -383,9 +383,6 @@ fn ty_requires_alloca<'a, 'tcx>(
     fx: &FunctionCx<'a, 'tcx, impl BuilderMethods<'a, 'tcx>>,
     ty: TyAndLayout<'tcx>,
 ) -> bool {
-    // Currently, this returns `true` for ADTs that are otherwise small enough to qualify. For
-    // example, `struct Newtype(i32)`. This way, every type has a single way to extract data
-    // (gep, extractvalue, etc.).
     !fx.cx.is_backend_immediate(ty) && !fx.cx.is_backend_scalar_pair(ty)
 }
 
