@@ -93,7 +93,7 @@ fn call_info_for_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Op
                     arg_list
                         .args()
                         .take_while(|arg| {
-                            arg.syntax().text_range().end() < token.text_range().start()
+                            arg.syntax().text_range().end() <= token.text_range().start()
                         })
                         .count(),
                 );
@@ -276,7 +276,7 @@ fn bar() { foo(3,<|> ); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (<x: u32>, y: u32)
+                (x: u32, <y: u32>)
             "#]],
         );
         check(
