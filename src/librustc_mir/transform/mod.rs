@@ -274,7 +274,7 @@ fn mir_const<'tcx>(
 
     // Unsafety check uses the raw mir, so make sure it is run.
     if let Some(param_did) = def.const_param_did {
-        tcx.ensure().unsafety_check_result_const_arg((def.did, param_did));
+        tcx.ensure().unsafety_check_result_for_const_arg((def.did, param_did));
     } else {
         tcx.ensure().unsafety_check_result(def.did);
     }

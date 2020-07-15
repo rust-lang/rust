@@ -501,7 +501,7 @@ rustc_queries! {
             desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
         }
-        query unsafety_check_result_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::UnsafetyCheckResult {
+        query unsafety_check_result_for_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::UnsafetyCheckResult {
             desc {
                 |tcx| "unsafety-checking the const argument `{}`",
                 tcx.def_path_str(key.0.to_def_id())

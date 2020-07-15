@@ -493,7 +493,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         unsafety_check_result: |tcx, def_id| {
             unsafety_check_result(tcx, ty::WithOptConstParam::unknown(def_id))
         },
-        unsafety_check_result_const_arg: |tcx, (did, param_did)| {
+        unsafety_check_result_for_const_arg: |tcx, (did, param_did)| {
             unsafety_check_result(
                 tcx,
                 ty::WithOptConstParam { did, const_param_did: Some(param_did) },
@@ -553,7 +553,7 @@ fn unsafety_check_result<'tcx>(
 ) -> &'tcx UnsafetyCheckResult {
     if def.const_param_did.is_none() {
         if let Some(param_did) = tcx.opt_const_param_of(def.did) {
-            return tcx.unsafety_check_result_const_arg((def.did, param_did));
+            return tcx.unsafety_check_result_for_const_arg((def.did, param_did));
         }
     }
 
