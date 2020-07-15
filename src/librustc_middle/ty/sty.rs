@@ -2210,7 +2210,7 @@ impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
-        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::dummy(def_id))
+        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id))
     }
 
     pub fn from_opt_const_arg_anon_const(

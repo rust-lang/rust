@@ -49,7 +49,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         mir_keys,
         mir_const,
         mir_const_qualif: |tcx, did| {
-            mir_const_qualif(tcx, ty::WithOptConstParam::dummy(did.expect_local()))
+            mir_const_qualif(tcx, ty::WithOptConstParam::unknown(did.expect_local()))
         },
         mir_const_qualif_const_arg: |tcx, (did, param_did)| {
             mir_const_qualif(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
@@ -60,7 +60,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         optimized_mir_of_const_arg,
         is_mir_available,
         promoted_mir: |tcx, def_id| {
-            promoted_mir(tcx, ty::WithOptConstParam::dummy(def_id.expect_local()))
+            promoted_mir(tcx, ty::WithOptConstParam::unknown(def_id.expect_local()))
         },
         promoted_mir_of_const_arg: |tcx, (did, param_did)| {
             promoted_mir(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
@@ -128,7 +128,7 @@ pub struct MirSource<'tcx> {
 impl<'tcx> MirSource<'tcx> {
     pub fn item(def_id: DefId) -> Self {
         MirSource {
-            instance: InstanceDef::Item(ty::WithOptConstParam::dummy(def_id)),
+            instance: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
             promoted: None,
         }
     }
@@ -414,7 +414,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(ty::WithOptConstParam::dummy(def_id.to_def_id())),
+        InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id())),
         promoted,
         MirPhase::DropElab,
         &[post_borrowck_cleanup],
@@ -478,7 +478,7 @@ fn run_optimization_passes<'tcx>(
     run_passes(
         tcx,
         body,
-        InstanceDef::Item(ty::WithOptConstParam::dummy(def_id.to_def_id())),
+        InstanceDef::Item(ty::WithOptConstParam::unknown(def_id.to_def_id())),
         promoted,
         MirPhase::Optimized,
         &[
@@ -493,7 +493,7 @@ fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {
     if let Some(param_did) = tcx.opt_const_param_of(did) {
         tcx.optimized_mir_of_const_arg((did, param_did))
     } else {
-        tcx.arena.alloc(inner_optimized_mir(tcx, ty::WithOptConstParam::dummy(did)))
+        tcx.arena.alloc(inner_optimized_mir(tcx, ty::WithOptConstParam::unknown(did)))
     }
 }
 

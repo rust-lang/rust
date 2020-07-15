@@ -196,7 +196,7 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(def_id)
             | InstanceDef::ClosureOnceShim { call_once: def_id }
             | InstanceDef::DropGlue(def_id, _)
-            | InstanceDef::CloneShim(def_id, _) => ty::WithOptConstParam::dummy(def_id),
+            | InstanceDef::CloneShim(def_id, _) => ty::WithOptConstParam::unknown(def_id),
         }
     }
 
@@ -298,7 +298,7 @@ impl<'tcx> Instance<'tcx> {
             def_id,
             substs
         );
-        Instance { def: InstanceDef::Item(ty::WithOptConstParam::dummy(def_id)), substs }
+        Instance { def: InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)), substs }
     }
 
     pub fn mono(tcx: TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {

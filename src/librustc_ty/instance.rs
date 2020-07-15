@@ -21,7 +21,7 @@ fn resolve_instance<'tcx>(
         }
     }
 
-    inner_resolve_instance(tcx, param_env.and((ty::WithOptConstParam::dummy(did), substs)))
+    inner_resolve_instance(tcx, param_env.and((ty::WithOptConstParam::unknown(did), substs)))
 }
 
 fn resolve_instance_of_const_arg<'tcx>(
@@ -210,7 +210,7 @@ fn resolve_associated_item<'tcx>(
             Some(ty::Instance::new(leaf_def.item.def_id, substs))
         }
         traits::ImplSourceGenerator(generator_data) => Some(Instance {
-            def: ty::InstanceDef::Item(ty::WithOptConstParam::dummy(
+            def: ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
                 generator_data.generator_def_id,
             )),
             substs: generator_data.substs,

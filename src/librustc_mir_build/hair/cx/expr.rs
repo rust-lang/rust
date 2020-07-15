@@ -601,7 +601,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                             let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
                             let lhs = mk_const(cx.tcx().mk_const(ty::Const {
                                 val: ty::ConstKind::Unevaluated(
-                                    ty::WithOptConstParam::dummy(did),
+                                    ty::WithOptConstParam::unknown(did),
                                     substs,
                                     None,
                                 ),
@@ -801,7 +801,7 @@ fn convert_path_expr<'a, 'tcx>(
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(ty::Const {
                     val: ty::ConstKind::Unevaluated(
-                        ty::WithOptConstParam::dummy(def_id),
+                        ty::WithOptConstParam::unknown(def_id),
                         substs,
                         None,
                     ),

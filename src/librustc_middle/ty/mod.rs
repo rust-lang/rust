@@ -1613,7 +1613,8 @@ pub struct WithOptConstParam<T> {
 }
 
 impl<T> WithOptConstParam<T> {
-    pub fn dummy(did: T) -> WithOptConstParam<T> {
+    /// Creates a new `WithOptConstParam` setting `const_param_did` to `None`.
+    pub fn unknown(did: T) -> WithOptConstParam<T> {
         WithOptConstParam { did, const_param_did: None }
     }
 }

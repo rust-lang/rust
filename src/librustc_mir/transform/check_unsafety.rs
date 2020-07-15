@@ -491,7 +491,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         unsafety_check_result: |tcx, def_id| {
-            unsafety_check_result(tcx, ty::WithOptConstParam::dummy(def_id))
+            unsafety_check_result(tcx, ty::WithOptConstParam::unknown(def_id))
         },
         unsafety_check_result_const_arg: |tcx, (did, param_did)| {
             unsafety_check_result(
