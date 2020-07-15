@@ -34,12 +34,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        def_id: DefId,
+        def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
         promoted: Option<mir::Promoted>,
         span: Option<Span>,
     ) -> ConstEvalResult<'tcx> {
-        match ty::Instance::resolve(self, param_env, def_id, substs) {
+        match ty::Instance::resolve_opt_const_arg(self, param_env, def, substs) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted };
                 self.const_eval_global_id(param_env, cid, span)

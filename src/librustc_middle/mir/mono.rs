@@ -346,8 +346,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def_id) => {
-                                def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+                            InstanceDef::Item(def) => {
+                                def.did.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
                             }
                             InstanceDef::VtableShim(..)
                             | InstanceDef::ReifyShim(..)

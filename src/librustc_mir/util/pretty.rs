@@ -248,7 +248,10 @@ pub fn write_mir_pretty<'tcx>(
 
         for (i, body) in tcx.promoted_mir(def_id).iter_enumerated() {
             writeln!(w)?;
-            let src = MirSource { instance: ty::InstanceDef::Item(def_id), promoted: Some(i) };
+            let src = MirSource {
+                instance: ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
+                promoted: Some(i),
+            };
             write_mir_fn(tcx, src, body, &mut |_, _| Ok(()), w)?;
         }
     }

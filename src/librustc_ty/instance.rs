@@ -1,5 +1,5 @@
 use rustc_errors::ErrorReported;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeFoldable};
@@ -14,15 +14,43 @@ fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
-    let (param_env, (def_id, substs)) = key.into_parts();
+    let (param_env, (did, substs)) = key.into_parts();
+    if let Some(did) = did.as_local() {
+        if let Some(param_did) = tcx.opt_const_param_of(did) {
+            return tcx.resolve_instance_of_const_arg(param_env.and((did, param_did, substs)));
+        }
+    }
 
-    debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-    let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
+    inner_resolve_instance(tcx, param_env.and((ty::WithOptConstParam::unknown(did), substs)))
+}
+
+fn resolve_instance_of_const_arg<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: ty::ParamEnvAnd<'tcx, (LocalDefId, DefId, SubstsRef<'tcx>)>,
+) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+    let (param_env, (did, const_param_did, substs)) = key.into_parts();
+    inner_resolve_instance(
+        tcx,
+        param_env.and((
+            ty::WithOptConstParam { did: did.to_def_id(), const_param_did: Some(const_param_did) },
+            substs,
+        )),
+    )
+}
+
+fn inner_resolve_instance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: ty::ParamEnvAnd<'tcx, (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)>,
+) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+    let (param_env, (def, substs)) = key.into_parts();
+
+    debug!("resolve(def={:?}, substs={:?})", def.did, substs);
+    let result = if let Some(trait_def_id) = tcx.trait_of_item(def.did) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
-        let item = tcx.associated_item(def_id);
+        let item = tcx.associated_item(def.did);
         resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
     } else {
-        let ty = tcx.type_of(def_id);
+        let ty = tcx.type_of(def.def_id_for_type_of());
         let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, &ty);
 
         let def = match item_type.kind {
@@ -33,7 +61,7 @@ fn resolve_instance<'tcx>(
                 } =>
             {
                 debug!(" => intrinsic");
-                ty::InstanceDef::Intrinsic(def_id)
+                ty::InstanceDef::Intrinsic(def.did)
             }
             ty::FnDef(def_id, substs) if Some(def_id) == tcx.lang_items().drop_in_place_fn() => {
                 let ty = substs.type_at(0);
@@ -53,12 +81,12 @@ fn resolve_instance<'tcx>(
             }
             _ => {
                 debug!(" => free item");
-                ty::InstanceDef::Item(def_id)
+                ty::InstanceDef::Item(def)
             }
         };
         Ok(Some(Instance { def, substs }))
     };
-    debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
+    debug!("resolve(def.did={:?}, substs={:?}) = {:?}", def.did, substs, result);
     result
 }
 
@@ -182,7 +210,9 @@ fn resolve_associated_item<'tcx>(
             Some(ty::Instance::new(leaf_def.item.def_id, substs))
         }
         traits::ImplSourceGenerator(generator_data) => Some(Instance {
-            def: ty::InstanceDef::Item(generator_data.generator_def_id),
+            def: ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
+                generator_data.generator_def_id,
+            )),
             substs: generator_data.substs,
         }),
         traits::ImplSourceClosure(closure_data) => {
@@ -244,5 +274,6 @@ fn resolve_associated_item<'tcx>(
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { resolve_instance, ..*providers };
+    *providers =
+        ty::query::Providers { resolve_instance, resolve_instance_of_const_arg, ..*providers };
 }

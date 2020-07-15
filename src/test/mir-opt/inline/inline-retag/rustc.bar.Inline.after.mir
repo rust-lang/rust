@@ -38,10 +38,10 @@ fn bar() -> bool {
         _10 = const bar::promoted[1];    // scope 1 at $DIR/inline-retag.rs:12:7: 12:9
                                          // ty::Const
                                          // + ty: &i32
-                                         // + val: Unevaluated(DefId(0:4 ~ inline_retag[317d]::bar[0]), [], Some(promoted[1]))
+                                         // + val: Unevaluated(WithOptConstParam { did: DefId(0:4 ~ inline_retag[317d]::bar[0]), const_param_did: None }, [], Some(promoted[1]))
                                          // mir::Constant
                                          // + span: $DIR/inline-retag.rs:12:7: 12:9
-                                         // + literal: Const { ty: &i32, val: Unevaluated(DefId(0:4 ~ inline_retag[317d]::bar[0]), [], Some(promoted[1])) }
+                                         // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:4 ~ inline_retag[317d]::bar[0]), const_param_did: None }, [], Some(promoted[1])) }
         Retag(_10);                      // scope 1 at $DIR/inline-retag.rs:12:7: 12:9
         _4 = &(*_10);                    // scope 1 at $DIR/inline-retag.rs:12:7: 12:9
         Retag(_4);                       // scope 1 at $DIR/inline-retag.rs:12:7: 12:9
@@ -52,10 +52,10 @@ fn bar() -> bool {
         _9 = const bar::promoted[0];     // scope 1 at $DIR/inline-retag.rs:12:11: 12:14
                                          // ty::Const
                                          // + ty: &i32
-                                         // + val: Unevaluated(DefId(0:4 ~ inline_retag[317d]::bar[0]), [], Some(promoted[0]))
+                                         // + val: Unevaluated(WithOptConstParam { did: DefId(0:4 ~ inline_retag[317d]::bar[0]), const_param_did: None }, [], Some(promoted[0]))
                                          // mir::Constant
                                          // + span: $DIR/inline-retag.rs:12:11: 12:14
-                                         // + literal: Const { ty: &i32, val: Unevaluated(DefId(0:4 ~ inline_retag[317d]::bar[0]), [], Some(promoted[0])) }
+                                         // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:4 ~ inline_retag[317d]::bar[0]), const_param_did: None }, [], Some(promoted[0])) }
         Retag(_9);                       // scope 1 at $DIR/inline-retag.rs:12:11: 12:14
         _7 = &(*_9);                     // scope 1 at $DIR/inline-retag.rs:12:11: 12:14
         Retag(_7);                       // scope 1 at $DIR/inline-retag.rs:12:11: 12:14

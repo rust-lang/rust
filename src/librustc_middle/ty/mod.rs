@@ -1,5 +1,4 @@
 // ignore-tidy-filelength
-
 pub use self::fold::{TypeFoldable, TypeVisitor};
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
@@ -1101,7 +1100,7 @@ pub enum PredicateKind<'tcx> {
     Subtype(PolySubtypePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(DefId, SubstsRef<'tcx>),
+    ConstEvaluatable(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
@@ -1571,6 +1570,95 @@ pub type PlaceholderRegion = Placeholder<BoundRegion>;
 pub type PlaceholderType = Placeholder<BoundVar>;
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
+
+/// A `DefId` which is potentially bundled with its corresponding generic parameter
+/// in case `did` is a const argument.
+///
+/// This is used to prevent cycle errors during typeck
+/// as `type_of(const_arg)` depends on `typeck_tables_of(owning_body)`
+/// which once again requires the type of its generic arguments.
+///
+/// Luckily we only need to deal with const arguments once we
+/// know their corresponding parameters. We (ab)use this by
+/// calling `type_of(param_did)` for these arguments.
+///
+/// ```rust
+/// #![feature(const_generics)]
+///
+/// struct A;
+/// impl A {
+///     fn foo<const N: usize>(&self) -> usize { N }
+/// }
+/// struct B;
+/// impl B {
+///     fn foo<const N: u8>(&self) -> usize { 42 }
+/// }
+///
+/// fn main() {
+///     let a = A;
+///     a.foo::<7>();
+/// }
+/// ```
+#[derive(Copy, Clone, Debug, TypeFoldable, Lift, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, HashStable)]
+pub struct WithOptConstParam<T> {
+    pub did: T,
+    /// The `DefId` of the corresponding generic paramter in case `did` is
+    /// a const argument.
+    ///
+    /// Note that even if `did` is a const argument, this may still be `None`.
+    /// All queries taking `WithOptConstParam` start by calling `tcx.opt_const_param_of(def.did)`
+    /// to potentially update `param_did` in case it `None`.
+    pub const_param_did: Option<DefId>,
+}
+
+impl<T> WithOptConstParam<T> {
+    /// Creates a new `WithOptConstParam` setting `const_param_did` to `None`.
+    pub fn unknown(did: T) -> WithOptConstParam<T> {
+        WithOptConstParam { did, const_param_did: None }
+    }
+}
+
+impl WithOptConstParam<LocalDefId> {
+    pub fn to_global(self) -> WithOptConstParam<DefId> {
+        WithOptConstParam { did: self.did.to_def_id(), const_param_did: self.const_param_did }
+    }
+
+    pub fn def_id_for_type_of(self) -> DefId {
+        if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
+    }
+}
+
+impl WithOptConstParam<DefId> {
+    pub fn as_local(self) -> Option<WithOptConstParam<LocalDefId>> {
+        self.did
+            .as_local()
+            .map(|did| WithOptConstParam { did, const_param_did: self.const_param_did })
+    }
+
+    pub fn as_const_arg(self) -> Option<(LocalDefId, DefId)> {
+        if let Some(param_did) = self.const_param_did {
+            if let Some(did) = self.did.as_local() {
+                return Some((did, param_did));
+            }
+        }
+
+        None
+    }
+
+    pub fn expect_local(self) -> WithOptConstParam<LocalDefId> {
+        self.as_local().unwrap()
+    }
+
+    pub fn is_local(self) -> bool {
+        self.did.is_local()
+    }
+
+    pub fn def_id_for_type_of(self) -> DefId {
+        self.const_param_did.unwrap_or(self.did)
+    }
+}
 
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
@@ -2843,7 +2931,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {
-            ty::InstanceDef::Item(did) => self.optimized_mir(did),
+            ty::InstanceDef::Item(def) => {
+                if let Some((did, param_did)) = def.as_const_arg() {
+                    self.optimized_mir_of_const_arg((did, param_did))
+                } else {
+                    self.optimized_mir(def.did)
+                }
+            }
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::Intrinsic(..)

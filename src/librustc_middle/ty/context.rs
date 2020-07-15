@@ -980,15 +980,26 @@ pub struct GlobalCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> Steal<Body<'tcx>> {
-        Steal::new(mir)
+    pub fn typeck_tables_of_opt_const_arg(
+        self,
+        def: ty::WithOptConstParam<LocalDefId>,
+    ) -> &'tcx TypeckTables<'tcx> {
+        if let Some(param_did) = def.const_param_did {
+            self.typeck_tables_of_const_arg((def.did, param_did))
+        } else {
+            self.typeck_tables_of(def.did)
+        }
+    }
+
+    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
+        self.arena.alloc(Steal::new(mir))
     }
 
     pub fn alloc_steal_promoted(
         self,
         promoted: IndexVec<Promoted, Body<'tcx>>,
-    ) -> Steal<IndexVec<Promoted, Body<'tcx>>> {
-        Steal::new(promoted)
+    ) -> &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
+        self.arena.alloc(Steal::new(promoted))
     }
 
     pub fn alloc_adt_def(

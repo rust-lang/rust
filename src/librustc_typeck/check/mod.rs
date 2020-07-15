@@ -764,6 +764,7 @@ pub fn provide(providers: &mut Providers) {
     method::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
+        typeck_tables_of_const_arg,
         typeck_tables_of,
         diagnostic_only_typeck_tables_of,
         has_typeck_tables,
@@ -955,9 +956,21 @@ where
     val.fold_with(&mut FixupFolder { tcx })
 }
 
+fn typeck_tables_of_const_arg<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    (did, param_did): (LocalDefId, DefId),
+) -> &ty::TypeckTables<'tcx> {
+    let fallback = move || tcx.type_of(param_did);
+    typeck_tables_of_with_fallback(tcx, did, fallback)
+}
+
 fn typeck_tables_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &ty::TypeckTables<'tcx> {
-    let fallback = move || tcx.type_of(def_id.to_def_id());
-    typeck_tables_of_with_fallback(tcx, def_id, fallback)
+    if let Some(param_did) = tcx.opt_const_param_of(def_id) {
+        tcx.typeck_tables_of_const_arg((def_id, param_did))
+    } else {
+        let fallback = move || tcx.type_of(def_id.to_def_id());
+        typeck_tables_of_with_fallback(tcx, def_id, fallback)
+    }
 }
 
 /// Used only to get `TypeckTables` for type inference during error recovery.
@@ -3542,6 +3555,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         c
     }
 
+    pub fn const_arg_to_const(
+        &self,
+        ast_c: &hir::AnonConst,
+        param_def_id: DefId,
+    ) -> &'tcx ty::Const<'tcx> {
+        let const_def = ty::WithOptConstParam {
+            did: self.tcx.hir().local_def_id(ast_c.hir_id),
+            const_param_did: Some(param_def_id),
+        };
+        let c = ty::Const::from_opt_const_arg_anon_const(self.tcx, const_def);
+        self.register_wf_obligation(
+            c.into(),
+            self.tcx.hir().span(ast_c.hir_id),
+            ObligationCauseCode::MiscObligation,
+        );
+        c
+    }
+
     // If the type given by the user has free regions, save it for later, since
     // NLL would like to enforce those. Also pass in types that involve
     // projections, since those can resolve to `'static` bounds (modulo #54940,
@@ -5655,7 +5686,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.to_ty(ty).into()
                     }
                     (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
-                        self.to_const(&ct.value).into()
+                        self.const_arg_to_const(&ct.value, param.def_id).into()
                     }
                     _ => unreachable!(),
                 },

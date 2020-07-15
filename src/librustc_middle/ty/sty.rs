@@ -2210,21 +2210,28 @@ impl<'tcx> Const<'tcx> {
     /// Literals and const generic parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
-        debug!("Const::from_anon_const(id={:?})", def_id);
+        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id))
+    }
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    pub fn from_opt_const_arg_anon_const(
+        tcx: TyCtxt<'tcx>,
+        def: ty::WithOptConstParam<LocalDefId>,
+    ) -> &'tcx Self {
+        debug!("Const::from_anon_const(def={:?})", def);
+
+        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
 
         let body_id = match tcx.hir().get(hir_id) {
             hir::Node::AnonConst(ac) => ac.body,
             _ => span_bug!(
-                tcx.def_span(def_id.to_def_id()),
+                tcx.def_span(def.did.to_def_id()),
                 "from_anon_const can only process anonymous constants"
             ),
         };
 
         let expr = &tcx.hir().body(body_id).value;
 
-        let ty = tcx.type_of(def_id.to_def_id());
+        let ty = tcx.type_of(def.def_id_for_type_of());
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
@@ -2271,8 +2278,8 @@ impl<'tcx> Const<'tcx> {
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
             _ => ty::ConstKind::Unevaluated(
-                def_id.to_def_id(),
-                InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
+                def.to_global(),
+                InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                 None,
             ),
         };
@@ -2340,7 +2347,7 @@ impl<'tcx> Const<'tcx> {
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
-        if let ConstKind::Unevaluated(did, substs, promoted) = self.val {
+        if let ConstKind::Unevaluated(def, substs, promoted) = self.val {
             use crate::mir::interpret::ErrorHandled;
 
             let param_env_and_substs = param_env.with_reveal_all().and(substs);
@@ -2356,7 +2363,7 @@ impl<'tcx> Const<'tcx> {
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
             let param_env_and_substs = if param_env_and_substs.needs_infer() {
-                tcx.param_env(did).and(InternalSubsts::identity_for_item(tcx, did))
+                tcx.param_env(def.did).and(InternalSubsts::identity_for_item(tcx, def.did))
             } else {
                 param_env_and_substs
             };
@@ -2366,7 +2373,7 @@ impl<'tcx> Const<'tcx> {
             let (param_env, substs) = param_env_and_substs.into_parts();
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            match tcx.const_eval_resolve(param_env, did, substs, promoted, None) {
+            match tcx.const_eval_resolve(param_env, def, substs, promoted, None) {
                 // NOTE(eddyb) `val` contains no lifetimes/types/consts,
                 // and we use the original type, so nothing from `substs`
                 // (which may be identity substs, see above),
@@ -2426,7 +2433,7 @@ pub enum ConstKind<'tcx> {
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
-    Unevaluated(DefId, SubstsRef<'tcx>, Option<Promoted>),
+    Unevaluated(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>, Option<Promoted>),
 
     /// Used to hold computed value.
     Value(ConstValue<'tcx>),

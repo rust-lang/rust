@@ -394,24 +394,30 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
-        let did = instance.def_id();
-        if let Some(did) = did.as_local() {
-            if self.tcx.has_typeck_tables(did) {
-                if let Some(error_reported) = self.tcx.typeck_tables_of(did).tainted_by_errors {
+        let def = instance.with_opt_param();
+        if let Some(def) = def.as_local() {
+            if self.tcx.has_typeck_tables(def.did) {
+                if let Some(error_reported) =
+                    self.tcx.typeck_tables_of_opt_const_arg(def).tainted_by_errors
+                {
                     throw_inval!(TypeckError(error_reported))
                 }
             }
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir(did)[promoted]);
+            return Ok(&self.tcx.promoted_mir_of_opt_const_arg(def)[promoted]);
         }
         match instance {
-            ty::InstanceDef::Item(def_id) => {
-                if self.tcx.is_mir_available(did) {
-                    Ok(self.tcx.optimized_mir(did))
+            ty::InstanceDef::Item(def) => {
+                if self.tcx.is_mir_available(def.did) {
+                    if let Some((did, param_did)) = def.as_const_arg() {
+                        Ok(self.tcx.optimized_mir_of_const_arg((did, param_did)))
+                    } else {
+                        Ok(self.tcx.optimized_mir(def.did))
+                    }
                 } else {
-                    throw_unsup!(NoMirFor(def_id))
+                    throw_unsup!(NoMirFor(def.did))
                 }
             }
             _ => Ok(self.tcx.instance_mir(instance)),

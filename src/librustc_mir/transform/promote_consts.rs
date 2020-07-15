@@ -60,16 +60,15 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
             return;
         }
 
-        let def_id = src.def_id().expect_local();
+        let def = src.with_opt_param().expect_local();
 
         let mut rpo = traversal::reverse_postorder(body);
-        let ccx = ConstCx::new(tcx, def_id, body);
+        let ccx = ConstCx::new(tcx, def.did, body);
         let (temps, all_candidates) = collect_temps_and_candidates(&ccx, &mut rpo);
 
         let promotable_candidates = validate_candidates(&ccx, &temps, &all_candidates);
 
-        let promoted =
-            promote_candidates(def_id.to_def_id(), body, tcx, temps, promotable_candidates);
+        let promoted = promote_candidates(def.to_global(), body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
     }
 }
@@ -937,7 +936,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
     fn promote_candidate(
         mut self,
-        def_id: DefId,
+        def: ty::WithOptConstParam<DefId>,
         candidate: Candidate,
         next_promoted_id: usize,
     ) -> Option<Body<'tcx>> {
@@ -955,8 +954,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     literal: tcx.mk_const(ty::Const {
                         ty,
                         val: ty::ConstKind::Unevaluated(
-                            def_id,
-                            InternalSubsts::for_item(tcx, def_id, |param, _| {
+                            def,
+                            InternalSubsts::for_item(tcx, def.did, |param, _| {
                                 if let ty::GenericParamDefKind::Lifetime = param.kind {
                                     tcx.lifetimes.re_erased.into()
                                 } else {
@@ -1100,7 +1099,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 }
 
 pub fn promote_candidates<'tcx>(
-    def_id: DefId,
+    def: ty::WithOptConstParam<DefId>,
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
@@ -1157,7 +1156,7 @@ pub fn promote_candidates<'tcx>(
         };
 
         //FIXME(oli-obk): having a `maybe_push()` method on `IndexVec` might be nice
-        if let Some(promoted) = promoter.promote_candidate(def_id, candidate, promotions.len()) {
+        if let Some(promoted) = promoter.promote_candidate(def, candidate, promotions.len()) {
             promotions.push(promoted);
         }
     }

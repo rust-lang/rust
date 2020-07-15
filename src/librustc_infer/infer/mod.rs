@@ -1536,7 +1536,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        def_id: DefId,
+        def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
         promoted: Option<mir::Promoted>,
         span: Option<Span>,
@@ -1547,7 +1547,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let (param_env, substs) = canonical.value;
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
-        self.tcx.const_eval_resolve(param_env, def_id, substs, promoted, span)
+        self.tcx.const_eval_resolve(param_env, def, substs, promoted, span)
     }
 
     /// If `typ` is a type variable of some kind, resolve it one level

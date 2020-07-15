@@ -423,8 +423,11 @@ fn check_type_defn<'tcx, F>(
                 fcx.register_predicate(traits::Obligation::new(
                     cause,
                     fcx.param_env,
-                    ty::PredicateKind::ConstEvaluatable(discr_def_id.to_def_id(), discr_substs)
-                        .to_predicate(fcx.tcx),
+                    ty::PredicateKind::ConstEvaluatable(
+                        ty::WithOptConstParam::unknown(discr_def_id.to_def_id()),
+                        discr_substs,
+                    )
+                    .to_predicate(fcx.tcx),
                 ));
             }
         }

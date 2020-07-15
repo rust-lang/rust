@@ -96,10 +96,10 @@
           (_5.1: &i32) = const main::promoted[1]; // scope 3 at $SRC_DIR/libcore/macros/mod.rs:LL:COL
                                            // ty::Const
                                            // + ty: &i32
-                                           // + val: Unevaluated(DefId(0:3 ~ issue_73223[317d]::main[0]), [], Some(promoted[1]))
+                                           // + val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ issue_73223[317d]::main[0]), const_param_did: None }, [], Some(promoted[1]))
                                            // mir::Constant
                                            // + span: $SRC_DIR/libcore/macros/mod.rs:LL:COL
-                                           // + literal: Const { ty: &i32, val: Unevaluated(DefId(0:3 ~ issue_73223[317d]::main[0]), [], Some(promoted[1])) }
+                                           // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ issue_73223[317d]::main[0]), const_param_did: None }, [], Some(promoted[1])) }
           StorageDead(_6);                 // scope 3 at $SRC_DIR/libcore/macros/mod.rs:LL:COL
           StorageLive(_7);                 // scope 3 at $SRC_DIR/libcore/macros/mod.rs:LL:COL
           _7 = (_5.0: &i32);               // scope 3 at $SRC_DIR/libcore/macros/mod.rs:LL:COL
@@ -140,10 +140,10 @@
           _15 = const main::promoted[0] as &[&str] (Pointer(Unsize)); // scope 4 at $SRC_DIR/libcore/macros/mod.rs:LL:COL
                                            // ty::Const
                                            // + ty: &[&str; 3]
-                                           // + val: Unevaluated(DefId(0:3 ~ issue_73223[317d]::main[0]), [], Some(promoted[0]))
+                                           // + val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ issue_73223[317d]::main[0]), const_param_did: None }, [], Some(promoted[0]))
                                            // mir::Constant
                                            // + span: $SRC_DIR/libcore/macros/mod.rs:LL:COL
-                                           // + literal: Const { ty: &[&str; 3], val: Unevaluated(DefId(0:3 ~ issue_73223[317d]::main[0]), [], Some(promoted[0])) }
+                                           // + literal: Const { ty: &[&str; 3], val: Unevaluated(WithOptConstParam { did: DefId(0:3 ~ issue_73223[317d]::main[0]), const_param_did: None }, [], Some(promoted[0])) }
           StorageLive(_18);                // scope 4 at $SRC_DIR/libstd/macros.rs:LL:COL
           StorageLive(_19);                // scope 4 at $SRC_DIR/libstd/macros.rs:LL:COL
           StorageLive(_20);                // scope 4 at $SRC_DIR/libcore/macros/mod.rs:LL:COL

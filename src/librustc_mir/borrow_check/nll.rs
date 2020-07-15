@@ -9,7 +9,7 @@ use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, RegionKind, RegionVid};
+use rustc_middle::ty::{self, InstanceDef, RegionKind, RegionVid};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -59,20 +59,20 @@ crate struct NllOutput<'tcx> {
 /// `compute_regions`.
 pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def_id: LocalDefId,
+    def: ty::WithOptConstParam<LocalDefId>,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
-    debug!("replace_regions_in_mir(def_id={:?})", def_id);
+    debug!("replace_regions_in_mir(def={:?})", def);
 
     // Compute named region information. This also renumbers the inputs/outputs.
-    let universal_regions = UniversalRegions::new(infcx, def_id, param_env);
+    let universal_regions = UniversalRegions::new(infcx, def, param_env);
 
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
 
-    let source = MirSource::item(def_id.to_def_id());
+    let source = MirSource { instance: InstanceDef::Item(def.to_global()), promoted: None };
     mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body, |_, _| Ok(()));
 
     universal_regions

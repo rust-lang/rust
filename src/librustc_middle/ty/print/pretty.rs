@@ -883,18 +883,18 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         match ct.val {
-            ty::ConstKind::Unevaluated(did, substs, promoted) => {
+            ty::ConstKind::Unevaluated(def, substs, promoted) => {
                 if let Some(promoted) = promoted {
-                    p!(print_value_path(did, substs));
+                    p!(print_value_path(def.did, substs));
                     p!(write("::{:?}", promoted));
                 } else {
-                    match self.tcx().def_kind(did) {
+                    match self.tcx().def_kind(def.did) {
                         DefKind::Static | DefKind::Const | DefKind::AssocConst => {
-                            p!(print_value_path(did, substs))
+                            p!(print_value_path(def.did, substs))
                         }
                         _ => {
-                            if did.is_local() {
-                                let span = self.tcx().def_span(did);
+                            if def.is_local() {
+                                let span = self.tcx().def_span(def.did);
                                 if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
                                 {
                                     p!(write("{}", snip))
@@ -2027,9 +2027,9 @@ define_print_and_forward_display! {
                    print_value_path(closure_def_id, &[]),
                    write("` implements the trait `{}`", kind))
             }
-            &ty::PredicateKind::ConstEvaluatable(def_id, substs) => {
+            &ty::PredicateKind::ConstEvaluatable(def, substs) => {
                 p!(write("the constant `"),
-                   print_value_path(def_id, substs),
+                   print_value_path(def.did, substs),
                    write("` can be evaluated"))
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {

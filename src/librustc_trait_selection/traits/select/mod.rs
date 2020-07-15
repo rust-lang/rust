@@ -507,11 +507,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!("evaluate_predicate_recursively: equating consts c1={:?} c2={:?}", c1, c2);
 
                 let evaluate = |c: &'tcx ty::Const<'tcx>| {
-                    if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = c.val {
+                    if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
                         self.infcx
                             .const_eval_resolve(
                                 obligation.param_env,
-                                def_id,
+                                def,
                                 substs,
                                 promoted,
                                 Some(obligation.cause.span),

@@ -21,13 +21,19 @@ use rustc_target::spec::PanicStrategy;
 
 use super::lints;
 
-crate fn mir_built(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::steal::Steal<Body<'_>> {
-    tcx.alloc_steal_mir(mir_build(tcx, def_id))
+crate fn mir_built<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) -> &'tcx ty::steal::Steal<Body<'tcx>> {
+    if def.const_param_did.is_none() {
+        if let const_param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            return tcx.mir_built(ty::WithOptConstParam { const_param_did, ..def });
+        }
+    }
+
+    tcx.alloc_steal_mir(mir_build(tcx, def))
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
-    let id = tcx.hir().as_local_hir_id(def_id);
+fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
+    let id = tcx.hir().as_local_hir_id(def.did);
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span) = match tcx.hir().get(id) {
@@ -57,11 +63,11 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
         }) => (*body_id, ty.span),
         Node::AnonConst(hir::AnonConst { body, hir_id, .. }) => (*body, tcx.hir().span(*hir_id)),
 
-        _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def_id),
+        _ => span_bug!(tcx.hir().span(id), "can't build MIR for {:?}", def.did),
     };
 
     tcx.infer_ctxt().enter(|infcx| {
-        let cx = Cx::new(&infcx, id);
+        let cx = Cx::new(&infcx, def, id);
         let body = if let Some(ErrorReported) = cx.tables().tainted_by_errors {
             build::construct_error(cx, body_id)
         } else if cx.body_owner_kind.is_fn_or_closure() {
@@ -181,7 +187,7 @@ fn mir_build(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Body<'_> {
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
 
-        lints::check(tcx, &body, def_id);
+        lints::check(tcx, &body, def.did);
 
         // The borrow checker will replace all the regions here with its own
         // inference variables. There's no point having non-erased regions here.

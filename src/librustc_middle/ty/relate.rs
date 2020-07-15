@@ -578,12 +578,12 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
 
         // FIXME(const_generics): this is wrong, as it is a projection
         (
-            ty::ConstKind::Unevaluated(a_def_id, a_substs, a_promoted),
-            ty::ConstKind::Unevaluated(b_def_id, b_substs, b_promoted),
-        ) if a_def_id == b_def_id && a_promoted == b_promoted => {
+            ty::ConstKind::Unevaluated(a_def, a_substs, a_promoted),
+            ty::ConstKind::Unevaluated(b_def, b_substs, b_promoted),
+        ) if a_def == b_def && a_promoted == b_promoted => {
             let substs =
                 relation.relate_with_variance(ty::Variance::Invariant, a_substs, b_substs)?;
-            Ok(ty::ConstKind::Unevaluated(a_def_id, substs, a_promoted))
+            Ok(ty::ConstKind::Unevaluated(a_def, substs, a_promoted))
         }
         _ => Err(TypeError::ConstMismatch(expected_found(relation, a, b))),
     };

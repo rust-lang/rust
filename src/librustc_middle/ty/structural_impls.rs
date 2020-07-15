@@ -272,6 +272,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::DefId,
+    ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::LlvmInlineAsmInner,
     ::rustc_hir::MatchSource,
     ::rustc_hir::Mutability,
@@ -719,6 +720,18 @@ impl<'tcx, T: TypeFoldable<'tcx>, U: TypeFoldable<'tcx>> TypeFoldable<'tcx> for 
     }
 }
 
+impl<'tcx, A: TypeFoldable<'tcx>, B: TypeFoldable<'tcx>, C: TypeFoldable<'tcx>> TypeFoldable<'tcx>
+    for (A, B, C)
+{
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> (A, B, C) {
+        (self.0.fold_with(folder), self.1.fold_with(folder), self.2.fold_with(folder))
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.0.visit_with(visitor) || self.1.visit_with(visitor) || self.2.visit_with(visitor)
+    }
+}
+
 EnumTypeFoldableImpl! {
     impl<'tcx, T> TypeFoldable<'tcx> for Option<T> {
         (Some)(a),
@@ -838,7 +851,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         Self {
             substs: self.substs.fold_with(folder),
             def: match self.def {
-                Item(did) => Item(did.fold_with(folder)),
+                Item(def) => Item(def.fold_with(folder)),
                 VtableShim(did) => VtableShim(did.fold_with(folder)),
                 ReifyShim(did) => ReifyShim(did.fold_with(folder)),
                 Intrinsic(did) => Intrinsic(did.fold_with(folder)),
@@ -857,7 +870,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         use crate::ty::InstanceDef::*;
         self.substs.visit_with(visitor)
             || match self.def {
-                Item(did) | VtableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
+                Item(def) => def.visit_with(visitor),
+                VtableShim(did) | ReifyShim(did) | Intrinsic(did) | Virtual(did, _) => {
                     did.visit_with(visitor)
                 }
                 FnPtrShim(did, ty) | CloneShim(did, ty) => {

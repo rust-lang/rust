@@ -184,10 +184,10 @@ fn main() -> () {
         _27 = const main::promoted[0];   // scope 7 at $DIR/retag.rs:47:21: 47:23
                                          // ty::Const
                                          // + ty: &i32
-                                         // + val: Unevaluated(DefId(0:13 ~ retag[317d]::main[0]), [], Some(promoted[0]))
+                                         // + val: Unevaluated(WithOptConstParam { did: DefId(0:13 ~ retag[317d]::main[0]), const_param_did: None }, [], Some(promoted[0]))
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:47:21: 47:23
-                                         // + literal: Const { ty: &i32, val: Unevaluated(DefId(0:13 ~ retag[317d]::main[0]), [], Some(promoted[0])) }
+                                         // + literal: Const { ty: &i32, val: Unevaluated(WithOptConstParam { did: DefId(0:13 ~ retag[317d]::main[0]), const_param_did: None }, [], Some(promoted[0])) }
         Retag(_27);                      // scope 7 at $DIR/retag.rs:47:21: 47:23
         _23 = &(*_27);                   // scope 7 at $DIR/retag.rs:47:21: 47:23
         Retag(_23);                      // scope 7 at $DIR/retag.rs:47:21: 47:23
