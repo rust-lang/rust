@@ -2348,8 +2348,8 @@ fn lint_iter_nth_zero<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, nth_ar
                 cx,
                 ITER_NTH_ZERO,
                 expr.span,
-                "called `.nth(0)` on a `std::iter::Iterator`",
-                "try calling",
+                "called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent",
+                "try calling `.next()` instead of `.nth(0)`",
                 format!("{}.next()", snippet_with_applicability(cx, nth_args[0].span, "..", &mut applicability)),
                 applicability,
             );

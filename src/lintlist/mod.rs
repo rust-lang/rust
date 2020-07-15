@@ -2293,6 +2293,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "types",
     },
     Lint {
+        name: "unit_return_expecting_ord",
+        group: "correctness",
+        desc: "fn arguments of type Fn(...) -> Ord returning the unit type ().",
+        deprecation: None,
+        module: "unit_return_expecting_ord",
+    },
+    Lint {
         name: "unknown_clippy_lints",
         group: "style",
         desc: "unknown_lints for scoped Clippy lints",
