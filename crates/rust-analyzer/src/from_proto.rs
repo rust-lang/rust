@@ -58,9 +58,9 @@ pub(crate) fn assist_kind(kind: lsp_types::CodeActionKind) -> Option<AssistKind>
         k if k == &lsp_types::CodeActionKind::EMPTY => AssistKind::None,
         k if k == &lsp_types::CodeActionKind::QUICKFIX => AssistKind::QuickFix,
         k if k == &lsp_types::CodeActionKind::REFACTOR => AssistKind::Refactor,
-        k if k == &lsp_types::CodeActionKind::REFACTOR => AssistKind::RefactorExtract,
-        k if k == &lsp_types::CodeActionKind::REFACTOR => AssistKind::RefactorInline,
-        k if k == &lsp_types::CodeActionKind::REFACTOR => AssistKind::RefactorRewrite,
+        k if k == &lsp_types::CodeActionKind::REFACTOR_EXTRACT => AssistKind::RefactorExtract,
+        k if k == &lsp_types::CodeActionKind::REFACTOR_INLINE => AssistKind::RefactorInline,
+        k if k == &lsp_types::CodeActionKind::REFACTOR_REWRITE => AssistKind::RefactorRewrite,
         _ => return None,
     };
 
