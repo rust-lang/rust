@@ -11,7 +11,6 @@
 //! The queue and associated wait state are stored in a `WaitVariable`.
 use crate::num::NonZeroUsize;
 use crate::ops::{Deref, DerefMut};
-use crate::sys::usercall_wait_timeout;
 use crate::time::Duration;
 
 use super::abi::thread;
@@ -176,7 +175,7 @@ impl WaitQueue {
             }));
             let entry_lock = lock.lock().queue.inner.push(&mut entry);
             before_wait();
-            usercall_wait_timeout(EV_UNPARK, timeout, || entry_lock.lock().wake);
+            usercalls::wait_timeout(EV_UNPARK, timeout, || entry_lock.lock().wake);
             // acquire the wait queue's lock first to avoid deadlock.
             let mut guard = lock.lock();
             let success = entry_lock.lock().wake;

@@ -1,7 +1,6 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
 use crate::ffi::CStr;
 use crate::io;
-use crate::sys::usercall_wait_timeout;
 use crate::time::Duration;
 
 use super::abi::usercalls;
@@ -75,7 +74,7 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        usercall_wait_timeout(0, dur, || true);
+        usercalls::wait_timeout(0, dur, || true);
     }
 
     pub fn join(self) {
