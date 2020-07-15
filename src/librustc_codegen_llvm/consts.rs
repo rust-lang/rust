@@ -18,7 +18,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size};
 
@@ -107,11 +107,10 @@ fn check_and_apply_linkage(
     cx: &CodegenCx<'ll, 'tcx>,
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
-    sym: Symbol,
+    sym: &str,
     span: Span,
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
-    let sym = sym.as_str();
     if let Some(linkage) = attrs.linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
@@ -215,14 +214,13 @@ impl CodegenCx<'ll, 'tcx> {
             // FIXME: refactor this to work without accessing the HIR
             let (g, attrs) = match self.tcx.hir().get(id) {
                 Node::Item(&hir::Item { attrs, span, kind: hir::ItemKind::Static(..), .. }) => {
-                    let sym_str = sym.as_str();
-                    if let Some(g) = self.get_declared_value(&sym_str) {
+                    if let Some(g) = self.get_declared_value(sym) {
                         if self.val_ty(g) != self.type_ptr_to(llty) {
                             span_bug!(span, "Conflicting types for static");
                         }
                     }
 
-                    let g = self.declare_global(&sym_str, llty);
+                    let g = self.declare_global(sym, llty);
 
                     if !self.tcx.is_reachable_non_generic(def_id) {
                         unsafe {

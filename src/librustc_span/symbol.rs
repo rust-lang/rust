@@ -856,8 +856,6 @@ symbols! {
         rustc_unsafe_specialization_marker,
         rustc_variance,
         rust_eh_personality,
-        rust_eh_register_frames,
-        rust_eh_unregister_frames,
         rustfmt,
         rust_oom,
         rvalue_static_promotion,

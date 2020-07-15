@@ -12,7 +12,7 @@ use rustc_hir::definitions::DefPathData;
 pub fn mangled_name_of_instance<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     instance: Instance<'tcx>,
-) -> ty::SymbolName {
+) -> ty::SymbolName<'tcx> {
     let tcx = cx.tcx;
     tcx.symbol_name(instance)
 }

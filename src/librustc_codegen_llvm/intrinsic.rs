@@ -196,7 +196,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 // and/or monomorphization invalidates these assumptions.
                 let coverageinfo = tcx.coverageinfo(caller_instance.def_id());
                 let mangled_fn = tcx.symbol_name(caller_instance);
-                let (mangled_fn_name, _len_val) = self.const_str(mangled_fn.name);
+                let (mangled_fn_name, _len_val) = self.const_str(Symbol::intern(mangled_fn.name));
                 let hash = self.const_u64(coverageinfo.hash);
                 let num_counters = self.const_u32(coverageinfo.num_counters);
                 use coverage::count_code_region_args::*;

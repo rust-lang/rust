@@ -16,7 +16,6 @@ use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{SymbolName, TyCtxt};
 use rustc_session::config::{CrateType, SanitizerSet};
-use rustc_span::symbol::sym;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types())
@@ -117,9 +116,9 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
                 // In general though we won't link right if these
                 // symbols are stripped, and LTO currently strips them.
                 match name {
-                    sym::rust_eh_personality
-                    | sym::rust_eh_register_frames
-                    | sym::rust_eh_unregister_frames =>
+                    "rust_eh_personality"
+                    | "rust_eh_register_frames"
+                    | "rust_eh_unregister_frames" =>
                         SymbolExportLevel::C,
                     _ => SymbolExportLevel::Rust,
                 }
@@ -177,7 +176,7 @@ fn exported_symbols_provider_local(
         .collect();
 
     if tcx.entry_fn(LOCAL_CRATE).is_some() {
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new("main"));
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, "main"));
 
         symbols.push((exported_symbol, SymbolExportLevel::C));
     }
@@ -185,7 +184,7 @@ fn exported_symbols_provider_local(
     if tcx.allocator_kind().is_some() {
         for method in ALLOCATOR_METHODS {
             let symbol_name = format!("__rust_{}", method.name);
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
             symbols.push((exported_symbol, SymbolExportLevel::Rust));
         }
@@ -199,7 +198,7 @@ fn exported_symbols_provider_local(
             ["__llvm_profile_raw_version", "__llvm_profile_filename"];
 
         symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (exported_symbol, SymbolExportLevel::C)
         }));
     }
@@ -209,14 +208,14 @@ fn exported_symbols_provider_local(
         const MSAN_WEAK_SYMBOLS: [&str; 2] = ["__msan_track_origins", "__msan_keep_going"];
 
         symbols.extend(MSAN_WEAK_SYMBOLS.iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (exported_symbol, SymbolExportLevel::C)
         }));
     }
 
     if tcx.sess.crate_types().contains(&CrateType::Dylib) {
         let symbol_name = metadata_symbol_name(tcx);
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
         symbols.push((exported_symbol, SymbolExportLevel::Rust));
     }

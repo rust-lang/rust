@@ -267,7 +267,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let substs = instance.substs.truncate_to(self.tcx(), generics);
         let template_parameters = get_template_parameters(self, &generics, substs, &mut name);
 
-        let linkage_name: &str = &mangled_name_of_instance(self, instance).name.as_str();
+        let linkage_name = &mangled_name_of_instance(self, instance).name;
         // Omit the linkage_name if it is the same as subprogram name.
         let linkage_name = if &name == linkage_name { "" } else { linkage_name };
 
