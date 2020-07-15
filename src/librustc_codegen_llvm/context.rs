@@ -16,10 +16,11 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::bug;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutError, TyAndLayout};
-use rustc_middle::ty::{self, Instance, SymbolName, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::{CFGuard, CrateType, DebugInfo};
 use rustc_session::Session;
 use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_span::symbol::Symbol;
 use rustc_target::abi::{HasDataLayout, LayoutOf, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{HasTargetSpec, RelocModel, Target, TlsModel};
 
@@ -46,7 +47,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<SymbolName<'tcx>, &'ll Value>>,
+    pub const_cstr_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     ///

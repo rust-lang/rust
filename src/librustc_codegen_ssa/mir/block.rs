@@ -16,7 +16,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{AllocId, ConstValue, Pointer, Scalar};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
-use rustc_middle::ty::{self, Instance, SymbolName, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
@@ -423,7 +423,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (lang_items::PanicBoundsCheckFnLangItem, vec![index, len, location])
             }
             _ => {
-                let msg = bx.const_str(SymbolName::new(bx.tcx(), msg.description()));
+                let msg_str = Symbol::intern(msg.description());
+                let msg = bx.const_str(msg_str);
                 // It's `pub fn panic(expr: &str)`, with the wide reference being passed
                 // as two arguments, and `#[track_caller]` adds an implicit third argument.
                 (lang_items::PanicFnLangItem, vec![msg.0, msg.1, location])
@@ -486,7 +487,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 } else {
                     format!("attempted to leave type `{}` uninitialized, which is invalid", ty)
                 };
-                let msg = bx.const_str(SymbolName::new(bx.tcx(), &msg_str));
+                let msg = bx.const_str(Symbol::intern(&msg_str));
                 let location = self.get_caller_location(bx, span).immediate();
 
                 // Obtain the panic entry point.
