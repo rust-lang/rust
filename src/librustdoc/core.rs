@@ -16,7 +16,7 @@ use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_resolve as resolve;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::lint;
@@ -391,12 +391,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             };
             // In case typeck does end up being called, don't ICE in case there were name resolution errors
             providers.typeck_tables_of = move |tcx, def_id| {
-                thread_local!(static DEFAULT_TYPECK: for<'tcx> fn(TyCtxt<'tcx>, LocalDefId) -> &'tcx ty::TypeckTables<'tcx> = {
-                    let mut providers = ty::query::Providers::default();
-                    rustc_typeck::provide(&mut providers);
-                    providers.typeck_tables_of
-                });
-
                 // Closures' tables come from their outermost function,
                 // as they are part of the same "inference environment".
                 // This avoids emitting errors for the parent twice (see similar code in `typeck_tables_of_with_fallback`)
@@ -409,7 +403,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
-                DEFAULT_TYPECK.with(|typeck| typeck(tcx, def_id))
+                (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck_tables_of)(tcx, def_id)
             };
         }),
         registry: rustc_driver::diagnostics_registry(),
