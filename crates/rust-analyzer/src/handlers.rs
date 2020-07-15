@@ -749,7 +749,7 @@ fn handle_fixes(
 
     match &params.context.only {
         Some(v) => {
-            if v.iter().any(|it| {
+            if !v.iter().any(|it| {
                 it == &lsp_types::CodeActionKind::EMPTY
                     || it == &lsp_types::CodeActionKind::QUICKFIX
             }) {
