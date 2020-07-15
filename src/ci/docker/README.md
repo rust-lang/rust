@@ -16,6 +16,11 @@ for example:
 
 Images will output artifacts in an `obj` dir at the root of a repository.
 
+To match conditions in rusts CI, also set the environment variable `DEPLOY=1`, e.g.:
+```
+DEPLOY=1 ./src/ci/docker/run.sh x86_64-gnu
+```
+
 **NOTE**: Re-using the same `obj` dir with different docker images with
 the same target triple (e.g. `dist-x86_64-linux` and `dist-various-1`)
 may result in strange linker errors, due shared library versions differing between platforms.
@@ -85,27 +90,44 @@ how to generate them, and how the existing ones were generated.
 
 ### Generating a `.config` file
 
+**NOTE:** Existing Dockerfiles can also be a good guide for the process and order
+of script execution.
+
 If you have a `linux-cross` image lying around you can use that and skip the
 next two steps.
 
-- First we spin up a container and copy `build_toolchain_root.sh` into it. All
+- First we spin up a container and copy all scripts into it. All
   these steps are outside the container:
 
 ```
-# Note: We use ubuntu:15.10 because that's the "base" of linux-cross Docker
-# image
-$ docker run -it ubuntu:15.10 bash
+# Note: We use ubuntu:16.04 because that's the "base" of linux-cross Docker
+# image, or simply run ./src/ci/docker/run.sh once, which will download the correct
+# one and you can check it out with `docker images`
+$ docker run -it ubuntu:16.04 bash
+# in another terminal:
 $ docker ps
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
-cfbec05ed730        ubuntu:15.10        "bash"              16 seconds ago      Up 15 seconds                           drunk_murdock
-$ docker cp build_toolchain_root.sh drunk_murdock:/
+cfbec05ed730        ubuntu:16.04        "bash"              16 seconds ago      Up 15 seconds                           drunk_murdock
+$ docker cp src/ci/docker/scripts drunk_murdock:/tmp/
 ```
 
 - Then inside the container we build crosstool-ng by simply calling the bash
   script we copied in the previous step:
 
 ```
-$ bash build_toolchain_root.sh
+$ cd /tmp/scripts
+# Download packages necessary for building
+$ bash ./cross-apt-packages.sh
+# Download and build crosstool-ng
+$ bash ./crosstool-ng.sh
+```
+
+- In case you want to adjust or start from an existing config, copy that
+  to the container. `crosstool-ng` will automatically load `./.config` if
+  present. Otherwise one can use the TUI to load any config-file.
+
+```
+$ docker cp arm-linux-gnueabi.config drunk_murdock:/tmp/.config
 ```
 
 - Now, inside the container run the following command to configure the
@@ -113,6 +135,7 @@ $ bash build_toolchain_root.sh
   section and come back.
 
 ```
+$ cd /tmp/
 $ ct-ng menuconfig
 ```
 
@@ -120,7 +143,7 @@ $ ct-ng menuconfig
   meaningful name. This is done outside the container.
 
 ```
-$ docker drunk_murdock:/.config arm-linux-gnueabi.config
+$ docker cp drunk_murdock:/tmp/.config arm-linux-gnueabi.config
 ```
 
 - Now you can shutdown the container or repeat the two last steps to generate a
