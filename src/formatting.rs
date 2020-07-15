@@ -29,7 +29,7 @@ impl<'b, T: Write + 'b> Session<'b, T> {
             return Err(ErrorKind::VersionMismatch);
         }
 
-        rustc_ast::with_globals(self.config.edition().to_libsyntax_pos_edition(), || {
+        rustc_ast::with_session_globals(self.config.edition().to_libsyntax_pos_edition(), || {
             if self.config.disable_all_formatting() {
                 // When the input is from stdin, echo back the input.
                 if let Input::Text(ref buf) = input {
