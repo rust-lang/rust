@@ -520,8 +520,7 @@ where
     }
 }
 
-
-#[unstable(issue = "0", feature = "inplace_iteration")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<S: Iterator, I: FusedIterator> SourceIter for Fuse<I>
     where
         I: SourceIter<Source = S>,
@@ -539,5 +538,5 @@ unsafe impl<S: Iterator, I: FusedIterator> SourceIter for Fuse<I>
     }
 }
 
-#[unstable(issue = "0", feature = "inplace_iteration")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Fuse<I> {}

@@ -2941,7 +2941,7 @@ impl<T> FusedIterator for IntoIter<T> {}
 unsafe impl<T> TrustedLen for IntoIter<T> {}
 
 #[doc(hidden)]
-#[unstable(issue = "0", feature = "std_internals")]
+#[unstable(issue = "none", feature = "std_internals")]
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr
 // and thus we can't implement drop-handling
 unsafe impl<T> TrustedRandomAccess for IntoIter<T>
@@ -2987,10 +2987,10 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
     }
 }
 
-#[unstable(issue = "0", feature = "inplace_iteration")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<T> InPlaceIterable for IntoIter<T> {}
 
-#[unstable(issue = "0", feature = "inplace_iteration")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<T> SourceIter for IntoIter<T> {
     type Source = IntoIter<T>;
 
