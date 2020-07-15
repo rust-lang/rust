@@ -77,21 +77,13 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
         }
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'a>, _: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'a>, sp: Span, _: NodeId) {
         match fk {
             FnKind::Fn(FnCtxt::Foreign, _, sig, _, _) => {
                 self.visit_fn_header(&sig.header);
                 visit::walk_fn_decl(self, &sig.decl);
             }
-            FnKind::Fn(_, _, sig, _, body) => {
-                self.visit_fn_header(&sig.header);
-                visit::walk_fn_decl(self, &sig.decl);
-                walk_list!(self, visit_block, body);
-            }
-            FnKind::Closure(decl, body) => {
-                visit::walk_fn_decl(self, decl);
-                self.visit_expr(body);
-            }
+            _ => visit::walk_fn(self, fk, sp),
         }
     }
 
