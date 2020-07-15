@@ -63,7 +63,9 @@ pub(crate) struct GlobalState {
     req_queue: ReqQueue,
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
-    pub(crate) flycheck: Option<Handle<FlycheckHandle, Receiver<flycheck::Message>>>,
+    pub(crate) flycheck: Option<FlycheckHandle>,
+    pub(crate) flycheck_sender: Sender<flycheck::Message>,
+    pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
     pub(crate) config: Config,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
@@ -103,12 +105,15 @@ impl GlobalState {
         };
 
         let analysis_host = AnalysisHost::new(config.lru_capacity);
+        let (flycheck_sender, flycheck_receiver) = unbounded();
         GlobalState {
             sender,
             req_queue: ReqQueue::default(),
             task_pool,
             loader,
             flycheck: None,
+            flycheck_sender,
+            flycheck_receiver,
             config,
             analysis_host,
             diagnostics: Default::default(),

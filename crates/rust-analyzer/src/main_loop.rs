@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crossbeam_channel::{never, select, Receiver};
+use crossbeam_channel::{select, Receiver};
 use lsp_server::{Connection, Notification, Request, Response};
 use lsp_types::notification::Notification as _;
 use ra_db::VfsPath;
@@ -108,7 +108,7 @@ impl GlobalState {
             recv(self.loader.receiver) -> task =>
                 Some(Event::Vfs(task.unwrap())),
 
-            recv(self.flycheck.as_ref().map_or(&never(), |it| &it.receiver)) -> task =>
+            recv(self.flycheck_receiver) -> task =>
                 Some(Event::Flycheck(task.unwrap())),
         }
     }
@@ -292,7 +292,7 @@ impl GlobalState {
         let state_changed = self.process_changes();
         if prev_status == Status::Loading && self.status == Status::Ready {
             if let Some(flycheck) = &self.flycheck {
-                flycheck.handle.update();
+                flycheck.update();
             }
         }
 
@@ -441,7 +441,7 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
                 if let Some(flycheck) = &this.flycheck {
-                    flycheck.handle.update();
+                    flycheck.update();
                 }
                 if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
                     this.maybe_refresh(&[(abs_path, ChangeKind::Modify)]);
