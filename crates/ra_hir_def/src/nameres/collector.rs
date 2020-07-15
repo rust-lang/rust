@@ -609,14 +609,15 @@ impl DefCollector<'_> {
             .get(&module_id)
             .into_iter()
             .flat_map(|v| v.iter())
+            .filter(|(glob_importing_module, _)| {
+                // we know all resolutions have the same visibility (`vis`), so we
+                // just need to check that once
+                vis.is_visible_from_def_map(&self.def_map, *glob_importing_module)
+            })
             .cloned()
             .collect::<Vec<_>>();
+
         for (glob_importing_module, glob_import_vis) in glob_imports {
-            // we know all resolutions have the same visibility (`vis`), so we
-            // just need to check that once
-            if !vis.is_visible_from_def_map(&self.def_map, glob_importing_module) {
-                continue;
-            }
             self.update_recursive(
                 glob_importing_module,
                 resolutions,
