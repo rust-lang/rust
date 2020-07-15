@@ -41,13 +41,13 @@ h3 > code, h4 > code, h5 > code {
 	color: #e6e1cf;
 }
 pre > code {
-    color: #e6e1cf; 
+	color: #e6e1cf; 
 }
 span code {
-    color: #e6e1cf;
+	color: #e6e1cf;
 }
 .docblock a > code {
-    color: #39AFD7 !important;
+	color: #39AFD7 !important;
 }
 .docblock code, .docblock-short code {
 	background-color: #191f26;
@@ -100,11 +100,11 @@ pre {
 }
 
 .sidebar-elems .location {
-    color: #ff7733;
+	color: #ff7733;
 }
 
 .sidebar-elems .location a {
-    color: #fff;
+	color: #fff;
 }
 
 .sidebar .version {
@@ -123,9 +123,9 @@ pre {
 
 .line-numbers span { color: #5c6773ab; }
 .line-numbers .line-highlighted {
-    background-color: rgba(255, 236, 164, 0.06) !important;
-    padding-right: 4px;
-    border-right: 1px solid #ffb44c;
+	background-color: rgba(255, 236, 164, 0.06) !important;
+	padding-right: 4px;
+	border-right: 1px solid #ffb44c;
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
@@ -168,28 +168,28 @@ pre {
 .content span.keyword, .content a.keyword { color: #de5249; }
 
 .content span.externcrate, .content span.mod, .content a.mod {
-    color: #acccf9;
+	color: #acccf9;
 }
 .content span.struct, .content a.struct {
-    color: #ffa0a5;
+	color: #ffa0a5;
 }
 .content span.enum, .content a.enum {
-    color: #99e0c9;
+	color: #99e0c9;
 }
 .content span.trait, .content a.trait {
-    color: #39AFD7;
+	color: #39AFD7;
 }
 .content span.type, .content a.type {
-    color: #cfbcf5;
+	color: #cfbcf5;
 }
 .content span.fn, .content a.fn, .content span.method,
 .content a.method, .content span.tymethod,
 .content a.tymethod, .content .fnname {
-    color: #fdd687;
+	color: #fdd687;
 }
 .content span.attr, .content a.attr, .content span.derive,
 .content a.derive, .content span.macro, .content a.macro {
-    color: #a37acc;
+	color: #a37acc;
 }
 
 pre.rust .comment, pre.rust .doccomment { 
@@ -228,14 +228,24 @@ a {
 }
 
 .search-input {
-    color: #ffffff;
-    background-color: #141920;
-    box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
-    transition: box-shadow 150ms ease-in-out;
+	color: #ffffff;
+	background-color: #141920;
+	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
+	transition: box-shadow 150ms ease-in-out;
 }
 
 #crate-search+.search-input:focus {
-    box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
+	box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
+	color: #ffffff;
+	background-color: #141920;
+	box-shadow: none;
+	transition: box-shadow 150ms ease-in-out;
+	border-radius: 4px;
+	margin-left: 8px;
+}
+
+#crate-search+.search-input:focus {
+	box-shadow: 0px 6px 20px 0px black;
 }
 
 .search-focus:disabled {
@@ -249,7 +259,7 @@ a {
 .stab.unstable,
 .stab.deprecated,
 .stab.portability {
-    color: #c5c5c5;
+	color: #c5c5c5;
 	background: #314559 !important;
 	border-style: none !important;
 	border-radius: 4px;
@@ -262,10 +272,10 @@ a {
 }
 
 #help > div {
-    background: #14191f;
-    box-shadow: 0px 6px 20px 0px black;
-    border: none;
-    border-radius: 4px;
+	background: #14191f;
+	box-shadow: 0px 6px 20px 0px black;
+	border: none;
+	border-radius: 4px;
 }
 
 .since {
@@ -288,14 +298,14 @@ pre.rust .question-mark {
 	color: #ff9011;
 }
 pre.rust .self {
-    color: #36a3d9;
-    font-style: italic;
+	color: #36a3d9;
+	font-style: italic;
 }
 pre.rust .attribute {
-    color: #e6e1cf;
+	color: #e6e1cf;
 }
 pre.rust .attribute .ident, pre.rust .attribute .op {
-    color: #e6e1cf;
+	color: #e6e1cf;
 }
 
 .example-wrap > pre.line-number {
@@ -304,15 +314,15 @@ pre.rust .attribute .ident, pre.rust .attribute .op {
 }
 
 a.test-arrow {
-    font-size: 100%;
-    color: #788797;
-    border-radius: 4px;
-    background-color: rgba(255, 255, 255, 0);
+	font-size: 100%;
+	color: #788797;
+	border-radius: 4px;
+	background-color: rgba(255, 255, 255, 0);
 }
 
 a.test-arrow:hover {
-    background-color: rgba(242, 151, 24, 0.05);
-    color: #ffb44c;
+	background-color: rgba(242, 151, 24, 0.05);
+	color: #ffb44c;
 }
 
 .toggle-label {
@@ -377,9 +387,9 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .tooltip .tooltiptext {
-    background-color: #314559;
-    color: #c5c5c5;
-    border: 1px solid #5c6773;
+	background-color: #314559;
+	color: #c5c5c5;
+	border: 1px solid #5c6773;
 }
 
 .tooltip .tooltiptext::after {
@@ -387,12 +397,12 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .important-traits-tooltiptext {
-    background-color: #314559;
-    border-color: #5c6773;
+	background-color: #314559;
+	border-color: #5c6773;
 }
 
 #titles > div.selected {
-    background-color: #141920 !important;
+	background-color: #141920 !important;
 	border-bottom: 1px solid #ffb44c !important;
 	border-top: none;
 }
@@ -403,7 +413,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 #titles > div:hover {
-    border-bottom: 1px solid rgba(242, 151, 24, 0.3);
+	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
 #titles > div > div.count {
@@ -483,11 +493,11 @@ kbd {
 
 #theme-picker, #settings-menu {
 	border-color: #5c6773;
-    background-color: #0f1419;
+	background-color: #0f1419;
 }
 
 #theme-picker > img, #settings-menu > img {
-    filter: invert(100);
+	filter: invert(100);
 }
 
 #theme-picker:hover, #theme-picker:focus,
