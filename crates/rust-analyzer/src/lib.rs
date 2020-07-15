@@ -40,7 +40,9 @@ use serde::de::DeserializeOwned;
 
 pub type Result<T, E = Box<dyn std::error::Error + Send + Sync>> = std::result::Result<T, E>;
 pub use crate::{caps::server_capabilities, main_loop::main_loop};
+use ra_ide::AnalysisHost;
 use std::fmt;
+use vfs::Vfs;
 
 pub fn from_json<T: DeserializeOwned>(what: &'static str, json: serde_json::Value) -> Result<T> {
     let res = T::deserialize(&json)
@@ -67,3 +69,22 @@ impl fmt::Display for LspError {
 }
 
 impl std::error::Error for LspError {}
+
+fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
+    let mut mem = host.per_query_memory_usage();
+
+    let before = ra_prof::memory_usage();
+    drop(vfs);
+    let vfs = before.allocated - ra_prof::memory_usage().allocated;
+    mem.push(("VFS".into(), vfs));
+
+    let before = ra_prof::memory_usage();
+    drop(host);
+    mem.push(("Unaccounted".into(), before.allocated - ra_prof::memory_usage().allocated));
+
+    mem.push(("Remaining".into(), ra_prof::memory_usage().allocated));
+
+    for (name, bytes) in mem {
+        println!("{:>8} {}", bytes, name);
+    }
+}

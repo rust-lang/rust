@@ -10,7 +10,10 @@ use ra_db::{
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
 use vfs::AbsPathBuf;
 
-use crate::cli::{load_cargo::load_cargo, Verbosity};
+use crate::{
+    cli::{load_cargo::load_cargo, Verbosity},
+    print_memory_usage,
+};
 
 pub enum BenchWhat {
     Highlight { path: AbsPathBuf },
@@ -44,6 +47,7 @@ pub fn analysis_bench(
     verbosity: Verbosity,
     path: &Path,
     what: BenchWhat,
+    memory_usage: bool,
     load_output_dirs: bool,
     with_proc_macro: bool,
 ) -> Result<()> {
@@ -99,6 +103,11 @@ pub fn analysis_bench(
             }
         }
     }
+
+    if memory_usage {
+        print_memory_usage(host, vfs);
+    }
+
     Ok(())
 }
 

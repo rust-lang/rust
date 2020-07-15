@@ -49,11 +49,12 @@ fn main() -> Result<()> {
             load_output_dirs,
             with_proc_macro,
         )?,
-        args::Command::Bench { path, what, load_output_dirs, with_proc_macro } => {
+        args::Command::Bench { memory_usage, path, what, load_output_dirs, with_proc_macro } => {
             cli::analysis_bench(
                 args.verbosity,
                 path.as_ref(),
                 what,
+                memory_usage,
                 load_output_dirs,
                 with_proc_macro,
             )?

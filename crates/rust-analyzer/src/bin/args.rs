@@ -35,6 +35,7 @@ pub(crate) enum Command {
         with_proc_macro: bool,
     },
     Bench {
+        memory_usage: bool,
         path: PathBuf,
         what: BenchWhat,
         load_output_dirs: bool,
@@ -165,7 +166,7 @@ USAGE:
 FLAGS:
     -o, --only              Only analyze items matching this path
     -h, --help              Prints help information
-        --memory-usage      Collect memory usage statistics (requires `--feature jemalloc`)
+        --memory-usage      Collect memory usage statistics (requires `--features jemalloc`)
         --randomize         Randomize order in which crates, modules, and items are processed
         --parallel          Run type inference in parallel
         --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
@@ -220,6 +221,7 @@ USAGE:
 
 FLAGS:
     -h, --help          Prints help information
+    --memory-usage      Collect memory usage statistics (requires `--features jemalloc`)
     --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
     --with-proc-macro   Use ra-proc-macro-srv for proc-macro expanding
     -v, --verbose
@@ -251,9 +253,10 @@ ARGS:
                         "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
                     ),
                 };
+                let memory_usage = matches.contains("--memory-usage");
                 let load_output_dirs = matches.contains("--load-output-dirs");
                 let with_proc_macro = matches.contains("--with-proc-macro");
-                Command::Bench { path, what, load_output_dirs, with_proc_macro }
+                Command::Bench { memory_usage, path, what, load_output_dirs, with_proc_macro }
             }
             "diagnostics" => {
                 if matches.contains(["-h", "--help"]) {
