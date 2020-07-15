@@ -573,6 +573,7 @@ impl DefCollector<'_> {
         vis: Visibility,
         import_type: ImportType,
     ) {
+        self.db.check_canceled();
         self.update_recursive(module_id, resolutions, vis, import_type, 0)
     }
 
