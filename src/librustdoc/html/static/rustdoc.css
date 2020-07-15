@@ -364,6 +364,7 @@ nav.sub {
 #results > table {
 	width: 100%;
 	table-layout: fixed;
+	margin-bottom: 40px;
 }
 
 .content pre.line-numbers {
