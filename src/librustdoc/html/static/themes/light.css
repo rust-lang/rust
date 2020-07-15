@@ -332,8 +332,8 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .important-traits-tooltiptext {
-	background-color: #eee !important;
-	border-color: #999 !important;
+	background-color: #eee;
+	border-color: #999;
 }
 
 #titles > div:not(.selected) {

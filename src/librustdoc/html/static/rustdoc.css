@@ -1116,10 +1116,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	font-size: 16px;
 	cursor: default;
 	position: absolute;
-	/* Themes will override the color here,
-	   but it's necessary to make it opaque */
-	background-color: #eee;
-	border: 1px solid #999;
+	border: 1px solid;
 }
 
 .important-traits-tooltip::after {
