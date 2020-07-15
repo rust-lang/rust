@@ -11,7 +11,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{sign_extend, truncate};
 use rustc_middle::ty::layout::{IntegerExt, SizeSkeleton};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, AdtKind, Ty, TypeFoldable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
@@ -556,25 +556,26 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
         _ => false,
     }
 }
-/// Given a potentially non-null type `ty`, return its default, nullable type.
-fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    match ty.kind {
+/// Given a non-null scalar (or transparent) type `ty`, return the nullable version of that type.
+/// If the type passed in was not scalar, returns None.
+fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    let tcx = cx.tcx;
+    Some(match ty.kind {
         ty::Adt(field_def, field_substs) => {
-            let field_variants = &field_def.variants;
-            // We hit this case for #[repr(transparent)] structs with a single
-            // field.
-            debug_assert!(
-                field_variants.len() == 1 && field_variants[VariantIdx::new(0)].fields.len() == 1,
-                "inner ty not a newtype struct"
-            );
-            debug_assert!(field_def.repr.transparent(), "inner ty not transparent");
-            // As it's easy to get this wrong, it's worth noting that
-            // `inner_field_ty` is not the same as `field_ty`: Given Option<S>,
-            // where S is a transparent newtype of some type T, `field_ty`
-            // gives us S, while `inner_field_ty` is T.
-            let inner_field_ty =
-                field_def.variants[VariantIdx::new(0)].fields[0].ty(tcx, field_substs);
-            get_nullable_type(tcx, inner_field_ty)
+            let inner_field_ty = {
+                let first_non_zst_ty =
+                    field_def.variants.iter().filter_map(|v| v.transparent_newtype_field(tcx));
+                debug_assert_eq!(
+                    first_non_zst_ty.clone().count(),
+                    1,
+                    "Wrong number of fields for transparent type"
+                );
+                first_non_zst_ty
+                    .last()
+                    .expect("No non-zst fields in transparent type.")
+                    .ty(tcx, field_substs)
+            };
+            return get_nullable_type(cx, inner_field_ty);
         }
         ty::Int(ty) => tcx.mk_mach_int(ty),
         ty::Uint(ty) => tcx.mk_mach_uint(ty),
@@ -591,9 +592,13 @@ fn get_nullable_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         // We should only ever reach this case if ty_is_known_nonnull is extended
         // to other types.
         ref unhandled => {
-            unreachable!("Unhandled scalar kind: {:?} while checking {:?}", unhandled, ty)
+            debug!(
+                "get_nullable_type: Unhandled scalar kind: {:?} while checking {:?}",
+                unhandled, ty
+            );
+            return None;
         }
-    }
+    })
 }
 
 /// Check if this enum can be safely exported based on the "nullable pointer optimization". If it
@@ -643,9 +648,9 @@ crate fn repr_nullable_ptr<'tcx>(
         let field_ty_abi = &cx.layout_of(field_ty).unwrap().abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
             match (field_ty_scalar.valid_range.start(), field_ty_scalar.valid_range.end()) {
-                (0, _) => bug!("Non-null optimisation extended to a non-zero value."),
+                (0, _) => unreachable!("Non-null optimisation extended to a non-zero value."),
                 (1, _) => {
-                    return Some(get_nullable_type(cx.tcx, field_ty));
+                    return Some(get_nullable_type(cx, field_ty).unwrap());
                 }
                 (start, end) => unreachable!("Unhandled start and end range: ({}, {})", start, end),
             };
