@@ -339,6 +339,21 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         substs: SubstsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+        Instance::resolve_opt_const_arg(
+            tcx,
+            param_env,
+            ty::WithOptConstParam::unknown(def_id),
+            substs,
+        )
+    }
+
+    // This should be kept up to date with `resolve`.
+    pub fn resolve_opt_const_arg(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def: ty::WithOptConstParam<DefId>,
+        substs: SubstsRef<'tcx>,
+    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
 
@@ -348,18 +363,6 @@ impl<'tcx> Instance<'tcx> {
         let substs = tcx.erase_regions(&substs);
 
         // FIXME(eddyb) should this always use `param_env.with_reveal_all()`?
-        tcx.resolve_instance(tcx.erase_regions(&param_env.and((def_id, substs))))
-    }
-
-    // This should be kept up to date with `resolve`.
-    pub fn resolve_const_arg(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        def: ty::WithOptConstParam<DefId>,
-        substs: SubstsRef<'tcx>,
-    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
-        let substs = tcx.erase_regions(&substs);
-
         if let Some((did, param_did)) = def.as_const_arg() {
             tcx.resolve_instance_of_const_arg(
                 tcx.erase_regions(&param_env.and((did, param_did, substs))),
