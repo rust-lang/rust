@@ -327,6 +327,7 @@ fn semantic_token_type_and_modifiers(
         HighlightTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
         HighlightTag::Operator => lsp_types::SemanticTokenType::OPERATOR,
         HighlightTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
+        HighlightTag::Punctuation => semantic_tokens::PUNCTUATION,
     };
 
     for modifier in highlight.modifiers.iter() {
