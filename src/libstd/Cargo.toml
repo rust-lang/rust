@@ -47,8 +47,6 @@ hermit-abi = { version = "0.1.14", features = ['rustc-dep-of-std'] }
 wasi = { version = "0.9.0", features = ['rustc-dep-of-std'], default-features = false }
 
 [features]
-default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
-
 backtrace = [
   "backtrace_rs/dbghelp",          # backtrace/symbolize on MSVC
   "backtrace_rs/libbacktrace",     # symbolize on most platforms
