@@ -127,7 +127,7 @@ impl Formatter for HTMLFormatter {
                         DEFAULT_EDITION,
                         &Some(playground)
                     )
-                    .to_string()
+                    .into_string()
                 )?
             }
             None => write!(output, "<p>No description.</p>\n")?,

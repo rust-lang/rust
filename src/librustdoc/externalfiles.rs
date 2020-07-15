@@ -37,14 +37,14 @@ impl ExternalHtml {
         let bc = format!(
             "{}{}",
             bc,
-            Markdown(&m_bc, &[], id_map, codes, edition, playground).to_string()
+            Markdown(&m_bc, &[], id_map, codes, edition, playground).into_string()
         );
         let ac = load_external_files(after_content, diag)?;
         let m_ac = load_external_files(md_after_content, diag)?;
         let ac = format!(
             "{}{}",
             ac,
-            Markdown(&m_ac, &[], id_map, codes, edition, playground).to_string()
+            Markdown(&m_ac, &[], id_map, codes, edition, playground).into_string()
         );
         Some(ExternalHtml { in_header: ih, before_content: bc, after_content: ac })
     }

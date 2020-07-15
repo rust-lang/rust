@@ -1894,7 +1894,7 @@ fn render_markdown(
             cx.shared.edition,
             &cx.shared.playground
         )
-        .to_string()
+        .into_string()
     )
 }
 
@@ -2184,7 +2184,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                        </tr>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = stability_tags(myitem),
-                    docs = MarkdownSummaryLine(doc_value, &myitem.links()).to_string(),
+                    docs = MarkdownSummaryLine(doc_value, &myitem.links()).into_string(),
                     class = myitem.type_(),
                     add = add,
                     stab = stab.unwrap_or_else(String::new),
@@ -2277,7 +2277,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
                 cx.shared.edition,
                 &cx.shared.playground,
             );
-            message.push_str(&format!(": {}", html.to_string()));
+            message.push_str(&format!(": {}", html.into_string()));
         }
         stability.push(format!(
             "<div class='stab deprecated'><span class='emoji'>👎</span> {}</div>",
@@ -2331,7 +2331,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
                     cx.shared.edition,
                     &cx.shared.playground,
                 )
-                .to_string()
+                .into_string()
             );
         }
 
@@ -3631,7 +3631,7 @@ fn render_impl(
                     cx.shared.edition,
                     &cx.shared.playground
                 )
-                .to_string()
+                .into_string()
             );
         }
     }

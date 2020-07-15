@@ -134,7 +134,7 @@ fn test_header() {
     fn t(input: &str, expect: &str) {
         let mut map = IdMap::new();
         let output =
-            Markdown(input, &[], &mut map, ErrorCodes::Yes, DEFAULT_EDITION, &None).to_string();
+            Markdown(input, &[], &mut map, ErrorCodes::Yes, DEFAULT_EDITION, &None).into_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -166,7 +166,8 @@ fn test_header() {
 fn test_header_ids_multiple_blocks() {
     let mut map = IdMap::new();
     fn t(map: &mut IdMap, input: &str, expect: &str) {
-        let output = Markdown(input, &[], map, ErrorCodes::Yes, DEFAULT_EDITION, &None).to_string();
+        let output =
+            Markdown(input, &[], map, ErrorCodes::Yes, DEFAULT_EDITION, &None).into_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 
@@ -228,7 +229,7 @@ fn test_markdown_html_escape() {
     fn t(input: &str, expect: &str) {
         let mut idmap = IdMap::new();
         let output =
-            MarkdownHtml(input, &mut idmap, ErrorCodes::Yes, DEFAULT_EDITION, &None).to_string();
+            MarkdownHtml(input, &mut idmap, ErrorCodes::Yes, DEFAULT_EDITION, &None).into_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 
