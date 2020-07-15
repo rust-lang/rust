@@ -26,6 +26,7 @@ use rustc_middle::ty::{
     TypeFoldable, WithConstness,
 };
 use rustc_session::DiagnosticMessageId;
+use rustc_span::symbol::sym;
 use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
@@ -283,8 +284,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             .span_to_snippet(span)
                             .map(|s| &s == "?")
                             .unwrap_or(false);
-                        let is_from = format!("{}", trait_ref.print_only_trait_path())
-                            .starts_with("std::convert::From<");
+                        let is_from = self.tcx.get_diagnostic_item(sym::from_trait)
+                            == Some(trait_ref.def_id());
                         let is_unsize =
                             { Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait() };
                         let (message, note) = if is_try && is_from {
@@ -315,12 +316,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             ))
                         );
 
-                        let should_convert_option_to_result =
-                            format!("{}", trait_ref.print_only_trait_path())
-                                .starts_with("std::convert::From<std::option::NoneError");
-                        let should_convert_result_to_option = format!("{}", trait_ref)
-                            .starts_with("<std::option::NoneError as std::convert::From<");
                         if is_try && is_from {
+                            let none_error = self
+                                .tcx
+                                .get_diagnostic_item(sym::none_error)
+                                .map(|def_id| tcx.type_of(def_id));
+                            let should_convert_option_to_result =
+                                Some(trait_ref.skip_binder().substs.type_at(1)) == none_error;
+                            let should_convert_result_to_option =
+                                Some(trait_ref.self_ty().skip_binder()) == none_error;
                             if should_convert_option_to_result {
                                 err.span_suggestion_verbose(
                                     span.shrink_to_lo(),

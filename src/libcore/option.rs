@@ -1681,6 +1681,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 /// to allow `x?` (where `x` is an `Option<T>`) to be converted into your error type, you can
 /// implement `impl From<NoneError>` for `YourErrorType`. In that case, `x?` within a function that
 /// returns `Result<_, YourErrorType>` will translate a `None` value into an `Err` result.
+#[rustc_diagnostic_item = "none_error"]
 #[unstable(feature = "try_trait", issue = "42327")]
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub struct NoneError;

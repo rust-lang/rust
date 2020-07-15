@@ -632,6 +632,7 @@ symbols! {
         nomem,
         non_ascii_idents,
         None,
+        none_error,
         non_exhaustive,
         no_niche,
         non_modrs_mods,
