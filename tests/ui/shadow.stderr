@@ -104,7 +104,7 @@ note: previous binding is here
 LL |     let x = (1, x);
    |         ^
 
-error: `x` is shadowed by `y`
+error: `x` is being shadowed
   --> $DIR/shadow.rs:34:9
    |
 LL |     let x = y;
