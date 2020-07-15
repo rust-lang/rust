@@ -16,6 +16,8 @@ use rustc_target::abi::LayoutOf;
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
 ) -> BitSet<mir::Local> {
+    trace!("non_ssa_locals({:?})", fx.instance.def_id());
+
     let mir = fx.mir;
     let mut analyzer = LocalAnalyzer::new(fx);
 
@@ -40,12 +42,6 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     analyzer.non_ssa_locals
 }
 
-#[derive(Default, PartialEq, Eq)]
-struct PlaceInfo {
-    has_disqualifying_projection: bool,
-    has_deref_projection: bool,
-}
-
 struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     fx: &'mir FunctionCx<'a, 'tcx, Bx>,
     dominators: Dominators<mir::BasicBlock>,
@@ -53,8 +49,6 @@ struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// The location of the first visited direct assignment to each local.
     first_assignment: IndexVec<mir::Local, Option<Location>>,
-
-    place_info: PlaceInfo,
 }
 
 impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
@@ -65,7 +59,6 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             dominators,
             non_ssa_locals: BitSet::new_empty(fx.mir.local_decls.len()),
             first_assignment: IndexVec::from_elem(None, &fx.mir.local_decls),
-            place_info: PlaceInfo::default(),
         };
 
         // Arguments get assigned to by means of the function being called
@@ -146,7 +139,12 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         self.super_terminator(terminator, location);
     }
 
-    fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
+    fn visit_place(
+        &mut self,
+        place: &mir::Place<'tcx>,
+        mut context: PlaceContext,
+        location: Location,
+    ) {
         debug!("visit_place(place={:?}, context={:?})", place, context);
 
         // Except for `VarDebugInfo`, non-uses do not force locals onto the stack.
@@ -158,7 +156,8 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
         let mir::Place { local, projection } = *place;
 
-        // Reads from ZSTs do not require memory accesses.
+        // Reads from ZSTs do not require memory accesses and do not count when determining what
+        // needs to live on the stack.
         if is_consume(context) {
             let ty = place.ty(self.fx.mir, self.fx.cx.tcx()).ty;
             let ty = self.fx.monomorphize(&ty);
@@ -168,23 +167,39 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
         }
 
-        assert!(self.place_info == PlaceInfo::default(), "`visit_place` should not recurse");
-        self.visit_projection(local, projection, context, location);
+        let mut has_disqualifying_projection = false;
 
-        let PlaceInfo { has_disqualifying_projection, has_deref_projection } =
-            std::mem::take(&mut self.place_info);
+        let mut projection: &[_] = projection.as_ref();
+        while let [ref proj_base @ .., elem] = *projection {
+            projection = proj_base;
+            self.super_projection_elem(local, proj_base, elem, context, location);
+
+            // Projections like `(*x)[12]` are allowed but not `*(x[12])`, since a `Deref` of a
+            // local acts like a `Copy` of that local.
+            if let mir::PlaceElem::Deref = elem {
+                has_disqualifying_projection = false;
+                context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
+                continue;
+            }
+
+            // Ignoring `Deref`s, the only allowed projections are reads of scalar fields.
+            if is_consume(context) && matches!(elem, mir::ProjectionElem::Field(..)) {
+                let base_ty = mir::Place::ty_from(local, proj_base, self.fx.mir, self.fx.cx.tcx());
+                let base_ty = self.fx.monomorphize(&base_ty);
+                let span = self.fx.mir.local_decls[local].source_info.span;
+                let layout = self.fx.cx.spanned_layout_of(base_ty.ty, span);
+
+                if !ty_requires_alloca(self.fx, layout) {
+                    continue;
+                }
+            }
+
+            has_disqualifying_projection = true;
+        }
 
         if has_disqualifying_projection {
             self.not_ssa(local);
-            return;
         }
-
-        // Treat a `Deref` of a local as a `Copy` of that local.
-        let context = if has_deref_projection {
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy)
-        } else {
-            context
-        };
 
         self.visit_local(&local, context, location);
     }
@@ -247,41 +262,6 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 }
             }
         }
-    }
-
-    fn visit_projection_elem(
-        &mut self,
-        local: mir::Local,
-        proj_base: &[mir::PlaceElem<'tcx>],
-        elem: mir::PlaceElem<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        self.super_projection_elem(local, proj_base, elem, context, location);
-
-        // Projections like `(*x)[12]` are allowed but not `*(x[12])`.
-        if let mir::PlaceElem::Deref = elem {
-            self.place_info.has_disqualifying_projection = false;
-            self.place_info.has_deref_projection = true;
-            return;
-        }
-
-        if !is_consume(context) {
-            self.place_info.has_disqualifying_projection = true;
-            return;
-        }
-
-        if let mir::ProjectionElem::Field(..) = elem {
-            let base_ty = mir::Place::ty_from(local, proj_base, self.fx.mir, self.fx.cx.tcx());
-            let base_ty = self.fx.monomorphize(&base_ty);
-            let span = self.fx.mir.local_decls[local].source_info.span;
-            let layout = self.fx.cx.spanned_layout_of(base_ty.ty, span);
-            if !ty_requires_alloca(self.fx, layout) {
-                return;
-            }
-        }
-
-        self.place_info.has_disqualifying_projection = true;
     }
 
     fn visit_var_debug_info(&mut self, var_debug_info: &mir::VarDebugInfo<'tcx>) {
