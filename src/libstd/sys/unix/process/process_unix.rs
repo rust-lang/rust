@@ -84,12 +84,12 @@ impl Command {
                 Ok(0) => return Ok((p, ours)),
                 Ok(8) => {
                     let (errno, footer) = bytes.split_at(4);
-                    assert!(
-                        combine(CLOEXEC_MSG_FOOTER) == combine(footer.try_into().unwrap()),
+                    assert_eq!(
+                        CLOEXEC_MSG_FOOTER, footer,
                         "Validation on the CLOEXEC pipe failed: {:?}",
                         bytes
                     );
-                    let errno = combine(errno.try_into().unwrap());
+                    let errno = i32::from_be_bytes(errno.try_into().unwrap());
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
                     return Err(Error::from_raw_os_error(errno));
                 }
@@ -104,10 +104,6 @@ impl Command {
                     panic!("short read on the CLOEXEC pipe")
                 }
             }
-        }
-
-        fn combine(arr: [u8; 4]) -> i32 {
-            i32::from_be_bytes(arr)
         }
     }
 
