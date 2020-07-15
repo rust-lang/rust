@@ -36,6 +36,10 @@ use crate::{
     TraitLoc, TypeAliasLoc, UnionLoc,
 };
 
+const GLOB_RECURSION_LIMIT: usize = 100;
+const EXPANSION_DEPTH_LIMIT: usize = 128;
+const FIXED_POINT_LIMIT: usize = 8192;
+
 pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
     let crate_graph = db.crate_graph();
 
@@ -217,7 +221,7 @@ impl DefCollector<'_> {
                 ReachedFixedPoint::Yes => break,
                 ReachedFixedPoint::No => i += 1,
             }
-            if i == 10000 {
+            if i == FIXED_POINT_LIMIT {
                 log::error!("name resolution is stuck");
                 break;
             }
@@ -573,6 +577,7 @@ impl DefCollector<'_> {
         vis: Visibility,
         import_type: ImportType,
     ) {
+        self.db.check_canceled();
         self.update_recursive(module_id, resolutions, vis, import_type, 0)
     }
 
@@ -586,7 +591,7 @@ impl DefCollector<'_> {
         import_type: ImportType,
         depth: usize,
     ) {
-        if depth > 100 {
+        if depth > GLOB_RECURSION_LIMIT {
             // prevent stack overflows (but this shouldn't be possible)
             panic!("infinite recursion in glob imports!");
         }
@@ -609,14 +614,15 @@ impl DefCollector<'_> {
             .get(&module_id)
             .into_iter()
             .flat_map(|v| v.iter())
+            .filter(|(glob_importing_module, _)| {
+                // we know all resolutions have the same visibility (`vis`), so we
+                // just need to check that once
+                vis.is_visible_from_def_map(&self.def_map, *glob_importing_module)
+            })
             .cloned()
             .collect::<Vec<_>>();
+
         for (glob_importing_module, glob_import_vis) in glob_imports {
-            // we know all resolutions have the same visibility (`vis`), so we
-            // just need to check that once
-            if !vis.is_visible_from_def_map(&self.def_map, glob_importing_module) {
-                continue;
-            }
             self.update_recursive(
                 glob_importing_module,
                 resolutions,
@@ -677,10 +683,6 @@ impl DefCollector<'_> {
         self.unexpanded_attribute_macros = attribute_macros;
 
         for (module_id, macro_call_id, depth) in resolved {
-            if depth > 1024 {
-                log::debug!("Max macro expansion depth reached");
-                continue;
-            }
             self.collect_macro_expansion(module_id, macro_call_id, depth);
         }
 
@@ -717,7 +719,7 @@ impl DefCollector<'_> {
         macro_call_id: MacroCallId,
         depth: usize,
     ) {
-        if depth > 100 {
+        if depth > EXPANSION_DEPTH_LIMIT {
             mark::hit!(macro_expansion_overflow);
             log::warn!("macro expansion is too deep");
             return;
