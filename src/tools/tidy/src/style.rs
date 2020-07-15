@@ -119,6 +119,7 @@ fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> 
     // Update `can_contain` when changing this
     if contents.contains(&format!("// ignore-tidy-{}", check))
         || contents.contains(&format!("# ignore-tidy-{}", check))
+        || contents.contains(&format!("/* ignore-tidy-{} */", check))
     {
         Directive::Ignore(false)
     } else {
@@ -136,15 +137,37 @@ macro_rules! suppressible_tidy_err {
     };
 }
 
+pub fn is_in(full_path: &Path, parent_folder_to_find: &str, folder_to_find: &str) -> bool {
+    if let Some(parent) = full_path.parent() {
+        if parent.file_name().map_or_else(
+            || false,
+            |f| {
+                f.to_string_lossy() == folder_to_find
+                    && parent
+                        .parent()
+                        .and_then(|f| f.file_name())
+                        .map_or_else(|| false, |f| f == parent_folder_to_find)
+            },
+        ) {
+            true
+        } else {
+            is_in(parent, parent_folder_to_find, folder_to_find)
+        }
+    } else {
+        false
+    }
+}
+
 pub fn check(path: &Path, bad: &mut bool) {
     super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
-        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md"];
+        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md", ".css"];
         if extensions.iter().all(|e| !filename.ends_with(e)) || filename.starts_with(".#") {
             return;
         }
 
+        let is_style_file = filename.ends_with(".css");
         let under_rustfmt = filename.ends_with(".rs") &&
             // This list should ideally be sourced from rustfmt.toml but we don't want to add a toml
             // parser to tidy.
@@ -161,6 +184,10 @@ pub fn check(path: &Path, bad: &mut bool) {
             // currently), just the long error code explanation ones.
             return;
         }
+        if is_style_file && !is_in(file, "src", "librustdoc") {
+            // We only check CSS files in rustdoc.
+            return;
+        }
 
         if contents.is_empty() {
             tidy_error!(bad, "{}: empty file", file.display());
@@ -172,8 +199,9 @@ pub fn check(path: &Path, bad: &mut bool) {
             COLS
         };
 
-        let can_contain =
-            contents.contains("// ignore-tidy-") || contents.contains("# ignore-tidy-");
+        let can_contain = contents.contains("// ignore-tidy-")
+            || contents.contains("# ignore-tidy-")
+            || contents.contains("/* ignore-tidy-");
         // Enable testing ICE's that require specific (untidy)
         // file formats easily eg. `issue-1234-ignore-tidy.rs`
         if filename.contains("ignore-tidy") {
@@ -208,11 +236,14 @@ pub fn check(path: &Path, bad: &mut bool) {
                     &format!("line longer than {} chars", max_columns)
                 );
             }
-            if line.contains('\t') {
+            if !is_style_file && line.contains('\t') {
                 suppressible_tidy_err!(err, skip_tab, "tab character");
             }
             if line.ends_with(' ') || line.ends_with('\t') {
                 suppressible_tidy_err!(err, skip_end_whitespace, "trailing whitespace");
+            }
+            if is_style_file && line.starts_with(' ') {
+                err("CSS files use tabs for indent");
             }
             if line.contains('\r') {
                 suppressible_tidy_err!(err, skip_cr, "CR character");
