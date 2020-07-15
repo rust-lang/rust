@@ -82,6 +82,9 @@ Stabilized APIs
 Cargo
 -----
 
+- [Cargo uses the `embed-bitcode` flag to optimize disk usage and build
+  time.][cargo/8066]
+
 Misc
 ----
 - [Rustdoc now supports strikethrough text in Markdown.][71928] E.g.
@@ -97,12 +100,18 @@ Compatibility Notes
 - [Rustdoc's CLI's extra error exit codes have been removed.][71900] These were
   previously undocumented and not intended for public use. Rustdoc still provides
   a non-zero exit code on errors.
+- [Rustc's `lto` flag is incompatible with the new `embed-bitcode=no`.][71848]
+  This may cause issues if LTO is enabled through `RUSTFLAGS` or `cargo rustc`
+  flags while cargo is adding `embed-bitcode` itself. The recommended way to
+  control LTO is with Cargo profiles, either in `Cargo.toml` or `.cargo/config`,
+  or by setting `CARGO_PROFILE_<name>_LTO` in the environment.
 
 Internals Only
 --------------
 - [Make clippy a git subtree instead of a git submodule][70655]
 - [Unify the undo log of all snapshot types][69464]
 
+[71848]: https://github.com/rust-lang/rust/issues/71848/
 [73420]: https://github.com/rust-lang/rust/issues/73420/
 [72324]: https://github.com/rust-lang/rust/pull/72324/
 [71843]: https://github.com/rust-lang/rust/pull/71843/
@@ -129,6 +138,7 @@ Internals Only
 [69813]: https://github.com/rust-lang/rust/pull/69813/
 [69464]: https://github.com/rust-lang/rust/pull/69464/
 [68717]: https://github.com/rust-lang/rust/pull/68717/
+[cargo/8066]: https://github.com/rust-lang/cargo/pull/8066
 [`Arc::as_ptr`]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.as_ptr
 [`BTreeMap::remove_entry`]: https://doc.rust-lang.org/stable/std/collections/struct.BTreeMap.html#method.remove_entry
 [`Rc::as_ptr`]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.as_ptr
