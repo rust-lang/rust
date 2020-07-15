@@ -316,20 +316,19 @@ impl ToChalk for TypeCtor {
                 TypeName::Closure(closure_id.into())
             }
 
-            TypeCtor::FnPtr { .. } => panic!("Trying to convert FnPtr to TypeName"),
+            TypeCtor::Adt(adt_id) => TypeName::Adt(chalk_ir::AdtId(adt_id)),
 
-            TypeCtor::Adt(_) => {
-                // FIXME no interning needed anymore
-                // other TypeCtors get interned and turned into a chalk StructId
-                let struct_id = db.intern_type_ctor(self).into();
-                TypeName::Adt(struct_id)
+            TypeCtor::FnPtr { .. } => {
+                // This should not be reached, since Chalk doesn't represent
+                // function pointers with TypeName
+                unreachable!()
             }
         }
     }
 
     fn from_chalk(db: &dyn HirDatabase, type_name: TypeName<Interner>) -> TypeCtor {
         match type_name {
-            TypeName::Adt(struct_id) => db.lookup_intern_type_ctor(struct_id.into()),
+            TypeName::Adt(struct_id) => TypeCtor::Adt(struct_id.0),
             TypeName::AssociatedType(type_id) => TypeCtor::AssociatedType(from_chalk(db, type_id)),
             TypeName::OpaqueType(opaque_type_id) => {
                 TypeCtor::OpaqueType(from_chalk(db, opaque_type_id))

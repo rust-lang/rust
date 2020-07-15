@@ -17,9 +17,9 @@ pub use hir_ty::db::{
     AssociatedTyDataQuery, AssociatedTyValueQuery, CallableItemSignatureQuery, FieldTypesQuery,
     GenericDefaultsQuery, GenericPredicatesForParamQuery, GenericPredicatesQuery, HirDatabase,
     HirDatabaseStorage, ImplDatumQuery, ImplSelfTyQuery, ImplTraitQuery, InferQueryQuery,
-    InherentImplsInCrateQuery, InternTypeCtorQuery, InternTypeParamIdQuery,
-    ReturnTypeImplTraitsQuery, StructDatumQuery, TraitDatumQuery, TraitImplsInCrateQuery,
-    TraitImplsInDepsQuery, TraitSolveQuery, TyQuery, ValueTyQuery,
+    InherentImplsInCrateQuery, InternTypeParamIdQuery, ReturnTypeImplTraitsQuery, StructDatumQuery,
+    TraitDatumQuery, TraitImplsInCrateQuery, TraitImplsInDepsQuery, TraitSolveQuery, TyQuery,
+    ValueTyQuery,
 };
 
 #[test]

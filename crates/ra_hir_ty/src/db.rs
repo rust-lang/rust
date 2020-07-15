@@ -14,7 +14,7 @@ use crate::{
     method_resolution::{InherentImpls, TraitImpls},
     traits::chalk,
     Binders, CallableDef, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
-    ReturnTypeImplTraits, TraitRef, Ty, TyDefId, TypeCtor, ValueTyDefId,
+    ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -76,8 +76,6 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<TraitImpls>;
 
     // Interned IDs for Chalk integration
-    #[salsa::interned]
-    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> crate::TypeCtorId;
     #[salsa::interned]
     fn intern_callable_def(&self, callable_def: CallableDef) -> crate::CallableDefId;
     #[salsa::interned]

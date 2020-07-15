@@ -112,6 +112,7 @@ pub enum TypeCtor {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
+    // FIXME make this a Ty variant like in Chalk
     FnPtr { num_args: u16, is_varargs: bool },
 
     /// The never type `!`.
@@ -138,13 +139,6 @@ pub enum TypeCtor {
     /// parameter.
     Closure { def: DefWithBodyId, expr: ExprId },
 }
-
-/// This exists just for Chalk, because Chalk just has a single `StructId` where
-/// we have different kinds of ADTs, primitive types and special type
-/// constructors like tuples and function pointers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct TypeCtorId(salsa::InternId);
-impl_intern_key!(TypeCtorId);
 
 /// This exists just for Chalk, because Chalk just has a single `FnDefId` where
 /// we have different IDs for struct and enum variant constructors.

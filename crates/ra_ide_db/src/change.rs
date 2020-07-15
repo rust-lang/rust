@@ -279,7 +279,6 @@ impl RootDatabase {
             hir::db::InternImplQuery
 
             // HirDatabase
-            hir::db::InternTypeCtorQuery
             hir::db::InternTypeParamIdQuery
         ];
 

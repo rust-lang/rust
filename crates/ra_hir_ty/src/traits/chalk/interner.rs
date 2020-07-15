@@ -41,7 +41,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
     type InternedConstraints = Vec<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>>;
     type DefId = InternId;
-    type InternedAdtId = crate::TypeCtorId;
+    type InternedAdtId = hir_def::AdtId;
     type Identifier = TypeAliasId;
     type FnAbi = ();
 
@@ -363,6 +363,18 @@ impl chalk_ir::interner::Interner for Interner {
         constraints: &'a Self::InternedConstraints,
     ) -> &'a [chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>] {
         constraints
+    }
+    fn debug_closure_id(
+        _fn_def_id: chalk_ir::ClosureId<Self>,
+        _fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        None
+    }
+    fn debug_constraints(
+        _clauses: &chalk_ir::Constraints<Self>,
+        _fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
+        None
     }
 }
 

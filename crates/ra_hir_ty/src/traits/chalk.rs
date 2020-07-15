@@ -552,18 +552,6 @@ pub(crate) fn fn_def_datum_query(
     Arc::new(datum)
 }
 
-impl From<AdtId> for crate::TypeCtorId {
-    fn from(struct_id: AdtId) -> Self {
-        struct_id.0
-    }
-}
-
-impl From<crate::TypeCtorId> for AdtId {
-    fn from(type_ctor_id: crate::TypeCtorId) -> Self {
-        chalk_ir::AdtId(type_ctor_id)
-    }
-}
-
 impl From<FnDefId> for crate::CallableDefId {
     fn from(fn_def_id: FnDefId) -> Self {
         InternKey::from_intern_id(fn_def_id.0)
