@@ -1287,7 +1287,7 @@ extern "rust-intrinsic" {
     #[stable(feature = "rust1", since = "1.0.0")]
     // NOTE: While this makes the intrinsic const stable, we have some custom code in const fn
     // checks that prevent its use within `const fn`.
-    #[rustc_const_stable(feature = "const_transmute", since = "1.46.0")]
+    #[rustc_const_stable(feature = "const_transmute_in_consts", since = "1.46.0")]
     pub fn transmute<T, U>(e: T) -> U;
 
     /// Returns `true` if the actual type given as `T` requires drop
@@ -2286,3 +2286,7 @@ pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe { write_bytes(dst, val, count) }
 }
+
+// dummy function to unbreak beta builds
+#[rustc_const_unstable(feature = "const_transmute", issue = "53605")]
+const fn _bar() {}
