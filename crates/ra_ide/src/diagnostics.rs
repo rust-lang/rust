@@ -35,8 +35,8 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     let parse = db.parse(file_id);
     let mut res = Vec::new();
 
-    // [#34344] Only take first 500 errors to prevent slowing down editor/ide, the number 500 is chosen arbitrarily.
-    res.extend(parse.errors().iter().take(500).map(|err| Diagnostic {
+    // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
+    res.extend(parse.errors().iter().take(128).map(|err| Diagnostic {
         range: err.range(),
         message: format!("Syntax Error: {}", err),
         severity: Severity::Error,
