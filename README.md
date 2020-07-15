@@ -94,9 +94,9 @@ Linux program, you can do `cargo miri run --target x86_64-unknown-linux-gnu`.
 This is particularly useful if you are using Windows, as the Linux target is
 much better supported than Windows targets.
 
-When compiling code via `cargo miri`, the `miri` config flag is set.  You can
-use this to ignore test cases that fail under Miri because they do things Miri
-does not support:
+When compiling code via `cargo miri`, the `cfg(miri)` config flag is set.  You
+can use this to ignore test cases that fail under Miri because they do things
+Miri does not support:
 
 ```rust
 #[test]
