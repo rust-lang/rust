@@ -88,6 +88,25 @@ impl HirFileId {
         }
     }
 
+    pub fn expansion_level(self, db: &dyn db::AstDatabase) -> u32 {
+        let mut level = 0;
+        let mut curr = self;
+        while let HirFileIdRepr::MacroFile(macro_file) = curr.0 {
+            level += 1;
+            curr = match macro_file.macro_call_id {
+                MacroCallId::LazyMacro(id) => {
+                    let loc = db.lookup_intern_macro(id);
+                    loc.kind.file_id()
+                }
+                MacroCallId::EagerMacro(id) => {
+                    let loc = db.lookup_intern_eager_expansion(id);
+                    loc.file_id
+                }
+            };
+        }
+        level
+    }
+
     /// If this is a macro call, returns the syntax node of the call.
     pub fn call_node(self, db: &dyn db::AstDatabase) -> Option<InFile<SyntaxNode>> {
         match self.0 {

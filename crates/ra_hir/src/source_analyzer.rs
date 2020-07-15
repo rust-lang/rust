@@ -352,7 +352,7 @@ impl SourceAnalyzer {
         let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
             self.resolver.resolve_path_as_macro(db.upcast(), &path)
         })?;
-        Some(macro_call_id.as_file())
+        Some(macro_call_id.as_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
     }
 
     pub(crate) fn resolve_variant(
