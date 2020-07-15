@@ -25,10 +25,6 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         analyzer.visit_basic_block_data(block, data);
     }
 
-    for debuginfo in mir.var_debug_info.iter() {
-        analyzer.visit_var_debug_info(debuginfo);
-    }
-
     for (local, decl) in mir.local_decls.iter_enumerated() {
         let ty = fx.monomorphize(&decl.ty);
         debug!("local {:?} has type `{}`", local, ty);
@@ -143,9 +139,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
     ) {
         debug!("visit_place(place={:?}, context={:?})", place, context);
 
-        // Except for `VarDebugInfo`, non-uses do not force locals onto the stack.
-        //
-        // `VarDebugInfo` is handled in `visit_var_debug_info`.
+        // Non-uses do not force locals onto the stack.
         if !context.is_use() {
             return;
         }
@@ -257,27 +251,6 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                     self.not_ssa(local);
                 }
             }
-        }
-    }
-
-    fn visit_var_debug_info(&mut self, var_debug_info: &mir::VarDebugInfo<'tcx>) {
-        // Indirect debuginfo requires going through memory, that only
-        // the debugger accesses, following our emitted DWARF pointer ops.
-        //
-        // FIXME(eddyb) Investigate the possibility of relaxing this, but
-        // note that `llvm.dbg.declare` *must* be used for indirect places,
-        // even if we start using `llvm.dbg.value` for all other cases,
-        // as we don't necessarily know when the value changes, but only
-        // where it lives in memory.
-        //
-        // It's possible `llvm.dbg.declare` could support starting from
-        // a pointer that doesn't point to an `alloca`, but this would
-        // only be useful if we know the pointer being `Deref`'d comes
-        // from an immutable place, and if `llvm.dbg.declare` calls
-        // must be at the very start of the function, then only function
-        // arguments could contain such pointers.
-        if var_debug_info.place.is_indirect() {
-            self.not_ssa(var_debug_info.place.local);
         }
     }
 }
