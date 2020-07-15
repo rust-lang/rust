@@ -51,6 +51,16 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     }
 }
 
+<span class="keyword">impl</span> <span class="struct">Foo</span> {
+    <span class="keyword">fn</span> <span class="function declaration">baz</span>(<span class="keyword">mut</span> <span class="self_keyword mutable">self</span>) -&gt; <span class="builtin_type">i32</span> {
+        <span class="self_keyword">self</span>.<span class="field">x</span>
+    }
+
+    <span class="keyword">fn</span> <span class="function declaration">qux</span>(&<span class="keyword">mut</span> <span class="self_keyword mutable">self</span>) {
+        <span class="self_keyword mutable">self</span>.<span class="field">x</span> = <span class="numeric_literal">0</span>;
+    }
+}
+
 <span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable">STATIC_MUT</span>: <span class="builtin_type">i32</span> = <span class="numeric_literal">0</span>;
 
 <span class="keyword">fn</span> <span class="function declaration">foo</span>&lt;<span class="lifetime declaration">'a</span>, <span class="type_param declaration">T</span>&gt;() -&gt; <span class="type_param">T</span> {

@@ -25,6 +25,16 @@ impl Bar for Foo {
     }
 }
 
+impl Foo {
+    fn baz(mut self) -> i32 {
+        self.x
+    }
+
+    fn qux(&mut self) {
+        self.x = 0;
+    }
+}
+
 static mut STATIC_MUT: i32 = 0;
 
 fn foo<'a, T>() -> T {
