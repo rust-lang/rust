@@ -1,20 +1,19 @@
 //! Project loading & configuration updates
 use std::{mem, sync::Arc};
 
-use crossbeam_channel::unbounded;
 use flycheck::FlycheckHandle;
 use ra_db::{CrateGraph, SourceRoot, VfsPath};
 use ra_ide::AnalysisChange;
+use ra_prof::profile;
 use ra_project_model::{PackageRoot, ProcMacroClient, ProjectWorkspace};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
-    global_state::{GlobalState, Handle, Status},
+    global_state::{GlobalState, Status},
     lsp_ext,
     main_loop::Task,
 };
-use ra_prof::profile;
 
 impl GlobalState {
     pub(crate) fn update_configuration(&mut self, config: Config) {
@@ -231,21 +230,20 @@ impl GlobalState {
             }
         };
 
-        // FIXME: Figure out the multi-workspace situation
-        self.flycheck = self.workspaces.iter().find_map(move |w| match w {
-            ProjectWorkspace::Cargo { cargo, .. } => {
-                let (sender, receiver) = unbounded();
-                let sender = Box::new(move |msg| sender.send(msg).unwrap());
+        let sender = self.flycheck_sender.clone();
+        let sender = Box::new(move |msg| sender.send(msg).unwrap());
+        self.flycheck = self
+            .workspaces
+            .iter()
+            // FIXME: Figure out the multi-workspace situation
+            .find_map(|w| match w {
+                ProjectWorkspace::Cargo { cargo, sysroot: _ } => Some(cargo),
+                ProjectWorkspace::Json { .. } => None,
+            })
+            .map(move |cargo| {
                 let cargo_project_root = cargo.workspace_root().to_path_buf();
-                let handle =
-                    FlycheckHandle::spawn(sender, config.clone(), cargo_project_root.into());
-                Some(Handle { handle, receiver })
-            }
-            ProjectWorkspace::Json { .. } => {
-                log::warn!("Cargo check watching only supported for cargo workspaces, disabling");
-                None
-            }
-        })
+                FlycheckHandle::spawn(sender, config.clone(), cargo_project_root.into())
+            })
     }
 }
 
