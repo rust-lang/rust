@@ -1927,7 +1927,6 @@ extern "rust-intrinsic" {
     /// The to-be-stabilized version of this intrinsic is
     /// [`std::mem::variant_count`](../../std/mem/fn.variant_count.html)
     #[rustc_const_unstable(feature = "variant_count", issue = "73662")]
-    #[cfg(not(bootstrap))]
     pub fn variant_count<T>() -> usize;
 
     /// Rust's "try catch" construct which invokes the function pointer `try_fn`
@@ -1958,7 +1957,6 @@ extern "rust-intrinsic" {
     /// Internal placeholder for injecting code coverage counters when the "instrument-coverage"
     /// option is enabled. The placeholder is replaced with `llvm.instrprof.increment` during code
     /// generation.
-    #[cfg(not(bootstrap))]
     #[lang = "count_code_region"]
     pub fn count_code_region(index: u32, start_byte_pos: u32, end_byte_pos: u32);
 
@@ -1968,7 +1966,6 @@ extern "rust-intrinsic" {
     /// "coverage map", which is injected into the generated code, as additional data.
     /// This marker identifies a code region and two other counters or counter expressions
     /// whose sum is the number of times the code region was executed.
-    #[cfg(not(bootstrap))]
     pub fn coverage_counter_add(
         index: u32,
         left_index: u32,
@@ -1980,7 +1977,6 @@ extern "rust-intrinsic" {
     /// This marker identifies a code region and two other counters or counter expressions
     /// whose difference is the number of times the code region was executed.
     /// (See `coverage_counter_add` for more information.)
-    #[cfg(not(bootstrap))]
     pub fn coverage_counter_subtract(
         index: u32,
         left_index: u32,
@@ -1992,17 +1988,14 @@ extern "rust-intrinsic" {
     /// This marker identifies a code region to be added to the "coverage map" to indicate source
     /// code that can never be reached.
     /// (See `coverage_counter_add` for more information.)
-    #[cfg(not(bootstrap))]
     pub fn coverage_unreachable(start_byte_pos: u32, end_byte_pos: u32);
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    #[cfg(not(bootstrap))]
     pub fn ptr_guaranteed_eq<T>(ptr: *const T, other: *const T) -> bool;
 
     /// See documentation of `<*const T>::guaranteed_ne` for details.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
-    #[cfg(not(bootstrap))]
     pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
 }
 

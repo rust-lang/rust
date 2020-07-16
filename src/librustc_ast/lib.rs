@@ -7,10 +7,9 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
-#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)] // For the `transmute` in `P::new`
 #![feature(const_panic)]
-#![cfg_attr(not(bootstrap), feature(const_fn_transmute))]
+#![feature(const_fn_transmute)]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]

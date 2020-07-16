@@ -34,7 +34,6 @@
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(or_patterns)]
-#![cfg_attr(bootstrap, feature(track_caller))]
 #![recursion_limit = "256"]
 
 #[macro_use]
