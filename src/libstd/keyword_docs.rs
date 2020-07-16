@@ -1355,17 +1355,23 @@ mod super_keyword {}
 //
 /// A common interface for a group of types.
 ///
-/// A `trait` is an interface that types can implement. It is said they
-/// "implement" the trait or "conform" to the trait.
+/// A `trait` is like an interface that data types can implement. When a type
+/// implements a trait it can be treated abstractly as that trait using generics
+/// or trait objects.
 ///
-/// This interface is made up of three varieties of items:
+/// Traits can be made up of three varieties of associated items:
 ///
-/// - functions
+/// - functions and methods
 /// - types
 /// - constants
 ///
 /// Traits may also contain additional type parameters. Those type parameters
 /// or the trait itself can be constrained by other traits.
+///
+/// Traits can serve as markers or carry other logical semantics that
+/// aren't expressed through their items. When a type implements that
+/// trait it is promising to uphold its contract. [`Send`] and [`Sync`] are two
+/// such marker traits present in the standard library.
 ///
 /// See the [Reference][Ref-Traits] for a lot more information on traits.
 ///
@@ -1525,6 +1531,8 @@ mod super_keyword {}
 /// [`for`]: keyword.for.html
 /// [`impl`]: keyword.impl.html
 /// [`unsafe`]: keyword.unsafe.html
+/// [`Send`]: marker/trait.Send.html
+/// [`Sync`]: marker/trait.Sync.html
 /// [Ref-Traits]: ../reference/items/traits.html
 /// [Ref-Trait-Objects]: ../reference/types/trait-object.html
 mod trait_keyword {}
