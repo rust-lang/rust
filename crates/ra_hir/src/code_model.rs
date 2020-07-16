@@ -40,7 +40,7 @@ use stdx::impl_from;
 use crate::{
     db::{DefDatabase, HirDatabase},
     has_source::HasSource,
-    CallableDef, HirDisplay, InFile, Name,
+    CallableDefId, HirDisplay, InFile, Name,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -1226,7 +1226,7 @@ impl Type {
     }
 
     // FIXME: this method is broken, as it doesn't take closures into account.
-    pub fn as_callable(&self) -> Option<CallableDef> {
+    pub fn as_callable(&self) -> Option<CallableDefId> {
         Some(self.ty.value.as_callable()?.0)
     }
 

@@ -324,13 +324,13 @@ fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
             // FIXME: Type::as_callable is broken for closures
             let callable_def = sema.type_of_expr(&expr.expr()?)?.as_callable()?;
             match callable_def {
-                hir::CallableDef::FunctionId(it) => {
+                hir::CallableDefId::FunctionId(it) => {
                     Some(FunctionSignature::from_hir(sema.db, it.into()))
                 }
-                hir::CallableDef::StructId(it) => {
+                hir::CallableDefId::StructId(it) => {
                     FunctionSignature::from_struct(sema.db, it.into())
                 }
-                hir::CallableDef::EnumVariantId(it) => {
+                hir::CallableDefId::EnumVariantId(it) => {
                     FunctionSignature::from_enum_variant(sema.db, it.into())
                 }
             }

@@ -18,7 +18,7 @@ use crate::{
     display::HirDisplay,
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     utils::generics,
-    CallableDef, DebruijnIndex, FnSig, GenericPredicate, Substs, Ty, TypeCtor,
+    CallableDefId, DebruijnIndex, FnSig, GenericPredicate, Substs, Ty, TypeCtor,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
@@ -525,7 +525,7 @@ pub(crate) fn fn_def_datum_query(
     _krate: CrateId,
     fn_def_id: FnDefId,
 ) -> Arc<FnDefDatum> {
-    let callable_def: CallableDef = from_chalk(db, fn_def_id);
+    let callable_def: CallableDefId = from_chalk(db, fn_def_id);
     let generic_params = generics(db.upcast(), callable_def.into());
     let sig = db.callable_item_signature(callable_def);
     let bound_vars = Substs::bound_vars(&generic_params, DebruijnIndex::INNERMOST);

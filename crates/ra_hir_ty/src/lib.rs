@@ -44,7 +44,7 @@ use crate::{
 
 pub use autoderef::autoderef;
 pub use infer::{InferTy, InferenceResult};
-pub use lower::CallableDef;
+pub use lower::CallableDefId;
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, ImplTraitLoweringMode, TyDefId,
     TyLoweringContext, ValueTyDefId,
@@ -102,7 +102,7 @@ pub enum TypeCtor {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(CallableDef),
+    FnDef(CallableDefId),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
@@ -767,7 +767,7 @@ impl Ty {
         }
     }
 
-    pub fn as_callable(&self) -> Option<(CallableDef, &Substs)> {
+    pub fn as_callable(&self) -> Option<(CallableDefId, &Substs)> {
         match self {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(callable_def), parameters }) => {
                 Some((*callable_def, parameters))
