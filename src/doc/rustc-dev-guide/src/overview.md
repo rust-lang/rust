@@ -276,11 +276,11 @@ the name `'tcx`, which means that something is tied to the lifetime of the
 
 Types are really important in Rust, and they form the core of a lot of compiler
 analyses. The main type (in the compiler) that represents types (in the user's
-program) is [`rustc::ty::Ty`][ty]. This is so important that we have a whole chapter
+program) is [`rustc_middle::ty::Ty`][ty]. This is so important that we have a whole chapter
 on [`ty::Ty`][ty], but for now, we just want to mention that it exists and is the way
 `rustc` represents types!
 
-Also note that the `rustc::ty` module defines the `TyCtxt` struct we mentioned before.
+Also note that the `rustc_middle::ty` module defines the `TyCtxt` struct we mentioned before.
 
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.Ty.html
 

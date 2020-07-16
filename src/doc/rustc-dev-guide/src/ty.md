@@ -10,7 +10,7 @@ quite a few modules and types for `Ty` in the compiler ([Ty documentation][ty]).
 
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html
 
-The specific `Ty` we are referring to is [`rustc::ty::Ty`][ty_ty] (and not
+The specific `Ty` we are referring to is [`rustc_middle::ty::Ty`][ty_ty] (and not
 [`rustc_hir::Ty`][hir_ty]). The distinction is important, so we will discuss it first before going
 into the details of `ty::Ty`.
 
@@ -107,7 +107,7 @@ or `fn(i32) -> i32` (with type aliases fully expanded).
 
 ## `ty::Ty` implementation
 
-[`rustc::ty::Ty`][ty_ty] is actually a type alias to [`&TyS`][tys].
+[`rustc_middle::ty::Ty`][ty_ty] is actually a type alias to [`&TyS`][tys].
 This type, which is short for "Type Structure", is where the main functionality is located.
 You can ignore `TyS` struct in general; you will basically never access it explicitly.
 We always pass it by reference using the `Ty` alias.

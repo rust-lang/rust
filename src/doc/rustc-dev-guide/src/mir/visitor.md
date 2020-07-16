@@ -2,7 +2,7 @@
 
 The MIR visitor is a convenient tool for traversing the MIR and either
 looking for things or making changes to it. The visitor traits are
-defined in [the `rustc::mir::visit` module][m-v] – there are two of
+defined in [the `rustc_middle::mir::visit` module][m-v] – there are two of
 them, generated via a single macro: `Visitor` (which operates on a
 `&Mir` and gives back shared references) and `MutVisitor` (which
 operates on a `&mut Mir` and gives back mutable references).
@@ -45,7 +45,7 @@ terminators and removes their `unwind` successors.
 
 ## Traversal
 
-In addition the visitor, [the `rustc::mir::traversal` module][t]
+In addition the visitor, [the `rustc_middle::mir::traversal` module][t]
 contains useful functions for walking the MIR CFG in
 [different standard orders][traversal] (e.g. pre-order, reverse
 post-order, and so forth).

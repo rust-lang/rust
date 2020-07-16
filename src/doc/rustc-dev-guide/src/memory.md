@@ -82,7 +82,7 @@ of the more Rust-ic "pull" style (think the `Iterator` trait).
 
 Thread-local storage and interning are used a lot through the compiler to reduce
 duplication while also preventing a lot of the ergonomic issues due to many
-pervasive lifetimes. The [`rustc::ty::tls`][tls] module is used to access these
+pervasive lifetimes. The [`rustc_middle::ty::tls`][tls] module is used to access these
 thread-locals, although you should rarely need to touch it.
 
 [tls]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/tls/index.html

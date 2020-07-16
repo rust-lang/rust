@@ -459,7 +459,7 @@ The possible values of [`Applicability`][appl] are:
 
 ## Lints
 
-The compiler linting infrastructure is defined in the [`rustc::lint`][rlint]
+The compiler linting infrastructure is defined in the [`rustc_middle::lint`][rlint]
 module.
 
 [rlint]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/index.html
