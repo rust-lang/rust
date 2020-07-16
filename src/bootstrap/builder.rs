@@ -773,7 +773,8 @@ impl<'a> Builder<'a> {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
                 Mode::Rustc | Mode::ToolRustc | Mode::Codegen => self.compiler_doc_out(target),
-                _ => self.crate_doc_out(target),
+                Mode::Std => out_dir.join(target).join("doc"),
+                _ => panic!("doc mode {:?} not expected", mode),
             };
             let rustdoc = self.rustdoc(compiler);
             self.clear_if_dirty(&my_out, &rustdoc);

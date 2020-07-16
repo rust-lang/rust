@@ -417,21 +417,6 @@ impl Step for Std {
         builder.ensure(compile::Std { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Std).join(target).join("doc");
 
-        // Here what we're doing is creating a *symlink* (directory junction on
-        // Windows) to the final output location. This is not done as an
-        // optimization but rather for correctness. We've got three trees of
-        // documentation, one for std, one for test, and one for rustc. It's then
-        // our job to merge them all together.
-        //
-        // Unfortunately rustbuild doesn't know nearly as well how to merge doc
-        // trees as rustdoc does itself, so instead of actually having three
-        // separate trees we just have rustdoc output to the same location across
-        // all of them.
-        //
-        // This way rustdoc generates output directly into the output, and rustdoc
-        // will also directly handle merging.
-        let my_out = builder.crate_doc_out(target);
-        t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
 
         let run_cargo_rustdoc_for = |package: &str| {
@@ -439,12 +424,9 @@ impl Step for Std {
                 builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustdoc");
             compile::std_cargo(builder, target, compiler.stage, &mut cargo);
 
-            cargo.arg("-p").arg(package);
-            // Create all crate output directories first to make sure rustdoc uses
-            // relative links.
-            // FIXME: Cargo should probably do this itself.
-            t!(fs::create_dir_all(out_dir.join(package)));
             cargo
+                .arg("-p")
+                .arg(package)
                 .arg("--")
                 .arg("--markdown-css")
                 .arg("rust.css")
@@ -462,11 +444,17 @@ impl Step for Std {
         // folder structure, that would also build internal crates that we do
         // not want to show in documentation. These crates will later be visited
         // by the rustc step, so internal documentation will show them.
-        let krates = ["alloc", "core", "std", "proc_macro", "test"];
+        //
+        // Note that the order here is important! The crates need to be
+        // processed starting from the leaves, otherwise rustdoc will not
+        // create correct links between crates because rustdoc depends on the
+        // existence of the output directories to know if it should be a local
+        // or remote link.
+        let krates = ["core", "alloc", "std", "proc_macro", "test"];
         for krate in &krates {
             run_cargo_rustdoc_for(krate);
         }
-        builder.cp_r(&my_out, &out);
+        builder.cp_r(&out_dir, &out);
 
         // Look for src/libstd, src/libcore etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
@@ -529,8 +517,11 @@ impl Step for Rustc {
         // Build rustc.
         builder.ensure(compile::Rustc { compiler, target });
 
-        // We do not symlink to the same shared folder that already contains std library
-        // documentation from previous steps as we do not want to include that.
+        // This uses a shared directory so that librustdoc documentation gets
+        // correctly built and merged with the rustc documentation. This is
+        // needed because rustdoc is built in a different directory from
+        // rustc. rustdoc needs to be able to see everything, for example when
+        // merging the search index, or generating local (relative) links.
         let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
