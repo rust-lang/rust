@@ -298,9 +298,30 @@ fn run_test(
         ErrorOutputType::HumanReadable(kind) => {
             let (_, color_config) = kind.unzip();
             match color_config {
-                ColorConfig::Never => {}
-                _ => {
+                ColorConfig::Never => {
+                    compiler.arg("--color").arg("never");
+                }
+                ColorConfig::Always => {
                     compiler.arg("--color").arg("always");
+                }
+                ColorConfig::Auto => {
+                    #[cfg(windows)]
+                    {
+                        // This specific check is because old windows consoles require a connection
+                        // to be able to display colors (and they don't support ANSI), which we
+                        // cannot in here, so in case this is an old windows console, we can't
+                        // display colors.
+                        use crate::termcolor::{ColorChoice, StandardStream, WriteColor};
+                        if StandardStream::stdout(ColorChoice::Auto).is_synchronous() {
+                            compiler.arg("--color").arg("never");
+                        } else {
+                            compiler.arg("--color").arg("always");
+                        }
+                    }
+                    #[cfg(not(windows))]
+                    {
+                        compiler.arg("--color").arg("always");
+                    }
                 }
             }
         }

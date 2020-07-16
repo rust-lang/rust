@@ -20,3 +20,6 @@ regex = "1"
 
 [dev-dependencies]
 expect-test = "1.0"
+
+[target.'cfg(windows)'.dependencies]
+termcolor = "1.0"
