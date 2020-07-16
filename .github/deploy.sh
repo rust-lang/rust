@@ -34,6 +34,8 @@ git config user.name "GHA CI"
 git config user.email "gha@ci.invalid"
 
 if [[ -n $TAG_NAME ]]; then
+  # track files, so that the following check works
+  git add --intent-to-add "$TAG_NAME"
   if git diff --exit-code --quiet -- $TAG_NAME/; then
     echo "No changes to the output on this push; exiting."
     exit 0
