@@ -461,9 +461,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if let Some(FileHandle { file, writable: _ }) = this.machine.file_handler.handles.get_mut(&fd) {
             trace!("read: FD mapped to {:?}", file);
-            // This can never fail because `count` was capped to be smaller than
-            // `isize::MAX`.
-            let count = isize::try_from(count).unwrap();
             // We want to read at most `count` bytes. We are sure that `count` is not negative
             // because it was a target's `usize`. Also we are sure that its smaller than
             // `usize::MAX` because it is a host's `isize`.
