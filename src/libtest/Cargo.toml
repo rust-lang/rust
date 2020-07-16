@@ -23,9 +23,12 @@ proc_macro = { path = "../libproc_macro" }
 
 # Forward features to the `std` crate as necessary
 [features]
+default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
 backtrace = ["std/backtrace"]
 compiler-builtins-c = ["std/compiler-builtins-c"]
 llvm-libunwind = ["std/llvm-libunwind"]
 panic-unwind = ["std/panic_unwind"]
 panic_immediate_abort = ["std/panic_immediate_abort"]
 profiler = ["std/profiler"]
+std_detect_file_io = ["std/std_detect_file_io"]
+std_detect_dlsym_getauxval = ["std/std_detect_dlsym_getauxval"]
