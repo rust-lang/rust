@@ -2374,11 +2374,14 @@ impl str {
         unsafe { Slices { str: self }.slice }
     }
 
-    /// Converts a mutable string slice to a mutable byte slice. To convert the
-    /// mutable byte slice back into a mutable string slice, use the
-    /// [`str::from_utf8_mut`] function.
+    /// Converts a mutable string slice to a mutable byte slice.
     ///
-    /// [`str::from_utf8_mut`]: ./str/fn.from_utf8_mut.html
+    /// # Safety
+    ///
+    /// The caller must ensure that the content of the slice is valid UTF-8
+    /// before the borrow ends and the underlying `str` is used.
+    ///
+    /// Use of a `str` whose contents are not valid UTF-8 is undefined behavior.
     ///
     /// # Examples
     ///
