@@ -81,6 +81,8 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
             FnKind::Fn(FnCtxt::Foreign, _, sig, _, _) => {
                 self.visit_fn_header(&sig.header);
                 visit::walk_fn_decl(self, &sig.decl);
+                // Don't visit the foreign function body even if it has one, since lowering the
+                // body would have no meaning and will have already been caught as a parse error.
             }
             _ => visit::walk_fn(self, fk, sp),
         }
