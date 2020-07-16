@@ -21,14 +21,9 @@ use rustc_target::spec::PanicStrategy;
 
 use super::lints;
 
-crate fn mir_built<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
-) -> &'tcx ty::steal::Steal<Body<'tcx>> {
-    if def.const_param_did.is_none() {
-        if let const_param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
-            return tcx.mir_built(ty::WithOptConstParam { const_param_did, ..def });
-        }
+crate fn mir_built<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) -> &'tcx ty::steal::Steal<Body<'tcx>> {
+    if let Some(def) = ty::WithOptConstParam::try_update(def, tcx) {
+        return tcx.mir_built(def);
     }
 
     tcx.alloc_steal_mir(mir_build(tcx, def))
