@@ -60,6 +60,7 @@ use crate::display::ToNav;
 
 pub use crate::{
     call_hierarchy::CallItem,
+    call_info::CallInfo,
     completion::{
         CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
     },
@@ -129,14 +130,6 @@ impl<T> RangeInfo<T> {
     pub fn new(range: TextRange, info: T) -> RangeInfo<T> {
         RangeInfo { range, info }
     }
-}
-
-/// Contains information about a call site. Specifically the
-/// `FunctionSignature`and current parameter.
-#[derive(Debug)]
-pub struct CallInfo {
-    pub signature: FunctionSignature,
-    pub active_parameter: Option<usize>,
 }
 
 /// `AnalysisHost` stores the current state of the world.
