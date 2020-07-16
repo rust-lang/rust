@@ -61,15 +61,11 @@ pub struct FunctionQualifier {
 }
 
 impl FunctionSignature {
-    pub(crate) fn with_doc_opt(mut self, doc: Option<Documentation>) -> Self {
-        self.doc = doc;
-        self
-    }
-
     pub(crate) fn from_hir(db: &RootDatabase, function: hir::Function) -> Self {
-        let doc = function.docs(db);
         let ast_node = function.source(db).value;
-        FunctionSignature::from(&ast_node).with_doc_opt(doc)
+        let mut res = FunctionSignature::from(&ast_node);
+        res.doc = function.docs(db);
+        res
     }
 
     pub(crate) fn from_struct(db: &RootDatabase, st: hir::Struct) -> Option<Self> {
@@ -93,24 +89,21 @@ impl FunctionSignature {
             params.push(raw_param);
         }
 
-        Some(
-            FunctionSignature {
-                kind: CallableKind::StructConstructor,
-                visibility: node.visibility().map(|n| n.syntax().text().to_string()),
-                // Do we need `const`?
-                qualifier: Default::default(),
-                name: node.name().map(|n| n.text().to_string()),
-                ret_type: node.name().map(|n| n.text().to_string()),
-                parameters: params,
-                parameter_names: vec![],
-                parameter_types,
-                generic_parameters: generic_parameters(&node),
-                where_predicates: where_predicates(&node),
-                doc: None,
-                has_self_param: false,
-            }
-            .with_doc_opt(st.docs(db)),
-        )
+        Some(FunctionSignature {
+            kind: CallableKind::StructConstructor,
+            visibility: node.visibility().map(|n| n.syntax().text().to_string()),
+            // Do we need `const`?
+            qualifier: Default::default(),
+            name: node.name().map(|n| n.text().to_string()),
+            ret_type: node.name().map(|n| n.text().to_string()),
+            parameters: params,
+            parameter_names: vec![],
+            parameter_types,
+            generic_parameters: generic_parameters(&node),
+            where_predicates: where_predicates(&node),
+            doc: st.docs(db),
+            has_self_param: false,
+        })
     }
 
     pub(crate) fn from_enum_variant(db: &RootDatabase, variant: hir::EnumVariant) -> Option<Self> {
@@ -140,24 +133,21 @@ impl FunctionSignature {
             params.push(format!("{}: {}", name, ty.display(db)));
         }
 
-        Some(
-            FunctionSignature {
-                kind: CallableKind::VariantConstructor,
-                visibility: None,
-                // Do we need `const`?
-                qualifier: Default::default(),
-                name: Some(name),
-                ret_type: None,
-                parameters: params,
-                parameter_names: vec![],
-                parameter_types,
-                generic_parameters: vec![],
-                where_predicates: vec![],
-                doc: None,
-                has_self_param: false,
-            }
-            .with_doc_opt(variant.docs(db)),
-        )
+        Some(FunctionSignature {
+            kind: CallableKind::VariantConstructor,
+            visibility: None,
+            // Do we need `const`?
+            qualifier: Default::default(),
+            name: Some(name),
+            ret_type: None,
+            parameters: params,
+            parameter_names: vec![],
+            parameter_types,
+            generic_parameters: vec![],
+            where_predicates: vec![],
+            doc: variant.docs(db),
+            has_self_param: false,
+        })
     }
 
     pub(crate) fn from_macro(db: &RootDatabase, macro_def: hir::MacroDef) -> Option<Self> {
@@ -165,23 +155,20 @@ impl FunctionSignature {
 
         let params = vec![];
 
-        Some(
-            FunctionSignature {
-                kind: CallableKind::Macro,
-                visibility: None,
-                qualifier: Default::default(),
-                name: node.name().map(|n| n.text().to_string()),
-                ret_type: None,
-                parameters: params,
-                parameter_names: vec![],
-                parameter_types: vec![],
-                generic_parameters: vec![],
-                where_predicates: vec![],
-                doc: None,
-                has_self_param: false,
-            }
-            .with_doc_opt(macro_def.docs(db)),
-        )
+        Some(FunctionSignature {
+            kind: CallableKind::Macro,
+            visibility: None,
+            qualifier: Default::default(),
+            name: node.name().map(|n| n.text().to_string()),
+            ret_type: None,
+            parameters: params,
+            parameter_names: vec![],
+            parameter_types: vec![],
+            generic_parameters: vec![],
+            where_predicates: vec![],
+            doc: macro_def.docs(db),
+            has_self_param: false,
+        })
     }
 }
 
