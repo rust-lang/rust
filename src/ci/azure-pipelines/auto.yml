@@ -53,6 +53,7 @@ jobs:
       dist-powerpc-linux: {}
       dist-powerpc64-linux: {}
       dist-powerpc64le-linux: {}
+      dist-riscv64-linux: {}
       dist-s390x-linux: {}
       dist-x86_64-freebsd: {}
       dist-x86_64-illumos: {}

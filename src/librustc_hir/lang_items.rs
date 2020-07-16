@@ -193,6 +193,9 @@ language_item_table! {
     CloneTraitLangItem,            sym::clone,              clone_trait,             Target::Trait;
     SyncTraitLangItem,             sym::sync,               sync_trait,              Target::Trait;
     DiscriminantKindTraitLangItem, sym::discriminant_kind,  discriminant_kind_trait, Target::Trait;
+    // The associated item of `trait DiscriminantKind`.
+    DiscriminantTypeLangItem,      sym::discriminant_type,  discriminant_type,       Target::AssocTy;
+
     FreezeTraitLangItem,           sym::freeze,             freeze_trait,            Target::Trait;
 
     DropTraitLangItem,             sym::drop,               drop_trait,              Target::Trait;

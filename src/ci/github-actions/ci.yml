@@ -341,6 +341,9 @@ jobs:
           - name: dist-powerpc64le-linux
             <<: *job-linux-xl
 
+          - name: dist-riscv64-linux
+            <<: *job-linux-xl
+
           - name: dist-s390x-linux
             <<: *job-linux-xl
 

@@ -2243,8 +2243,7 @@ function defocusSearchBar() {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
 
-            if ((!relatedDoc && hasClass(docblock, "docblock") === false) ||
-                (pageId && document.getElementById(pageId))) {
+            if (!relatedDoc && hasClass(docblock, "docblock") === false) {
                 return;
             }
 
@@ -2364,6 +2363,7 @@ function defocusSearchBar() {
     (function() {
         var toggle = createSimpleToggle(false);
         var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
+        var hideImplementors = getCurrentValue("rustdoc-auto-collapse-implementors") !== "false";
         var pageId = getPageId();
 
         var func = function(e) {
@@ -2393,7 +2393,13 @@ function defocusSearchBar() {
             if (hasClass(e, "impl") &&
                 (next.getElementsByClassName("method").length > 0 ||
                  next.getElementsByClassName("associatedconstant").length > 0)) {
-                insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
+                var newToggle = toggle.cloneNode(true);
+                insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
+                // In case the option "auto-collapse implementors" is not set to false, we collapse
+                // all implementors.
+                if (hideImplementors === true && e.parentNode.id === "implementors-list") {
+                    collapseDocs(newToggle, "hide", pageId);
+                }
             }
         };
 

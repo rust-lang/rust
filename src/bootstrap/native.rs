@@ -112,6 +112,15 @@ impl Step for Llvm {
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         let target = self.target;
+        let target_native = if self.target.starts_with("riscv") {
+            // RISC-V target triples in Rust is not named the same as C compiler target triples.
+            // This converts Rust RISC-V target triples to C compiler triples.
+            let idx = target.find('-').unwrap();
+
+            format!("riscv{}{}", &target[5..7], &target[idx..])
+        } else {
+            target.to_string()
+        };
 
         let Meta { stamp, build_llvm_config, out_dir, root } =
             match prebuilt_llvm_config(builder, target) {
@@ -165,8 +174,8 @@ impl Step for Llvm {
             .define("LLVM_ENABLE_BINDINGS", "OFF")
             .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
             .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
-            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
-            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+            .define("LLVM_TARGET_ARCH", target_native.split('-').next().unwrap())
+            .define("LLVM_DEFAULT_TARGET_TRIPLE", target_native);
 
         if !target.contains("netbsd") {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
@@ -211,6 +220,17 @@ impl Step for Llvm {
                     cfg.define("CMAKE_EXE_LINKER_FLAGS", "-Wl,-Bsymbolic -static-libstdc++");
                 }
             }
+        }
+
+        if target.starts_with("riscv") {
+            // In RISC-V, using C++ atomics require linking to `libatomic` but the LLVM build
+            // system check cannot detect this. Therefore it is set manually here.
+            if !builder.config.llvm_tools_enabled {
+                cfg.define("CMAKE_EXE_LINKER_FLAGS", "-latomic");
+            } else {
+                cfg.define("CMAKE_EXE_LINKER_FLAGS", "-latomic -static-libstdc++");
+            }
+            cfg.define("CMAKE_SHARED_LINKER_FLAGS", "-latomic");
         }
 
         if target.contains("msvc") {

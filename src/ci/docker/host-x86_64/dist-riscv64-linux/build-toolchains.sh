@@ -19,9 +19,9 @@ exit 1
   set -x
 }
 
-mkdir -p /tmp/build-riscv
-cp riscv64-unknown-linux-gnu.config /tmp/build-riscv/.config
-cd /tmp/build-riscv
+mkdir build
+cd build
+cp ../riscv64-unknown-linux-gnu.config .config
 hide_output ct-ng build
 cd ..
-rm -rf build-riscv
+rm -rf build
