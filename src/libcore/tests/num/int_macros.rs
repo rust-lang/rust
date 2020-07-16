@@ -274,7 +274,7 @@ macro_rules! int_module {
                 // thussaturating_pow the overflowing result is exactly 1.
                 assert_eq!(r.wrapping_pow(2), 1 as $T);
                 assert_eq!(r.checked_pow(2), None);
-                assert_eq!(r.overflowing_pow(2), (1 as $T,true));
+                assert_eq!(r.overflowing_pow(2), (1 as $T, true));
                 assert_eq!(r.saturating_pow(2), MAX);
                 //test for negative exponent.
                 r = -2 as $T;
@@ -287,9 +287,9 @@ macro_rules! int_module {
                 assert_eq!(r.checked_pow(2), Some(4 as $T));
                 assert_eq!(r.checked_pow(3), Some(-8 as $T));
                 assert_eq!(r.checked_pow(0), Some(1 as $T));
-                assert_eq!(r.overflowing_pow(2), (4 as $T,false));
-                assert_eq!(r.overflowing_pow(3), (-8 as $T,false));
-                assert_eq!(r.overflowing_pow(0), (1 as $T,false));
+                assert_eq!(r.overflowing_pow(2), (4 as $T, false));
+                assert_eq!(r.overflowing_pow(3), (-8 as $T, false));
+                assert_eq!(r.overflowing_pow(0), (1 as $T, false));
                 assert_eq!(r.saturating_pow(2), 4 as $T);
                 assert_eq!(r.saturating_pow(3), -8 as $T);
                 assert_eq!(r.saturating_pow(0), 1 as $T);
