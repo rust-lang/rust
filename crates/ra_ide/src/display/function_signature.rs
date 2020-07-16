@@ -4,8 +4,7 @@
 // rewritten (matklad 2020-05-07)
 use std::convert::From;
 
-use hir::{Docs, Documentation, HasSource, HirDisplay};
-use ra_ide_db::RootDatabase;
+use hir::Documentation;
 use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 use stdx::split_delim;
 
@@ -14,8 +13,6 @@ use crate::display::{generic_parameters, where_predicates};
 #[derive(Debug)]
 pub(crate) enum CallableKind {
     Function,
-    StructConstructor,
-    VariantConstructor,
 }
 
 /// Contains information about a function signature
@@ -54,97 +51,6 @@ pub(crate) struct FunctionQualifier {
     pub(crate) is_unsafe: bool,
     /// The string `extern ".."`
     pub(crate) extern_abi: Option<String>,
-}
-
-impl FunctionSignature {
-    pub(crate) fn from_hir(db: &RootDatabase, function: hir::Function) -> Self {
-        let ast_node = function.source(db).value;
-        let mut res = FunctionSignature::from(&ast_node);
-        res.doc = function.docs(db);
-        res
-    }
-
-    pub(crate) fn from_struct(db: &RootDatabase, st: hir::Struct) -> Option<Self> {
-        let node: ast::StructDef = st.source(db).value;
-        if let ast::StructKind::Record(_) = node.kind() {
-            return None;
-        };
-
-        let mut params = vec![];
-        let mut parameter_types = vec![];
-        for field in st.fields(db).into_iter() {
-            let ty = field.signature_ty(db);
-            let raw_param = format!("{}", ty.display(db));
-
-            if let Some(param_type) = raw_param.split(':').nth(1).and_then(|it| it.get(1..)) {
-                parameter_types.push(param_type.to_string());
-            } else {
-                // useful when you have tuple struct
-                parameter_types.push(raw_param.clone());
-            }
-            params.push(raw_param);
-        }
-
-        Some(FunctionSignature {
-            kind: CallableKind::StructConstructor,
-            visibility: node.visibility().map(|n| n.syntax().text().to_string()),
-            // Do we need `const`?
-            qualifier: Default::default(),
-            name: node.name().map(|n| n.text().to_string()),
-            ret_type: node.name().map(|n| n.text().to_string()),
-            parameters: params,
-            parameter_names: vec![],
-            parameter_types,
-            generic_parameters: generic_parameters(&node),
-            where_predicates: where_predicates(&node),
-            doc: st.docs(db),
-            has_self_param: false,
-        })
-    }
-
-    pub(crate) fn from_enum_variant(db: &RootDatabase, variant: hir::EnumVariant) -> Option<Self> {
-        let node: ast::EnumVariant = variant.source(db).value;
-        match node.kind() {
-            ast::StructKind::Record(_) | ast::StructKind::Unit => return None,
-            _ => (),
-        };
-
-        let parent_name = variant.parent_enum(db).name(db).to_string();
-
-        let name = format!("{}::{}", parent_name, variant.name(db));
-
-        let mut params = vec![];
-        let mut parameter_types = vec![];
-        for field in variant.fields(db).into_iter() {
-            let ty = field.signature_ty(db);
-            let raw_param = format!("{}", ty.display(db));
-            if let Some(param_type) = raw_param.split(':').nth(1).and_then(|it| it.get(1..)) {
-                parameter_types.push(param_type.to_string());
-            } else {
-                // The unwrap_or_else is useful when you have tuple
-                parameter_types.push(raw_param);
-            }
-            let name = field.name(db);
-
-            params.push(format!("{}: {}", name, ty.display(db)));
-        }
-
-        Some(FunctionSignature {
-            kind: CallableKind::VariantConstructor,
-            visibility: None,
-            // Do we need `const`?
-            qualifier: Default::default(),
-            name: Some(name),
-            ret_type: None,
-            parameters: params,
-            parameter_names: vec![],
-            parameter_types,
-            generic_parameters: vec![],
-            where_predicates: vec![],
-            doc: variant.docs(db),
-            has_self_param: false,
-        })
-    }
 }
 
 impl From<&'_ ast::FnDef> for FunctionSignature {

@@ -1,4 +1,4 @@
-use hir::{Adt, HirDisplay, Semantics, Type};
+use hir::{Adt, Callable, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
@@ -7,7 +7,9 @@ use ra_syntax::{
 };
 use stdx::to_lower_snake_case;
 
-use crate::{display::function_signature::FunctionSignature, FileId};
+use crate::FileId;
+use ast::NameOwner;
+use either::Either;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -150,23 +152,26 @@ fn get_param_name_hints(
         _ => return None,
     };
 
-    let fn_signature = get_fn_signature(sema, &expr)?;
-    let n_params_to_skip =
-        if fn_signature.has_self_param && matches!(&expr, ast::Expr::MethodCallExpr(_)) {
-            1
-        } else {
-            0
-        };
-    let hints = fn_signature
-        .parameter_names
-        .iter()
-        .skip(n_params_to_skip)
+    let callable = get_callable(sema, &expr)?;
+    let hints = callable
+        .params(sema.db)
+        .into_iter()
         .zip(args)
-        .filter(|(param, arg)| should_show_param_name_hint(sema, &fn_signature, param, &arg))
+        .filter_map(|((param, _ty), arg)| match param? {
+            Either::Left(self_param) => Some((self_param.to_string(), arg)),
+            Either::Right(pat) => {
+                let param_name = match pat {
+                    ast::Pat::BindPat(it) => it.name()?.to_string(),
+                    it => it.to_string(),
+                };
+                Some((param_name, arg))
+            }
+        })
+        .filter(|(param_name, arg)| should_show_param_name_hint(sema, &callable, &param_name, &arg))
         .map(|(param_name, arg)| InlayHint {
             range: arg.syntax().text_range(),
             kind: InlayKind::ParameterHint,
-            label: param_name.into(),
+            label: param_name.to_string().into(),
         });
 
     acc.extend(hints);
@@ -250,28 +255,26 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
 
 fn should_show_param_name_hint(
     sema: &Semantics<RootDatabase>,
-    fn_signature: &FunctionSignature,
+    callable: &Callable,
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
     let param_name = param_name.trim_start_matches('_');
+    let fn_name = match callable.kind() {
+        hir::CallableKind::Function(it) => Some(it.name(sema.db).to_string()),
+        hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => None,
+    };
     if param_name.is_empty()
-        || Some(param_name) == fn_signature.name.as_ref().map(|s| s.trim_start_matches('_'))
+        || Some(param_name) == fn_name.as_ref().map(|s| s.trim_start_matches('_'))
         || is_argument_similar_to_param_name(sema, argument, param_name)
         || param_name.starts_with("ra_fixture")
     {
         return false;
     }
 
-    let parameters_len = if fn_signature.has_self_param {
-        fn_signature.parameters.len() - 1
-    } else {
-        fn_signature.parameters.len()
-    };
-
     // avoid displaying hints for common functions like map, filter, etc.
     // or other obvious words used in std
-    !(parameters_len == 1 && is_obvious_param(param_name))
+    !(callable.n_params() == 1 && is_obvious_param(param_name))
 }
 
 fn is_argument_similar_to_param_name(
@@ -318,27 +321,10 @@ fn is_obvious_param(param_name: &str) -> bool {
     param_name.len() == 1 || is_obvious_param_name
 }
 
-fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<FunctionSignature> {
+fn get_callable(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<Callable> {
     match expr {
-        ast::Expr::CallExpr(expr) => {
-            // FIXME: Type::as_callable is broken for closures
-            let callable = sema.type_of_expr(&expr.expr()?)?.as_callable(sema.db)?;
-            match callable.kind() {
-                hir::CallableKind::Function(it) => {
-                    Some(FunctionSignature::from_hir(sema.db, it.into()))
-                }
-                hir::CallableKind::TupleStruct(it) => {
-                    FunctionSignature::from_struct(sema.db, it.into())
-                }
-                hir::CallableKind::TupleEnumVariant(it) => {
-                    FunctionSignature::from_enum_variant(sema.db, it.into())
-                }
-            }
-        }
-        ast::Expr::MethodCallExpr(expr) => {
-            let fn_def = sema.resolve_method_call(&expr)?;
-            Some(FunctionSignature::from_hir(sema.db, fn_def))
-        }
+        ast::Expr::CallExpr(expr) => sema.type_of_expr(&expr.expr()?)?.as_callable(sema.db),
+        ast::Expr::MethodCallExpr(expr) => sema.resolve_method_call_as_callable(expr),
         _ => None,
     }
 }
@@ -360,7 +346,7 @@ mod tests {
         let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
         let actual =
             inlay_hints.into_iter().map(|it| (it.range, it.label.to_string())).collect::<Vec<_>>();
-        assert_eq!(expected, actual);
+        assert_eq!(expected, actual, "\nExpected:\n{:#?}\n\nActual:\n{:#?}", expected, actual);
     }
 
     fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
