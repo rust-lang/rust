@@ -16,19 +16,19 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
-  rust-audit:
-    name: Audit Rust vulnerabilities
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+  # rust-audit:
+  #   name: Audit Rust vulnerabilities
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v2
 
-    - uses: actions-rs/install@v0.1
-      with:
-        crate: cargo-audit
-        use-tool-cache: true
+  #   - uses: actions-rs/install@v0.1
+  #     with:
+  #       crate: cargo-audit
+  #       use-tool-cache: true
 
-    - run: cargo audit
+  #   - run: cargo audit
 
   rust:
     name: Rust
