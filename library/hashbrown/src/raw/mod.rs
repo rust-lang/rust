@@ -173,9 +173,9 @@ impl Iterator for ProbeSeq {
 /// taking the maximum load factor into account.
 ///
 /// Returns `None` if an overflow occurs.
-#[cfg_attr(feature = "inline-more", inline)]
 // Workaround for emscripten bug emscripten-core/emscripten-fastcomp#258
 #[cfg_attr(target_os = "emscripten", inline(never))]
+#[cfg_attr(not(target_os = "emscripten"), inline)]
 fn capacity_to_buckets(cap: usize) -> Option<usize> {
     debug_assert_ne!(cap, 0);
 
@@ -202,7 +202,7 @@ fn capacity_to_buckets(cap: usize) -> Option<usize> {
 
 /// Returns the maximum effective capacity for the given bucket mask, taking
 /// the maximum load factor into account.
-#[cfg_attr(feature = "inline-more", inline)]
+#[inline]
 fn bucket_mask_to_capacity(bucket_mask: usize) -> usize {
     if bucket_mask < 8 {
         // For tables with 1/2/4/8 buckets, we always reserve one empty slot.
