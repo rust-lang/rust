@@ -94,7 +94,8 @@ struct InternalNode<K, V> {
     data: LeafNode<K, V>,
 
     /// The pointers to the children of this node. `len + 1` of these are considered
-    /// initialized and valid.
+    /// initialized and valid. Although during the process of `into_iter` or `drop`,
+    /// some pointers are dangling while others still need to be traversed.
     edges: [MaybeUninit<BoxedNode<K, V>>; 2 * B],
 }
 
@@ -408,7 +409,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Unsafely asserts to the compiler some static information about whether this
-    /// node is a `Leaf`.
+    /// node is a `Leaf` or an `Internal`.
     unsafe fn cast_unchecked<NewType>(&mut self) -> NodeRef<marker::Mut<'_>, K, V, NewType> {
         NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
     }
@@ -515,7 +516,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
-    /// Adds a key/value pair the end of the node.
+    /// Adds a key/value pair to the end of the node.
     pub fn push(&mut self, key: K, val: V) {
         assert!(self.len() < CAPACITY);
 
@@ -602,8 +603,10 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
-    /// Removes a key/value pair from the end of this node. If this is an internal node,
-    /// also removes the edge that was to the right of that pair.
+    /// Removes a key/value pair from the end of this node and returns the pair.
+    /// If this is an internal node, also removes the edge that was to the right
+    /// of that pair and returns the orphaned node that this edge owned with its
+    /// parent erased.
     pub fn pop(&mut self) -> (K, V, Option<Root<K, V>>) {
         assert!(self.len() > 0);
 
@@ -883,7 +886,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     }
 
     /// Unsafely asserts to the compiler some static information about whether the underlying
-    /// node of this handle is a `Leaf`.
+    /// node of this handle is a `Leaf` or an `Internal`.
     unsafe fn cast_unchecked<NewType>(
         &mut self,
     ) -> Handle<NodeRef<marker::Mut<'_>, K, V, NewType>, marker::Edge> {
