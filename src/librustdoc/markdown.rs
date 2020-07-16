@@ -68,9 +68,9 @@ pub fn render<P: AsRef<Path>>(
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let text = if !options.markdown_no_toc {
-        MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).to_string()
+        MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).into_string()
     } else {
-        Markdown(text, &[], &mut ids, error_codes, edition, &playground).to_string()
+        Markdown(text, &[], &mut ids, error_codes, edition, &playground).into_string()
     };
 
     let err = write!(
