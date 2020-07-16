@@ -904,14 +904,13 @@ impl fmt::Debug for StderrLock<'_> {
     issue = "none"
 )]
 pub fn prompt(prompt: &str) -> Result<String> {
-    stdout().write(prompt.as_bytes())?;
+    stdout().write_all(prompt.as_bytes())?;
     input()
 }
 
-/// Constructs a new handle to the standard input of the current
-/// process, locks this handle and reads a line of input, returning
-/// either success ([`Ok`]) or failure ([`Err`]) containing the input.
-/// See the [`io::Result`] module documentation for details. For
+/// Reads a line from standard input, returning either success
+/// ([`Ok`]) or failure ([`Err`]) containing the input. See the
+/// [`io::Result`] module documentation for details. For
 /// automatic prompt handling, see the [`prompt`] method.
 ///
 /// If you need more explicit control over
