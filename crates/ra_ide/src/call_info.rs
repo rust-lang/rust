@@ -48,43 +48,40 @@ fn call_info_for_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Op
     // Find the calling expression and it's NameRef
     let calling_node = FnCallNode::with_node(&token.parent())?;
 
-    let (mut call_info, has_self) = match &calling_node {
+    let signature = match &calling_node {
         FnCallNode::CallExpr(call) => {
             //FIXME: Type::as_callable is broken
             let callable_def = sema.type_of_expr(&call.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::FunctionId(it) => {
                     let fn_def = it.into();
-                    (CallInfo::with_fn(sema.db, fn_def), fn_def.has_self_param(sema.db))
+                    FunctionSignature::from_hir(sema.db, fn_def)
                 }
                 hir::CallableDef::StructId(it) => {
-                    (CallInfo::with_struct(sema.db, it.into())?, false)
+                    FunctionSignature::from_struct(sema.db, it.into())?
                 }
                 hir::CallableDef::EnumVariantId(it) => {
-                    (CallInfo::with_enum_variant(sema.db, it.into())?, false)
+                    FunctionSignature::from_enum_variant(sema.db, it.into())?
                 }
             }
         }
         FnCallNode::MethodCallExpr(method_call) => {
             let function = sema.resolve_method_call(&method_call)?;
-            (CallInfo::with_fn(sema.db, function), function.has_self_param(sema.db))
+            FunctionSignature::from_hir(sema.db, function)
         }
         FnCallNode::MacroCallExpr(macro_call) => {
             let macro_def = sema.resolve_macro_call(&macro_call)?;
-            (CallInfo::with_macro(sema.db, macro_def)?, false)
+            FunctionSignature::from_macro(sema.db, macro_def)?
         }
     };
 
     // If we have a calling expression let's find which argument we are on
-    let num_params = call_info.parameters().len();
+    let num_params = signature.parameters.len();
 
-    match num_params {
-        0 => (),
-        1 => {
-            if !has_self {
-                call_info.active_parameter = Some(0);
-            }
-        }
+    let active_parameter = match num_params {
+        0 => None,
+        1 if signature.has_self_param => None,
+        1 => Some(0),
         _ => {
             if let Some(arg_list) = calling_node.arg_list() {
                 // Number of arguments specified at the call site
@@ -107,16 +104,18 @@ fn call_info_for_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Op
                 );
 
                 // If we are in a method account for `self`
-                if has_self {
+                if signature.has_self_param {
                     param += 1;
                 }
 
-                call_info.active_parameter = Some(param);
+                Some(param)
+            } else {
+                None
             }
         }
-    }
+    };
 
-    Some(call_info)
+    Some(CallInfo { signature, active_parameter })
 }
 
 #[derive(Debug)]
@@ -189,34 +188,6 @@ impl CallInfo {
         let res = ActiveParameter { ty, name };
         Some(res)
     }
-
-    fn with_fn(db: &RootDatabase, function: hir::Function) -> Self {
-        let signature = FunctionSignature::from_hir(db, function);
-
-        CallInfo { signature, active_parameter: None }
-    }
-
-    fn with_struct(db: &RootDatabase, st: hir::Struct) -> Option<Self> {
-        let signature = FunctionSignature::from_struct(db, st)?;
-
-        Some(CallInfo { signature, active_parameter: None })
-    }
-
-    fn with_enum_variant(db: &RootDatabase, variant: hir::EnumVariant) -> Option<Self> {
-        let signature = FunctionSignature::from_enum_variant(db, variant)?;
-
-        Some(CallInfo { signature, active_parameter: None })
-    }
-
-    fn with_macro(db: &RootDatabase, macro_def: hir::MacroDef) -> Option<Self> {
-        let signature = FunctionSignature::from_macro(db, macro_def)?;
-
-        Some(CallInfo { signature, active_parameter: None })
-    }
-
-    fn parameters(&self) -> &[String] {
-        &self.signature.parameters
-    }
 }
 
 #[cfg(test)]
@@ -236,7 +207,8 @@ mod tests {
                     Some(docs) => format!("{}\n------\n", docs.as_str()),
                 };
                 let params = call_info
-                    .parameters()
+                    .signature
+                    .parameters
                     .iter()
                     .enumerate()
                     .map(|(i, param)| {
