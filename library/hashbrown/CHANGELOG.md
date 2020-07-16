@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.8.1] - 2020-07-16
+
 ### Added
 - Added `erase` and `remove` to `RawTable`. (#171)
 - Added `try_with_capacity` to `RawTable`. (#174)
@@ -17,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - Deprecated `RawTable::erase_no_drop` in favor of `erase` and `remove`. (#176)
+- `insert_no_grow` is now exposed under the `"raw"` feature. (#180)
 
 ## [v0.8.0] - 2020-06-18
 
@@ -222,7 +225,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.8.1...HEAD
+[v0.8.1]: https://github.com/rust-lang/hashbrown/compare/v0.8.0...v0.8.1
 [v0.8.0]: https://github.com/rust-lang/hashbrown/compare/v0.7.2...v0.8.0
 [v0.7.2]: https://github.com/rust-lang/hashbrown/compare/v0.7.1...v0.7.2
 [v0.7.1]: https://github.com/rust-lang/hashbrown/compare/v0.7.0...v0.7.1
