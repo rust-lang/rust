@@ -4526,7 +4526,12 @@ fn sidebar_foreign_type(buf: &mut Buffer, it: &clean::Item) {
 
 fn item_macro(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Macro) {
     wrap_into_docblock(w, |w| {
-        w.write_str(&highlight::render_with_highlighting(&t.source, Some("macro"), None, None))
+        w.write_str(&highlight::render_with_highlighting(
+            t.source.clone(),
+            Some("macro"),
+            None,
+            None,
+        ))
     });
     document(w, cx, it)
 }
