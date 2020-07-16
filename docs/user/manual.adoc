@@ -13,8 +13,12 @@ This manual focuses on a specific usage of the library -- running it as part of 
 https://microsoft.github.io/language-server-protocol/[Language Server Protocol] (LSP).
 The LSP allows various code editors, like VS Code, Emacs or Vim, to implement semantic features like completion or goto definition by talking to an external language server process.
 
-To improve this document, send a pull request against
-https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/manual.adoc[this file].
+[TIP]
+====
+[.lead]
+To improve this document, send a pull request: +
+https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/manual.adoc[https://github.com/rust-analyzer/.../manual.adoc]
+====
 
 If you have questions about using rust-analyzer, please ask them in the https://users.rust-lang.org/c/ide/14["`IDEs and Editors`"] topic of Rust users forum.
 
