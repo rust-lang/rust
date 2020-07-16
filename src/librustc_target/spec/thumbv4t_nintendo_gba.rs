@@ -1,11 +1,11 @@
-//! Targets the Nintendo Game Boy Advance (GBA), a handheld game device from 2001.
+//! Targets the Nintendo Game Boy Advance (GBA),
+//! a handheld game device from 2001.
 //!
 //! Please ping @Lokathor if changes are needed.
 //!
-//! Important: This target **does not** specify a linker script or the ROM
-//! header. You'll still need to provide these yourself to construct a final
-//! binary. Generally you'd do this with something like
-//! `-Clink-arg=-Tmy_script.ld` and `-Clink-arg=my_crt.o`.
+//! The target profile assumes that you have the ARM binutils in your path (specifically the linker, `arm-none-eabi-ld`). They can be obtained for free for all major OSes from the ARM developer's website, and they may also be available in your system's package manager
+//!
+//! **Important:** This target profile **does not** specify a linker script or the ROM header. You'll still need to provide these yourself to construct a final  binary. Generally you'd do this with something like `-Clink-arg=-Tmy_script.ld` and `-Clink-arg=my_crt.o`.
 
 use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
 
