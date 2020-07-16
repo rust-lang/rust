@@ -6,24 +6,20 @@ use self::InferTy::*;
 use self::TyKind::*;
 
 use crate::infer::canonical::Canonical;
-use crate::mir::interpret::ConstValue;
-use crate::mir::interpret::{LitToConstInput, Scalar};
-use crate::mir::Promoted;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::{
     self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable, WithConstness,
 };
-use crate::ty::{List, ParamEnv, ParamEnvAnd, TyS};
+use crate::ty::{List, ParamEnv, TyS};
 use polonius_engine::Atom;
 use rustc_ast::ast;
 use rustc_data_structures::captures::Captures;
-use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_target::abi::{Size, VariantIdx};
+use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -1122,7 +1118,7 @@ impl<'tcx> ParamConst {
         ParamConst::new(def.index, def.name)
     }
 
-    pub fn to_const(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
+    pub fn to_const(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
         tcx.mk_const_param(self.index, self.name, ty)
     }
 }
@@ -2192,278 +2188,4 @@ impl<'tcx> TyS<'tcx> {
     pub fn is_zst(&'tcx self, tcx: TyCtxt<'tcx>, did: DefId) -> bool {
         tcx.layout_of(tcx.param_env(did).and(self)).map(|layout| layout.is_zst()).unwrap_or(false)
     }
-}
-
-/// Typed constant value.
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
-#[derive(HashStable)]
-pub struct Const<'tcx> {
-    pub ty: Ty<'tcx>,
-
-    pub val: ConstKind<'tcx>,
-}
-
-#[cfg(target_arch = "x86_64")]
-static_assert_size!(Const<'_>, 48);
-
-impl<'tcx> Const<'tcx> {
-    /// Literals and const generic parameters are eagerly converted to a constant, everything else
-    /// becomes `Unevaluated`.
-    pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
-        Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id))
-    }
-
-    pub fn from_opt_const_arg_anon_const(
-        tcx: TyCtxt<'tcx>,
-        def: ty::WithOptConstParam<LocalDefId>,
-    ) -> &'tcx Self {
-        debug!("Const::from_anon_const(def={:?})", def);
-
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-
-        let body_id = match tcx.hir().get(hir_id) {
-            hir::Node::AnonConst(ac) => ac.body,
-            _ => span_bug!(
-                tcx.def_span(def.did.to_def_id()),
-                "from_anon_const can only process anonymous constants"
-            ),
-        };
-
-        let expr = &tcx.hir().body(body_id).value;
-
-        let ty = tcx.type_of(def.def_id_for_type_of());
-
-        let lit_input = match expr.kind {
-            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => match expr.kind {
-                hir::ExprKind::Lit(ref lit) => {
-                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
-                }
-                _ => None,
-            },
-            _ => None,
-        };
-
-        if let Some(lit_input) = lit_input {
-            // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir.
-            if let Ok(c) = tcx.at(expr.span).lit_to_const(lit_input) {
-                return c;
-            } else {
-                tcx.sess.delay_span_bug(expr.span, "Const::from_anon_const: couldn't lit_to_const");
-            }
-        }
-
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = match &expr.kind {
-            hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
-                block.expr.as_ref().unwrap()
-            }
-            _ => expr,
-        };
-
-        use hir::{def::DefKind::ConstParam, def::Res, ExprKind, Path, QPath};
-        let val = match expr.kind {
-            ExprKind::Path(QPath::Resolved(_, &Path { res: Res::Def(ConstParam, def_id), .. })) => {
-                // Find the name and index of the const parameter by indexing the generics of
-                // the parent item and construct a `ParamConst`.
-                let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
-                let item_id = tcx.hir().get_parent_node(hir_id);
-                let item_def_id = tcx.hir().local_def_id(item_id);
-                let generics = tcx.generics_of(item_def_id.to_def_id());
-                let index =
-                    generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id).to_def_id()];
-                let name = tcx.hir().name(hir_id);
-                ty::ConstKind::Param(ty::ParamConst::new(index, name))
-            }
-            _ => ty::ConstKind::Unevaluated(
-                def.to_global(),
-                InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
-                None,
-            ),
-        };
-
-        tcx.mk_const(ty::Const { val, ty })
-    }
-
-    #[inline]
-    /// Interns the given value as a constant.
-    pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        tcx.mk_const(Self { val: ConstKind::Value(val), ty })
-    }
-
-    #[inline]
-    /// Interns the given scalar as a constant.
-    pub fn from_scalar(tcx: TyCtxt<'tcx>, val: Scalar, ty: Ty<'tcx>) -> &'tcx Self {
-        Self::from_value(tcx, ConstValue::Scalar(val), ty)
-    }
-
-    #[inline]
-    /// Creates a constant with the given integer value and interns it.
-    pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx Self {
-        let size = tcx
-            .layout_of(ty)
-            .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
-            .size;
-        Self::from_scalar(tcx, Scalar::from_uint(bits, size), ty.value)
-    }
-
-    #[inline]
-    /// Creates an interned zst constant.
-    pub fn zero_sized(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        Self::from_scalar(tcx, Scalar::zst(), ty)
-    }
-
-    #[inline]
-    /// Creates an interned bool constant.
-    pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> &'tcx Self {
-        Self::from_bits(tcx, v as u128, ParamEnv::empty().and(tcx.types.bool))
-    }
-
-    #[inline]
-    /// Creates an interned usize constant.
-    pub fn from_usize(tcx: TyCtxt<'tcx>, n: u64) -> &'tcx Self {
-        Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
-    }
-
-    #[inline]
-    /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
-    /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it
-    /// contains const generic parameters or pointers).
-    pub fn try_eval_bits(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Option<u128> {
-        assert_eq!(self.ty, ty);
-        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
-        // if `ty` does not depend on generic parameters, use an empty param_env
-        self.eval(tcx, param_env).val.try_to_bits(size)
-    }
-
-    #[inline]
-    /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
-    /// unevaluated constant.
-    pub fn eval(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> &Const<'tcx> {
-        if let ConstKind::Unevaluated(def, substs, promoted) = self.val {
-            use crate::mir::interpret::ErrorHandled;
-
-            let param_env_and_substs = param_env.with_reveal_all().and(substs);
-
-            // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
-            // also does later, but we want to do it before checking for
-            // inference variables.
-            let param_env_and_substs = tcx.erase_regions(&param_env_and_substs);
-
-            // HACK(eddyb) when the query key would contain inference variables,
-            // attempt using identity substs and `ParamEnv` instead, that will succeed
-            // when the expression doesn't depend on any parameters.
-            // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
-            // we can call `infcx.const_eval_resolve` which handles inference variables.
-            let param_env_and_substs = if param_env_and_substs.needs_infer() {
-                tcx.param_env(def.did).and(InternalSubsts::identity_for_item(tcx, def.did))
-            } else {
-                param_env_and_substs
-            };
-
-            // FIXME(eddyb) maybe the `const_eval_*` methods should take
-            // `ty::ParamEnvAnd<SubstsRef>` instead of having them separate.
-            let (param_env, substs) = param_env_and_substs.into_parts();
-            // try to resolve e.g. associated constants to their definition on an impl, and then
-            // evaluate the const.
-            match tcx.const_eval_resolve(param_env, def, substs, promoted, None) {
-                // NOTE(eddyb) `val` contains no lifetimes/types/consts,
-                // and we use the original type, so nothing from `substs`
-                // (which may be identity substs, see above),
-                // can leak through `val` into the const we return.
-                Ok(val) => Const::from_value(tcx, val, self.ty),
-                Err(ErrorHandled::TooGeneric | ErrorHandled::Linted) => self,
-                Err(ErrorHandled::Reported(ErrorReported)) => tcx.const_error(self.ty),
-            }
-        } else {
-            self
-        }
-    }
-
-    #[inline]
-    pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.try_eval_bits(tcx, param_env, tcx.types.bool).and_then(|v| match v {
-            0 => Some(false),
-            1 => Some(true),
-            _ => None,
-        })
-    }
-
-    #[inline]
-    pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
-        self.try_eval_bits(tcx, param_env, tcx.types.usize).map(|v| v as u64)
-    }
-
-    #[inline]
-    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
-    pub fn eval_bits(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
-        self.try_eval_bits(tcx, param_env, ty)
-            .unwrap_or_else(|| bug!("expected bits of {:#?}, got {:#?}", ty, self))
-    }
-
-    #[inline]
-    /// Panics if the value cannot be evaluated or doesn't contain a valid `usize`.
-    pub fn eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
-        self.eval_bits(tcx, param_env, tcx.types.usize) as u64
-    }
-}
-
-/// Represents a constant in Rust.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
-#[derive(HashStable)]
-pub enum ConstKind<'tcx> {
-    /// A const generic parameter.
-    Param(ParamConst),
-
-    /// Infer the value of the const.
-    Infer(InferConst<'tcx>),
-
-    /// Bound const variable, used only when preparing a trait query.
-    Bound(DebruijnIndex, BoundVar),
-
-    /// A placeholder const - universally quantified higher-ranked const.
-    Placeholder(ty::PlaceholderConst),
-
-    /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
-    /// variants when the code is monomorphic enough for that.
-    Unevaluated(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>, Option<Promoted>),
-
-    /// Used to hold computed value.
-    Value(ConstValue<'tcx>),
-
-    /// A placeholder for a const which could not be computed; this is
-    /// propagated to avoid useless error messages.
-    Error(DelaySpanBugEmitted),
-}
-
-#[cfg(target_arch = "x86_64")]
-static_assert_size!(ConstKind<'_>, 40);
-
-impl<'tcx> ConstKind<'tcx> {
-    #[inline]
-    pub fn try_to_scalar(&self) -> Option<Scalar> {
-        if let ConstKind::Value(val) = self { val.try_to_scalar() } else { None }
-    }
-
-    #[inline]
-    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        if let ConstKind::Value(val) = self { val.try_to_bits(size) } else { None }
-    }
-}
-
-/// An inference variable for a const, for use in const generics.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
-#[derive(HashStable)]
-pub enum InferConst<'tcx> {
-    /// Infer the value of the const.
-    Var(ConstVid<'tcx>),
-    /// A fresh const variable. See `infer::freshen` for more details.
-    Fresh(u32),
 }

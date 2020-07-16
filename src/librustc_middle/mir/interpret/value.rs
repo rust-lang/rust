@@ -60,6 +60,18 @@ impl<'tcx> ConstValue<'tcx> {
         self.try_to_scalar()?.to_bits(size).ok()
     }
 
+    pub fn try_to_bool(&self) -> Option<bool> {
+        match self.try_to_bits(Size::from_bytes(1))? {
+            0 => Some(false),
+            1 => Some(true),
+            _ => None,
+        }
+    }
+
+    pub fn try_to_machine_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
+        Some(self.try_to_bits(tcx.data_layout.pointer_size)? as u64)
+    }
+
     pub fn try_to_bits_for_ty(
         &self,
         tcx: TyCtxt<'tcx>,
