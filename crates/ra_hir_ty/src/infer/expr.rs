@@ -17,7 +17,7 @@ use crate::{
     autoderef, method_resolution, op,
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
+    ApplicationTy, Binders, CallableDefId, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
     TraitRef, Ty, TypeCtor,
 };
 
@@ -854,7 +854,7 @@ impl<'a> InferenceContext<'a> {
                 }
                 // add obligation for trait implementation, if this is a trait method
                 match def {
-                    CallableDef::FunctionId(f) => {
+                    CallableDefId::FunctionId(f) => {
                         if let AssocContainerId::TraitId(trait_) =
                             f.lookup(self.db.upcast()).container
                         {
@@ -865,7 +865,7 @@ impl<'a> InferenceContext<'a> {
                             self.obligations.push(Obligation::Trait(TraitRef { trait_, substs }));
                         }
                     }
-                    CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {}
+                    CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_) => {}
                 }
             }
         }

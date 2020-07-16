@@ -768,11 +768,11 @@ fn count_impl_traits(type_ref: &TypeRef) -> usize {
 }
 
 /// Build the signature of a callable item (function, struct or enum variant).
-pub fn callable_item_sig(db: &dyn HirDatabase, def: CallableDef) -> PolyFnSig {
+pub fn callable_item_sig(db: &dyn HirDatabase, def: CallableDefId) -> PolyFnSig {
     match def {
-        CallableDef::FunctionId(f) => fn_sig_for_fn(db, f),
-        CallableDef::StructId(s) => fn_sig_for_struct_constructor(db, s),
-        CallableDef::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
+        CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f),
+        CallableDefId::StructId(s) => fn_sig_for_struct_constructor(db, s),
+        CallableDefId::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
     }
 }
 
@@ -1107,31 +1107,31 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum CallableDef {
+pub enum CallableDefId {
     FunctionId(FunctionId),
     StructId(StructId),
     EnumVariantId(EnumVariantId),
 }
-impl_from!(FunctionId, StructId, EnumVariantId for CallableDef);
+impl_from!(FunctionId, StructId, EnumVariantId for CallableDefId);
 
-impl CallableDef {
+impl CallableDefId {
     pub fn krate(self, db: &dyn HirDatabase) -> CrateId {
         let db = db.upcast();
         match self {
-            CallableDef::FunctionId(f) => f.lookup(db).module(db),
-            CallableDef::StructId(s) => s.lookup(db).container.module(db),
-            CallableDef::EnumVariantId(e) => e.parent.lookup(db).container.module(db),
+            CallableDefId::FunctionId(f) => f.lookup(db).module(db),
+            CallableDefId::StructId(s) => s.lookup(db).container.module(db),
+            CallableDefId::EnumVariantId(e) => e.parent.lookup(db).container.module(db),
         }
         .krate
     }
 }
 
-impl From<CallableDef> for GenericDefId {
-    fn from(def: CallableDef) -> GenericDefId {
+impl From<CallableDefId> for GenericDefId {
+    fn from(def: CallableDefId) -> GenericDefId {
         match def {
-            CallableDef::FunctionId(f) => f.into(),
-            CallableDef::StructId(s) => s.into(),
-            CallableDef::EnumVariantId(e) => e.into(),
+            CallableDefId::FunctionId(f) => f.into(),
+            CallableDefId::StructId(s) => s.into(),
+            CallableDefId::EnumVariantId(e) => e.into(),
         }
     }
 }

@@ -13,7 +13,7 @@ use ra_prof::profile;
 use crate::{
     method_resolution::{InherentImpls, TraitImpls},
     traits::chalk,
-    Binders, CallableDef, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
+    Binders, CallableDefId, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
     ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
@@ -45,7 +45,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
     #[salsa::invoke(crate::callable_item_sig)]
-    fn callable_item_signature(&self, def: CallableDef) -> PolyFnSig;
+    fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;
 
     #[salsa::invoke(crate::lower::return_type_impl_traits)]
     fn return_type_impl_traits(
@@ -77,7 +77,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
-    fn intern_callable_def(&self, callable_def: CallableDef) -> crate::CallableDefId;
+    fn intern_callable_def(&self, callable_def: CallableDefId) -> InternedCallableDefId;
     #[salsa::interned]
     fn intern_type_param_id(&self, param_id: TypeParamId) -> GlobalTypeParamId;
     #[salsa::interned]
@@ -151,3 +151,9 @@ impl_intern_key!(InternedOpaqueTyId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClosureId(salsa::InternId);
 impl_intern_key!(ClosureId);
+
+/// This exists just for Chalk, because Chalk just has a single `FnDefId` where
+/// we have different IDs for struct and enum variant constructors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct InternedCallableDefId(salsa::InternId);
+impl_intern_key!(InternedCallableDefId);

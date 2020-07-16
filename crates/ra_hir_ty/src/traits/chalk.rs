@@ -18,7 +18,7 @@ use crate::{
     display::HirDisplay,
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     utils::generics,
-    CallableDef, DebruijnIndex, FnSig, GenericPredicate, Substs, Ty, TypeCtor,
+    CallableDefId, DebruijnIndex, FnSig, GenericPredicate, Substs, Ty, TypeCtor,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
@@ -525,7 +525,7 @@ pub(crate) fn fn_def_datum_query(
     _krate: CrateId,
     fn_def_id: FnDefId,
 ) -> Arc<FnDefDatum> {
-    let callable_def: CallableDef = from_chalk(db, fn_def_id);
+    let callable_def: CallableDefId = from_chalk(db, fn_def_id);
     let generic_params = generics(db.upcast(), callable_def.into());
     let sig = db.callable_item_signature(callable_def);
     let bound_vars = Substs::bound_vars(&generic_params, DebruijnIndex::INNERMOST);
@@ -552,14 +552,14 @@ pub(crate) fn fn_def_datum_query(
     Arc::new(datum)
 }
 
-impl From<FnDefId> for crate::CallableDefId {
+impl From<FnDefId> for crate::db::InternedCallableDefId {
     fn from(fn_def_id: FnDefId) -> Self {
         InternKey::from_intern_id(fn_def_id.0)
     }
 }
 
-impl From<crate::CallableDefId> for FnDefId {
-    fn from(callable_def_id: crate::CallableDefId) -> Self {
+impl From<crate::db::InternedCallableDefId> for FnDefId {
+    fn from(callable_def_id: crate::db::InternedCallableDefId) -> Self {
         chalk_ir::FnDefId(callable_def_id.as_intern_id())
     }
 }

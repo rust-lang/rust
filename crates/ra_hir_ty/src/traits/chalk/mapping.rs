@@ -16,7 +16,7 @@ use crate::{
     db::HirDatabase,
     primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
     traits::{Canonical, Obligation},
-    ApplicationTy, CallableDef, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
+    ApplicationTy, CallableDefId, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
     ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TyKind, TypeCtor,
 };
 
@@ -454,14 +454,14 @@ impl ToChalk for hir_def::ImplId {
     }
 }
 
-impl ToChalk for CallableDef {
+impl ToChalk for CallableDefId {
     type Chalk = FnDefId;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> FnDefId {
         db.intern_callable_def(self).into()
     }
 
-    fn from_chalk(db: &dyn HirDatabase, fn_def_id: FnDefId) -> CallableDef {
+    fn from_chalk(db: &dyn HirDatabase, fn_def_id: FnDefId) -> CallableDefId {
         db.lookup_intern_callable_def(fn_def_id.into())
     }
 }

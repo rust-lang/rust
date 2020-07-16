@@ -33,7 +33,7 @@ use hir_def::{
     TypeParamId,
 };
 use itertools::Itertools;
-use ra_db::{impl_intern_key, salsa, CrateId};
+use ra_db::{salsa, CrateId};
 
 use crate::{
     db::HirDatabase,
@@ -44,7 +44,7 @@ use crate::{
 
 pub use autoderef::autoderef;
 pub use infer::{InferTy, InferenceResult};
-pub use lower::CallableDef;
+pub use lower::CallableDefId;
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, ImplTraitLoweringMode, TyDefId,
     TyLoweringContext, ValueTyDefId,
@@ -102,7 +102,7 @@ pub enum TypeCtor {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(CallableDef),
+    FnDef(CallableDefId),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
@@ -139,12 +139,6 @@ pub enum TypeCtor {
     /// parameter.
     Closure { def: DefWithBodyId, expr: ExprId },
 }
-
-/// This exists just for Chalk, because Chalk just has a single `FnDefId` where
-/// we have different IDs for struct and enum variant constructors.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct CallableDefId(salsa::InternId);
-impl_intern_key!(CallableDefId);
 
 impl TypeCtor {
     pub fn num_ty_params(self, db: &dyn HirDatabase) -> usize {
@@ -773,7 +767,7 @@ impl Ty {
         }
     }
 
-    pub fn as_callable(&self) -> Option<(CallableDef, &Substs)> {
+    pub fn as_callable(&self) -> Option<(CallableDefId, &Substs)> {
         match self {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(callable_def), parameters }) => {
                 Some((*callable_def, parameters))

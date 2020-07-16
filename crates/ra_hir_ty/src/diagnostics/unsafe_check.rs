@@ -11,7 +11,7 @@ use hir_def::{
 use hir_expand::diagnostics::DiagnosticSink;
 
 use crate::{
-    db::HirDatabase, diagnostics::MissingUnsafe, lower::CallableDef, ApplicationTy,
+    db::HirDatabase, diagnostics::MissingUnsafe, lower::CallableDefId, ApplicationTy,
     InferenceResult, Ty, TypeCtor,
 };
 
@@ -88,7 +88,7 @@ fn walk_unsafe(
         Expr::Call { callee, .. } => {
             let ty = &infer[*callee];
             if let &Ty::Apply(ApplicationTy {
-                ctor: TypeCtor::FnDef(CallableDef::FunctionId(func)),
+                ctor: TypeCtor::FnDef(CallableDefId::FunctionId(func)),
                 ..
             }) = ty
             {

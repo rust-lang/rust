@@ -53,14 +53,14 @@ fn call_info_for_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Op
             //FIXME: Type::as_callable is broken
             let callable_def = sema.type_of_expr(&call.expr()?)?.as_callable()?;
             match callable_def {
-                hir::CallableDef::FunctionId(it) => {
+                hir::CallableDefId::FunctionId(it) => {
                     let fn_def = it.into();
                     FunctionSignature::from_hir(sema.db, fn_def)
                 }
-                hir::CallableDef::StructId(it) => {
+                hir::CallableDefId::StructId(it) => {
                     FunctionSignature::from_struct(sema.db, it.into())?
                 }
-                hir::CallableDef::EnumVariantId(it) => {
+                hir::CallableDefId::EnumVariantId(it) => {
                     FunctionSignature::from_enum_variant(sema.db, it.into())?
                 }
             }

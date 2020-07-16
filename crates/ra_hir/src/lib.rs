@@ -55,4 +55,4 @@ pub use hir_expand::{
     hygiene::Hygiene, name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId,
     MacroFile, Origin,
 };
-pub use hir_ty::{display::HirDisplay, CallableDef};
+pub use hir_ty::{display::HirDisplay, CallableDefId};

@@ -97,7 +97,7 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                     //FIXME: Type::as_callable is broken
                     let callable_def = sema.type_of_expr(&expr.expr()?)?.as_callable()?;
                     match callable_def {
-                        hir::CallableDef::FunctionId(it) => {
+                        hir::CallableDefId::FunctionId(it) => {
                             let fn_def: hir::Function = it.into();
                             let nav = fn_def.to_nav(db);
                             Some(nav)
