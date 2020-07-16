@@ -726,7 +726,7 @@ impl<'a> Builder<'a> {
             .env("RUSTDOC_REAL", self.rustdoc(compiler))
             .env("RUSTDOC_CRATE_VERSION", self.rust_version())
             .env("RUSTC_BOOTSTRAP", "1")
-            .arg("-Dinvalid_codeblock_attributes");
+            .arg("-Winvalid_codeblock_attributes");
         if self.config.deny_warnings {
             cmd.arg("-Dwarnings");
         }
@@ -1144,6 +1144,7 @@ impl<'a> Builder<'a> {
 
             if self.config.deny_warnings {
                 lint_flags.push("-Dwarnings");
+                rustdocflags.arg("-Dwarnings");
             }
 
             // FIXME(#58633) hide "unused attribute" errors in incremental
@@ -1162,7 +1163,7 @@ impl<'a> Builder<'a> {
             // fixed via better support from Cargo.
             cargo.env("RUSTC_LINT_FLAGS", lint_flags.join(" "));
 
-            rustdocflags.arg("-Dinvalid_codeblock_attributes");
+            rustdocflags.arg("-Winvalid_codeblock_attributes");
         }
 
         if let Mode::Rustc | Mode::Codegen = mode {
