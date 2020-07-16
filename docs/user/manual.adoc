@@ -383,7 +383,7 @@ For example, if you want to run https://crates.io/crates/cargo-watch[`cargo watc
     "label": "Watch",
     "group": "build",
     "type": "shell",
-    "command": "cargo watch --package rust-analyzer",
+    "command": "cargo watch",
     "problemMatcher": "$rustc-watch",
     "isBackground": true
 }
