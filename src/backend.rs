@@ -97,6 +97,32 @@ impl WriteDebugInfo for ObjectProduct {
     }
 }
 
+// FIXME remove once atomic instructions are implemented in Cranelift.
+pub(crate) trait AddConstructor {
+    fn add_constructor(&mut self, func_id: FuncId);
+}
+
+impl AddConstructor for ObjectProduct {
+    fn add_constructor(&mut self, func_id: FuncId) {
+        let symbol = self.function_symbol(func_id);
+        let segment = self.object.segment_name(object::write::StandardSegment::Data);
+        let init_array_section = self.object.add_section(segment.to_vec(), b".init_array".to_vec(), SectionKind::Data);
+        self.object.append_section_data(
+            init_array_section,
+            &std::iter::repeat(0).take(8 /*FIXME pointer size*/).collect::<Vec<u8>>(),
+            8,
+        );
+        self.object.add_relocation(init_array_section, object::write::Relocation {
+            offset: 0,
+            size: 64, // FIXME pointer size
+            kind: RelocationKind::Absolute,
+            encoding: RelocationEncoding::Generic,
+            symbol,
+            addend: 0,
+        }).unwrap();
+    }
+}
+
 pub(crate) trait Emit {
     fn emit(self) -> Vec<u8>;
 }
@@ -140,7 +166,7 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
     metadata_object.write().unwrap()
 }
 
-pub(crate) type Backend = impl cranelift_module::Backend<Product: Emit + WriteDebugInfo>;
+pub(crate) type Backend = impl cranelift_module::Backend<Product: AddConstructor + Emit + WriteDebugInfo>;
 
 pub(crate) fn make_module(sess: &Session, name: String) -> Module<Backend> {
     let module: Module<ObjectBackend> = Module::new(

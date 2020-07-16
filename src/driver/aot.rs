@@ -11,7 +11,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use crate::prelude::*;
 
-use crate::backend::{Emit, WriteDebugInfo};
+use crate::backend::{AddConstructor, Emit, WriteDebugInfo};
 
 fn new_module(tcx: TyCtxt<'_>, name: String) -> Module<crate::backend::Backend> {
     let module = crate::backend::make_module(tcx.sess, name);
@@ -35,8 +35,9 @@ fn emit_module<B: Backend>(
     mut module: Module<B>,
     debug: Option<DebugContext<'_>>,
     unwind_context: UnwindContext<'_>,
+    map_product: impl FnOnce(B::Product) -> B::Product,
 ) -> ModuleCodegenResult
-    where B::Product: Emit + WriteDebugInfo,
+    where B::Product: AddConstructor + Emit + WriteDebugInfo,
 {
     module.finalize_definitions();
     let mut product = module.finish();
@@ -46,6 +47,8 @@ fn emit_module<B: Backend>(
     }
 
     unwind_context.emit(&mut product);
+
+    let product = map_product(product);
 
     let tmp_file = tcx
         .output_filenames(LOCAL_CRATE)
@@ -110,7 +113,23 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
-    let module = new_module(tcx, cgu_name.as_str().to_string());
+    let mut module = new_module(tcx, cgu_name.as_str().to_string());
+
+    // Initialize the global atomic mutex using a constructor for proc-macros.
+    // FIXME implement atomic instructions in Cranelift.
+    let mut init_atomics_mutex_from_constructor = None;
+    if tcx.sess.crate_types().contains(&rustc_session::config::CrateType::ProcMacro) {
+        if mono_items.iter().any(|(mono_item, _)| {
+            match mono_item {
+                rustc_middle::mir::mono::MonoItem::Static(def_id) => {
+                    tcx.symbol_name(Instance::mono(tcx, *def_id)).name.as_str().contains("__rustc_proc_macro_decls_")
+                }
+                _ => false,
+            }
+        }) {
+            init_atomics_mutex_from_constructor = Some(crate::atomic_shim::init_global_lock_constructor(&mut module, &format!("{}_init_atomics_mutex", cgu_name.as_str())));
+        }
+    }
 
     let mut cx = crate::CodegenCx::new(tcx, module, tcx.sess.opts.debuginfo != DebugInfo::None);
     super::codegen_mono_items(&mut cx, mono_items);
@@ -124,6 +143,13 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
         module,
         debug,
         unwind_context,
+        |mut product| {
+            if let Some(func_id) = init_atomics_mutex_from_constructor {
+                product.add_constructor(func_id);
+            }
+
+            product
+        }
     );
 
     codegen_global_asm(tcx, &cgu.name().as_str(), &global_asm);
@@ -196,6 +222,7 @@ pub(super) fn run_aot(
             allocator_module,
             None,
             allocator_unwind_context,
+            |product| product,
         );
         if let Some((id, product)) = work_product {
             work_products.insert(id, product);

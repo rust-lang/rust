@@ -10,7 +10,7 @@ use crate::prelude::*;
 pub static mut __cg_clif_global_atomic_mutex: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
 
 pub(crate) fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut FunctionBuilder<'_>) {
-    if std::env::var("CG_CLIF_JIT").is_ok () {
+    if std::env::var("CG_CLIF_JIT").is_ok() {
         // When using JIT, dylibs won't find the __cg_clif_global_atomic_mutex data object defined here,
         // so instead define it in the cg_clif dylib.
 
@@ -45,6 +45,39 @@ pub(crate) fn init_global_lock(module: &mut Module<impl Backend>, bcx: &mut Func
     let nullptr = bcx.ins().iconst(module.target_config().pointer_type(), 0);
 
     bcx.ins().call(pthread_mutex_init, &[atomic_mutex, nullptr]);
+}
+
+pub(crate) fn init_global_lock_constructor(
+    module: &mut Module<impl Backend>,
+    constructor_name: &str
+) -> FuncId {
+    let sig = Signature::new(CallConv::SystemV);
+    let init_func_id = module
+        .declare_function(constructor_name, Linkage::Export, &sig)
+        .unwrap();
+
+    let mut ctx = Context::new();
+    ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig);
+    {
+        let mut func_ctx = FunctionBuilderContext::new();
+        let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
+
+        let block = bcx.create_block();
+        bcx.switch_to_block(block);
+
+        crate::atomic_shim::init_global_lock(module, &mut bcx);
+
+        bcx.ins().return_(&[]);
+        bcx.seal_all_blocks();
+        bcx.finalize();
+    }
+    module.define_function(
+        init_func_id,
+        &mut ctx,
+        &mut cranelift_codegen::binemit::NullTrapSink {},
+    ).unwrap();
+
+    init_func_id
 }
 
 pub(crate) fn lock_global_lock(fx: &mut FunctionCx<'_, '_, impl Backend>) {
