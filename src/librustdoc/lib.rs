@@ -54,6 +54,10 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 extern crate test as testing;
+#[macro_use]
+extern crate tracing;
+#[cfg(windows)]
+extern crate termcolor;
 
 use std::default::Default;
 use std::env;
