@@ -373,3 +373,22 @@ Or it is possible to specify vars more granularly:
 ```
 
 You can use any valid RegExp as a mask. Also note that a full runnable name is something like *run bin_or_example_name*, *test some::mod::test_name* or *test-mod some::mod*, so it is possible to distinguish binaries, single tests, and test modules with this masks: `"^run"`, `"^test "` (the trailing space matters!), and `"^test-mod"` respectively.
+
+==== Compiler feedback from external commands
+
+Instead of relying on the built-in `cargo check`, you can configure Code to run a command in the background and use the `$rustc-watch` problem matcher to generate inline error markers from its output.
+
+To do this you need to create a new https://code.visualstudio.com/docs/editor/tasks[VS Code Task] and set `rust-analyzer.checkOnSave.enable: false` in preferences.
+
+For example, if you want to run https://crates.io/crates/cargo-watch[`cargo watch`] instead, you might add the following to `.vscode/tasks.json`:
+
+```json
+{
+    "label": "Watch",
+    "group": "build",
+    "type": "shell",
+    "command": "cargo watch",
+    "problemMatcher": "$rustc-watch",
+    "isBackground": true
+}
+```
