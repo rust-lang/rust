@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::IndexVec;
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use smallvec::SmallVec;
 use std::cell::Cell;
@@ -18,7 +18,7 @@ use super::{Field, SourceInfo};
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsafetyViolationKind {
-    /// Only permitted in regular `fn`s, prohibitted in `const fn`s.
+    /// Only permitted in regular `fn`s, prohibited in `const fn`s.
     General,
     /// Permitted both in `const fn`s and regular `fn`s.
     GeneralAndConstFn,
@@ -36,12 +36,96 @@ pub enum UnsafetyViolationKind {
 }
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+pub enum UnsafetyViolationDetails {
+    CallToUnsafeFunction,
+    UseOfInlineAssembly,
+    InitializingTypeWith,
+    CastOfPointerToInt,
+    BorrowOfPackedField,
+    UseOfMutableStatic,
+    UseOfExternStatic,
+    DerefOfRawPointer,
+    AssignToNonCopyUnionField,
+    AccessToUnionField,
+    MutationOfLayoutConstrainedField,
+    BorrowOfLayoutConstrainedField,
+    CallToFunctionWith,
+}
+
+impl UnsafetyViolationDetails {
+    pub fn description_and_note(&self) -> (&'static str, &'static str) {
+        use UnsafetyViolationDetails::*;
+        match self {
+            CallToUnsafeFunction => (
+                "call to unsafe function",
+                "consult the function's documentation for information on how to avoid undefined \
+                 behavior",
+            ),
+            UseOfInlineAssembly => (
+                "use of inline assembly",
+                "inline assembly is entirely unchecked and can cause undefined behavior",
+            ),
+            InitializingTypeWith => (
+                "initializing type with `rustc_layout_scalar_valid_range` attr",
+                "initializing a layout restricted type's field with a value outside the valid \
+                 range is undefined behavior",
+            ),
+            CastOfPointerToInt => {
+                ("cast of pointer to int", "casting pointers to integers in constants")
+            }
+            BorrowOfPackedField => (
+                "borrow of packed field",
+                "fields of packed structs might be misaligned: dereferencing a misaligned pointer \
+                 or even just creating a misaligned reference is undefined behavior",
+            ),
+            UseOfMutableStatic => (
+                "use of mutable static",
+                "mutable statics can be mutated by multiple threads: aliasing violations or data \
+                 races will cause undefined behavior",
+            ),
+            UseOfExternStatic => (
+                "use of extern static",
+                "extern statics are not controlled by the Rust type system: invalid data, \
+                 aliasing violations or data races will cause undefined behavior",
+            ),
+            DerefOfRawPointer => (
+                "dereference of raw pointer",
+                "raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules \
+                 and cause data races: all of these are undefined behavior",
+            ),
+            AssignToNonCopyUnionField => (
+                "assignment to non-`Copy` union field",
+                "the previous content of the field will be dropped, which causes undefined \
+                 behavior if the field was not properly initialized",
+            ),
+            AccessToUnionField => (
+                "access to union field",
+                "the field may not be properly initialized: using uninitialized data will cause \
+                 undefined behavior",
+            ),
+            MutationOfLayoutConstrainedField => (
+                "mutation of layout constrained field",
+                "mutating layout constrained fields cannot statically be checked for valid values",
+            ),
+            BorrowOfLayoutConstrainedField => (
+                "borrow of layout constrained field with interior mutability",
+                "references to fields of layout constrained fields lose the constraints. Coupled \
+                 with interior mutability, the field can be changed to invalid values",
+            ),
+            CallToFunctionWith => (
+                "call to function with `#[target_feature]`",
+                "can only be called if the required target features are available",
+            ),
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
     pub lint_root: hir::HirId,
-    pub description: Symbol,
-    pub details: Symbol,
     pub kind: UnsafetyViolationKind,
+    pub details: UnsafetyViolationDetails,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]

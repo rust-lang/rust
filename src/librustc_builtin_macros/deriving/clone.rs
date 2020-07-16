@@ -56,7 +56,7 @@ pub fn expand_deriving_clone(
                 }
             }
             ItemKind::Union(..) => {
-                bounds = vec![Literal(path_std!(cx, marker::Copy))];
+                bounds = vec![Literal(path_std!(marker::Copy))];
                 is_shallow = true;
                 substructure = combine_substructure(Box::new(|c, s, sub| {
                     cs_clone_shallow("Clone", c, s, sub, true)
@@ -78,14 +78,14 @@ pub fn expand_deriving_clone(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, clone::Clone),
+        path: path_std!(clone::Clone),
         additional_bounds: bounds,
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::clone,
-            generics: LifetimeBounds::empty(),
+            generics: Bounds::empty(),
             explicit_self: borrowed_explicit_self(),
             args: Vec::new(),
             ret_ty: Self_,

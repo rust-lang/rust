@@ -26,7 +26,7 @@ use rustc_middle::ty::{
     TypeFoldable, WithConstness,
 };
 use rustc_session::DiagnosticMessageId;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
@@ -1524,7 +1524,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     (self.tcx.sess.source_map().span_to_snippet(span), &obligation.cause.code)
                 {
                     let generics = self.tcx.generics_of(*def_id);
-                    if generics.params.iter().any(|p| p.name.as_str() != "Self")
+                    if generics.params.iter().any(|p| p.name != kw::SelfUpper)
                         && !snippet.ends_with('>')
                     {
                         // FIXME: To avoid spurious suggestions in functions where type arguments

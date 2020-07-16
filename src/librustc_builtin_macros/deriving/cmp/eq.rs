@@ -22,14 +22,14 @@ pub fn expand_deriving_eq(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, cmp::Eq),
+        path: path_std!(cmp::Eq),
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::assert_receiver_is_total_eq,
-            generics: LifetimeBounds::empty(),
+            generics: Bounds::empty(),
             explicit_self: borrowed_explicit_self(),
             args: vec![],
             ret_ty: nil_ty(),
@@ -43,13 +43,7 @@ pub fn expand_deriving_eq(
         associated_types: Vec::new(),
     };
 
-    super::inject_impl_of_structural_trait(
-        cx,
-        span,
-        item,
-        path_std!(cx, marker::StructuralEq),
-        push,
-    );
+    super::inject_impl_of_structural_trait(cx, span, item, path_std!(marker::StructuralEq), push);
 
     trait_def.expand_ext(cx, mitem, item, push, true)
 }
