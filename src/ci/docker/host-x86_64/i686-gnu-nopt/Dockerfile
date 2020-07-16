@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
+  zlib1g-dev \
+  lib32z1-dev \
   xz-utils
 
 
