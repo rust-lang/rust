@@ -354,13 +354,7 @@ fn configure_and_expand_inner<'a>(
         )
     });
 
-    // If we're actually rustdoc then there's no need to actually compile
-    // anything, so switch everything to just looping
-    let mut should_loop = sess.opts.actually_rustdoc;
     if let Some(PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops)) = sess.opts.pretty {
-        should_loop |= true;
-    }
-    if should_loop {
         log::debug!("replacing bodies with loop {{}}");
         util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
     }
