@@ -18,7 +18,7 @@ macro_rules! define_handles {
         }
 
         impl HandleCounters {
-            // FIXME(eddyb) use a reference to the `static COUNTERS`, intead of
+            // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
             // a wrapper `fn` pointer, once `const fn` can reference `static`s.
             extern "C" fn get() -> &'static Self {
                 static COUNTERS: HandleCounters = HandleCounters {
@@ -205,10 +205,16 @@ impl Clone for Literal {
     }
 }
 
-// FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.debug())
+        f.debug_struct("Literal")
+            // format the kind without quotes, as in `kind: Float`
+            // .field("kind", &format_args!("{}", &self.debug_kind()))
+            .field("symbol", &self.symbol())
+            // format `Some("...")` on one line even in {:#?} mode
+            // .field("suffix", &format_args!("{:?}", &self.suffix()))
+            .field("span", &self.span())
+            .finish()
     }
 }
 
@@ -339,7 +345,7 @@ impl Bridge<'_> {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct Client<F> {
-    // FIXME(eddyb) use a reference to the `static COUNTERS`, intead of
+    // FIXME(eddyb) use a reference to the `static COUNTERS`, instead of
     // a wrapper `fn` pointer, once `const fn` can reference `static`s.
     pub(super) get_handle_counters: extern "C" fn() -> &'static HandleCounters,
     pub(super) run: extern "C" fn(Bridge<'_>, F) -> Buffer<u8>,
