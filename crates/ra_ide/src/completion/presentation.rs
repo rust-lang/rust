@@ -11,7 +11,7 @@ use crate::{
         completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
         CompletionKind, Completions,
     },
-    display::{const_label, function_signature::FunctionSignature, macro_label, type_label},
+    display::{const_label, function_declaration, macro_label, type_label},
     CompletionScore, RootDatabase,
 };
 
@@ -195,7 +195,6 @@ impl Completions {
 
         let name = local_name.unwrap_or_else(|| func.name(ctx.db).to_string());
         let ast_node = func.source(ctx.db).value;
-        let function_signature = FunctionSignature::from(&ast_node);
 
         let mut builder =
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
@@ -206,13 +205,14 @@ impl Completions {
                 })
                 .set_documentation(func.docs(ctx.db))
                 .set_deprecated(is_deprecated(func, ctx.db))
-                .detail(function_signature.to_string());
+                .detail(function_declaration(&ast_node));
 
-        let params = function_signature
-            .parameter_names
-            .iter()
-            .skip(if function_signature.has_self_param { 1 } else { 0 })
-            .map(|name| name.trim_start_matches('_').into())
+        let params = ast_node
+            .param_list()
+            .into_iter()
+            .flat_map(|it| it.params())
+            .flat_map(|it| it.pat())
+            .map(|pat| pat.to_string().trim_start_matches('_').into())
             .collect();
 
         builder = builder.add_call_parens(ctx, name, Params::Named(params));

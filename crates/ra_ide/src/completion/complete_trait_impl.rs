@@ -43,7 +43,7 @@ use crate::{
     completion::{
         CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
     },
-    display::function_signature::FunctionSignature,
+    display::function_declaration,
 };
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
@@ -125,8 +125,6 @@ fn add_function_impl(
     ctx: &CompletionContext,
     func: hir::Function,
 ) {
-    let signature = FunctionSignature::from_hir(ctx.db, func);
-
     let fn_name = func.name(ctx.db).to_string();
 
     let label = if !func.params(ctx.db).is_empty() {
@@ -146,13 +144,14 @@ fn add_function_impl(
     };
     let range = TextRange::new(fn_def_node.text_range().start(), ctx.source_range().end());
 
+    let function_decl = function_declaration(&func.source(ctx.db).value);
     match ctx.config.snippet_cap {
         Some(cap) => {
-            let snippet = format!("{} {{\n    $0\n}}", signature);
+            let snippet = format!("{} {{\n    $0\n}}", function_decl);
             builder.snippet_edit(cap, TextEdit::replace(range, snippet))
         }
         None => {
-            let header = format!("{} {{", signature);
+            let header = format!("{} {{", function_decl);
             builder.text_edit(TextEdit::replace(range, header))
         }
     }

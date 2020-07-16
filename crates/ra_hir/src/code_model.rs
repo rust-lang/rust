@@ -1552,6 +1552,9 @@ impl Callable {
         let param_list = src.value.param_list()?;
         param_list.self_param()
     }
+    pub fn n_params(&self) -> usize {
+        self.sig.params().len() - if self.is_bound_method { 1 } else { 0 }
+    }
     pub fn params(
         &self,
         db: &dyn HirDatabase,
