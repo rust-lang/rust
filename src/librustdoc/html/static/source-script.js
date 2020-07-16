@@ -141,8 +141,8 @@ function createSourceSidebar() {
 
     main.insertBefore(sidebar, main.firstChild);
     // Focus on the current file in the source files sidebar.
-    var selected_elems = Array.prototype.slice.call(sidebar.getElementsByClassName("selected"));
-    if (selected_elems.length > 0) {
-        selected_elems[0].focus();
+    var selected_elem = sidebar.getElementsByClassName("selected")[0];
+    if (typeof selected_elem !== "undefined") {
+        selected_elem.focus();
     }
 }
