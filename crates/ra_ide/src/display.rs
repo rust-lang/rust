@@ -10,14 +10,14 @@ use ra_syntax::{
     SyntaxKind::{ATTR, COMMENT},
 };
 
+use ast::VisibilityOwner;
+use stdx::format_to;
+
+pub use navigation_target::NavigationTarget;
 pub(crate) use navigation_target::{ToNav, TryToNav};
 pub(crate) use short_label::ShortLabel;
 
-use ast::VisibilityOwner;
-pub use navigation_target::NavigationTarget;
-use stdx::format_to;
-
-pub(crate) fn function_label(node: &ast::FnDef) -> String {
+pub(crate) fn function_declaration(node: &ast::FnDef) -> String {
     let mut buf = String::new();
     if let Some(vis) = node.visibility() {
         format_to!(buf, "{} ", vis);

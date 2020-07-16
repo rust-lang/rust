@@ -43,7 +43,7 @@ use crate::{
     completion::{
         CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
     },
-    display::function_label,
+    display::function_declaration,
 };
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
@@ -144,7 +144,7 @@ fn add_function_impl(
     };
     let range = TextRange::new(fn_def_node.text_range().start(), ctx.source_range().end());
 
-    let function_decl = function_label(&func.source(ctx.db).value);
+    let function_decl = function_declaration(&func.source(ctx.db).value);
     match ctx.config.snippet_cap {
         Some(cap) => {
             let snippet = format!("{} {{\n    $0\n}}", function_decl);

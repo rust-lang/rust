@@ -9,7 +9,7 @@ pub(crate) trait ShortLabel {
 
 impl ShortLabel for ast::FnDef {
     fn short_label(&self) -> Option<String> {
-        Some(crate::display::function_label(self))
+        Some(crate::display::function_declaration(self))
     }
 }
 
