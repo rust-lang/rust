@@ -5,9 +5,9 @@ use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
-
-use crate::{FileId, FunctionSignature};
 use stdx::to_lower_snake_case;
+
+use crate::{display::function_signature::FunctionSignature, FileId};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {

@@ -15,49 +15,48 @@ use stdx::{split_delim, SepBy};
 use crate::display::{generic_parameters, where_predicates};
 
 #[derive(Debug)]
-pub enum CallableKind {
+pub(crate) enum CallableKind {
     Function,
     StructConstructor,
     VariantConstructor,
-    Macro,
 }
 
 /// Contains information about a function signature
 #[derive(Debug)]
-pub struct FunctionSignature {
-    pub kind: CallableKind,
+pub(crate) struct FunctionSignature {
+    pub(crate) kind: CallableKind,
     /// Optional visibility
-    pub visibility: Option<String>,
+    pub(crate) visibility: Option<String>,
     /// Qualifiers like `async`, `unsafe`, ...
-    pub qualifier: FunctionQualifier,
+    pub(crate) qualifier: FunctionQualifier,
     /// Name of the function
-    pub name: Option<String>,
+    pub(crate) name: Option<String>,
     /// Documentation for the function
-    pub doc: Option<Documentation>,
+    pub(crate) doc: Option<Documentation>,
     /// Generic parameters
-    pub generic_parameters: Vec<String>,
+    pub(crate) generic_parameters: Vec<String>,
     /// Parameters of the function
-    pub parameters: Vec<String>,
+    pub(crate) parameters: Vec<String>,
     /// Parameter names of the function
-    pub parameter_names: Vec<String>,
+    pub(crate) parameter_names: Vec<String>,
     /// Parameter types of the function
-    pub parameter_types: Vec<String>,
+    pub(crate) parameter_types: Vec<String>,
     /// Optional return type
-    pub ret_type: Option<String>,
+    pub(crate) ret_type: Option<String>,
     /// Where predicates
-    pub where_predicates: Vec<String>,
+    pub(crate) where_predicates: Vec<String>,
     /// Self param presence
-    pub has_self_param: bool,
+    pub(crate) has_self_param: bool,
 }
 
 #[derive(Debug, Default)]
-pub struct FunctionQualifier {
+pub(crate) struct FunctionQualifier {
     // `async` and `const` are mutually exclusive. Do we need to enforcing it here?
-    pub is_async: bool,
-    pub is_const: bool,
-    pub is_unsafe: bool,
+    pub(crate) is_async: bool,
+    pub(crate) is_const: bool,
+    pub(crate) is_unsafe: bool,
     /// The string `extern ".."`
-    pub extern_abi: Option<String>,
+    pub(crate) extern_abi: Option<String>,
 }
 
 impl FunctionSignature {
@@ -277,7 +276,6 @@ impl Display for FunctionSignature {
                 CallableKind::Function => write!(f, "fn {}", name)?,
                 CallableKind::StructConstructor => write!(f, "struct {}", name)?,
                 CallableKind::VariantConstructor => write!(f, "{}", name)?,
-                CallableKind::Macro => write!(f, "{}!", name)?,
             }
         }
 

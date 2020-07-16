@@ -65,7 +65,7 @@ pub use crate::{
         CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
     },
     diagnostics::Severity,
-    display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
+    display::{file_structure, NavigationTarget, StructureNode},
     expand_macro::ExpandedMacro,
     folding_ranges::{Fold, FoldKind},
     hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},

@@ -11,7 +11,7 @@ use crate::{
         completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
         CompletionKind, Completions,
     },
-    display::{const_label, macro_label, type_label, FunctionSignature},
+    display::{const_label, function_signature::FunctionSignature, macro_label, type_label},
     CompletionScore, RootDatabase,
 };
 

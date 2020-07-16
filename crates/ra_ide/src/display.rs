@@ -1,7 +1,7 @@
 //! This module contains utilities for turning SyntaxNodes and HIR types
 //! into types that may be used to render in a UI.
 
-mod function_signature;
+pub(crate) mod function_signature;
 mod navigation_target;
 mod structure;
 mod short_label;
@@ -11,7 +11,6 @@ use ra_syntax::{
     SyntaxKind::{ATTR, COMMENT},
 };
 
-pub use function_signature::FunctionSignature;
 pub use navigation_target::NavigationTarget;
 pub use structure::{file_structure, StructureNode};
 
@@ -19,7 +18,7 @@ pub(crate) use navigation_target::{ToNav, TryToNav};
 pub(crate) use short_label::ShortLabel;
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
-    FunctionSignature::from(node).to_string()
+    function_signature::FunctionSignature::from(node).to_string()
 }
 
 pub(crate) fn const_label(node: &ast::ConstDef) -> String {
