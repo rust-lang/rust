@@ -26,6 +26,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(negative_impls)]
 #![feature(optin_builtin_traits)]
+#![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
 #![recursion_limit = "256"]
