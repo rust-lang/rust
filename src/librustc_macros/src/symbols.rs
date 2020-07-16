@@ -87,18 +87,29 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     let mut prefill_stream = quote! {};
     let mut counter = 0u32;
     let mut keys = HashSet::<String>::new();
+    let mut prev_key: Option<String> = None;
+    let mut errors = Vec::<String>::new();
 
-    let mut check_dup = |str: &str| {
+    let mut check_dup = |str: &str, errors: &mut Vec<String>| {
         if !keys.insert(str.to_string()) {
-            panic!("Symbol `{}` is duplicated", str);
+            errors.push(format!("Symbol `{}` is duplicated", str));
         }
+    };
+
+    let mut check_order = |str: &str, errors: &mut Vec<String>| {
+        if let Some(ref prev_str) = prev_key {
+            if str < prev_str {
+                errors.push(format!("Symbol `{}` must precede `{}`", str, prev_str));
+            }
+        }
+        prev_key = Some(str.to_string());
     };
 
     // Generate the listed keywords.
     for keyword in &input.keywords.0 {
         let name = &keyword.name;
         let value = &keyword.value;
-        check_dup(&value.value());
+        check_dup(&value.value(), &mut errors);
         prefill_stream.extend(quote! {
             #value,
         });
@@ -116,7 +127,8 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             Some(value) => value.value(),
             None => name.to_string(),
         };
-        check_dup(&value);
+        check_dup(&value, &mut errors);
+        check_order(&name.to_string(), &mut errors);
         prefill_stream.extend(quote! {
             #value,
         });
@@ -131,7 +143,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     // Generate symbols for the strings "0", "1", ..., "9".
     for n in 0..10 {
         let n = n.to_string();
-        check_dup(&n);
+        check_dup(&n, &mut errors);
         prefill_stream.extend(quote! {
             #n,
         });
@@ -139,6 +151,13 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             Symbol::new(#counter),
         });
         counter += 1;
+    }
+
+    if !errors.is_empty() {
+        for error in errors.into_iter() {
+            eprintln!("error: {}", error)
+        }
+        panic!("errors in `Keywords` and/or `Symbols`");
     }
 
     let tt = TokenStream::from(quote! {

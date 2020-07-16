@@ -85,8 +85,9 @@
 //! # Contributing changes to the documentation
 //!
 //! Check out the rust contribution guidelines [here](
-//! https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md).
-//! The source for this documentation can be found on [Github](https://github.com/rust-lang).
+//! https://rustc-dev-guide.rust-lang.org/getting-started.html).
+//! The source for this documentation can be found on
+//! [GitHub](https://github.com/rust-lang/rust).
 //! To contribute changes, make sure you read the guidelines first, then submit
 //! pull-requests for your suggested changes.
 //!

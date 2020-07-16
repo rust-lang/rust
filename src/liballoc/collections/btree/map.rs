@@ -1697,6 +1697,8 @@ where
     pred: F,
     inner: DrainFilterInner<'a, K, V>,
 }
+/// Most of the implementation of DrainFilter, independent of the type
+/// of the predicate, thus also serving for BTreeSet::DrainFilter.
 pub(super) struct DrainFilterInner<'a, K: 'a, V: 'a> {
     length: &'a mut usize,
     cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
