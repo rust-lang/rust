@@ -1,0 +1,12 @@
+error[E0433]: failed to resolve: could not resolve path `DoesNotExist`
+  --> $DIR/generic-argument.rs:5:11
+   |
+LL |     Vec::<DoesNotExist>::new()
+   |           ^^^^^^^^^^^^ could not resolve path `DoesNotExist`
+   |
+   = note: this error was originally ignored because you are running `rustdoc`
+   = note: try running again with `rustc` or `cargo check` and you may get a more detailed error
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.
