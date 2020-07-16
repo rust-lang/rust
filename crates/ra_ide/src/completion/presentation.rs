@@ -329,15 +329,10 @@ pub(crate) fn compute_score(
     ty: &Type,
     name: &str,
 ) -> Option<CompletionScore> {
-    // FIXME: this should not fall back to string equality.
-    let ty = &ty.display(ctx.db).to_string();
     let (active_name, active_type) = if let Some(record_field) = &ctx.record_field_syntax {
         mark::hit!(record_field_type_match);
         let (struct_field, _local) = ctx.sema.resolve_record_field(record_field)?;
-        (
-            struct_field.name(ctx.db).to_string(),
-            struct_field.signature_ty(ctx.db).display(ctx.db).to_string(),
-        )
+        (struct_field.name(ctx.db).to_string(), struct_field.signature_ty(ctx.db))
     } else if let Some(active_parameter) = &ctx.active_parameter {
         mark::hit!(active_param_type_match);
         (active_parameter.name.clone(), active_parameter.ty.clone())

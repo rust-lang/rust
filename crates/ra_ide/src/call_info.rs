@@ -1,20 +1,41 @@
 //! FIXME: write short doc here
-use hir::Semantics;
+use hir::{Docs, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     ast::{self, ArgListOwner},
-    match_ast, AstNode, SyntaxNode, SyntaxToken,
+    match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
+use stdx::format_to;
 use test_utils::mark;
 
-use crate::{FilePosition, FunctionSignature};
+use crate::FilePosition;
 
 /// Contains information about a call site. Specifically the
 /// `FunctionSignature`and current parameter.
 #[derive(Debug)]
 pub struct CallInfo {
-    pub signature: FunctionSignature,
+    pub doc: Option<String>,
+    pub signature: String,
     pub active_parameter: Option<usize>,
+    parameters: Vec<TextRange>,
+}
+
+impl CallInfo {
+    pub fn parameter_labels(&self) -> impl Iterator<Item = &str> + '_ {
+        self.parameters.iter().map(move |&it| &self.signature[it])
+    }
+    pub fn parameter_ranges(&self) -> &[TextRange] {
+        &self.parameters
+    }
+    fn push_param(&mut self, param: &str) {
+        if !self.signature.ends_with('(') {
+            self.signature.push_str(", ");
+        }
+        let start = TextSize::of(&self.signature);
+        self.signature.push_str(param);
+        let end = TextSize::of(&self.signature);
+        self.parameters.push(TextRange::new(start, end))
+    }
 }
 
 /// Computes parameter information for the given call expression.
@@ -24,105 +45,127 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let file = file.syntax();
     let token = file.token_at_offset(position.offset).next()?;
     let token = sema.descend_into_macros(token);
-    call_info_for_token(&sema, token)
+
+    let (callable, active_parameter) = call_info_impl(&sema, token)?;
+
+    let mut res =
+        CallInfo { doc: None, signature: String::new(), parameters: vec![], active_parameter };
+
+    match callable.kind() {
+        hir::CallableKind::Function(func) => {
+            res.doc = func.docs(db).map(|it| it.as_str().to_string());
+            format_to!(res.signature, "fn {}", func.name(db));
+        }
+        hir::CallableKind::TupleStruct(strukt) => {
+            res.doc = strukt.docs(db).map(|it| it.as_str().to_string());
+            format_to!(res.signature, "struct {}", strukt.name(db));
+        }
+        hir::CallableKind::TupleEnumVariant(variant) => {
+            res.doc = variant.docs(db).map(|it| it.as_str().to_string());
+            format_to!(
+                res.signature,
+                "enum {}::{}",
+                variant.parent_enum(db).name(db),
+                variant.name(db)
+            );
+        }
+    }
+
+    res.signature.push('(');
+    {
+        if let Some(self_param) = callable.receiver_param(db) {
+            format_to!(res.signature, "{}", self_param)
+        }
+        let mut buf = String::new();
+        for (pat, ty) in callable.params(db) {
+            buf.clear();
+            if let Some(pat) = pat {
+                format_to!(buf, "{}: ", pat);
+            }
+            format_to!(buf, "{}", ty.display(db));
+            res.push_param(&buf);
+        }
+    }
+    res.signature.push(')');
+
+    match callable.kind() {
+        hir::CallableKind::Function(_) => {
+            let ret_type = callable.return_type();
+            if !ret_type.is_unit() {
+                format_to!(res.signature, " -> {}", ret_type.display(db));
+            }
+        }
+        hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
+    }
+    Some(res)
+}
+
+fn call_info_impl(
+    sema: &Semantics<RootDatabase>,
+    token: SyntaxToken,
+) -> Option<(hir::Callable, Option<usize>)> {
+    // Find the calling expression and it's NameRef
+    let calling_node = FnCallNode::with_node(&token.parent())?;
+
+    let callable = match &calling_node {
+        FnCallNode::CallExpr(call) => sema.type_of_expr(&call.expr()?)?.as_callable(sema.db)?,
+        FnCallNode::MethodCallExpr(call) => sema.resolve_method_call_as_callable(call)?,
+    };
+    let active_param = if let Some(arg_list) = calling_node.arg_list() {
+        // Number of arguments specified at the call site
+        let num_args_at_callsite = arg_list.args().count();
+
+        let arg_list_range = arg_list.syntax().text_range();
+        if !arg_list_range.contains_inclusive(token.text_range().start()) {
+            mark::hit!(call_info_bad_offset);
+            return None;
+        }
+        let param = std::cmp::min(
+            num_args_at_callsite,
+            arg_list
+                .args()
+                .take_while(|arg| arg.syntax().text_range().end() <= token.text_range().start())
+                .count(),
+        );
+
+        Some(param)
+    } else {
+        None
+    };
+    Some((callable, active_param))
 }
 
 #[derive(Debug)]
 pub(crate) struct ActiveParameter {
-    /// FIXME: should be `Type` and `Name
-    pub(crate) ty: String,
+    pub(crate) ty: Type,
     pub(crate) name: String,
 }
 
 impl ActiveParameter {
     pub(crate) fn at(db: &RootDatabase, position: FilePosition) -> Option<Self> {
-        call_info(db, position)?.into_active_parameter()
+        let sema = Semantics::new(db);
+        let file = sema.parse(position.file_id);
+        let file = file.syntax();
+        let token = file.token_at_offset(position.offset).next()?;
+        let token = sema.descend_into_macros(token);
+        Self::at_token(&sema, token)
     }
 
     pub(crate) fn at_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Self> {
-        call_info_for_token(sema, token)?.into_active_parameter()
+        let (signature, active_parameter) = call_info_impl(&sema, token)?;
+
+        let idx = active_parameter?;
+        let mut params = signature.params(sema.db);
+        let (pat, ty) = params.swap_remove(idx);
+        let name = pat?.to_string();
+        Some(ActiveParameter { ty, name })
     }
-}
-
-fn call_info_for_token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<CallInfo> {
-    // Find the calling expression and it's NameRef
-    let calling_node = FnCallNode::with_node(&token.parent())?;
-
-    let signature = match &calling_node {
-        FnCallNode::CallExpr(call) => {
-            //FIXME: Type::as_callable is broken
-            let callable_def = sema.type_of_expr(&call.expr()?)?.as_callable()?;
-            match callable_def {
-                hir::CallableDefId::FunctionId(it) => {
-                    let fn_def = it.into();
-                    FunctionSignature::from_hir(sema.db, fn_def)
-                }
-                hir::CallableDefId::StructId(it) => {
-                    FunctionSignature::from_struct(sema.db, it.into())?
-                }
-                hir::CallableDefId::EnumVariantId(it) => {
-                    FunctionSignature::from_enum_variant(sema.db, it.into())?
-                }
-            }
-        }
-        FnCallNode::MethodCallExpr(method_call) => {
-            let function = sema.resolve_method_call(&method_call)?;
-            FunctionSignature::from_hir(sema.db, function)
-        }
-        FnCallNode::MacroCallExpr(macro_call) => {
-            let macro_def = sema.resolve_macro_call(&macro_call)?;
-            FunctionSignature::from_macro(sema.db, macro_def)?
-        }
-    };
-
-    // If we have a calling expression let's find which argument we are on
-    let num_params = signature.parameters.len();
-
-    let active_parameter = match num_params {
-        0 => None,
-        1 if signature.has_self_param => None,
-        1 => Some(0),
-        _ => {
-            if let Some(arg_list) = calling_node.arg_list() {
-                // Number of arguments specified at the call site
-                let num_args_at_callsite = arg_list.args().count();
-
-                let arg_list_range = arg_list.syntax().text_range();
-                if !arg_list_range.contains_inclusive(token.text_range().start()) {
-                    mark::hit!(call_info_bad_offset);
-                    return None;
-                }
-
-                let mut param = std::cmp::min(
-                    num_args_at_callsite,
-                    arg_list
-                        .args()
-                        .take_while(|arg| {
-                            arg.syntax().text_range().end() <= token.text_range().start()
-                        })
-                        .count(),
-                );
-
-                // If we are in a method account for `self`
-                if signature.has_self_param {
-                    param += 1;
-                }
-
-                Some(param)
-            } else {
-                None
-            }
-        }
-    };
-
-    Some(CallInfo { signature, active_parameter })
 }
 
 #[derive(Debug)]
 pub(crate) enum FnCallNode {
     CallExpr(ast::CallExpr),
     MethodCallExpr(ast::MethodCallExpr),
-    MacroCallExpr(ast::MacroCall),
 }
 
 impl FnCallNode {
@@ -138,7 +181,6 @@ impl FnCallNode {
                         }
                         Some(FnCallNode::MethodCallExpr(it))
                     },
-                    ast::MacroCall(it) => Some(FnCallNode::MacroCallExpr(it)),
                     _ => None,
                 }
             }
@@ -150,7 +192,6 @@ impl FnCallNode {
             match node {
                 ast::CallExpr(it) => Some(FnCallNode::CallExpr(it)),
                 ast::MethodCallExpr(it) => Some(FnCallNode::MethodCallExpr(it)),
-                ast::MacroCall(it) => Some(FnCallNode::MacroCallExpr(it)),
                 _ => None,
             }
         }
@@ -166,8 +207,6 @@ impl FnCallNode {
             FnCallNode::MethodCallExpr(call_expr) => {
                 call_expr.syntax().children().filter_map(ast::NameRef::cast).next()
             }
-
-            FnCallNode::MacroCallExpr(call_expr) => call_expr.path()?.segment()?.name_ref(),
         }
     }
 
@@ -175,18 +214,7 @@ impl FnCallNode {
         match self {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
-            FnCallNode::MacroCallExpr(_) => None,
         }
-    }
-}
-
-impl CallInfo {
-    fn into_active_parameter(self) -> Option<ActiveParameter> {
-        let idx = self.active_parameter?;
-        let ty = self.signature.parameter_types.get(idx)?.clone();
-        let name = self.signature.parameter_names.get(idx)?.clone();
-        let res = ActiveParameter { ty, name };
-        Some(res)
     }
 }
 
@@ -202,20 +230,18 @@ mod tests {
         let call_info = analysis.call_info(position).unwrap();
         let actual = match call_info {
             Some(call_info) => {
-                let docs = match &call_info.signature.doc {
+                let docs = match &call_info.doc {
                     None => "".to_string(),
                     Some(docs) => format!("{}\n------\n", docs.as_str()),
                 };
                 let params = call_info
-                    .signature
-                    .parameters
-                    .iter()
+                    .parameter_labels()
                     .enumerate()
                     .map(|(i, param)| {
                         if Some(i) == call_info.active_parameter {
                             format!("<{}>", param)
                         } else {
-                            param.clone()
+                            param.to_string()
                         }
                     })
                     .collect::<Vec<_>>()
@@ -296,10 +322,8 @@ fn foo<T, U: Copy + Display>(x: T, y: U) -> u32
 fn bar() { foo(<|>3, ); }
 "#,
             expect![[r#"
-                fn foo<T, U: Copy + Display>(x: T, y: U) -> u32
-                where T: Copy + Display,
-                      U: Debug
-                (<x: T>, y: U)
+                fn foo(x: i32, y: {unknown}) -> u32
+                (<x: i32>, y: {unknown})
             "#]],
         );
     }
@@ -312,8 +336,7 @@ fn foo<T>() -> T where T: Copy + Display {}
 fn bar() { foo(<|>); }
 "#,
             expect![[r#"
-                fn foo<T>() -> T
-                where T: Copy + Display
+                fn foo() -> {unknown}
                 ()
             "#]],
         );
@@ -323,11 +346,14 @@ fn bar() { foo(<|>); }
     fn test_fn_signature_for_impl() {
         check(
             r#"
-struct F; impl F { pub fn new() { F{}} }
-fn bar() {let _ : F = F::new(<|>);}
+struct F;
+impl F { pub fn new() { } }
+fn bar() {
+    let _ : F = F::new(<|>);
+}
 "#,
             expect![[r#"
-                pub fn new()
+                fn new()
                 ()
             "#]],
         );
@@ -346,8 +372,8 @@ fn bar() {
 }
 "#,
             expect![[r#"
-                pub fn do_it(&self)
-                (&self)
+                fn do_it(&self)
+                ()
             "#]],
         );
     }
@@ -365,8 +391,8 @@ fn bar() {
 }
 "#,
             expect![[r#"
-                pub fn do_it(&self, x: i32)
-                (&self, <x: i32>)
+                fn do_it(&self, x: i32)
+                (<x: i32>)
             "#]],
         );
     }
@@ -425,7 +451,7 @@ pub fn do() {
                 assert_eq!(6, my_crate::add_one(5));
                 ```
                 ------
-                pub fn add_one(x: i32) -> i32
+                fn add_one(x: i32) -> i32
                 (<x: i32>)
             "##]],
         );
@@ -467,7 +493,7 @@ pub fn do_it() {
                 assert_eq!(6, my_crate::add_one(5));
                 ```
                 ------
-                pub fn add_one(x: i32) -> i32
+                fn add_one(x: i32) -> i32
                 (<x: i32>)
             "##]],
         );
@@ -505,8 +531,8 @@ pub fn foo(mut r: WriteHandler<()>) {
 
                 By default this method stops actor's `Context`.
                 ------
-                fn finished(&mut self, ctx: &mut Self::Context)
-                (&mut self, <ctx: &mut Self::Context>)
+                fn finished(&mut self, ctx: &mut {unknown})
+                (<ctx: &mut {unknown}>)
             "#]],
         );
     }
@@ -539,7 +565,7 @@ fn main() {
 "#,
             expect![[r#"
                 fn bar(&self, _: u32)
-                (&self, <_: u32>)
+                (<_: u32>)
             "#]],
         );
     }
@@ -549,15 +575,15 @@ fn main() {
         check(
             r#"
 /// A cool tuple struct
-struct TS(u32, i32);
+struct S(u32, i32);
 fn main() {
-    let s = TS(0, <|>);
+    let s = S(0, <|>);
 }
 "#,
             expect![[r#"
                 A cool tuple struct
                 ------
-                struct TS(u32, i32) -> TS
+                struct S(u32, i32)
                 (u32, <i32>)
             "#]],
         );
@@ -567,28 +593,15 @@ fn main() {
     fn generic_struct() {
         check(
             r#"
-struct TS<T>(T);
+struct S<T>(T);
 fn main() {
-    let s = TS(<|>);
+    let s = S(<|>);
 }
 "#,
             expect![[r#"
-                struct TS<T>(T) -> TS
-                (<T>)
+                struct S({unknown})
+                (<{unknown}>)
             "#]],
-        );
-    }
-
-    #[test]
-    fn cant_call_named_structs() {
-        check(
-            r#"
-struct TS { x: u32, y: i32 }
-fn main() {
-    let s = TS(<|>);
-}
-"#,
-            expect![[""]],
         );
     }
 
@@ -612,14 +625,27 @@ fn main() {
             expect![[r#"
                 A Variant
                 ------
-                E::A(0: i32)
-                (<0: i32>)
+                enum E::A(i32)
+                (<i32>)
             "#]],
         );
     }
 
     #[test]
-    fn cant_call_enum_records() {
+    fn cant_call_struct_record() {
+        check(
+            r#"
+struct S { x: u32, y: i32 }
+fn main() {
+    let s = S(<|>);
+}
+"#,
+            expect![[""]],
+        );
+    }
+
+    #[test]
+    fn cant_call_enum_record() {
         check(
             r#"
 enum E {
@@ -636,28 +662,6 @@ fn main() {
 }
 "#,
             expect![[""]],
-        );
-    }
-
-    #[test]
-    fn fn_signature_for_macro() {
-        check(
-            r#"
-/// empty macro
-macro_rules! foo {
-    () => {}
-}
-
-fn f() {
-    foo!(<|>);
-}
-"#,
-            expect![[r#"
-                empty macro
-                ------
-                foo!()
-                ()
-            "#]],
         );
     }
 

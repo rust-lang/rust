@@ -1,5 +1,5 @@
 //! FIXME: write short doc here
-use std::sync::Arc;
+use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use either::Either;
@@ -12,6 +12,7 @@ use hir_def::{
     import_map,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
+    src::HasSource as _,
     type_ref::{Mutability, TypeRef},
     AdtId, AssocContainerId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule,
     ImplId, LocalEnumVariantId, LocalFieldId, LocalModuleId, Lookup, ModuleId, StaticId, StructId,
@@ -25,8 +26,8 @@ use hir_expand::{
 use hir_ty::{
     autoderef,
     display::{HirDisplayError, HirFormatter},
-    method_resolution, ApplicationTy, Canonical, GenericPredicate, InEnvironment, Substs,
-    TraitEnvironment, Ty, TyDefId, TypeCtor,
+    method_resolution, ApplicationTy, CallableDefId, Canonical, FnSig, GenericPredicate,
+    InEnvironment, Substs, TraitEnvironment, Ty, TyDefId, TypeCtor,
 };
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
@@ -40,7 +41,7 @@ use stdx::impl_from;
 use crate::{
     db::{DefDatabase, HirDatabase},
     has_source::HasSource,
-    CallableDefId, HirDisplay, InFile, Name,
+    HirDisplay, InFile, Name,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -1168,6 +1169,12 @@ impl Type {
         Type::new(db, krate, def, ty)
     }
 
+    pub fn is_unit(&self) -> bool {
+        matches!(
+            self.ty.value,
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Tuple { cardinality: 0 }, .. })
+        )
+    }
     pub fn is_bool(&self) -> bool {
         matches!(self.ty.value, Ty::Apply(ApplicationTy { ctor: TypeCtor::Bool, .. }))
     }
@@ -1225,9 +1232,10 @@ impl Type {
         db.trait_solve(self.krate, goal).is_some()
     }
 
-    // FIXME: this method is broken, as it doesn't take closures into account.
-    pub fn as_callable(&self) -> Option<CallableDefId> {
-        Some(self.ty.value.as_callable()?.0)
+    pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
+        let (id, substs) = self.ty.value.as_callable()?;
+        let sig = db.callable_item_signature(id).subst(substs);
+        Some(Callable { ty: self.clone(), sig, id, is_bound_method: false })
     }
 
     pub fn is_closure(&self) -> bool {
@@ -1509,6 +1517,60 @@ impl Type {
 impl HirDisplay for Type {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         self.ty.value.hir_fmt(f)
+    }
+}
+
+// FIXME: closures
+#[derive(Debug)]
+pub struct Callable {
+    ty: Type,
+    sig: FnSig,
+    id: CallableDefId,
+    pub(crate) is_bound_method: bool,
+}
+
+pub enum CallableKind {
+    Function(Function),
+    TupleStruct(Struct),
+    TupleEnumVariant(EnumVariant),
+}
+
+impl Callable {
+    pub fn kind(&self) -> CallableKind {
+        match self.id {
+            CallableDefId::FunctionId(it) => CallableKind::Function(it.into()),
+            CallableDefId::StructId(it) => CallableKind::TupleStruct(it.into()),
+            CallableDefId::EnumVariantId(it) => CallableKind::TupleEnumVariant(it.into()),
+        }
+    }
+    pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<ast::SelfParam> {
+        let func = match self.id {
+            CallableDefId::FunctionId(it) if self.is_bound_method => it,
+            _ => return None,
+        };
+        let src = func.lookup(db.upcast()).source(db.upcast());
+        let param_list = src.value.param_list()?;
+        param_list.self_param()
+    }
+    pub fn params(&self, db: &dyn HirDatabase) -> Vec<(Option<ast::Pat>, Type)> {
+        let types = self
+            .sig
+            .params()
+            .iter()
+            .skip(if self.is_bound_method { 1 } else { 0 })
+            .map(|ty| self.ty.derived(ty.clone()));
+        let patterns = match self.id {
+            CallableDefId::FunctionId(func) => {
+                let src = func.lookup(db.upcast()).source(db.upcast());
+                src.value.param_list().map(|it| it.params().map(|it| it.pat()))
+            }
+            CallableDefId::StructId(_) => None,
+            CallableDefId::EnumVariantId(_) => None,
+        };
+        patterns.into_iter().flatten().chain(iter::repeat(None)).zip(types).collect()
+    }
+    pub fn return_type(&self) -> Type {
+        self.ty.derived(self.sig.ret().clone())
     }
 }
 

@@ -553,21 +553,12 @@ pub(crate) fn handle_signature_help(
     let _p = profile("handle_signature_help");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
     let call_info = match snap.analysis.call_info(position)? {
-        None => return Ok(None),
         Some(it) => it,
+        None => return Ok(None),
     };
     let concise = !snap.config.call_info_full;
-    let mut active_parameter = call_info.active_parameter.map(|it| it as i64);
-    if concise && call_info.signature.has_self_param {
-        active_parameter = active_parameter.map(|it| it.saturating_sub(1));
-    }
-    let sig_info = to_proto::signature_information(call_info.signature, concise);
-
-    Ok(Some(lsp_types::SignatureHelp {
-        signatures: vec![sig_info],
-        active_signature: Some(0),
-        active_parameter,
-    }))
+    let res = to_proto::signature_help(call_info, concise);
+    Ok(Some(res))
 }
 
 pub(crate) fn handle_hover(

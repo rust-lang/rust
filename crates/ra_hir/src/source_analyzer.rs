@@ -14,7 +14,7 @@ use hir_def::{
     },
     expr::{ExprId, Pat, PatId},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
-    AsMacroCall, DefWithBodyId, FieldId, LocalFieldId, VariantId,
+    AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, VariantId,
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
@@ -142,9 +142,9 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         call: &ast::MethodCallExpr,
-    ) -> Option<Function> {
+    ) -> Option<FunctionId> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
-        self.infer.as_ref()?.method_resolution(expr_id).map(Function::from)
+        self.infer.as_ref()?.method_resolution(expr_id)
     }
 
     pub(crate) fn resolve_field(

@@ -4,8 +4,8 @@ use std::path::{self, Path};
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
 use ra_ide::{
-    Assist, AssistKind, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold,
-    FoldKind, FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
+    Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation,
+    FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
     Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget,
     ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
@@ -219,29 +219,30 @@ pub(crate) fn completion_item(
     res
 }
 
-pub(crate) fn signature_information(
-    signature: FunctionSignature,
-    concise: bool,
-) -> lsp_types::SignatureInformation {
-    let (label, documentation, params) = if concise {
-        let mut params = signature.parameters;
-        if signature.has_self_param {
-            params.remove(0);
-        }
-        (params.join(", "), None, params)
-    } else {
-        (signature.to_string(), signature.doc.map(documentation), signature.parameters)
-    };
-
-    let parameters: Vec<lsp_types::ParameterInformation> = params
-        .into_iter()
-        .map(|param| lsp_types::ParameterInformation {
-            label: lsp_types::ParameterLabel::Simple(param),
+pub(crate) fn signature_help(call_info: CallInfo, concise: bool) -> lsp_types::SignatureHelp {
+    let parameters = call_info
+        .parameter_labels()
+        .map(|label| lsp_types::ParameterInformation {
+            label: lsp_types::ParameterLabel::Simple(label.to_string()),
             documentation: None,
         })
         .collect();
 
-    lsp_types::SignatureInformation { label, documentation, parameters: Some(parameters) }
+    let label = if concise { call_info.parameter_labels().join(", ") } else { call_info.signature };
+    let documentation = call_info.doc.map(|doc| {
+        lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+            kind: lsp_types::MarkupKind::Markdown,
+            value: doc,
+        })
+    });
+
+    let signature =
+        lsp_types::SignatureInformation { label, documentation, parameters: Some(parameters) };
+    lsp_types::SignatureHelp {
+        signatures: vec![signature],
+        active_signature: None,
+        active_parameter: call_info.active_parameter.map(|it| it as i64),
+    }
 }
 
 pub(crate) fn inlay_int(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_ext::InlayHint {

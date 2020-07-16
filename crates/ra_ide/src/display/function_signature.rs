@@ -149,27 +149,6 @@ impl FunctionSignature {
             has_self_param: false,
         })
     }
-
-    pub(crate) fn from_macro(db: &RootDatabase, macro_def: hir::MacroDef) -> Option<Self> {
-        let node: ast::MacroCall = macro_def.source(db).value;
-
-        let params = vec![];
-
-        Some(FunctionSignature {
-            kind: CallableKind::Macro,
-            visibility: None,
-            qualifier: Default::default(),
-            name: node.name().map(|n| n.text().to_string()),
-            ret_type: None,
-            parameters: params,
-            parameter_names: vec![],
-            parameter_types: vec![],
-            generic_parameters: vec![],
-            where_predicates: vec![],
-            doc: macro_def.docs(db),
-            has_self_param: false,
-        })
-    }
 }
 
 impl From<&'_ ast::FnDef> for FunctionSignature {
