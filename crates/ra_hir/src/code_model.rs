@@ -1552,7 +1552,10 @@ impl Callable {
         let param_list = src.value.param_list()?;
         param_list.self_param()
     }
-    pub fn params(&self, db: &dyn HirDatabase) -> Vec<(Option<ast::Pat>, Type)> {
+    pub fn params(
+        &self,
+        db: &dyn HirDatabase,
+    ) -> Vec<(Option<Either<ast::SelfParam, ast::Pat>>, Type)> {
         let types = self
             .sig
             .params()
@@ -1562,7 +1565,14 @@ impl Callable {
         let patterns = match self.id {
             CallableDefId::FunctionId(func) => {
                 let src = func.lookup(db.upcast()).source(db.upcast());
-                src.value.param_list().map(|it| it.params().map(|it| it.pat()))
+                src.value.param_list().map(|param_list| {
+                    param_list
+                        .self_param()
+                        .map(|it| Some(Either::Left(it)))
+                        .filter(|_| !self.is_bound_method)
+                        .into_iter()
+                        .chain(param_list.params().map(|it| it.pat().map(Either::Right)))
+                })
             }
             CallableDefId::StructId(_) => None,
             CallableDefId::EnumVariantId(_) => None,

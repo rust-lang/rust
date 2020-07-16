@@ -1,4 +1,5 @@
 //! FIXME: write short doc here
+use either::Either;
 use hir::{Docs, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
@@ -80,7 +81,10 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
         for (pat, ty) in callable.params(db) {
             buf.clear();
             if let Some(pat) = pat {
-                format_to!(buf, "{}: ", pat);
+                match pat {
+                    Either::Left(_self) => format_to!(buf, "self: "),
+                    Either::Right(pat) => format_to!(buf, "{}: ", pat),
+                }
             }
             format_to!(buf, "{}", ty.display(db));
             res.push_param(&buf);
@@ -383,16 +387,33 @@ fn bar() {
         check(
             r#"
 struct S;
-impl S { pub fn do_it(&self, x: i32) {} }
-
-fn bar() {
-    let s: S = S;
-    s.do_it(<|>);
+impl S {
+    fn foo(&self, x: i32) {}
 }
+
+fn main() { S.foo(<|>); }
 "#,
             expect![[r#"
-                fn do_it(&self, x: i32)
+                fn foo(&self, x: i32)
                 (<x: i32>)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_fn_signature_for_method_with_arg_as_assoc_fn() {
+        check(
+            r#"
+struct S;
+impl S {
+    fn foo(&self, x: i32) {}
+}
+
+fn main() { S::foo(<|>); }
+"#,
+            expect![[r#"
+                fn foo(self: &S, x: i32)
+                (<self: &S>, x: i32)
             "#]],
         );
     }
