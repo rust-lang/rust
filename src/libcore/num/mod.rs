@@ -1643,7 +1643,7 @@ $EndFeature, "
                     exp /= 2;
                     base = base.wrapping_mul(base);
                 }
-                
+
                 // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
@@ -2018,7 +2018,7 @@ $EndFeature, "
                     base = r.0;
                     overflown |= r.1;
                 }
-                
+
                 // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
