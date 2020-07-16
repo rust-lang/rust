@@ -262,8 +262,8 @@ macro_rules! int_module {
                 assert_eq!(r.wrapping_pow(0), 1 as $T);
                 assert_eq!(r.checked_pow(2), Some(4 as $T));
                 assert_eq!(r.checked_pow(0), Some(1 as $T));
-                assert_eq!(r.overflowing_pow(2), (4 as $T,false));
-                assert_eq!(r.overflowing_pow(0), (1 as $T,false));
+                assert_eq!(r.overflowing_pow(2), (4 as $T, false));
+                assert_eq!(r.overflowing_pow(0), (1 as $T, false));
                 assert_eq!(r.saturating_pow(2), 4 as $T);
                 assert_eq!(r.saturating_pow(0), 1 as $T);
 
