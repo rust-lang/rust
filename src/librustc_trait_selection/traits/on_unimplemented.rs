@@ -286,7 +286,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     // `{from_desugaring}` is allowed
                     Position::ArgumentNamed(s) if s == sym::from_desugaring => (),
                     // `{ItemContext}` is allowed
-                    Position::ArgumentNamed(s) if s == sym::item_context => (),
+                    Position::ArgumentNamed(s) if s == sym::ItemContext => (),
                     // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s) => {
                         match generics.params.iter().find(|param| param.name == s) {
@@ -350,7 +350,7 @@ impl<'tcx> OnUnimplementedFormatString {
 
         let s = self.0.as_str();
         let parser = Parser::new(&s, None, None, false, ParseMode::Format);
-        let item_context = (options.get(&sym::item_context)).unwrap_or(&empty_string);
+        let item_context = (options.get(&sym::ItemContext)).unwrap_or(&empty_string);
         parser
             .map(|p| match p {
                 Piece::String(s) => s,
@@ -364,7 +364,7 @@ impl<'tcx> OnUnimplementedFormatString {
                             } else if s == sym::from_desugaring || s == sym::from_method {
                                 // don't break messages using these two arguments incorrectly
                                 &empty_string
-                            } else if s == sym::item_context {
+                            } else if s == sym::ItemContext {
                                 &item_context
                             } else {
                                 bug!(
