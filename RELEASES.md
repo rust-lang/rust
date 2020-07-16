@@ -47,7 +47,7 @@ Libraries
   // Prints "abcdefghijklmnopqrstuvwxyz"
   ```
 - [`OsString` now implements `FromStr`.][71662]
-- [The `saturating_neg` method as been added to all signed integer primitive
+- [The `saturating_neg` method has been added to all signed integer primitive
   types, and the `saturating_abs` method has been added for all integer
   primitive types.][71886]
 - [`Arc<T>`, `Rc<T>` now implement  `From<Cow<'_, T>>`, and `Box` now
