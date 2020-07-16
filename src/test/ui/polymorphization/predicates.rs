@@ -1,13 +1,15 @@
 // build-fail
-// compile-flags: -Zpolymorphize-errors
+#![feature(rustc_attrs)]
 
 // This test checks that `T` is considered used in `foo`, because it is used in a predicate for
 // `I`, which is used.
 
+#[rustc_polymorphize_error]
 fn bar<I>() {
-//~^ ERROR item has unused generic parameters
+    //~^ ERROR item has unused generic parameters
 }
 
+#[rustc_polymorphize_error]
 fn foo<I, T>(_: I)
 where
     I: Iterator<Item = T>,

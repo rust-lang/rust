@@ -16,6 +16,7 @@ use rustc_middle::ty::{
     query::Providers,
     Const, Ty, TyCtxt,
 };
+use rustc_span::symbol::sym;
 use std::convert::TryInto;
 
 /// Provide implementations of queries relating to polymorphization analysis.
@@ -77,7 +78,7 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> u64 {
 
     // Emit errors for debugging and testing if enabled.
     let is_full = unused_parameters == 0;
-    if tcx.sess.opts.debugging_opts.polymorphize_errors && !is_full {
+    if !is_full {
         emit_unused_generic_params_error(tcx, def_id, generics, unused_parameters);
     }
 
@@ -169,8 +170,8 @@ fn mark_used_by_predicates<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, used_paramete
     }
 }
 
-/// Emit an error for the function represented by `def_id`, labelling each generic parameter which
-/// was unused.
+/// Emit errors for the function annotated by `#[rustc_polymorphize_error]`, labelling each generic
+/// parameter which was unused.
 fn emit_unused_generic_params_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -178,7 +179,8 @@ fn emit_unused_generic_params_error<'tcx>(
     unused_parameters: u64,
 ) {
     debug!("emit_unused_generic_params_error: def_id={:?}", def_id);
-    if !def_id.is_local() {
+    let base_def_id = tcx.closure_base_def_id(def_id);
+    if !tcx.get_attrs(base_def_id).iter().any(|a| a.check_name(sym::rustc_polymorphize_error)) {
         return;
     }
 

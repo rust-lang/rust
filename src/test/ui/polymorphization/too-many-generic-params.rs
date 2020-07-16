@@ -1,9 +1,10 @@
 // build-pass
-// compile-flags: -Zpolymorphize-errors
+#![feature(rustc_attrs)]
 
 // This test checks that the analysis doesn't panic when there are >64 generic parameters, but
 // instead considers those parameters used.
 
+#[rustc_polymorphize_error]
 fn bar<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z, AA,
        AB, AC, AD, AE, AF, AG, AH, AI, AJ, AK, AL, AM, AN, AO, AP, AQ, AR, AS, AT, AU, AV, AW,
        AX, AY, AZ, BA, BB, BC, BD, BE, BF, BG, BH, BI, BJ, BK, BL>()

@@ -568,6 +568,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(TEST, rustc_synthetic, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_symbol_name, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_polymorphize_error, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_def_path, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_mir, AssumedUsed, template!(List: "arg1, arg2, ...")),
     rustc_attr!(TEST, rustc_dump_program_clauses, AssumedUsed, template!(Word)),
