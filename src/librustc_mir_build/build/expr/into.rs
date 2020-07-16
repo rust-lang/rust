@@ -188,10 +188,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let ptr_ty = ptr.ty;
                     // Create an *internal* temp for the pointer, so that unsafety
                     // checking won't complain about the raw pointer assignment.
-                    let ptr_temp = this.local_decls.push(LocalDecl::with_source_info(
-                        ptr_ty,
-                        source_info,
-                    ).internal());
+                    let ptr_temp = this
+                        .local_decls
+                        .push(LocalDecl::with_source_info(ptr_ty, source_info).internal());
                     let ptr_temp = Place::from(ptr_temp);
                     let block = unpack!(this.into(ptr_temp, block, ptr));
                     this.into(this.hir.tcx().mk_place_deref(ptr_temp), block, val)
@@ -224,7 +223,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 Some((destination, success))
                             },
                             from_hir_call,
-                            fn_span
+                            fn_span,
                         },
                     );
                     success.unit()
@@ -387,12 +386,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // These cases don't actually need a destination
             ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
-            | ExprKind::Continue { .. }
-            | ExprKind::Break { .. }
-            | ExprKind::LlvmInlineAsm { .. }
-            | ExprKind::Return { .. } => {
+            | ExprKind::LlvmInlineAsm { .. } => {
                 unpack!(block = this.stmt_expr(block, expr, None));
                 this.cfg.push_assign_unit(block, source_info, destination, this.hir.tcx());
+                block.unit()
+            }
+
+            ExprKind::Continue { .. } | ExprKind::Break { .. } | ExprKind::Return { .. } => {
+                unpack!(block = this.stmt_expr(block, expr, None));
+                // No assign, as these have type `!`.
                 block.unit()
             }
 
