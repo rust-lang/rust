@@ -1,4 +1,4 @@
-# Change Log
+# Changelog
 
 All notable changes to this project will be documented in this file.
 See [Changelog Update](doc/changelog_update.md) if you want to update this
