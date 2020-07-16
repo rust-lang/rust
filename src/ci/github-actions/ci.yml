@@ -95,6 +95,7 @@ x--expand-yaml-anchors--remove:
 
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
+        shell: bash
         env:
           # Since it's not possible to merge `${{ matrix.env }}` with the other
           # variables in `job.<name>.env`, the variables defined in the matrix
@@ -105,54 +106,67 @@ x--expand-yaml-anchors--remove:
 
       - name: decide whether to skip this job
         run: src/ci/scripts/should-skip-this.sh
+        shell: bash
         <<: *step
 
       - name: collect CPU statistics
         run: src/ci/scripts/collect-cpu-stats.sh
+        shell: bash
         <<: *step
 
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
+        shell: bash
         <<: *step
 
       - name: install awscli
         run: src/ci/scripts/install-awscli.sh
+        shell: bash
         <<: *step
 
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
+        shell: bash
         <<: *step
 
       - name: install clang
         run: src/ci/scripts/install-clang.sh
+        shell: bash
         <<: *step
 
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
+        shell: bash
         <<: *step
 
       - name: ensure the build happens on a partition with enough space
         run: src/ci/scripts/symlink-build-dir.sh
+        shell: bash
         <<: *step
 
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
+        shell: bash
         <<: *step
 
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
+        shell: bash
         <<: *step
 
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
+        shell: bash
         <<: *step
 
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
+        shell: bash
         <<: *step
 
       - name: enable ipv6 on Docker
         run: src/ci/scripts/enable-docker-ipv6.sh
+        shell: bash
         <<: *step
 
       # Disable automatic line ending conversion (again). On Windows, when we're
@@ -162,18 +176,22 @@ x--expand-yaml-anchors--remove:
       # appropriate line endings.
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
+        shell: bash
         <<: *step
 
       - name: checkout submodules
         run: src/ci/scripts/checkout-submodules.sh
+        shell: bash
         <<: *step
 
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
+        shell: bash
         <<: *step
 
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
+        shell: bash
         env:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
@@ -182,6 +200,7 @@ x--expand-yaml-anchors--remove:
 
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
+        shell: bash
         env:
           AWS_ACCESS_KEY_ID: ${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
@@ -620,6 +639,7 @@ jobs:
 
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
+        shell: bash
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: ${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}
         <<: *step

@@ -1895,7 +1895,7 @@ fn render_markdown(
             cx.shared.edition,
             &cx.shared.playground
         )
-        .to_string()
+        .into_string()
     )
 }
 
@@ -2185,7 +2185,7 @@ fn item_module(w: &mut Buffer, cx: &Context, item: &clean::Item, items: &[clean:
                        </tr>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = stability_tags(myitem),
-                    docs = MarkdownSummaryLine(doc_value, &myitem.links()).to_string(),
+                    docs = MarkdownSummaryLine(doc_value, &myitem.links()).into_string(),
                     class = myitem.type_(),
                     add = add,
                     stab = stab.unwrap_or_else(String::new),
@@ -2278,7 +2278,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
                 cx.shared.edition,
                 &cx.shared.playground,
             );
-            message.push_str(&format!(": {}", html.to_string()));
+            message.push_str(&format!(": {}", html.into_string()));
         }
         stability.push(format!(
             "<div class='stab deprecated'><span class='emoji'>👎</span> {}</div>",
@@ -2332,7 +2332,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
                     cx.shared.edition,
                     &cx.shared.playground,
                 )
-                .to_string()
+                .into_string()
             );
         }
 
@@ -2415,7 +2415,7 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
     write!(
         w,
         "{vis}{constness}{asyncness}{unsafety}{abi}fn \
-           {name}{generics}{decl}{where_clause}</pre>",
+           {name}{generics}{decl}{spotlight}{where_clause}</pre>",
         vis = it.visibility.print_with_space(),
         constness = f.header.constness.print_with_space(),
         asyncness = f.header.asyncness.print_with_space(),
@@ -2425,7 +2425,8 @@ fn item_function(w: &mut Buffer, cx: &Context, it: &clean::Item, f: &clean::Func
         generics = f.generics.print(),
         where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
         decl = Function { decl: &f.decl, header_len, indent: 0, asyncness: f.header.asyncness }
-            .print()
+            .print(),
+        spotlight = spotlight_decl(&f.decl),
     );
     document(w, cx, it)
 }
@@ -2612,7 +2613,7 @@ fn item_trait(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Trait) 
         let name = m.name.as_ref().unwrap();
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
-        write!(w, "<h3 id='{id}' class='method'><code>", id = id);
+        write!(w, "<h3 id='{id}' class='method'><code>", id = id,);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl);
         write!(w, "</code>");
         render_stability_since(w, m, t);
@@ -2926,7 +2927,7 @@ fn render_assoc_item(
         write!(
             w,
             "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
-                   {generics}{decl}{where_clause}",
+                   {generics}{decl}{spotlight}{where_clause}",
             if parent == ItemType::Trait { "    " } else { "" },
             meth.visibility.print_with_space(),
             header.constness.print_with_space(),
@@ -2938,6 +2939,7 @@ fn render_assoc_item(
             name = name,
             generics = g.print(),
             decl = Function { decl: d, header_len, indent, asyncness: header.asyncness }.print(),
+            spotlight = spotlight_decl(&d),
             where_clause = WhereClause { gens: g, indent, end_newline }
         )
     }
@@ -3559,6 +3561,62 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool) -> bool {
     }
 }
 
+fn spotlight_decl(decl: &clean::FnDecl) -> String {
+    let mut out = Buffer::html();
+    let mut trait_ = String::new();
+
+    if let Some(did) = decl.output.def_id() {
+        let c = cache();
+        if let Some(impls) = c.impls.get(&did) {
+            for i in impls {
+                let impl_ = i.inner_impl();
+                if impl_.trait_.def_id().map_or(false, |d| c.traits[&d].is_spotlight) {
+                    if out.is_empty() {
+                        out.push_str(&format!(
+                            "<h3 class=\"important\">Important traits for {}</h3>\
+                                      <code class=\"content\">",
+                            impl_.for_.print()
+                        ));
+                        trait_.push_str(&impl_.for_.print().to_string());
+                    }
+
+                    //use the "where" class here to make it small
+                    out.push_str(&format!(
+                        "<span class=\"where fmt-newline\">{}</span>",
+                        impl_.print()
+                    ));
+                    let t_did = impl_.trait_.def_id().unwrap();
+                    for it in &impl_.items {
+                        if let clean::TypedefItem(ref tydef, _) = it.inner {
+                            out.push_str("<span class=\"where fmt-newline\">    ");
+                            assoc_type(
+                                &mut out,
+                                it,
+                                &[],
+                                Some(&tydef.type_),
+                                AssocItemLink::GotoSource(t_did, &FxHashSet::default()),
+                                "",
+                            );
+                            out.push_str(";</span>");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if !out.is_empty() {
+        out.insert_str(
+            0,
+            "<span class=\"important-traits\"><span class=\"important-traits-tooltip\">ⓘ<div class='important-traits-tooltiptext'><span class=\"docblock\">"
+
+        );
+        out.push_str("</code></span></div></span></span>");
+    }
+
+    out.into_inner()
+}
+
 fn render_impl(
     w: &mut Buffer,
     cx: &Context,
@@ -3632,7 +3690,7 @@ fn render_impl(
                     cx.shared.edition,
                     &cx.shared.playground
                 )
-                .to_string()
+                .into_string()
             );
         }
     }
@@ -3670,7 +3728,8 @@ fn render_impl(
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
-                    write!(w, "<h4 id='{}' class=\"{}{}\"><code>", id, item_type, extra_class);
+                    write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class);
+                    write!(w, "<code>");
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl);
                     write!(w, "</code>");
                     render_stability_since_raw(w, item.stable_since(), outer_version);
@@ -4526,7 +4585,12 @@ fn sidebar_foreign_type(buf: &mut Buffer, it: &clean::Item) {
 
 fn item_macro(w: &mut Buffer, cx: &Context, it: &clean::Item, t: &clean::Macro) {
     wrap_into_docblock(w, |w| {
-        w.write_str(&highlight::render_with_highlighting(&t.source, Some("macro"), None, None))
+        w.write_str(&highlight::render_with_highlighting(
+            t.source.clone(),
+            Some("macro"),
+            None,
+            None,
+        ))
     });
     document(w, cx, it)
 }

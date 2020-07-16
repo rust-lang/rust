@@ -253,6 +253,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     include => external_doc
                     cfg => doc_cfg
                     masked => doc_masked
+                    spotlight => doc_spotlight
                     alias => doc_alias
                     keyword => doc_keyword
                 );

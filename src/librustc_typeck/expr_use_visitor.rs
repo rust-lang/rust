@@ -11,8 +11,10 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::PatKind;
+use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, adjustment, TyCtxt};
+use rustc_target::abi::VariantIdx;
 
 use crate::mem_categorization as mc;
 use rustc_span::Span;
@@ -396,6 +398,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             &*with_expr,
                             with_place.clone(),
                             with_field.ty(self.tcx(), substs),
+                            mc::ProjectionKind::Field(f_index as u32, VariantIdx::new(0)),
                         );
                         self.delegate_consume(&field_place);
                     }

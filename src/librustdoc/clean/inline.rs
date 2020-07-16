@@ -12,7 +12,7 @@ use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty;
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 use crate::clean::{self, GetDefId, ToSource, TypeKind};
@@ -194,6 +194,7 @@ pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
+    let is_spotlight = load_attrs(cx, did).clean(cx).has_doc_flag(sym::spotlight);
     let is_auto = cx.tcx.trait_is_auto(did);
     clean::Trait {
         auto: auto_trait,
@@ -201,6 +202,7 @@ pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
         generics,
         items: trait_items,
         bounds: supertrait_bounds,
+        is_spotlight,
         is_auto,
     }
 }
@@ -336,6 +338,16 @@ pub fn build_impl(
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
             if !cx.renderinfo.borrow().access_levels.is_public(traitref.def_id) {
+                return;
+            }
+        }
+
+        // Skip foreign unstable traits from lists of trait implementations and
+        // such. This helps prevent dependencies of the standard library, for
+        // example, from getting documented as "traits `u32` implements" which
+        // isn't really too helpful.
+        if let Some(stab) = cx.tcx.lookup_stability(did) {
+            if stab.level.is_unstable() {
                 return;
             }
         }

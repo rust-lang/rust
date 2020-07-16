@@ -123,6 +123,10 @@ crate enum RibKind<'a> {
     /// from the default of a type parameter because they're not declared
     /// before said type parameter. Also see the `visit_generics` override.
     ForwardTyParamBanRibKind,
+
+    /// We are inside of the type of a const parameter. Can't refer to any
+    /// parameters.
+    ConstParamTyRibKind,
 }
 
 impl RibKind<'_> {
@@ -135,7 +139,8 @@ impl RibKind<'_> {
             | FnItemRibKind
             | ConstantItemRibKind
             | ModuleRibKind(_)
-            | MacroDefinition(_) => false,
+            | MacroDefinition(_)
+            | ConstParamTyRibKind => false,
             AssocItemRibKind | ItemRibKind(_) | ForwardTyParamBanRibKind => true,
         }
     }
@@ -394,13 +399,23 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
 
     /// Fields used to add information to diagnostic errors.
     diagnostic_metadata: DiagnosticMetadata<'ast>,
+
+    /// State used to know whether to ignore resolution errors for function bodies.
+    ///
+    /// In particular, rustdoc uses this to avoid giving errors for `cfg()` items.
+    /// In most cases this will be `None`, in which case errors will always be reported.
+    /// If it is `Some(_)`, then it will be updated when entering a nested function or trait body.
+    in_func_body: bool,
 }
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
 impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     fn visit_item(&mut self, item: &'ast Item) {
         let prev = replace(&mut self.diagnostic_metadata.current_item, Some(item));
+        // Always report errors in items we just entered.
+        let old_ignore = replace(&mut self.in_func_body, false);
         self.resolve_item(item);
+        self.in_func_body = old_ignore;
         self.diagnostic_metadata.current_item = prev;
     }
     fn visit_arm(&mut self, arm: &'ast Arm) {
@@ -497,6 +512,9 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
                 visit::walk_fn_ret_ty(this, &declaration.output);
 
+                // Ignore errors in function bodies if this is rustdoc
+                // Be sure not to set this until the function signature has been resolved.
+                let previous_state = replace(&mut this.in_func_body, true);
                 // Resolve the function body, potentially inside the body of an async closure
                 match fn_kind {
                     FnKind::Fn(.., body) => walk_list!(this, visit_block, body),
@@ -504,6 +522,7 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 };
 
                 debug!("(resolving function) leaving function");
+                this.in_func_body = previous_state;
             })
         });
         self.diagnostic_metadata.current_function = previous_value;
@@ -562,7 +581,11 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     for bound in &param.bounds {
                         self.visit_param_bound(bound);
                     }
+                    self.ribs[TypeNS].push(Rib::new(ConstParamTyRibKind));
+                    self.ribs[ValueNS].push(Rib::new(ConstParamTyRibKind));
                     self.visit_ty(ty);
+                    self.ribs[TypeNS].pop().unwrap();
+                    self.ribs[ValueNS].pop().unwrap();
                 }
             }
         }
@@ -644,6 +667,8 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             label_ribs: Vec::new(),
             current_trait_ref: None,
             diagnostic_metadata: DiagnosticMetadata::default(),
+            // errors at module scope should always be reported
+            in_func_body: false,
         }
     }
 
@@ -757,7 +782,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 return if self.is_label_valid_from_rib(i) {
                     Some(*id)
                 } else {
-                    self.r.report_error(
+                    self.report_error(
                         original_span,
                         ResolutionError::UnreachableLabel {
                             name: label.name,
@@ -775,7 +800,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             suggestion = suggestion.or_else(|| self.suggestion_for_label_in_rib(i, label));
         }
 
-        self.r.report_error(
+        self.report_error(
             original_span,
             ResolutionError::UndeclaredLabel { name: label.name, suggestion },
         );
@@ -798,7 +823,8 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | ItemRibKind(..)
                 | ConstantItemRibKind
                 | ModuleRibKind(..)
-                | ForwardTyParamBanRibKind => {
+                | ForwardTyParamBanRibKind
+                | ConstParamTyRibKind => {
                     return false;
                 }
             }
@@ -833,7 +859,11 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
             let report_error = |this: &Self, ns| {
                 let what = if ns == TypeNS { "type parameters" } else { "local variables" };
-                this.r.session.span_err(ident.span, &format!("imports cannot refer to {}", what));
+                if this.should_report_errs() {
+                    this.r
+                        .session
+                        .span_err(ident.span, &format!("imports cannot refer to {}", what));
+                }
             };
 
             for &ns in nss {
@@ -1008,7 +1038,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if seen_bindings.contains_key(&ident) {
                 let span = seen_bindings.get(&ident).unwrap();
                 let err = ResolutionError::NameAlreadyUsedInParameterList(ident.name, *span);
-                self.r.report_error(param.ident.span, err);
+                self.report_error(param.ident.span, err);
             }
             seen_bindings.entry(ident).or_insert(param.ident.span);
 
@@ -1274,7 +1304,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 .is_err()
             {
                 let path = &self.current_trait_ref.as_ref().unwrap().1.path;
-                self.r.report_error(span, err(ident.name, &path_names_to_string(path)));
+                self.report_error(span, err(ident.name, &path_names_to_string(path)));
             }
         }
     }
@@ -1289,6 +1319,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn resolve_local(&mut self, local: &'ast Local) {
+        debug!("resolving local ({:?})", local);
         // Resolve the type.
         walk_list!(self, visit_ty, &local.ty);
 
@@ -1390,7 +1421,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             if inconsistent_vars.contains_key(name) {
                 v.could_be_path = false;
             }
-            self.r.report_error(
+            self.report_error(
                 *v.origin.iter().next().unwrap(),
                 ResolutionError::VariableNotBoundInPattern(v),
             );
@@ -1400,7 +1431,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let mut inconsistent_vars = inconsistent_vars.iter().collect::<Vec<_>>();
         inconsistent_vars.sort();
         for (name, v) in inconsistent_vars {
-            self.r.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(*name, v.1));
+            self.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(*name, v.1));
         }
 
         // 5) Finally bubble up all the binding maps.
@@ -1550,7 +1581,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // `Variant(a, a)`:
                 _ => IdentifierBoundMoreThanOnceInSamePattern,
             };
-            self.r.report_error(ident.span, error(ident.name));
+            self.report_error(ident.span, error(ident.name));
         }
 
         // Record as bound if it's valid:
@@ -1624,7 +1655,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // to something unusable as a pattern (e.g., constructor function),
                 // but we still conservatively report an error, see
                 // issues/33118#issuecomment-233962221 for one reason why.
-                self.r.report_error(
+                self.report_error(
                     ident.span,
                     ResolutionError::BindingShadowsSomethingUnacceptable(
                         pat_src.descr(),
@@ -1677,18 +1708,27 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         source: PathSource<'ast>,
         crate_lint: CrateLint,
     ) -> PartialRes {
+        log::debug!("smart_resolve_path_fragment(id={:?},qself={:?},path={:?}", id, qself, path);
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
         let report_errors = |this: &mut Self, res: Option<Res>| {
-            let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
+            if this.should_report_errs() {
+                let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
 
-            let def_id = this.parent_scope.module.normal_ancestor_id;
-            let instead = res.is_some();
-            let suggestion =
-                if res.is_none() { this.report_missing_type_error(path) } else { None };
+                let def_id = this.parent_scope.module.normal_ancestor_id;
+                let instead = res.is_some();
+                let suggestion =
+                    if res.is_none() { this.report_missing_type_error(path) } else { None };
 
-            this.r.use_injections.push(UseError { err, candidates, def_id, instead, suggestion });
+                this.r.use_injections.push(UseError {
+                    err,
+                    candidates,
+                    def_id,
+                    instead,
+                    suggestion,
+                });
+            }
 
             PartialRes::new(Res::Err)
         };
@@ -1746,13 +1786,17 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             let def_id = this.parent_scope.module.normal_ancestor_id;
 
-            this.r.use_injections.push(UseError {
-                err,
-                candidates,
-                def_id,
-                instead: false,
-                suggestion: None,
-            });
+            if this.should_report_errs() {
+                this.r.use_injections.push(UseError {
+                    err,
+                    candidates,
+                    def_id,
+                    instead: false,
+                    suggestion: None,
+                });
+            } else {
+                err.cancel();
+            }
 
             // We don't return `Some(parent_err)` here, because the error will
             // be already printed as part of the `use` injections
@@ -1809,7 +1853,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             Err(err) => {
                 if let Some(err) = report_errors_for_call(self, err) {
-                    self.r.report_error(err.span, err.node);
+                    self.report_error(err.span, err.node);
                 }
 
                 PartialRes::new(Res::Err)
@@ -1841,6 +1885,21 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let ident = Ident::new(kw::SelfLower, self_span);
         let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, path_span);
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
+    }
+
+    /// A wrapper around [`Resolver::report_error`].
+    ///
+    /// This doesn't emit errors for function bodies if this is rustdoc.
+    fn report_error(&self, span: Span, resolution_error: ResolutionError<'_>) {
+        if self.should_report_errs() {
+            self.r.report_error(span, resolution_error);
+        }
+    }
+
+    #[inline]
+    /// If we're actually rustdoc then avoid giving a name resolution error for `cfg()` items.
+    fn should_report_errs(&self) -> bool {
+        !(self.r.session.opts.actually_rustdoc && self.in_func_body)
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.

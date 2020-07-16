@@ -5,10 +5,15 @@ use rustc_driver::abort_on_err;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
-use rustc_hir::def::Namespace::TypeNS;
+use rustc_hir::def::{Namespace::TypeNS, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::HirId;
+use rustc_hir::{
+    intravisit::{self, NestedVisitorMap, Visitor},
+    Path,
+};
 use rustc_interface::interface;
+use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -372,7 +377,35 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         crate_name,
         lint_caps,
         register_lints: None,
-        override_queries: None,
+        override_queries: Some(|_sess, providers, _external_providers| {
+            // Most lints will require typechecking, so just don't run them.
+            providers.lint_mod = |_, _| {};
+            // Prevent `rustc_typeck::check_crate` from calling `typeck_tables_of` on all bodies.
+            providers.typeck_item_bodies = |_, _| {};
+            // hack so that `used_trait_imports` won't try to call typeck_tables_of
+            providers.used_trait_imports = |_, _| {
+                lazy_static! {
+                    static ref EMPTY_SET: FxHashSet<LocalDefId> = FxHashSet::default();
+                }
+                &EMPTY_SET
+            };
+            // In case typeck does end up being called, don't ICE in case there were name resolution errors
+            providers.typeck_tables_of = move |tcx, def_id| {
+                // Closures' tables come from their outermost function,
+                // as they are part of the same "inference environment".
+                // This avoids emitting errors for the parent twice (see similar code in `typeck_tables_of_with_fallback`)
+                let outer_def_id = tcx.closure_base_def_id(def_id.to_def_id()).expect_local();
+                if outer_def_id != def_id {
+                    return tcx.typeck_tables_of(outer_def_id);
+                }
+
+                let hir = tcx.hir();
+                let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
+                debug!("visiting body for {:?}", def_id);
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
+                (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck_tables_of)(tcx, def_id)
+            };
+        }),
         registry: rustc_driver::diagnostics_registry(),
     };
 
@@ -416,10 +449,17 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
             global_ctxt.enter(|tcx| {
-                tcx.analysis(LOCAL_CRATE).ok();
-
-                // Abort if there were any errors so far
-                sess.abort_if_errors();
+                // Certain queries assume that some checks were run elsewhere
+                // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
+                // so type-check everything other than function bodies in this crate before running lints.
+                // NOTE: this does not call `tcx.analysis()` so that we won't
+                // typeck function bodies or run the default rustc lints.
+                // (see `override_queries` in the `config`)
+                let _ = rustc_typeck::check_crate(tcx);
+                tcx.sess.abort_if_errors();
+                sess.time("missing_docs", || {
+                    rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
+                });
 
                 let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
                 // Convert from a HirId set to a DefId set since we don't always have easy access
@@ -568,6 +608,62 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             })
         })
     })
+}
+
+/// Due to https://github.com/rust-lang/rust/pull/73566,
+/// the name resolution pass may find errors that are never emitted.
+/// If typeck is called after this happens, then we'll get an ICE:
+/// 'Res::Error found but not reported'. To avoid this, emit the errors now.
+struct EmitIgnoredResolutionErrors<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> EmitIgnoredResolutionErrors<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self { tcx }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        // We need to recurse into nested closures,
+        // since those will fallback to the parent for type checking.
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    }
+
+    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
+        debug!("visiting path {:?}", path);
+        if path.res == Res::Err {
+            // We have less context here than in rustc_resolve,
+            // so we can only emit the name and span.
+            // However we can give a hint that rustc_resolve will have more info.
+            let label = format!(
+                "could not resolve path `{}`",
+                path.segments
+                    .iter()
+                    .map(|segment| segment.ident.as_str().to_string())
+                    .collect::<Vec<_>>()
+                    .join("::")
+            );
+            let mut err = rustc_errors::struct_span_err!(
+                self.tcx.sess,
+                path.span,
+                E0433,
+                "failed to resolve: {}",
+                label
+            );
+            err.span_label(path.span, label);
+            err.note("this error was originally ignored because you are running `rustdoc`");
+            err.note("try running again with `rustc` or `cargo check` and you may get a more detailed error");
+            err.emit();
+        }
+        // We could have an outer resolution that succeeded,
+        // but with generic parameters that failed.
+        // Recurse into the segments so we catch those too.
+        intravisit::walk_path(self, path);
+    }
 }
 
 /// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter

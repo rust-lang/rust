@@ -1,3 +1,4 @@
+#![crate_type = "lib"]
 #![feature(doc_alias)]
 
 #[doc(alias = "foo")] // ok!

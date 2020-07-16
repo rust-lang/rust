@@ -499,6 +499,7 @@ where
 /// [`&str`]: ../../std/primitive.str.html
 /// [slice]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(spotlight)]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -1261,6 +1262,7 @@ impl Initializer {
 ///
 /// [`write_all`]: #method.write_all
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(spotlight)]
 pub trait Write {
     /// Write a buffer into this writer, returning how many bytes were written.
     ///

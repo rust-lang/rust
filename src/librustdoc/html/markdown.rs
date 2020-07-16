@@ -13,7 +13,7 @@
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
 //! let md = Markdown(s, &[], &mut id_map, ErrorCodes::Yes, Edition::Edition2015, &None);
-//! let html = md.to_string();
+//! let html = md.into_string();
 //! // ... something using html
 //! ```
 
@@ -292,7 +292,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
         if let Some((s1, s2)) = tooltip {
             s.push_str(&highlight::render_with_highlighting(
-                &text,
+                text,
                 Some(&format!(
                     "rust-example-rendered{}",
                     if ignore != Ignore::None {
@@ -313,7 +313,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             Some(Event::Html(s.into()))
         } else {
             s.push_str(&highlight::render_with_highlighting(
-                &text,
+                text,
                 Some(&format!(
                     "rust-example-rendered{}",
                     if ignore != Ignore::None {
@@ -848,7 +848,7 @@ impl LangString {
 }
 
 impl Markdown<'_> {
-    pub fn to_string(self) -> String {
+    pub fn into_string(self) -> String {
         let Markdown(md, links, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
@@ -878,7 +878,7 @@ impl Markdown<'_> {
 }
 
 impl MarkdownWithToc<'_> {
-    pub fn to_string(self) -> String {
+    pub fn into_string(self) -> String {
         let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
 
         let p = Parser::new_ext(md, opts());
@@ -899,7 +899,7 @@ impl MarkdownWithToc<'_> {
 }
 
 impl MarkdownHtml<'_> {
-    pub fn to_string(self) -> String {
+    pub fn into_string(self) -> String {
         let MarkdownHtml(md, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
@@ -926,7 +926,7 @@ impl MarkdownHtml<'_> {
 }
 
 impl MarkdownSummaryLine<'_> {
-    pub fn to_string(self) -> String {
+    pub fn into_string(self) -> String {
         let MarkdownSummaryLine(md, links) = self;
         // This is actually common enough to special-case
         if md.is_empty() {
