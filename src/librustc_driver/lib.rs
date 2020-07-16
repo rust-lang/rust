@@ -6,7 +6,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(track_caller))]
 #![recursion_limit = "256"]
 
 #[macro_use]

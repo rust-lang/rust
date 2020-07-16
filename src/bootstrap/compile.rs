@@ -159,13 +159,7 @@ fn copy_self_contained_objects(
     compiler: &Compiler,
     target: Interned<String>,
 ) -> Vec<(PathBuf, DependencyType)> {
-    // cfg(bootstrap)
-    // Remove when upgrading bootstrap compiler.
-    let libdir_self_contained = if compiler.stage == 0 {
-        builder.sysroot_libdir(*compiler, target).to_path_buf()
-    } else {
-        builder.sysroot_libdir(*compiler, target).join("self-contained")
-    };
+    let libdir_self_contained = builder.sysroot_libdir(*compiler, target).join("self-contained");
     t!(fs::create_dir_all(&libdir_self_contained));
     let mut target_deps = vec![];
 

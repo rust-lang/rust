@@ -305,7 +305,6 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    #[cfg(not(bootstrap))]
     pub const fn guaranteed_eq(self, other: *mut T) -> bool
     where
         T: Sized,
@@ -337,7 +336,6 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     #[inline]
-    #[cfg(not(bootstrap))]
     pub const unsafe fn guaranteed_ne(self, other: *mut T) -> bool
     where
         T: Sized,
