@@ -215,7 +215,7 @@ enum ResolutionError<'a> {
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
-    ParamInTyOfConstArg,
+    ParamInTyOfConstArg(Symbol),
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
     /// Error E0767: use of unreachable label
@@ -2484,7 +2484,7 @@ impl<'a> Resolver<'a> {
                         }
                         ConstParamTyRibKind => {
                             if record_used {
-                                self.report_error(span, ParamInTyOfConstArg);
+                                self.report_error(span, ParamInTyOfConstArg(rib_ident.name));
                             }
                             return Res::Err;
                         }
@@ -2513,7 +2513,10 @@ impl<'a> Resolver<'a> {
                         FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
                             if record_used {
-                                self.report_error(span, ResolutionError::ParamInTyOfConstArg);
+                                self.report_error(
+                                    span,
+                                    ResolutionError::ParamInTyOfConstArg(rib_ident.name),
+                                );
                             }
                             return Res::Err;
                         }
@@ -2552,7 +2555,10 @@ impl<'a> Resolver<'a> {
                         FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
                             if record_used {
-                                self.report_error(span, ResolutionError::ParamInTyOfConstArg);
+                                self.report_error(
+                                    span,
+                                    ResolutionError::ParamInTyOfConstArg(rib_ident.name),
+                                );
                             }
                             return Res::Err;
                         }

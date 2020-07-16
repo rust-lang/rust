@@ -2,7 +2,7 @@ error[E0770]: the type of const parameters must not depend on other generic para
   --> $DIR/issue-71611.rs:4:31
    |
 LL | fn func<A, const F: fn(inner: A)>(outer: A) {
-   |                               ^ const parameters must have a concrete type
+   |                               ^ the type must not depend on the parameter `A`
 
 error: using function pointers as const generic parameters is forbidden
   --> $DIR/issue-71611.rs:4:21
