@@ -70,6 +70,8 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_target_feature(attr, span, target)
             } else if attr.check_name(sym::track_caller) {
                 self.check_track_caller(&attr.span, attrs, span, target)
+            } else if attr.check_name(sym::doc) {
+                self.check_doc_alias(attr)
             } else {
                 true
             };
@@ -214,6 +216,34 @@ impl CheckAttrVisitor<'tcx> {
                 false
             }
         }
+    }
+
+    fn check_doc_alias(&self, attr: &Attribute) -> bool {
+        if let Some(mi) = attr.meta() {
+            if let Some(list) = mi.meta_item_list() {
+                for meta in list {
+                    if meta.check_name(sym::alias) {
+                        if !meta.is_value_str()
+                            || meta
+                                .value_str()
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(String::new)
+                                .is_empty()
+                        {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    meta.span(),
+                                    "doc alias attribute expects a string: #[doc(alias = \"0\")]",
+                                )
+                                .emit();
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        true
     }
 
     /// Checks if the `#[repr]` attributes on `item` are valid.
