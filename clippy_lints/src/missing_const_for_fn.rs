@@ -131,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 /// Returns true if any of the method parameters is a type that implements `Drop`. The method
 /// can't be made const then, because `drop` can't be const-evaluated.
 fn method_accepts_dropable(cx: &LateContext<'_>, param_tys: &[hir::Ty<'_>]) -> bool {
-    // If any of the params are dropable, return true
+    // If any of the params are droppable, return true
     param_tys.iter().any(|hir_ty| {
         let ty_ty = hir_ty_to_ty(cx.tcx, hir_ty);
         has_drop(cx, ty_ty)

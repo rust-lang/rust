@@ -32,7 +32,7 @@ fn main() {
     let _ = -(1i32.abs());
     let _ = -(1f32.abs());
 
-    // Odd functions shoud not trigger an error
+    // Odd functions should not trigger an error
     let _ = -1f64.asin();
     let _ = -1f64.asinh();
     let _ = -1f64.atan();

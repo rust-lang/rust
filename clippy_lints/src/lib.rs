@@ -463,7 +463,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     );
     store.register_removed(
         "clippy::replace_consts",
-        "associated-constants `MIN`/`MAX` of integers are prefered to `{min,max}_value()` and module constants",
+        "associated-constants `MIN`/`MAX` of integers are preferred to `{min,max}_value()` and module constants",
     );
     store.register_removed(
         "clippy::regex_macro",
