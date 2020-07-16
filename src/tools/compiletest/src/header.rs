@@ -867,6 +867,7 @@ impl Config {
             &self.target == name ||                             // triple
             util::matches_os(&self.target, name) ||             // target
             util::matches_env(&self.target, name) ||            // env
+            self.target.ends_with(name) ||                      // target and env
             name == util::get_arch(&self.target) ||             // architecture
             name == util::get_pointer_width(&self.target) ||    // pointer width
             name == self.stage_id.split('-').next().unwrap() || // stage
