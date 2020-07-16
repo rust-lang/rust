@@ -376,7 +376,7 @@ Instead of relying on the built-in `cargo check`, you can configure Code to run 
 
 To do this you need to create a new https://code.visualstudio.com/docs/editor/tasks[VS Code Task] and set `rust-analyzer.checkOnSave.enable: false` in preferences.
 
-For example, if you want to run https://crates.io/crates/cargo-watch[`cargo watch`] instead you might add the following to `.vscode/tasks.json`:
+For example, if you want to run https://crates.io/crates/cargo-watch[`cargo watch`] instead, you might add the following to `.vscode/tasks.json`:
 
 ```json
 {
