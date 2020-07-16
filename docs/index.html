@@ -116,20 +116,22 @@
                   if (this.version !== this.oldVersion) {
                     const ConfigurationMdUrl =
                       `https://raw.githubusercontent.com/rust-lang/rustfmt/${this.version}/Configurations.md`;
+                    let res;
                     try {
-                      const res = await axios.get(ConfigurationMdUrl);
-                      const {
-                        about,
-                        configurationAbout,
-                        configurationDescriptions
-                      } = parseMarkdownAst(res.data);
-                      this.aboutHtml = marked.parser(about);
-                      this.configurationAboutHtml = marked.parser(configurationAbout);
-                      this.configurationDescriptions = configurationDescriptions;
-                      this.oldVersion = this.version;
-                    } catch(error) {
-                        this.aboutHtml = "<p>Failed to get configuration options for this version, please select the version from the dropdown above.</p>";
+                      res = await axios.get(ConfigurationMdUrl).catch(e => { throw e });
+                    } catch(e) {
+                      this.handleReqFailure(e);
+                      return;
                     }
+                    const {
+                      about,
+                      configurationAbout,
+                      configurationDescriptions
+                    } = parseMarkdownAst(res.data);
+                    this.aboutHtml = marked.parser(about);
+                    this.configurationAboutHtml = marked.parser(configurationAbout);
+                    this.configurationDescriptions = configurationDescriptions;
+                    this.oldVersion = this.version;
                   }
 
                   const ast = this.configurationDescriptions
@@ -172,7 +174,13 @@
                 }
               },
               created: async function() {
-                const {data: tags} = await axios.get(RusfmtTagsUrl);
+                let tags;
+                try {
+                  tags = (await axios.get(RusfmtTagsUrl)).data;
+                } catch(e) {
+                  this.handleReqFailure(e);
+                  return;
+                }
                 const reMajorVersion = /v(\d+)/;
                 const tagOptions = tags
                   .map(tag => tag.name)
@@ -188,6 +196,30 @@
                     this.scrolledOnce = true;
                   }
                 });
+              },
+              methods: {
+                handleReqFailure(e) {
+                  if (e.response.status === 404) {
+                    this.aboutHtml =
+                      "<p>Failed to get configuration options for this version, please select the version from the dropdown above.</p>";
+                  } else if (
+                    e.response.status === 403 &&
+                    e.response.headers["X-RateLimit-Remaining"] === 0
+                  ) {
+                    const resetDate = new Date(
+                      e.response.headers['X-RateLimit-Reset'] * 1000
+                    ).toLocaleString();
+                    this.aboutHtml =
+                      `<p>You have hit the GitHub API rate limit; documentation cannot be updated.` +
+                      `<p>The rate limit will be reset at ${resetDate}.</p>`;
+                  } else {
+                    this.aboutHtml =
+                      `<p>Ecountered an error when fetching documentation data:</p>` +
+                      `<pre><code>${e.response.data}</code></pre>` +
+                      `<p>We would appreciate <a href="https://github.com/rust-lang/rustfmt/issues/new?template=bug_report.md">a bug report</a>.` +
+                      `<p>Try refreshing the page.</p>`;
+                  }
+                }
               }
             });
             const extractDepthOnes = (ast) => {
