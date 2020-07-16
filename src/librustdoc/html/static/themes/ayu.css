@@ -216,10 +216,6 @@ a {
 	color: #39AFD7;
 }
 
-.stab.internal a {
-	color: #304FFE;
-}
-
 .collapse-toggle {
 	color: #999;
 }
@@ -254,7 +250,6 @@ a {
 }
 
 .stab.unstable,
-.stab.internal,
 .stab.deprecated,
 .stab.portability {
     color: #c5c5c5;
@@ -462,7 +457,6 @@ pre.rust .doccomment {}
 .content .highlighted.type {}
 pre.rust .kw-2,pre.rust .prelude-ty {}
 .content span.trait,.content a.trait,.block a.current.trait {}
-.stab.internal {}
 
 @media (max-width: 700px) {
 	.sidebar-menu {
