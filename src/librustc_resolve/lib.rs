@@ -214,6 +214,8 @@ enum ResolutionError<'a> {
     BindingShadowsSomethingUnacceptable(&'static str, Symbol, &'a NameBinding<'a>),
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
+    /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
+    ParamInTyOfConstArg(Symbol),
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
     /// Error E0767: use of unreachable label
@@ -2480,6 +2482,12 @@ impl<'a> Resolver<'a> {
                             }
                             return Res::Err;
                         }
+                        ConstParamTyRibKind => {
+                            if record_used {
+                                self.report_error(span, ParamInTyOfConstArg(rib_ident.name));
+                            }
+                            return Res::Err;
+                        }
                     }
                 }
                 if let Some(res_err) = res_err {
@@ -2503,6 +2511,15 @@ impl<'a> Resolver<'a> {
                         // This was an attempt to use a type parameter outside its scope.
                         ItemRibKind(has_generic_params) => has_generic_params,
                         FnItemRibKind => HasGenericParams::Yes,
+                        ConstParamTyRibKind => {
+                            if record_used {
+                                self.report_error(
+                                    span,
+                                    ResolutionError::ParamInTyOfConstArg(rib_ident.name),
+                                );
+                            }
+                            return Res::Err;
+                        }
                     };
 
                     if record_used {
@@ -2527,9 +2544,24 @@ impl<'a> Resolver<'a> {
                 }
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
+                        NormalRibKind
+                        | ClosureOrAsyncRibKind
+                        | AssocItemRibKind
+                        | ModuleRibKind(..)
+                        | MacroDefinition(..)
+                        | ForwardTyParamBanRibKind
+                        | ConstantItemRibKind => continue,
                         ItemRibKind(has_generic_params) => has_generic_params,
                         FnItemRibKind => HasGenericParams::Yes,
-                        _ => continue,
+                        ConstParamTyRibKind => {
+                            if record_used {
+                                self.report_error(
+                                    span,
+                                    ResolutionError::ParamInTyOfConstArg(rib_ident.name),
+                                );
+                            }
+                            return Res::Err;
+                        }
                     };
 
                     // This was an attempt to use a const parameter outside its scope.

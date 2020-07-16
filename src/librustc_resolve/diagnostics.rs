@@ -442,6 +442,19 @@ impl<'a> Resolver<'a> {
                 );
                 err
             }
+            ResolutionError::ParamInTyOfConstArg(name) => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0770,
+                    "the type of const parameters must not depend on other generic parameters"
+                );
+                err.span_label(
+                    span,
+                    format!("the type must not depend on the parameter `{}`", name),
+                );
+                err
+            }
             ResolutionError::SelfInTyParamDefault => {
                 let mut err = struct_span_err!(
                     self.session,

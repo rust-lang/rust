@@ -1,3 +1,9 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/const-param-type-depends-on-type-param.rs:9:34
+   |
+LL | pub struct Dependent<T, const X: T>([(); X]);
+   |                                  ^ the type must not depend on the parameter `T`
+
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/const-param-type-depends-on-type-param.rs:1:12
    |
@@ -7,14 +13,15 @@ LL | #![feature(const_generics)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
-error[E0741]: `T` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be used as the type of a const parameter
-  --> $DIR/const-param-type-depends-on-type-param.rs:9:34
+error[E0392]: parameter `T` is never used
+  --> $DIR/const-param-type-depends-on-type-param.rs:9:22
    |
 LL | pub struct Dependent<T, const X: T>([(); X]);
-   |                                  ^ `T` may not derive both `PartialEq` and `Eq`
+   |                      ^ unused parameter
    |
-   = note: it is not currently possible to use a type parameter as the type of a const parameter
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `std::marker::PhantomData`
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0741`.
+Some errors have detailed explanations: E0392, E0770.
+For more information about an error, try `rustc --explain E0392`.
