@@ -40,7 +40,11 @@ fn setup_tracing() -> tracing::subscriber::DefaultGuard {
     use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
     use tracing_tree::HierarchicalLayer;
     let filter = EnvFilter::from_env("CHALK_DEBUG");
-    let layer = HierarchicalLayer::default().with_indent_amount(2).with_writer(std::io::stderr);
+    let layer = HierarchicalLayer::default()
+        .with_indent_lines(true)
+        .with_ansi(false)
+        .with_indent_amount(2)
+        .with_writer(std::io::stderr);
     let subscriber = Registry::default().with(filter).with(layer);
     tracing::subscriber::set_default(subscriber)
 }

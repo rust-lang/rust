@@ -15,7 +15,7 @@ use ra_db::salsa::InternKey;
 use crate::{
     db::HirDatabase,
     primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness},
-    traits::{builtin, AssocTyValue, Canonical, Impl, Obligation},
+    traits::{Canonical, Obligation},
     ApplicationTy, CallableDef, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
     ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TyKind, TypeCtor,
 };
@@ -311,18 +311,24 @@ impl ToChalk for TypeCtor {
             }
             TypeCtor::Never => TypeName::Never,
 
-            // FIXME convert these
-            TypeCtor::Adt(_) | TypeCtor::FnPtr { .. } | TypeCtor::Closure { .. } => {
-                // other TypeCtors get interned and turned into a chalk StructId
-                let struct_id = db.intern_type_ctor(self).into();
-                TypeName::Adt(struct_id)
+            TypeCtor::Closure { def, expr } => {
+                let closure_id = db.intern_closure((def, expr));
+                TypeName::Closure(closure_id.into())
+            }
+
+            TypeCtor::Adt(adt_id) => TypeName::Adt(chalk_ir::AdtId(adt_id)),
+
+            TypeCtor::FnPtr { .. } => {
+                // This should not be reached, since Chalk doesn't represent
+                // function pointers with TypeName
+                unreachable!()
             }
         }
     }
 
     fn from_chalk(db: &dyn HirDatabase, type_name: TypeName<Interner>) -> TypeCtor {
         match type_name {
-            TypeName::Adt(struct_id) => db.lookup_intern_type_ctor(struct_id.into()),
+            TypeName::Adt(struct_id) => TypeCtor::Adt(struct_id.0),
             TypeName::AssociatedType(type_id) => TypeCtor::AssociatedType(from_chalk(db, type_id)),
             TypeName::OpaqueType(opaque_type_id) => {
                 TypeCtor::OpaqueType(from_chalk(db, opaque_type_id))
@@ -355,13 +361,16 @@ impl ToChalk for TypeCtor {
                 let callable_def = from_chalk(db, fn_def_id);
                 TypeCtor::FnDef(callable_def)
             }
+            TypeName::Array => TypeCtor::Array,
 
-            TypeName::Array | TypeName::Error => {
-                // this should not be reached, since we don't represent TypeName::Error with TypeCtor
-                unreachable!()
+            TypeName::Closure(id) => {
+                let id: crate::db::ClosureId = id.into();
+                let (def, expr) = db.lookup_intern_closure(id);
+                TypeCtor::Closure { def, expr }
             }
-            TypeName::Closure(_) => {
-                // FIXME: implement closure support
+
+            TypeName::Error => {
+                // this should not be reached, since we don't represent TypeName::Error with TypeCtor
                 unreachable!()
             }
         }
@@ -433,15 +442,15 @@ impl ToChalk for Mutability {
     }
 }
 
-impl ToChalk for Impl {
+impl ToChalk for hir_def::ImplId {
     type Chalk = ImplId;
 
-    fn to_chalk(self, db: &dyn HirDatabase) -> ImplId {
-        db.intern_chalk_impl(self).into()
+    fn to_chalk(self, _db: &dyn HirDatabase) -> ImplId {
+        chalk_ir::ImplId(self.as_intern_id())
     }
 
-    fn from_chalk(db: &dyn HirDatabase, impl_id: ImplId) -> Impl {
-        db.lookup_intern_chalk_impl(impl_id.into())
+    fn from_chalk(_db: &dyn HirDatabase, impl_id: ImplId) -> hir_def::ImplId {
+        InternKey::from_intern_id(impl_id.0)
     }
 }
 
@@ -469,15 +478,20 @@ impl ToChalk for TypeAliasId {
     }
 }
 
-impl ToChalk for AssocTyValue {
+pub struct TypeAliasAsValue(pub TypeAliasId);
+
+impl ToChalk for TypeAliasAsValue {
     type Chalk = AssociatedTyValueId;
 
-    fn to_chalk(self, db: &dyn HirDatabase) -> AssociatedTyValueId {
-        db.intern_assoc_ty_value(self).into()
+    fn to_chalk(self, _db: &dyn HirDatabase) -> AssociatedTyValueId {
+        rust_ir::AssociatedTyValueId(self.0.as_intern_id())
     }
 
-    fn from_chalk(db: &dyn HirDatabase, assoc_ty_value_id: AssociatedTyValueId) -> AssocTyValue {
-        db.lookup_intern_assoc_ty_value(assoc_ty_value_id.into())
+    fn from_chalk(
+        _db: &dyn HirDatabase,
+        assoc_ty_value_id: AssociatedTyValueId,
+    ) -> TypeAliasAsValue {
+        TypeAliasAsValue(TypeAliasId::from_intern_id(assoc_ty_value_id.0))
     }
 }
 
@@ -683,52 +697,6 @@ where
             environment: from_chalk(db, in_env.environment),
             value: from_chalk(db, in_env.goal),
         }
-    }
-}
-
-impl ToChalk for builtin::BuiltinImplData {
-    type Chalk = ImplDatum;
-
-    fn to_chalk(self, db: &dyn HirDatabase) -> ImplDatum {
-        let impl_type = rust_ir::ImplType::External;
-        let where_clauses = self.where_clauses.into_iter().map(|w| w.to_chalk(db)).collect();
-
-        let impl_datum_bound =
-            rust_ir::ImplDatumBound { trait_ref: self.trait_ref.to_chalk(db), where_clauses };
-        let associated_ty_value_ids =
-            self.assoc_ty_values.into_iter().map(|v| v.to_chalk(db)).collect();
-        rust_ir::ImplDatum {
-            binders: make_binders(impl_datum_bound, self.num_vars),
-            impl_type,
-            polarity: rust_ir::Polarity::Positive,
-            associated_ty_value_ids,
-        }
-    }
-
-    fn from_chalk(_db: &dyn HirDatabase, _data: ImplDatum) -> Self {
-        unimplemented!()
-    }
-}
-
-impl ToChalk for builtin::BuiltinImplAssocTyValueData {
-    type Chalk = AssociatedTyValue;
-
-    fn to_chalk(self, db: &dyn HirDatabase) -> AssociatedTyValue {
-        let ty = self.value.to_chalk(db);
-        let value_bound = rust_ir::AssociatedTyValueBound { ty };
-
-        rust_ir::AssociatedTyValue {
-            associated_ty_id: self.assoc_ty_id.to_chalk(db),
-            impl_id: self.impl_.to_chalk(db),
-            value: make_binders(value_bound, self.num_vars),
-        }
-    }
-
-    fn from_chalk(
-        _db: &dyn HirDatabase,
-        _data: AssociatedTyValue,
-    ) -> builtin::BuiltinImplAssocTyValueData {
-        unimplemented!()
     }
 }
 
