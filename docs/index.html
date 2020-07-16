@@ -108,7 +108,8 @@
                 shouldStable: false,
                 version: versionNumber,
                 oldVersion: undefined,
-                versionOptions: ['master']
+                versionOptions: ['master'],
+                scrolledOnce: false,
               },
               asyncComputed: {
                 async outputHtml() {
@@ -156,11 +157,11 @@
                   renderer.heading = function(text, level) {
                     const id = htmlToId(text);
                     return `<h${level}>
-                              <a href="#${id}" name="${id}" class="header-link">${text}</a>
+                              <a id="${id}" href="#${id}" name="${id}" class="header-link">${text}</a>
                             </h${level}>`;
                   };
 
-                  return marked.parser(ast, {
+                  const html = marked.parser(ast, {
                     highlight(code, lang) {
                       return hljs.highlight(lang ? lang : 'rust', code).value;
                     },
@@ -168,6 +169,8 @@
                     headerPrefix: '',
                     renderer,
                   });
+                  document.dispatchEvent(new Event('htmlbuilt'));
+                  return html;
                 }
               },
               created: async function() {
@@ -178,12 +181,15 @@
                   .filter(tag => tag.startsWith('v'));
                 this.versionOptions = this.versionOptions.concat(tagOptions);
               },
-              mounted() {
+              updated: function() {
                 if (UrlHash === '') return;
-                const target = document.querySelector(`#${UrlHash}`);
-                if (target != null) {
-                  target.scrollIntoView(true);
-                }
+                this.$nextTick(() => {
+                  const target = document.querySelector(`#${UrlHash}`);
+                  if (target != null && !this.scrolledOnce) {
+                    target.scrollIntoView(true);
+                    this.scrolledOnce = true;
+                  }
+                });
               }
             });
             const extractDepthOnes = (ast) => {
