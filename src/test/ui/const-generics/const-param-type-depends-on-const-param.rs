@@ -6,8 +6,10 @@
 //
 // We may want to lift this restriction in the future.
 
-pub struct Dependent<T, const X: T>([(); X]);
+pub struct Dependent<const N: usize, const X: [u8; N]>([(); N]);
 //~^ ERROR: the type of const parameters must not depend on other generic parameters
-//~| ERROR: parameter `T` is never used
+
+pub struct SelfDependent<const N: [u8; N]>;
+//~^ ERROR: the type of const parameters must not depend on other generic parameters
 
 fn main() {}
