@@ -738,6 +738,8 @@ impl Step for RustdocGUI {
 
     fn run(self, builder: &Builder<'_>) {
         if let Some(ref nodejs) = builder.config.nodejs {
+            builder.ensure(compile::Std { target: self.target, compiler: self.compiler });
+
             // First step: cloning repositories.
             util::clone_repository(
                 "https://github.com/GuillaumeGomez/browser-UI-test",
