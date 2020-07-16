@@ -7,7 +7,15 @@ use ra_syntax::{
 };
 use test_utils::mark;
 
-use crate::{CallInfo, FilePosition, FunctionSignature};
+use crate::{FilePosition, FunctionSignature};
+
+/// Contains information about a call site. Specifically the
+/// `FunctionSignature`and current parameter.
+#[derive(Debug)]
+pub struct CallInfo {
+    pub signature: FunctionSignature,
+    pub active_parameter: Option<usize>,
+}
 
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
