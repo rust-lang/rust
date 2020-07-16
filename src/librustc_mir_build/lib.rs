@@ -4,7 +4,6 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(crate_visibility_modifier)]

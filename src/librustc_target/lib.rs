@@ -9,7 +9,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
-#![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(nll)]

@@ -208,7 +208,7 @@ mod imp {
         #[cfg(target_arch = "aarch64")]
         extern "C" {
             fn objc_msgSend(obj: NsId, sel: Sel) -> NsId;
-            #[cfg_attr(not(bootstrap), allow(clashing_extern_declarations))]
+            #[allow(clashing_extern_declarations)]
             #[link_name = "objc_msgSend"]
             fn objc_msgSend_ul(obj: NsId, sel: Sel, i: libc::c_ulong) -> NsId;
         }
@@ -216,7 +216,7 @@ mod imp {
         #[cfg(not(target_arch = "aarch64"))]
         extern "C" {
             fn objc_msgSend(obj: NsId, sel: Sel, ...) -> NsId;
-            #[cfg_attr(not(bootstrap), allow(clashing_extern_declarations))]
+            #[allow(clashing_extern_declarations)]
             #[link_name = "objc_msgSend"]
             fn objc_msgSend_ul(obj: NsId, sel: Sel, ...) -> NsId;
         }
