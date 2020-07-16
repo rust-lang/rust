@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
             if let ExprKind::Block(ref block, _) = expr.kind;
             if let Some(ref ex) = block.expr;
             if let Some(params) = match_function_call(cx, ex, &paths::BEGIN_PANIC)
-                .or(match_function_call(cx, ex, &paths::BEGIN_PANIC_FMT));
+                .or_else(|| match_function_call(cx, ex, &paths::BEGIN_PANIC_FMT));
             then {
                 let span = get_outer_span(expr);
                 if is_expn_of(expr.span, "unimplemented").is_some() {
