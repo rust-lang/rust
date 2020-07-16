@@ -407,7 +407,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
+                tcx.sess.time("emit ignored resolution errors", || {
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
+                });
                 (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
@@ -430,6 +432,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 // intra-doc-links
                 resolver.borrow_mut().access(|resolver| {
                     for extern_name in &extern_names {
+                        sess.time("load extern crate", || {
                         resolver
                             .resolve_str_path_error(
                                 DUMMY_SP,
@@ -440,6 +443,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                             .unwrap_or_else(|()| {
                                 panic!("Unable to resolve external crate {}", extern_name)
                             });
+                        });
                     }
                 });
 
@@ -480,7 +484,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     tcx.ensure().check_mod_attrs(local_def_id);
                 }
 
-                let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
+                let access_levels = tcx
+                    .sess
+                    .time("privacy_access_levels", || tcx.privacy_access_levels(LOCAL_CRATE));
                 // Convert from a HirId set to a DefId set since we don't always have easy access
                 // to the map from defid -> hirid
                 let access_levels = AccessLevels {
@@ -519,7 +525,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 };
                 debug!("crate: {:?}", tcx.hir().krate());
 
-                let mut krate = clean::krate(&mut ctxt);
+                let mut krate = tcx.sess.time("clean crate", || clean::krate(&mut ctxt));
 
                 if let Some(ref m) = krate.module {
                     if let None | Some("") = m.doc_value() {
@@ -618,7 +624,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     };
                     if run {
                         debug!("running pass {}", p.pass.name);
-                        krate = (p.pass.run)(krate, &ctxt);
+                        krate = ctxt.tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &ctxt));
                     }
                 }
 
