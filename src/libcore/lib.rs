@@ -96,6 +96,7 @@
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
+#![feature(duration_consts_2)]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
