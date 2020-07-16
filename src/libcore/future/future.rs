@@ -24,6 +24,7 @@ use crate::task::{Context, Poll};
 /// `.await` the value.
 ///
 /// [`Waker`]: ../task/struct.Waker.html
+#[doc(spotlight)]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[lang = "future_trait"]

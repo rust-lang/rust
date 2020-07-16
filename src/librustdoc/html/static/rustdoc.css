@@ -146,8 +146,11 @@ code, pre, a.test-arrow {
 	border-radius: 3px;
 	padding: 0 0.1em;
 }
-.docblock pre code, .docblock-short pre code {
+.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;
+}
+.docblock code.spotlight :last-child {
+	padding-bottom: 0.6em;
 }
 pre {
 	padding: 14px;
@@ -523,7 +526,7 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div {
+.content .methods > div:not(.important-traits) {
 	margin-left: 40px;
 	margin-bottom: 15px;
 }
@@ -1079,10 +1082,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	font-size: 16px;
 }
 
-.tooltip:hover .tooltiptext {
-	display: inline;
-}
-
 .tooltip .tooltiptext::after {
 	content: " ";
 	position: absolute;
@@ -1098,13 +1097,52 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	font-size: 20px;
 }
 
-.tooltip .tooltiptext {
+.important-traits-tooltip {
+	display: inline-block;
+	cursor: pointer;
+}
+
+.important-traits:hover .important-traits-tooltiptext,
+.important-traits .important-traits-tooltiptext.force-tooltip {
+	display: inline-block;
+}
+
+.important-traits .important-traits-tooltiptext {
+	display: none;
+	padding: 5px 3px 3px 3px;
+	border-radius: 6px;
+	margin-left: 5px;
+	z-index: 10;
+	font-size: 16px;
+	cursor: default;
+	position: absolute;
 	border: 1px solid;
-	font-weight: normal;
+}
+
+.important-traits-tooltip::after {
+	/* The margin on the tooltip does not capture hover events,
+	   this extends the area of hover enough so that mouse hover is not
+	   lost when moving the mouse to the tooltip */
+    content: "\00a0\00a0\00a0";
+}
+
+.important-traits .important, .important-traits .docblock {
+	margin: 0;
+}
+
+.important-traits .docblock code.content{
+    margin: 0;
+    padding: 0;
+    font-size: 20px;
+}
+
+/* Example code has the "Run" button that
+   needs to be positioned relative to the pre */
+pre.rust.rust-example-rendered {
+	position: relative;
 }
 
 pre.rust {
-	position: relative;
 	tab-size: 4;
 	-moz-tab-size: 4;
 }
@@ -1142,6 +1180,18 @@ pre.rust {
 #titles > div > div.count {
 	display: inline-block;
 	font-size: 16px;
+}
+
+.important-traits {
+	cursor: pointer;
+	z-index: 2;
+	margin-left: 5px;
+}
+
+h4 > .important-traits {
+	position: absolute;
+	left: -44px;
+	top: 2px;
 }
 
 #all-types {
@@ -1368,6 +1418,12 @@ pre.rust {
 		left: 10px;
 		top: 54px;
 		z-index: 1;
+	}
+
+	h4 > .important-traits {
+		position: absolute;
+		left: -22px;
+		top: 24px;
 	}
 
 	#titles > div > div.count {
