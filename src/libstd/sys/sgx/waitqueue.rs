@@ -1,16 +1,17 @@
+//! A simple queue implementation for synchronization primitives.
+//!
+//! This queue is used to implement condition variable and mutexes.
+//!
+//! Users of this API are expected to use the `WaitVariable<T>` type. Since
+//! that type is not `Sync`, it needs to be protected by e.g., a `SpinMutex` to
+//! allow shared access.
+//!
+//! Since userspace may send spurious wake-ups, the wakeup event state is
+//! recorded in the enclave. The wakeup event state is protected by a spinlock.
+//! The queue and associated wait state are stored in a `WaitVariable`.
 use crate::num::NonZeroUsize;
-/// A simple queue implementation for synchronization primitives.
-///
-/// This queue is used to implement condition variable and mutexes.
-///
-/// Users of this API are expected to use the `WaitVariable<T>` type. Since
-/// that type is not `Sync`, it needs to be protected by e.g., a `SpinMutex` to
-/// allow shared access.
-///
-/// Since userspace may send spurious wake-ups, the wakeup event state is
-/// recorded in the enclave. The wakeup event state is protected by a spinlock.
-/// The queue and associated wait state are stored in a `WaitVariable`.
 use crate::ops::{Deref, DerefMut};
+use crate::time::Duration;
 
 use super::abi::thread;
 use super::abi::usercalls;
@@ -155,6 +156,34 @@ impl WaitQueue {
                 let eventset = rtunwrap!(Ok, usercalls::wait(EV_UNPARK, WAIT_INDEFINITE));
                 rtassert!(eventset & EV_UNPARK == EV_UNPARK);
             }
+        }
+    }
+
+    /// Adds the calling thread to the `WaitVariable`'s wait queue, then wait
+    /// until a wakeup event or timeout. If event was observed, returns true.
+    /// If not, it will remove the calling thread from the wait queue.
+    pub fn wait_timeout<T, F: FnOnce()>(
+        lock: &SpinMutex<WaitVariable<T>>,
+        timeout: Duration,
+        before_wait: F,
+    ) -> bool {
+        // very unsafe: check requirements of UnsafeList::push
+        unsafe {
+            let mut entry = UnsafeListEntry::new(SpinMutex::new(WaitEntry {
+                tcs: thread::current(),
+                wake: false,
+            }));
+            let entry_lock = lock.lock().queue.inner.push(&mut entry);
+            before_wait();
+            usercalls::wait_timeout(EV_UNPARK, timeout, || entry_lock.lock().wake);
+            // acquire the wait queue's lock first to avoid deadlock.
+            let mut guard = lock.lock();
+            let success = entry_lock.lock().wake;
+            if !success {
+                // nobody is waking us up, so remove our entry from the wait queue.
+                guard.queue.inner.remove(&mut entry);
+            }
+            success
         }
     }
 
@@ -325,6 +354,31 @@ mod unsafe_list {
                 Some((*first.as_ptr()).value.as_ref().unwrap())
             }
         }
+
+        /// Removes an entry from the list.
+        ///
+        /// # Safety
+        ///
+        /// The caller must ensure that `entry` has been pushed onto `self`
+        /// prior to this call and has not moved since then.
+        pub unsafe fn remove(&mut self, entry: &mut UnsafeListEntry<T>) {
+            rtassert!(!self.is_empty());
+            // BEFORE:
+            //     /----\ next ---> /-----\ next ---> /----\
+            // ... |prev|           |entry|           |next| ...
+            //     \----/ <--- prev \-----/ <--- prev \----/
+            //
+            // AFTER:
+            //     /----\ next ---> /----\
+            // ... |prev|           |next| ...
+            //     \----/ <--- prev \----/
+            let mut prev = entry.prev;
+            let mut next = entry.next;
+            prev.as_mut().next = next;
+            next.as_mut().prev = prev;
+            entry.next = NonNull::dangling();
+            entry.prev = NonNull::dangling();
+        }
     }
 
     #[cfg(test)]
@@ -350,6 +404,51 @@ mod unsafe_list {
                 let mut list = UnsafeList::new();
                 assert_eq!(list.push(&mut node), &1234);
                 assert_eq!(list.pop().unwrap(), &1234);
+                assert_empty(&mut list);
+            }
+        }
+
+        #[test]
+        fn push_remove() {
+            unsafe {
+                let mut node = UnsafeListEntry::new(1234);
+                let mut list = UnsafeList::new();
+                assert_eq!(list.push(&mut node), &1234);
+                list.remove(&mut node);
+                assert_empty(&mut list);
+            }
+        }
+
+        #[test]
+        fn push_remove_pop() {
+            unsafe {
+                let mut node1 = UnsafeListEntry::new(11);
+                let mut node2 = UnsafeListEntry::new(12);
+                let mut node3 = UnsafeListEntry::new(13);
+                let mut node4 = UnsafeListEntry::new(14);
+                let mut node5 = UnsafeListEntry::new(15);
+                let mut list = UnsafeList::new();
+                assert_eq!(list.push(&mut node1), &11);
+                assert_eq!(list.push(&mut node2), &12);
+                assert_eq!(list.push(&mut node3), &13);
+                assert_eq!(list.push(&mut node4), &14);
+                assert_eq!(list.push(&mut node5), &15);
+
+                list.remove(&mut node1);
+                assert_eq!(list.pop().unwrap(), &12);
+                list.remove(&mut node3);
+                assert_eq!(list.pop().unwrap(), &14);
+                list.remove(&mut node5);
+                assert_empty(&mut list);
+
+                assert_eq!(list.push(&mut node1), &11);
+                assert_eq!(list.pop().unwrap(), &11);
+                assert_empty(&mut list);
+
+                assert_eq!(list.push(&mut node3), &13);
+                assert_eq!(list.push(&mut node4), &14);
+                list.remove(&mut node3);
+                list.remove(&mut node4);
                 assert_empty(&mut list);
             }
         }
@@ -474,7 +573,7 @@ mod spin_mutex {
         use super::*;
         use crate::sync::Arc;
         use crate::thread;
-        use crate::time::{Duration, SystemTime};
+        use crate::time::Duration;
 
         #[test]
         fn sleep() {
@@ -485,11 +584,7 @@ mod spin_mutex {
                 *mutex2.lock() = 1;
             });
 
-            // "sleep" for 50ms
-            // FIXME: https://github.com/fortanix/rust-sgx/issues/31
-            let start = SystemTime::now();
-            let max = Duration::from_millis(50);
-            while start.elapsed().unwrap() < max {}
+            thread::sleep(Duration::from_millis(50));
 
             assert_eq!(*guard, 0);
             drop(guard);
