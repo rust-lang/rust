@@ -7,7 +7,7 @@
 //!
 //! **Important:** This target profile **does not** specify a linker script or the ROM header. You'll still need to provide these yourself to construct a final  binary. Generally you'd do this with something like `-Clink-arg=-Tmy_script.ld` and `-Clink-arg=my_crt.o`.
 
-use crate::spec::{LinkerFlavor, LldFlavor, Target, TargetOptions, TargetResult};
+use crate::spec::{LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {
