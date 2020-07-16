@@ -3,7 +3,6 @@
 
 pub(crate) mod function_signature;
 mod navigation_target;
-mod structure;
 mod short_label;
 
 use ra_syntax::{
@@ -11,11 +10,10 @@ use ra_syntax::{
     SyntaxKind::{ATTR, COMMENT},
 };
 
-pub use navigation_target::NavigationTarget;
-pub use structure::{file_structure, StructureNode};
-
 pub(crate) use navigation_target::{ToNav, TryToNav};
 pub(crate) use short_label::ShortLabel;
+
+pub use navigation_target::NavigationTarget;
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
     function_signature::FunctionSignature::from(node).to_string()

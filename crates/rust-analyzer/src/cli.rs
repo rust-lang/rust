@@ -10,7 +10,7 @@ mod ssr;
 use std::io::Read;
 
 use anyhow::Result;
-use ra_ide::{file_structure, Analysis};
+use ra_ide::Analysis;
 use ra_prof::profile;
 use ra_syntax::{AstNode, SourceFile};
 
@@ -48,8 +48,10 @@ pub fn parse(no_dump: bool) -> Result<()> {
 }
 
 pub fn symbols() -> Result<()> {
-    let file = file()?;
-    for s in file_structure(&file) {
+    let text = read_stdin()?;
+    let (analysis, file_id) = Analysis::from_single_file(text);
+    let structure = analysis.file_structure(file_id).unwrap();
+    for s in structure {
         println!("{:?}", s);
     }
     Ok(())

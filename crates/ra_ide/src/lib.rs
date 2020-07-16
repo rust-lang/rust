@@ -19,29 +19,31 @@ pub mod mock_analysis;
 
 mod markup;
 mod prime_caches;
-mod status;
-mod completion;
-mod runnables;
-mod goto_definition;
-mod goto_type_definition;
-mod goto_implementation;
-mod extend_selection;
-mod hover;
+mod display;
+
 mod call_hierarchy;
 mod call_info;
-mod syntax_highlighting;
+mod completion;
+mod diagnostics;
+mod expand_macro;
+mod extend_selection;
+mod file_structure;
+mod folding_ranges;
+mod goto_definition;
+mod goto_implementation;
+mod goto_type_definition;
+mod hover;
+mod inlay_hints;
+mod join_lines;
+mod matching_brace;
 mod parent_module;
 mod references;
-mod diagnostics;
-mod syntax_tree;
-mod folding_ranges;
-mod join_lines;
-mod typing;
-mod matching_brace;
-mod display;
-mod inlay_hints;
-mod expand_macro;
+mod runnables;
 mod ssr;
+mod status;
+mod syntax_highlighting;
+mod syntax_tree;
+mod typing;
 
 use std::sync::Arc;
 
@@ -65,8 +67,9 @@ pub use crate::{
         CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
     },
     diagnostics::Severity,
-    display::{file_structure, NavigationTarget, StructureNode},
+    display::NavigationTarget,
     expand_macro::ExpandedMacro,
+    file_structure::StructureNode,
     folding_ranges::{Fold, FoldKind},
     hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
@@ -323,7 +326,7 @@ impl Analysis {
     /// Returns a tree representation of symbols in the file. Useful to draw a
     /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Cancelable<Vec<StructureNode>> {
-        self.with_db(|db| file_structure(&db.parse(file_id).tree()))
+        self.with_db(|db| file_structure::file_structure(&db.parse(file_id).tree()))
     }
 
     /// Returns a list of the places in the file where type hints can be displayed.
