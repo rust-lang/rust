@@ -1,7 +1,6 @@
 //! This module contains utilities for turning SyntaxNodes and HIR types
 //! into types that may be used to render in a UI.
 
-pub(crate) mod function_signature;
 mod navigation_target;
 mod short_label;
 
@@ -75,23 +74,6 @@ pub(crate) fn type_label(node: &ast::TypeAliasDef) -> String {
         .collect();
 
     label.trim().to_owned()
-}
-
-pub(crate) fn generic_parameters<N: TypeParamsOwner>(node: &N) -> Vec<String> {
-    let mut res = vec![];
-    if let Some(type_params) = node.type_param_list() {
-        res.extend(type_params.lifetime_params().map(|p| p.syntax().text().to_string()));
-        res.extend(type_params.type_params().map(|p| p.syntax().text().to_string()));
-    }
-    res
-}
-
-pub(crate) fn where_predicates<N: TypeParamsOwner>(node: &N) -> Vec<String> {
-    let mut res = vec![];
-    if let Some(clause) = node.where_clause() {
-        res.extend(clause.predicates().map(|p| p.syntax().text().to_string()));
-    }
-    res
 }
 
 pub(crate) fn macro_label(node: &ast::MacroCall) -> String {
