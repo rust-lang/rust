@@ -4040,6 +4040,9 @@ assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+                if exp == 0{
+                    return (1,false);
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
                 let mut overflown = false;
