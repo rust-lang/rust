@@ -161,7 +161,7 @@
                             </h${level}>`;
                   };
 
-                  const html = marked.parser(ast, {
+                  return marked.parser(ast, {
                     highlight(code, lang) {
                       return hljs.highlight(lang ? lang : 'rust', code).value;
                     },
@@ -169,8 +169,6 @@
                     headerPrefix: '',
                     renderer,
                   });
-                  document.dispatchEvent(new Event('htmlbuilt'));
-                  return html;
                 }
               },
               created: async function() {
@@ -181,7 +179,7 @@
                   .filter(tag => tag.startsWith('v'));
                 this.versionOptions = this.versionOptions.concat(tagOptions);
               },
-              updated: function() {
+              updated() {
                 if (UrlHash === '') return;
                 this.$nextTick(() => {
                   const target = document.querySelector(`#${UrlHash}`);
