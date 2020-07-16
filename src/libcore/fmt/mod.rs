@@ -324,7 +324,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn new_v1(pieces: &'a [&'a str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
+    pub fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments { pieces, fmt: None, args }
     }
 
@@ -338,7 +338,7 @@ impl<'a> Arguments<'a> {
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new_v1_formatted(
-        pieces: &'a [&'a str],
+        pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
         fmt: &'a [rt::v1::Argument],
     ) -> Arguments<'a> {
@@ -399,7 +399,7 @@ impl<'a> Arguments<'a> {
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
-    pieces: &'a [&'a str],
+    pieces: &'a [&'static str],
 
     // Placeholder specs, or `None` if all specs are default (as in "{}{}").
     fmt: Option<&'a [rt::v1::Argument]>,
@@ -441,7 +441,7 @@ impl<'a> Arguments<'a> {
     /// ```
     #[unstable(feature = "fmt_as_str", issue = "none")]
     #[inline]
-    pub fn as_str(&self) -> Option<&'a str> {
+    pub fn as_str(&self) -> Option<&'static str> {
         match (self.pieces, self.args) {
             ([], []) => Some(""),
             ([s], []) => Some(s),
