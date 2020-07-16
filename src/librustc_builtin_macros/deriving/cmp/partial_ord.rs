@@ -23,9 +23,9 @@ pub fn expand_deriving_partial_ord(
             let attrs = vec![cx.attribute(inline)];
             MethodDef {
                 name: $name,
-                generics: LifetimeBounds::empty(),
+                generics: Bounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: vec![(borrowed_self(), "other")],
+                args: vec![(borrowed_self(), sym::other)],
                 ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
                 is_unsafe: false,
@@ -37,9 +37,9 @@ pub fn expand_deriving_partial_ord(
         }};
     }
 
-    let ordering_ty = Literal(path_std!(cx, cmp::Ordering));
+    let ordering_ty = Literal(path_std!(cmp::Ordering));
     let ret_ty = Literal(Path::new_(
-        pathvec_std!(cx, option::Option),
+        pathvec_std!(option::Option),
         None,
         vec![Box::new(ordering_ty)],
         PathKind::Std,
@@ -50,9 +50,9 @@ pub fn expand_deriving_partial_ord(
 
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         explicit_self: borrowed_explicit_self(),
-        args: vec![(borrowed_self(), "other")],
+        args: vec![(borrowed_self(), sym::other)],
         ret_ty,
         attributes: attrs,
         is_unsafe: false,
@@ -80,9 +80,9 @@ pub fn expand_deriving_partial_ord(
     let trait_def = TraitDef {
         span,
         attributes: vec![],
-        path: path_std!(cx, cmp::PartialOrd),
+        path: path_std!(cmp::PartialOrd),
         additional_bounds: vec![],
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods,
