@@ -1126,7 +1126,7 @@ extern "rust-intrinsic" {
     ///
     /// // use `u32::from_ne_bytes` instead
     /// let num = u32::from_ne_bytes(raw_bytes);
-    /// // or use `u32::from_le_bytes` or `u32::from_ge_bytes` to specify the endianness
+    /// // or use `u32::from_le_bytes` or `u32::from_be_bytes` to specify the endianness
     /// let num = u32::from_le_bytes(raw_bytes);
     /// assert_eq!(num, 0x12345678);
     /// let num = u32::from_be_bytes(raw_bytes);
