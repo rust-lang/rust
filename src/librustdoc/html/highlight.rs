@@ -12,15 +12,17 @@ use std::io;
 use std::io::prelude::*;
 
 use rustc_ast::token::{self, Token};
+use rustc_data_structures::sync::Lrc;
 use rustc_parse::lexer;
 use rustc_session::parse::ParseSess;
+use rustc_span::hygiene::SyntaxContext;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::{FileName, Span};
+use rustc_span::{BytePos, FileName, SourceFile, Span};
 
 /// Highlights `src`, returning the HTML output.
 pub fn render_with_highlighting(
-    src: &str,
+    src: String,
     class: Option<&str>,
     playground_button: Option<&str>,
     tooltip: Option<(&str, &str)>,
@@ -38,12 +40,13 @@ pub fn render_with_highlighting(
     }
 
     let sess = ParseSess::with_silent_emitter();
-    let sf = sess
+    let source_file = sess
         .source_map()
-        .new_source_file(FileName::Custom(String::from("rustdoc-highlighting")), src.to_owned());
+        .new_source_file(FileName::Custom(String::from("rustdoc-highlighting")), src);
+
+    let classifier_source_file = Lrc::clone(&source_file);
     let highlight_result = rustc_driver::catch_fatal_errors(|| {
-        let lexer = lexer::StringReader::new(&sess, sf, None);
-        let mut classifier = Classifier::new(lexer, sess.source_map());
+        let mut classifier = Classifier::new(&sess, classifier_source_file);
 
         let mut highlighted_source = vec![];
         if classifier.write_source(&mut highlighted_source).is_err() {
@@ -61,9 +64,17 @@ pub fn render_with_highlighting(
             write_footer(&mut out, playground_button).unwrap();
         }
         Err(()) => {
+            // Get the source back out of the source map to avoid a copy in the happy path.
+            let span =
+                Span::new(BytePos(0), BytePos(source_file.byte_length()), SyntaxContext::root());
+            let src = sess
+                .source_map()
+                .span_to_snippet(span)
+                .expect("could not retrieve snippet from artificial source file");
+
             // If errors are encountered while trying to highlight, just emit
             // the unhighlighted source.
-            write!(out, "<pre><code>{}</code></pre>", Escape(src)).unwrap();
+            write!(out, "<pre><code>{}</code></pre>", Escape(&src)).unwrap();
         }
     }
 
@@ -73,10 +84,10 @@ pub fn render_with_highlighting(
 /// Processes a program (nested in the internal `lexer`), classifying strings of
 /// text by highlighting category (`Class`). Calls out to a `Writer` to write
 /// each span of text in sequence.
-struct Classifier<'a> {
-    lexer: lexer::StringReader<'a>,
+struct Classifier<'sess> {
+    lexer: lexer::StringReader<'sess>,
     peek_token: Option<Token>,
-    source_map: &'a SourceMap,
+    source_map: &'sess SourceMap,
 
     // State of the classifier.
     in_attribute: bool,
@@ -154,6 +165,7 @@ impl<U: Write> Writer for U {
     }
 }
 
+#[derive(Debug)]
 enum HighlightError {
     LexError,
     IoError(io::Error),
@@ -165,12 +177,14 @@ impl From<io::Error> for HighlightError {
     }
 }
 
-impl<'a> Classifier<'a> {
-    fn new(lexer: lexer::StringReader<'a>, source_map: &'a SourceMap) -> Classifier<'a> {
+impl<'sess> Classifier<'sess> {
+    fn new(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Classifier<'_> {
+        let lexer = lexer::StringReader::new(sess, source_file, None);
+
         Classifier {
             lexer,
             peek_token: None,
-            source_map,
+            source_map: sess.source_map(),
             in_attribute: false,
             in_macro: false,
             in_macro_nonterminal: false,
@@ -209,9 +223,15 @@ impl<'a> Classifier<'a> {
     /// source.
     fn write_source<W: Writer>(&mut self, out: &mut W) -> Result<(), HighlightError> {
         loop {
-            let next = self.try_next_token()?;
+            let mut next = self.try_next_token()?;
             if next == token::Eof {
                 break;
+            }
+
+            // Glue any tokens that need to be glued.
+            if let Some(joint) = next.glue(self.peek()?) {
+                next = joint;
+                let _ = self.try_next_token()?;
             }
 
             self.write_token(out, next)?;
@@ -429,3 +449,6 @@ fn write_header(class: Option<&str>, out: &mut dyn Write) -> io::Result<()> {
 fn write_footer(out: &mut dyn Write, playground_button: Option<&str>) -> io::Result<()> {
     write!(out, "</pre>{}</div>\n", if let Some(button) = playground_button { button } else { "" })
 }
+
+#[cfg(test)]
+mod tests;
