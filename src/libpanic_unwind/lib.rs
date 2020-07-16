@@ -41,20 +41,32 @@ cfg_if::cfg_if! {
     if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
         mod real_imp;
-    } else if #[cfg(target_arch = "wasm32")] {
-        #[path = "dummy.rs"]
-        mod real_imp;
     } else if #[cfg(target_os = "hermit")] {
         #[path = "hermit.rs"]
         mod real_imp;
     } else if #[cfg(target_env = "msvc")] {
         #[path = "seh.rs"]
         mod real_imp;
-    } else {
+    } else if #[cfg(any(
+        all(target_family = "windows", target_env = "gnu"),
+        target_os = "cloudabi",
+        target_family = "unix",
+        all(target_vendor = "fortanix", target_env = "sgx"),
+    ))] {
         // Rust runtime's startup objects depend on these symbols, so make them public.
         #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
         pub use real_imp::eh_frame_registry::*;
         #[path = "gcc.rs"]
+        mod real_imp;
+    } else {
+        // Targets that don't support unwinding.
+        // - arch=wasm32
+        // - os=none ("bare metal" targets)
+        // - os=uefi
+        // - nvptx64-nvidia-cuda
+        // - avr-unknown-unknown
+        // - mipsel-sony-psp
+        #[path = "dummy.rs"]
         mod real_imp;
     }
 }

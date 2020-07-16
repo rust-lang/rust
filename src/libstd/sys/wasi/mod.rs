@@ -16,21 +16,18 @@
 
 use crate::io as std_io;
 use crate::mem;
-use crate::os::raw::c_char;
 
 pub mod alloc;
 pub mod args;
-#[path = "../wasm/cmath.rs"]
+#[path = "../unsupported/cmath.rs"]
 pub mod cmath;
-#[path = "../wasm/condvar.rs"]
+#[path = "../unsupported/condvar.rs"]
 pub mod condvar;
 pub mod env;
 pub mod fd;
 pub mod fs;
 pub mod io;
-#[path = "../wasm/memchr.rs"]
-pub mod memchr;
-#[path = "../wasm/mutex.rs"]
+#[path = "../unsupported/mutex.rs"]
 pub mod mutex;
 pub mod net;
 pub mod os;
@@ -39,28 +36,22 @@ pub mod ext;
 pub mod path;
 pub mod pipe;
 pub mod process;
-#[path = "../wasm/rwlock.rs"]
+#[path = "../unsupported/rwlock.rs"]
 pub mod rwlock;
-#[path = "../wasm/stack_overflow.rs"]
+#[path = "../unsupported/stack_overflow.rs"]
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
-#[path = "../wasm/thread_local_dtor.rs"]
+#[path = "../unsupported/thread_local_dtor.rs"]
 pub mod thread_local_dtor;
-#[path = "../wasm/thread_local_key.rs"]
+#[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
 pub mod time;
 
-#[cfg(not(test))]
-pub fn init() {}
-
-pub fn unsupported<T>() -> std_io::Result<T> {
-    Err(unsupported_err())
-}
-
-pub fn unsupported_err() -> std_io::Error {
-    std_io::Error::new(std_io::ErrorKind::Other, "operation not supported on wasm yet")
-}
+#[path = "../unsupported/common.rs"]
+#[allow(unused)]
+mod common;
+pub use common::*;
 
 pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     use std_io::ErrorKind::*;
@@ -84,20 +75,6 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
         wasi::ERRNO_AGAIN => WouldBlock,
         _ => Other,
     }
-}
-
-// This enum is used as the storage for a bunch of types which can't actually
-// exist.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub enum Void {}
-
-pub unsafe fn strlen(mut s: *const c_char) -> usize {
-    let mut n = 0;
-    while *s != 0 {
-        n += 1;
-        s = s.offset(1);
-    }
-    return n;
 }
 
 pub fn abort_internal() -> ! {

@@ -48,7 +48,8 @@ cfg_if::cfg_if! {
         mod sgx;
         pub use self::sgx::*;
     } else {
-        compile_error!("libstd doesn't compile for this platform yet");
+        mod unsupported;
+        pub use self::unsupported::*;
     }
 }
 

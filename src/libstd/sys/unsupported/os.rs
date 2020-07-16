@@ -1,10 +1,9 @@
+use super::{unsupported, Void};
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::path::{self, PathBuf};
-use crate::str;
-use crate::sys::{unsupported, Void};
 
 pub fn errno() -> i32 {
     0
@@ -48,14 +47,14 @@ where
 
 impl fmt::Display for JoinPathsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "not supported on wasm yet".fmt(f)
+        "not supported on this platform yet".fmt(f)
     }
 }
 
 impl StdError for JoinPathsError {
     #[allow(deprecated)]
     fn description(&self) -> &str {
-        "not supported on wasm yet"
+        "not supported on this platform yet"
     }
 }
 
@@ -73,7 +72,7 @@ impl Iterator for Env {
 }
 
 pub fn env() -> Env {
-    panic!("not supported on web assembly")
+    panic!("not supported on this platform")
 }
 
 pub fn getenv(_: &OsStr) -> io::Result<Option<OsString>> {
@@ -81,15 +80,15 @@ pub fn getenv(_: &OsStr) -> io::Result<Option<OsString>> {
 }
 
 pub fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
-    Err(io::Error::new(io::ErrorKind::Other, "cannot set env vars on wasm32-unknown-unknown"))
+    Err(io::Error::new(io::ErrorKind::Other, "cannot set env vars on this platform"))
 }
 
 pub fn unsetenv(_: &OsStr) -> io::Result<()> {
-    Err(io::Error::new(io::ErrorKind::Other, "cannot unset env vars on wasm32-unknown-unknown"))
+    Err(io::Error::new(io::ErrorKind::Other, "cannot unset env vars on this platform"))
 }
 
 pub fn temp_dir() -> PathBuf {
-    panic!("no filesystem on wasm")
+    panic!("no filesystem on this platform")
 }
 
 pub fn home_dir() -> Option<PathBuf> {
@@ -97,11 +96,9 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(_code: i32) -> ! {
-    unsafe {
-        crate::arch::wasm32::unreachable();
-    }
+    crate::intrinsics::abort()
 }
 
 pub fn getpid() -> u32 {
-    panic!("no pids on wasm")
+    panic!("no pids on this platform")
 }
