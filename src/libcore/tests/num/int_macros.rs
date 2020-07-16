@@ -252,7 +252,6 @@ macro_rules! int_module {
                 assert_eq!($T::from_str_radix("-9", 2).ok(), None::<$T>);
             }
 
-
             #[test]
             fn test_pow() {
                 let mut r = 2 as $T;
