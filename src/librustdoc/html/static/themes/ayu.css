@@ -394,6 +394,11 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: transparent #314559 transparent transparent;
 }
 
+.important-traits-tooltiptext {
+    background-color: #314559;
+    border-color: #5c6773;
+}
+
 #titles > div.selected {
     background-color: #141920 !important;
 	border-bottom: 1px solid #ffb44c !important;

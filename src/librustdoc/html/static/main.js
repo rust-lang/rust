@@ -2636,6 +2636,13 @@ function defocusSearchBar() {
         });
     }());
 
+    onEachLazy(document.getElementsByClassName("important-traits"), function(e) {
+        e.onclick = function() {
+            this.getElementsByClassName('important-traits-tooltiptext')[0]
+                .classList.toggle("force-tooltip");
+        };
+    });
+
     // In the search display, allows to switch between tabs.
     function printTab(nb) {
         if (nb === 0 || nb === 1 || nb === 2) {
