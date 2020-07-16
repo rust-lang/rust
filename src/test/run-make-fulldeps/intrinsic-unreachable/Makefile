@@ -1,6 +1,6 @@
 -include ../tools.mk
 
-# ignore-windows
+# ignore-windows-msvc
 #
 # Because of Windows exception handling, the code is not necessarily any shorter.
 # https://github.com/llvm-mirror/llvm/commit/64b2297786f7fd6f5fa24cdd4db0298fbf211466
