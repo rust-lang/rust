@@ -557,7 +557,11 @@ pub(crate) fn handle_signature_help(
         None => return Ok(None),
     };
     let concise = !snap.config.call_info_full;
-    let res = to_proto::signature_help(call_info, concise);
+    let res = to_proto::signature_help(
+        call_info,
+        concise,
+        snap.config.client_caps.signature_help_label_offsets,
+    );
     Ok(Some(res))
 }
 

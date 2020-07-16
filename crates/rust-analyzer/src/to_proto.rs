@@ -219,16 +219,58 @@ pub(crate) fn completion_item(
     res
 }
 
-pub(crate) fn signature_help(call_info: CallInfo, concise: bool) -> lsp_types::SignatureHelp {
-    let parameters = call_info
-        .parameter_labels()
-        .map(|label| lsp_types::ParameterInformation {
-            label: lsp_types::ParameterLabel::Simple(label.to_string()),
-            documentation: None,
-        })
-        .collect();
+pub(crate) fn signature_help(
+    call_info: CallInfo,
+    concise: bool,
+    label_offsets: bool,
+) -> lsp_types::SignatureHelp {
+    let (label, parameters) = match (concise, label_offsets) {
+        (_, false) => {
+            let params = call_info
+                .parameter_labels()
+                .map(|label| lsp_types::ParameterInformation {
+                    label: lsp_types::ParameterLabel::Simple(label.to_string()),
+                    documentation: None,
+                })
+                .collect::<Vec<_>>();
+            let label =
+                if concise { call_info.parameter_labels().join(", ") } else { call_info.signature };
+            (label, params)
+        }
+        (false, true) => {
+            let params = call_info
+                .parameter_ranges()
+                .iter()
+                .map(|it| [u32::from(it.start()).into(), u32::from(it.end()).into()])
+                .map(|label_offsets| lsp_types::ParameterInformation {
+                    label: lsp_types::ParameterLabel::LabelOffsets(label_offsets),
+                    documentation: None,
+                })
+                .collect::<Vec<_>>();
+            (call_info.signature, params)
+        }
+        (true, true) => {
+            let mut params = Vec::new();
+            let mut label = String::new();
+            let mut first = true;
+            for param in call_info.parameter_labels() {
+                if !first {
+                    label.push_str(", ");
+                }
+                first = false;
+                let start = label.len() as u64;
+                label.push_str(param);
+                let end = label.len() as u64;
+                params.push(lsp_types::ParameterInformation {
+                    label: lsp_types::ParameterLabel::LabelOffsets([start, end]),
+                    documentation: None,
+                });
+            }
 
-    let label = if concise { call_info.parameter_labels().join(", ") } else { call_info.signature };
+            (label, params)
+        }
+    };
+
     let documentation = call_info.doc.map(|doc| {
         lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
             kind: lsp_types::MarkupKind::Markdown,
