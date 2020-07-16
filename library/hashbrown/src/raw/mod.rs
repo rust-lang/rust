@@ -916,7 +916,7 @@ impl<T> RawTable<T> {
     ///
     /// This does not check if the given element already exists in the table.
     #[cfg_attr(feature = "inline-more", inline)]
-    #[cfg(feature = "rustc-internal-api")]
+    #[cfg(any(feature = "raw", feature = "rustc-internal-api"))]
     pub fn insert_no_grow(&mut self, hash: u64, value: T) -> Bucket<T> {
         unsafe {
             let index = self.find_insert_slot(hash);
