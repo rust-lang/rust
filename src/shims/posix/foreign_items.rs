@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::io::{self, Read, Write};
 
 use log::trace;
 
@@ -10,6 +11,7 @@ use helpers::check_arg_count;
 use shims::posix::fs::EvalContextExt as _;
 use shims::posix::sync::EvalContextExt as _;
 use shims::posix::thread::EvalContextExt as _;
+
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -67,10 +69,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let buf = this.read_scalar(buf)?.not_undef()?;
                 let count = this.read_scalar(count)?.to_machine_usize(this)?;
                 let result = if fd == 0 {
-                    use std::io::{self, Read};
 
                     this.check_no_isolation("read")?;
 
+                    // We cap the number of read bytes to the largest
+                    // value that we are able to fit in both the
+                    // host's and target's `isize`. This saves us from
+                    // having to handle overflows later.
+                    let count = count.min(this.machine_isize_max() as u64).min(isize::MAX as u64);
+                    // This can never fail because `count` was capped
+                    // to be smaller than `isize::MAX`.
+                    let count = isize::try_from(count).unwrap();
+
+                    // We want to read at most `count` bytes. We are
+                    // sure that `count` is not negative because it
+                    // was a target's `usize`. Also we are sure that
+                    // its smaller than `usize::MAX` because it is a
+                    // host's `isize`.
                     let mut buffer = vec![0; count as usize];
                     let res = io::stdin()
                         .read(&mut buffer)
@@ -83,8 +98,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             this.memory.write_bytes(buf, buffer)?;
                             i64::try_from(bytes).unwrap()
                         },
-                        // FIXME: set errno to appropriate value
-                        Err(_) => -1,
+                        Err(e) => {
+                            this.set_last_error_from_io_error(e)?;
+                            -1
+                        },
                     }
                 } else if fd == 1 || fd == 2 {
                     throw_unsup_format!("cannot read from stdout/stderr")
@@ -103,7 +120,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     throw_unsup_format!("cannot write to stdin")
                 } else if fd == 1 || fd == 2 {
                     // stdout/stderr
-                    use std::io::{self, Write};
 
                     let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(count))?;
                     // We need to flush to make sure this actually appears on the screen
