@@ -2,15 +2,12 @@
 
 // FIXME: this modules relies on strings and AST way too much, and it should be
 // rewritten (matklad 2020-05-07)
-use std::{
-    convert::From,
-    fmt::{self, Display},
-};
+use std::convert::From;
 
 use hir::{Docs, Documentation, HasSource, HirDisplay};
 use ra_ide_db::RootDatabase;
 use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
-use stdx::{split_delim, SepBy};
+use stdx::split_delim;
 
 use crate::display::{generic_parameters, where_predicates};
 
@@ -245,54 +242,5 @@ impl From<&'_ ast::FnDef> for FunctionSignature {
             doc: None,
             has_self_param,
         }
-    }
-}
-
-impl Display for FunctionSignature {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(t) = &self.visibility {
-            write!(f, "{} ", t)?;
-        }
-
-        if self.qualifier.is_async {
-            write!(f, "async ")?;
-        }
-
-        if self.qualifier.is_const {
-            write!(f, "const ")?;
-        }
-
-        if self.qualifier.is_unsafe {
-            write!(f, "unsafe ")?;
-        }
-
-        if let Some(extern_abi) = &self.qualifier.extern_abi {
-            // Keyword `extern` is included in the string.
-            write!(f, "{} ", extern_abi)?;
-        }
-
-        if let Some(name) = &self.name {
-            match self.kind {
-                CallableKind::Function => write!(f, "fn {}", name)?,
-                CallableKind::StructConstructor => write!(f, "struct {}", name)?,
-                CallableKind::VariantConstructor => write!(f, "{}", name)?,
-            }
-        }
-
-        if !self.generic_parameters.is_empty() {
-            write!(f, "{}", self.generic_parameters.iter().sep_by(", ").surround_with("<", ">"))?;
-        }
-
-        write!(f, "{}", self.parameters.iter().sep_by(", ").surround_with("(", ")"))?;
-
-        if let Some(t) = &self.ret_type {
-            write!(f, " -> {}", t)?;
-        }
-
-        if !self.where_predicates.is_empty() {
-            write!(f, "\nwhere {}", self.where_predicates.iter().sep_by(",\n      "))?;
-        }
-
-        Ok(())
     }
 }

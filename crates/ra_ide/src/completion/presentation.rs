@@ -11,7 +11,9 @@ use crate::{
         completion_item::Builder, CompletionContext, CompletionItem, CompletionItemKind,
         CompletionKind, Completions,
     },
-    display::{const_label, function_signature::FunctionSignature, macro_label, type_label},
+    display::{
+        const_label, function_label, function_signature::FunctionSignature, macro_label, type_label,
+    },
     CompletionScore, RootDatabase,
 };
 
@@ -206,7 +208,7 @@ impl Completions {
                 })
                 .set_documentation(func.docs(ctx.db))
                 .set_deprecated(is_deprecated(func, ctx.db))
-                .detail(function_signature.to_string());
+                .detail(function_label(&ast_node));
 
         let params = function_signature
             .parameter_names

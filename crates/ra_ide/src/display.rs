@@ -13,10 +13,46 @@ use ra_syntax::{
 pub(crate) use navigation_target::{ToNav, TryToNav};
 pub(crate) use short_label::ShortLabel;
 
+use ast::VisibilityOwner;
 pub use navigation_target::NavigationTarget;
+use stdx::format_to;
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
-    function_signature::FunctionSignature::from(node).to_string()
+    let mut buf = String::new();
+    if let Some(vis) = node.visibility() {
+        format_to!(buf, "{} ", vis);
+    }
+    if node.async_token().is_some() {
+        format_to!(buf, "async ");
+    }
+    if node.const_token().is_some() {
+        format_to!(buf, "const ");
+    }
+    if node.unsafe_token().is_some() {
+        format_to!(buf, "unsafe ");
+    }
+    if let Some(abi) = node.abi() {
+        // Keyword `extern` is included in the string.
+        format_to!(buf, "{} ", abi);
+    }
+    if let Some(name) = node.name() {
+        format_to!(buf, "fn {}", name)
+    }
+    if let Some(type_params) = node.type_param_list() {
+        format_to!(buf, "{}", type_params);
+    }
+    if let Some(param_list) = node.param_list() {
+        format_to!(buf, "{}", param_list);
+    }
+    if let Some(ret_type) = node.ret_type() {
+        if ret_type.type_ref().is_some() {
+            format_to!(buf, " {}", ret_type);
+        }
+    }
+    if let Some(where_clause) = node.where_clause() {
+        format_to!(buf, "\n{}", where_clause);
+    }
+    buf
 }
 
 pub(crate) fn const_label(node: &ast::ConstDef) -> String {
