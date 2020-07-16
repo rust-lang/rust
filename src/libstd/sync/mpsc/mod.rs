@@ -2088,7 +2088,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn oneshot_single_thread_recv_timeout() {
         let (tx, rx) = channel();
         tx.send(()).unwrap();
@@ -2099,7 +2098,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn stress_recv_timeout_two_threads() {
         let (tx, rx) = channel();
         let stress = stress_factor() + 100;
@@ -2130,7 +2128,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn recv_timeout_upgrade() {
         let (tx, rx) = channel::<()>();
         let timeout = Duration::from_millis(1);
@@ -2142,7 +2139,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn stress_recv_timeout_shared() {
         let (tx, rx) = channel();
         let stress = stress_factor() + 100;
@@ -2173,7 +2169,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn very_long_recv_timeout_wont_panic() {
         let (tx, rx) = channel::<()>();
         let join_handle = thread::spawn(move || rx.recv_timeout(Duration::from_secs(u64::MAX)));
@@ -2195,7 +2190,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn shared_recv_timeout() {
         let (tx, rx) = channel();
         let total = 5;
@@ -2425,7 +2419,6 @@ mod sync_tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn recv_timeout() {
         let (tx, rx) = sync_channel::<i32>(1);
         assert_eq!(rx.recv_timeout(Duration::from_millis(1)), Err(RecvTimeoutError::Timeout));
@@ -2517,7 +2510,6 @@ mod sync_tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn stress_recv_timeout_two_threads() {
         let (tx, rx) = sync_channel::<i32>(0);
 
@@ -2543,7 +2535,6 @@ mod sync_tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn stress_recv_timeout_shared() {
         const AMT: u32 = 1000;
         const NTHREADS: u32 = 8;
