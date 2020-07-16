@@ -65,8 +65,8 @@ pub const EXIT_SUCCESS: i32 = 0;
 /// Exit status code used for compilation failures and invalid flags.
 pub const EXIT_FAILURE: i32 = 1;
 
-const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
-                              md#bug-reports";
+const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
+    ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
 
 const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["Z", "C", "crate-type"];
 
