@@ -552,14 +552,14 @@ pub(crate) fn fn_def_datum_query(
     Arc::new(datum)
 }
 
-impl From<FnDefId> for crate::CallableDefId {
+impl From<FnDefId> for crate::db::InternedCallableDefId {
     fn from(fn_def_id: FnDefId) -> Self {
         InternKey::from_intern_id(fn_def_id.0)
     }
 }
 
-impl From<crate::CallableDefId> for FnDefId {
-    fn from(callable_def_id: crate::CallableDefId) -> Self {
+impl From<crate::db::InternedCallableDefId> for FnDefId {
+    fn from(callable_def_id: crate::db::InternedCallableDefId) -> Self {
         chalk_ir::FnDefId(callable_def_id.as_intern_id())
     }
 }

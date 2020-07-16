@@ -77,7 +77,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
-    fn intern_callable_def(&self, callable_def: CallableDef) -> crate::CallableDefId;
+    fn intern_callable_def(&self, callable_def: CallableDef) -> InternedCallableDefId;
     #[salsa::interned]
     fn intern_type_param_id(&self, param_id: TypeParamId) -> GlobalTypeParamId;
     #[salsa::interned]
@@ -151,3 +151,9 @@ impl_intern_key!(InternedOpaqueTyId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ClosureId(salsa::InternId);
 impl_intern_key!(ClosureId);
+
+/// This exists just for Chalk, because Chalk just has a single `FnDefId` where
+/// we have different IDs for struct and enum variant constructors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct InternedCallableDefId(salsa::InternId);
+impl_intern_key!(InternedCallableDefId);
