@@ -1648,7 +1648,7 @@ $EndFeature, "
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                acc.wrapping_mul(base);
+                acc.wrapping_mul(base)
             }
         }
 
