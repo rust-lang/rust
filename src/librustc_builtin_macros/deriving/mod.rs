@@ -7,11 +7,11 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 macro path_local($x:ident) {
-    generic::ty::Path::new_local(stringify!($x))
+    generic::ty::Path::new_local(sym::$x)
 }
 
-macro pathvec_std($cx:expr, $($rest:ident)::+) {{
-    vec![ $( stringify!($rest) ),+ ]
+macro pathvec_std($($rest:ident)::+) {{
+    vec![ $( sym::$rest ),+ ]
 }}
 
 macro path_std($($x:tt)*) {
@@ -84,7 +84,7 @@ fn inject_impl_of_structural_trait(
     cx: &mut ExtCtxt<'_>,
     span: Span,
     item: &Annotatable,
-    structural_path: generic::ty::Path<'_>,
+    structural_path: generic::ty::Path,
     push: &mut dyn FnMut(Annotatable),
 ) {
     let item = match *item {

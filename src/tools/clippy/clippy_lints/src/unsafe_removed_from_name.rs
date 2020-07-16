@@ -3,7 +3,7 @@ use rustc_ast::ast::{Item, ItemKind, UseTree, UseTreeKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{Ident, SymbolStr};
+use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for imports that remove "unsafe" from an item's
@@ -73,6 +73,6 @@ fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext<'_>,
 }
 
 #[must_use]
-fn contains_unsafe(name: &SymbolStr) -> bool {
+fn contains_unsafe(name: &str) -> bool {
     name.contains("Unsafe") || name.contains("unsafe")
 }
