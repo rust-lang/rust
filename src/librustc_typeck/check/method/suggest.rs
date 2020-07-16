@@ -937,6 +937,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // legal to implement.
         let mut candidates = all_traits(self.tcx)
             .into_iter()
+            // Don't issue suggestions for unstable traits since they're
+            // unlikely to be implementable anyway
+            .filter(|info| match self.tcx.lookup_stability(info.def_id) {
+                Some(attr) => attr.level.is_stable(),
+                None => true,
+            })
             .filter(|info| {
                 // We approximate the coherence rules to only suggest
                 // traits that are legal to implement by requiring that
