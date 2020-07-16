@@ -40,23 +40,26 @@ pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Sen
 pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
     abort();
 
-    #[cfg(any(unix, target_os = "cloudabi"))]
-    unsafe fn abort() -> ! {
-        libc::abort();
-    }
-
-    #[cfg(any(windows, all(target_arch = "wasm32", not(target_os = "emscripten"))))]
-    unsafe fn abort() -> ! {
-        core::intrinsics::abort();
-    }
-
-    #[cfg(any(target_os = "hermit", all(target_vendor = "fortanix", target_env = "sgx")))]
-    unsafe fn abort() -> ! {
-        // call std::sys::abort_internal
-        extern "C" {
-            pub fn __rust_abort() -> !;
+    cfg_if::cfg_if! {
+        if #[cfg(any(unix, target_os = "cloudabi"))] {
+            unsafe fn abort() -> ! {
+                libc::abort();
+            }
+        } else if #[cfg(any(target_os = "hermit",
+                            all(target_vendor = "fortanix", target_env = "sgx")
+        ))] {
+            unsafe fn abort() -> ! {
+                // call std::sys::abort_internal
+                extern "C" {
+                    pub fn __rust_abort() -> !;
+                }
+                __rust_abort();
+            }
+        } else {
+            unsafe fn abort() -> ! {
+                core::intrinsics::abort();
+            }
         }
-        __rust_abort();
     }
 }
 
