@@ -383,6 +383,7 @@ impl<'a> Builder<'a> {
                 describe!(check::Std, check::Rustc, check::Rustdoc, check::Clippy)
             }
             Kind::Test => describe!(
+                crate::toolstate::ToolStateRecord,
                 crate::toolstate::ToolStateCheck,
                 test::ExpandYamlAnchors,
                 test::Tidy,
@@ -561,6 +562,10 @@ impl<'a> Builder<'a> {
 
     pub fn execute_cli(&self) {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
+    }
+
+    pub fn execute_cli_for_paths(&self, paths: &[PathBuf]) {
+        self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), paths);
     }
 
     pub fn default_doc(&self, paths: Option<&[PathBuf]>) {

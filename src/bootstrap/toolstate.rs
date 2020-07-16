@@ -85,11 +85,39 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
 // We do require that we checked whether they build or not on the tools builder,
 // though, as otherwise we will be unable to file an issue if they start
 // failing.
+//
+// FIXME: deduplicate this information with "stable=true/false" in `tool.rs`.
 static NIGHTLY_TOOLS: &[(&str, &str)] = &[
     ("miri", "src/tools/miri"),
     ("embedded-book", "src/doc/embedded-book"),
     // ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
 ];
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ToolStateRecord;
+
+impl Step for ToolStateRecord {
+    type Output = ();
+
+    /// Builds (and tests, with `x.py test`) all toolstate-tracked tools.
+    fn run(self, builder: &Builder<'_>) {
+        let is_nightly = !(builder.config.channel == "beta" || builder.config.channel == "stable");
+        let paths: Vec<PathBuf> = STABLE_TOOLS
+            .iter()
+            .chain(if is_nightly { NIGHTLY_TOOLS.iter() } else { [].iter() })
+            .map(|(_tool, path)| PathBuf::from(path))
+            .collect();
+        builder.execute_cli_for_paths(&paths);
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("record-toolstate")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self);
+    }
+}
 
 fn print_error(tool: &str, submodule: &str) {
     eprintln!();
@@ -144,12 +172,11 @@ impl Step for ToolStateCheck {
 
     /// Checks tool state status.
     ///
-    /// This is intended to be used in the `checktools.sh` script. To use
-    /// this, set `save-toolstates` in `config.toml` so that tool status will
-    /// be saved to a JSON file. Then, run `x.py test --no-fail-fast` for all
-    /// of the tools to populate the JSON file. After that is done, this
-    /// command can be run to check for any status failures, and exits with an
-    /// error if there are any.
+    /// This is intended to be used in the `checktools.sh` script. To use this,
+    /// set `save-toolstates` in `config.toml` so that tool status will be saved
+    /// to a JSON file. Then, run `x.py test --no-fail-fast record-toolstate` to
+    /// populate the JSON file. After that is done, this command can be run to
+    /// check for any status failures, and exits with an error if there are any.
     ///
     /// This also handles publishing the results to the `history` directory of
     /// the toolstate repo https://github.com/rust-lang-nursery/rust-toolstate
@@ -242,11 +269,11 @@ impl Step for ToolStateCheck {
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("check-tools")
+        run.path("check-toolstate")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(ToolStateCheck);
+        run.builder.ensure(Self);
     }
 }
 
@@ -281,6 +308,7 @@ impl Builder<'_> {
         // Toolstate isn't tracked for clippy, but since most tools do, we avoid
         // checking in all the places we could save toolstate and just do so
         // here.
+        // FIXME: make this a parameter of `tool::ToolBuild` instead.
         if tool == "clippy-driver" {
             return;
         }
