@@ -5,9 +5,9 @@ use ra_syntax::{
     ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
-
-use crate::{FileId, FunctionSignature};
 use stdx::to_lower_snake_case;
+
+use crate::{display::function_signature::FunctionSignature, FileId};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -322,15 +322,15 @@ fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<
     match expr {
         ast::Expr::CallExpr(expr) => {
             // FIXME: Type::as_callable is broken for closures
-            let callable_def = sema.type_of_expr(&expr.expr()?)?.as_callable()?;
-            match callable_def {
-                hir::CallableDefId::FunctionId(it) => {
+            let callable = sema.type_of_expr(&expr.expr()?)?.as_callable(sema.db)?;
+            match callable.kind() {
+                hir::CallableKind::Function(it) => {
                     Some(FunctionSignature::from_hir(sema.db, it.into()))
                 }
-                hir::CallableDefId::StructId(it) => {
+                hir::CallableKind::TupleStruct(it) => {
                     FunctionSignature::from_struct(sema.db, it.into())
                 }
-                hir::CallableDefId::EnumVariantId(it) => {
+                hir::CallableKind::TupleEnumVariant(it) => {
                     FunctionSignature::from_enum_variant(sema.db, it.into())
                 }
             }

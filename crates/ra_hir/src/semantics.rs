@@ -6,7 +6,7 @@ use std::{cell::RefCell, fmt, iter::successors};
 
 use hir_def::{
     resolver::{self, HasResolver, Resolver},
-    AsMacroCall, TraitId, VariantId,
+    AsMacroCall, FunctionId, TraitId, VariantId,
 };
 use hir_expand::{diagnostics::AstDiagnostic, hygiene::Hygiene, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
@@ -24,8 +24,8 @@ use crate::{
     diagnostics::Diagnostic,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, resolve_hir_path_qualifier, SourceAnalyzer},
-    AssocItem, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module, ModuleDef,
-    Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    AssocItem, Callable, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef, Module,
+    ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 use resolver::TypeNs;
 
@@ -197,7 +197,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
-        self.imp.resolve_method_call(call)
+        self.imp.resolve_method_call(call).map(Function::from)
+    }
+
+    pub fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
+        self.imp.resolve_method_call_as_callable(call)
     }
 
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {
@@ -385,8 +389,19 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(param.syntax()).type_of_self(self.db, &param)
     }
 
-    fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
+    fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {
         self.analyze(call.syntax()).resolve_method_call(self.db, call)
+    }
+
+    fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
+        // FIXME: this erases Substs
+        let func = self.resolve_method_call(call)?;
+        let ty = self.db.value_ty(func.into());
+        let resolver = self.analyze(call.syntax()).resolver;
+        let ty = Type::new_with_resolver(self.db, &resolver, ty.value)?;
+        let mut res = ty.as_callable(self.db)?;
+        res.is_bound_method = true;
+        Some(res)
     }
 
     fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {

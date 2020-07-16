@@ -43,7 +43,7 @@ use crate::{
     completion::{
         CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
     },
-    display::FunctionSignature,
+    display::function_signature::FunctionSignature,
 };
 
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {

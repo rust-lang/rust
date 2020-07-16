@@ -127,6 +127,7 @@ pub struct ClientCapsConfig {
     pub resolve_code_action: bool,
     pub hover_actions: bool,
     pub status_notification: bool,
+    pub signature_help_label_offsets: bool,
 }
 
 impl Config {
@@ -301,6 +302,15 @@ impl Config {
                 doc_caps.code_action.as_ref().map(|it| it.code_action_literal_support.is_some())
             {
                 self.client_caps.code_action_literals = value;
+            }
+            if let Some(value) = doc_caps
+                .signature_help
+                .as_ref()
+                .and_then(|it| it.signature_information.as_ref())
+                .and_then(|it| it.parameter_information.as_ref())
+                .and_then(|it| it.label_offset_support)
+            {
+                self.client_caps.signature_help_label_offsets = value;
             }
 
             self.completion.allow_snippets(false);

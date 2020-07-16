@@ -95,9 +95,9 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
             if let Some(func_target) = match &call_node {
                 FnCallNode::CallExpr(expr) => {
                     //FIXME: Type::as_callable is broken
-                    let callable_def = sema.type_of_expr(&expr.expr()?)?.as_callable()?;
-                    match callable_def {
-                        hir::CallableDefId::FunctionId(it) => {
+                    let callable = sema.type_of_expr(&expr.expr()?)?.as_callable(db)?;
+                    match callable.kind() {
+                        hir::CallableKind::Function(it) => {
                             let fn_def: hir::Function = it.into();
                             let nav = fn_def.to_nav(db);
                             Some(nav)
@@ -108,10 +108,6 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                 FnCallNode::MethodCallExpr(expr) => {
                     let function = sema.resolve_method_call(&expr)?;
                     Some(function.to_nav(db))
-                }
-                FnCallNode::MacroCallExpr(macro_call) => {
-                    let macro_def = sema.resolve_macro_call(&macro_call)?;
-                    Some(macro_def.to_nav(db))
                 }
             } {
                 Some((func_target, name_ref.syntax().text_range()))
