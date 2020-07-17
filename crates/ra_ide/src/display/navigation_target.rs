@@ -22,15 +22,28 @@ use super::short_label::ShortLabel;
 /// code, like a function or a struct, but this is not strictly required.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NavigationTarget {
-    // FIXME: use FileRange?
-    file_id: FileId,
-    full_range: TextRange,
-    name: SmolStr,
-    kind: SyntaxKind,
-    focus_range: Option<TextRange>,
-    container_name: Option<SmolStr>,
-    description: Option<String>,
-    docs: Option<String>,
+    pub file_id: FileId,
+    /// Range which encompasses the whole element.
+    ///
+    /// Should include body, doc comments, attributes, etc.
+    ///
+    /// Clients should use this range to answer "is the cursor inside the
+    /// element?" question.
+    pub full_range: TextRange,
+    /// A "most interesting" range withing the `full_range`.
+    ///
+    /// Typically, `full_range` is the whole syntax node, including doc
+    /// comments, and `focus_range` is the range of the identifier. "Most
+    /// interesting" range within the full range, typically the range of
+    /// identifier.
+    ///
+    /// Clients should place the cursor on this range when navigating to this target.
+    pub focus_range: Option<TextRange>,
+    pub name: SmolStr,
+    pub kind: SyntaxKind,
+    pub container_name: Option<SmolStr>,
+    pub description: Option<String>,
+    pub docs: Option<String>,
 }
 
 pub(crate) trait ToNav {
@@ -42,43 +55,8 @@ pub(crate) trait TryToNav {
 }
 
 impl NavigationTarget {
-    /// When `focus_range` is specified, returns it. otherwise
-    /// returns `full_range`
-    pub fn range(&self) -> TextRange {
+    pub fn focus_or_full_range(&self) -> TextRange {
         self.focus_range.unwrap_or(self.full_range)
-    }
-    /// A "most interesting" range withing the `full_range`.
-    ///
-    /// Typically, `full_range` is the whole syntax node,
-    /// including doc comments, and `focus_range` is the range of the identifier.
-    pub fn focus_range(&self) -> Option<TextRange> {
-        self.focus_range
-    }
-    pub fn full_range(&self) -> TextRange {
-        self.full_range
-    }
-    pub fn file_id(&self) -> FileId {
-        self.file_id
-    }
-
-    pub fn name(&self) -> &SmolStr {
-        &self.name
-    }
-
-    pub fn container_name(&self) -> Option<&SmolStr> {
-        self.container_name.as_ref()
-    }
-
-    pub fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
-
-    pub fn docs(&self) -> Option<&str> {
-        self.docs.as_deref()
-    }
-
-    pub fn description(&self) -> Option<&str> {
-        self.description.as_deref()
     }
 
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
@@ -107,17 +85,12 @@ impl NavigationTarget {
 
     #[cfg(test)]
     pub(crate) fn debug_render(&self) -> String {
-        let mut buf = format!(
-            "{} {:?} {:?} {:?}",
-            self.name(),
-            self.kind(),
-            self.file_id(),
-            self.full_range()
-        );
-        if let Some(focus_range) = self.focus_range() {
+        let mut buf =
+            format!("{} {:?} {:?} {:?}", self.name, self.kind, self.file_id, self.full_range);
+        if let Some(focus_range) = self.focus_range {
             buf.push_str(&format!(" {:?}", focus_range))
         }
-        if let Some(container_name) = self.container_name() {
+        if let Some(container_name) = &self.container_name {
             buf.push_str(&format!(" {}", container_name))
         }
         buf

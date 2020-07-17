@@ -341,10 +341,10 @@ pub(crate) fn handle_workspace_symbol(
     fn exec_query(snap: &GlobalStateSnapshot, query: Query) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
         for nav in snap.analysis.symbol_search(query)? {
-            let container_name = nav.container_name().map(|v| v.to_string());
+            let container_name = nav.container_name.as_ref().map(|v| v.to_string());
             let info = SymbolInformation {
-                name: nav.name().to_string(),
-                kind: to_proto::symbol_kind(nav.kind()),
+                name: nav.name.to_string(),
+                kind: to_proto::symbol_kind(nav.kind),
                 location: to_proto::location_from_nav(snap, nav)?,
                 container_name,
                 deprecated: None,
@@ -434,7 +434,7 @@ pub(crate) fn handle_runnables(
     let mut res = Vec::new();
     for runnable in snap.analysis.runnables(file_id)? {
         if let Some(offset) = offset {
-            if !runnable.nav.full_range().contains_inclusive(offset) {
+            if !runnable.nav.full_range.contains_inclusive(offset) {
                 continue;
             }
         }
@@ -874,7 +874,7 @@ pub(crate) fn handle_code_lens(
             }
 
             let action = runnable.action();
-            let range = to_proto::range(&line_index, runnable.nav.range());
+            let range = to_proto::range(&line_index, runnable.nav.focus_or_full_range());
             let r = to_proto::runnable(&snap, file_id, runnable)?;
             if snap.config.lens.run {
                 let lens = CodeLens {
@@ -1063,7 +1063,7 @@ pub(crate) fn handle_call_hierarchy_prepare(
     let RangeInfo { range: _, info: navs } = nav_info;
     let res = navs
         .into_iter()
-        .filter(|it| it.kind() == SyntaxKind::FN_DEF)
+        .filter(|it| it.kind == SyntaxKind::FN_DEF)
         .map(|it| to_proto::call_hierarchy_item(&snap, it))
         .collect::<Result<Vec<_>>>()?;
 
@@ -1089,7 +1089,7 @@ pub(crate) fn handle_call_hierarchy_incoming(
     let mut res = vec![];
 
     for call_item in call_items.into_iter() {
-        let file_id = call_item.target.file_id();
+        let file_id = call_item.target.file_id;
         let line_index = snap.analysis.file_line_index(file_id)?;
         let item = to_proto::call_hierarchy_item(&snap, call_item.target)?;
         res.push(CallHierarchyIncomingCall {
@@ -1124,7 +1124,7 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let mut res = vec![];
 
     for call_item in call_items.into_iter() {
-        let file_id = call_item.target.file_id();
+        let file_id = call_item.target.file_id;
         let line_index = snap.analysis.file_line_index(file_id)?;
         let item = to_proto::call_hierarchy_item(&snap, call_item.target)?;
         res.push(CallHierarchyOutgoingCall {
@@ -1220,13 +1220,13 @@ fn goto_location_command(snap: &GlobalStateSnapshot, nav: &NavigationTarget) -> 
         let link = to_proto::location_link(snap, None, nav.clone()).ok()?;
         to_value(link).ok()?
     } else {
-        let range = FileRange { file_id: nav.file_id(), range: nav.range() };
+        let range = FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() };
         let location = to_proto::location(snap, range).ok()?;
         to_value(location).ok()?
     };
 
     Some(Command {
-        title: nav.name().to_string(),
+        title: nav.name.to_string(),
         command: "rust-analyzer.gotoLocation".into(),
         arguments: Some(vec![value]),
     })

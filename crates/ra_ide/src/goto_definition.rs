@@ -130,7 +130,7 @@ mod tests {
         assert_eq!(navs.len(), 1);
 
         let nav = navs.pop().unwrap();
-        assert_eq!(expected, FileRange { file_id: nav.file_id(), range: nav.range() });
+        assert_eq!(expected, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() });
     }
 
     #[test]

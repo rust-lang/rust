@@ -74,8 +74,8 @@ impl IntoIterator for ReferenceSearchResult {
         let mut v = Vec::with_capacity(self.len());
         v.push(Reference {
             file_range: FileRange {
-                file_id: self.declaration.nav.file_id(),
-                range: self.declaration.nav.range(),
+                file_id: self.declaration.nav.file_id,
+                range: self.declaration.nav.focus_or_full_range(),
             },
             kind: self.declaration.kind,
             access: self.declaration.access,
@@ -112,7 +112,7 @@ pub(crate) fn find_all_refs(
         .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
         .collect();
 
-    let decl_range = def.try_to_nav(sema.db)?.range();
+    let decl_range = def.try_to_nav(sema.db)?.focus_or_full_range();
 
     let declaration = Declaration {
         nav: def.try_to_nav(sema.db)?,
