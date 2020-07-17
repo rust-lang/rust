@@ -1,0 +1,20 @@
+error: any use of this value will cause an error
+  --> $SRC_DIR/libcore/hint.rs:LL:COL
+   |
+LL |     unsafe { intrinsics::unreachable() }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              entering unreachable code
+   |              inside `std::hint::unreachable_unchecked` at $SRC_DIR/libcore/hint.rs:LL:COL
+   |              inside `foo` at $DIR/const_unsafe_unreachable_ub.rs:7:18
+   |              inside `BAR` at $DIR/const_unsafe_unreachable_ub.rs:11:28
+   | 
+  ::: $DIR/const_unsafe_unreachable_ub.rs:11:1
+   |
+LL | const BAR: bool = unsafe { foo(false) };
+   | ----------------------------------------
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to previous error
+
