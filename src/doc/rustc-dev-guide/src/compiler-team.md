@@ -9,10 +9,13 @@ contributions to rustc and its design.
 
 ## Discussion
 
-Currently the compiler team chats in 2 places:
+Currently the compiler team chats in Zulip:
 
-- The `t-compiler` stream on [the Zulip instance][zulip]
-- The `compiler` channel on the [rust-lang discord](https://discord.gg/rust-lang)
+- Team chat occurs in the `t-compiler` stream on [the Zulip instance][zulip]
+- There are also a number of other associated Zulip streams,
+  such as [`t-compiler/help`][zulip-help], where people can ask for help
+  with rustc development, or [`t-compiler/meetings`][zulip-meetings],
+  where the team holds their weekly triage and steering meetings.
 
 ## Expert map
 
@@ -53,6 +56,8 @@ The meeting is held over a "chat medium", currently on [zulip].
 [etherpad]: https://public.etherpad-mozilla.org/p/rust-compiler-meeting
 [procedure]: ./bug-fix-procedure.md
 [zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
+[zulip-help]: https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp
+[zulip-meetings]: https://rust-lang.zulipchat.com/#narrow/stream/238009-t-compiler.2Fmeetings
 
 ## Team membership
 
