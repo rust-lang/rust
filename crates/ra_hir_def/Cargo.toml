@@ -33,5 +33,4 @@ ra_cfg = { path = "../ra_cfg" }
 tt = { path = "../ra_tt", package = "ra_tt" }
 
 [dev-dependencies]
-insta = "0.16.0"
 expect = { path = "../expect" }

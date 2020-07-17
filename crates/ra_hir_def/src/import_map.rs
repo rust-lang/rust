@@ -327,32 +327,14 @@ pub fn search_dependencies<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use expect::{expect, Expect};
+    use ra_db::{fixture::WithFixture, SourceDatabase, Upcast};
+
     use crate::{test_db::TestDB, AssocContainerId, Lookup};
-    use insta::assert_snapshot;
-    use itertools::Itertools;
-    use ra_db::fixture::WithFixture;
-    use ra_db::{SourceDatabase, Upcast};
 
-    fn import_map(ra_fixture: &str) -> String {
-        let db = TestDB::with_files(ra_fixture);
-        let crate_graph = db.crate_graph();
+    use super::*;
 
-        let s = crate_graph
-            .iter()
-            .filter_map(|krate| {
-                let cdata = &crate_graph[krate];
-                let name = cdata.display_name.as_ref()?;
-
-                let map = db.import_map(krate);
-
-                Some(format!("{}:\n{:?}", name, map))
-            })
-            .join("\n");
-        s
-    }
-
-    fn search_dependencies_of(ra_fixture: &str, krate_name: &str, query: Query) -> String {
+    fn check_search(ra_fixture: &str, krate_name: &str, query: Query, expect: Expect) {
         let db = TestDB::with_files(ra_fixture);
         let crate_graph = db.crate_graph();
         let krate = crate_graph
@@ -363,7 +345,7 @@ mod tests {
             })
             .unwrap();
 
-        search_dependencies(db.upcast(), krate, query)
+        let actual = search_dependencies(db.upcast(), krate, query)
             .into_iter()
             .filter_map(|item| {
                 let mark = match item {
@@ -376,14 +358,15 @@ mod tests {
                     let map = db.import_map(krate);
                     let path = map.path_of(item).unwrap();
                     format!(
-                        "{}::{} ({})",
+                        "{}::{} ({})\n",
                         crate_graph[krate].display_name.as_ref().unwrap(),
                         path,
                         mark
                     )
                 })
             })
-            .join("\n")
+            .collect::<String>();
+        expect.assert_eq(&actual)
     }
 
     fn assoc_to_trait(db: &dyn DefDatabase, item: ItemInNs) -> ItemInNs {
@@ -409,9 +392,28 @@ mod tests {
         }
     }
 
+    fn check(ra_fixture: &str, expect: Expect) {
+        let db = TestDB::with_files(ra_fixture);
+        let crate_graph = db.crate_graph();
+
+        let actual = crate_graph
+            .iter()
+            .filter_map(|krate| {
+                let cdata = &crate_graph[krate];
+                let name = cdata.display_name.as_ref()?;
+
+                let map = db.import_map(krate);
+
+                Some(format!("{}:\n{:?}\n", name, map))
+            })
+            .collect::<String>();
+
+        expect.assert_eq(&actual)
+    }
+
     #[test]
     fn smoke() {
-        let map = import_map(
+        check(
             r"
             //- /main.rs crate:main deps:lib
 
@@ -436,24 +438,23 @@ mod tests {
             pub struct Pub2; // t + v
             struct Priv;
         ",
+            expect![[r#"
+                main:
+                - publ1 (t)
+                - real_pu2 (t)
+                - real_pub (t)
+                - real_pub::Pub (t)
+                lib:
+                - Pub (t)
+                - Pub2 (t)
+                - Pub2 (v)
+            "#]],
         );
-
-        assert_snapshot!(map, @r###"
-        main:
-        - publ1 (t)
-        - real_pu2 (t)
-        - real_pub (t)
-        - real_pub::Pub (t)
-        lib:
-        - Pub (t)
-        - Pub2 (t)
-        - Pub2 (v)
-        "###);
     }
 
     #[test]
     fn prefers_shortest_path() {
-        let map = import_map(
+        check(
             r"
             //- /main.rs crate:main
 
@@ -465,21 +466,20 @@ mod tests {
                 pub use super::sub::subsub::Def;
             }
         ",
+            expect![[r#"
+                main:
+                - sub (t)
+                - sub::Def (t)
+                - sub::subsub (t)
+            "#]],
         );
-
-        assert_snapshot!(map, @r###"
-        main:
-        - sub (t)
-        - sub::Def (t)
-        - sub::subsub (t)
-        "###);
     }
 
     #[test]
     fn type_reexport_cross_crate() {
         // Reexports need to be visible from a crate, even if the original crate exports the item
         // at a shorter path.
-        let map = import_map(
+        check(
             r"
             //- /main.rs crate:main deps:lib
             pub mod m {
@@ -488,22 +488,21 @@ mod tests {
             //- /lib.rs crate:lib
             pub struct S;
         ",
+            expect![[r#"
+                main:
+                - m (t)
+                - m::S (t)
+                - m::S (v)
+                lib:
+                - S (t)
+                - S (v)
+            "#]],
         );
-
-        assert_snapshot!(map, @r###"
-        main:
-        - m (t)
-        - m::S (t)
-        - m::S (v)
-        lib:
-        - S (t)
-        - S (v)
-        "###);
     }
 
     #[test]
     fn macro_reexport() {
-        let map = import_map(
+        check(
             r"
             //- /main.rs crate:main deps:lib
             pub mod m {
@@ -515,21 +514,20 @@ mod tests {
                 () => {};
             }
         ",
+            expect![[r#"
+                main:
+                - m (t)
+                - m::pub_macro (m)
+                lib:
+                - pub_macro (m)
+            "#]],
         );
-
-        assert_snapshot!(map, @r###"
-        main:
-        - m (t)
-        - m::pub_macro (m)
-        lib:
-        - pub_macro (m)
-        "###);
     }
 
     #[test]
     fn module_reexport() {
         // Reexporting modules from a dependency adds all contents to the import map.
-        let map = import_map(
+        check(
             r"
             //- /main.rs crate:main deps:lib
             pub use lib::module as reexported_module;
@@ -538,24 +536,23 @@ mod tests {
                 pub struct S;
             }
         ",
+            expect![[r#"
+                main:
+                - reexported_module (t)
+                - reexported_module::S (t)
+                - reexported_module::S (v)
+                lib:
+                - module (t)
+                - module::S (t)
+                - module::S (v)
+            "#]],
         );
-
-        assert_snapshot!(map, @r###"
-        main:
-        - reexported_module (t)
-        - reexported_module::S (t)
-        - reexported_module::S (v)
-        lib:
-        - module (t)
-        - module::S (t)
-        - module::S (v)
-        "###);
     }
 
     #[test]
     fn cyclic_module_reexport() {
         // A cyclic reexport does not hang.
-        let map = import_map(
+        check(
             r"
             //- /lib.rs crate:lib
             pub mod module {
@@ -567,36 +564,35 @@ mod tests {
                 pub use super::module;
             }
         ",
+            expect![[r#"
+                lib:
+                - module (t)
+                - module::S (t)
+                - module::S (v)
+                - sub (t)
+            "#]],
         );
-
-        assert_snapshot!(map, @r###"
-        lib:
-        - module (t)
-        - module::S (t)
-        - module::S (v)
-        - sub (t)
-        "###);
     }
 
     #[test]
     fn private_macro() {
-        let map = import_map(
+        check(
             r"
             //- /lib.rs crate:lib
             macro_rules! private_macro {
                 () => {};
             }
         ",
-        );
+            expect![[r#"
+                lib:
 
-        assert_snapshot!(map, @r###"
-        lib:
-        "###);
+            "#]],
+        );
     }
 
     #[test]
     fn namespacing() {
-        let map = import_map(
+        check(
             r"
             //- /lib.rs crate:lib
             pub struct Thing;     // t + v
@@ -605,16 +601,15 @@ mod tests {
                 () => {};
             }
         ",
+            expect![[r#"
+                lib:
+                - Thing (m)
+                - Thing (t)
+                - Thing (v)
+            "#]],
         );
 
-        assert_snapshot!(map, @r###"
-        lib:
-        - Thing (m)
-        - Thing (t)
-        - Thing (v)
-        "###);
-
-        let map = import_map(
+        check(
             r"
             //- /lib.rs crate:lib
             pub mod Thing {}      // t
@@ -623,13 +618,12 @@ mod tests {
                 () => {};
             }
         ",
+            expect![[r#"
+                lib:
+                - Thing (m)
+                - Thing (t)
+            "#]],
         );
-
-        assert_snapshot!(map, @r###"
-        lib:
-        - Thing (m)
-        - Thing (t)
-        "###);
     }
 
     #[test]
@@ -658,25 +652,33 @@ mod tests {
             }
         "#;
 
-        let res = search_dependencies_of(ra_fixture, "main", Query::new("fmt"));
-        assert_snapshot!(res, @r###"
-        dep::fmt (t)
-        dep::Fmt (t)
-        dep::Fmt (v)
-        dep::Fmt (m)
-        dep::fmt::Display (t)
-        dep::format (v)
-        dep::fmt::Display (t)
-        "###);
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt"),
+            expect![[r#"
+                dep::fmt (t)
+                dep::Fmt (t)
+                dep::Fmt (v)
+                dep::Fmt (m)
+                dep::fmt::Display (t)
+                dep::format (v)
+                dep::fmt::Display (t)
+            "#]],
+        );
 
-        let res = search_dependencies_of(ra_fixture, "main", Query::new("fmt").anchor_end());
-        assert_snapshot!(res, @r###"
-        dep::fmt (t)
-        dep::Fmt (t)
-        dep::Fmt (v)
-        dep::Fmt (m)
-        dep::fmt::Display (t)
-        "###);
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("fmt").anchor_end(),
+            expect![[r#"
+                dep::fmt (t)
+                dep::Fmt (t)
+                dep::Fmt (v)
+                dep::Fmt (m)
+                dep::fmt::Display (t)
+            "#]],
+        );
     }
 
     #[test]
@@ -689,26 +691,32 @@ mod tests {
             pub struct FMT;
         "#;
 
-        let res = search_dependencies_of(ra_fixture, "main", Query::new("FMT"));
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("FMT"),
+            expect![[r#"
+                dep::fmt (t)
+                dep::fmt (v)
+                dep::FMT (t)
+                dep::FMT (v)
+            "#]],
+        );
 
-        assert_snapshot!(res, @r###"
-        dep::fmt (t)
-        dep::fmt (v)
-        dep::FMT (t)
-        dep::FMT (v)
-        "###);
-
-        let res = search_dependencies_of(ra_fixture, "main", Query::new("FMT").case_sensitive());
-
-        assert_snapshot!(res, @r###"
-        dep::FMT (t)
-        dep::FMT (v)
-        "###);
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("FMT").case_sensitive(),
+            expect![[r#"
+                dep::FMT (t)
+                dep::FMT (v)
+            "#]],
+        );
     }
 
     #[test]
     fn search_limit() {
-        let res = search_dependencies_of(
+        check_search(
             r#"
         //- /main.rs crate:main deps:dep
         //- /dep.rs crate:dep
@@ -728,10 +736,10 @@ mod tests {
     "#,
             "main",
             Query::new("").limit(2),
+            expect![[r#"
+                dep::fmt (t)
+                dep::Fmt (t)
+            "#]],
         );
-        assert_snapshot!(res, @r###"
-        dep::fmt (t)
-        dep::Fmt (t)
-        "###);
     }
 }

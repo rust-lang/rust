@@ -686,27 +686,25 @@ fn unresolved_module_diagnostics() {
 
     let crate_def_map = db.crate_def_map(krate);
 
-    insta::assert_debug_snapshot!(
-        crate_def_map.diagnostics,
-        @r###"
-    [
-        UnresolvedModule {
-            module: Idx::<ModuleData>(0),
-            declaration: InFile {
-                file_id: HirFileId(
-                    FileId(
+    expect![[r#"
+        [
+            UnresolvedModule {
+                module: Idx::<ModuleData>(0),
+                declaration: InFile {
+                    file_id: HirFileId(
                         FileId(
-                            0,
+                            FileId(
+                                0,
+                            ),
                         ),
                     ),
-                ),
-                value: FileAstId::<ra_syntax::ast::generated::nodes::Module>(1),
+                    value: FileAstId::<ra_syntax::ast::generated::nodes::Module>(1),
+                },
+                candidate: "bar.rs",
             },
-            candidate: "bar.rs",
-        },
-    ]
-    "###
-    );
+        ]
+    "#]]
+    .assert_debug_eq(&crate_def_map.diagnostics);
 }
 
 #[test]
