@@ -235,13 +235,8 @@ pub fn get_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
     static mut LOAD: fn() -> Box<dyn CodegenBackend> = || unreachable!();
 
     INIT.call_once(|| {
-        let codegen_name = sess
-            .opts
-            .debugging_opts
-            .codegen_backend
-            .as_ref()
-            .unwrap_or(&sess.target.target.options.codegen_backend);
-        let backend = match &codegen_name[..] {
+        let codegen_name = sess.opts.debugging_opts.codegen_backend.as_deref().unwrap_or("llvm");
+        let backend = match codegen_name {
             filename if filename.contains('.') => load_backend_from_dylib(filename.as_ref()),
             codegen_name => get_builtin_codegen_backend(codegen_name),
         };
