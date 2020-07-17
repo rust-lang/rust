@@ -65,9 +65,6 @@ pub fn target() -> TargetResult {
             // The minimum alignment for global symbols.
             min_global_align: Some(4),
 
-            // GBA has no builtins
-            no_builtins: true,
-
             // this is off just like in the `thumb_base`
             emit_debug_gdb_scripts: false,
 
