@@ -4,8 +4,9 @@ use ra_syntax::{
     ast::{self, HasQuotes, HasStringValue},
     AstToken,
     SyntaxKind::{RAW_STRING, STRING},
-    TextSize,
+    TextRange, TextSize,
 };
+use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -33,8 +34,7 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext) -> Option<
         "Rewrite as raw string",
         target,
         |edit| {
-            let max_hash_streak = count_hashes(&value);
-            let hashes = "#".repeat(max_hash_streak + 1);
+            let hashes = "#".repeat(required_hashes(&value).max(1));
             if matches!(value, Cow::Borrowed(_)) {
                 // Avoid replacing the whole string to better position the cursor.
                 edit.insert(token.syntax().text_range().start(), format!("r{}", hashes));
@@ -106,7 +106,7 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext) -> Optio
 pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let token = ctx.find_token_at_offset(RAW_STRING)?;
     let target = token.text_range();
-    acc.add(AssistId("add_hash", AssistKind::Refactor), "Add # to raw string", target, |edit| {
+    acc.add(AssistId("add_hash", AssistKind::Refactor), "Add #", target, |edit| {
         edit.insert(token.text_range().start() + TextSize::of('r'), "#");
         edit.insert(token.text_range().end(), "#");
     })
@@ -128,48 +128,57 @@ pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 // }
 // ```
 pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let token = ctx.find_token_at_offset(RAW_STRING)?;
+    let token = ctx.find_token_at_offset(RAW_STRING).and_then(ast::RawString::cast)?;
+
     let text = token.text().as_str();
-    if text.starts_with("r\"") {
-        // no hash to remove
+    if !text.starts_with("r#") && text.ends_with("#") {
         return None;
     }
-    let target = token.text_range();
-    acc.add(
-        AssistId("remove_hash", AssistKind::RefactorRewrite),
-        "Remove hash from raw string",
-        target,
-        |edit| {
-            let result = &text[2..text.len() - 1];
-            let result = if result.starts_with('\"') {
-                // FIXME: this logic is wrong, not only the last has has to handled specially
-                // no more hash, escape
-                let internal_str = &result[1..result.len() - 1];
-                format!("\"{}\"", internal_str.escape_default().to_string())
-            } else {
-                result.to_owned()
-            };
-            edit.replace(token.text_range(), format!("r{}", result));
-        },
-    )
+
+    let existing_hashes = text.chars().skip(1).take_while(|&it| it == '#').count();
+
+    let text_range = token.syntax().text_range();
+    let internal_text = &text[token.text_range_between_quotes()? - text_range.start()];
+
+    if existing_hashes == required_hashes(internal_text) {
+        mark::hit!(cant_remove_required_hash);
+        return None;
+    }
+
+    acc.add(AssistId("remove_hash", AssistKind::RefactorRewrite), "Remove #", text_range, |edit| {
+        edit.delete(TextRange::at(text_range.start() + TextSize::of('r'), TextSize::of('#')));
+        edit.delete(TextRange::new(text_range.end() - TextSize::of('#'), text_range.end()));
+    })
 }
 
-fn count_hashes(s: &str) -> usize {
-    let mut max_hash_streak = 0usize;
-    for idx in s.match_indices("\"#").map(|(i, _)| i) {
+fn required_hashes(s: &str) -> usize {
+    let mut res = 0usize;
+    for idx in s.match_indices('"').map(|(i, _)| i) {
         let (_, sub) = s.split_at(idx + 1);
-        let nb_hash = sub.chars().take_while(|c| *c == '#').count();
-        if nb_hash > max_hash_streak {
-            max_hash_streak = nb_hash;
-        }
+        let n_hashes = sub.chars().take_while(|c| *c == '#').count();
+        res = res.max(n_hashes + 1)
     }
-    max_hash_streak
+    res
+}
+
+#[test]
+fn test_required_hashes() {
+    assert_eq!(0, required_hashes("abc"));
+    assert_eq!(0, required_hashes("###"));
+    assert_eq!(1, required_hashes("\""));
+    assert_eq!(2, required_hashes("\"#abc"));
+    assert_eq!(0, required_hashes("#abc"));
+    assert_eq!(3, required_hashes("#ab\"##c"));
+    assert_eq!(5, required_hashes("#ab\"##\"####c"));
 }
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use test_utils::mark;
+
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+
+    use super::*;
 
     #[test]
     fn make_raw_string_target() {
@@ -372,33 +381,21 @@ string"###;
     fn remove_hash_works() {
         check_assist(
             remove_hash,
-            r##"
-            fn f() {
-                let s = <|>r#"random string"#;
-            }
-            "##,
-            r#"
-            fn f() {
-                let s = r"random string";
-            }
-            "#,
+            r##"fn f() { let s = <|>r#"random string"#; }"##,
+            r#"fn f() { let s = r"random string"; }"#,
         )
     }
 
     #[test]
-    fn remove_hash_with_quote_works() {
-        check_assist(
+    fn cant_remove_required_hash() {
+        mark::check!(cant_remove_required_hash);
+        check_assist_not_applicable(
             remove_hash,
             r##"
             fn f() {
                 let s = <|>r#"random"str"ing"#;
             }
             "##,
-            r#"
-            fn f() {
-                let s = r"random\"str\"ing";
-            }
-            "#,
         )
     }
 
@@ -420,27 +417,13 @@ string"###;
     }
 
     #[test]
-    fn remove_hash_not_works() {
-        check_assist_not_applicable(
-            remove_hash,
-            r#"
-            fn f() {
-                let s = <|>"random string";
-            }
-            "#,
-        );
+    fn remove_hash_doesnt_work() {
+        check_assist_not_applicable(remove_hash, r#"fn f() { let s = <|>"random string"; }"#);
     }
 
     #[test]
-    fn remove_hash_no_hash_not_works() {
-        check_assist_not_applicable(
-            remove_hash,
-            r#"
-            fn f() {
-                let s = <|>r"random string";
-            }
-            "#,
-        );
+    fn remove_hash_no_hash_doesnt_work() {
+        check_assist_not_applicable(remove_hash, r#"fn f() { let s = <|>r"random string"; }"#);
     }
 
     #[test]
@@ -517,15 +500,5 @@ string"###;
             }
             "#,
         );
-    }
-
-    #[test]
-    fn count_hashes_test() {
-        assert_eq!(0, count_hashes("abc"));
-        assert_eq!(0, count_hashes("###"));
-        assert_eq!(1, count_hashes("\"#abc"));
-        assert_eq!(0, count_hashes("#abc"));
-        assert_eq!(2, count_hashes("#ab\"##c"));
-        assert_eq!(4, count_hashes("#ab\"##\"####c"));
     }
 }
