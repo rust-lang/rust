@@ -284,6 +284,7 @@ fn main() {}
                 }
               ]
             },
+            "isPreferred": false,
             "kind": "quickfix",
             "title": "Create module"
         }]),
@@ -355,6 +356,7 @@ fn main() {{}}
                 }
               ]
             },
+            "isPreferred": false,
             "kind": "quickfix",
             "title": "Create module"
         }]),

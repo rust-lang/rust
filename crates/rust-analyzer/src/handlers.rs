@@ -770,6 +770,7 @@ fn handle_fixes(
             group: None,
             kind: Some(CodeActionKind::QUICKFIX),
             edit: Some(edit),
+            is_preferred: Some(false),
         };
         res.push(action);
     }

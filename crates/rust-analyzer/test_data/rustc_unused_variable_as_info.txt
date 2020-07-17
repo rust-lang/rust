@@ -65,6 +65,9 @@
                         document_changes: None,
                     },
                 ),
+                is_preferred: Some(
+                    true,
+                ),
             },
         ],
     },

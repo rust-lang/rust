@@ -243,6 +243,7 @@ impl Request for CodeActionRequest {
 }
 
 #[derive(Debug, PartialEq, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CodeAction {
     pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -256,6 +257,8 @@ pub struct CodeAction {
     // pub command: Option<lsp_types::Command>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub edit: Option<SnippetWorkspaceEdit>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_preferred: Option<bool>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
