@@ -874,11 +874,9 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
-/// Prints `prompt` and reads a [`String`] from
+/// Prints the given `str` and reads a [`String`] from
 /// [standard input](Stdin). The trailing newline is stripped.
-/// Errors on EOF (Ctrl-D).
-///
-/// Equivalent to [`input`] except it prints prompts.
+/// Gives an error on EOF (Ctrl-D).
 ///
 /// # Note
 ///
@@ -888,54 +886,20 @@ impl fmt::Debug for StderrLock<'_> {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(prompt)]
-/// use std::io::prompt;
-///
-/// let name = prompt("Enter name: ").expect("input failed");
-/// println!("Your name is {}!", name);
-/// ```
-#[unstable(
-    feature = "prompt",
-    reason = "this function may be replaced with a more general mechanism",
-    issue = "none"
-)]
-pub fn prompt(prompt: &str) -> Result<String> {
-    stdout().write_all(prompt.as_bytes())?;
-    input()
-}
-
-/// Reads a [`String`] from [standard input](Stdin). The
-/// trailing newline is stripped. Errors on EOF (Ctrl-D).
-///
-/// Equivalent to [`prompt`] without a prompt.
-///
-/// # Note
-/// For more explicit control over locking, see the
-/// [`Stdin::lock`] and [`Stdout::lock`] methods. If
-/// you require more explicit control over capturing
-/// user input, see the [`Stdin::read_line`] method.
-///
-/// # Examples
-///
-/// ```no_run
 /// #![feature(input)]
 /// use std::io::input;
 ///
-/// fn main() {
-///     print!("Enter name: ");
+/// let name = input("Enter name: ").expect("input failed");
 ///
-///     let name = input().expect("input failed!");
-///
-///     println!("Your name is {}!", name);
-/// }
+/// println!("Your name is {}!", name);
 /// ```
 #[unstable(
     feature = "input",
-    reason = "this function may be replaced with a \
-                     more general mechanism",
+    reason = "this function may be replaced with a more general mechanism",
     issue = "none"
 )]
-pub fn input() -> Result<String> {
+pub fn input(prompt: &str) -> Result<String> {
+    stdout().write_all(prompt.as_bytes())?;
     stdout().flush()?;
     let mut input = String::new();
     match stdin().read_line(&mut input)? {
