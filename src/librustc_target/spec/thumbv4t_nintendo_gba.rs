@@ -62,9 +62,6 @@ pub fn target() -> TargetResult {
             // ABIs to not use
             unsupported_abis: super::arm_base::unsupported_abis(),
 
-            // The minimum alignment for global symbols.
-            min_global_align: Some(4),
-
             // this is off just like in the `thumb_base`
             emit_debug_gdb_scripts: false,
 
