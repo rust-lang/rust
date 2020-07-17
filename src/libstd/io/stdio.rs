@@ -899,8 +899,7 @@ impl fmt::Debug for StderrLock<'_> {
 /// ```
 #[unstable(
     feature = "prompt",
-    reason = "this function may be replaced with a \
-                     more general mechanism",
+    reason = "this function may be replaced with a more general mechanism",
     issue = "none"
 )]
 pub fn prompt(prompt: &str) -> Result<String> {
