@@ -1160,6 +1160,22 @@ fn go(world: &WorldSnapshot) { go(w<|>) }
     }
 
     #[test]
+    fn too_many_arguments() {
+        mark::check!(too_many_arguments);
+        check_scores(
+            r#"
+struct Foo;
+fn f(foo: &Foo) { f(foo, w<|>) }
+"#,
+            expect![[r#"
+                st Foo []
+                fn f(…) []
+                bn foo []
+            "#]],
+        );
+    }
+
+    #[test]
     fn guesses_macro_braces() {
         check_edit(
             "vec!",
