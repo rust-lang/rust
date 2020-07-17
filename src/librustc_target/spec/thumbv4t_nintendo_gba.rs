@@ -46,8 +46,6 @@ pub fn target() -> TargetResult {
 
             relocation_model: RelocModel::Static,
 
-            //function_sections: bool,
-            //exe_suffix: String,
             main_needs_argc_argv: false,
 
             // if we have thread-local storage
