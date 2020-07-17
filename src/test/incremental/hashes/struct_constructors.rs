@@ -54,7 +54,7 @@ pub fn change_field_order_regular_struct() -> RegularStruct {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_field_order_regular_struct() -> RegularStruct {
     RegularStruct {
@@ -82,7 +82,7 @@ pub fn add_field_regular_struct() -> RegularStruct {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_field_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
@@ -117,7 +117,7 @@ pub fn change_field_label_regular_struct() -> RegularStruct {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_field_label_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
@@ -152,7 +152,7 @@ pub fn change_constructor_path_regular_struct() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_regular_struct() {
     let _ = RegularStruct2 {
@@ -173,7 +173,7 @@ pub mod change_constructor_path_indirectly_regular_struct {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck_tables_of"
+        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> Struct {
@@ -213,7 +213,7 @@ pub fn change_constructor_path_tuple_struct() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_tuple_struct() {
     let _ = TupleStruct2(0, 1, 2);
@@ -230,7 +230,7 @@ pub mod change_constructor_path_indirectly_tuple_struct {
 
     #[rustc_clean(
         cfg="cfail2",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck_tables_of"
+        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> Struct {

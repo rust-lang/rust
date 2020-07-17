@@ -66,7 +66,7 @@ declare_lint_pass!(Mutex => [MUTEX_ATOMIC, MUTEX_INTEGER]);
 
 impl<'tcx> LateLintPass<'tcx> for Mutex {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let ty = cx.tables().expr_ty(expr);
+        let ty = cx.typeck_results().expr_ty(expr);
         if let ty::Adt(_, subst) = ty.kind {
             if is_type_diagnostic_item(cx, ty, sym!(mutex_type)) {
                 let mutex_param = subst.type_at(0);

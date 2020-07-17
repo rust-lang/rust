@@ -157,7 +157,7 @@ pub(crate) trait BindInsteadOfMap {
 
     /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
     fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-        if !match_type(cx, cx.tables().expr_ty(&args[0]), Self::TYPE_QPATH) {
+        if !match_type(cx, cx.typeck_results().expr_ty(&args[0]), Self::TYPE_QPATH) {
             return;
         }
 

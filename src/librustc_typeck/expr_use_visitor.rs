@@ -82,16 +82,16 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     ///
     /// - `delegate` -- who receives the callbacks
     /// - `param_env` --- parameter environment for trait lookups (esp. pertaining to `Copy`)
-    /// - `tables` --- typeck results for the code being analyzed
+    /// - `typeck_results` --- typeck results for the code being analyzed
     pub fn new(
         delegate: &'a mut (dyn Delegate<'tcx> + 'a),
         infcx: &'a InferCtxt<'a, 'tcx>,
         body_owner: LocalDefId,
         param_env: ty::ParamEnv<'tcx>,
-        tables: &'a ty::TypeckTables<'tcx>,
+        typeck_results: &'a ty::TypeckResults<'tcx>,
     ) -> Self {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::new(infcx, param_env, body_owner, tables),
+            mc: mc::MemCategorizationContext::new(infcx, param_env, body_owner, typeck_results),
             delegate,
         }
     }
@@ -296,7 +296,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::AssignOp(_, ref lhs, ref rhs) => {
-                if self.mc.tables.is_method_call(expr) {
+                if self.mc.typeck_results.is_method_call(expr) {
                     self.consume_expr(lhs);
                 } else {
                     self.mutate_expr(lhs);
@@ -390,9 +390,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
-                    let is_mentioned = fields
-                        .iter()
-                        .any(|f| self.tcx().field_index(f.hir_id, self.mc.tables) == f_index);
+                    let is_mentioned = fields.iter().any(|f| {
+                        self.tcx().field_index(f.hir_id, self.mc.typeck_results) == f_index
+                    });
                     if !is_mentioned {
                         let field_place = self.mc.cat_projection(
                             &*with_expr,
@@ -424,7 +424,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     // consumed or borrowed as part of the automatic adjustment
     // process.
     fn walk_adjustment(&mut self, expr: &hir::Expr<'_>) {
-        let adjustments = self.mc.tables.expr_adjustments(expr);
+        let adjustments = self.mc.typeck_results.expr_adjustments(expr);
         let mut place_with_id = return_if_err!(self.mc.cat_expr_unadjusted(expr));
         for adjustment in adjustments {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
@@ -508,7 +508,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat,);
-                if let Some(bm) = mc.tables.extract_binding_mode(tcx.sess, pat.hir_id, pat.span) {
+                if let Some(bm) =
+                    mc.typeck_results.extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
+                {
                     debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
                     // pat_ty: the type of the binding being produced.
@@ -549,7 +551,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     var_path: ty::UpvarPath { hir_id: var_id },
                     closure_expr_id: closure_def_id,
                 };
-                let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
+                let upvar_capture = self.mc.typeck_results.upvar_capture(upvar_id);
                 let captured_place = return_if_err!(self.cat_captured_var(
                     closure_expr.hir_id,
                     fn_decl_span,

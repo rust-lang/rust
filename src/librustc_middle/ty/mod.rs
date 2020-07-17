@@ -76,7 +76,7 @@ pub use self::context::{
     UserType, UserTypeAnnotationIndex,
 };
 pub use self::context::{
-    CtxtInterners, GeneratorInteriorTypeCause, GlobalCtxt, Lift, TypeckTables,
+    CtxtInterners, GeneratorInteriorTypeCause, GlobalCtxt, Lift, TypeckResults,
 };
 
 pub use self::instance::{Instance, InstanceDef};
@@ -1575,7 +1575,7 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 /// in case `did` is a const argument.
 ///
 /// This is used to prevent cycle errors during typeck
-/// as `type_of(const_arg)` depends on `typeck_tables_of(owning_body)`
+/// as `type_of(const_arg)` depends on `typeck(owning_body)`
 /// which once again requires the type of its generic arguments.
 ///
 /// Luckily we only need to deal with const arguments once we
@@ -2759,8 +2759,8 @@ pub enum ImplOverlapKind {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn body_tables(self, body: hir::BodyId) -> &'tcx TypeckTables<'tcx> {
-        self.typeck_tables_of(self.hir().body_owner_def_id(body))
+    pub fn typeck_body(self, body: hir::BodyId) -> &'tcx TypeckResults<'tcx> {
+        self.typeck(self.hir().body_owner_def_id(body))
     }
 
     /// Returns an iterator of the `DefId`s for all body-owners in this
@@ -2807,8 +2807,8 @@ impl<'tcx> TyCtxt<'tcx> {
         is_associated_item.then(|| self.associated_item(def_id))
     }
 
-    pub fn field_index(self, hir_id: hir::HirId, tables: &TypeckTables<'_>) -> usize {
-        tables.field_indices().get(hir_id).cloned().expect("no index for a field")
+    pub fn field_index(self, hir_id: hir::HirId, typeck_results: &TypeckResults<'_>) -> usize {
+        typeck_results.field_indices().get(hir_id).cloned().expect("no index for a field")
     }
 
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {

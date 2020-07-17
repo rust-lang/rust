@@ -28,7 +28,7 @@ struct ItemVisitor<'tcx> {
 
 struct ExprVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    tables: &'tcx ty::TypeckTables<'tcx>,
+    typeck_results: &'tcx ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -142,7 +142,7 @@ impl ExprVisitor<'tcx> {
         tied_input: Option<(&hir::Expr<'tcx>, Option<InlineAsmType>)>,
     ) -> Option<InlineAsmType> {
         // Check the type against the allowed types for inline asm.
-        let ty = self.tables.expr_ty_adjusted(expr);
+        let ty = self.typeck_results.expr_ty_adjusted(expr);
         let asm_ty_isize = match self.tcx.sess.target.ptr_width {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
@@ -236,7 +236,7 @@ impl ExprVisitor<'tcx> {
                 let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
                 err.span_label(
                     in_expr.span,
-                    &format!("type `{}`", self.tables.expr_ty_adjusted(in_expr)),
+                    &format!("type `{}`", self.typeck_results.expr_ty_adjusted(in_expr)),
                 );
                 err.span_label(expr.span, &format!("type `{}`", ty));
                 err.note(
@@ -373,7 +373,7 @@ impl ExprVisitor<'tcx> {
                     }
                 }
                 hir::InlineAsmOperand::Const { ref expr } => {
-                    let ty = self.tables.expr_ty_adjusted(expr);
+                    let ty = self.typeck_results.expr_ty_adjusted(expr);
                     match ty.kind {
                         ty::Int(_) | ty::Uint(_) | ty::Float(_) => {}
                         _ => {
@@ -400,8 +400,8 @@ impl Visitor<'tcx> for ItemVisitor<'tcx> {
         let owner_def_id = self.tcx.hir().body_owner_def_id(body_id);
         let body = self.tcx.hir().body(body_id);
         let param_env = self.tcx.param_env(owner_def_id.to_def_id());
-        let tables = self.tcx.typeck_tables_of(owner_def_id);
-        ExprVisitor { tcx: self.tcx, param_env, tables }.visit_body(body);
+        let typeck_results = self.tcx.typeck(owner_def_id);
+        ExprVisitor { tcx: self.tcx, param_env, typeck_results }.visit_body(body);
         self.visit_body(body);
     }
 }
@@ -416,10 +416,10 @@ impl Visitor<'tcx> for ExprVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             hir::ExprKind::Path(ref qpath) => {
-                let res = self.tables.qpath_res(qpath, expr.hir_id);
+                let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
                 if let Res::Def(DefKind::Fn, did) = res {
                     if self.def_id_is_transmute(did) {
-                        let typ = self.tables.node_type(expr.hir_id);
+                        let typ = self.typeck_results.node_type(expr.hir_id);
                         let sig = typ.fn_sig(self.tcx);
                         let from = sig.inputs().skip_binder()[0];
                         let to = sig.output().skip_binder();

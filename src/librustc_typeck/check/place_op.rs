@@ -221,9 +221,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut source = self.node_ty(expr.hir_id);
             // Do not mutate adjustments in place, but rather take them,
             // and replace them after mutating them, to avoid having the
-            // tables borrowed during (`deref_mut`) method resolution.
+            // typeck results borrowed during (`deref_mut`) method resolution.
             let previous_adjustments =
-                self.tables.borrow_mut().adjustments_mut().remove(expr.hir_id);
+                self.typeck_results.borrow_mut().adjustments_mut().remove(expr.hir_id);
             if let Some(mut adjustments) = previous_adjustments {
                 for adjustment in &mut adjustments {
                     if let Adjust::Deref(Some(ref mut deref)) = adjustment.kind {
@@ -241,14 +241,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     source = adjustment.target;
                 }
-                self.tables.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
+                self.typeck_results.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
             }
 
             match expr.kind {
                 hir::ExprKind::Index(ref base_expr, ref index_expr) => {
                     // We need to get the final type in case dereferences were needed for the trait
                     // to apply (#72002).
-                    let index_expr_ty = self.tables.borrow().expr_ty_adjusted(index_expr);
+                    let index_expr_ty = self.typeck_results.borrow().expr_ty_adjusted(index_expr);
                     self.convert_place_op_to_mutable(
                         PlaceOp::Index,
                         expr,
@@ -272,14 +272,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_tys: &[Ty<'tcx>],
     ) {
         debug!("convert_place_op_to_mutable({:?}, {:?}, {:?}, {:?})", op, expr, base_expr, arg_tys);
-        if !self.tables.borrow().is_method_call(expr) {
+        if !self.typeck_results.borrow().is_method_call(expr) {
             debug!("convert_place_op_to_mutable - builtin, nothing to do");
             return;
         }
 
         // Need to deref because overloaded place ops take self by-reference.
         let base_ty = self
-            .tables
+            .typeck_results
             .borrow()
             .expr_ty_adjusted(base_expr)
             .builtin_deref(false)
@@ -306,7 +306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // region and mutability.
         let base_expr_ty = self.node_ty(base_expr.hir_id);
         if let Some(adjustments) =
-            self.tables.borrow_mut().adjustments_mut().get_mut(base_expr.hir_id)
+            self.typeck_results.borrow_mut().adjustments_mut().get_mut(base_expr.hir_id)
         {
             let mut source = base_expr_ty;
             for adjustment in &mut adjustments[..] {

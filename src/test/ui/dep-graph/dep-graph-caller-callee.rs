@@ -17,7 +17,7 @@ mod y {
     use x;
 
     // These dependencies SHOULD exist:
-    #[rustc_then_this_would_need(typeck_tables_of)] //~ ERROR OK
+    #[rustc_then_this_would_need(typeck)] //~ ERROR OK
     pub fn y() {
         x::x();
     }
@@ -28,7 +28,7 @@ mod z {
 
     // These are expected to yield errors, because changes to `x`
     // affect the BODY of `y`, but not its signature.
-    #[rustc_then_this_would_need(typeck_tables_of)] //~ ERROR no path
+    #[rustc_then_this_would_need(typeck)] //~ ERROR no path
     pub fn z() {
         y::y();
     }

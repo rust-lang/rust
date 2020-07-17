@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for Arithmetic {
                     _ => (),
                 }
 
-                let (l_ty, r_ty) = (cx.tables().expr_ty(l), cx.tables().expr_ty(r));
+                let (l_ty, r_ty) = (cx.typeck_results().expr_ty(l), cx.typeck_results().expr_ty(r));
                 if l_ty.peel_refs().is_integral() && r_ty.peel_refs().is_integral() {
                     span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
                     self.expr_span = Some(expr.span);
@@ -96,8 +96,8 @@ impl<'tcx> LateLintPass<'tcx> for Arithmetic {
                 }
             },
             hir::ExprKind::Unary(hir::UnOp::UnNeg, arg) => {
-                let ty = cx.tables().expr_ty(arg);
-                if constant_simple(cx, cx.tables(), expr).is_none() {
+                let ty = cx.typeck_results().expr_ty(arg);
+                if constant_simple(cx, cx.typeck_results(), expr).is_none() {
                     if ty.is_integral() {
                         span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
                         self.expr_span = Some(expr.span);

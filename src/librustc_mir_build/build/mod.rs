@@ -21,7 +21,10 @@ use rustc_target::spec::PanicStrategy;
 
 use super::lints;
 
-crate fn mir_built<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) -> &'tcx ty::steal::Steal<Body<'tcx>> {
+crate fn mir_built<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: ty::WithOptConstParam<LocalDefId>,
+) -> &'tcx ty::steal::Steal<Body<'tcx>> {
     if def.const_param_did.is_none() {
         if let const_param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
             return tcx.mir_built(ty::WithOptConstParam { const_param_did, ..def });
@@ -68,12 +71,12 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
     tcx.infer_ctxt().enter(|infcx| {
         let cx = Cx::new(&infcx, def, id);
-        let body = if let Some(ErrorReported) = cx.tables().tainted_by_errors {
+        let body = if let Some(ErrorReported) = cx.typeck_results().tainted_by_errors {
             build::construct_error(cx, body_id)
         } else if cx.body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
-            let fn_sig = cx.tables().liberated_fn_sigs()[id];
+            let fn_sig = cx.typeck_results().liberated_fn_sigs()[id];
             let fn_def_id = tcx.hir().local_def_id(id);
 
             let safety = match fn_sig.unsafety {
@@ -92,7 +95,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                     vec![ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None, None, None)]
                 }
                 ty::Generator(..) => {
-                    let gen_ty = tcx.body_tables(body_id).node_type(id);
+                    let gen_ty = tcx.typeck_body(body_id).node_type(id);
 
                     // The resume argument may be missing, in that case we need to provide it here.
                     // It will always be `()` in this case.
@@ -147,7 +150,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
 
             let (yield_ty, return_ty) = if body.generator_kind.is_some() {
-                let gen_ty = tcx.body_tables(body_id).node_type(id);
+                let gen_ty = tcx.typeck_body(body_id).node_type(id);
                 let gen_sig = match gen_ty.kind {
                     ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
                     _ => span_bug!(tcx.hir().span(id), "generator w/o generator type: {:?}", ty),
@@ -182,7 +185,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             // place to be the type of the constant because NLL typeck will
             // equate them.
 
-            let return_ty = cx.tables().node_type(id);
+            let return_ty = cx.typeck_results().node_type(id);
 
             build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
@@ -214,7 +217,7 @@ fn liberated_closure_env_ty(
     closure_expr_id: hir::HirId,
     body_id: hir::BodyId,
 ) -> Ty<'_> {
-    let closure_ty = tcx.body_tables(body_id).node_type(closure_expr_id);
+    let closure_ty = tcx.typeck_body(body_id).node_type(closure_expr_id);
 
     let (closure_def_id, closure_substs) = match closure_ty.kind {
         ty::Closure(closure_def_id, closure_substs) => (closure_def_id, closure_substs),
@@ -816,14 +819,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let tcx = self.hir.tcx();
         let tcx_hir = tcx.hir();
-        let hir_tables = self.hir.tables();
+        let hir_typeck_results = self.hir.typeck_results();
 
         // In analyze_closure() in upvar.rs we gathered a list of upvars used by a
-        // indexed closure and we stored in a map called closure_captures in TypeckTables
+        // indexed closure and we stored in a map called closure_captures in TypeckResults
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
         // the given closure and use the necessary information to create upvar
         // debuginfo and to fill `self.upvar_mutbls`.
-        if let Some(upvars) = hir_tables.closure_captures.get(&fn_def_id) {
+        if let Some(upvars) = hir_typeck_results.closure_captures.get(&fn_def_id) {
             let closure_env_arg = Local::new(1);
             let mut closure_env_projs = vec![];
             let mut closure_ty = self.local_decls[closure_env_arg].ty;
@@ -841,14 +844,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.upvar_mutbls = upvars_with_tys
                 .enumerate()
                 .map(|(i, ((&var_id, &upvar_id), ty))| {
-                    let capture = hir_tables.upvar_capture(upvar_id);
+                    let capture = hir_typeck_results.upvar_capture(upvar_id);
 
                     let mut mutability = Mutability::Not;
                     let mut name = kw::Invalid;
                     if let Some(Node::Binding(pat)) = tcx_hir.find(var_id) {
                         if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                             name = ident.name;
-                            match hir_tables.extract_binding_mode(tcx.sess, pat.hir_id, pat.span) {
+                            match hir_typeck_results
+                                .extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
+                            {
                                 Some(ty::BindByValue(hir::Mutability::Mut)) => {
                                     mutability = Mutability::Mut;
                                 }

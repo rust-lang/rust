@@ -135,13 +135,13 @@ impl QuestionMark {
     }
 
     fn moves_by_default(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
-        let expr_ty = cx.tables().expr_ty(expression);
+        let expr_ty = cx.typeck_results().expr_ty(expression);
 
         !expr_ty.is_copy_modulo_regions(cx.tcx.at(expression.span), cx.param_env)
     }
 
     fn is_option(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
-        let expr_ty = cx.tables().expr_ty(expression);
+        let expr_ty = cx.typeck_results().expr_ty(expression);
 
         is_type_diagnostic_item(cx, expr_ty, sym!(option_type))
     }

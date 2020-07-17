@@ -583,27 +583,27 @@ rustc_queries! {
             desc { "type-checking all item bodies" }
         }
 
-        query typeck_tables_of(key: LocalDefId) -> &'tcx ty::TypeckTables<'tcx> {
+        query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
             desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
         }
-        query typeck_tables_of_const_arg(
+        query typeck_const_arg(
             key: (LocalDefId, DefId)
-        ) -> &'tcx ty::TypeckTables<'tcx> {
+        ) -> &'tcx ty::TypeckResults<'tcx> {
             desc {
                 |tcx| "type-checking the const argument `{}`",
                 tcx.def_path_str(key.0.to_def_id()),
             }
         }
-        query diagnostic_only_typeck_tables_of(key: LocalDefId) -> &'tcx ty::TypeckTables<'tcx> {
+        query diagnostic_only_typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
             desc { |tcx| "type-checking `{}`", tcx.def_path_str(key.to_def_id()) }
             cache_on_disk_if { true }
             load_cached(tcx, id) {
-                let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
+                let typeck_results: Option<ty::TypeckResults<'tcx>> = tcx
                     .queries.on_disk_cache
                     .try_load_query_result(tcx, id);
 
-                typeck_tables.map(|x| &*tcx.arena.alloc(x))
+                typeck_results.map(|x| &*tcx.arena.alloc(x))
             }
         }
     }
@@ -616,7 +616,7 @@ rustc_queries! {
     }
 
     TypeChecking {
-        query has_typeck_tables(def_id: DefId) -> bool {
+        query has_typeck_results(def_id: DefId) -> bool {
             desc { |tcx| "checking whether `{}` has a body", tcx.def_path_str(def_id) }
         }
 

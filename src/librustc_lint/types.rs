@@ -168,7 +168,7 @@ fn report_bin_hex_error(
             repr_str, val, t, actually, t
         ));
         if let Some(sugg_ty) =
-            get_type_suggestion(&cx.tables().node_type(expr.hir_id), val, negative)
+            get_type_suggestion(&cx.typeck_results().node_type(expr.hir_id), val, negative)
         {
             if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                 let (sans_suffix, _) = repr_str.split_at(pos);
@@ -302,7 +302,7 @@ fn lint_uint_literal<'tcx>(
         if let Node::Expr(par_e) = cx.tcx.hir().get(parent_id) {
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
-                    if let ty::Char = cx.tables().expr_ty(par_e).kind {
+                    if let ty::Char = cx.typeck_results().expr_ty(par_e).kind {
                         cx.struct_span_lint(OVERFLOWING_LITERALS, par_e.span, |lint| {
                             lint.build("only `u8` can be cast into `char`")
                                 .span_suggestion(
@@ -353,7 +353,7 @@ fn lint_literal<'tcx>(
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
 ) {
-    match cx.tables().node_type(e.hir_id).kind {
+    match cx.typeck_results().node_type(e.hir_id).kind {
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
@@ -449,7 +449,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match cx.tables().node_type(expr.hir_id).kind {
+            match cx.typeck_results().node_type(expr.hir_id).kind {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.kind {

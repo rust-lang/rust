@@ -237,13 +237,13 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             }
 
             let ty = if needs_check_adjustment {
-                let adjustments = cx.tables().expr_adjustments(dereferenced_expr);
+                let adjustments = cx.typeck_results().expr_adjustments(dereferenced_expr);
                 if let Some(i) = adjustments
                     .iter()
                     .position(|adj| matches!(adj.kind, Adjust::Borrow(_) | Adjust::Deref(_)))
                 {
                     if i == 0 {
-                        cx.tables().expr_ty(dereferenced_expr)
+                        cx.typeck_results().expr_ty(dereferenced_expr)
                     } else {
                         adjustments[i - 1].target
                     }
@@ -252,7 +252,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                     return;
                 }
             } else {
-                cx.tables().expr_ty(dereferenced_expr)
+                cx.typeck_results().expr_ty(dereferenced_expr)
             };
 
             verify_ty_bound(cx, ty, Source::Expr { expr: expr.span });

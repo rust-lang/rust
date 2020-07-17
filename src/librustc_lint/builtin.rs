@@ -144,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
-        let ty = cx.tables().node_type(e.hir_id);
+        let ty = cx.typeck_results().node_type(e.hir_id);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -161,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &hir::Pat<'_>) {
         if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind {
             let variant = cx
-                .tables()
+                .typeck_results()
                 .pat_ty(pat)
                 .ty_adt_def()
                 .expect("struct pattern type is not an ADT")
@@ -178,7 +178,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                 }
                 if let PatKind::Binding(binding_annot, _, ident, None) = fieldpat.pat.kind {
                     if cx.tcx.find_field_index(ident, &variant)
-                        == Some(cx.tcx.field_index(fieldpat.hir_id, cx.tables()))
+                        == Some(cx.tcx.field_index(fieldpat.hir_id, cx.typeck_results()))
                     {
                         cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span, |lint| {
                             let mut err = lint
@@ -909,7 +909,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
-                let sig = cx.tables().node_type(expr.hir_id).fn_sig(cx.tcx);
+                let sig = cx.typeck_results().node_type(expr.hir_id).fn_sig(cx.tcx);
                 let from = sig.inputs().skip_binder()[0];
                 let to = sig.output().skip_binder();
                 return Some((from, to));
@@ -1901,7 +1901,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 }
             } else if let hir::ExprKind::MethodCall(_, _, ref args, _) = expr.kind {
                 // Find problematic calls to `MaybeUninit::assume_init`.
-                let def_id = cx.tables().type_dependent_def_id(expr.hir_id)?;
+                let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
                 if cx.tcx.is_diagnostic_item(sym::assume_init, def_id) {
                     // This is a call to *some* method named `assume_init`.
                     // See if the `self` parameter is one of the dangerous constructors.
@@ -2020,7 +2020,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             // This conjures an instance of a type out of nothing,
             // using zeroed or uninitialized memory.
             // We are extremely conservative with what we warn about.
-            let conjured_ty = cx.tables().expr_ty(expr);
+            let conjured_ty = cx.typeck_results().expr_ty(expr);
             if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty, init) {
                 cx.struct_span_lint(INVALID_VALUE, expr.span, |lint| {
                     let mut err = lint.build(&format!(

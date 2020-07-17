@@ -144,7 +144,7 @@ pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symb
 
 /// Checks if the method call given in `expr` belongs to the given trait.
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
-    let def_id = cx.tables().type_dependent_def_id(expr.hir_id).unwrap();
+    let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
     trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
 }
@@ -278,10 +278,8 @@ pub fn qpath_res(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, id: hir::HirId) -
     match qpath {
         hir::QPath::Resolved(_, path) => path.res,
         hir::QPath::TypeRelative(..) => {
-            if cx.tcx.has_typeck_tables(id.owner.to_def_id()) {
-                cx.tcx
-                    .typeck_tables_of(id.owner.to_def_id().expect_local())
-                    .qpath_res(qpath, id)
+            if cx.tcx.has_typeck_results(id.owner.to_def_id()) {
+                cx.tcx.typeck(id.owner.to_def_id().expect_local()).qpath_res(qpath, id)
             } else {
                 Res::Err
             }
@@ -772,7 +770,7 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
     let parent_item = map.get_parent_item(e.hir_id);
     if let Some((Constant::Int(v), _)) = map
         .maybe_body_owned_by(parent_item)
-        .and_then(|body_id| constant(cx, cx.tcx.body_tables(body_id), e))
+        .and_then(|body_id| constant(cx, cx.tcx.typeck_body(body_id), e))
     {
         value == v
     } else {
@@ -799,7 +797,7 @@ pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
 /// See `rustc_middle::ty::adjustment::Adjustment` and `rustc_typeck::check::coercion` for more
 /// information on adjustments and coercions.
 pub fn is_adjusted(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    cx.tables().adjustments().get(e.hir_id).is_some()
+    cx.typeck_results().adjustments().get(e.hir_id).is_some()
 }
 
 /// Returns the pre-expansion span if is this comes from an expansion of the
@@ -916,7 +914,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
             is_enum_variant(cx, qpath, pat.hir_id) || are_refutable(cx, pats.iter().map(|pat| &**pat))
         },
         PatKind::Slice(ref head, ref middle, ref tail) => {
-            match &cx.tables().node_type(pat.hir_id).kind {
+            match &cx.typeck_results().node_type(pat.hir_id).kind {
                 ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
@@ -1299,7 +1297,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 None
             }
         },
-        ExprKind::MethodCall(_, _, _, _) => cx.tables().type_dependent_def_id(expr.hir_id),
+        ExprKind::MethodCall(_, _, _, _) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
         _ => None,
     };
 
@@ -1359,14 +1357,14 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
 /// Returns the `DefId` of the callee if the given expression is a function or method call.
 pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
     match &expr.kind {
-        ExprKind::MethodCall(..) => cx.tables().type_dependent_def_id(expr.hir_id),
+        ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
         ExprKind::Call(
             Expr {
                 kind: ExprKind::Path(qpath),
                 ..
             },
             ..,
-        ) => cx.tables().qpath_res(qpath, expr.hir_id).opt_def_id(),
+        ) => cx.typeck_results().qpath_res(qpath, expr.hir_id).opt_def_id(),
         _ => None,
     }
 }

@@ -229,7 +229,10 @@ fn check_comparison<'a, 'tcx>(
     use self::Expression::{Bool, Other};
 
     if let ExprKind::Binary(op, ref left_side, ref right_side) = e.kind {
-        let (l_ty, r_ty) = (cx.tables().expr_ty(left_side), cx.tables().expr_ty(right_side));
+        let (l_ty, r_ty) = (
+            cx.typeck_results().expr_ty(left_side),
+            cx.typeck_results().expr_ty(right_side),
+        );
         if l_ty.is_bool() && r_ty.is_bool() {
             let mut applicability = Applicability::MachineApplicable;
 

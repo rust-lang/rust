@@ -300,7 +300,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         return false;
     }
 
-    let ty = &walk_ptrs_ty(cx.tables().expr_ty(expr));
+    let ty = &walk_ptrs_ty(cx.typeck_results().expr_ty(expr));
     match ty.kind {
         ty::Dynamic(ref tt, ..) => tt.principal().map_or(false, |principal| {
             cx.tcx

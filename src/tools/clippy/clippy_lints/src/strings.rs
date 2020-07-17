@@ -134,7 +134,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
 }
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    is_type_diagnostic_item(cx, walk_ptrs_ty(cx.tables().expr_ty(e)), sym!(string_type))
+    is_type_diagnostic_item(cx, walk_ptrs_ty(cx.typeck_results().expr_ty(e)), sym!(string_type))
 }
 
 fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {

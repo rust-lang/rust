@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
 
             then {
 
-                let ty = cx.tables().expr_ty(left);
+                let ty = cx.typeck_results().expr_ty(left);
 
                 let implements_ord = {
                     if let Some(id) = utils::get_trait_def_id(cx, &paths::ORD) {

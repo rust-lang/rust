@@ -23,7 +23,7 @@ Sometimes you may want to retrieve the type `Ty` of an expression `Expr`, for ex
 - is it a primitive type?
 - does it implement a trait?
 
-This operation is performed using the [`expr_ty()`][expr_ty] method from the [`TypeckTables`][TypeckTables] struct,
+This operation is performed using the [`expr_ty()`][expr_ty] method from the [`TypeckResults`][TypeckResults] struct,
 that gives you access to the underlying structure [`TyS`][TyS].
 
 Example of use:
@@ -31,7 +31,7 @@ Example of use:
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         // Get type of `expr`
-        let ty = cx.tables().expr_ty(expr);
+        let ty = cx.typeck_results().expr_ty(expr);
         // Match its kind to enter its type
         match ty.kind {
             ty::Adt(adt_def, _) if adt_def.is_struct() => println!("Our `expr` is a struct!"),
@@ -41,14 +41,14 @@ impl LateLintPass<'_> for MyStructLint {
 }
 ```
 
-Similarly in [`TypeckTables`][TypeckTables] methods, you have the [`pat_ty()`][pat_ty] method
+Similarly in [`TypeckResults`][TypeckResults] methods, you have the [`pat_ty()`][pat_ty] method
 to retrieve a type from a pattern.
 
 Two noticeable items here:
 - `cx` is the lint context [`LateContext`][LateContext].
   The two most useful data structures in this context are `tcx` and `tables`,
   allowing us to jump to type definitions and other compilation stages such as HIR.
-- `tables` is [`TypeckTables`][TypeckTables] and is created by type checking step,
+- `tables` is [`TypeckResults`][TypeckResults] and is created by type checking step,
   it includes useful information such as types of expressions, ways to resolve methods and so on.
 
 # Checking if an expr is calling a specific method
@@ -87,7 +87,7 @@ impl LateLintPass<'_> for MyStructLint {
         }
 
         // 2. Using type context `TyCtxt`
-        let ty = cx.tables().expr_ty(expr);
+        let ty = cx.typeck_results().expr_ty(expr);
         if cx.tcx.lang_items()
             // we are looking for the `DefId` of `Drop` trait in lang items
             .drop_trait()
@@ -192,9 +192,9 @@ assert_eq!(differing_macro_contexts(x_is_some_span, x_unwrap_span), true);
 
 [TyS]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html
 [TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
-[TypeckTables]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckTables.html
-[expr_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckTables.html#method.expr_ty
+[TypeckResults]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html
+[expr_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.expr_ty
 [LateContext]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LateContext.html
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
-[pat_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TypeckTables.html#method.pat_ty
+[pat_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TypeckResults.html#method.pat_ty
 [paths]: ../clippy_lints/src/utils/paths.rs

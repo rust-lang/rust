@@ -368,7 +368,7 @@ pub fn type_cast(a: u8) -> u64 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner_nodes,optimized_mir,typeck_tables_of", cfg="cfail2")]
+#[rustc_clean(except="hir_owner_nodes,optimized_mir,typeck", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 pub fn type_cast(a: u8) -> u64 {
     let b = a as u32;

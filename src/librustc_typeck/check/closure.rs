@@ -416,7 +416,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Up till this point, we have ignored the annotations that the user
         // gave. This function will check that they unify successfully.
         // Along the way, it also writes out entries for types that the user
-        // wrote into our tables, which are then later used by the privacy
+        // wrote into our typeck results, which are then later used by the privacy
         // check.
         match self.check_supplied_sig_against_expectation(expr_def_id, decl, body, &closure_sigs) {
             Ok(infer_ok) => self.register_infer_ok_obligations(infer_ok),
@@ -588,7 +588,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("supplied_sig_of_closure: result={:?}", result);
 
         let c_result = self.inh.infcx.canonicalize_response(&result);
-        self.tables.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
+        self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         result
     }

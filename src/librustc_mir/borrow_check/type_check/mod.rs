@@ -1239,7 +1239,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = infcx.tcx;
         let param_env = self.param_env;
         let body = self.body;
-        let concrete_opaque_types = &tcx.typeck_tables_of(anon_owner_def_id).concrete_opaque_types;
+        let concrete_opaque_types = &tcx.typeck(anon_owner_def_id).concrete_opaque_types;
         let mut opaque_type_values = Vec::new();
 
         debug!("eq_opaque_type_and_type: mir_def_id={:?}", self.mir_def_id);

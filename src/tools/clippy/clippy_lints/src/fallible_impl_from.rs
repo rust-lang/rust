@@ -73,7 +73,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
 
     struct FindPanicUnwrap<'a, 'tcx> {
         lcx: &'a LateContext<'tcx>,
-        tables: &'tcx ty::TypeckTables<'tcx>,
+        typeck_results: &'tcx ty::TypeckResults<'tcx>,
         result: Vec<Span>,
     }
 
@@ -96,7 +96,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
 
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-                let reciever_ty = walk_ptrs_ty(self.tables.expr_ty(&arglists[0][0]));
+                let reciever_ty = walk_ptrs_ty(self.typeck_results.expr_ty(&arglists[0][0]));
                 if is_type_diagnostic_item(self.lcx, reciever_ty, sym!(option_type))
                     || is_type_diagnostic_item(self.lcx, reciever_ty, sym!(result_type))
                 {
@@ -124,7 +124,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
                 let impl_item_def_id = cx.tcx.hir().local_def_id(impl_item.id.hir_id);
                 let mut fpu = FindPanicUnwrap {
                     lcx: cx,
-                    tables: cx.tcx.typeck_tables_of(impl_item_def_id),
+                    typeck_results: cx.tcx.typeck(impl_item_def_id),
                     result: Vec::new(),
                 };
                 fpu.visit_expr(&body.value);

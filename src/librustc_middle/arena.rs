@@ -40,7 +40,7 @@ macro_rules! arena_types {
                     rustc_middle::mir::Promoted,
                     rustc_middle::mir::Body<'_x>
                 >;
-            [decode] tables: rustc_middle::ty::TypeckTables<$tcx>, rustc_middle::ty::TypeckTables<'_x>;
+            [decode] typeck_results: rustc_middle::ty::TypeckResults<$tcx>, rustc_middle::ty::TypeckResults<'_x>;
             [decode] borrowck_result:
                 rustc_middle::mir::BorrowCheckResult<$tcx>,
                 rustc_middle::mir::BorrowCheckResult<'_x>;

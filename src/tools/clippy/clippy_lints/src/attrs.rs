@@ -461,7 +461,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, ident: &str, items: &[NestedMet
 
 fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if let ItemKind::Fn(_, _, eid) = item.kind {
-        is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
+        is_relevant_expr(cx, cx.tcx.typeck_body(eid), &cx.tcx.hir().body(eid).value)
     } else {
         true
     }
@@ -469,7 +469,7 @@ fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
 
 fn is_relevant_impl(cx: &LateContext<'_>, item: &ImplItem<'_>) -> bool {
     match item.kind {
-        ImplItemKind::Fn(_, eid) => is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value),
+        ImplItemKind::Fn(_, eid) => is_relevant_expr(cx, cx.tcx.typeck_body(eid), &cx.tcx.hir().body(eid).value),
         _ => false,
     }
 }
@@ -478,31 +478,34 @@ fn is_relevant_trait(cx: &LateContext<'_>, item: &TraitItem<'_>) -> bool {
     match item.kind {
         TraitItemKind::Fn(_, TraitFn::Required(_)) => true,
         TraitItemKind::Fn(_, TraitFn::Provided(eid)) => {
-            is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
+            is_relevant_expr(cx, cx.tcx.typeck_body(eid), &cx.tcx.hir().body(eid).value)
         },
         _ => false,
     }
 }
 
-fn is_relevant_block(cx: &LateContext<'_>, tables: &ty::TypeckTables<'_>, block: &Block<'_>) -> bool {
+fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>, block: &Block<'_>) -> bool {
     block.stmts.first().map_or(
-        block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, tables, e)),
+        block
+            .expr
+            .as_ref()
+            .map_or(false, |e| is_relevant_expr(cx, typeck_results, e)),
         |stmt| match &stmt.kind {
             StmtKind::Local(_) => true,
-            StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, tables, expr),
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, typeck_results, expr),
             _ => false,
         },
     )
 }
 
-fn is_relevant_expr(cx: &LateContext<'_>, tables: &ty::TypeckTables<'_>, expr: &Expr<'_>) -> bool {
+fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>, expr: &Expr<'_>) -> bool {
     match &expr.kind {
-        ExprKind::Block(block, _) => is_relevant_block(cx, tables, block),
-        ExprKind::Ret(Some(e)) => is_relevant_expr(cx, tables, e),
+        ExprKind::Block(block, _) => is_relevant_block(cx, typeck_results, block),
+        ExprKind::Ret(Some(e)) => is_relevant_expr(cx, typeck_results, e),
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
         ExprKind::Call(path_expr, _) => {
             if let ExprKind::Path(qpath) = &path_expr.kind {
-                tables
+                typeck_results
                     .qpath_res(qpath, path_expr.hir_id)
                     .opt_def_id()
                     .map_or(true, |fun_id| !match_def_path(cx, fun_id, &paths::BEGIN_PANIC))

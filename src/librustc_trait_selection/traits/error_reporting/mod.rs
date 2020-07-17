@@ -593,9 +593,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                         // Additional context information explaining why the closure only implements
                         // a particular trait.
-                        if let Some(tables) = self.in_progress_tables {
-                            let tables = tables.borrow();
-                            match (found_kind, tables.closure_kind_origins().get(hir_id)) {
+                        if let Some(typeck_results) = self.in_progress_typeck_results {
+                            let typeck_results = typeck_results.borrow();
+                            match (found_kind, typeck_results.closure_kind_origins().get(hir_id)) {
                                 (ty::ClosureKind::FnOnce, Some((span, name))) => {
                                     err.span_label(
                                         *span,

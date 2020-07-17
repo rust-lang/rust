@@ -9,7 +9,7 @@ use rustc_hir::{
 };
 use rustc_lint::LateContext;
 use rustc_middle::ich::StableHashingContextProvider;
-use rustc_middle::ty::TypeckTables;
+use rustc_middle::ty::TypeckResults;
 use rustc_span::Symbol;
 use std::hash::Hash;
 
@@ -22,7 +22,7 @@ use std::hash::Hash;
 pub struct SpanlessEq<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'tcx>,
-    maybe_typeck_tables: Option<&'tcx TypeckTables<'tcx>>,
+    maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
     /// If is true, never consider as equal expressions containing function
     /// calls.
     ignore_fn: bool,
@@ -32,7 +32,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            maybe_typeck_tables: cx.maybe_typeck_tables(),
+            maybe_typeck_results: cx.maybe_typeck_results(),
             ignore_fn: false,
         }
     }
@@ -71,10 +71,10 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             return false;
         }
 
-        if let Some(tables) = self.maybe_typeck_tables {
+        if let Some(typeck_results) = self.maybe_typeck_results {
             if let (Some(l), Some(r)) = (
-                constant_simple(self.cx, tables, left),
-                constant_simple(self.cx, tables, right),
+                constant_simple(self.cx, typeck_results, left),
+                constant_simple(self.cx, typeck_results, right),
             ) {
                 if l == r {
                     return true;
@@ -137,9 +137,9 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
                 !self.ignore_fn && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Repeat(ref le, ref ll_id), &ExprKind::Repeat(ref re, ref rl_id)) => {
-                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id.body));
+                let mut celcx = constant_context(self.cx, self.cx.tcx.typeck_body(ll_id.body));
                 let ll = celcx.expr(&self.cx.tcx.hir().body(ll_id.body).value);
-                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id.body));
+                let mut celcx = constant_context(self.cx, self.cx.tcx.typeck_body(rl_id.body));
                 let rl = celcx.expr(&self.cx.tcx.hir().body(rl_id.body).value);
 
                 self.eq_expr(le, re) && ll == rl
@@ -272,18 +272,18 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         match (left, right) {
             (&TyKind::Slice(ref l_vec), &TyKind::Slice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyKind::Array(ref lt, ref ll_id), &TyKind::Array(ref rt, ref rl_id)) => {
-                let old_maybe_typeck_tables = self.maybe_typeck_tables;
+                let old_maybe_typeck_results = self.maybe_typeck_results;
 
-                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id.body));
-                self.maybe_typeck_tables = Some(self.cx.tcx.body_tables(ll_id.body));
+                let mut celcx = constant_context(self.cx, self.cx.tcx.typeck_body(ll_id.body));
+                self.maybe_typeck_results = Some(self.cx.tcx.typeck_body(ll_id.body));
                 let ll = celcx.expr(&self.cx.tcx.hir().body(ll_id.body).value);
 
-                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id.body));
-                self.maybe_typeck_tables = Some(self.cx.tcx.body_tables(rl_id.body));
+                let mut celcx = constant_context(self.cx, self.cx.tcx.typeck_body(rl_id.body));
+                self.maybe_typeck_results = Some(self.cx.tcx.typeck_body(rl_id.body));
                 let rl = celcx.expr(&self.cx.tcx.hir().body(rl_id.body).value);
 
                 let eq_ty = self.eq_ty(lt, rt);
-                self.maybe_typeck_tables = old_maybe_typeck_tables;
+                self.maybe_typeck_results = old_maybe_typeck_results;
                 eq_ty && ll == rl
             },
             (&TyKind::Ptr(ref l_mut), &TyKind::Ptr(ref r_mut)) => {
@@ -348,7 +348,7 @@ pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -
 pub struct SpanlessHash<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'tcx>,
-    maybe_typeck_tables: Option<&'tcx TypeckTables<'tcx>>,
+    maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
     s: StableHasher,
 }
 
@@ -356,7 +356,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            maybe_typeck_tables: cx.maybe_typeck_tables(),
+            maybe_typeck_results: cx.maybe_typeck_results(),
             s: StableHasher::new(),
         }
     }
@@ -386,8 +386,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     #[allow(clippy::many_single_char_names, clippy::too_many_lines)]
     pub fn hash_expr(&mut self, e: &Expr<'_>) {
         let simple_const = self
-            .maybe_typeck_tables
-            .and_then(|tables| constant_simple(self.cx, tables, e));
+            .maybe_typeck_results
+            .and_then(|typeck_results| constant_simple(self.cx, typeck_results, e));
 
         // const hashing may result in the same hash as some unrelated node, so add a sort of
         // discriminant depending on which path we're choosing next
@@ -458,7 +458,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     CaptureBy::Ref => 1,
                 }
                 .hash(&mut self.s);
-                // closures inherit TypeckTables
+                // closures inherit TypeckResults
                 self.hash_expr(&self.cx.tcx.hir().body(eid).value);
             },
             ExprKind::Field(ref e, ref f) => {
@@ -602,7 +602,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_name(path.ident.name);
             },
         }
-        // self.maybe_typeck_tables.unwrap().qpath_res(p, id).hash(&mut self.s);
+        // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
     }
 
     pub fn hash_path(&mut self, p: &Path<'_>) {
@@ -725,10 +725,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_body(&mut self, body_id: BodyId) {
-        // swap out TypeckTables when hashing a body
-        let old_maybe_typeck_tables = self.maybe_typeck_tables.replace(self.cx.tcx.body_tables(body_id));
+        // swap out TypeckResults when hashing a body
+        let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body_id));
         self.hash_expr(&self.cx.tcx.hir().body(body_id).value);
-        self.maybe_typeck_tables = old_maybe_typeck_tables;
+        self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
     fn hash_generic_args(&mut self, arg_list: &[GenericArg<'_>]) {

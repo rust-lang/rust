@@ -63,7 +63,7 @@ fn get_map_argument<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a 
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
         if args.len() == 2 && method.ident.as_str() == "map";
-        let caller_ty = cx.tables().expr_ty(&args[0]);
+        let caller_ty = cx.typeck_results().expr_ty(&args[0]);
         if match_trait_method(cx, expr, &paths::ITERATOR)
             || is_type_diagnostic_item(cx, caller_ty, sym!(result_type))
             || is_type_diagnostic_item(cx, caller_ty, sym!(option_type));
@@ -119,7 +119,7 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
 /// Returns true iff an expression returns the same thing as a parameter's pattern
 fn match_expr_param(cx: &LateContext<'_>, expr: &Expr<'_>, pat: &Pat<'_>) -> bool {
     if let PatKind::Binding(_, _, ident, _) = pat.kind {
-        match_var(expr, ident.name) && !(cx.tables().hir_owner == expr.hir_id.owner && is_adjusted(cx, expr))
+        match_var(expr, ident.name) && !(cx.typeck_results().hir_owner == expr.hir_id.owner && is_adjusted(cx, expr))
     } else {
         false
     }

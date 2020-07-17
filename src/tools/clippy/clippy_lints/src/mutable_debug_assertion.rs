@@ -135,7 +135,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
                 return;
             },
             ExprKind::Path(_) => {
-                if let Some(adj) = self.cx.tables().adjustments().get(expr.hir_id) {
+                if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id) {
                     if adj
                         .iter()
                         .any(|a| matches!(a.target.kind, ty::Ref(_, _, Mutability::Mut)))

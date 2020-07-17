@@ -18,7 +18,7 @@ use rustc_middle::ty::{
     self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
     TyCtxt, TypeFoldable, WithConstness,
 };
-use rustc_middle::ty::{TypeAndMut, TypeckTables};
+use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
@@ -145,7 +145,7 @@ pub trait InferCtxtExt<'tcx> {
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'tcx>,
         target_ty: Ty<'tcx>,
-        tables: &ty::TypeckTables<'tcx>,
+        typeck_results: &ty::TypeckResults<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
     );
@@ -968,12 +968,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(&body);
 
-        let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
+        let typeck_results = self.in_progress_typeck_results.map(|t| t.borrow()).unwrap();
 
         let mut ret_types = visitor
             .returns
             .iter()
-            .filter_map(|expr| tables.node_type_opt(expr.hir_id))
+            .filter_map(|expr| typeck_results.node_type_opt(expr.hir_id))
             .map(|ty| self.resolve_vars_if_possible(&ty));
         let (last_ty, all_returns_have_same_type, only_never_return) = ret_types.clone().fold(
             (None, true, true),
@@ -1000,7 +1000,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             },
         );
         let all_returns_conform_to_trait =
-            if let Some(ty_ret_ty) = tables.node_type_opt(ret_ty.hir_id) {
+            if let Some(ty_ret_ty) = typeck_results.node_type_opt(ret_ty.hir_id) {
                 match ty_ret_ty.kind {
                     ty::Dynamic(predicates, _) => {
                         let cause = ObligationCause::misc(ret_ty.span, ret_ty.hir_id);
@@ -1128,9 +1128,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Point at all the `return`s in the function as they have failed trait bounds.
             let mut visitor = ReturnsVisitor::default();
             visitor.visit_body(&body);
-            let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
+            let typeck_results = self.in_progress_typeck_results.map(|t| t.borrow()).unwrap();
             for expr in &visitor.returns {
-                if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
+                if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
                     let ty = self.resolve_vars_if_possible(&returned_ty);
                     err.span_label(expr.span, &format!("this returned value is of type `{}`", ty));
                 }
@@ -1360,25 +1360,25 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return false;
         }
 
-        // Get the tables from the infcx if the generator is the function we are
+        // Get the typeck results from the infcx if the generator is the function we are
         // currently type-checking; otherwise, get them by performing a query.
         // This is needed to avoid cycles.
-        let in_progress_tables = self.in_progress_tables.map(|t| t.borrow());
+        let in_progress_typeck_results = self.in_progress_typeck_results.map(|t| t.borrow());
         let generator_did_root = self.tcx.closure_base_def_id(generator_did);
         debug!(
             "maybe_note_obligation_cause_for_async_await: generator_did={:?} \
-             generator_did_root={:?} in_progress_tables.hir_owner={:?} span={:?}",
+             generator_did_root={:?} in_progress_typeck_results.hir_owner={:?} span={:?}",
             generator_did,
             generator_did_root,
-            in_progress_tables.as_ref().map(|t| t.hir_owner),
+            in_progress_typeck_results.as_ref().map(|t| t.hir_owner),
             span
         );
-        let query_tables;
-        let tables: &TypeckTables<'tcx> = match &in_progress_tables {
+        let query_typeck_results;
+        let typeck_results: &TypeckResults<'tcx> = match &in_progress_typeck_results {
             Some(t) if t.hir_owner.to_def_id() == generator_did_root => t,
             _ => {
-                query_tables = self.tcx.typeck_tables_of(generator_did.expect_local());
-                &query_tables
+                query_typeck_results = self.tcx.typeck(generator_did.expect_local());
+                &query_typeck_results
             }
         };
 
@@ -1425,7 +1425,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         if let Some(upvars) = self.tcx.upvars_mentioned(generator_did) {
             interior_or_upvar_span = upvars.iter().find_map(|(upvar_id, upvar)| {
-                let upvar_ty = tables.node_type(*upvar_id);
+                let upvar_ty = typeck_results.node_type(*upvar_id);
                 let upvar_ty = self.resolve_vars_if_possible(&upvar_ty);
                 if ty_matches(&upvar_ty) {
                     Some(GeneratorInteriorOrUpvar::Upvar(upvar.span))
@@ -1435,7 +1435,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             });
         };
 
-        tables
+        typeck_results
             .generator_interior_types
             .iter()
             .find(|ty::GeneratorInteriorTypeCause { ty, .. }| ty_matches(ty))
@@ -1446,7 +1446,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .into_iter()
                     .map(|id| hir.expect_expr(id))
                     .find(|await_expr| {
-                        let ty = tables.expr_ty_adjusted(&await_expr);
+                        let ty = typeck_results.expr_ty_adjusted(&await_expr);
                         debug!(
                             "maybe_note_obligation_cause_for_async_await: await_expr={:?}",
                             await_expr
@@ -1464,7 +1464,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         debug!(
             "maybe_note_obligation_cause_for_async_await: interior_or_upvar={:?} \
                 generator_interior_types={:?}",
-            interior_or_upvar_span, tables.generator_interior_types
+            interior_or_upvar_span, typeck_results.generator_interior_types
         );
         if let Some(interior_or_upvar_span) = interior_or_upvar_span {
             self.note_obligation_cause_for_async_await(
@@ -1475,7 +1475,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 outer_generator,
                 trait_ref,
                 target_ty,
-                tables,
+                typeck_results,
                 obligation,
                 next_code,
             );
@@ -1496,7 +1496,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'tcx>,
         target_ty: Ty<'tcx>,
-        tables: &ty::TypeckTables<'tcx>,
+        typeck_results: &ty::TypeckResults<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
     ) {
@@ -1613,7 +1613,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // Look at the last interior type to get a span for the `.await`.
                         debug!(
                             "note_obligation_cause_for_async_await generator_interior_types: {:#?}",
-                            tables.generator_interior_types
+                            typeck_results.generator_interior_types
                         );
                         explain_yield(interior_span, yield_span, scope_span);
                     }
@@ -1634,7 +1634,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             // ^^^^^^^ a temporary `&T` created inside this method call due to `&self`
                             // ```
                             //
-                            let is_region_borrow = tables
+                            let is_region_borrow = typeck_results
                                 .expr_adjustments(expr)
                                 .iter()
                                 .any(|adj| adj.is_region_borrow());
@@ -1651,7 +1651,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     _ => false,
                                 };
 
-                            if (tables.is_method_call(e) && is_region_borrow)
+                            if (typeck_results.is_method_call(e) && is_region_borrow)
                                 || is_raw_borrow_inside_fn_like_call
                             {
                                 err.span_help(

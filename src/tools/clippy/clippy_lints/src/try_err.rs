@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
             if let Some(return_type) = find_err_return_type(cx, &expr.kind);
 
             then {
-                let err_type = cx.tables().expr_ty(err_arg);
+                let err_type = cx.typeck_results().expr_ty(err_arg);
                 let origin_snippet = if err_arg.span.from_expansion() {
                     snippet_with_macro_callsite(cx, err_arg.span, "_")
                 } else {
@@ -114,7 +114,7 @@ fn find_err_return_type_arm<'tcx>(cx: &LateContext<'tcx>, arm: &'tcx Arm<'_>) ->
         if match_qpath(from_error_fn, &paths::TRY_FROM_ERROR);
         if let Some(from_error_arg) = from_error_args.get(0);
         then {
-            Some(cx.tables().expr_ty(from_error_arg))
+            Some(cx.typeck_results().expr_ty(from_error_arg))
         } else {
             None
         }
