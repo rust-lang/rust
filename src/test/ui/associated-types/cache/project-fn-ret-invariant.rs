@@ -46,7 +46,7 @@ fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
     // Cannot instantiate `foo` with any lifetime other than `'a`,
     // since it is provided as input.
 
-    bar(foo, x) //[transmute]~ ERROR E0495
+    bar(foo, x) //[transmute]~ ERROR E0759
 }
 
 #[cfg(krisskross)] // two instantiations, mixing and matching: BAD

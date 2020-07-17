@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/must_outlive_least_region_or_bound.rs:3:35
    |
 LL | fn elided(x: &i32) -> impl Copy { x }
@@ -16,8 +16,8 @@ help: to declare that the `impl Trait` captures data from argument `x`, you can 
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                                 ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:6:44
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:5:44
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |                    -------                 ^ ...is captured here...
@@ -25,7 +25,7 @@ LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |                    this data with lifetime `'a`...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:6:32
+  --> $DIR/must_outlive_least_region_or_bound.rs:5:32
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |                                ^^^^^^^^^
@@ -34,8 +34,8 @@ help: to declare that the `impl Trait` captures data from argument `x`, you can 
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                          ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:9:46
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:7:46
    |
 LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |               ----                           ^ ...is captured here...
@@ -43,7 +43,7 @@ LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |               this data with an anonymous lifetime `'_`...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:9:24
+  --> $DIR/must_outlive_least_region_or_bound.rs:7:24
    |
 LL | fn elided2(x: &i32) -> impl Copy + 'static { x }
    |                        ^^^^^^^^^^^^^^^^^^^
@@ -56,8 +56,8 @@ help: alternatively, add an explicit `'static` bound to this reference
 LL | fn elided2(x: &'static i32) -> impl Copy + 'static { x }
    |               ^^^^^^^^^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:12:55
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:9:55
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
    |                     -------                           ^ ...is captured here...
@@ -65,7 +65,7 @@ LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
    |                     this data with lifetime `'a`...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:12:33
+  --> $DIR/must_outlive_least_region_or_bound.rs:9:33
    |
 LL | fn explicit2<'a>(x: &'a i32) -> impl Copy + 'static { x }
    |                                 ^^^^^^^^^^^^^^^^^^^
@@ -79,15 +79,15 @@ LL | fn explicit2<'a>(x: &'static i32) -> impl Copy + 'static { x }
    |                     ^^^^^^^^^^^^
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/must_outlive_least_region_or_bound.rs:15:24
+  --> $DIR/must_outlive_least_region_or_bound.rs:11:24
    |
 LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
    |               ----     ^^^^^^^^^^^^^^ lifetime `'a` required
    |               |
    |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:30:65
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:22:65
    |
 LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
    |               ---- this data with an anonymous lifetime `'_`... ^ ...is captured here, requiring it to live as long as `'static`
@@ -101,14 +101,14 @@ help: to declare that the `impl Trait` captures data from argument `x`, you can 
 LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug + '_) { (Box::new(x), x) }
    |                                                    ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:30:69
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:22:69
    |
 LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
    |               ---- this data with an anonymous lifetime `'_`...     ^ ...is captured here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:30:41
+  --> $DIR/must_outlive_least_region_or_bound.rs:22:41
    |
 LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug) { (Box::new(x), x) }
    |                                         ^^^^^^^^^^
@@ -121,14 +121,14 @@ help: to declare that the `impl Trait` captures data from argument `x`, you can 
 LL | fn elided5(x: &i32) -> (Box<dyn Debug>, impl Debug + '_) { (Box::new(x), x) }
    |                                                    ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:37:69
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:28:69
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                      ------- this data with lifetime `'a`...        ^ ...is captured here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/must_outlive_least_region_or_bound.rs:37:34
+  --> $DIR/must_outlive_least_region_or_bound.rs:28:34
    |
 LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -142,7 +142,7 @@ LL | fn with_bound<'a>(x: &'static i32) -> impl LifetimeTrait<'a> + 'static { x 
    |                      ^^^^^^^^^^^^
 
 error[E0623]: lifetime mismatch
-  --> $DIR/must_outlive_least_region_or_bound.rs:42:61
+  --> $DIR/must_outlive_least_region_or_bound.rs:32:61
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
    |                                                 -------     ^^^^^^^^^^^^^^^^
@@ -151,15 +151,15 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
    |                                                 this parameter and the return type are declared with different lifetimes...
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/must_outlive_least_region_or_bound.rs:47:51
+  --> $DIR/must_outlive_least_region_or_bound.rs:37:51
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
    |                                 --                ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
    |                                 |
    |                                 help: consider adding an explicit lifetime bound...: `T: 'static +`
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:18:50
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:14:50
    |
 LL | fn elided3(x: &i32) -> Box<dyn Debug> { Box::new(x) }
    |               ----                               ^ ...is captured here, requiring it to live as long as `'static`
@@ -171,8 +171,8 @@ help: to declare that the trait object captures data from argument `x`, you can 
 LL | fn elided3(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
    |                                      ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:21:59
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:16:59
    |
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug> { Box::new(x) }
    |                     -------                               ^ ...is captured here, requiring it to live as long as `'static`
@@ -184,8 +184,8 @@ help: to declare that the trait object captures data from argument `x`, you can 
 LL | fn explicit3<'a>(x: &'a i32) -> Box<dyn Debug + 'a> { Box::new(x) }
    |                                               ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:24:60
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:18:60
    |
 LL | fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |               ----                                         ^ ...is captured here, requiring it to live as long as `'static`
@@ -201,8 +201,8 @@ help: alternatively, add an explicit `'static` bound to this reference
 LL | fn elided4(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |               ^^^^^^^^^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/must_outlive_least_region_or_bound.rs:27:69
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/must_outlive_least_region_or_bound.rs:20:69
    |
 LL | fn explicit4<'a>(x: &'a i32) -> Box<dyn Debug + 'static> { Box::new(x) }
    |                     ------- this data with lifetime `'a`...         ^ ...is captured here, requiring it to live as long as `'static`

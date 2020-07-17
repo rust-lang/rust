@@ -16,7 +16,7 @@ fn foo<G, T>(g: G, dest: &mut T) -> impl FnOnce()
 where
     G: Get<T>
 {
-    move || { //~ ERROR cannot infer an appropriate lifetime
+    move || { //~ ERROR `dest`
         *dest = g.get();
     }
 }

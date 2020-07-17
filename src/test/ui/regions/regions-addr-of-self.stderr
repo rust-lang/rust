@@ -1,29 +1,11 @@
-error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
+error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/regions-addr-of-self.rs:7:37
    |
+LL |     pub fn chase_cat(&mut self) {
+   |                      --------- this data with an anonymous lifetime `'_`...
 LL |         let p: &'static mut usize = &mut self.cats_chased;
-   |                                     ^^^^^^^^^^^^^^^^^^^^^
-   |
-note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 6:5...
-  --> $DIR/regions-addr-of-self.rs:6:5
-   |
-LL | /     pub fn chase_cat(&mut self) {
-LL | |         let p: &'static mut usize = &mut self.cats_chased;
-LL | |         *p += 1;
-LL | |     }
-   | |_____^
-note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-addr-of-self.rs:7:37
-   |
-LL |         let p: &'static mut usize = &mut self.cats_chased;
-   |                                     ^^^^^^^^^^^^^^^^^^^^^
-   = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that reference does not outlive borrowed content
-  --> $DIR/regions-addr-of-self.rs:7:37
-   |
-LL |         let p: &'static mut usize = &mut self.cats_chased;
-   |                                     ^^^^^^^^^^^^^^^^^^^^^
+   |                                     ^^^^^^^^^^^^^^^^^^^^^ ...is captured and required to live as long as `'static` here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0759`.

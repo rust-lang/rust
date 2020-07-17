@@ -170,6 +170,13 @@ impl<'tcx> ObligationCause<'tcx> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct UnifyReceiverContext<'tcx> {
+    pub assoc_item: ty::AssocItem,
+    pub param_env: ty::ParamEnv<'tcx>,
+    pub substs: SubstsRef<'tcx>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from the span.
     MiscObligation,
@@ -299,6 +306,8 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Method receiver
     MethodReceiver,
+
+    UnifyReceiver(Box<UnifyReceiverContext<'tcx>>),
 
     /// `return` with no expression
     ReturnNoExpression,
