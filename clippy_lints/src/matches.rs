@@ -1512,6 +1512,10 @@ mod redundant_pattern_match {
             }
         }
 
+        let result_expr = match &op.kind {
+            ExprKind::AddrOf(_, _, borrowed) => borrowed,
+            _ => op,
+        };
         span_lint_and_then(
             cx,
             REDUNDANT_PATTERN_MATCHING,
@@ -1524,7 +1528,7 @@ mod redundant_pattern_match {
 
                 // while let ... = ... { ... }
                 //                 ^^^
-                let op_span = op.span.source_callsite();
+                let op_span = result_expr.span.source_callsite();
 
                 // while let ... = ... { ... }
                 // ^^^^^^^^^^^^^^^^^^^
@@ -1589,17 +1593,21 @@ mod redundant_pattern_match {
             };
 
             if let Some(good_method) = found_good_method {
+                let span = expr.span.to(op.span);
+                let result_expr = match &op.kind {
+                    ExprKind::AddrOf(_, _, borrowed) => borrowed,
+                    _ => op,
+                };
                 span_lint_and_then(
                     cx,
                     REDUNDANT_PATTERN_MATCHING,
                     expr.span,
                     &format!("redundant pattern matching, consider using `{}`", good_method),
                     |diag| {
-                        let span = expr.span.to(op.span);
                         diag.span_suggestion(
                             span,
                             "try this",
-                            format!("{}.{}", snippet(cx, op.span, "_"), good_method),
+                            format!("{}.{}", snippet(cx, result_expr.span, "_"), good_method),
                             Applicability::MaybeIncorrect, // snippet
                         );
                     },
