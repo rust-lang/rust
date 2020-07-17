@@ -297,7 +297,6 @@
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(prelude_import)]
-#![feature(prompt)]
 #![feature(ptr_internals)]
 #![feature(raw)]
 #![feature(raw_ref_macros)]
