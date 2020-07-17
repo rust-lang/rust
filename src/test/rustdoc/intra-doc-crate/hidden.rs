@@ -1,6 +1,6 @@
 // aux-build:hidden.rs
 // build-aux-docs
-#![deny(intra_doc_resolution_failure)]
+#![deny(intra_doc_link_resolution_failure)]
 
 // tests https://github.com/rust-lang/rust/issues/73363
 
