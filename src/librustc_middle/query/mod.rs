@@ -1309,7 +1309,7 @@ rustc_queries! {
         query codegen_unit(_: Symbol) -> &'tcx CodegenUnit<'tcx> {
             desc { "codegen_unit" }
         }
-        query unused_generic_params(key: DefId) -> u64 {
+        query unused_generic_params(key: DefId) -> FiniteBitSet<u64> {
             cache_on_disk_if { key.is_local() }
             desc {
                 |tcx| "determining which generic parameters are unused by `{}`",

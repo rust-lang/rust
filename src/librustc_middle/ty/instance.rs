@@ -474,20 +474,20 @@ impl<'tcx> Instance<'tcx> {
         }
 
         if let InstanceDef::Item(def) = self.def {
-            let results = tcx.unused_generic_params(def.did);
+            let unused = tcx.unused_generic_params(def.did);
 
-            if results == 0 {
+            if unused.is_empty() {
                 // Exit early if every parameter was used.
                 return self;
             }
 
-            debug!("polymorphize: results={:064b}", results);
+            debug!("polymorphize: unused={:?}", unused);
             let polymorphized_substs =
                 InternalSubsts::for_item(tcx, def.did, |param, _| match param.kind {
                 // If parameter is a const or type parameter..
                 ty::GenericParamDefKind::Const | ty::GenericParamDefKind::Type { .. } if
                     // ..and is within range and unused..
-                    param.index < 64 && ((results >> param.index) & 1) == 1 =>
+                    unused.contains(param.index).unwrap_or(false) =>
                         // ..then use the identity for this parameter.
                         tcx.mk_param_from_def(param),
                 // Otherwise, use the parameter as before.

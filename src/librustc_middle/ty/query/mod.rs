@@ -44,7 +44,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, HirIdSet, ItemLocalId, TraitCandidate};
-use rustc_index::vec::IndexVec;
+use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::CrateDisambiguator;

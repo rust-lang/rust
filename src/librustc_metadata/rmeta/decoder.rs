@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, tcx))
     }
 
-    fn get_unused_generic_params(&self, id: DefIndex) -> u64 {
+    fn get_unused_generic_params(&self, id: DefIndex) -> FiniteBitSet<u64> {
         self.root
             .tables
             .unused_generic_params

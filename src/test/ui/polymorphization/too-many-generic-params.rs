@@ -7,7 +7,7 @@
 #[rustc_polymorphize_error]
 fn bar<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z, AA,
        AB, AC, AD, AE, AF, AG, AH, AI, AJ, AK, AL, AM, AN, AO, AP, AQ, AR, AS, AT, AU, AV, AW,
-       AX, AY, AZ, BA, BB, BC, BD, BE, BF, BG, BH, BI, BJ, BK, BL>()
+       AX, AY, AZ, BA, BB, BC, BD, BE, BF, BG, BH, BI, BJ, BK, BL, BM>()
 {
     let _: Option<A> = None;
     let _: Option<B> = None;
@@ -60,6 +60,7 @@ fn bar<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y
     let _: Option<AW> = None;
     let _: Option<AX> = None;
     let _: Option<AY> = None;
+    let _: Option<AZ> = None;
     let _: Option<BA> = None;
     let _: Option<BB> = None;
     let _: Option<BC> = None;
@@ -72,6 +73,13 @@ fn bar<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y
     let _: Option<BJ> = None;
     let _: Option<BK> = None;
     let _: Option<BL> = None;
+    let _: Option<BM> = None;
 }
 
-fn main() { }
+fn main() {
+    bar::<u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32,
+          u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32,
+          u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32,
+          u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32, u32,
+          u32>();
+}
