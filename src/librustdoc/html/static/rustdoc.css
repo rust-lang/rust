@@ -49,9 +49,9 @@
 }
 
 * {
-  -webkit-box-sizing: border-box;
-	 -moz-box-sizing: border-box;
-		  box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 /* This part handles the "default" theme being used depending on the system one. */
@@ -91,7 +91,8 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important),
+h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -103,7 +104,8 @@ h1.fqn {
 h1.fqn > .in-band > a:hover {
 	text-decoration: underline;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
+h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	border-bottom: 1px solid;
 }
 h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
@@ -1123,7 +1125,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	/* The margin on the tooltip does not capture hover events,
 	   this extends the area of hover enough so that mouse hover is not
 	   lost when moving the mouse to the tooltip */
-    content: "\00a0\00a0\00a0";
+	content: "\00a0\00a0\00a0";
 }
 
 .important-traits .important, .important-traits .docblock {
@@ -1131,13 +1133,12 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 }
 
 .important-traits .docblock code.content{
-    margin: 0;
-    padding: 0;
-    font-size: 20px;
+	margin: 0;
+	padding: 0;
+	font-size: 20px;
 }
 
-/* Example code has the "Run" button that
-   needs to be positioned relative to the pre */
+/* Example code has the "Run" button that needs to be positioned relative to the pre */
 pre.rust.rust-example-rendered {
 	position: relative;
 }
