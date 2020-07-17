@@ -12,7 +12,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{SAFE_PACKED_BORROWS, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
 
 use std::ops::Bound;
 
@@ -86,10 +86,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 let sig = func_ty.fn_sig(self.tcx);
                 if let hir::Unsafety::Unsafe = sig.unsafety() {
                     self.require_unsafe(
-                        "call to unsafe function",
-                        "consult the function's documentation for information on how to avoid \
-                         undefined behavior",
                         UnsafetyViolationKind::GeneralAndConstFn,
+                        UnsafetyViolationDetails::CallToUnsafeFunction,
                     )
                 }
 
@@ -99,9 +97,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
 
             TerminatorKind::InlineAsm { .. } => self.require_unsafe(
-                "use of inline assembly",
-                "inline assembly is entirely unchecked and can cause undefined behavior",
                 UnsafetyViolationKind::General,
+                UnsafetyViolationDetails::UseOfInlineAssembly,
             ),
         }
         self.super_terminator(terminator, location);
@@ -122,9 +119,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
 
             StatementKind::LlvmInlineAsm { .. } => self.require_unsafe(
-                "use of inline assembly",
-                "inline assembly is entirely unchecked and can cause undefined behavior",
                 UnsafetyViolationKind::General,
+                UnsafetyViolationDetails::UseOfInlineAssembly,
             ),
         }
         self.super_statement(statement, location);
@@ -138,10 +134,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     match self.tcx.layout_scalar_valid_range(def.did) {
                         (Bound::Unbounded, Bound::Unbounded) => {}
                         _ => self.require_unsafe(
-                            "initializing type with `rustc_layout_scalar_valid_range` attr",
-                            "initializing a layout restricted type's field with a value \
-                                outside the valid range is undefined behavior",
                             UnsafetyViolationKind::GeneralAndConstFn,
+                            UnsafetyViolationDetails::InitializingTypeWith,
                         ),
                     }
                 }
@@ -163,9 +157,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
                         self.require_unsafe(
-                            "cast of pointer to int",
-                            "casting pointers to integers in constants",
                             UnsafetyViolationKind::General,
+                            UnsafetyViolationDetails::CastOfPointerToInt,
                         );
                     }
                     _ => {}
@@ -190,11 +183,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         if context.is_borrow() {
             if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
                 self.require_unsafe(
-                    "borrow of packed field",
-                    "fields of packed structs might be misaligned: dereferencing a \
-                    misaligned pointer or even just creating a misaligned reference \
-                    is undefined behavior",
                     UnsafetyViolationKind::BorrowPacked,
+                    UnsafetyViolationDetails::BorrowOfPackedField,
                 );
             }
         }
@@ -204,11 +194,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if context.is_borrow() {
                 if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
                     self.require_unsafe(
-                        "borrow of packed field",
-                        "fields of packed structs might be misaligned: dereferencing a \
-                        misaligned pointer or even just creating a misaligned reference \
-                        is undefined behavior",
                         UnsafetyViolationKind::BorrowPacked,
+                        UnsafetyViolationDetails::BorrowOfPackedField,
                     );
                 }
             }
@@ -219,19 +206,14 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {
                         if self.tcx.is_mutable_static(def_id) {
                             self.require_unsafe(
-                                "use of mutable static",
-                                "mutable statics can be mutated by multiple threads: aliasing \
-                            violations or data races will cause undefined behavior",
                                 UnsafetyViolationKind::General,
+                                UnsafetyViolationDetails::UseOfMutableStatic,
                             );
                             return;
                         } else if self.tcx.is_foreign_item(def_id) {
                             self.require_unsafe(
-                                "use of extern static",
-                                "extern statics are not controlled by the Rust type system: \
-                            invalid data, aliasing violations or data races will cause \
-                            undefined behavior",
                                 UnsafetyViolationKind::General,
+                                UnsafetyViolationDetails::UseOfExternStatic,
                             );
                             return;
                         }
@@ -246,11 +228,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             let base_ty = Place::ty_from(place.local, proj_base, self.body, self.tcx).ty;
             match base_ty.kind {
                 ty::RawPtr(..) => self.require_unsafe(
-                    "dereference of raw pointer",
-                    "raw pointers may be NULL, dangling or unaligned; they can violate \
-                         aliasing rules and cause data races: all of these are undefined \
-                         behavior",
                     UnsafetyViolationKind::General,
+                    UnsafetyViolationDetails::DerefOfRawPointer,
                 ),
                 ty::Adt(adt, _) => {
                     if adt.is_union() {
@@ -271,21 +250,16 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                                 self.param_env,
                             ) {
                                 self.require_unsafe(
-                                    "assignment to non-`Copy` union field",
-                                    "the previous content of the field will be dropped, which \
-                                     causes undefined behavior if the field was not properly \
-                                     initialized",
                                     UnsafetyViolationKind::GeneralAndConstFn,
+                                    UnsafetyViolationDetails::AssignToNonCopyUnionField,
                                 )
                             } else {
                                 // write to non-move union, safe
                             }
                         } else {
                             self.require_unsafe(
-                                "access to union field",
-                                "the field may not be properly initialized: using \
-                                 uninitialized data will cause undefined behavior",
                                 UnsafetyViolationKind::GeneralAndConstFn,
+                                UnsafetyViolationDetails::AccessToUnionField,
                             )
                         }
                     }
@@ -298,12 +272,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
-    fn require_unsafe(
-        &mut self,
-        description: &'static str,
-        details: &'static str,
-        kind: UnsafetyViolationKind,
-    ) {
+    fn require_unsafe(&mut self, kind: UnsafetyViolationKind, details: UnsafetyViolationDetails) {
         let source_info = self.source_info;
         let lint_root = self.body.source_scopes[self.source_info.scope]
             .local_data
@@ -311,13 +280,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             .assert_crate_local()
             .lint_root;
         self.register_violations(
-            &[UnsafetyViolation {
-                source_info,
-                lint_root,
-                description: Symbol::intern(description),
-                details: Symbol::intern(details),
-                kind,
-            }],
+            &[UnsafetyViolation { source_info, lint_root, kind, details }],
             &[],
         );
     }
@@ -434,12 +397,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                         if self.tcx.layout_scalar_valid_range(def.did)
                             != (Bound::Unbounded, Bound::Unbounded)
                         {
-                            let (description, details) = if is_mut_use {
-                                (
-                                    "mutation of layout constrained field",
-                                    "mutating layout constrained fields cannot statically be \
-                                        checked for valid values",
-                                )
+                            let details = if is_mut_use {
+                                UnsafetyViolationDetails::MutationOfLayoutConstrainedField
 
                             // Check `is_freeze` as late as possible to avoid cycle errors
                             // with opaque types.
@@ -448,21 +407,11 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                 .ty
                                 .is_freeze(self.tcx.at(self.source_info.span), self.param_env)
                             {
-                                (
-                                    "borrow of layout constrained field with interior \
-                                        mutability",
-                                    "references to fields of layout constrained fields \
-                                        lose the constraints. Coupled with interior mutability, \
-                                        the field can be changed to invalid values",
-                                )
+                                UnsafetyViolationDetails::BorrowOfLayoutConstrainedField
                             } else {
                                 continue;
                             };
-                            self.require_unsafe(
-                                description,
-                                details,
-                                UnsafetyViolationKind::GeneralAndConstFn,
-                            );
+                            self.require_unsafe(UnsafetyViolationKind::GeneralAndConstFn, details);
                         }
                     }
                 }
@@ -480,9 +429,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         // Is `callee_features` a subset of `calling_features`?
         if !callee_features.iter().all(|feature| self_features.contains(feature)) {
             self.require_unsafe(
-                "call to function with `#[target_feature]`",
-                "can only be called if the required target features are available",
                 UnsafetyViolationKind::GeneralAndConstFn,
+                UnsafetyViolationDetails::CallToFunctionWith,
             )
         }
     }
@@ -675,9 +623,9 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     let UnsafetyCheckResult { violations, unsafe_blocks } = tcx.unsafety_check_result(def_id);
 
-    for &UnsafetyViolation { source_info, lint_root, description, details, kind } in
-        violations.iter()
-    {
+    for &UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
+        let (description, note) = details.description_and_note();
+
         // Report an error.
         let unsafe_fn_msg =
             if unsafe_op_in_unsafe_fn_allowed(tcx, lint_root) { " function or" } else { "" };
@@ -693,8 +641,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     description,
                     unsafe_fn_msg,
                 )
-                .span_label(source_info.span, &*description.as_str())
-                .note(&details.as_str())
+                .span_label(source_info.span, description)
+                .note(note)
                 .emit();
             }
             UnsafetyViolationKind::BorrowPacked => {
@@ -712,7 +660,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                                 "{} is unsafe and requires unsafe{} block (error E0133)",
                                 description, unsafe_fn_msg,
                             ))
-                            .note(&details.as_str())
+                            .note(note)
                             .emit()
                         },
                     )
@@ -727,8 +675,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                         "{} is unsafe and requires unsafe block (error E0133)",
                         description,
                     ))
-                    .span_label(source_info.span, &*description.as_str())
-                    .note(&details.as_str())
+                    .span_label(source_info.span, description)
+                    .note(note)
                     .emit();
                 },
             ),
@@ -756,8 +704,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                         "{} is unsafe and requires unsafe block (error E0133)",
                         description,
                     ))
-                    .span_label(source_info.span, &*description.as_str())
-                    .note(&details.as_str())
+                    .span_label(source_info.span, description)
+                    .note(note)
                     .emit();
                 })
             }

@@ -191,7 +191,7 @@ use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
-use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
+use ty::{Bounds, Path, Ptr, PtrTy, Self_, Ty};
 
 use crate::deriving;
 
@@ -204,14 +204,14 @@ pub struct TraitDef<'a> {
     pub attributes: Vec<ast::Attribute>,
 
     /// Path of the trait, including any type parameters
-    pub path: Path<'a>,
+    pub path: Path,
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    pub additional_bounds: Vec<Ty<'a>>,
+    pub additional_bounds: Vec<Ty>,
 
     /// Any extra lifetimes and/or bounds, e.g., `D: serialize::Decoder`
-    pub generics: LifetimeBounds<'a>,
+    pub generics: Bounds,
 
     /// Is it an `unsafe` trait?
     pub is_unsafe: bool,
@@ -221,14 +221,14 @@ pub struct TraitDef<'a> {
 
     pub methods: Vec<MethodDef<'a>>,
 
-    pub associated_types: Vec<(Ident, Ty<'a>)>,
+    pub associated_types: Vec<(Ident, Ty)>,
 }
 
 pub struct MethodDef<'a> {
     /// name of the method
     pub name: Symbol,
     /// List of generics, e.g., `R: rand::Rng`
-    pub generics: LifetimeBounds<'a>,
+    pub generics: Bounds,
 
     /// Whether there is a self argument (outer Option) i.e., whether
     /// this is a static function, and whether it is a pointer (inner
@@ -236,10 +236,10 @@ pub struct MethodDef<'a> {
     pub explicit_self: Option<Option<PtrTy>>,
 
     /// Arguments other than the self argument
-    pub args: Vec<(Ty<'a>, &'a str)>,
+    pub args: Vec<(Ty, Symbol)>,
 
     /// Returns type
-    pub ret_ty: Ty<'a>,
+    pub ret_ty: Ty,
 
     pub attributes: Vec<ast::Attribute>,
 
@@ -865,7 +865,7 @@ impl<'a> MethodDef<'a> {
 
         for (ty, name) in self.args.iter() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = cx.ident_of(name, trait_.span);
+            let ident = Ident::new(*name, trait_.span);
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(trait_.span, ident);
@@ -1170,8 +1170,10 @@ impl<'a> MethodDef<'a> {
             )
             .collect::<Vec<String>>();
 
-        let self_arg_idents =
-            self_arg_names.iter().map(|name| cx.ident_of(name, sp)).collect::<Vec<Ident>>();
+        let self_arg_idents = self_arg_names
+            .iter()
+            .map(|name| Ident::from_str_and_span(name, sp))
+            .collect::<Vec<Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to an int
@@ -1180,7 +1182,7 @@ impl<'a> MethodDef<'a> {
             .iter()
             .map(|name| {
                 let vi_suffix = format!("{}_vi", &name[..]);
-                cx.ident_of(&vi_suffix[..], trait_.span)
+                Ident::from_str_and_span(&vi_suffix, trait_.span)
             })
             .collect::<Vec<Ident>>();
 
@@ -1568,7 +1570,7 @@ impl<'a> TraitDef<'a> {
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = struct_field.span.with_ctxt(self.span.ctxt());
-            let ident = cx.ident_of(&format!("{}_{}", prefix, i), self.span);
+            let ident = Ident::from_str_and_span(&format!("{}_{}", prefix, i), self.span);
             paths.push(ident.with_span_pos(sp));
             let val = cx.expr_path(cx.path_ident(sp, ident));
             let val = if use_temporaries { val } else { cx.expr_deref(sp, val) };
