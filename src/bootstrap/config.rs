@@ -7,6 +7,7 @@ use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::OsString;
+use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -39,7 +40,7 @@ pub struct Config {
     pub docs: bool,
     pub locked_deps: bool,
     pub vendor: bool,
-    pub target_config: HashMap<Interned<String>, Target>,
+    pub target_config: HashMap<TargetSelection, Target>,
     pub full_bootstrap: bool,
     pub extended: bool,
     pub tools: Option<HashSet<String>>,
@@ -112,9 +113,9 @@ pub struct Config {
     pub rust_thin_lto_import_instr_limit: Option<u32>,
     pub rust_remap_debuginfo: bool,
 
-    pub build: Interned<String>,
-    pub hosts: Vec<Interned<String>>,
-    pub targets: Vec<Interned<String>>,
+    pub build: TargetSelection,
+    pub hosts: Vec<TargetSelection>,
+    pub targets: Vec<TargetSelection>,
     pub local_rebuild: bool,
     pub jemalloc: bool,
     pub control_flow_guard: bool,
@@ -156,6 +157,67 @@ pub struct Config {
     pub initial_rustc: PathBuf,
     pub initial_rustfmt: Option<PathBuf>,
     pub out: PathBuf,
+}
+
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TargetSelection {
+    pub triple: Interned<String>,
+    file: Option<Interned<String>>,
+}
+
+impl TargetSelection {
+    pub fn from_user(selection: &str) -> Self {
+        let path = Path::new(selection);
+
+        let (triple, file) = if path.exists() {
+            let triple = path
+                .file_stem()
+                .expect("Target specification file has no file stem")
+                .to_str()
+                .expect("Target specification file stem is not UTF-8");
+
+            (triple, Some(selection))
+        } else {
+            (selection, None)
+        };
+
+        let triple = INTERNER.intern_str(triple);
+        let file = file.map(|f| INTERNER.intern_str(f));
+
+        Self { triple, file }
+    }
+
+    pub fn rustc_target_arg(&self) -> &str {
+        self.file.as_ref().unwrap_or(&self.triple)
+    }
+
+    pub fn contains(&self, needle: &str) -> bool {
+        self.triple.contains(needle)
+    }
+
+    pub fn starts_with(&self, needle: &str) -> bool {
+        self.triple.starts_with(needle)
+    }
+
+    pub fn ends_with(&self, needle: &str) -> bool {
+        self.triple.ends_with(needle)
+    }
+}
+
+impl fmt::Display for TargetSelection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.triple)?;
+        if let Some(file) = self.file {
+            write!(f, "({})", file)?;
+        }
+        Ok(())
+    }
+}
+
+impl PartialEq<&str> for TargetSelection {
+    fn eq(&self, other: &&str) -> bool {
+        self.triple == *other
+    }
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -403,7 +465,7 @@ impl Config {
         config.missing_tools = false;
 
         // set by bootstrap.py
-        config.build = INTERNER.intern_str(&env::var("BUILD").expect("'BUILD' to be set"));
+        config.build = TargetSelection::from_user(&env::var("BUILD").expect("'BUILD' to be set"));
         config.src = Config::path_from_python("SRC");
         config.out = Config::path_from_python("BUILD_DIR");
 
@@ -464,14 +526,16 @@ impl Config {
         let build = toml.build.clone().unwrap_or_default();
         // set by bootstrap.py
         config.hosts.push(config.build.clone());
-        for host in build.host.iter() {
-            let host = INTERNER.intern_str(host);
+        for host in build.host.iter().map(|h| TargetSelection::from_user(h)) {
             if !config.hosts.contains(&host) {
                 config.hosts.push(host);
             }
         }
-        for target in
-            config.hosts.iter().cloned().chain(build.target.iter().map(|s| INTERNER.intern_str(s)))
+        for target in config
+            .hosts
+            .iter()
+            .copied()
+            .chain(build.target.iter().map(|h| TargetSelection::from_user(h)))
         {
             if !config.targets.contains(&target) {
                 config.targets.push(target);
@@ -637,7 +701,7 @@ impl Config {
                 target.wasi_root = cfg.wasi_root.clone().map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);
 
-                config.target_config.insert(INTERNER.intern_string(triple.clone()), target);
+                config.target_config.insert(TargetSelection::from_user(triple), target);
             }
         }
 

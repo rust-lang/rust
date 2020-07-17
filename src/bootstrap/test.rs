@@ -16,6 +16,7 @@ use build_helper::{self, output, t};
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
+use crate::config::TargetSelection;
 use crate::dist;
 use crate::flags::Subcommand;
 use crate::native;
@@ -93,7 +94,7 @@ fn try_run_quiet(builder: &Builder<'_>, cmd: &mut Command) -> bool {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Linkcheck {
-    host: Interned<String>,
+    host: TargetSelection,
 }
 
 impl Step for Linkcheck {
@@ -115,7 +116,7 @@ impl Step for Linkcheck {
         let _time = util::timeit(&builder);
         try_run(
             builder,
-            builder.tool_cmd(Tool::Linkchecker).arg(builder.out.join(host).join("doc")),
+            builder.tool_cmd(Tool::Linkchecker).arg(builder.out.join(host.triple).join("doc")),
         );
     }
 
@@ -132,7 +133,7 @@ impl Step for Linkcheck {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Cargotest {
     stage: u32,
-    host: Interned<String>,
+    host: TargetSelection,
 }
 
 impl Step for Cargotest {
@@ -177,7 +178,7 @@ impl Step for Cargotest {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Cargo {
     stage: u32,
-    host: Interned<String>,
+    host: TargetSelection,
 }
 
 impl Step for Cargo {
@@ -230,7 +231,7 @@ impl Step for Cargo {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rls {
     stage: u32,
-    host: Interned<String>,
+    host: TargetSelection,
 }
 
 impl Step for Rls {
@@ -281,7 +282,7 @@ impl Step for Rls {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustfmt {
     stage: u32,
-    host: Interned<String>,
+    host: TargetSelection,
 }
 
 impl Step for Rustfmt {
@@ -338,7 +339,7 @@ impl Step for Rustfmt {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
     stage: u32,
-    host: Interned<String>,
+    host: TargetSelection,
 }
 
 impl Step for Miri {
@@ -464,7 +465,7 @@ impl Step for Miri {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CompiletestTest {
-    host: Interned<String>,
+    host: TargetSelection,
 }
 
 impl Step for CompiletestTest {
@@ -501,7 +502,7 @@ impl Step for CompiletestTest {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     stage: u32,
-    host: Interned<String>,
+    host: TargetSelection,
 }
 
 impl Step for Clippy {
@@ -542,8 +543,10 @@ impl Step for Clippy {
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
         let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
-        let target_libs =
-            builder.stage_out(compiler, Mode::ToolRustc).join(&self.host).join(builder.cargo_dir());
+        let target_libs = builder
+            .stage_out(compiler, Mode::ToolRustc)
+            .join(&self.host.triple)
+            .join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
         cargo.env("TARGET_LIBS", target_libs);
         // clippy tests need to find the driver
@@ -607,7 +610,7 @@ impl Step for RustdocTheme {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocJSStd {
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for RustdocJSStd {
@@ -646,8 +649,8 @@ impl Step for RustdocJSStd {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocJSNotStd {
-    pub host: Interned<String>,
-    pub target: Interned<String>,
+    pub host: TargetSelection,
+    pub target: TargetSelection,
     pub compiler: Compiler,
 }
 
@@ -683,8 +686,8 @@ impl Step for RustdocJSNotStd {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocUi {
-    pub host: Interned<String>,
-    pub target: Interned<String>,
+    pub host: TargetSelection,
+    pub target: TargetSelection,
     pub compiler: Compiler,
 }
 
@@ -785,8 +788,8 @@ impl Step for ExpandYamlAnchors {
     }
 }
 
-fn testdir(builder: &Builder<'_>, host: Interned<String>) -> PathBuf {
-    builder.out.join(host).join("test")
+fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
+    builder.out.join(host.triple).join("test")
 }
 
 macro_rules! default_test {
@@ -855,7 +858,7 @@ macro_rules! test_definitions {
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub compiler: Compiler,
-            pub target: Interned<String>,
+            pub target: TargetSelection,
         }
 
         impl Step for $name {
@@ -943,7 +946,7 @@ default_test!(Assembly { path: "src/test/assembly", mode: "assembly", suite: "as
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Compiletest {
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
     mode: &'static str,
     suite: &'static str,
     path: &'static str,
@@ -1023,8 +1026,8 @@ impl Step for Compiletest {
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
         cmd.arg("--mode").arg(mode);
-        cmd.arg("--target").arg(target);
-        cmd.arg("--host").arg(&*compiler.host);
+        cmd.arg("--target").arg(target.rustc_target_arg());
+        cmd.arg("--host").arg(&*compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.build));
 
         if builder.config.cmd.bless() {
@@ -1543,7 +1546,7 @@ impl Step for RustcGuide {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateLibrustc {
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
     test_kind: TestKind,
     krate: Interned<String>,
 }
@@ -1589,7 +1592,7 @@ impl Step for CrateLibrustc {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateNotDefault {
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
     test_kind: TestKind,
     krate: &'static str,
 }
@@ -1638,7 +1641,7 @@ impl Step for CrateNotDefault {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Crate {
     pub compiler: Compiler,
-    pub target: Interned<String>,
+    pub target: TargetSelection,
     pub mode: Mode,
     pub test_kind: TestKind,
     pub krate: Interned<String>,
@@ -1750,17 +1753,17 @@ impl Step for Crate {
 
         if target.contains("emscripten") {
             cargo.env(
-                format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
+                format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
                 builder.config.nodejs.as_ref().expect("nodejs not configured"),
             );
         } else if target.starts_with("wasm32") {
             let node = builder.config.nodejs.as_ref().expect("nodejs not configured");
             let runner =
                 format!("{} {}/src/etc/wasm32-shim.js", node.display(), builder.src.display());
-            cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)), &runner);
+            cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)), &runner);
         } else if builder.remote_tested(target) {
             cargo.env(
-                format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
+                format!("CARGO_TARGET_{}_RUNNER", envify(&target.triple)),
                 format!("{} run 0", builder.tool_exe(Tool::RemoteTestClient).display()),
             );
         }
@@ -1776,7 +1779,7 @@ impl Step for Crate {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdoc {
-    host: Interned<String>,
+    host: TargetSelection,
     test_kind: TestKind,
 }
 
@@ -1883,7 +1886,7 @@ impl Step for CrateRustdoc {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RemoteCopyLibs {
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for RemoteCopyLibs {
@@ -1911,7 +1914,7 @@ impl Step for RemoteCopyLibs {
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
         let mut cmd = Command::new(&tool);
-        cmd.arg("spawn-emulator").arg(target).arg(&server).arg(builder.out.join("tmp"));
+        cmd.arg("spawn-emulator").arg(target.triple).arg(&server).arg(builder.out.join("tmp"));
         if let Some(rootfs) = builder.qemu_rootfs(target) {
             cmd.arg(rootfs);
         }
@@ -1966,7 +1969,9 @@ impl Step for Distcheck {
                 .current_dir(&dir),
         );
         builder.run(
-            Command::new(build_helper::make(&builder.config.build)).arg("check").current_dir(&dir),
+            Command::new(build_helper::make(&builder.config.build.triple))
+                .arg("check")
+                .current_dir(&dir),
         );
 
         // Now make sure that rust-src has all of libstd's dependencies

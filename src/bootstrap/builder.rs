@@ -16,6 +16,7 @@ use build_helper::{output, t};
 use crate::cache::{Cache, Interned, INTERNER};
 use crate::check;
 use crate::compile;
+use crate::config::TargetSelection;
 use crate::dist;
 use crate::doc;
 use crate::flags::Subcommand;
@@ -86,8 +87,8 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
 pub struct RunConfig<'a> {
     pub builder: &'a Builder<'a>,
-    pub host: Interned<String>,
-    pub target: Interned<String>,
+    pub host: TargetSelection,
+    pub target: TargetSelection,
     pub path: PathBuf,
 }
 
@@ -576,7 +577,7 @@ impl<'a> Builder<'a> {
     /// not take `Compiler` since all `Compiler` instances are meant to be
     /// obtained through this function, since it ensures that they are valid
     /// (i.e., built and assembled).
-    pub fn compiler(&self, stage: u32, host: Interned<String>) -> Compiler {
+    pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
         self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
     }
 
@@ -594,8 +595,8 @@ impl<'a> Builder<'a> {
     pub fn compiler_for(
         &self,
         stage: u32,
-        host: Interned<String>,
-        target: Interned<String>,
+        host: TargetSelection,
+        target: TargetSelection,
     ) -> Compiler {
         if self.build.force_use_stage1(Compiler { stage, host }, target) {
             self.compiler(1, self.config.build)
@@ -610,15 +611,11 @@ impl<'a> Builder<'a> {
 
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
-    pub fn sysroot_libdir(
-        &self,
-        compiler: Compiler,
-        target: Interned<String>,
-    ) -> Interned<PathBuf> {
+    pub fn sysroot_libdir(&self, compiler: Compiler, target: TargetSelection) -> Interned<PathBuf> {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         struct Libdir {
             compiler: Compiler,
-            target: Interned<String>,
+            target: TargetSelection,
         }
         impl Step for Libdir {
             type Output = Interned<PathBuf>;
@@ -633,7 +630,7 @@ impl<'a> Builder<'a> {
                     .sysroot(self.compiler)
                     .join(lib)
                     .join("rustlib")
-                    .join(self.target)
+                    .join(self.target.triple)
                     .join("lib");
                 let _ = fs::remove_dir_all(&sysroot);
                 t!(fs::create_dir_all(&sysroot));
@@ -656,7 +653,7 @@ impl<'a> Builder<'a> {
                 Some(relative_libdir) if compiler.stage >= 1 => {
                     self.sysroot(compiler).join(relative_libdir)
                 }
-                _ => self.sysroot(compiler).join(libdir(&compiler.host)),
+                _ => self.sysroot(compiler).join(libdir(compiler.host)),
             }
         }
     }
@@ -668,11 +665,11 @@ impl<'a> Builder<'a> {
     /// Windows.
     pub fn libdir_relative(&self, compiler: Compiler) -> &Path {
         if compiler.is_snapshot(self) {
-            libdir(&self.config.build).as_ref()
+            libdir(self.config.build).as_ref()
         } else {
             match self.config.libdir_relative() {
                 Some(relative_libdir) if compiler.stage >= 1 => relative_libdir,
-                _ => libdir(&compiler.host).as_ref(),
+                _ => libdir(compiler.host).as_ref(),
             }
         }
     }
@@ -707,7 +704,7 @@ impl<'a> Builder<'a> {
         if compiler.is_snapshot(self) {
             self.initial_rustc.clone()
         } else {
-            self.sysroot(compiler).join("bin").join(exe("rustc", &compiler.host))
+            self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
         }
     }
 
@@ -745,7 +742,7 @@ impl<'a> Builder<'a> {
     ///
     /// Note that this returns `None` if LLVM is disabled, or if we're in a
     /// check build or dry-run, where there's no need to build all of LLVM.
-    fn llvm_config(&self, target: Interned<String>) -> Option<PathBuf> {
+    fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.llvm_enabled() && self.kind != Kind::Check && !self.config.dry_run {
             let llvm_config = self.ensure(native::Llvm { target });
             if llvm_config.is_file() {
@@ -767,7 +764,7 @@ impl<'a> Builder<'a> {
         compiler: Compiler,
         mode: Mode,
         source_type: SourceType,
-        target: Interned<String>,
+        target: TargetSelection,
         cmd: &str,
     ) -> Cargo {
         let mut cargo = Command::new(&self.initial_cargo);
@@ -777,7 +774,7 @@ impl<'a> Builder<'a> {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
                 Mode::Rustc | Mode::ToolRustc | Mode::Codegen => self.compiler_doc_out(target),
-                Mode::Std => out_dir.join(target).join("doc"),
+                Mode::Std => out_dir.join(target.triple).join("doc"),
                 _ => panic!("doc mode {:?} not expected", mode),
             };
             let rustdoc = self.rustdoc(compiler);
@@ -799,7 +796,7 @@ impl<'a> Builder<'a> {
         }
 
         if cmd != "install" {
-            cargo.arg("--target").arg(target);
+            cargo.arg("--target").arg(target.rustc_target_arg());
         } else {
             assert_eq!(target, compiler.host);
         }
@@ -825,7 +822,7 @@ impl<'a> Builder<'a> {
             compiler.stage
         };
 
-        let mut rustflags = Rustflags::new(&target);
+        let mut rustflags = Rustflags::new(target);
         if stage != 0 {
             if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
                 cargo.args(s.split_whitespace());
@@ -998,7 +995,7 @@ impl<'a> Builder<'a> {
         // argument manually via `-C link-args=-Wl,-rpath,...`. Plus isn't it
         // fun to pass a flag to a tool to pass a flag to pass a flag to a tool
         // to change a flag in a binary?
-        if self.config.rust_rpath && util::use_host_linker(&target) {
+        if self.config.rust_rpath && util::use_host_linker(target) {
             let rpath = if target.contains("apple") {
                 // Note that we need to take one extra step on macOS to also pass
                 // `-Wl,-instal_name,@rpath/...` to get things to work right. To
@@ -1026,7 +1023,7 @@ impl<'a> Builder<'a> {
         }
 
         if let Some(target_linker) = self.linker(target, can_use_lld) {
-            let target = crate::envify(&target);
+            let target = crate::envify(&target.triple);
             cargo.env(&format!("CARGO_TARGET_{}_LINKER", target), target_linker);
         }
         if !(["build", "check", "clippy", "fix", "rustc"].contains(&cmd)) && want_rustdoc {
@@ -1200,21 +1197,23 @@ impl<'a> Builder<'a> {
                 }
             };
             let cc = ccacheify(&self.cc(target));
-            cargo.env(format!("CC_{}", target), &cc);
+            cargo.env(format!("CC_{}", target.triple), &cc);
 
             let cflags = self.cflags(target, GitRepo::Rustc).join(" ");
-            cargo.env(format!("CFLAGS_{}", target), cflags.clone());
+            cargo.env(format!("CFLAGS_{}", target.triple), cflags.clone());
 
             if let Some(ar) = self.ar(target) {
                 let ranlib = format!("{} s", ar.display());
-                cargo.env(format!("AR_{}", target), ar).env(format!("RANLIB_{}", target), ranlib);
+                cargo
+                    .env(format!("AR_{}", target.triple), ar)
+                    .env(format!("RANLIB_{}", target.triple), ranlib);
             }
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
                 cargo
-                    .env(format!("CXX_{}", target), &cxx)
-                    .env(format!("CXXFLAGS_{}", target), cflags);
+                    .env(format!("CXX_{}", target.triple), &cxx)
+                    .env(format!("CXXFLAGS_{}", target.triple), cflags);
             }
         }
 
@@ -1248,7 +1247,7 @@ impl<'a> Builder<'a> {
         // Environment variables *required* throughout the build
         //
         // FIXME: should update code to not require this env var
-        cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
+        cargo.env("CFG_COMPILER_HOST_TRIPLE", target.triple);
 
         // Set this for all builds to make sure doc builds also get it.
         cargo.env("CFG_RELEASE_CHANNEL", &self.config.channel);
@@ -1404,7 +1403,7 @@ mod tests;
 struct Rustflags(String);
 
 impl Rustflags {
-    fn new(target: &str) -> Rustflags {
+    fn new(target: TargetSelection) -> Rustflags {
         let mut ret = Rustflags(String::new());
 
         // Inherit `RUSTFLAGS` by default ...
@@ -1412,7 +1411,7 @@ impl Rustflags {
 
         // ... and also handle target-specific env RUSTFLAGS if they're
         // configured.
-        let target_specific = format!("CARGO_TARGET_{}_RUSTFLAGS", crate::envify(target));
+        let target_specific = format!("CARGO_TARGET_{}_RUSTFLAGS", crate::envify(&target.triple));
         ret.env(&target_specific);
 
         ret
