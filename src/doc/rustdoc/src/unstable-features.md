@@ -95,6 +95,14 @@ fn Foo() {}
 
 Note: Because of how `macro_rules` macros are scoped in Rust, the intra-doc links of a `macro_rules` macro will be resolved relative to the crate root, as opposed to the module it is defined in.
 
+Anchors can be used alongside intra-doc link features. It's very useful in case you want to target a trait implementation or any element in the target's page. For example, we want to link to an implementation the `Debug` trait in the `std` documentation:
+
+```rust
+/// The implementation of [`Debug`] on [`CpuidResult`] can be
+/// found [here](Debug#impl-Debug-for-CpuidResult).
+mod foo {}
+```
+
 ## Extensions to the `#[doc]` attribute
 
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler
