@@ -8,7 +8,7 @@ use rustc_hir::def::{
     Namespace::{self, *},
     PerNS, Res,
 };
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
@@ -50,7 +50,8 @@ enum ErrorKind {
 
 struct LinkCollector<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
-    mod_ids: Vec<hir::HirId>,
+    // NOTE: this may not necessarily be a module in the current crate
+    mod_ids: Vec<DefId>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -62,7 +63,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         &self,
         path_str: &str,
         current_item: &Option<String>,
-        module_id: LocalDefId,
+        module_id: DefId,
     ) -> Result<(Res, Option<String>), ErrorKind> {
         let cx = self.cx;
 
@@ -124,7 +125,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     }
 
     /// Resolves a string as a macro.
-    fn macro_resolve(&self, path_str: &str, parent_id: Option<hir::HirId>) -> Option<Res> {
+    fn macro_resolve(&self, path_str: &str, parent_id: Option<DefId>) -> Option<Res> {
         let cx = self.cx;
         let path = ast::Path::from_ident(Ident::from_str(path_str));
         cx.enter_resolver(|resolver| {
@@ -142,8 +143,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             if let Some(res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
                 return Some(res.map_id(|_| panic!("unexpected id")));
             }
-            if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
-                let module_id = cx.tcx.hir().local_def_id(module_id);
+            if let Some(module_id) = parent_id {
                 if let Ok((_, res)) =
                     resolver.resolve_str_path_error(DUMMY_SP, path_str, MacroNS, module_id)
                 {
@@ -167,15 +167,14 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         disambiguator: Option<&str>,
         ns: Namespace,
         current_item: &Option<String>,
-        parent_id: Option<hir::HirId>,
+        parent_id: Option<DefId>,
         extra_fragment: &Option<String>,
         item_opt: Option<&Item>,
     ) -> Result<(Res, Option<String>), ErrorKind> {
         let cx = self.cx;
 
         // In case we're in a module, try to resolve the relative path.
-        if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
-            let module_id = cx.tcx.hir().local_def_id(module_id);
+        if let Some(module_id) = parent_id {
             let result = cx.enter_resolver(|resolver| {
                 resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
             });
@@ -445,40 +444,40 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Option<(Res, T)>>) -> bool {
 
 impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     fn fold_item(&mut self, mut item: Item) -> Option<Item> {
-        let item_hir_id = if item.is_mod() {
-            if let Some(def_id) = item.def_id.as_local() {
-                Some(self.cx.tcx.hir().as_local_hir_id(def_id))
-            } else {
-                debug!("attempting to fold on a non-local item: {:?}", item);
-                return self.fold_item_recur(item);
-            }
-        } else {
+        use rustc_middle::ty::DefIdTree;
+
+        let parent_node = if item.is_fake() {
+            // FIXME: is this correct?
             None
+        } else {
+            let mut current = item.def_id;
+            // The immediate parent might not always be a module.
+            // Find the first parent which is.
+            loop {
+                if let Some(parent) = self.cx.tcx.parent(current) {
+                    if self.cx.tcx.def_kind(parent) == DefKind::Mod {
+                        break Some(parent);
+                    }
+                    current = parent;
+                } else {
+                    break None;
+                }
+            }
         };
 
-        // FIXME: get the resolver to work with non-local resolve scopes.
-        let parent_node = self.cx.as_local_hir_id(item.def_id).and_then(|hir_id| {
-            // FIXME: this fails hard for impls in non-module scope, but is necessary for the
-            // current `resolve()` implementation.
-            match self.cx.as_local_hir_id(self.cx.tcx.parent_module(hir_id).to_def_id()).unwrap() {
-                id if id != hir_id => Some(id),
-                _ => None,
-            }
-        });
-
         if parent_node.is_some() {
-            debug!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
+            trace!("got parent node for {:?} {:?}, id {:?}", item.type_(), item.name, item.def_id);
         }
 
         let current_item = match item.inner {
             ModuleItem(..) => {
                 if item.attrs.inner_docs {
-                    if item_hir_id.unwrap() != hir::CRATE_HIR_ID { item.name.clone() } else { None }
+                    if item.def_id.is_top_level_module() { item.name.clone() } else { None }
                 } else {
-                    match parent_node.or(self.mod_ids.last().cloned()) {
-                        Some(parent) if parent != hir::CRATE_HIR_ID => {
+                    match parent_node.or(self.mod_ids.last().copied()) {
+                        Some(parent) if !parent.is_top_level_module() => {
                             // FIXME: can we pull the parent module's name from elsewhere?
-                            Some(self.cx.tcx.hir().name(parent).to_string())
+                            Some(self.cx.tcx.item_name(parent).to_string())
                         }
                         _ => None,
                     }
@@ -488,18 +487,22 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 for_.def_id().map(|did| self.cx.tcx.item_name(did).to_string())
             }
             // we don't display docs on `extern crate` items anyway, so don't process them.
-            ExternCrateItem(..) => return self.fold_item_recur(item),
+            ExternCrateItem(..) => {
+                debug!("ignoring extern crate item {:?}", item.def_id);
+                return self.fold_item_recur(item);
+            }
             ImportItem(Import::Simple(ref name, ..)) => Some(name.clone()),
             MacroItem(..) => None,
             _ => item.name.clone(),
         };
 
         if item.is_mod() && item.attrs.inner_docs {
-            self.mod_ids.push(item_hir_id.unwrap());
+            self.mod_ids.push(item.def_id);
         }
 
         let cx = self.cx;
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
+        trace!("got documentation '{}'", dox);
 
         look_for_tests(&cx, &dox, &item, true);
 
@@ -541,6 +544,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         });
 
         for (ori_link, link_range) in markdown_links(&dox) {
+            trace!("considering link '{}'", ori_link);
+
             // Bail early for real links.
             if ori_link.contains('/') {
                 continue;
@@ -641,8 +646,11 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 // we've already pushed this node onto the resolution stack but
                 // for outer comments we explicitly try and resolve against the
                 // parent_node first.
-                let base_node =
-                    if item.is_mod() && item.attrs.inner_docs { None } else { parent_node };
+                let base_node = if item.is_mod() && item.attrs.inner_docs {
+                    self.mod_ids.last().copied()
+                } else {
+                    parent_node
+                };
 
                 // replace `Self` with suitable item's parent name
                 if path_str.starts_with("Self::") {
@@ -826,7 +834,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         }
 
         if item.is_mod() && !item.attrs.inner_docs {
-            self.mod_ids.push(item_hir_id.unwrap());
+            self.mod_ids.push(item.def_id);
         }
 
         if item.is_mod() {
@@ -864,6 +872,7 @@ fn build_diagnostic(
         Some(hir_id) => hir_id,
         None => {
             // If non-local, no need to check anything.
+            info!("ignoring warning from parent crate: {}", err_msg);
             return;
         }
     };
