@@ -18,11 +18,11 @@ impl Condvar {
     pub unsafe fn notify_all(&self) {}
 
     pub unsafe fn wait(&self, _mutex: &Mutex) {
-        panic!("can't block with web assembly")
+        panic!("condvar wait not supported")
     }
 
     pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
-        panic!("can't block with web assembly");
+        panic!("condvar wait not supported");
     }
 
     #[inline]
