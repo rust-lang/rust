@@ -932,6 +932,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::hint::unreachable_unchecked`](../../std/hint/fn.unreachable_unchecked.html).
+    #[rustc_const_unstable(feature = "const_unreachable_unchecked", issue = "53188")]
     pub fn unreachable() -> !;
 
     /// Informs the optimizer that a condition is always true.
