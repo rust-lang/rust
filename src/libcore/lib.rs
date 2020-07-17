@@ -151,6 +151,7 @@
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
 #![feature(unsafe_block_in_unsafe_fn)]
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 #[prelude_import]
