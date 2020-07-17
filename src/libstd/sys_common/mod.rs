@@ -51,13 +51,9 @@ pub mod condvar;
 pub mod fs;
 pub mod io;
 pub mod mutex;
-#[cfg(any(doc, // see `mod os`, docs are generated for multiple platforms
-          unix,
-          target_os = "redox",
-          target_os = "cloudabi",
-          target_os = "hermit",
-          target_arch = "wasm32",
-          all(target_vendor = "fortanix", target_env = "sgx")))]
+// `doc` is required because `sys/mod.rs` imports `unix/ext/mod.rs` on Windows
+// when generating documentation.
+#[cfg(any(doc, not(windows)))]
 pub mod os_str_bytes;
 pub mod poison;
 pub mod process;
@@ -74,6 +70,7 @@ cfg_if::cfg_if! {
     if #[cfg(any(target_os = "cloudabi",
                  target_os = "l4re",
                  target_os = "hermit",
+                 feature = "restricted-std",
                  all(target_arch = "wasm32", not(target_os = "emscripten")),
                  all(target_vendor = "fortanix", target_env = "sgx")))] {
         pub use crate::sys::net;

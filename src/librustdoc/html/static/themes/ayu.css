@@ -108,7 +108,7 @@ pre {
 }
 
 .sidebar .version {
-	border-bottom-color: #DDD;
+	border-bottom-color: #424c57;
 }
 
 .sidebar-title {
@@ -198,7 +198,7 @@ pre.rust .comment, pre.rust .doccomment {
 }
 
 nav:not(.sidebar) {
-	border-bottom-color: #e0e0e0;
+	border-bottom-color: #424c57;
 }
 nav.main .current {
 	border-top-color: #5c6773;
@@ -216,10 +216,6 @@ a {
 	color: #39AFD7;
 }
 
-.stab.internal a {
-	color: #304FFE;
-}
-
 .collapse-toggle {
 	color: #999;
 }
@@ -227,22 +223,19 @@ a {
 #crate-search {
 	color: #c5c5c5;
 	background-color: #141920;
-	border-radius: 4px;
-	box-shadow: none;
-	border-color: #5c6773;
+	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
+	border-color: #424c57;
 }
 
 .search-input {
     color: #ffffff;
     background-color: #141920;
-    box-shadow: none;
+    box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
     transition: box-shadow 150ms ease-in-out;
-    border-radius: 4px;
-    margin-left: 8px;
 }
 
 #crate-search+.search-input:focus {
-    box-shadow: 0px 6px 20px 0px black;
+    box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
 }
 
 .search-focus:disabled {
@@ -254,7 +247,6 @@ a {
 }
 
 .stab.unstable,
-.stab.internal,
 .stab.deprecated,
 .stab.portability {
     color: #c5c5c5;
@@ -462,7 +454,6 @@ pre.rust .doccomment {}
 .content .highlighted.type {}
 pre.rust .kw-2,pre.rust .prelude-ty {}
 .content span.trait,.content a.trait,.block a.current.trait {}
-.stab.internal {}
 
 @media (max-width: 700px) {
 	.sidebar-menu {

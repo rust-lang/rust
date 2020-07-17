@@ -4,7 +4,6 @@
 // ignore-emscripten no threads or sockets support
 // ignore-netbsd system ulimit (Too many open files)
 // ignore-openbsd system ulimit (Too many open files)
-// ignore-sgx no thread sleep support
 
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};

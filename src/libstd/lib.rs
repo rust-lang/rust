@@ -198,7 +198,8 @@
 //! [primitive types]: ../book/ch03-02-data-types.html
 //! [rust-discord]: https://discord.gg/rust-lang
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
+#![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/",
@@ -554,3 +555,9 @@ include!("primitive_docs.rs");
 // the rustdoc documentation for the existing keywords. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
 include!("keyword_docs.rs");
+
+// This is required to avoid an unstable error when `restricted-std` is not
+// enabled. The use of #![feature(restricted_std)] in rustc-std-workspace-std
+// is unconditional, so the unstable feature needs to be defined somewhere.
+#[cfg_attr(not(feature = "restricted-std"), unstable(feature = "restricted_std", issue = "none"))]
+mod __restricted_std_workaround {}

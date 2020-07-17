@@ -73,8 +73,8 @@ impl Thread {
         // FIXME: could store this pointer in TLS somewhere
     }
 
-    pub fn sleep(_dur: Duration) {
-        rtabort!("can't sleep"); // FIXME
+    pub fn sleep(dur: Duration) {
+        usercalls::wait_timeout(0, dur, || true);
     }
 
     pub fn join(self) {

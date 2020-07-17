@@ -502,7 +502,8 @@ impl Visitor<'tcx> for Checker<'tcx> {
         match item.kind {
             hir::ItemKind::ExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
-                if item.span.is_dummy() {
+                // `std` is still checked for the `restricted-std` feature.
+                if item.span.is_dummy() && item.ident.as_str() != "std" {
                     return;
                 }
 

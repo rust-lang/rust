@@ -8,7 +8,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{Ident, SymbolStr};
+use rustc_span::symbol::{Ident, Symbol};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -75,7 +75,7 @@ pub struct NonExpressiveNames {
 impl_lint_pass!(NonExpressiveNames => [SIMILAR_NAMES, MANY_SINGLE_CHAR_NAMES, JUST_UNDERSCORES_AND_DIGITS]);
 
 struct ExistingName {
-    interned: SymbolStr,
+    interned: Symbol,
     span: Span,
     len: usize,
     exemptions: &'static [&'static str],
@@ -218,18 +218,19 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             let mut split_at = None;
             match existing_name.len.cmp(&count) {
                 Ordering::Greater => {
-                    if existing_name.len - count != 1 || levenstein_not_1(&interned_name, &existing_name.interned) {
+                    if existing_name.len - count != 1 || levenstein_not_1(&interned_name, &existing_name.interned.as_str()) {
                         continue;
                     }
                 },
                 Ordering::Less => {
-                    if count - existing_name.len != 1 || levenstein_not_1(&existing_name.interned, &interned_name) {
+                    if count - existing_name.len != 1 || levenstein_not_1(&existing_name.interned.as_str(), &interned_name) {
                         continue;
                     }
                 },
                 Ordering::Equal => {
                     let mut interned_chars = interned_name.chars();
-                    let mut existing_chars = existing_name.interned.chars();
+                    let interned_str = existing_name.interned.as_str();
+                    let mut existing_chars = interned_str.chars();
                     let first_i = interned_chars.next().expect("we know we have at least one char");
                     let first_e = existing_chars.next().expect("we know we have at least one char");
                     let eq_or_numeric = |(a, b): (char, char)| a == b || a.is_numeric() && b.is_numeric();
@@ -302,7 +303,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         }
         self.0.names.push(ExistingName {
             exemptions: get_exemptions(&interned_name).unwrap_or(&[]),
-            interned: interned_name,
+            interned: ident.name,
             span: ident.span,
             len: count,
         });

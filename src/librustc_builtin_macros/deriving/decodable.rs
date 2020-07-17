@@ -8,7 +8,7 @@ use rustc_ast::ast;
 use rustc_ast::ast::{Expr, MetaItem, Mutability};
 use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 pub fn expand_deriving_rustc_decodable(
@@ -18,38 +18,37 @@ pub fn expand_deriving_rustc_decodable(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let krate = "rustc_serialize";
-    let typaram = "__D";
+    let krate = sym::rustc_serialize;
+    let typaram = sym::__D;
 
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: Path::new_(vec![krate, "Decodable"], None, vec![], PathKind::Global),
+        path: Path::new_(vec![krate, sym::Decodable], None, vec![], PathKind::Global),
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::decode,
-            generics: LifetimeBounds {
-                lifetimes: Vec::new(),
+            generics: Bounds {
                 bounds: vec![(
                     typaram,
-                    vec![Path::new_(vec![krate, "Decoder"], None, vec![], PathKind::Global)],
+                    vec![Path::new_(vec![krate, sym::Decoder], None, vec![], PathKind::Global)],
                 )],
             },
             explicit_self: None,
             args: vec![(
                 Ptr(Box::new(Literal(Path::new_local(typaram))), Borrowed(None, Mutability::Mut)),
-                "d",
+                sym::d,
             )],
             ret_ty: Literal(Path::new_(
-                pathvec_std!(cx, result::Result),
+                pathvec_std!(result::Result),
                 None,
                 vec![
                     Box::new(Self_),
                     Box::new(Literal(Path::new_(
-                        vec![typaram, "Error"],
+                        vec![typaram, sym::Error],
                         None,
                         vec![],
                         PathKind::Local,
@@ -74,17 +73,17 @@ fn decodable_substructure(
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
-    krate: &str,
+    krate: Symbol,
 ) -> P<Expr> {
     let decoder = substr.nonself_args[0].clone();
     let recurse = vec![
-        cx.ident_of(krate, trait_span),
-        cx.ident_of("Decodable", trait_span),
-        cx.ident_of("decode", trait_span),
+        Ident::new(krate, trait_span),
+        Ident::new(sym::Decodable, trait_span),
+        Ident::new(sym::decode, trait_span),
     ];
     let exprdecode = cx.expr_path(cx.path_global(trait_span, recurse));
     // throw an underscore in front to suppress unused variable warnings
-    let blkarg = cx.ident_of("_d", trait_span);
+    let blkarg = Ident::new(sym::_d, trait_span);
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
 
     match *substr.fields {
@@ -93,7 +92,7 @@ fn decodable_substructure(
                 Unnamed(ref fields, _) => fields.len(),
                 Named(ref fields) => fields.len(),
             };
-            let read_struct_field = cx.ident_of("read_struct_field", trait_span);
+            let read_struct_field = Ident::new(sym::read_struct_field, trait_span);
 
             let path = cx.path_ident(trait_span, substr.type_ident);
             let result =
@@ -116,7 +115,7 @@ fn decodable_substructure(
             cx.expr_method_call(
                 trait_span,
                 decoder,
-                cx.ident_of("read_struct", trait_span),
+                Ident::new(sym::read_struct, trait_span),
                 vec![
                     cx.expr_str(trait_span, substr.type_ident.name),
                     cx.expr_usize(trait_span, nfields),
@@ -125,11 +124,11 @@ fn decodable_substructure(
             )
         }
         StaticEnum(_, ref fields) => {
-            let variant = cx.ident_of("i", trait_span);
+            let variant = Ident::new(sym::i, trait_span);
 
             let mut arms = Vec::with_capacity(fields.len() + 1);
             let mut variants = Vec::with_capacity(fields.len());
-            let rvariant_arg = cx.ident_of("read_enum_variant_arg", trait_span);
+            let rvariant_arg = Ident::new(sym::read_enum_variant_arg, trait_span);
 
             for (i, &(ident, v_span, ref parts)) in fields.iter().enumerate() {
                 variants.push(cx.expr_str(v_span, ident.name));
@@ -164,13 +163,13 @@ fn decodable_substructure(
             let result = cx.expr_method_call(
                 trait_span,
                 blkdecoder,
-                cx.ident_of("read_enum_variant", trait_span),
+                Ident::new(sym::read_enum_variant, trait_span),
                 vec![variant_vec, lambda],
             );
             cx.expr_method_call(
                 trait_span,
                 decoder,
-                cx.ident_of("read_enum", trait_span),
+                Ident::new(sym::read_enum, trait_span),
                 vec![
                     cx.expr_str(trait_span, substr.type_ident.name),
                     cx.lambda1(trait_span, result, blkarg),

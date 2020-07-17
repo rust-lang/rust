@@ -1,7 +1,6 @@
 // run-pass
 // compile-flags:--test
 // ignore-emscripten
-// ignore-sgx no thread sleep support
 
 use std::sync::mpsc::channel;
 use std::sync::mpsc::TryRecvError;
@@ -37,6 +36,8 @@ impl Barrier {
     fn wait(self) {
         self.shared.fetch_add(1, Ordering::SeqCst);
         while self.shared.load(Ordering::SeqCst) != self.count {
+            #[cfg(target_env = "sgx")]
+            thread::yield_now();
         }
     }
 }

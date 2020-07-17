@@ -92,7 +92,7 @@ use crate::deriving::pathvec_std;
 use rustc_ast::ast::{Expr, ExprKind, MetaItem, Mutability};
 use rustc_ast::ptr::P;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
 pub fn expand_deriving_rustc_encodable(
@@ -102,38 +102,42 @@ pub fn expand_deriving_rustc_encodable(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let krate = "rustc_serialize";
-    let typaram = "__S";
+    let krate = sym::rustc_serialize;
+    let typaram = sym::__S;
 
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: Path::new_(vec![krate, "Encodable"], None, vec![], PathKind::Global),
+        path: Path::new_(vec![krate, sym::Encodable], None, vec![], PathKind::Global),
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::encode,
-            generics: LifetimeBounds {
-                lifetimes: Vec::new(),
+            generics: Bounds {
                 bounds: vec![(
                     typaram,
-                    vec![Path::new_(vec![krate, "Encoder"], None, vec![], PathKind::Global)],
+                    vec![Path::new_(vec![krate, sym::Encoder], None, vec![], PathKind::Global)],
                 )],
             },
             explicit_self: borrowed_explicit_self(),
             args: vec![(
                 Ptr(Box::new(Literal(Path::new_local(typaram))), Borrowed(None, Mutability::Mut)),
-                "s",
+                // FIXME: we could use `sym::s` here, but making `s` a static
+                // symbol changes the symbol index ordering in a way that makes
+                // ui/lint/rfc-2457-non-ascii-idents/lint-confusable-idents.rs
+                // fail. The linting code should be fixed so that its output
+                // does not depend on the symbol index ordering.
+                Symbol::intern("s"),
             )],
             ret_ty: Literal(Path::new_(
-                pathvec_std!(cx, result::Result),
+                pathvec_std!(result::Result),
                 None,
                 vec![
                     Box::new(Tuple(Vec::new())),
                     Box::new(Literal(Path::new_(
-                        vec![typaram, "Error"],
+                        vec![typaram, sym::Error],
                         None,
                         vec![],
                         PathKind::Local,
@@ -158,24 +162,24 @@ fn encodable_substructure(
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     substr: &Substructure<'_>,
-    krate: &'static str,
+    krate: Symbol,
 ) -> P<Expr> {
     let encoder = substr.nonself_args[0].clone();
     // throw an underscore in front to suppress unused variable warnings
-    let blkarg = cx.ident_of("_e", trait_span);
+    let blkarg = Ident::new(sym::_e, trait_span);
     let blkencoder = cx.expr_ident(trait_span, blkarg);
     let fn_path = cx.expr_path(cx.path_global(
         trait_span,
         vec![
-            cx.ident_of(krate, trait_span),
-            cx.ident_of("Encodable", trait_span),
-            cx.ident_of("encode", trait_span),
+            Ident::new(krate, trait_span),
+            Ident::new(sym::Encodable, trait_span),
+            Ident::new(sym::encode, trait_span),
         ],
     ));
 
     match *substr.fields {
         Struct(_, ref fields) => {
-            let emit_struct_field = cx.ident_of("emit_struct_field", trait_span);
+            let emit_struct_field = Ident::new(sym::emit_struct_field, trait_span);
             let mut stmts = Vec::new();
             for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
@@ -215,7 +219,7 @@ fn encodable_substructure(
             cx.expr_method_call(
                 trait_span,
                 encoder,
-                cx.ident_of("emit_struct", trait_span),
+                Ident::new(sym::emit_struct, trait_span),
                 vec![
                     cx.expr_str(trait_span, substr.type_ident.name),
                     cx.expr_usize(trait_span, fields.len()),
@@ -231,7 +235,7 @@ fn encodable_substructure(
             // actually exist.
             let me = cx.stmt_let(trait_span, false, blkarg, encoder);
             let encoder = cx.expr_ident(trait_span, blkarg);
-            let emit_variant_arg = cx.ident_of("emit_enum_variant_arg", trait_span);
+            let emit_variant_arg = Ident::new(sym::emit_enum_variant_arg, trait_span);
             let mut stmts = Vec::new();
             if !fields.is_empty() {
                 let last = fields.len() - 1;
@@ -264,7 +268,7 @@ fn encodable_substructure(
             let call = cx.expr_method_call(
                 trait_span,
                 blkencoder,
-                cx.ident_of("emit_enum_variant", trait_span),
+                Ident::new(sym::emit_enum_variant, trait_span),
                 vec![
                     name,
                     cx.expr_usize(trait_span, idx),
@@ -276,7 +280,7 @@ fn encodable_substructure(
             let ret = cx.expr_method_call(
                 trait_span,
                 encoder,
-                cx.ident_of("emit_enum", trait_span),
+                Ident::new(sym::emit_enum, trait_span),
                 vec![cx.expr_str(trait_span, substr.type_ident.name), blk],
             );
             cx.expr_block(cx.block(trait_span, vec![me, cx.stmt_expr(ret)]))

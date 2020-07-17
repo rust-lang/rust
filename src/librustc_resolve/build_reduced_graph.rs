@@ -111,12 +111,17 @@ impl<'a> Resolver<'a> {
             (self.cstore().crate_name_untracked(def_id.krate), None)
         } else {
             let def_key = self.cstore().def_key(def_id);
-            (
-                // This unwrap is safe: crates must always have a name
-                def_key.disambiguated_data.data.get_opt_name().unwrap(),
-                // This unwrap is safe since we know this isn't the root
-                Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })),
-            )
+            let name = def_key
+                .disambiguated_data
+                .data
+                .get_opt_name()
+                .expect("given a DefId that wasn't a module");
+            // This unwrap is safe since we know this isn't the root
+            let parent = Some(self.get_module(DefId {
+                index: def_key.parent.expect("failed to get parent for module"),
+                ..def_id
+            }));
+            (name, parent)
         };
 
         // Allocate and return a new module with the information we found

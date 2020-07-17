@@ -34,6 +34,7 @@ static HOSTS: &[&str] = &[
     "powerpc-unknown-linux-gnu",
     "powerpc64-unknown-linux-gnu",
     "powerpc64le-unknown-linux-gnu",
+    "riscv64gc-unknown-linux-gnu",
     "s390x-unknown-linux-gnu",
     "x86_64-apple-darwin",
     "x86_64-pc-windows-gnu",
