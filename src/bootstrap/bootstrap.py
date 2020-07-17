@@ -349,6 +349,7 @@ class RustBuild(object):
         self.use_vendored_sources = ''
         self.verbose = False
         self.git_version = None
+        self.nix_deps_dir = None
 
     def download_stage0(self):
         """Fetch the build system for Rust, written in Rust
@@ -440,8 +441,7 @@ class RustBuild(object):
             get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
         unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
 
-    @staticmethod
-    def fix_executable(fname):
+    def fix_executable(self, fname):
         """Modifies the interpreter section of 'fname' to fix the dynamic linker
 
         This method is only required on NixOS and uses the PatchELF utility to
@@ -472,38 +472,49 @@ class RustBuild(object):
         nix_os_msg = "info: you seem to be running NixOS. Attempting to patch"
         print(nix_os_msg, fname)
 
-        try:
-            interpreter = subprocess.check_output(
-                ["patchelf", "--print-interpreter", fname])
-            interpreter = interpreter.strip().decode(default_encoding)
-        except subprocess.CalledProcessError as reason:
-            print("warning: failed to call patchelf:", reason)
-            return
+        # Only build `stage0/.nix-deps` once.
+        nix_deps_dir = self.nix_deps_dir
+        if not nix_deps_dir:
+            nix_deps_dir = "{}/.nix-deps".format(self.bin_root())
+            if not os.path.exists(nix_deps_dir):
+                os.makedirs(nix_deps_dir)
 
-        loader = interpreter.split("/")[-1]
+            nix_deps = [
+                # Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
+                "stdenv.cc.bintools",
 
-        try:
-            ldd_output = subprocess.check_output(
-                ['ldd', '/run/current-system/sw/bin/sh'])
-            ldd_output = ldd_output.strip().decode(default_encoding)
-        except subprocess.CalledProcessError as reason:
-            print("warning: unable to call ldd:", reason)
-            return
+                # Needed for patching ELF binaries (see doc comment above).
+                "patchelf",
+            ]
 
-        for line in ldd_output.splitlines():
-            libname = line.split()[0]
-            if libname.endswith(loader):
-                loader_path = libname[:len(libname) - len(loader)]
-                break
-        else:
-            print("warning: unable to find the path to the dynamic linker")
-            return
+            # Run `nix-build` to "build" each dependency (which will likely reuse
+            # the existing `/nix/store` copy, or at most download a pre-built copy).
+            # Importantly, we don't rely on `nix-build` printing the `/nix/store`
+            # path on stdout, but use `-o` to symlink it into `stage0/.nix-deps/$dep`,
+            # ensuring garbage collection will never remove the `/nix/store` path
+            # (which would break our patched binaries that hardcode those paths).
+            for dep in nix_deps:
+                try:
+                    subprocess.check_output([
+                        "nix-build", "<nixpkgs>",
+                        "-A", dep,
+                        "-o", "{}/{}".format(nix_deps_dir, dep),
+                    ])
+                except subprocess.CalledProcessError as reason:
+                    print("warning: failed to call nix-build:", reason)
+                    return
 
-        correct_interpreter = loader_path + loader
+            self.nix_deps_dir = nix_deps_dir
+
+        patchelf = "{}/patchelf/bin/patchelf".format(nix_deps_dir)
+        bintools_dir = "{}/stdenv.cc.bintools".format(nix_deps_dir)
+
+        with open("{}/nix-support/dynamic-linker".format(bintools_dir)) as dynamic_linker:
+            interpreter = dynamic_linker.read().rstrip()
 
         try:
             subprocess.check_output(
-                ["patchelf", "--set-interpreter", correct_interpreter, fname])
+                [patchelf, "--set-interpreter", interpreter, fname])
         except subprocess.CalledProcessError as reason:
             print("warning: failed to call patchelf:", reason)
             return
