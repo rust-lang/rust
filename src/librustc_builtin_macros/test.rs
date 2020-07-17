@@ -108,22 +108,38 @@ pub fn expand_test_or_bench(
     let test_id = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
-    let test_path = |name| cx.path(sp, vec![test_id, cx.ident_of(name, sp)]);
+    let test_path = |name| cx.path(sp, vec![test_id, Ident::from_str_and_span(name, sp)]);
 
     // creates test::ShouldPanic::$name
-    let should_panic_path =
-        |name| cx.path(sp, vec![test_id, cx.ident_of("ShouldPanic", sp), cx.ident_of(name, sp)]);
+    let should_panic_path = |name| {
+        cx.path(
+            sp,
+            vec![
+                test_id,
+                Ident::from_str_and_span("ShouldPanic", sp),
+                Ident::from_str_and_span(name, sp),
+            ],
+        )
+    };
 
     // creates test::TestType::$name
-    let test_type_path =
-        |name| cx.path(sp, vec![test_id, cx.ident_of("TestType", sp), cx.ident_of(name, sp)]);
+    let test_type_path = |name| {
+        cx.path(
+            sp,
+            vec![
+                test_id,
+                Ident::from_str_and_span("TestType", sp),
+                Ident::from_str_and_span(name, sp),
+            ],
+        )
+    };
 
     // creates $name: $expr
-    let field = |name, expr| cx.field_imm(sp, cx.ident_of(name, sp), expr);
+    let field = |name, expr| cx.field_imm(sp, Ident::from_str_and_span(name, sp), expr);
 
     let test_fn = if is_bench {
         // A simple ident for a lambda
-        let b = cx.ident_of("b", attr_sp);
+        let b = Ident::from_str_and_span("b", attr_sp);
 
         cx.expr_call(
             sp,
