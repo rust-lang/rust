@@ -254,6 +254,28 @@ pub fn classify_name_ref(
         }
     }
 
+    if ast::AssocTypeArg::cast(parent.clone()).is_some() {
+        // `Trait<Assoc = Ty>`
+        //        ^^^^^
+        let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
+        let resolved = sema.resolve_path(&path)?;
+        if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved {
+            if let Some(ty) = tr
+                .items(sema.db)
+                .iter()
+                .filter_map(|assoc| match assoc {
+                    hir::AssocItem::TypeAlias(it) => Some(*it),
+                    _ => None,
+                })
+                .find(|alias| alias.name(sema.db).to_string() == **name_ref.text())
+            {
+                return Some(NameRefClass::Definition(Definition::ModuleDef(
+                    ModuleDef::TypeAlias(ty),
+                )));
+            }
+        }
+    }
+
     if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
         if let Some(path) = macro_call.path() {
             if path.qualifier().is_none() {
