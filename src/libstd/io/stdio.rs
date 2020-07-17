@@ -891,11 +891,8 @@ impl fmt::Debug for StderrLock<'_> {
 /// #![feature(prompt)]
 /// use std::io::prompt;
 ///
-/// fn main() {
-///     let name = prompt("Enter name: ").expect("input failed!");
-///
-///     println!("Your name is {}!", name);
-/// }
+/// let name = prompt("Enter name: ").expect("input failed");
+/// println!("Your name is {}!", name);
 /// ```
 #[unstable(
     feature = "prompt",
