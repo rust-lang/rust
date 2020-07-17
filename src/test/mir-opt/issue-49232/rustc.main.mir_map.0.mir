@@ -79,13 +79,6 @@ fn main() -> () {
     }
 
     bb10: {
-        _4 = const ();                   // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
-                                         // ty::Const
-                                         // + ty: ()
-                                         // + val: Value(Scalar(<ZST>))
-                                         // mir::Constant
-                                         // + span: $DIR/issue-49232.rs:10:25: 10:30
-                                         // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
         unreachable;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 

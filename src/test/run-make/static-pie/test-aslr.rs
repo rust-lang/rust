@@ -29,7 +29,7 @@ fn main() {
         }
         Some(s) if s.eq("--test-aslr") => {
             let cnt = run_self(&arg0);
-            if cnt != NUM_RUNS {
+            if cnt == 1 {
                 eprintln!("FAIL: {} most likely no ASLR", arg0);
                 std::process::exit(1);
             }

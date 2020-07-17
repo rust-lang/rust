@@ -10,7 +10,8 @@ body {
 	color: #c5c5c5;
 }
 
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
+h4:not(.method):not(.type):not(.tymethod) {
 	color: white;
 }
 h1.fqn {
@@ -41,13 +42,13 @@ h3 > code, h4 > code, h5 > code {
 	color: #e6e1cf;
 }
 pre > code {
-    color: #e6e1cf; 
+	color: #e6e1cf;
 }
 span code {
-    color: #e6e1cf;
+	color: #e6e1cf;
 }
 .docblock a > code {
-    color: #39AFD7 !important;
+	color: #39AFD7 !important;
 }
 .docblock code, .docblock-short code {
 	background-color: #191f26;
@@ -100,11 +101,11 @@ pre {
 }
 
 .sidebar-elems .location {
-    color: #ff7733;
+	color: #ff7733;
 }
 
 .sidebar-elems .location a {
-    color: #fff;
+	color: #fff;
 }
 
 .sidebar .version {
@@ -123,9 +124,9 @@ pre {
 
 .line-numbers span { color: #5c6773ab; }
 .line-numbers .line-highlighted {
-    background-color: rgba(255, 236, 164, 0.06) !important;
-    padding-right: 4px;
-    border-right: 1px solid #ffb44c;
+	background-color: rgba(255, 236, 164, 0.06) !important;
+	padding-right: 4px;
+	border-right: 1px solid #ffb44c;
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
@@ -168,31 +169,31 @@ pre {
 .content span.keyword, .content a.keyword { color: #de5249; }
 
 .content span.externcrate, .content span.mod, .content a.mod {
-    color: #acccf9;
+	color: #acccf9;
 }
 .content span.struct, .content a.struct {
-    color: #ffa0a5;
+	color: #ffa0a5;
 }
 .content span.enum, .content a.enum {
-    color: #99e0c9;
+	color: #99e0c9;
 }
 .content span.trait, .content a.trait {
-    color: #39AFD7;
+	color: #39AFD7;
 }
 .content span.type, .content a.type {
-    color: #cfbcf5;
+	color: #cfbcf5;
 }
 .content span.fn, .content a.fn, .content span.method,
 .content a.method, .content span.tymethod,
 .content a.tymethod, .content .fnname {
-    color: #fdd687;
+	color: #fdd687;
 }
 .content span.attr, .content a.attr, .content span.derive,
 .content a.derive, .content span.macro, .content a.macro {
-    color: #a37acc;
+	color: #a37acc;
 }
 
-pre.rust .comment, pre.rust .doccomment { 
+pre.rust .comment, pre.rust .doccomment {
 	color: #788797;
 	font-style: italic;
 }
@@ -228,14 +229,24 @@ a {
 }
 
 .search-input {
-    color: #ffffff;
-    background-color: #141920;
-    box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
-    transition: box-shadow 150ms ease-in-out;
+	color: #ffffff;
+	background-color: #141920;
+	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
+	transition: box-shadow 150ms ease-in-out;
 }
 
 #crate-search+.search-input:focus {
-    box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
+	box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
+	color: #ffffff;
+	background-color: #141920;
+	box-shadow: none;
+	transition: box-shadow 150ms ease-in-out;
+	border-radius: 4px;
+	margin-left: 8px;
+}
+
+#crate-search+.search-input:focus {
+	box-shadow: 0px 6px 20px 0px black;
 }
 
 .search-focus:disabled {
@@ -249,7 +260,7 @@ a {
 .stab.unstable,
 .stab.deprecated,
 .stab.portability {
-    color: #c5c5c5;
+	color: #c5c5c5;
 	background: #314559 !important;
 	border-style: none !important;
 	border-radius: 4px;
@@ -262,10 +273,10 @@ a {
 }
 
 #help > div {
-    background: #14191f;
-    box-shadow: 0px 6px 20px 0px black;
-    border: none;
-    border-radius: 4px;
+	background: #14191f;
+	box-shadow: 0px 6px 20px 0px black;
+	border: none;
+	border-radius: 4px;
 }
 
 .since {
@@ -288,14 +299,14 @@ pre.rust .question-mark {
 	color: #ff9011;
 }
 pre.rust .self {
-    color: #36a3d9;
-    font-style: italic;
+	color: #36a3d9;
+	font-style: italic;
 }
 pre.rust .attribute {
-    color: #e6e1cf;
+	color: #e6e1cf;
 }
 pre.rust .attribute .ident, pre.rust .attribute .op {
-    color: #e6e1cf;
+	color: #e6e1cf;
 }
 
 .example-wrap > pre.line-number {
@@ -304,15 +315,15 @@ pre.rust .attribute .ident, pre.rust .attribute .op {
 }
 
 a.test-arrow {
-    font-size: 100%;
-    color: #788797;
-    border-radius: 4px;
-    background-color: rgba(255, 255, 255, 0);
+	font-size: 100%;
+	color: #788797;
+	border-radius: 4px;
+	background-color: rgba(255, 255, 255, 0);
 }
 
 a.test-arrow:hover {
-    background-color: rgba(242, 151, 24, 0.05);
-    color: #ffb44c;
+	background-color: rgba(242, 151, 24, 0.05);
+	color: #ffb44c;
 }
 
 .toggle-label {
@@ -377,9 +388,9 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .tooltip .tooltiptext {
-    background-color: #314559;
-    color: #c5c5c5;
-    border: 1px solid #5c6773;
+	background-color: #314559;
+	color: #c5c5c5;
+	border: 1px solid #5c6773;
 }
 
 .tooltip .tooltiptext::after {
@@ -387,12 +398,12 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .important-traits-tooltiptext {
-    background-color: #314559;
-    border-color: #5c6773;
+	background-color: #314559;
+	border-color: #5c6773;
 }
 
 #titles > div.selected {
-    background-color: #141920 !important;
+	background-color: #141920 !important;
 	border-bottom: 1px solid #ffb44c !important;
 	border-top: none;
 }
@@ -403,7 +414,7 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 #titles > div:hover {
-    border-bottom: 1px solid rgba(242, 151, 24, 0.3);
+	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
 #titles > div > div.count {
@@ -413,12 +424,13 @@ pre.ignore:hover, .information:hover + pre.ignore {
 /* rules that this theme does not need to set, here to satisfy the rule checker */
 /* note that a lot of these are partially set in some way (meaning they are set
 individually rather than as a group) */
-/* TODO: these rules should be at the bottom of the file but currently must be
+/* FIXME: these rules should be at the bottom of the file but currently must be
 above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 /* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
 .content .highlighted.mod, .content .highlighted.externcrate {}
 .search-input:focus {}
-.content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,.block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
+.content span.attr,.content a.attr,.block a.current.attr,.content span.derive,.content a.derive,
+.block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
 .content .highlighted.trait {}
 .content span.struct,.content a.struct,.block a.current.struct {}
 #titles>div:hover,#titles>div.selected {}
@@ -433,16 +445,20 @@ pre.rust .lifetime {}
 .content .highlighted.fn,.content .highlighted.method,.content .highlighted.tymethod {}
 h2,h3:not(.impl):not(.method):not(.type):not(.tymethod),h4:not(.method):not(.type):not(.tymethod) {}
 .content span.enum,.content a.enum,.block a.current.enum {}
-.content span.constant,.content a.constant,.block a.current.constant,.content span.static,.content a.static,.block a.current.static {}
+.content span.constant,.content a.constant,.block a.current.constant,.content span.static,
+.content a.static,.block a.current.static {}
 .content span.keyword,.content a.keyword,.block a.current.keyword {}
 pre.rust .comment {}
 .content .highlighted.enum {}
 .content .highlighted.struct {}
 .content .highlighted.keyword {}
 .content span.traitalias,.content a.traitalias,.block a.current.traitalias {}
-.content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,.block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,.content .fnname {}
+.content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,
+.block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
+.content .fnname {}
 pre.rust .kw {}
-pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute,pre.rust .attribute .ident {}
+pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute,
+pre.rust .attribute .ident {}
 .content span.foreigntype,.content a.foreigntype,.block a.current.foreigntype {}
 pre.rust .doccomment {}
 .stab.deprecated {}
@@ -483,11 +499,11 @@ kbd {
 
 #theme-picker, #settings-menu {
 	border-color: #5c6773;
-    background-color: #0f1419;
+	background-color: #0f1419;
 }
 
 #theme-picker > img, #settings-menu > img {
-    filter: invert(100);
+	filter: invert(100);
 }
 
 #theme-picker:hover, #theme-picker:focus,

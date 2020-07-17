@@ -10,8 +10,7 @@ use std::process;
 use getopts::Options;
 
 use crate::builder::Builder;
-use crate::cache::{Interned, INTERNER};
-use crate::config::Config;
+use crate::config::{Config, TargetSelection};
 use crate::{Build, DocTests};
 
 /// Deserialized version of all flags for this compile.
@@ -21,8 +20,8 @@ pub struct Flags {
     pub stage: Option<u32>,
     pub keep_stage: Vec<u32>,
 
-    pub host: Vec<Interned<String>>,
-    pub target: Vec<Interned<String>>,
+    pub host: Vec<TargetSelection>,
+    pub target: Vec<TargetSelection>,
     pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
@@ -532,11 +531,11 @@ Arguments:
                 .collect(),
             host: split(&matches.opt_strs("host"))
                 .into_iter()
-                .map(|x| INTERNER.intern_string(x))
+                .map(|x| TargetSelection::from_user(&x))
                 .collect::<Vec<_>>(),
             target: split(&matches.opt_strs("target"))
                 .into_iter()
-                .map(|x| INTERNER.intern_string(x))
+                .map(|x| TargetSelection::from_user(&x))
                 .collect::<Vec<_>>(),
             config: cfg_file,
             jobs: matches.opt_str("jobs").map(|j| j.parse().expect("`jobs` should be a number")),

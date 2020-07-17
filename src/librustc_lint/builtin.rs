@@ -1922,6 +1922,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             None
         }
 
+        /// Test if this enum has several actually "existing" variants.
+        /// Zero-sized uninhabited variants do not always have a tag assigned and thus do not "exist".
+        fn is_multi_variant(adt: &ty::AdtDef) -> bool {
+            // As an approximation, we only count dataless variants. Those are definitely inhabited.
+            let existing_variants = adt.variants.iter().filter(|v| v.fields.is_empty()).count();
+            existing_variants > 1
+        }
+
         /// Return `Some` only if we are sure this type does *not*
         /// allow zero initialization.
         fn ty_find_init_error<'tcx>(
@@ -1950,7 +1958,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 }
                 // Recurse and checks for some compound types.
                 Adt(adt_def, substs) if !adt_def.is_union() => {
-                    // First check f this ADT has a layout attribute (like `NonNull` and friends).
+                    // First check if this ADT has a layout attribute (like `NonNull` and friends).
                     use std::ops::Bound;
                     match tcx.layout_scalar_valid_range(adt_def.did) {
                         // We exploit here that `layout_scalar_valid_range` will never
@@ -2001,10 +2009,20 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                                 )
                             })
                         }
-                        // Multi-variant enums are tricky: if all but one variant are
-                        // uninhabited, we might actually do layout like for a single-variant
-                        // enum, and then even leaving them uninitialized could be okay.
-                        _ => None, // Conservative fallback for multi-variant enum.
+                        // Multi-variant enum.
+                        _ => {
+                            if init == InitKind::Uninit && is_multi_variant(adt_def) {
+                                let span = tcx.def_span(adt_def.did);
+                                Some((
+                                    "enums have to be initialized to a variant".to_string(),
+                                    Some(span),
+                                ))
+                            } else {
+                                // In principle, for zero-initialization we could figure out which variant corresponds
+                                // to tag 0, and check that... but for now we just accept all zero-initializations.
+                                None
+                            }
+                        }
                     }
                 }
                 Tuple(..) => {

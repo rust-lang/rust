@@ -19,8 +19,8 @@ use std::process::Command;
 use build_helper::{output, t};
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
-use crate::cache::Interned;
 use crate::channel;
+use crate::config::TargetSelection;
 use crate::util::{self, exe};
 use crate::GitRepo;
 use build_helper::up_to_date;
@@ -41,7 +41,7 @@ pub struct Meta {
 // if not).
 pub fn prebuilt_llvm_config(
     builder: &Builder<'_>,
-    target: Interned<String>,
+    target: TargetSelection,
 ) -> Result<PathBuf, Meta> {
     // If we're using a custom LLVM bail out here, but we can only use a
     // custom LLVM for the build triple.
@@ -54,13 +54,14 @@ pub fn prebuilt_llvm_config(
 
     let root = "src/llvm-project/llvm";
     let out_dir = builder.llvm_out(target);
+
     let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
     if !builder.config.build.contains("msvc") || builder.config.ninja {
         llvm_config_ret_dir.push("build");
     }
     llvm_config_ret_dir.push("bin");
 
-    let build_llvm_config = llvm_config_ret_dir.join(exe("llvm-config", &*builder.config.build));
+    let build_llvm_config = llvm_config_ret_dir.join(exe("llvm-config", builder.config.build));
 
     let stamp = out_dir.join("llvm-finished-building");
     let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
@@ -93,7 +94,7 @@ pub fn prebuilt_llvm_config(
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for Llvm {
@@ -115,9 +116,9 @@ impl Step for Llvm {
         let target_native = if self.target.starts_with("riscv") {
             // RISC-V target triples in Rust is not named the same as C compiler target triples.
             // This converts Rust RISC-V target triples to C compiler triples.
-            let idx = target.find('-').unwrap();
+            let idx = target.triple.find('-').unwrap();
 
-            format!("riscv{}{}", &target[5..7], &target[idx..])
+            format!("riscv{}{}", &target.triple[5..7], &target.triple[idx..])
         } else {
             target.to_string()
         };
@@ -359,7 +360,7 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
 
 fn configure_cmake(
     builder: &Builder<'_>,
-    target: Interned<String>,
+    target: TargetSelection,
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
 ) {
@@ -375,7 +376,7 @@ fn configure_cmake(
     if builder.config.ninja {
         cfg.generator("Ninja");
     }
-    cfg.target(&target).host(&builder.config.build);
+    cfg.target(&target.triple).host(&builder.config.build.triple);
 
     let sanitize_cc = |cc: &Path| {
         if target.contains("msvc") {
@@ -405,7 +406,7 @@ fn configure_cmake(
         cfg.define("CMAKE_C_COMPILER", sanitize_cc(&wrap_cc))
             .define("CMAKE_CXX_COMPILER", sanitize_cc(&wrap_cc));
         cfg.env("SCCACHE_PATH", builder.config.ccache.as_ref().unwrap())
-            .env("SCCACHE_TARGET", target)
+            .env("SCCACHE_TARGET", target.triple)
             .env("SCCACHE_CC", &cc)
             .env("SCCACHE_CXX", &cxx);
 
@@ -505,7 +506,7 @@ fn configure_cmake(
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Lld {
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for Lld {
@@ -578,8 +579,8 @@ impl Step for Lld {
         // brittle and will break over time. If anyone knows better how to
         // cross-compile LLD it would be much appreciated to fix this!
         if target != builder.config.build {
-            cfg.env("LLVM_CONFIG_SHIM_REPLACE", &builder.config.build)
-                .env("LLVM_CONFIG_SHIM_REPLACE_WITH", &target)
+            cfg.env("LLVM_CONFIG_SHIM_REPLACE", &builder.config.build.triple)
+                .env("LLVM_CONFIG_SHIM_REPLACE_WITH", &target.triple)
                 .define(
                     "LLVM_TABLEGEN_EXE",
                     llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
@@ -599,7 +600,7 @@ impl Step for Lld {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TestHelpers {
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for TestHelpers {
@@ -646,8 +647,8 @@ impl Step for TestHelpers {
 
         cfg.cargo_metadata(false)
             .out_dir(&dst)
-            .target(&target)
-            .host(&builder.config.build)
+            .target(&target.triple)
+            .host(&builder.config.build.triple)
             .opt_level(0)
             .warnings(false)
             .debug(false)
@@ -658,7 +659,7 @@ impl Step for TestHelpers {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Sanitizers {
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for Sanitizers {
@@ -709,7 +710,7 @@ impl Step for Sanitizers {
 
         let mut cfg = cmake::Config::new(&compiler_rt_dir);
         cfg.profile("Release");
-        cfg.define("CMAKE_C_COMPILER_TARGET", self.target);
+        cfg.define("CMAKE_C_COMPILER_TARGET", self.target.triple);
         cfg.define("COMPILER_RT_BUILD_BUILTINS", "OFF");
         cfg.define("COMPILER_RT_BUILD_CRT", "OFF");
         cfg.define("COMPILER_RT_BUILD_LIBFUZZER", "OFF");
@@ -752,7 +753,7 @@ pub struct SanitizerRuntime {
 /// Returns sanitizers available on a given target.
 fn supported_sanitizers(
     out_dir: &Path,
-    target: Interned<String>,
+    target: TargetSelection,
     channel: &str,
 ) -> Vec<SanitizerRuntime> {
     let darwin_libs = |os: &str, components: &[&str]| -> Vec<SanitizerRuntime> {
@@ -778,7 +779,7 @@ fn supported_sanitizers(
             .collect()
     };
 
-    match &*target {
+    match &*target.triple {
         "aarch64-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan"])
