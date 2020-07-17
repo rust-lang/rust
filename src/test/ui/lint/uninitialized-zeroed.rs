@@ -23,6 +23,18 @@ enum WrapEnum<T> { Wrapped(T) }
 #[repr(transparent)]
 pub(crate) struct NonBig(u64);
 
+/// A two-variant enum, thus needs a tag and may not remain uninitialized.
+enum Fruit {
+    Apple,
+    Banana,
+}
+
+/// Looks like two variants but really only has one.
+enum OneFruit {
+    Apple(!),
+    Banana,
+}
+
 #[allow(unused)]
 fn generic<T: 'static>() {
     unsafe {
@@ -80,6 +92,9 @@ fn main() {
         let _val: NonBig = mem::zeroed();
         let _val: NonBig = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
+        let _val: Fruit = mem::zeroed();
+        let _val: Fruit = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
         // Transmute-from-0
         let _val: &'static i32 = mem::transmute(0usize); //~ ERROR: does not permit zero-initialization
         let _val: &'static [i32] = mem::transmute((0usize, 0usize)); //~ ERROR: does not permit zero-initialization
@@ -96,5 +111,9 @@ fn main() {
         let _val: MaybeUninit<&'static i32> = mem::zeroed();
         let _val: i32 = mem::zeroed();
         let _val: bool = MaybeUninit::zeroed().assume_init();
+        // Some things that happen to work due to rustc implementation details,
+        // but are not guaranteed to keep working.
+        let _val: i32 = mem::uninitialized();
+        let _val: OneFruit = mem::uninitialized();
     }
 }
