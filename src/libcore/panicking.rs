@@ -36,7 +36,7 @@ use crate::panic::{Location, PanicInfo};
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[track_caller]
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
-pub fn panic(expr: &str) -> ! {
+pub fn panic(expr: &'static str) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }

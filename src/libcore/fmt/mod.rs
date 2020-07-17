@@ -324,7 +324,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
-    pub fn new_v1(pieces: &'a [&'a str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
+    pub fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments { pieces, fmt: None, args }
     }
 
@@ -338,7 +338,7 @@ impl<'a> Arguments<'a> {
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new_v1_formatted(
-        pieces: &'a [&'a str],
+        pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
         fmt: &'a [rt::v1::Argument],
     ) -> Arguments<'a> {
@@ -399,7 +399,7 @@ impl<'a> Arguments<'a> {
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
-    pieces: &'a [&'a str],
+    pieces: &'a [&'static str],
 
     // Placeholder specs, or `None` if all specs are default (as in "{}{}").
     fmt: Option<&'a [rt::v1::Argument]>,
@@ -407,6 +407,47 @@ pub struct Arguments<'a> {
     // Dynamic arguments for interpolation, to be interleaved with string
     // pieces. (Every argument is preceded by a string piece.)
     args: &'a [ArgumentV1<'a>],
+}
+
+impl<'a> Arguments<'a> {
+    /// Get the formatted string, if it has no arguments to be formatted.
+    ///
+    /// This can be used to avoid allocations in the most trivial case.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(fmt_as_str)]
+    ///
+    /// use core::fmt::Arguments;
+    ///
+    /// fn write_str(_: &str) { /* ... */ }
+    ///
+    /// fn write_fmt(args: &Arguments) {
+    ///     if let Some(s) = args.as_str() {
+    ///         write_str(s)
+    ///     } else {
+    ///         write_str(&args.to_string());
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// #![feature(fmt_as_str)]
+    ///
+    /// assert_eq!(format_args!("hello").as_str(), Some("hello"));
+    /// assert_eq!(format_args!("").as_str(), Some(""));
+    /// assert_eq!(format_args!("{}", 1).as_str(), None);
+    /// ```
+    #[unstable(feature = "fmt_as_str", issue = "74442")]
+    #[inline]
+    pub fn as_str(&self) -> Option<&'static str> {
+        match (self.pieces, self.args) {
+            ([], []) => Some(""),
+            ([s], []) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
