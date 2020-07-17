@@ -34,6 +34,9 @@ where
     ///
     /// When this flag is set, we need to reset to an entry set before doing a seek.
     state_needs_reset: bool,
+
+    #[cfg(debug_assertions)]
+    reachable_blocks: BitSet<BasicBlock>,
 }
 
 impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
@@ -55,6 +58,9 @@ where
             state_needs_reset: true,
             state: BitSet::new_empty(bits_per_block),
             pos: CursorPosition::block_entry(mir::START_BLOCK),
+
+            #[cfg(debug_assertions)]
+            reachable_blocks: mir::traversal::reachable_as_bitset(body),
         }
     }
 
@@ -85,6 +91,9 @@ where
     ///
     /// For backward dataflow analyses, this is the dataflow state after the terminator.
     pub(super) fn seek_to_block_entry(&mut self, block: BasicBlock) {
+        #[cfg(debug_assertions)]
+        assert!(self.reachable_blocks.contains(block));
+
         self.state.overwrite(&self.results.borrow().entry_set_for_block(block));
         self.pos = CursorPosition::block_entry(block);
         self.state_needs_reset = false;
