@@ -418,7 +418,7 @@ fn orphan_check_trait_ref<'tcx>(
                 .substs
                 .types()
                 .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-                .find(|ty| ty_is_non_local_constructor(ty, in_crate).is_none());
+                .find(|ty| ty_is_local_constructor(ty, in_crate));
 
             debug!("orphan_check_trait_ref: uncovered ty local_type: `{:?}`", local_type);
 
@@ -435,20 +435,16 @@ fn orphan_check_trait_ref<'tcx>(
     Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
 }
 
+// FIXME: Return a `Vec` without `Option` here.
 fn ty_is_non_local(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Option<Vec<Ty<'tcx>>> {
-    match ty_is_non_local_constructor(ty, in_crate) {
-        Some(ty) => {
-            if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
-                let tys: Vec<_> = inner_tys
-                    .filter_map(|ty| ty_is_non_local(tcx, ty, in_crate))
-                    .flatten()
-                    .collect();
-                if tys.is_empty() { None } else { Some(tys) }
-            } else {
-                Some(vec![ty])
-            }
-        }
-        None => None,
+    if ty_is_local_constructor(ty, in_crate) {
+        None
+    } else if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
+        let tys: Vec<_> =
+            inner_tys.filter_map(|ty| ty_is_non_local(tcx, ty, in_crate)).flatten().collect();
+        if tys.is_empty() { None } else { Some(tys) }
+    } else {
+        Some(vec![ty])
     }
 }
 
@@ -493,8 +489,7 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     }
 }
 
-// FIXME(eddyb) this can just return `bool` as it always returns `Some(ty)` or `None`.
-fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> {
+fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
     debug!("ty_is_non_local_constructor({:?})", ty);
 
     match ty.kind {
@@ -513,29 +508,17 @@ fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> 
         | ty::Never
         | ty::Tuple(..)
         | ty::Param(..)
-        | ty::Projection(..) => Some(ty),
+        | ty::Projection(..) => false,
 
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => match in_crate {
-            InCrate::Local => Some(ty),
+            InCrate::Local => false,
             // The inference variable might be unified with a local
             // type in that remote crate.
-            InCrate::Remote => None,
+            InCrate::Remote => true,
         },
 
-        ty::Adt(def, _) => {
-            if def_id_is_local(def.did, in_crate) {
-                None
-            } else {
-                Some(ty)
-            }
-        }
-        ty::Foreign(did) => {
-            if def_id_is_local(did, in_crate) {
-                None
-            } else {
-                Some(ty)
-            }
-        }
+        ty::Adt(def, _) => def_id_is_local(def.did, in_crate),
+        ty::Foreign(did) => def_id_is_local(did, in_crate),
         ty::Opaque(..) => {
             // This merits some explanation.
             // Normally, opaque types are not involed when performing
@@ -553,7 +536,7 @@ fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> 
             // the underlying type *within the same crate*. When an
             // opaque type is used from outside the module
             // where it is declared, it should be impossible to observe
-            // anyything about it other than the traits that it implements.
+            // anything about it other than the traits that it implements.
             //
             // The alternative would be to look at the underlying type
             // to determine whether or not the opaque type itself should
@@ -562,18 +545,18 @@ fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> 
             // to a remote type. This would violate the rule that opaque
             // types should be completely opaque apart from the traits
             // that they implement, so we don't use this behavior.
-            Some(ty)
+            false
         }
 
         ty::Dynamic(ref tt, ..) => {
             if let Some(principal) = tt.principal() {
-                if def_id_is_local(principal.def_id(), in_crate) { None } else { Some(ty) }
+                def_id_is_local(principal.def_id(), in_crate)
             } else {
-                Some(ty)
+                false
             }
         }
 
-        ty::Error(_) => None,
+        ty::Error(_) => true,
 
         ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
