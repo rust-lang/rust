@@ -33,14 +33,13 @@
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
-use crate::mem_categorization as mc;
-use crate::mem_categorization::PlaceBase;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
+use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId};
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc_span::{Span, Symbol};
 
@@ -276,7 +275,7 @@ struct InferBorrowKind<'a, 'tcx> {
 impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     fn adjust_upvar_borrow_kind_for_consume(
         &mut self,
-        place_with_id: &mc::PlaceWithHirId<'tcx>,
+        place_with_id: &PlaceWithHirId<'tcx>,
         mode: euv::ConsumeMode,
     ) {
         debug!(
@@ -315,7 +314,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     /// Indicates that `place_with_id` is being directly mutated (e.g., assigned
     /// to). If the place is based on a by-ref upvar, this implies that
     /// the upvar must be borrowed using an `&mut` borrow.
-    fn adjust_upvar_borrow_kind_for_mut(&mut self, place_with_id: &mc::PlaceWithHirId<'tcx>) {
+    fn adjust_upvar_borrow_kind_for_mut(&mut self, place_with_id: &PlaceWithHirId<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_mut(place_with_id={:?})", place_with_id);
 
         if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
@@ -340,7 +339,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         }
     }
 
-    fn adjust_upvar_borrow_kind_for_unique(&mut self, place_with_id: &mc::PlaceWithHirId<'tcx>) {
+    fn adjust_upvar_borrow_kind_for_unique(&mut self, place_with_id: &PlaceWithHirId<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_unique(place_with_id={:?})", place_with_id);
 
         if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
@@ -470,12 +469,12 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
-    fn consume(&mut self, place_with_id: &mc::PlaceWithHirId<'tcx>, mode: euv::ConsumeMode) {
+    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, mode: euv::ConsumeMode) {
         debug!("consume(place_with_id={:?},mode={:?})", place_with_id, mode);
         self.adjust_upvar_borrow_kind_for_consume(place_with_id, mode);
     }
 
-    fn borrow(&mut self, place_with_id: &mc::PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, place_with_id: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
         debug!("borrow(place_with_id={:?}, bk={:?})", place_with_id, bk);
 
         match bk {
@@ -489,7 +488,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         }
     }
 
-    fn mutate(&mut self, assignee_place: &mc::PlaceWithHirId<'tcx>) {
+    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>) {
         debug!("mutate(assignee_place={:?})", assignee_place);
 
         self.adjust_upvar_borrow_kind_for_mut(assignee_place);

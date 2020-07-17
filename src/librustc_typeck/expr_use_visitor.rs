@@ -5,7 +5,7 @@
 pub use self::ConsumeMode::*;
 
 // Export these here so that Clippy can use them.
-pub use mc::{PlaceBase, PlaceWithHirId, Projection};
+pub use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId, Projection};
 
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -13,6 +13,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::PatKind;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::ty::{self, adjustment, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
@@ -27,13 +28,13 @@ use rustc_span::Span;
 pub trait Delegate<'tcx> {
     // The value found at `place` is either copied or moved, depending
     // on mode.
-    fn consume(&mut self, place_with_id: &mc::PlaceWithHirId<'tcx>, mode: ConsumeMode);
+    fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, mode: ConsumeMode);
 
     // The value found at `place` is being borrowed with kind `bk`.
-    fn borrow(&mut self, place_with_id: &mc::PlaceWithHirId<'tcx>, bk: ty::BorrowKind);
+    fn borrow(&mut self, place_with_id: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind);
 
     // The path at `place_with_id` is being assigned to.
-    fn mutate(&mut self, assignee_place: &mc::PlaceWithHirId<'tcx>);
+    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -398,7 +399,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             &*with_expr,
                             with_place.clone(),
                             with_field.ty(self.tcx(), substs),
-                            mc::ProjectionKind::Field(f_index as u32, VariantIdx::new(0)),
+                            ProjectionKind::Field(f_index as u32, VariantIdx::new(0)),
                         );
                         self.delegate_consume(&field_place);
                     }
@@ -462,7 +463,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_autoref(
         &mut self,
         expr: &hir::Expr<'_>,
-        base_place: &mc::PlaceWithHirId<'tcx>,
+        base_place: &PlaceWithHirId<'tcx>,
         autoref: &adjustment::AutoBorrow<'tcx>,
     ) {
         debug!(
@@ -575,7 +576,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         closure_hir_id: hir::HirId,
         closure_span: Span,
         var_id: hir::HirId,
-    ) -> mc::McResult<mc::PlaceWithHirId<'tcx>> {
+    ) -> mc::McResult<PlaceWithHirId<'tcx>> {
         // Create the place for the variable being borrowed, from the
         // perspective of the creator (parent) of the closure.
         let var_ty = self.mc.node_ty(var_id)?;

@@ -48,6 +48,7 @@
 //! result of `*x'`, effectively, where `x'` is a `Categorization::Upvar` reference
 //! tied to `x`. The type of `x'` will be a borrowed pointer.
 
+use rustc_middle::hir::place::*;
 use rustc_middle::ty::adjustment;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -63,116 +64,6 @@ use rustc_infer::infer::InferCtxt;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt;
-
-#[derive(Clone, Debug)]
-pub enum PlaceBase {
-    /// A temporary variable
-    Rvalue,
-    /// A named `static` item
-    StaticItem,
-    /// A named local variable
-    Local(hir::HirId),
-    /// An upvar referenced by closure env
-    Upvar(ty::UpvarId),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ProjectionKind {
-    /// A dereference of a pointer, reference or `Box<T>` of the given type
-    Deref,
-
-    /// `B.F` where `B` is the base expression and `F` is
-    /// the field. The field is identified by which variant
-    /// it appears in along with a field index. The variant
-    /// is used for enums.
-    Field(u32, VariantIdx),
-
-    /// Some index like `B[x]`, where `B` is the base
-    /// expression. We don't preserve the index `x` because
-    /// we won't need it.
-    Index,
-
-    /// A subslice covering a range of values like `B[x..y]`.
-    Subslice,
-}
-
-#[derive(Clone, Debug)]
-pub struct Projection<'tcx> {
-    // Type after the projection is being applied.
-    ty: Ty<'tcx>,
-
-    /// Defines the type of access
-    kind: ProjectionKind,
-}
-
-/// A `Place` represents how a value is located in memory.
-///
-/// This is an HIR version of `mir::Place`
-#[derive(Clone, Debug)]
-pub struct Place<'tcx> {
-    /// The type of the `PlaceBase`
-    pub base_ty: Ty<'tcx>,
-    /// The "outermost" place that holds this value.
-    pub base: PlaceBase,
-    /// How this place is derived from the base place.
-    pub projections: Vec<Projection<'tcx>>,
-}
-
-/// A `PlaceWithHirId` represents how a value is located in memory.
-///
-/// This is an HIR version of `mir::Place`
-#[derive(Clone, Debug)]
-pub struct PlaceWithHirId<'tcx> {
-    /// `HirId` of the expression or pattern producing this value.
-    pub hir_id: hir::HirId,
-
-    /// Information about the `Place`
-    pub place: Place<'tcx>,
-}
-
-impl<'tcx> PlaceWithHirId<'tcx> {
-    crate fn new(
-        hir_id: hir::HirId,
-        base_ty: Ty<'tcx>,
-        base: PlaceBase,
-        projections: Vec<Projection<'tcx>>,
-    ) -> PlaceWithHirId<'tcx> {
-        PlaceWithHirId {
-            hir_id: hir_id,
-            place: Place { base_ty: base_ty, base: base, projections: projections },
-        }
-    }
-}
-
-impl<'tcx> Place<'tcx> {
-    /// Returns an iterator of the types that have to be dereferenced to access
-    /// the `Place`.
-    ///
-    /// The types are in the reverse order that they are applied. So if
-    /// `x: &*const u32` and the `Place` is `**x`, then the types returned are
-    ///`*const u32` then `&*const u32`.
-    crate fn deref_tys(&self) -> impl Iterator<Item = Ty<'tcx>> + '_ {
-        self.projections.iter().enumerate().rev().filter_map(move |(index, proj)| {
-            if ProjectionKind::Deref == proj.kind {
-                Some(self.ty_before_projection(index))
-            } else {
-                None
-            }
-        })
-    }
-
-    // Returns the type of this `Place` after all projections have been applied.
-    pub fn ty(&self) -> Ty<'tcx> {
-        self.projections.last().map_or_else(|| self.base_ty, |proj| proj.ty)
-    }
-
-    // Returns the type of this `Place` immediately before `projection_index`th projection
-    // is applied.
-    crate fn ty_before_projection(&self, projection_index: usize) -> Ty<'tcx> {
-        assert!(projection_index < self.projections.len());
-        if projection_index == 0 { self.base_ty } else { self.projections[projection_index - 1].ty }
-    }
-}
 
 crate trait HirNode {
     fn hir_id(&self) -> hir::HirId;
