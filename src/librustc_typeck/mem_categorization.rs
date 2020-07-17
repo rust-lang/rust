@@ -199,7 +199,7 @@ impl HirNode for hir::Pat<'_> {
 
 #[derive(Clone)]
 crate struct MemCategorizationContext<'a, 'tcx> {
-    crate tables: &'a ty::TypeckTables<'tcx>,
+    crate typeck_results: &'a ty::TypeckResults<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_owner: LocalDefId,
@@ -214,10 +214,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         infcx: &'a InferCtxt<'a, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         body_owner: LocalDefId,
-        tables: &'a ty::TypeckTables<'tcx>,
+        typeck_results: &'a ty::TypeckResults<'tcx>,
     ) -> MemCategorizationContext<'a, 'tcx> {
         MemCategorizationContext {
-            tables,
+            typeck_results,
             infcx,
             param_env,
             body_owner,
@@ -272,15 +272,15 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     crate fn node_ty(&self, hir_id: hir::HirId) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(hir_id, self.tables.node_type_opt(hir_id))
+        self.resolve_type_vars_or_error(hir_id, self.typeck_results.node_type_opt(hir_id))
     }
 
     fn expr_ty(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_opt(expr))
+        self.resolve_type_vars_or_error(expr.hir_id, self.typeck_results.expr_ty_opt(expr))
     }
 
     crate fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_adjusted_opt(expr))
+        self.resolve_type_vars_or_error(expr.hir_id, self.typeck_results.expr_ty_adjusted_opt(expr))
     }
 
     /// Returns the type of value that this pattern matches against.
@@ -298,7 +298,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // that these are never attached to binding patterns, so
         // actually this is somewhat "disjoint" from the code below
         // that aims to account for `ref x`.
-        if let Some(vec) = self.tables.pat_adjustments().get(pat.hir_id) {
+        if let Some(vec) = self.typeck_results.pat_adjustments().get(pat.hir_id) {
             if let Some(first_ty) = vec.first() {
                 debug!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
                 return Ok(first_ty);
@@ -317,8 +317,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // and if so, figures out what the type *being borrowed* is.
         let ret_ty = match pat.kind {
             PatKind::Binding(..) => {
-                let bm =
-                    *self.tables.pat_binding_modes().get(pat.hir_id).expect("missing binding mode");
+                let bm = *self
+                    .typeck_results
+                    .pat_binding_modes()
+                    .get(pat.hir_id)
+                    .expect("missing binding mode");
 
                 if let ty::BindByReference(_) = bm {
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
@@ -358,7 +361,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
         }
 
-        helper(self, expr, self.tables.expr_adjustments(expr))
+        helper(self, expr, self.typeck_results.expr_adjustments(expr))
     }
 
     crate fn cat_expr_adjusted(
@@ -410,7 +413,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let expr_ty = self.expr_ty(expr)?;
         match expr.kind {
             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref e_base) => {
-                if self.tables.is_method_call(expr) {
+                if self.typeck_results.is_method_call(expr) {
                     self.cat_overloaded_place(expr, e_base)
                 } else {
                     let base = self.cat_expr(&e_base)?;
@@ -423,7 +426,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 debug!("cat_expr(cat_field): id={} expr={:?} base={:?}", expr.hir_id, expr, base);
 
                 let field_idx = self
-                    .tables
+                    .typeck_results
                     .field_indices()
                     .get(expr.hir_id)
                     .cloned()
@@ -438,7 +441,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
 
             hir::ExprKind::Index(ref base, _) => {
-                if self.tables.is_method_call(expr) {
+                if self.typeck_results.is_method_call(expr) {
                     // If this is an index implemented by a method call, then it
                     // will include an implicit deref of the result.
                     // The call to index() returns a `&T` value, which
@@ -452,7 +455,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
 
             hir::ExprKind::Path(ref qpath) => {
-                let res = self.tables.qpath_res(qpath, expr.hir_id);
+                let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
@@ -646,8 +649,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         pat_hir_id: hir::HirId,
         span: Span,
     ) -> McResult<VariantIdx> {
-        let res = self.tables.qpath_res(qpath, pat_hir_id);
-        let ty = self.tables.node_type(pat_hir_id);
+        let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
+        let ty = self.typeck_results.node_type(pat_hir_id);
         let adt_def = match ty.kind {
             ty::Adt(adt_def, _) => adt_def,
             _ => {
@@ -682,7 +685,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         variant_index: VariantIdx,
         span: Span,
     ) -> McResult<usize> {
-        let ty = self.tables.node_type(pat_hir_id);
+        let ty = self.typeck_results.node_type(pat_hir_id);
         match ty.kind {
             ty::Adt(adt_def, _) => Ok(adt_def.variants[variant_index].fields.len()),
             _ => {
@@ -697,7 +700,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Returns the total number of fields in a tuple used within a Tuple pattern.
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     fn total_fields_in_tuple(&self, pat_hir_id: hir::HirId, span: Span) -> McResult<usize> {
-        let ty = self.tables.node_type(pat_hir_id);
+        let ty = self.typeck_results.node_type(pat_hir_id);
         match ty.kind {
             ty::Tuple(substs) => Ok(substs.len()),
             _ => {
@@ -758,7 +761,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // Then we see that to get the same result, we must start with
         // `deref { deref { place_foo }}` instead of `place_foo` since the pattern is now `Some(x,)`
         // and not `&&Some(x,)`, even though its assigned type is that of `&&Some(x,)`.
-        for _ in 0..self.tables.pat_adjustments().get(pat.hir_id).map(|v| v.len()).unwrap_or(0) {
+        for _ in
+            0..self.typeck_results.pat_adjustments().get(pat.hir_id).map(|v| v.len()).unwrap_or(0)
+        {
             debug!("cat_pattern: applying adjustment to place_with_id={:?}", place_with_id);
             place_with_id = self.cat_deref(pat, place_with_id)?;
         }
@@ -813,7 +818,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 for fp in field_pats {
                     let field_ty = self.pat_ty_adjusted(&fp.pat)?;
                     let field_index = self
-                        .tables
+                        .typeck_results
                         .field_indices()
                         .get(fp.hir_id)
                         .cloned()

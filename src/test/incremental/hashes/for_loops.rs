@@ -71,7 +71,7 @@ pub fn change_iteration_variable_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir, typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_iteration_variable_pattern() {
     let mut _x = 0;
@@ -116,7 +116,7 @@ pub fn add_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir, typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes, optimized_mir, typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_break() {
     let mut _x = 0;

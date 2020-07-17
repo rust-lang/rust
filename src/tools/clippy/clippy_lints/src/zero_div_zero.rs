@@ -36,8 +36,8 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
             // TODO - constant_simple does not fold many operations involving floats.
             // That's probably fine for this lint - it's pretty unlikely that someone would
             // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.
-            if let Some(lhs_value) = constant_simple(cx, cx.tables(), left);
-            if let Some(rhs_value) = constant_simple(cx, cx.tables(), right);
+            if let Some(lhs_value) = constant_simple(cx, cx.typeck_results(), left);
+            if let Some(rhs_value) = constant_simple(cx, cx.typeck_results(), right);
             if Constant::F32(0.0) == lhs_value || Constant::F64(0.0) == lhs_value;
             if Constant::F32(0.0) == rhs_value || Constant::F64(0.0) == rhs_value;
             then {

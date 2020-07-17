@@ -1515,7 +1515,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), ident, .. }) => {
             match get_infer_ret_ty(&sig.decl.output) {
                 Some(ty) => {
-                    let fn_sig = tcx.typeck_tables_of(def_id).liberated_fn_sigs()[hir_id];
+                    let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
                     let mut visitor = PlaceholderHirTyCollector::default();
                     visitor.visit_ty(ty);
                     let mut diag = bad_placeholder_type(tcx, visitor.0);

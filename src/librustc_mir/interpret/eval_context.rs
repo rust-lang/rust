@@ -396,10 +396,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let def = instance.with_opt_param();
         if let Some(def) = def.as_local() {
-            if self.tcx.has_typeck_tables(def.did) {
-                if let Some(error_reported) =
-                    self.tcx.typeck_tables_of_opt_const_arg(def).tainted_by_errors
-                {
+            if self.tcx.has_typeck_results(def.did) {
+                if let Some(error_reported) = self.tcx.typeck_opt_const_arg(def).tainted_by_errors {
                     throw_inval!(TypeckError(error_reported))
                 }
             }

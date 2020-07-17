@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Local(ref local) = stmt.kind {
             if let Some(init) = &local.init {
-                if let Some(init_ty) = cx.tables().node_type_opt(init.hir_id) {
+                if let Some(init_ty) = cx.typeck_results().node_type_opt(init.hir_id) {
                     let pat = &local.pat;
                     if in_external_macro(cx.sess(), pat.span) {
                         return;
@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
         if let ExprKind::Match(ref expr, arms, source) = expr.kind {
             match source {
                 MatchSource::Normal | MatchSource::IfLetDesugar { .. } | MatchSource::WhileLetDesugar => {
-                    if let Some(expr_ty) = cx.tables().node_type_opt(expr.hir_id) {
+                    if let Some(expr_ty) = cx.typeck_results().node_type_opt(expr.hir_id) {
                         'pattern_checks: for arm in arms {
                             let pat = &arm.pat;
                             if in_external_macro(cx.sess(), pat.span) {
@@ -132,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
         _: Span,
         hir_id: HirId,
     ) {
-        if let Some(fn_sig) = cx.tables().liberated_fn_sigs().get(hir_id) {
+        if let Some(fn_sig) = cx.typeck_results().liberated_fn_sigs().get(hir_id) {
             for (param, ty) in body.params.iter().zip(fn_sig.inputs().iter()) {
                 apply_lint(cx, &param.pat, ty, DerefPossible::Impossible);
             }

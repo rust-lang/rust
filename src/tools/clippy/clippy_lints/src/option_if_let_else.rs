@@ -72,7 +72,8 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 /// Returns true iff the given expression is the result of calling `Result::ok`
 fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
     if let ExprKind::MethodCall(ref path, _, &[ref receiver], _) = &expr.kind {
-        path.ident.name.to_ident_string() == "ok" && match_type(cx, &cx.tables().expr_ty(&receiver), &paths::RESULT)
+        path.ident.name.to_ident_string() == "ok"
+            && match_type(cx, &cx.typeck_results().expr_ty(&receiver), &paths::RESULT)
     } else {
         false
     }

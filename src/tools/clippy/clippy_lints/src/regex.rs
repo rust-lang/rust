@@ -89,7 +89,7 @@ fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u16) -> Span {
 }
 
 fn const_str<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
-    constant(cx, cx.tables(), e).and_then(|(c, _)| match c {
+    constant(cx, cx.typeck_results(), e).and_then(|(c, _)| match c {
         Constant::Str(s) => Some(s),
         _ => None,
     })

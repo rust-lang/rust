@@ -174,12 +174,12 @@ pub fn lit_to_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
 
 pub fn constant<'tcx>(
     lcx: &LateContext<'tcx>,
-    tables: &ty::TypeckTables<'tcx>,
+    typeck_results: &ty::TypeckResults<'tcx>,
     e: &Expr<'_>,
 ) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
         lcx,
-        tables,
+        typeck_results,
         param_env: lcx.param_env,
         needed_resolution: false,
         substs: lcx.tcx.intern_substs(&[]),
@@ -189,20 +189,20 @@ pub fn constant<'tcx>(
 
 pub fn constant_simple<'tcx>(
     lcx: &LateContext<'tcx>,
-    tables: &ty::TypeckTables<'tcx>,
+    typeck_results: &ty::TypeckResults<'tcx>,
     e: &Expr<'_>,
 ) -> Option<Constant> {
-    constant(lcx, tables, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
+    constant(lcx, typeck_results, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
-/// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckTables`.
+/// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckResults`.
 pub fn constant_context<'a, 'tcx>(
     lcx: &'a LateContext<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    typeck_results: &'a ty::TypeckResults<'tcx>,
 ) -> ConstEvalLateContext<'a, 'tcx> {
     ConstEvalLateContext {
         lcx,
-        tables,
+        typeck_results,
         param_env: lcx.param_env,
         needed_resolution: false,
         substs: lcx.tcx.intern_substs(&[]),
@@ -211,7 +211,7 @@ pub fn constant_context<'a, 'tcx>(
 
 pub struct ConstEvalLateContext<'a, 'tcx> {
     lcx: &'a LateContext<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     needed_resolution: bool,
     substs: SubstsRef<'tcx>,
@@ -224,21 +224,21 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             return self.ifthenelse(cond, then, otherwise);
         }
         match e.kind {
-            ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id, self.tables.expr_ty(e)),
+            ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id, self.typeck_results.expr_ty(e)),
             ExprKind::Block(ref block, _) => self.block(block),
-            ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty_opt(e))),
+            ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.typeck_results.expr_ty_opt(e))),
             ExprKind::Array(ref vec) => self.multi(vec).map(Constant::Vec),
             ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(ref value, _) => {
-                let n = match self.tables.expr_ty(e).kind {
+                let n = match self.typeck_results.expr_ty(e).kind {
                     ty::Array(_, n) => n.try_eval_usize(self.lcx.tcx, self.lcx.param_env)?,
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
             },
             ExprKind::Unary(op, ref operand) => self.expr(operand).and_then(|o| match op {
-                UnOp::UnNot => self.constant_not(&o, self.tables.expr_ty(e)),
-                UnOp::UnNeg => self.constant_negate(&o, self.tables.expr_ty(e)),
+                UnOp::UnNot => self.constant_not(&o, self.typeck_results.expr_ty(e)),
+                UnOp::UnNeg => self.constant_negate(&o, self.typeck_results.expr_ty(e)),
                 UnOp::UnDeref => Some(o),
             }),
             ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
@@ -247,7 +247,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 if_chain! {
                     if args.is_empty();
                     if let ExprKind::Path(qpath) = &callee.kind;
-                    let res = self.tables.qpath_res(qpath, callee.hir_id);
+                    let res = self.typeck_results.qpath_res(qpath, callee.hir_id);
                     if let Some(def_id) = res.opt_def_id();
                     let def_path: Vec<_> = self.lcx.get_def_path(def_id).into_iter().map(Symbol::as_str).collect();
                     let def_path: Vec<&str> = def_path.iter().take(4).map(|s| &**s).collect();
@@ -319,10 +319,10 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
 
     /// Lookup a possibly constant expression from a `ExprKind::Path`.
     fn fetch_path(&mut self, qpath: &QPath<'_>, id: HirId, ty: Ty<'tcx>) -> Option<Constant> {
-        let res = self.tables.qpath_res(qpath, id);
+        let res = self.typeck_results.qpath_res(qpath, id);
         match res {
             Res::Def(DefKind::Const | DefKind::AssocConst, def_id) => {
-                let substs = self.tables.node_substs(id);
+                let substs = self.typeck_results.node_substs(id);
                 let substs = if self.substs.is_empty() {
                     substs
                 } else {
@@ -332,7 +332,13 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 let result = self
                     .lcx
                     .tcx
-                    .const_eval_resolve(self.param_env, ty::WithOptConstParam::unknown(def_id), substs, None, None)
+                    .const_eval_resolve(
+                        self.param_env,
+                        ty::WithOptConstParam::unknown(def_id),
+                        substs,
+                        None,
+                        None,
+                    )
                     .ok()
                     .map(|val| rustc_middle::ty::Const::from_value(self.lcx.tcx, val, ty))?;
                 let result = miri_to_const(&result);
@@ -396,7 +402,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {
-            (Constant::Int(l), Some(Constant::Int(r))) => match self.tables.expr_ty_opt(left)?.kind {
+            (Constant::Int(l), Some(Constant::Int(r))) => match self.typeck_results.expr_ty_opt(left)?.kind {
                 ty::Int(ity) => {
                     let l = sext(self.lcx.tcx, l, ity);
                     let r = sext(self.lcx.tcx, r, ity);
@@ -488,23 +494,25 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
 pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
     use rustc_middle::mir::interpret::{ConstValue, Scalar};
     match result.val {
-        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: d, .. })) => match result.ty.kind {
-            ty::Bool => Some(Constant::Bool(d == 1)),
-            ty::Uint(_) | ty::Int(_) => Some(Constant::Int(d)),
-            ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
-                d.try_into().expect("invalid f32 bit representation"),
-            ))),
-            ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
-                d.try_into().expect("invalid f64 bit representation"),
-            ))),
-            ty::RawPtr(type_and_mut) => {
-                if let ty::Uint(_) = type_and_mut.ty.kind {
-                    return Some(Constant::RawPtr(d));
-                }
-                None
-            },
-            // FIXME: implement other conversions.
-            _ => None,
+        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: d, .. })) => {
+            match result.ty.kind {
+                ty::Bool => Some(Constant::Bool(d == 1)),
+                ty::Uint(_) | ty::Int(_) => Some(Constant::Int(d)),
+                ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
+                    d.try_into().expect("invalid f32 bit representation"),
+                ))),
+                ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
+                    d.try_into().expect("invalid f64 bit representation"),
+                ))),
+                ty::RawPtr(type_and_mut) => {
+                    if let ty::Uint(_) = type_and_mut.ty.kind {
+                        return Some(Constant::RawPtr(d));
+                    }
+                    None
+                },
+                // FIXME: implement other conversions.
+                _ => None,
+            }
         },
         ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => match result.ty.kind {
             ty::Ref(_, tam, _) => match tam.kind {

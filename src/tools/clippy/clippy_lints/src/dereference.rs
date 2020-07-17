@@ -74,7 +74,7 @@ fn lint_deref(cx: &LateContext<'_>, method_name: &str, call_expr: &Expr<'_>, var
     match method_name {
         "deref" => {
             let impls_deref_trait = cx.tcx.lang_items().deref_trait().map_or(false, |id| {
-                implements_trait(cx, cx.tables().expr_ty(&call_expr), id, &[])
+                implements_trait(cx, cx.typeck_results().expr_ty(&call_expr), id, &[])
             });
             if impls_deref_trait {
                 span_lint_and_sugg(
@@ -90,7 +90,7 @@ fn lint_deref(cx: &LateContext<'_>, method_name: &str, call_expr: &Expr<'_>, var
         },
         "deref_mut" => {
             let impls_deref_mut_trait = cx.tcx.lang_items().deref_mut_trait().map_or(false, |id| {
-                implements_trait(cx, cx.tables().expr_ty(&call_expr), id, &[])
+                implements_trait(cx, cx.typeck_results().expr_ty(&call_expr), id, &[])
             });
             if impls_deref_mut_trait {
                 span_lint_and_sugg(

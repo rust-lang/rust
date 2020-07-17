@@ -31,7 +31,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
 
             // Check if the method call actually calls the libcore
             // `IntoIterator::into_iter`.
-            let def_id = cx.tables().type_dependent_def_id(expr.hir_id).unwrap();
+            let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
             match cx.tcx.trait_of_item(def_id) {
                 Some(trait_id) if cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_id) => {}
                 _ => return,
@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             // `Box` is the only thing that values can be moved out of via
             // method call. `Box::new([1]).into_iter()` should trigger this
             // lint.
-            let mut recv_ty = cx.tables().expr_ty(receiver_arg);
+            let mut recv_ty = cx.typeck_results().expr_ty(receiver_arg);
             let mut num_box_derefs = 0;
             while recv_ty.is_box() {
                 num_box_derefs += 1;
@@ -60,13 +60,13 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             // Make sure that there is an autoref coercion at the expected
             // position. The first `num_box_derefs` adjustments are the derefs
             // of the box.
-            match cx.tables().expr_adjustments(receiver_arg).get(num_box_derefs) {
+            match cx.typeck_results().expr_adjustments(receiver_arg).get(num_box_derefs) {
                 Some(Adjustment { kind: Adjust::Borrow(_), .. }) => {}
                 _ => return,
             }
 
             // Emit lint diagnostic.
-            let target = match cx.tables().expr_ty_adjusted(receiver_arg).kind {
+            let target = match cx.typeck_results().expr_ty_adjusted(receiver_arg).kind {
                 ty::Ref(_, ty::TyS { kind: ty::Array(..), .. }, _) => "[T; N]",
                 ty::Ref(_, ty::TyS { kind: ty::Slice(..), .. }, _) => "[T]",
 

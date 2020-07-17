@@ -23,10 +23,10 @@ use std::mem;
 
 // During type inference, partially inferred types are
 // represented using Type variables (ty::Infer). These don't appear in
-// the final TypeckTables since all of the types should have been
-// inferred once typeck_tables_of is done.
+// the final TypeckResults since all of the types should have been
+// inferred once typeck is done.
 // When type inference is running however, having to update the typeck
-// tables every time a new type is inferred would be unreasonably slow,
+// typeck results every time a new type is inferred would be unreasonably slow,
 // so instead all of the replacement happens at the end in
 // resolve_type_vars_in_body, which creates a new TypeTables which
 // doesn't contain any inference types.
@@ -34,7 +34,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn resolve_type_vars_in_body(
         &self,
         body: &'tcx hir::Body<'tcx>,
-    ) -> &'tcx ty::TypeckTables<'tcx> {
+    ) -> &'tcx ty::TypeckResults<'tcx> {
         let item_id = self.tcx.hir().body_owner(body.id());
         let item_def_id = self.tcx.hir().local_def_id(item_id);
 
@@ -65,36 +65,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_sigs();
         wbcx.visit_generator_interior_types();
 
-        let used_trait_imports = mem::take(&mut self.tables.borrow_mut().used_trait_imports);
+        let used_trait_imports =
+            mem::take(&mut self.typeck_results.borrow_mut().used_trait_imports);
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
-        wbcx.tables.used_trait_imports = used_trait_imports;
+        wbcx.typeck_results.used_trait_imports = used_trait_imports;
 
-        wbcx.tables.closure_captures =
-            mem::replace(&mut self.tables.borrow_mut().closure_captures, Default::default());
+        wbcx.typeck_results.closure_captures = mem::replace(
+            &mut self.typeck_results.borrow_mut().closure_captures,
+            Default::default(),
+        );
 
         if self.is_tainted_by_errors() {
             // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
-            wbcx.tables.tainted_by_errors = Some(ErrorReported);
+            wbcx.typeck_results.tainted_by_errors = Some(ErrorReported);
         }
 
-        debug!("writeback: tables for {:?} are {:#?}", item_def_id, wbcx.tables);
+        debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
 
-        self.tcx.arena.alloc(wbcx.tables)
+        self.tcx.arena.alloc(wbcx.typeck_results)
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////
 // The Writeback context. This visitor walks the AST, checking the
-// fn-specific tables to find references to types or regions. It
+// fn-specific typeck results to find references to types or regions. It
 // resolves those regions to remove inference variables and writes the
-// final result back into the master tables in the tcx. Here and
+// final result back into the master typeck results in the tcx. Here and
 // there, it applies a few ad-hoc checks that were not convenient to
 // do elsewhere.
 
 struct WritebackCx<'cx, 'tcx> {
     fcx: &'cx FnCtxt<'cx, 'tcx>,
 
-    tables: ty::TypeckTables<'tcx>,
+    typeck_results: ty::TypeckResults<'tcx>,
 
     body: &'tcx hir::Body<'tcx>,
 
@@ -109,17 +112,22 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id.owner;
 
-        WritebackCx { fcx, tables: ty::TypeckTables::new(owner), body, rustc_dump_user_substs }
+        WritebackCx {
+            fcx,
+            typeck_results: ty::TypeckResults::new(owner),
+            body,
+            rustc_dump_user_substs,
+        }
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.fcx.tcx
     }
 
-    fn write_ty_to_tables(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
-        debug!("write_ty_to_tables({:?}, {:?})", hir_id, ty);
+    fn write_ty_to_typeck_results(&mut self, hir_id: hir::HirId, ty: Ty<'tcx>) {
+        debug!("write_ty_to_typeck_results({:?}, {:?})", hir_id, ty);
         assert!(!ty.needs_infer() && !ty.has_placeholders() && !ty.has_free_regions());
-        self.tables.node_types_mut().insert(hir_id, ty);
+        self.typeck_results.node_types_mut().insert(hir_id, ty);
     }
 
     // Hacky hack: During type-checking, we treat *all* operators
@@ -133,9 +141,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 let inner_ty = self.fcx.resolve_vars_if_possible(&inner_ty);
 
                 if inner_ty.is_scalar() {
-                    let mut tables = self.fcx.tables.borrow_mut();
-                    tables.type_dependent_defs_mut().remove(e.hir_id);
-                    tables.node_substs_mut().remove(e.hir_id);
+                    let mut typeck_results = self.fcx.typeck_results.borrow_mut();
+                    typeck_results.type_dependent_defs_mut().remove(e.hir_id);
+                    typeck_results.node_substs_mut().remove(e.hir_id);
                 }
             }
             hir::ExprKind::Binary(ref op, ref lhs, ref rhs)
@@ -147,14 +155,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 let rhs_ty = self.fcx.resolve_vars_if_possible(&rhs_ty);
 
                 if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
-                    let mut tables = self.fcx.tables.borrow_mut();
-                    tables.type_dependent_defs_mut().remove(e.hir_id);
-                    tables.node_substs_mut().remove(e.hir_id);
+                    let mut typeck_results = self.fcx.typeck_results.borrow_mut();
+                    typeck_results.type_dependent_defs_mut().remove(e.hir_id);
+                    typeck_results.node_substs_mut().remove(e.hir_id);
 
                     match e.kind {
                         hir::ExprKind::Binary(..) => {
                             if !op.node.is_by_value() {
-                                let mut adjustments = tables.adjustments_mut();
+                                let mut adjustments = typeck_results.adjustments_mut();
                                 if let Some(a) = adjustments.get_mut(lhs.hir_id) {
                                     a.pop();
                                 }
@@ -164,7 +172,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             }
                         }
                         hir::ExprKind::AssignOp(..) => {
-                            if let Some(a) = tables.adjustments_mut().get_mut(lhs.hir_id) {
+                            if let Some(a) = typeck_results.adjustments_mut().get_mut(lhs.hir_id) {
                                 a.pop();
                             }
                         }
@@ -182,10 +190,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr<'_>) {
         if let hir::ExprKind::Index(ref base, ref index) = e.kind {
-            let mut tables = self.fcx.tables.borrow_mut();
+            let mut typeck_results = self.fcx.typeck_results.borrow_mut();
 
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
-            let base_ty = tables.expr_ty_adjusted_opt(&base).map(|t| &t.kind);
+            let base_ty = typeck_results.expr_ty_adjusted_opt(&base).map(|t| &t.kind);
             if base_ty.is_none() {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
@@ -193,7 +201,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 self.tcx().sess.delay_span_bug(e.span, &format!("bad base: `{:?}`", base));
             }
             if let Some(ty::Ref(_, base_ty, _)) = base_ty {
-                let index_ty = tables.expr_ty_adjusted_opt(&index).unwrap_or_else(|| {
+                let index_ty = typeck_results.expr_ty_adjusted_opt(&index).unwrap_or_else(|| {
                     // When encountering `return [0][0]` outside of a `fn` body we would attempt
                     // to access an unexistend index. We assume that more relevant errors will
                     // already have been emitted, so we only gate on this with an ICE if no
@@ -207,10 +215,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                 if base_ty.builtin_index().is_some() && index_ty == self.fcx.tcx.types.usize {
                     // Remove the method call record
-                    tables.type_dependent_defs_mut().remove(e.hir_id);
-                    tables.node_substs_mut().remove(e.hir_id);
+                    typeck_results.type_dependent_defs_mut().remove(e.hir_id);
+                    typeck_results.node_substs_mut().remove(e.hir_id);
 
-                    if let Some(a) = tables.adjustments_mut().get_mut(base.hir_id) {
+                    if let Some(a) = typeck_results.adjustments_mut().get_mut(base.hir_id) {
                         // Discard the need for a mutable borrow
 
                         // Extra adjustment made when indexing causes a drop
@@ -237,7 +245,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // This is the master code which walks the AST. It delegates most of
 // the heavy lifting to the generic visit and resolve functions
 // below. In general, a function is made into a `visitor` if it must
-// traffic in node-ids or update tables in the type context etc.
+// traffic in node-ids or update typeck results in the type context etc.
 
 impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;
@@ -283,9 +291,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         match p.kind {
             hir::PatKind::Binding(..) => {
-                let tables = self.fcx.tables.borrow();
-                if let Some(bm) = tables.extract_binding_mode(self.tcx().sess, p.hir_id, p.span) {
-                    self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);
+                let typeck_results = self.fcx.typeck_results.borrow();
+                if let Some(bm) =
+                    typeck_results.extract_binding_mode(self.tcx().sess, p.hir_id, p.span)
+                {
+                    self.typeck_results.pat_binding_modes_mut().insert(p.hir_id, bm);
                 }
             }
             hir::PatKind::Struct(_, fields, _) => {
@@ -306,20 +316,20 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         intravisit::walk_local(self, l);
         let var_ty = self.fcx.local_ty(l.span, l.hir_id).decl_ty;
         let var_ty = self.resolve(&var_ty, &l.span);
-        self.write_ty_to_tables(l.hir_id, var_ty);
+        self.write_ty_to_typeck_results(l.hir_id, var_ty);
     }
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
         intravisit::walk_ty(self, hir_ty);
         let ty = self.fcx.node_ty(hir_ty.hir_id);
         let ty = self.resolve(&ty, &hir_ty.span);
-        self.write_ty_to_tables(hir_ty.hir_id, ty);
+        self.write_ty_to_typeck_results(hir_ty.hir_id, ty);
     }
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_upvar_capture_map(&mut self) {
-        for (upvar_id, upvar_capture) in self.fcx.tables.borrow().upvar_capture_map.iter() {
+        for (upvar_id, upvar_capture) in self.fcx.typeck_results.borrow().upvar_capture_map.iter() {
             let new_upvar_capture = match *upvar_capture {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
@@ -330,38 +340,38 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             };
             debug!("Upvar capture for {:?} resolved to {:?}", upvar_id, new_upvar_capture);
-            self.tables.upvar_capture_map.insert(*upvar_id, new_upvar_capture);
+            self.typeck_results.upvar_capture_map.insert(*upvar_id, new_upvar_capture);
         }
     }
 
     fn visit_closures(&mut self) {
-        let fcx_tables = self.fcx.tables.borrow();
-        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
-        let common_hir_owner = fcx_tables.hir_owner;
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        for (&id, &origin) in fcx_tables.closure_kind_origins().iter() {
+        for (&id, &origin) in fcx_typeck_results.closure_kind_origins().iter() {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id: id };
-            self.tables.closure_kind_origins_mut().insert(hir_id, origin);
+            self.typeck_results.closure_kind_origins_mut().insert(hir_id, origin);
         }
     }
 
     fn visit_coercion_casts(&mut self) {
-        let fcx_tables = self.fcx.tables.borrow();
-        let fcx_coercion_casts = fcx_tables.coercion_casts();
-        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        let fcx_coercion_casts = fcx_typeck_results.coercion_casts();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
         for local_id in fcx_coercion_casts {
-            self.tables.set_coercion_cast(*local_id);
+            self.typeck_results.set_coercion_cast(*local_id);
         }
     }
 
     fn visit_user_provided_tys(&mut self) {
-        let fcx_tables = self.fcx.tables.borrow();
-        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
-        let common_hir_owner = fcx_tables.hir_owner;
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        let common_hir_owner = fcx_typeck_results.hir_owner;
 
         let mut errors_buffer = Vec::new();
-        for (&local_id, c_ty) in fcx_tables.user_provided_types().iter() {
+        for (&local_id, c_ty) in fcx_typeck_results.user_provided_types().iter() {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
 
             if cfg!(debug_assertions) && c_ty.needs_infer() {
@@ -372,7 +382,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 );
             };
 
-            self.tables.user_provided_types_mut().insert(hir_id, *c_ty);
+            self.typeck_results.user_provided_types_mut().insert(hir_id, *c_ty);
 
             if let ty::UserType::TypeOf(_, user_substs) = c_ty.value {
                 if self.rustc_dump_user_substs {
@@ -398,10 +408,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_user_provided_sigs(&mut self) {
-        let fcx_tables = self.fcx.tables.borrow();
-        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
-        for (&def_id, c_sig) in fcx_tables.user_provided_sigs.iter() {
+        for (&def_id, c_sig) in fcx_typeck_results.user_provided_sigs.iter() {
             if cfg!(debug_assertions) && c_sig.needs_infer() {
                 span_bug!(
                     self.fcx.tcx.hir().span_if_local(def_id).unwrap(),
@@ -410,14 +420,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 );
             };
 
-            self.tables.user_provided_sigs.insert(def_id, *c_sig);
+            self.typeck_results.user_provided_sigs.insert(def_id, *c_sig);
         }
     }
 
     fn visit_generator_interior_types(&mut self) {
-        let fcx_tables = self.fcx.tables.borrow();
-        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
-        self.tables.generator_interior_types = fcx_tables.generator_interior_types.clone();
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        self.typeck_results.generator_interior_types =
+            fcx_typeck_results.generator_interior_types.clone();
     }
 
     fn visit_opaque_types(&mut self, span: Span) {
@@ -472,7 +483,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         substs: opaque_defn.substs,
                     };
 
-                    let old = self.tables.concrete_opaque_types.insert(def_id, new);
+                    let old = self.typeck_results.concrete_opaque_types.insert(def_id, new);
                     if let Some(old) = old {
                         if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
                             span_bug!(
@@ -494,15 +505,18 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_field_id(&mut self, hir_id: hir::HirId) {
-        if let Some(index) = self.fcx.tables.borrow_mut().field_indices_mut().remove(hir_id) {
-            self.tables.field_indices_mut().insert(hir_id, index);
+        if let Some(index) = self.fcx.typeck_results.borrow_mut().field_indices_mut().remove(hir_id)
+        {
+            self.typeck_results.field_indices_mut().insert(hir_id, index);
         }
     }
 
     fn visit_node_id(&mut self, span: Span, hir_id: hir::HirId) {
         // Export associated path extensions and method resolutions.
-        if let Some(def) = self.fcx.tables.borrow_mut().type_dependent_defs_mut().remove(hir_id) {
-            self.tables.type_dependent_defs_mut().insert(hir_id, def);
+        if let Some(def) =
+            self.fcx.typeck_results.borrow_mut().type_dependent_defs_mut().remove(hir_id)
+        {
+            self.typeck_results.type_dependent_defs_mut().insert(hir_id, def);
         }
 
         // Resolve any borrowings for the node with id `node_id`
@@ -511,20 +525,20 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // Resolve the type of the node with id `node_id`
         let n_ty = self.fcx.node_ty(hir_id);
         let n_ty = self.resolve(&n_ty, &span);
-        self.write_ty_to_tables(hir_id, n_ty);
+        self.write_ty_to_typeck_results(hir_id, n_ty);
         debug!("node {:?} has type {:?}", hir_id, n_ty);
 
         // Resolve any substitutions
-        if let Some(substs) = self.fcx.tables.borrow().node_substs_opt(hir_id) {
+        if let Some(substs) = self.fcx.typeck_results.borrow().node_substs_opt(hir_id) {
             let substs = self.resolve(&substs, &span);
             debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
             assert!(!substs.needs_infer() && !substs.has_placeholders());
-            self.tables.node_substs_mut().insert(hir_id, substs);
+            self.typeck_results.node_substs_mut().insert(hir_id, substs);
         }
     }
 
     fn visit_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
-        let adjustment = self.fcx.tables.borrow_mut().adjustments_mut().remove(hir_id);
+        let adjustment = self.fcx.typeck_results.borrow_mut().adjustments_mut().remove(hir_id);
         match adjustment {
             None => {
                 debug!("no adjustments for node {:?}", hir_id);
@@ -533,13 +547,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(&adjustment, &span);
                 debug!("adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
-                self.tables.adjustments_mut().insert(hir_id, resolved_adjustment);
+                self.typeck_results.adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }
     }
 
     fn visit_pat_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
-        let adjustment = self.fcx.tables.borrow_mut().pat_adjustments_mut().remove(hir_id);
+        let adjustment = self.fcx.typeck_results.borrow_mut().pat_adjustments_mut().remove(hir_id);
         match adjustment {
             None => {
                 debug!("no pat_adjustments for node {:?}", hir_id);
@@ -548,32 +562,32 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(&adjustment, &span);
                 debug!("pat_adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
-                self.tables.pat_adjustments_mut().insert(hir_id, resolved_adjustment);
+                self.typeck_results.pat_adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }
     }
 
     fn visit_liberated_fn_sigs(&mut self) {
-        let fcx_tables = self.fcx.tables.borrow();
-        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
-        let common_hir_owner = fcx_tables.hir_owner;
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs().iter() {
+        for (&local_id, fn_sig) in fcx_typeck_results.liberated_fn_sigs().iter() {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let fn_sig = self.resolve(fn_sig, &hir_id);
-            self.tables.liberated_fn_sigs_mut().insert(hir_id, fn_sig);
+            self.typeck_results.liberated_fn_sigs_mut().insert(hir_id, fn_sig);
         }
     }
 
     fn visit_fru_field_types(&mut self) {
-        let fcx_tables = self.fcx.tables.borrow();
-        assert_eq!(fcx_tables.hir_owner, self.tables.hir_owner);
-        let common_hir_owner = fcx_tables.hir_owner;
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        let common_hir_owner = fcx_typeck_results.hir_owner;
 
-        for (&local_id, ftys) in fcx_tables.fru_field_types().iter() {
+        for (&local_id, ftys) in fcx_typeck_results.fru_field_types().iter() {
             let hir_id = hir::HirId { owner: common_hir_owner, local_id };
             let ftys = self.resolve(ftys, &hir_id);
-            self.tables.fru_field_types_mut().insert(hir_id, ftys);
+            self.typeck_results.fru_field_types_mut().insert(hir_id, ftys);
         }
     }
 
@@ -588,11 +602,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
 
         // We may have introduced e.g. `ty::Error`, if inference failed, make sure
-        // to mark the `TypeckTables` as tainted in that case, so that downstream
-        // users of the tables don't produce extra errors, or worse, ICEs.
+        // to mark the `TypeckResults` as tainted in that case, so that downstream
+        // users of the typeck results don't produce extra errors, or worse, ICEs.
         if resolver.replaced_with_error {
             // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
-            self.tables.tainted_by_errors = Some(ErrorReported);
+            self.typeck_results.tainted_by_errors = Some(ErrorReported);
         }
 
         x

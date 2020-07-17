@@ -49,7 +49,7 @@ use log::{debug, error, info};
 
 pub struct SaveContext<'tcx> {
     tcx: TyCtxt<'tcx>,
-    maybe_typeck_tables: Option<&'tcx ty::TypeckTables<'tcx>>,
+    maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     access_levels: &'tcx AccessLevels,
     span_utils: SpanUtils<'tcx>,
     config: Config,
@@ -64,12 +64,12 @@ pub enum Data {
 }
 
 impl<'tcx> SaveContext<'tcx> {
-    /// Gets the type-checking side-tables for the current body.
+    /// Gets the type-checking results for the current body.
     /// As this will ICE if called outside bodies, only call when working with
     /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
     #[track_caller]
-    fn tables(&self) -> &'tcx ty::TypeckTables<'tcx> {
-        self.maybe_typeck_tables.expect("`SaveContext::tables` called outside of body")
+    fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
+        self.maybe_typeck_results.expect("`SaveContext::typeck_results` called outside of body")
     }
 
     fn span_from_span(&self, span: Span) -> SpanData {
@@ -482,7 +482,7 @@ impl<'tcx> SaveContext<'tcx> {
                     None => {
                         debug!("could not find container for method {} at {:?}", hir_id, span);
                         // This is not necessarily a bug, if there was a compilation error,
-                        // the tables we need might not exist.
+                        // the typeck results we need might not exist.
                         return None;
                     }
                 },
@@ -523,13 +523,13 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &hir::Expr<'_>) -> Option<Data> {
-        let ty = self.tables().expr_ty_adjusted_opt(expr)?;
+        let ty = self.typeck_results().expr_ty_adjusted_opt(expr)?;
         if matches!(ty.kind, ty::Error(_)) {
             return None;
         }
         match expr.kind {
             hir::ExprKind::Field(ref sub_ex, ident) => {
-                match self.tables().expr_ty_adjusted(&sub_ex).kind {
+                match self.typeck_results().expr_ty_adjusted(&sub_ex).kind {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         filter!(self.span_utils, ident.span);
@@ -574,7 +574,7 @@ impl<'tcx> SaveContext<'tcx> {
                 }
             }
             hir::ExprKind::MethodCall(ref seg, ..) => {
-                let method_id = match self.tables().type_dependent_def_id(expr.hir_id) {
+                let method_id = match self.typeck_results().type_dependent_def_id(expr.hir_id) {
                     Some(id) => id,
                     None => {
                         debug!("could not resolve method id for {:?}", expr);
@@ -623,7 +623,7 @@ impl<'tcx> SaveContext<'tcx> {
             },
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Struct(ref qpath, ..), .. }) => {
-                self.tables().qpath_res(qpath, hir_id)
+                self.typeck_results().qpath_res(qpath, hir_id)
             }
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Path(ref qpath), .. })
@@ -637,8 +637,8 @@ impl<'tcx> SaveContext<'tcx> {
             | Node::Ty(&hir::Ty { kind: hir::TyKind::Path(ref qpath), .. }) => match qpath {
                 hir::QPath::Resolved(_, path) => path.res,
                 hir::QPath::TypeRelative(..) => self
-                    .maybe_typeck_tables
-                    .map_or(Res::Err, |tables| tables.qpath_res(qpath, hir_id)),
+                    .maybe_typeck_results
+                    .map_or(Res::Err, |typeck_results| typeck_results.qpath_res(qpath, hir_id)),
             },
 
             Node::Binding(&hir::Pat {
@@ -1009,7 +1009,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
 
         let save_ctxt = SaveContext {
             tcx,
-            maybe_typeck_tables: None,
+            maybe_typeck_results: None,
             access_levels: &access_levels,
             span_utils: SpanUtils::new(&tcx.sess),
             config: find_config(config),

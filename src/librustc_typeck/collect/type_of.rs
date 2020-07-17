@@ -36,7 +36,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 ..
             }) => {
                 let body_owner = tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
-                let tables = tcx.typeck_tables_of(body_owner);
+                let tables = tcx.typeck(body_owner);
                 // This may fail in case the method/path does not actually exist.
                 // As there is no relevant param for `def_id`, we simply return
                 // `None` here.
@@ -76,7 +76,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     }) => {
                         let body_owner =
                             tcx.hir().local_def_id(tcx.hir().enclosing_body_owner(hir_id));
-                        let _tables = tcx.typeck_tables_of(body_owner);
+                        let _tables = tcx.typeck(body_owner);
                         &*path
                     }
                     _ => span_bug!(DUMMY_SP, "unexpected const parent path {:?}", parent_node),
@@ -222,12 +222,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                             tcx.sess.delay_span_bug(
                                 DUMMY_SP,
                                 &format!(
-                                    "owner {:?} has no opaque type for {:?} in its tables",
+                                    "owner {:?} has no opaque type for {:?} in its typeck results",
                                     owner, def_id,
                                 ),
                             );
                             if let Some(ErrorReported) =
-                                tcx.typeck_tables_of(owner.expect_local()).tainted_by_errors
+                                tcx.typeck(owner.expect_local()).tainted_by_errors
                             {
                                 // Some error in the
                                 // owner fn prevented us from populating
@@ -411,16 +411,16 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     impl ConstraintLocator<'_> {
         fn check(&mut self, def_id: LocalDefId) {
             // Don't try to check items that cannot possibly constrain the type.
-            if !self.tcx.has_typeck_tables(def_id) {
+            if !self.tcx.has_typeck_results(def_id) {
                 debug!(
-                    "find_opaque_ty_constraints: no constraint for `{:?}` at `{:?}`: no tables",
+                    "find_opaque_ty_constraints: no constraint for `{:?}` at `{:?}`: no typeck results",
                     self.def_id, def_id,
                 );
                 return;
             }
             // Calling `mir_borrowck` can lead to cycle errors through
             // const-checking, avoid calling it if we don't have to.
-            if !self.tcx.typeck_tables_of(def_id).concrete_opaque_types.contains_key(&self.def_id) {
+            if !self.tcx.typeck(def_id).concrete_opaque_types.contains_key(&self.def_id) {
                 debug!(
                     "find_opaque_ty_constraints: no constraint for `{:?}` at `{:?}`",
                     self.def_id, def_id,
@@ -604,8 +604,8 @@ fn let_position_impl_trait_type(tcx: TyCtxt<'_>, opaque_ty_id: LocalDefId) -> Ty
 
     let opaque_ty_def_id = opaque_ty_id.to_def_id();
 
-    let owner_tables = tcx.typeck_tables_of(scope_def_id);
-    let concrete_ty = owner_tables
+    let owner_typeck_results = tcx.typeck(scope_def_id);
+    let concrete_ty = owner_typeck_results
         .concrete_opaque_types
         .get(&opaque_ty_def_id)
         .map(|opaque| opaque.concrete_type)
@@ -613,11 +613,11 @@ fn let_position_impl_trait_type(tcx: TyCtxt<'_>, opaque_ty_id: LocalDefId) -> Ty
             tcx.sess.delay_span_bug(
                 DUMMY_SP,
                 &format!(
-                    "owner {:?} has no opaque type for {:?} in its tables",
+                    "owner {:?} has no opaque type for {:?} in its typeck results",
                     scope_def_id, opaque_ty_id
                 ),
             );
-            if let Some(ErrorReported) = owner_tables.tainted_by_errors {
+            if let Some(ErrorReported) = owner_typeck_results.tainted_by_errors {
                 // Some error in the owner fn prevented us from populating the
                 // `concrete_opaque_types` table.
                 tcx.ty_error()
@@ -649,7 +649,7 @@ fn infer_placeholder_type(
     span: Span,
     item_ident: Ident,
 ) -> Ty<'_> {
-    let ty = tcx.diagnostic_only_typeck_tables_of(def_id).node_type(body_id.hir_id);
+    let ty = tcx.diagnostic_only_typeck(def_id).node_type(body_id.hir_id);
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.

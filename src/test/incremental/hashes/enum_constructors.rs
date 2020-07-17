@@ -57,7 +57,7 @@ pub fn change_field_order_struct_like() -> Enum {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 // FIXME(michaelwoerister):Interesting. I would have thought that that changes the MIR. And it
 // would if it were not all constants
@@ -96,7 +96,7 @@ pub fn change_constructor_path_struct_like() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_struct_like() {
     let _ = Enum2::Struct {
@@ -140,7 +140,7 @@ pub mod change_constructor_path_indirectly_struct_like {
     #[rustc_clean(
         cfg="cfail2",
         except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
-                typeck_tables_of"
+                typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> TheEnum {
@@ -197,7 +197,7 @@ pub fn change_constructor_path_tuple_like() {
 #[cfg(not(cfail1))]
 #[rustc_clean(
     cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck_tables_of"
+    except="hir_owner_nodes,optimized_mir,typeck"
 )]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_tuple_like() {
@@ -215,7 +215,7 @@ pub fn change_constructor_variant_tuple_like() {
 #[cfg(not(cfail1))]
 #[rustc_clean(
     cfg="cfail2",
-    except="hir_owner_nodes,optimized_mir,typeck_tables_of"
+    except="hir_owner_nodes,optimized_mir,typeck"
 )]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_variant_tuple_like() {
@@ -233,7 +233,7 @@ pub mod change_constructor_path_indirectly_tuple_like {
     #[rustc_clean(
         cfg="cfail2",
         except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
-                typeck_tables_of"
+                typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> TheEnum {
@@ -251,7 +251,7 @@ pub mod change_constructor_variant_indirectly_tuple_like {
     #[cfg(not(cfail1))]
     use super::Enum2::Tuple2 as Variant;
 
-    #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck_tables_of")]
+    #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> Enum2 {
         Variant(0, 1, 2)
@@ -278,7 +278,7 @@ pub fn change_constructor_path_c_like() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck_tables_of")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_constructor_path_c_like() {
     let _x = Clike2::B;
@@ -310,7 +310,7 @@ pub mod change_constructor_path_indirectly_c_like {
     #[rustc_clean(
         cfg="cfail2",
         except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
-                typeck_tables_of"
+                typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn function() -> TheEnum {

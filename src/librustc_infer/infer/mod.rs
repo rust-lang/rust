@@ -283,11 +283,11 @@ impl<'tcx> InferCtxtInner<'tcx> {
 pub struct InferCtxt<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
-    /// During type-checking/inference of a body, `in_progress_tables`
-    /// contains a reference to the tables being built up, which are
+    /// During type-checking/inference of a body, `in_progress_typeck_results`
+    /// contains a reference to the typeck results being built up, which are
     /// used for reading closure kinds/signatures as they are inferred,
     /// and for error reporting logic to read arbitrary node types.
-    pub in_progress_tables: Option<&'a RefCell<ty::TypeckTables<'tcx>>>,
+    pub in_progress_typeck_results: Option<&'a RefCell<ty::TypeckResults<'tcx>>>,
 
     pub inner: RefCell<InferCtxtInner<'tcx>>,
 
@@ -571,7 +571,7 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
 /// `F: for<'b, 'tcx> where 'tcx FnOnce(InferCtxt<'b, 'tcx>)`.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
+    fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
 }
 
 pub trait TyCtxtInferExt<'tcx> {
@@ -580,15 +580,15 @@ pub trait TyCtxtInferExt<'tcx> {
 
 impl TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
-        InferCtxtBuilder { tcx: self, fresh_tables: None }
+        InferCtxtBuilder { tcx: self, fresh_typeck_results: None }
     }
 }
 
 impl<'tcx> InferCtxtBuilder<'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
-    /// will initialize `in_progress_tables` with fresh `TypeckTables`.
-    pub fn with_fresh_in_progress_tables(mut self, table_owner: LocalDefId) -> Self {
-        self.fresh_tables = Some(RefCell::new(ty::TypeckTables::new(table_owner)));
+    /// will initialize `in_progress_typeck_results` with fresh `TypeckResults`.
+    pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: LocalDefId) -> Self {
+        self.fresh_typeck_results = Some(RefCell::new(ty::TypeckResults::new(table_owner)));
         self
     }
 
@@ -616,11 +616,11 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     }
 
     pub fn enter<R>(&mut self, f: impl for<'a> FnOnce(InferCtxt<'a, 'tcx>) -> R) -> R {
-        let InferCtxtBuilder { tcx, ref fresh_tables } = *self;
-        let in_progress_tables = fresh_tables.as_ref();
+        let InferCtxtBuilder { tcx, ref fresh_typeck_results } = *self;
+        let in_progress_typeck_results = fresh_typeck_results.as_ref();
         f(InferCtxt {
             tcx,
-            in_progress_tables,
+            in_progress_typeck_results,
             inner: RefCell::new(InferCtxtInner::new()),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: Default::default(),
@@ -667,7 +667,7 @@ pub struct CombinedSnapshot<'a, 'tcx> {
     region_constraints_snapshot: RegionSnapshot,
     universe: ty::UniverseIndex,
     was_in_snapshot: bool,
-    _in_progress_tables: Option<Ref<'a, ty::TypeckTables<'tcx>>>,
+    _in_progress_typeck_results: Option<Ref<'a, ty::TypeckResults<'tcx>>>,
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
@@ -789,9 +789,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             region_constraints_snapshot: inner.unwrap_region_constraints().start_snapshot(),
             universe: self.universe(),
             was_in_snapshot: in_snapshot,
-            // Borrow tables "in progress" (i.e., during typeck)
+            // Borrow typeck results "in progress" (i.e., during typeck)
             // to ban writes from within a snapshot to them.
-            _in_progress_tables: self.in_progress_tables.map(|tables| tables.borrow()),
+            _in_progress_typeck_results: self
+                .in_progress_typeck_results
+                .map(|typeck_results| typeck_results.borrow()),
         }
     }
 
@@ -802,7 +804,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             region_constraints_snapshot,
             universe,
             was_in_snapshot,
-            _in_progress_tables,
+            _in_progress_typeck_results,
         } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);
@@ -820,7 +822,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             region_constraints_snapshot: _,
             universe: _,
             was_in_snapshot,
-            _in_progress_tables,
+            _in_progress_typeck_results,
         } = snapshot;
 
         self.in_snapshot.set(was_in_snapshot);

@@ -223,7 +223,7 @@ impl Debug for GeneratorLayout<'_> {
 #[derive(Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct BorrowCheckResult<'tcx> {
     /// All the opaque types that are restricted to concrete types
-    /// by this function. Unlike the value in `TypeckTables`, this has
+    /// by this function. Unlike the value in `TypeckResults`, this has
     /// unerased regions.
     pub concrete_opaque_types: FxHashMap<DefId, ty::ResolvedOpaqueTy<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,

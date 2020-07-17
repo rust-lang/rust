@@ -194,7 +194,7 @@ fn check_for_slice<'a>(cx: &LateContext<'_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<
     if let ExprKind::Index(ref lhs1, ref idx1) = lhs1.kind {
         if let ExprKind::Index(ref lhs2, ref idx2) = lhs2.kind {
             if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
-                let ty = walk_ptrs_ty(cx.tables().expr_ty(lhs1));
+                let ty = walk_ptrs_ty(cx.typeck_results().expr_ty(lhs1));
 
                 if matches!(ty.kind, ty::Slice(_))
                     || matches!(ty.kind, ty::Array(_, _))

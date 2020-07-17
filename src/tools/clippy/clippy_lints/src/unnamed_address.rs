@@ -65,14 +65,14 @@ impl LateLintPass<'_> for UnnamedAddress {
         }
 
         fn is_trait_ptr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-            match cx.tables().expr_ty_adjusted(expr).kind {
+            match cx.typeck_results().expr_ty_adjusted(expr).kind {
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) => ty.is_trait(),
                 _ => false,
             }
         }
 
         fn is_fn_def(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-            matches!(cx.tables().expr_ty(expr).kind, ty::FnDef(..))
+            matches!(cx.typeck_results().expr_ty(expr).kind, ty::FnDef(..))
         }
 
         if_chain! {
@@ -98,7 +98,7 @@ impl LateLintPass<'_> for UnnamedAddress {
             if match_def_path(cx, def_id, &paths::PTR_EQ) ||
                 match_def_path(cx, def_id, &paths::RC_PTR_EQ) ||
                 match_def_path(cx, def_id, &paths::ARC_PTR_EQ);
-            let ty_param = cx.tables().node_substs(func.hir_id).type_at(0);
+            let ty_param = cx.typeck_results().node_substs(func.hir_id).type_at(0);
             if ty_param.is_trait();
             then {
                 span_lint_and_help(
@@ -115,8 +115,8 @@ impl LateLintPass<'_> for UnnamedAddress {
         if_chain! {
             if let ExprKind::Binary(binop, ref left, ref right) = expr.kind;
             if is_comparison(binop.node);
-            if cx.tables().expr_ty_adjusted(left).is_fn_ptr() &&
-                cx.tables().expr_ty_adjusted(right).is_fn_ptr();
+            if cx.typeck_results().expr_ty_adjusted(left).is_fn_ptr() &&
+                cx.typeck_results().expr_ty_adjusted(right).is_fn_ptr();
             if is_fn_def(cx, left) || is_fn_def(cx, right);
             then {
                 span_lint(

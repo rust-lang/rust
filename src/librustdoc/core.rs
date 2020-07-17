@@ -380,9 +380,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         override_queries: Some(|_sess, providers, _external_providers| {
             // Most lints will require typechecking, so just don't run them.
             providers.lint_mod = |_, _| {};
-            // Prevent `rustc_typeck::check_crate` from calling `typeck_tables_of` on all bodies.
+            // Prevent `rustc_typeck::check_crate` from calling `typeck` on all bodies.
             providers.typeck_item_bodies = |_, _| {};
-            // hack so that `used_trait_imports` won't try to call typeck_tables_of
+            // hack so that `used_trait_imports` won't try to call typeck
             providers.used_trait_imports = |_, _| {
                 lazy_static! {
                     static ref EMPTY_SET: FxHashSet<LocalDefId> = FxHashSet::default();
@@ -390,20 +390,20 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 &EMPTY_SET
             };
             // In case typeck does end up being called, don't ICE in case there were name resolution errors
-            providers.typeck_tables_of = move |tcx, def_id| {
+            providers.typeck = move |tcx, def_id| {
                 // Closures' tables come from their outermost function,
                 // as they are part of the same "inference environment".
-                // This avoids emitting errors for the parent twice (see similar code in `typeck_tables_of_with_fallback`)
+                // This avoids emitting errors for the parent twice (see similar code in `typeck_with_fallback`)
                 let outer_def_id = tcx.closure_base_def_id(def_id.to_def_id()).expect_local();
                 if outer_def_id != def_id {
-                    return tcx.typeck_tables_of(outer_def_id);
+                    return tcx.typeck(outer_def_id);
                 }
 
                 let hir = tcx.hir();
                 let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
                 debug!("visiting body for {:?}", def_id);
                 EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
-                (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck_tables_of)(tcx, def_id)
+                (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
             };
         }),
         registry: rustc_driver::diagnostics_registry(),

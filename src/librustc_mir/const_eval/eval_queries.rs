@@ -291,9 +291,8 @@ pub fn const_eval_raw_provider<'tcx>(
     let def = cid.instance.def.with_opt_param();
 
     if let Some(def) = def.as_local() {
-        if tcx.has_typeck_tables(def.did) {
-            if let Some(error_reported) = tcx.typeck_tables_of_opt_const_arg(def).tainted_by_errors
-            {
+        if tcx.has_typeck_results(def.did) {
+            if let Some(error_reported) = tcx.typeck_opt_const_arg(def).tainted_by_errors {
                 return Err(ErrorHandled::Reported(error_reported));
             }
         }

@@ -1,14 +1,14 @@
 error: OK
   --> $DIR/dep-graph-caller-callee.rs:20:5
    |
-LL |     #[rustc_then_this_would_need(typeck_tables_of)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(typeck)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: no path from `x::x` to `typeck_tables_of`
+error: no path from `x::x` to `typeck`
   --> $DIR/dep-graph-caller-callee.rs:31:5
    |
-LL |     #[rustc_then_this_would_need(typeck_tables_of)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_then_this_would_need(typeck)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

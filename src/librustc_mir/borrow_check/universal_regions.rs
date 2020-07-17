@@ -515,7 +515,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let defining_ty = if self.mir_def.did.to_def_id() == closure_base_def_id {
                     tcx.type_of(closure_base_def_id)
                 } else {
-                    let tables = tcx.typeck_tables_of(self.mir_def.did);
+                    let tables = tcx.typeck(self.mir_def.did);
                     tables.node_type(self.mir_hir_id)
                 };
 

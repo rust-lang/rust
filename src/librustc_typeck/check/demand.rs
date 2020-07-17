@@ -320,7 +320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return None,
         };
 
-        let self_ty = self.tables.borrow().node_type(method_expr[0].hir_id);
+        let self_ty = self.typeck_results.borrow().node_type(method_expr[0].hir_id);
         let self_ty = format!("{:?}", self_ty);
         let name = method_path.ident.name;
         let is_as_ref_able = (self_ty.starts_with("&std::option::Option")
@@ -466,10 +466,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let clone_trait = self.tcx.require_lang_item(CloneTraitLangItem, Some(sp));
                         if let ([arg], Some(true), sym::clone) = (
                             &args[..],
-                            self.tables.borrow().type_dependent_def_id(expr.hir_id).map(|did| {
-                                let ai = self.tcx.associated_item(did);
-                                ai.container == ty::TraitContainer(clone_trait)
-                            }),
+                            self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
+                                |did| {
+                                    let ai = self.tcx.associated_item(did);
+                                    ai.container == ty::TraitContainer(clone_trait)
+                                },
+                            ),
                             segment.ident.name,
                         ) {
                             // If this expression had a clone call when suggesting borrowing

@@ -131,7 +131,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         pick: &probe::Pick<'tcx>,
     ) -> Ty<'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
-        // time writing the results into the various tables.
+        // time writing the results into the various typeck results.
         let mut autoderef = self.autoderef(self.span, unadjusted_self_ty);
         let (_, n) = match autoderef.nth(pick.autoderefs) {
             Some(n) => n,

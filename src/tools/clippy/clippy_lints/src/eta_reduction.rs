@@ -97,7 +97,7 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
             // Are the expression or the arguments type-adjusted? Then we need the closure
             if !(is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)));
 
-            let fn_ty = cx.tables().expr_ty(caller);
+            let fn_ty = cx.typeck_results().expr_ty(caller);
 
             if matches!(fn_ty.kind, ty::FnDef(_, _) | ty::FnPtr(_) | ty::Closure(_, _));
 
@@ -128,7 +128,7 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
             // Are the expression or the arguments type-adjusted? Then we need the closure
             if !(is_adjusted(cx, ex) || args.iter().skip(1).any(|arg| is_adjusted(cx, arg)));
 
-            let method_def_id = cx.tables().type_dependent_def_id(ex.hir_id).unwrap();
+            let method_def_id = cx.typeck_results().type_dependent_def_id(ex.hir_id).unwrap();
             if !type_is_unsafe_function(cx, cx.tcx.type_of(method_def_id));
 
             if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
@@ -153,7 +153,7 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
 /// Tries to determine the type for universal function call to be used instead of the closure
 fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_arg: &Expr<'_>) -> Option<String> {
     let expected_type_of_self = &cx.tcx.fn_sig(method_def_id).inputs_and_output().skip_binder()[0];
-    let actual_type_of_self = &cx.tables().node_type(self_arg.hir_id);
+    let actual_type_of_self = &cx.typeck_results().node_type(self_arg.hir_id);
 
     if let Some(trait_id) = cx.tcx.trait_of_item(method_def_id) {
         if match_borrow_depth(expected_type_of_self, &actual_type_of_self)
