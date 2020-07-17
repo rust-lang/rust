@@ -280,8 +280,6 @@ pub use self::cursor::Cursor;
 pub use self::error::{Error, ErrorKind, Result};
 #[unstable(feature = "input", issue = "none")]
 pub use self::stdio::input;
-#[unstable(feature = "prompt", issue = "none")]
-pub use self::stdio::prompt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
