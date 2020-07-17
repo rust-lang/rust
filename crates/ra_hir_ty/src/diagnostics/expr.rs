@@ -158,28 +158,32 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
 
         let is_method_call = matches!(expr, Expr::MethodCall { .. });
-        let (callee, args) = match expr {
+        let (sig, args) = match expr {
             Expr::Call { callee, args } => {
                 let callee = &self.infer.type_of_expr[*callee];
-                let (callable, _) = callee.as_callable()?;
-
-                (callable, args.clone())
+                let sig = callee.callable_sig(db)?;
+                (sig, args.clone())
             }
             Expr::MethodCall { receiver, args, .. } => {
-                let callee = self.infer.method_resolution(call_id)?;
                 let mut args = args.clone();
                 args.insert(0, *receiver);
-                (callee.into(), args)
+
+                // FIXME: note that we erase information about substs here. This
+                // is not right, but, luckily, doesn't matter as we care only
+                // about the number of params
+                let callee = self.infer.method_resolution(call_id)?;
+                let sig = db.callable_item_signature(callee.into()).value;
+
+                (sig, args)
             }
             _ => return None,
         };
 
-        let sig = db.callable_item_signature(callee);
-        if sig.value.is_varargs {
+        if sig.is_varargs {
             return None;
         }
 
-        let params = sig.value.params();
+        let params = sig.params();
 
         let mut param_count = params.len();
         let mut arg_count = args.len();
@@ -540,6 +544,22 @@ fn f() {
     }
 }
         "#,
+        )
+    }
+
+    #[test]
+    fn arg_count_lambda() {
+        check_diagnostics(
+            r#"
+fn main() {
+    let f = |()| ();
+    f();
+  //^^^ Expected 1 argument, found 0
+    f(());
+    f((), ());
+  //^^^^^^^^^ Expected 1 argument, found 2
+}
+"#,
         )
     }
 }
