@@ -262,7 +262,9 @@ fn should_show_param_name_hint(
     let param_name = param_name.trim_start_matches('_');
     let fn_name = match callable.kind() {
         hir::CallableKind::Function(it) => Some(it.name(sema.db).to_string()),
-        hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => None,
+        hir::CallableKind::TupleStruct(_)
+        | hir::CallableKind::TupleEnumVariant(_)
+        | hir::CallableKind::Closure => None,
     };
     if param_name.is_empty()
         || Some(param_name) == fn_name.as_ref().map(|s| s.trim_start_matches('_'))

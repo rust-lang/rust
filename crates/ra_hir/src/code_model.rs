@@ -1233,9 +1233,13 @@ impl Type {
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
-        let (id, substs) = self.ty.value.as_callable()?;
-        let sig = db.callable_item_signature(id).subst(substs);
-        Some(Callable { ty: self.clone(), sig, id, is_bound_method: false })
+        let def = match self.ty.value {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(def), parameters: _ }) => Some(def),
+            _ => None,
+        };
+
+        let sig = self.ty.value.callable_sig(db)?;
+        Some(Callable { ty: self.clone(), sig, def, is_bound_method: false })
     }
 
     pub fn is_closure(&self) -> bool {
@@ -1525,7 +1529,7 @@ impl HirDisplay for Type {
 pub struct Callable {
     ty: Type,
     sig: FnSig,
-    id: CallableDefId,
+    def: Option<CallableDefId>,
     pub(crate) is_bound_method: bool,
 }
 
@@ -1533,19 +1537,21 @@ pub enum CallableKind {
     Function(Function),
     TupleStruct(Struct),
     TupleEnumVariant(EnumVariant),
+    Closure,
 }
 
 impl Callable {
     pub fn kind(&self) -> CallableKind {
-        match self.id {
-            CallableDefId::FunctionId(it) => CallableKind::Function(it.into()),
-            CallableDefId::StructId(it) => CallableKind::TupleStruct(it.into()),
-            CallableDefId::EnumVariantId(it) => CallableKind::TupleEnumVariant(it.into()),
+        match self.def {
+            Some(CallableDefId::FunctionId(it)) => CallableKind::Function(it.into()),
+            Some(CallableDefId::StructId(it)) => CallableKind::TupleStruct(it.into()),
+            Some(CallableDefId::EnumVariantId(it)) => CallableKind::TupleEnumVariant(it.into()),
+            None => CallableKind::Closure,
         }
     }
     pub fn receiver_param(&self, db: &dyn HirDatabase) -> Option<ast::SelfParam> {
-        let func = match self.id {
-            CallableDefId::FunctionId(it) if self.is_bound_method => it,
+        let func = match self.def {
+            Some(CallableDefId::FunctionId(it)) if self.is_bound_method => it,
             _ => return None,
         };
         let src = func.lookup(db.upcast()).source(db.upcast());
@@ -1565,8 +1571,8 @@ impl Callable {
             .iter()
             .skip(if self.is_bound_method { 1 } else { 0 })
             .map(|ty| self.ty.derived(ty.clone()));
-        let patterns = match self.id {
-            CallableDefId::FunctionId(func) => {
+        let patterns = match self.def {
+            Some(CallableDefId::FunctionId(func)) => {
                 let src = func.lookup(db.upcast()).source(db.upcast());
                 src.value.param_list().map(|param_list| {
                     param_list
@@ -1577,8 +1583,7 @@ impl Callable {
                         .chain(param_list.params().map(|it| it.pat().map(Either::Right)))
                 })
             }
-            CallableDefId::StructId(_) => None,
-            CallableDefId::EnumVariantId(_) => None,
+            _ => None,
         };
         patterns.into_iter().flatten().chain(iter::repeat(None)).zip(types).collect()
     }

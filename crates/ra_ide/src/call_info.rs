@@ -70,6 +70,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
                 variant.name(db)
             );
         }
+        hir::CallableKind::Closure => (),
     }
 
     res.signature.push('(');
@@ -93,7 +94,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     res.signature.push(')');
 
     match callable.kind() {
-        hir::CallableKind::Function(_) => {
+        hir::CallableKind::Function(_) | hir::CallableKind::Closure => {
             let ret_type = callable.return_type();
             if !ret_type.is_unit() {
                 format_to!(res.signature, " -> {}", ret_type.display(db));
@@ -701,5 +702,22 @@ id! {
                 ()
             "#]],
         );
+    }
+
+    #[test]
+    fn call_info_for_lambdas() {
+        check(
+            r#"
+struct S;
+fn foo(s: S) -> i32 { 92 }
+fn main() {
+    (|s| foo(s))(<|>)
+}
+        "#,
+            expect![[r#"
+                (S) -> i32
+                (<S>)
+            "#]],
+        )
     }
 }
