@@ -41,6 +41,15 @@ impl<T> AsyncReceiver<T> {
 }
 ```
 
+You can also link to sections using URL fragment specifiers:
+
+```rust
+/// This is a special implementation of [positional parameters]
+///
+/// [positional parameters]: std::fmt#formatting-parameters
+struct MySpecialFormatter;
+```
+
 Paths in Rust have three namespaces: type, value, and macro. Items from these namespaces are allowed to overlap. In case of ambiguity, rustdoc will warn about the ambiguity and ask you to disambiguate, which can be done by using a prefix like `struct@`, `enum@`, `type@`, `trait@`, `union@`, `const@`, `static@`, `value@`, `function@`, `mod@`, `fn@`, `module@`, `method@` , `macro@`, or `derive@`:
 
 ```rust
