@@ -389,7 +389,7 @@ fn orphan_check_trait_ref<'tcx>(
     ) -> Vec<Ty<'tcx>> {
         // FIXME(eddyb) figure out if this is redundant with `ty_is_non_local`,
         // or maybe if this should be calling `ty_is_non_local_constructor`.
-        if ty_is_non_local(tcx, ty, in_crate).is_some() {
+        if !contained_non_local_types(tcx, ty, in_crate).is_empty() {
             if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
                 return inner_tys
                     .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
@@ -408,8 +408,8 @@ fn orphan_check_trait_ref<'tcx>(
         .enumerate()
     {
         debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
-        let non_local_tys = ty_is_non_local(tcx, input_ty, in_crate);
-        if non_local_tys.is_none() {
+        let non_local_tys = contained_non_local_types(tcx, input_ty, in_crate);
+        if non_local_tys.is_empty() {
             debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
             return Ok(());
         } else if let ty::Param(_) = input_ty.kind {
@@ -424,10 +424,9 @@ fn orphan_check_trait_ref<'tcx>(
 
             return Err(OrphanCheckErr::UncoveredTy(input_ty, local_type));
         }
-        if let Some(non_local_tys) = non_local_tys {
-            for input_ty in non_local_tys {
-                non_local_spans.push((input_ty, i == 0));
-            }
+
+        for input_ty in non_local_tys {
+            non_local_spans.push((input_ty, i == 0));
         }
     }
     // If we exit above loop, never found a local type.
@@ -435,16 +434,20 @@ fn orphan_check_trait_ref<'tcx>(
     Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
 }
 
-// FIXME: Return a `Vec` without `Option` here.
-fn ty_is_non_local(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Option<Vec<Ty<'tcx>>> {
+/// Returns a list of relevant non-local types for `ty`.
+///
+/// This is just `ty` itself unless `ty` is `#[fundamental]`,
+/// in which case we recursively look into this type.
+fn contained_non_local_types(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
-        None
-    } else if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
-        let tys: Vec<_> =
-            inner_tys.filter_map(|ty| ty_is_non_local(tcx, ty, in_crate)).flatten().collect();
-        if tys.is_empty() { None } else { Some(tys) }
+        Vec::new()
     } else {
-        Some(vec![ty])
+        match fundamental_ty_inner_tys(tcx, ty) {
+            Some(inner_tys) => {
+                inner_tys.flat_map(|ty| contained_non_local_types(tcx, ty, in_crate)).collect()
+            }
+            None => vec![ty],
+        }
     }
 }
 
