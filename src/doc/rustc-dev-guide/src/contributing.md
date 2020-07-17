@@ -453,7 +453,7 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 ## Out-of-tree Contributions
 
 There are a number of other ways to contribute to Rust that don't deal with
-this repository.
+rust-lang/rust.
 
 Answer questions in the _Get Help!_ channels from the [Rust Discord
 server][rust-discord], on [users.rust-lang.org][users], or on

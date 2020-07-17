@@ -268,7 +268,7 @@ the code:
 *Note*: we don't use stable `rustfmt`; we use a pinned version with a special
 config, so this may result in different style from normal `rustfmt` if you have
 format-on-save turned on. It's a good habit to run `./x.py fmt` before every
-commit, as this reduces conflicts later. The pinned verson is built under
+commit, as this reduces conflicts later. The pinned version is built under
 `build/<target>/stage0/bin/rustfmt`, so if you want, you can use it for a
 single file or for format-on-save in your editor, which can be faster than `./x.py fmt`.
 
@@ -508,4 +508,4 @@ master.
 - [The t-compiler zulip][z]
 - [The compiler's documentation (rustdocs)](https://doc.rust-lang.org/nightly/nightly-rustc/)
 - [The Forge](https://forge.rust-lang.org/) has more documentation about various procedures.
-- `#contribute`, `#compiler`, and `#rustdoc` on [Discord](https://discord.gg/rust-lang).
+- `#contribute` and `#rustdoc` on [Discord](https://discord.gg/rust-lang).

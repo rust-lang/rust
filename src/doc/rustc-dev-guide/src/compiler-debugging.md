@@ -176,11 +176,11 @@ So to put it together.
 ```bash
 # This puts the output of all debug calls in `librustc_middle/traits` into
 # standard error, which might fill your console backscroll.
-$ RUSTC_LOG=rustc::traits rustc +local my-file.rs
+$ RUSTC_LOG=rustc_middle::traits rustc +local my-file.rs
 
 # This puts the output of all debug calls in `librustc_middle/traits` in
 # `traits-log`, so you can then see it with a text editor.
-$ RUSTC_LOG=rustc::traits rustc +local my-file.rs 2>traits-log
+$ RUSTC_LOG=rustc_middle::traits rustc +local my-file.rs 2>traits-log
 
 # Not recommended. This will show the output of all `debug!` calls
 # in the Rust compiler, and there are a *lot* of them, so it will be
