@@ -22,7 +22,7 @@ use rustc_target::spec::PanicStrategy;
 use super::lints;
 
 crate fn mir_built<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) -> &'tcx ty::steal::Steal<Body<'tcx>> {
-    if let Some(def) = ty::WithOptConstParam::try_update(def, tcx) {
+    if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_built(def);
     }
 

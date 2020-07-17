@@ -270,7 +270,7 @@ fn mir_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx Steal<Body<'tcx>> {
-    if let Some(def) = ty::WithOptConstParam::try_update(def, tcx) {
+    if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_const(def);
     }
 
@@ -314,7 +314,7 @@ fn mir_validated(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
-    if let Some(def) = ty::WithOptConstParam::try_update(def, tcx) {
+    if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_validated(def);
     }
 
@@ -357,7 +357,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx Steal<Body<'tcx>> {
-    if let Some(def) = ty::WithOptConstParam::try_update(def, tcx) {
+    if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_drops_elaborated_and_const_checked(def);
     }
 
