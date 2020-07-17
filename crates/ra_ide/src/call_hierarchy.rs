@@ -154,7 +154,8 @@ mod tests {
         let nav = navs.pop().unwrap();
         nav.assert_match(expected);
 
-        let item_pos = FilePosition { file_id: nav.file_id(), offset: nav.range().start() };
+        let item_pos =
+            FilePosition { file_id: nav.file_id, offset: nav.focus_or_full_range().start() };
         let incoming_calls = analysis.incoming_calls(item_pos).unwrap().unwrap();
         assert_eq!(incoming_calls.len(), expected_incoming.len());
 

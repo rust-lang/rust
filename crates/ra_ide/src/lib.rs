@@ -545,8 +545,8 @@ mod tests {
 
         let s = symbols.pop().unwrap();
 
-        assert_eq!(s.name(), "FooInner");
-        assert!(s.container_name().is_none());
+        assert_eq!(s.name, "FooInner");
+        assert!(s.container_name.is_none());
     }
 
     #[test]
@@ -561,8 +561,8 @@ fn foo() {
 
         let s = symbols.pop().unwrap();
 
-        assert_eq!(s.name(), "FooInner");
-        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
+        assert_eq!(s.name, "FooInner");
+        assert_eq!(s.container_name, Some(SmolStr::new("foo")));
 
         let code = r#"
 mod foo {
@@ -574,8 +574,8 @@ mod foo {
 
         let s = symbols.pop().unwrap();
 
-        assert_eq!(s.name(), "FooInner");
-        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
+        assert_eq!(s.name, "FooInner");
+        assert_eq!(s.container_name, Some(SmolStr::new("foo")));
     }
 
     #[test]
@@ -588,8 +588,8 @@ struct Foo;
 
         let symbols = get_symbols_matching(code, "Foo");
 
-        let fn_match = symbols.iter().find(|s| s.name() == "foo").map(|s| s.kind());
-        let struct_match = symbols.iter().find(|s| s.name() == "Foo").map(|s| s.kind());
+        let fn_match = symbols.iter().find(|s| s.name == "foo").map(|s| s.kind);
+        let struct_match = symbols.iter().find(|s| s.name == "Foo").map(|s| s.kind);
 
         assert_eq!(fn_match, Some(FN_DEF));
         assert_eq!(struct_match, Some(STRUCT_DEF));

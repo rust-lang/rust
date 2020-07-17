@@ -98,7 +98,7 @@ mod tests {
 
         let mut actual = navs
             .into_iter()
-            .map(|nav| FileRange { file_id: nav.file_id(), range: nav.range() })
+            .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
             .collect::<Vec<_>>();
         actual.sort_by_key(key);
 

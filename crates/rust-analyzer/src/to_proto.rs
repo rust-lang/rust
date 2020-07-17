@@ -497,9 +497,9 @@ pub(crate) fn location_from_nav(
     snap: &GlobalStateSnapshot,
     nav: NavigationTarget,
 ) -> Result<lsp_types::Location> {
-    let url = url(snap, nav.file_id());
-    let line_index = snap.analysis.file_line_index(nav.file_id())?;
-    let range = range(&line_index, nav.full_range());
+    let url = url(snap, nav.file_id);
+    let line_index = snap.analysis.file_line_index(nav.file_id)?;
+    let range = range(&line_index, nav.full_range);
     let loc = lsp_types::Location::new(url, range);
     Ok(loc)
 }
@@ -531,12 +531,12 @@ fn location_info(
     snap: &GlobalStateSnapshot,
     target: NavigationTarget,
 ) -> Result<(lsp_types::Url, lsp_types::Range, lsp_types::Range)> {
-    let line_index = snap.analysis.file_line_index(target.file_id())?;
+    let line_index = snap.analysis.file_line_index(target.file_id)?;
 
-    let target_uri = url(snap, target.file_id());
-    let target_range = range(&line_index, target.full_range());
+    let target_uri = url(snap, target.file_id);
+    let target_range = range(&line_index, target.full_range);
     let target_selection_range =
-        target.focus_range().map(|it| range(&line_index, it)).unwrap_or(target_range);
+        target.focus_range.map(|it| range(&line_index, it)).unwrap_or(target_range);
     Ok((target_uri, target_range, target_selection_range))
 }
 
@@ -555,13 +555,7 @@ pub(crate) fn goto_definition_response(
         let locations = targets
             .into_iter()
             .map(|nav| {
-                location(
-                    snap,
-                    FileRange {
-                        file_id: nav.file_id(),
-                        range: nav.focus_range().unwrap_or(nav.range()),
-                    },
-                )
+                location(snap, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
             })
             .collect::<Result<Vec<_>>>()?;
         Ok(locations.into())
@@ -666,9 +660,9 @@ pub(crate) fn call_hierarchy_item(
     snap: &GlobalStateSnapshot,
     target: NavigationTarget,
 ) -> Result<lsp_types::CallHierarchyItem> {
-    let name = target.name().to_string();
-    let detail = target.description().map(|it| it.to_string());
-    let kind = symbol_kind(target.kind());
+    let name = target.name.to_string();
+    let detail = target.description.clone();
+    let kind = symbol_kind(target.kind);
     let (uri, range, selection_range) = location_info(snap, target)?;
     Ok(lsp_types::CallHierarchyItem { name, kind, tags: None, detail, uri, range, selection_range })
 }

@@ -133,8 +133,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     fn to_action(nav_target: NavigationTarget) -> HoverAction {
         HoverAction::Implementaion(FilePosition {
-            file_id: nav_target.file_id(),
-            offset: nav_target.range().start(),
+            file_id: nav_target.file_id,
+            offset: nav_target.focus_or_full_range().start(),
         })
     }
 
@@ -1357,11 +1357,11 @@ fn foo_<|>test() {}
                                     1,
                                 ),
                                 full_range: 0..24,
-                                name: "foo_test",
-                                kind: FN_DEF,
                                 focus_range: Some(
                                     11..19,
                                 ),
+                                name: "foo_test",
+                                kind: FN_DEF,
                                 container_name: None,
                                 description: None,
                                 docs: None,
@@ -1400,11 +1400,11 @@ mod tests<|> {
                                     1,
                                 ),
                                 full_range: 0..46,
-                                name: "tests",
-                                kind: MODULE,
                                 focus_range: Some(
                                     4..9,
                                 ),
+                                name: "tests",
+                                kind: MODULE,
                                 container_name: None,
                                 description: None,
                                 docs: None,
@@ -1439,11 +1439,11 @@ fn main() { let s<|>t = S{ f1:0 }; }
                                         1,
                                     ),
                                     full_range: 0..19,
-                                    name: "S",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         7..8,
                                     ),
+                                    name: "S",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -1478,11 +1478,11 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                                         1,
                                     ),
                                     full_range: 17..37,
-                                    name: "S",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         24..25,
                                     ),
+                                    name: "S",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -1497,11 +1497,11 @@ fn main() { let s<|>t = S{ f1:Arg(0) }; }
                                         1,
                                     ),
                                     full_range: 0..16,
-                                    name: "Arg",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         7..10,
                                     ),
+                                    name: "Arg",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct Arg",
@@ -1536,11 +1536,11 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                                         1,
                                     ),
                                     full_range: 17..37,
-                                    name: "S",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         24..25,
                                     ),
+                                    name: "S",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -1555,11 +1555,11 @@ fn main() { let s<|>t = S{ f1: S{ f1: Arg(0) } }; }
                                         1,
                                     ),
                                     full_range: 0..16,
-                                    name: "Arg",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         7..10,
                                     ),
+                                    name: "Arg",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct Arg",
@@ -1597,11 +1597,11 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                         1,
                                     ),
                                     full_range: 0..14,
-                                    name: "A",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         7..8,
                                     ),
+                                    name: "A",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct A",
@@ -1616,11 +1616,11 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                         1,
                                     ),
                                     full_range: 15..29,
-                                    name: "B",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         22..23,
                                     ),
+                                    name: "B",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct B",
@@ -1635,11 +1635,11 @@ fn main() { let s<|>t = (A(1), B(2), M::C(3) ); }
                                         1,
                                     ),
                                     full_range: 42..60,
-                                    name: "C",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         53..54,
                                     ),
+                                    name: "C",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "pub struct C",
@@ -1674,11 +1674,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 0..12,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1714,11 +1714,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 0..15,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1733,11 +1733,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 16..25,
-                                    name: "S",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         23..24,
                                     ),
+                                    name: "S",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -1773,11 +1773,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 0..12,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1792,11 +1792,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 13..25,
-                                    name: "Bar",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         19..22,
                                     ),
+                                    name: "Bar",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Bar",
@@ -1835,11 +1835,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 0..15,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1854,11 +1854,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 16..31,
-                                    name: "Bar",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         22..25,
                                     ),
+                                    name: "Bar",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Bar",
@@ -1873,11 +1873,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 32..44,
-                                    name: "S1",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         39..41,
                                     ),
+                                    name: "S1",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S1",
@@ -1892,11 +1892,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 45..57,
-                                    name: "S2",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         52..54,
                                     ),
+                                    name: "S2",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S2",
@@ -1929,11 +1929,11 @@ fn foo(ar<|>g: &impl Foo) {}
                                         1,
                                     ),
                                     full_range: 0..12,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1969,11 +1969,11 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         1,
                                     ),
                                     full_range: 0..12,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1988,11 +1988,11 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         1,
                                     ),
                                     full_range: 13..28,
-                                    name: "Bar",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         19..22,
                                     ),
+                                    name: "Bar",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Bar",
@@ -2007,11 +2007,11 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         1,
                                     ),
                                     full_range: 29..39,
-                                    name: "S",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         36..37,
                                     ),
+                                    name: "S",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2045,11 +2045,11 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                         1,
                                     ),
                                     full_range: 0..15,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2064,11 +2064,11 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                         1,
                                     ),
                                     full_range: 16..27,
-                                    name: "S",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         23..24,
                                     ),
+                                    name: "S",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2107,11 +2107,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 42..55,
-                                    name: "B",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         49..50,
                                     ),
+                                    name: "B",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct B",
@@ -2126,11 +2126,11 @@ fn main() { let s<|>t = foo(); }
                                         1,
                                     ),
                                     full_range: 0..12,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2163,11 +2163,11 @@ fn foo(ar<|>g: &dyn Foo) {}
                                         1,
                                     ),
                                     full_range: 0..12,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2201,11 +2201,11 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                         1,
                                     ),
                                     full_range: 0..15,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2220,11 +2220,11 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                         1,
                                     ),
                                     full_range: 16..27,
-                                    name: "S",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         23..24,
                                     ),
+                                    name: "S",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2261,11 +2261,11 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         1,
                                     ),
                                     full_range: 0..21,
-                                    name: "ImplTrait",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..15,
                                     ),
+                                    name: "ImplTrait",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait ImplTrait",
@@ -2280,11 +2280,11 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         1,
                                     ),
                                     full_range: 43..57,
-                                    name: "B",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         50..51,
                                     ),
+                                    name: "B",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct B",
@@ -2299,11 +2299,11 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         1,
                                     ),
                                     full_range: 22..42,
-                                    name: "DynTrait",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         28..36,
                                     ),
+                                    name: "DynTrait",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait DynTrait",
@@ -2318,11 +2318,11 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         1,
                                     ),
                                     full_range: 58..69,
-                                    name: "S",
-                                    kind: STRUCT_DEF,
                                     focus_range: Some(
                                         65..66,
                                     ),
+                                    name: "S",
+                                    kind: STRUCT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "struct S",
@@ -2366,11 +2366,11 @@ fn main() { let s<|>t = test().get(); }
                                         1,
                                     ),
                                     full_range: 0..62,
-                                    name: "Foo",
-                                    kind: TRAIT_DEF,
                                     focus_range: Some(
                                         6..9,
                                     ),
+                                    name: "Foo",
+                                    kind: TRAIT_DEF,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
