@@ -26,7 +26,7 @@ name: CI
       - "**"
 defaults:
   run:
-    shell: "python src/ci/exec-with-shell.py {0}"
+    shell: bash
 jobs:
   pr:
     name: PR
@@ -51,9 +51,6 @@ jobs:
             os: ubuntu-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
-    defaults:
-      run:
-        shell: bash
     steps:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
@@ -153,9 +150,6 @@ jobs:
             env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
-    defaults:
-      run:
-        shell: bash
     steps:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
@@ -473,9 +467,6 @@ jobs:
             os: windows-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
-    defaults:
-      run:
-        shell: bash
     steps:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
@@ -601,9 +592,6 @@ jobs:
             os: macos-latest
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
-    defaults:
-      run:
-        shell: bash
     steps:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false

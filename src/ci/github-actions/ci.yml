@@ -75,9 +75,6 @@ x--expand-yaml-anchors--remove:
   - &base-ci-job
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
-    defaults:
-      run:
-        shell: bash
     env: *shared-ci-variables
     steps:
       - name: disable git crlf conversion
@@ -233,18 +230,10 @@ on:
 
 defaults:
   run:
-    # While on Linux and macOS builders it just forwards the arguments to the
-    # system bash, this wrapper allows switching from the host's bash.exe to
-    # the one we install along with MSYS2 mid-build on Windows.
-    #
-    # Once the step to install MSYS2 is executed, the CI_OVERRIDE_SHELL
-    # environment variable is set pointing to our MSYS2's bash.exe. From that
-    # moment the host's bash.exe will not be called anymore.
-    #
-    # This is needed because we can't launch our own bash.exe from the host
-    # bash.exe, as that would load two different cygwin1.dll in memory, causing
-    # "cygwin heap mismatch" errors.
-    shell: python src/ci/exec-with-shell.py {0}
+    # On Linux, macOS, and Windows, use the system-provided bash as the default
+    # shell. (This should only make a difference on Windows, where the default
+    # shell is PowerShell.)
+    shell: bash
 
 jobs:
   pr:
