@@ -41,10 +41,10 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
         if_chain! {
             if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
             if path.ident.name == sym!(repeat);
-            if let Some(Constant::Int(1)) = constant_context(cx, cx.tables()).expr(&args[1]);
+            if let Some(Constant::Int(1)) = constant_context(cx, cx.typeck_results()).expr(&args[1]);
             if !in_macro(args[0].span);
             then {
-                let ty = walk_ptrs_ty(cx.tables().expr_ty(&args[0]));
+                let ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&args[0]));
                 if ty.is_str() {
                     span_lint_and_sugg(
                         cx,

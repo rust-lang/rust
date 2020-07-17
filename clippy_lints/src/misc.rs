@@ -496,7 +496,7 @@ fn get_lint_and_message(
 fn check_nan(cx: &LateContext<'_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
     if_chain! {
         if !in_constant(cx, cmp_expr.hir_id);
-        if let Some((value, _)) = constant(cx, cx.tables(), expr);
+        if let Some((value, _)) = constant(cx, cx.typeck_results(), expr);
         then {
             let needs_lint = match value {
                 Constant::F32(num) => num.is_nan(),
@@ -517,7 +517,7 @@ fn check_nan(cx: &LateContext<'_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
 }
 
 fn is_named_constant<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    if let Some((_, res)) = constant(cx, cx.tables(), expr) {
+    if let Some((_, res)) = constant(cx, cx.typeck_results(), expr) {
         res
     } else {
         false
@@ -525,7 +525,7 @@ fn is_named_constant<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool
 }
 
 fn is_allowed<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    match constant(cx, cx.tables(), expr) {
+    match constant(cx, cx.typeck_results(), expr) {
         Some((Constant::F32(f), _)) => f == 0.0 || f.is_infinite(),
         Some((Constant::F64(f), _)) => f == 0.0 || f.is_infinite(),
         Some((Constant::Vec(vec), _)) => vec.iter().all(|f| match f {
@@ -557,7 +557,7 @@ fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let value = &walk_ptrs_ty(cx.tables().expr_ty(expr)).kind;
+    let value = &walk_ptrs_ty(cx.typeck_results().expr_ty(expr)).kind;
 
     if let ty::Array(arr_ty, _) = value {
         return matches!(arr_ty.kind, ty::Float(_));
@@ -567,7 +567,7 @@ fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn is_array(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    matches!(&walk_ptrs_ty(cx.tables().expr_ty(expr)).kind, ty::Array(_, _))
+    matches!(&walk_ptrs_ty(cx.typeck_results().expr_ty(expr)).kind, ty::Array(_, _))
 }
 
 fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool) {
@@ -593,7 +593,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
     let (arg_ty, snip) = match expr.kind {
         ExprKind::MethodCall(.., ref args, _) if args.len() == 1 => {
             if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
-                (cx.tables().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
+                (cx.typeck_results().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
             } else {
                 return;
             }
@@ -601,7 +601,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
         ExprKind::Call(ref path, ref v) if v.len() == 1 => {
             if let ExprKind::Path(ref path) = path.kind {
                 if match_qpath(path, &["String", "from_str"]) || match_qpath(path, &["String", "from"]) {
-                    (cx.tables().expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
+                    (cx.typeck_results().expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {
                     return;
                 }
@@ -612,7 +612,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
         _ => return,
     };
 
-    let other_ty = cx.tables().expr_ty(other);
+    let other_ty = cx.typeck_results().expr_ty(other);
 
     let without_deref = symmetric_partial_eq(cx, arg_ty, other_ty).unwrap_or_default();
     let with_deref = arg_ty

@@ -90,7 +90,7 @@ fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &
         if let PatKind::Tuple(ref pats, None) = arms[0].pat.kind;
         if pats.len() == 1;
         then {
-            let ty = walk_ptrs_ty(cx.tables().pat_ty(&pats[0]));
+            let ty = walk_ptrs_ty(cx.typeck_results().pat_ty(&pats[0]));
             if ty.kind != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym!(string_type)) {
                 return None;
             }

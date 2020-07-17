@@ -103,8 +103,8 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                     (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},
                     // &foo == &bar
                     (&ExprKind::AddrOf(BorrowKind::Ref, _, ref l), &ExprKind::AddrOf(BorrowKind::Ref, _, ref r)) => {
-                        let lty = cx.tables().expr_ty(l);
-                        let rty = cx.tables().expr_ty(r);
+                        let lty = cx.typeck_results().expr_ty(l);
+                        let rty = cx.typeck_results().expr_ty(r);
                         let lcpy = is_copy(cx, lty);
                         let rcpy = is_copy(cx, rty);
                         // either operator autorefs or both args are copyable
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                             )
                         } else if lcpy
                             && !rcpy
-                            && implements_trait(cx, lty, trait_id, &[cx.tables().expr_ty(right).into()])
+                            && implements_trait(cx, lty, trait_id, &[cx.typeck_results().expr_ty(right).into()])
                         {
                             span_lint_and_then(
                                 cx,
@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                             )
                         } else if !lcpy
                             && rcpy
-                            && implements_trait(cx, cx.tables().expr_ty(left), trait_id, &[rty.into()])
+                            && implements_trait(cx, cx.typeck_results().expr_ty(left), trait_id, &[rty.into()])
                         {
                             span_lint_and_then(
                                 cx,
@@ -166,10 +166,10 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                     },
                     // &foo == bar
                     (&ExprKind::AddrOf(BorrowKind::Ref, _, ref l), _) => {
-                        let lty = cx.tables().expr_ty(l);
+                        let lty = cx.typeck_results().expr_ty(l);
                         let lcpy = is_copy(cx, lty);
                         if (requires_ref || lcpy)
-                            && implements_trait(cx, lty, trait_id, &[cx.tables().expr_ty(right).into()])
+                            && implements_trait(cx, lty, trait_id, &[cx.typeck_results().expr_ty(right).into()])
                         {
                             span_lint_and_then(
                                 cx,
@@ -190,10 +190,10 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                     },
                     // foo == &bar
                     (_, &ExprKind::AddrOf(BorrowKind::Ref, _, ref r)) => {
-                        let rty = cx.tables().expr_ty(r);
+                        let rty = cx.typeck_results().expr_ty(r);
                         let rcpy = is_copy(cx, rty);
                         if (requires_ref || rcpy)
-                            && implements_trait(cx, cx.tables().expr_ty(left), trait_id, &[rty.into()])
+                            && implements_trait(cx, cx.typeck_results().expr_ty(left), trait_id, &[rty.into()])
                         {
                             span_lint_and_then(cx, OP_REF, e.span, "taken reference of right operand", |diag| {
                                 let rsnip = snippet(cx, r.span, "...").to_string();

@@ -48,7 +48,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     }
     match expr.kind {
         ExprKind::Lit(..) | ExprKind::Closure(..) => true,
-        ExprKind::Path(..) => !has_drop(cx, cx.tables().expr_ty(expr)),
+        ExprKind::Path(..) => !has_drop(cx, cx.typeck_results().expr_ty(expr)),
         ExprKind::Index(ref a, ref b) | ExprKind::Binary(_, ref a, ref b) => {
             has_no_effect(cx, a) && has_no_effect(cx, b)
         },
@@ -61,7 +61,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         | ExprKind::AddrOf(_, _, ref inner)
         | ExprKind::Box(ref inner) => has_no_effect(cx, inner),
         ExprKind::Struct(_, ref fields, ref base) => {
-            !has_drop(cx, cx.tables().expr_ty(expr))
+            !has_drop(cx, cx.typeck_results().expr_ty(expr))
                 && fields.iter().all(|field| has_no_effect(cx, &field.expr))
                 && base.as_ref().map_or(true, |base| has_no_effect(cx, base))
         },
@@ -70,7 +70,8 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 let res = qpath_res(cx, qpath, callee.hir_id);
                 match res {
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..) => {
-                        !has_drop(cx, cx.tables().expr_ty(expr)) && args.iter().all(|arg| has_no_effect(cx, arg))
+                        !has_drop(cx, cx.typeck_results().expr_ty(expr))
+                            && args.iter().all(|arg| has_no_effect(cx, arg))
                     },
                     _ => false,
                 }
@@ -137,7 +138,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
         | ExprKind::AddrOf(_, _, ref inner)
         | ExprKind::Box(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
         ExprKind::Struct(_, ref fields, ref base) => {
-            if has_drop(cx, cx.tables().expr_ty(expr)) {
+            if has_drop(cx, cx.typeck_results().expr_ty(expr)) {
                 None
             } else {
                 Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
@@ -148,7 +149,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
                 let res = qpath_res(cx, qpath, callee.hir_id);
                 match res {
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
-                        if !has_drop(cx, cx.tables().expr_ty(expr)) =>
+                        if !has_drop(cx, cx.typeck_results().expr_ty(expr)) =>
                     {
                         Some(args.iter().collect())
                     },

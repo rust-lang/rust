@@ -320,7 +320,7 @@ fn bindings<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>) -> FxHashMap<Symbol, Ty
             },
             PatKind::Binding(.., ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.name) {
-                    v.insert(cx.tables().pat_ty(pat));
+                    v.insert(cx.typeck_results().pat_ty(pat));
                 }
                 if let Some(ref as_pat) = *as_pat {
                     bindings_impl(cx, as_pat, map);

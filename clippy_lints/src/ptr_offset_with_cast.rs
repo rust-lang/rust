@@ -105,12 +105,12 @@ fn expr_as_ptr_offset_call<'tcx>(
 
 // Is the type of the expression a usize?
 fn is_expr_ty_usize<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
-    cx.tables().expr_ty(expr) == cx.tcx.types.usize
+    cx.typeck_results().expr_ty(expr) == cx.tcx.types.usize
 }
 
 // Is the type of the expression a raw pointer?
 fn is_expr_ty_raw_ptr<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
-    cx.tables().expr_ty(expr).is_unsafe_ptr()
+    cx.typeck_results().expr_ty(expr).is_unsafe_ptr()
 }
 
 fn build_suggestion<'tcx>(

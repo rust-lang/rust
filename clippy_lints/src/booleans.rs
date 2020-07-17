@@ -111,8 +111,12 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
             match &e.kind {
                 ExprKind::Unary(UnOp::UnNot, inner) => return Ok(Bool::Not(box self.run(inner)?)),
                 ExprKind::Binary(binop, lhs, rhs) => match &binop.node {
-                    BinOpKind::Or => return Ok(Bool::Or(self.extract(BinOpKind::Or, &[lhs, rhs], Vec::new())?)),
-                    BinOpKind::And => return Ok(Bool::And(self.extract(BinOpKind::And, &[lhs, rhs], Vec::new())?)),
+                    BinOpKind::Or => {
+                        return Ok(Bool::Or(self.extract(BinOpKind::Or, &[lhs, rhs], Vec::new())?));
+                    },
+                    BinOpKind::And => {
+                        return Ok(Bool::And(self.extract(BinOpKind::And, &[lhs, rhs], Vec::new())?));
+                    },
                     _ => (),
                 },
                 ExprKind::Lit(lit) => match lit.node {
@@ -248,7 +252,7 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
             })
         },
         ExprKind::MethodCall(path, _, args, _) if args.len() == 1 => {
-            let type_of_receiver = cx.tables().expr_ty(&args[0]);
+            let type_of_receiver = cx.typeck_results().expr_ty(&args[0]);
             if !is_type_diagnostic_item(cx, type_of_receiver, sym!(option_type))
                 && !is_type_diagnostic_item(cx, type_of_receiver, sym!(result_type))
             {
@@ -450,7 +454,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
                 self.bool_expr(e)
             },
             ExprKind::Unary(UnOp::UnNot, inner) => {
-                if self.cx.tables().node_types()[inner.hir_id].is_bool() {
+                if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
                     self.bool_expr(e);
                 } else {
                     walk_expr(self, e);
@@ -465,7 +469,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
 }
 
 fn implements_ord<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
-    let ty = cx.tables().expr_ty(expr);
+    let ty = cx.typeck_results().expr_ty(expr);
     get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]))
 }
 
