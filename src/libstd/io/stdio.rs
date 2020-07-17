@@ -874,11 +874,11 @@ impl fmt::Debug for StderrLock<'_> {
     }
 }
 
-/// Equivalent to the [`input`] method except that a prompt
-/// is printed before capturing input. This function returns
-/// either success ([`Ok`]) or failure ([`Err`]) containing
-/// the input. See the [`io::Result`] module documentation
-/// for details.
+/// Prints `prompt` and reads a [`String`] from
+/// [standard input](Stdin). The trailing newline is stripped.
+/// Errors on EOF (Ctrl-D).
+///
+/// Equivalent to [`input`] except it prints prompts.
 ///
 /// # Note
 ///
