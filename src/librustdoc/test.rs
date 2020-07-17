@@ -45,14 +45,14 @@ pub struct TestOptions {
 pub fn run(options: Options) -> Result<(), String> {
     let input = config::Input::File(options.input.clone());
 
-    let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
+    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // In addition to those specific lints, we also need to allow those given through
     // command line, otherwise they'll get ignored and we don't want that.
-    let allowed_lints = vec![invalid_codeblock_attribute_name.to_owned()];
+    let allowed_lints = vec![invalid_codeblock_attributes_name.to_owned()];
 
     let (lint_opts, lint_caps) = init_lints(allowed_lints, options.lint_opts.clone(), |lint| {
-        if lint.name == invalid_codeblock_attribute_name {
+        if lint.name == invalid_codeblock_attributes_name {
             None
         } else {
             Some((lint.name_lower(), lint::Allow))

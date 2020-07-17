@@ -320,7 +320,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
     let no_crate_level_docs = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name;
-    let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
+    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // In addition to those specific lints, we also need to allow those given through
     // command line, otherwise they'll get ignored and we don't want that.
@@ -330,12 +330,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         missing_doc_example.to_owned(),
         private_doc_tests.to_owned(),
         no_crate_level_docs.to_owned(),
-        invalid_codeblock_attribute_name.to_owned(),
+        invalid_codeblock_attributes_name.to_owned(),
     ];
 
     let (lint_opts, lint_caps) = init_lints(allowed_lints, lint_opts, |lint| {
         if lint.name == intra_link_resolution_failure_name
-            || lint.name == invalid_codeblock_attribute_name
+            || lint.name == invalid_codeblock_attributes_name
         {
             None
         } else {
