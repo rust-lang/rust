@@ -313,6 +313,7 @@ impl<'tcx> DebugContext<'tcx> {
             use cranelift_codegen::ir::ArgumentPurpose;
             let base_name = match param.purpose {
                 ArgumentPurpose::Normal => "arg",
+                ArgumentPurpose::StructArgument(_) => "struct_arg",
                 ArgumentPurpose::StructReturn => "sret",
                 ArgumentPurpose::Link | ArgumentPurpose::FramePointer | ArgumentPurpose::CalleeSaved => continue,
                 ArgumentPurpose::VMContext | ArgumentPurpose::SignatureId | ArgumentPurpose::StackLimit => unreachable!(),
