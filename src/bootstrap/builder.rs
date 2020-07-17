@@ -725,7 +725,11 @@ impl<'a> Builder<'a> {
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(compiler))
             .env("RUSTDOC_CRATE_VERSION", self.rust_version())
-            .env("RUSTC_BOOTSTRAP", "1");
+            .env("RUSTC_BOOTSTRAP", "1")
+            .arg("-Winvalid_codeblock_attributes");
+        if self.config.deny_warnings {
+            cmd.arg("-Dwarnings");
+        }
 
         // Remove make-related flags that can cause jobserver problems.
         cmd.env_remove("MAKEFLAGS");
@@ -838,7 +842,7 @@ impl<'a> Builder<'a> {
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.
-        let rustdocflags = rustflags.clone();
+        let mut rustdocflags = rustflags.clone();
 
         if let Ok(s) = env::var("CARGOFLAGS") {
             cargo.args(s.split_whitespace());
@@ -1140,6 +1144,7 @@ impl<'a> Builder<'a> {
 
             if self.config.deny_warnings {
                 lint_flags.push("-Dwarnings");
+                rustdocflags.arg("-Dwarnings");
             }
 
             // FIXME(#58633) hide "unused attribute" errors in incremental
@@ -1157,6 +1162,8 @@ impl<'a> Builder<'a> {
             // are always ignored in dependencies. Eventually this should be
             // fixed via better support from Cargo.
             cargo.env("RUSTC_LINT_FLAGS", lint_flags.join(" "));
+
+            rustdocflags.arg("-Winvalid_codeblock_attributes");
         }
 
         if let Mode::Rustc | Mode::Codegen = mode {
