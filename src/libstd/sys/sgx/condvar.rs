@@ -31,8 +31,10 @@ impl Condvar {
         mutex.lock()
     }
 
-    pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
-        rtabort!("timeout not supported in SGX");
+    pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
+        let success = WaitQueue::wait_timeout(&self.inner, dur, || mutex.unlock());
+        mutex.lock();
+        success
     }
 
     #[inline]
