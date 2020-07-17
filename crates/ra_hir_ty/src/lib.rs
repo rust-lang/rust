@@ -767,15 +767,6 @@ impl Ty {
         }
     }
 
-    pub fn as_callable(&self) -> Option<(CallableDefId, &Substs)> {
-        match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(callable_def), parameters }) => {
-                Some((*callable_def, parameters))
-            }
-            _ => None,
-        }
-    }
-
     pub fn is_never(&self) -> bool {
         matches!(self, Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }))
     }
@@ -807,7 +798,7 @@ impl Ty {
         }
     }
 
-    fn callable_sig(&self, db: &dyn HirDatabase) -> Option<FnSig> {
+    pub fn callable_sig(&self, db: &dyn HirDatabase) -> Option<FnSig> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
                 TypeCtor::FnPtr { is_varargs, .. } => {
