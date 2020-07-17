@@ -904,10 +904,10 @@ pub fn prompt(prompt: &str) -> Result<String> {
     input()
 }
 
-/// Reads a line from standard input, returning either success
-/// ([`Ok`]) or failure ([`Err`]) containing the input. See the
-/// [`io::Result`] module documentation for details. For
-/// automatic prompt handling, see the [`prompt`] method.
+/// Reads a [`String`] from [standard input](Stdin). The
+/// trailing newline is stripped. Errors on EOF (Ctrl-D).
+///
+/// Equivalent to [`prompt`] without a prompt.
 ///
 /// If you need more explicit control over
 /// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
