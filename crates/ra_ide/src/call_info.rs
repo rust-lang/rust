@@ -161,6 +161,10 @@ impl ActiveParameter {
 
         let idx = active_parameter?;
         let mut params = signature.params(sema.db);
+        if !(idx < params.len()) {
+            mark::hit!(too_many_arguments);
+            return None;
+        }
         let (pat, ty) = params.swap_remove(idx);
         let name = pat?.to_string();
         Some(ActiveParameter { ty, name })
