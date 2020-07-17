@@ -18,7 +18,7 @@ use build_helper::{t, up_to_date};
 use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
-use crate::config::Config;
+use crate::config::{Config, TargetSelection};
 use crate::tool::{self, prepare_tool_cargo, SourceType, Tool};
 use crate::util::symlink_dir;
 
@@ -27,7 +27,7 @@ macro_rules! book {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
-            target: Interned<String>,
+            target: TargetSelection,
         }
 
         impl Step for $name {
@@ -101,7 +101,7 @@ fn is_explicit_request(builder: &Builder<'_>, path: &str) -> bool {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct UnstableBook {
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for UnstableBook {
@@ -129,7 +129,7 @@ impl Step for UnstableBook {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 struct RustbookSrc {
-    target: Interned<String>,
+    target: TargetSelection,
     name: Interned<String>,
     src: Interned<PathBuf>,
 }
@@ -169,7 +169,7 @@ impl Step for RustbookSrc {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct TheBook {
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for TheBook {
@@ -241,7 +241,7 @@ impl Step for TheBook {
 fn invoke_rustdoc(
     builder: &Builder<'_>,
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
     markdown: &str,
 ) {
     let out = builder.doc_out(target);
@@ -277,7 +277,7 @@ fn invoke_rustdoc(
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Standalone {
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for Standalone {
@@ -386,7 +386,7 @@ impl Step for Standalone {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
     pub stage: u32,
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for Std {
@@ -415,7 +415,7 @@ impl Step for Std {
         let compiler = builder.compiler(stage, builder.config.build);
 
         builder.ensure(compile::Std { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Std).join(target).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
 
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
 
@@ -475,7 +475,7 @@ impl Step for Std {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
     stage: u32,
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for Rustc {
@@ -522,7 +522,7 @@ impl Step for Rustc {
         // needed because rustdoc is built in a different directory from
         // rustc. rustdoc needs to be able to see everything, for example when
         // merging the search index, or generating local (relative) links.
-        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         // Build cargo command.
@@ -559,7 +559,7 @@ impl Step for Rustc {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustdoc {
     stage: u32,
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for Rustdoc {
@@ -604,7 +604,7 @@ impl Step for Rustdoc {
         builder.ensure(tool::Rustdoc { compiler });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
-        let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
         t!(fs::create_dir_all(&out_dir));
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
@@ -632,7 +632,7 @@ impl Step for Rustdoc {
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
     pub compiler: Compiler,
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for ErrorIndex {
@@ -672,7 +672,7 @@ impl Step for ErrorIndex {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct UnstableBookGen {
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for UnstableBookGen {
