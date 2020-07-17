@@ -3,7 +3,8 @@ use std::fmt;
 
 use log::trace;
 
-use rustc_span::DUMMY_SP;
+use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::{source_map::DUMMY_SP, Span};
 
 use crate::*;
 
@@ -116,7 +117,17 @@ pub fn report_error<'tcx, 'mir>(
 
     e.print_backtrace();
     let msg = e.to_string();
-    report_msg(ecx, &format!("{}: {}", title, msg), msg, helps, true);
+    report_msg(*ecx.tcx, /*error*/true, &format!("{}: {}", title, msg), msg, helps, &ecx.generate_stacktrace());
+
+    // Debug-dump all locals.
+    for (i, frame) in ecx.active_thread_stack().iter().enumerate() {
+        trace!("-------------------");
+        trace!("Frame {}", i);
+        trace!("    return: {:?}", frame.return_place.map(|p| *p));
+        for (i, local) in frame.locals.iter().enumerate() {
+            trace!("    local {}: {:?}", i, local.value);
+        }
+    }
 
     // Extra output to help debug specific issues.
     match e.kind {
@@ -135,24 +146,21 @@ pub fn report_error<'tcx, 'mir>(
     None
 }
 
-/// Report an error or note (depending on the `error` argument) at the current frame's current statement.
+/// Report an error or note (depending on the `error` argument) with the given stacktrace.
 /// Also emits a full stacktrace of the interpreter stack.
-fn report_msg<'tcx, 'mir>(
-    ecx: &InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+fn report_msg<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    error: bool,
     title: &str,
     span_msg: String,
     mut helps: Vec<String>,
-    error: bool,
+    stacktrace: &[FrameInfo<'tcx>],
 ) {
-    let span = if let Some(frame) = ecx.active_thread_stack().last() {
-        frame.current_source_info().unwrap().span
-    } else {
-        DUMMY_SP
-    };
+    let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
     let mut err = if error {
-        ecx.tcx.sess.struct_span_err(span, title)
+        tcx.sess.struct_span_err(span, title)
     } else {
-        ecx.tcx.sess.diagnostic().span_note_diag(span, title)
+        tcx.sess.diagnostic().span_note_diag(span, title)
     };
     err.span_label(span, span_msg);
     if !helps.is_empty() {
@@ -163,8 +171,7 @@ fn report_msg<'tcx, 'mir>(
         }
     }
     // Add backtrace
-    let frames = ecx.generate_stacktrace();
-    for (idx, frame_info) in frames.iter().enumerate() {
+    for (idx, frame_info) in stacktrace.iter().enumerate() {
         let is_local = frame_info.instance.def_id().is_local();
         // No span for non-local frames and the first frame (which is the error site).
         if is_local && idx > 0 {
@@ -175,15 +182,6 @@ fn report_msg<'tcx, 'mir>(
     }
 
     err.emit();
-
-    for (i, frame) in ecx.active_thread_stack().iter().enumerate() {
-        trace!("-------------------");
-        trace!("Frame {}", i);
-        trace!("    return: {:?}", frame.return_place.map(|p| *p));
-        for (i, local) in frame.locals.iter().enumerate() {
-            trace!("    local {}: {:?}", i, local.value);
-        }
-    }
 }
 
 thread_local! {
@@ -196,13 +194,62 @@ pub fn register_diagnostic(e: NonHaltingDiagnostic) {
     DIAGNOSTICS.with(|diagnostics| diagnostics.borrow_mut().push(e));
 }
 
+/// Remember enough about the topmost frame so that we can restore the stack
+/// after a step was taken.
+pub struct TopFrameInfo<'tcx> {
+    stack_size: usize,
+    instance: ty::Instance<'tcx>,
+    span: Span,
+}
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    fn preprocess_diagnostics(&self) -> TopFrameInfo<'tcx> {
+        // Ensure we have no lingering diagnostics.
+        DIAGNOSTICS.with(|diagnostics| assert!(diagnostics.borrow().is_empty()));
+
+        let this = self.eval_context_ref();
+        let frame = this.frame();
+
+        TopFrameInfo {
+            stack_size: this.active_thread_stack().len(),
+            instance: frame.instance,
+            span: frame.current_source_info().map_or(DUMMY_SP, |si| si.span),
+        }
+    }
+
     /// Emit all diagnostics that were registed with `register_diagnostics`
-    fn process_diagnostics(&self) {
+    fn process_diagnostics(&self, info: TopFrameInfo<'tcx>) {
         let this = self.eval_context_ref();
         DIAGNOSTICS.with(|diagnostics| {
-            for e in diagnostics.borrow_mut().drain(..) {
+            let mut diagnostics = diagnostics.borrow_mut();
+            if diagnostics.is_empty() {
+                return;
+            }
+            // We need to fix up the stack trace, because the machine has already
+            // stepped to the next statement.
+            let mut stacktrace = this.generate_stacktrace();
+            // Remove newly pushed frames.
+            while stacktrace.len() > info.stack_size {
+                stacktrace.remove(0);
+            }
+            // Add popped frame back.
+            if stacktrace.len() < info.stack_size {
+                assert!(stacktrace.len() == info.stack_size-1, "we should never pop more than one frame at once");
+                let frame_info = FrameInfo {
+                    instance: info.instance,
+                    span: info.span,
+                    lint_root: None,
+                };
+                stacktrace.insert(0, frame_info);
+            } else {
+                // Adjust topmost frame.
+                stacktrace[0].span = info.span;
+                assert_eq!(stacktrace[0].instance, info.instance, "we should not pop and push a frame in one step");
+            }
+
+            // Show diagnostics.
+            for e in diagnostics.drain(..) {
                 use NonHaltingDiagnostic::*;
                 let msg = match e {
                     PoppedPointerTag(item) =>
@@ -214,7 +261,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     FreedAlloc(AllocId(id)) =>
                         format!("freed allocation with id {}", id),
                 };
-                report_msg(this, "tracking was triggered", msg, vec![], false);
+                report_msg(*this.tcx, /*error*/false, "tracking was triggered", msg, vec![], &stacktrace);
             }
         });
     }
