@@ -1,15 +1,15 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
-use crate::cache::Interned;
 use crate::compile::{add_to_sysroot, run_cargo, rustc_cargo, std_cargo};
+use crate::config::TargetSelection;
 use crate::tool::{prepare_tool_cargo, SourceType};
 use crate::{Compiler, Mode};
 use std::path::PathBuf;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 fn args(kind: Kind) -> Vec<String> {
@@ -71,7 +71,7 @@ impl Step for Std {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for Rustc {
@@ -127,7 +127,7 @@ macro_rules! tool_check_step {
     ($name:ident, $path:expr, $source_type:expr) => {
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
-            pub target: Interned<String>,
+            pub target: TargetSelection,
         }
 
         impl Step for $name {
@@ -163,8 +163,8 @@ macro_rules! tool_check_step {
                 println!(
                     "Checking {} artifacts ({} -> {})",
                     stringify!($name).to_lowercase(),
-                    &compiler.host,
-                    target
+                    &compiler.host.triple,
+                    target.triple
                 );
                 run_cargo(
                     builder,
@@ -184,7 +184,7 @@ macro_rules! tool_check_step {
                 fn stamp(
                     builder: &Builder<'_>,
                     compiler: Compiler,
-                    target: Interned<String>,
+                    target: TargetSelection,
                 ) -> PathBuf {
                     builder
                         .cargo_out(compiler, Mode::ToolRustc, target)
@@ -204,12 +204,12 @@ tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>) -> PathBuf {
+fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
     builder.cargo_out(compiler, Mode::Std, target).join(".libstd-check.stamp")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
 /// compiler for the specified target.
-fn librustc_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>) -> PathBuf {
+fn librustc_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
     builder.cargo_out(compiler, Mode::Rustc, target).join(".librustc-check.stamp")
 }

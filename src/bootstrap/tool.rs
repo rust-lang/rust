@@ -7,10 +7,10 @@ use std::process::{exit, Command};
 use build_helper::t;
 
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
-use crate::cache::Interned;
 use crate::channel;
 use crate::channel::GitInfo;
 use crate::compile;
+use crate::config::TargetSelection;
 use crate::toolstate::ToolState;
 use crate::util::{add_dylib_path, exe};
 use crate::Compiler;
@@ -25,7 +25,7 @@ pub enum SourceType {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct ToolBuild {
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
     tool: &'static str,
     path: &'static str,
     mode: Mode,
@@ -111,7 +111,7 @@ impl Step for ToolBuild {
                             .and_then(|p| p.file_name())
                             .and_then(|p| p.to_str())
                             .unwrap();
-                        if maybe_target != &*target {
+                        if maybe_target != &*target.triple {
                             continue;
                         }
                     }
@@ -208,8 +208,8 @@ impl Step for ToolBuild {
             }
         } else {
             let cargo_out =
-                builder.cargo_out(compiler, self.mode, target).join(exe(tool, &compiler.host));
-            let bin = builder.tools_dir(compiler).join(exe(tool, &compiler.host));
+                builder.cargo_out(compiler, self.mode, target).join(exe(tool, compiler.host));
+            let bin = builder.tools_dir(compiler).join(exe(tool, compiler.host));
             builder.copy(&cargo_out, &bin);
             Some(bin)
         }
@@ -220,7 +220,7 @@ pub fn prepare_tool_cargo(
     builder: &Builder<'_>,
     compiler: Compiler,
     mode: Mode,
-    target: Interned<String>,
+    target: TargetSelection,
     command: &'static str,
     path: &'static str,
     source_type: SourceType,
@@ -303,7 +303,7 @@ macro_rules! bootstrap_tool {
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             pub compiler: Compiler,
-            pub target: Interned<String>,
+            pub target: TargetSelection,
         }
 
         impl Step for $name {
@@ -416,7 +416,7 @@ impl Step for ErrorIndex {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RemoteTestServer {
     pub compiler: Compiler,
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for RemoteTestServer {
@@ -476,7 +476,7 @@ impl Step for Rustdoc {
             if !target_compiler.is_snapshot(builder) {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");
             }
-            return builder.initial_rustc.with_file_name(exe("rustdoc", &target_compiler.host));
+            return builder.initial_rustc.with_file_name(exe("rustdoc", target_compiler.host));
         }
         let target = target_compiler.host;
         // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
@@ -514,14 +514,14 @@ impl Step for Rustdoc {
         // rustdoc a different name.
         let tool_rustdoc = builder
             .cargo_out(build_compiler, Mode::ToolRustc, target)
-            .join(exe("rustdoc_tool_binary", &target_compiler.host));
+            .join(exe("rustdoc_tool_binary", target_compiler.host));
 
         // don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {
             let sysroot = builder.sysroot(target_compiler);
             let bindir = sysroot.join("bin");
             t!(fs::create_dir_all(&bindir));
-            let bin_rustdoc = bindir.join(exe("rustdoc", &*target_compiler.host));
+            let bin_rustdoc = bindir.join(exe("rustdoc", target_compiler.host));
             let _ = fs::remove_file(&bin_rustdoc);
             builder.copy(&tool_rustdoc, &bin_rustdoc);
             bin_rustdoc
@@ -534,7 +534,7 @@ impl Step for Rustdoc {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
     pub compiler: Compiler,
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for Cargo {
@@ -583,7 +583,7 @@ macro_rules! tool_extended {
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             pub compiler: Compiler,
-            pub target: Interned<String>,
+            pub target: TargetSelection,
             pub extra_features: Vec<String>,
         }
 

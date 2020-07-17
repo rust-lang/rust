@@ -23,7 +23,7 @@ pub fn clean(build: &Build, all: bool) {
         rm_rf(&build.out.join("dist"));
 
         for host in &build.hosts {
-            let entries = match build.out.join(host).read_dir() {
+            let entries = match build.out.join(host.triple).read_dir() {
                 Ok(iter) => iter,
                 Err(_) => continue,
             };
