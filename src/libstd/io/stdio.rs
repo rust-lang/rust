@@ -909,12 +909,10 @@ pub fn prompt(prompt: &str) -> Result<String> {
 ///
 /// Equivalent to [`prompt`] without a prompt.
 ///
-/// If you need more explicit control over
-/// locking, see the [`Stdin::lock`] and [`Stdout::lock`] methods.
-///
 /// # Note
-///
-/// If you require more explicit control over capturing
+/// For more explicit control over locking, see the
+/// [`Stdin::lock`] and [`Stdout::lock`] methods. If
+/// you require more explicit control over capturing
 /// user input, see the [`Stdin::read_line`] method.
 ///
 /// # Examples
