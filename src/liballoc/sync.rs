@@ -573,7 +573,7 @@ impl<T: ?Sized> Arc<T> {
 
     /// Provides a raw pointer to the data.
     ///
-    /// The counts are not affected in way and the `Arc` is not consumed. The pointer is valid for
+    /// The counts are not affected in any way and the `Arc` is not consumed. The pointer is valid for
     /// as long as there are strong counts in the `Arc`.
     ///
     /// # Examples
