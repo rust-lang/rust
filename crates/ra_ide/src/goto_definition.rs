@@ -884,4 +884,84 @@ pub mod module {
 "#,
         );
     }
+
+    #[test]
+    fn goto_def_for_assoc_ty_in_path() {
+        check(
+            r#"
+trait Iterator {
+    type Item;
+       //^^^^
+}
+
+fn f() -> impl Iterator<Item<|> = u8> {}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_assoc_ty_in_path_multiple() {
+        check(
+            r#"
+trait Iterator {
+    type A;
+       //^
+    type B;
+}
+
+fn f() -> impl Iterator<A<|> = u8, B = ()> {}
+"#,
+        );
+        check(
+            r#"
+trait Iterator {
+    type A;
+    type B;
+       //^
+}
+
+fn f() -> impl Iterator<A = u8, B<|> = ()> {}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_assoc_ty_ufcs() {
+        check(
+            r#"
+trait Iterator {
+    type Item;
+       //^^^^
+}
+
+fn g() -> <() as Iterator<Item<|> = ()>>::Item {}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_for_assoc_ty_ufcs_multiple() {
+        check(
+            r#"
+trait Iterator {
+    type A;
+       //^
+    type B;
+}
+
+fn g() -> <() as Iterator<A<|> = (), B = u8>>::B {}
+"#,
+        );
+        check(
+            r#"
+trait Iterator {
+    type A;
+    type B;
+       //^
+}
+
+fn g() -> <() as Iterator<A = (), B<|> = u8>>::A {}
+"#,
+        );
+    }
 }
