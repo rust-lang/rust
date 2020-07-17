@@ -720,4 +720,19 @@ fn main() {
             "#]],
         )
     }
+
+    #[test]
+    fn call_info_for_fn_ptr() {
+        check(
+            r#"
+fn main(f: fn(i32, f64) -> char) {
+    f(0, <|>)
+}
+        "#,
+            expect![[r#"
+                (i32, f64) -> char
+                (i32, <f64>)
+            "#]],
+        )
+    }
 }
