@@ -418,3 +418,74 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use expect::expect;
+
+    use crate::{mock_analysis::single_file, Query};
+
+    #[test]
+    fn test_nav_for_symbol() {
+        let (analysis, _) = single_file(
+            r#"
+enum FooInner { }
+fn foo() { enum FooInner { } }
+"#,
+        );
+
+        let navs = analysis.symbol_search(Query::new("FooInner".to_string())).unwrap();
+        expect![[r#"
+            [
+                NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 0..17,
+                    focus_range: Some(
+                        5..13,
+                    ),
+                    name: "FooInner",
+                    kind: ENUM_DEF,
+                    container_name: None,
+                    description: Some(
+                        "enum FooInner",
+                    ),
+                    docs: None,
+                },
+                NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 29..46,
+                    focus_range: Some(
+                        34..42,
+                    ),
+                    name: "FooInner",
+                    kind: ENUM_DEF,
+                    container_name: Some(
+                        "foo",
+                    ),
+                    description: Some(
+                        "enum FooInner",
+                    ),
+                    docs: None,
+                },
+            ]
+        "#]]
+        .assert_debug_eq(&navs);
+    }
+
+    #[test]
+    fn test_world_symbols_are_case_sensitive() {
+        let (analysis, _) = single_file(
+            r#"
+fn foo() {}
+struct Foo;
+"#,
+        );
+
+        let navs = analysis.symbol_search(Query::new("foo".to_string())).unwrap();
+        assert_eq!(navs.len(), 2)
+    }
+}
