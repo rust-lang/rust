@@ -22,7 +22,7 @@ pub(crate) fn maybe_create_entry_wrapper(
     };
 
     let instance = Instance::mono(tcx, main_def_id);
-    if module.get_name(&*tcx.symbol_name(instance).name.as_str()).is_none() {
+    if module.get_name(&*tcx.symbol_name(instance).name).is_none() {
         return;
     }
 

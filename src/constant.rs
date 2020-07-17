@@ -75,18 +75,18 @@ pub(crate) fn trans_constant<'tcx>(
     let const_ = fx.monomorphize(&constant.literal);
     let const_val = match const_.val {
         ConstKind::Value(const_val) => const_val,
-        ConstKind::Unevaluated(def_id, ref substs, promoted) if fx.tcx.is_static(def_id) => {
+        ConstKind::Unevaluated(def, ref substs, promoted) if fx.tcx.is_static(def.did) => {
             assert!(substs.is_empty());
             assert!(promoted.is_none());
 
             return codegen_static_ref(
                 fx,
-                def_id,
+                def.did,
                 fx.layout_of(fx.monomorphize(&constant.literal.ty)),
             ).to_cvalue(fx);
         }
-        ConstKind::Unevaluated(def_id, ref substs, promoted) => {
-            match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def_id, substs, promoted, None) {
+        ConstKind::Unevaluated(def, ref substs, promoted) => {
+            match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None) {
                 Ok(const_val) => const_val,
                 Err(_) => {
                     if promoted.is_none() {
@@ -229,7 +229,7 @@ fn data_id_for_static(
     linkage: Linkage,
 ) -> DataId {
     let instance = Instance::mono(tcx, def_id);
-    let symbol_name = tcx.symbol_name(instance).name.as_str();
+    let symbol_name = tcx.symbol_name(instance).name;
     let ty = instance.monomorphic_ty(tcx);
     let is_mutable = if tcx.is_mutable_static(def_id) {
         true

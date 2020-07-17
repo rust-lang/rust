@@ -266,7 +266,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 });
 
                 let instance = Instance::mono(fx.tcx, def_id);
-                let symbol_name = fx.tcx.symbol_name(instance).name.as_str();
+                let symbol_name = fx.tcx.symbol_name(instance).name;
 
                 fx.lib_call(&*symbol_name, vec![fx.pointer_type, fx.pointer_type, fx.pointer_type], vec![], &args);
 
@@ -719,10 +719,10 @@ fn trans_stmt<'tcx>(
                     crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
                 }
                 // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
-                _ if fx.tcx.symbol_name(fx.instance).name.as_str().starts_with("___chkstk") => {
+                _ if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") => {
                     crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
                 }
-                _ if fx.tcx.symbol_name(fx.instance).name.as_str() == "__alloca" => {
+                _ if fx.tcx.symbol_name(fx.instance).name == "__alloca" => {
                     crate::trap::trap_unimplemented(fx, "Alloca is not supported");
                 }
                 // Used in sys::windows::abort_internal

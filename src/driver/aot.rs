@@ -122,7 +122,7 @@ fn module_codegen(tcx: TyCtxt<'_>, cgu_name: rustc_span::Symbol) -> ModuleCodege
         if mono_items.iter().any(|(mono_item, _)| {
             match mono_item {
                 rustc_middle::mir::mono::MonoItem::Static(def_id) => {
-                    tcx.symbol_name(Instance::mono(tcx, *def_id)).name.as_str().contains("__rustc_proc_macro_decls_")
+                    tcx.symbol_name(Instance::mono(tcx, *def_id)).name.contains("__rustc_proc_macro_decls_")
                 }
                 _ => false,
             }

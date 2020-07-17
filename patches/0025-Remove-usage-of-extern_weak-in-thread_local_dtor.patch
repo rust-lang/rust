@@ -1,22 +1,22 @@
 From 7496bb94a2fb2bc34629c9781c3bc3a470becaee Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
 Date: Fri, 10 Apr 2020 13:47:42 +0200
-Subject: [PATCH] Remove usage of extern_weak in fast_thread_local 
+Subject: [PATCH] Remove usage of extern_weak in thread_local_dtor
 
 ---
- src/libstd/sys/unix/fast_thread_local.rs | 20 --------------------
+ src/libstd/sys/unix/thread_local_dtor.rs | 20 --------------------
  1 files changed, 0 insertions(+), 20 deletions(-)
 
-diff --git a/src/libstd/sys/unix/fast_thread_local.rs b/src/libstd/sys/unix/fast_thread_local.rs
+diff --git a/src/libstd/sys/unix/thread_local_dtor.rs b/src/libstd/sys/unix/thread_local_dtor.rs
 index 8730b4d..8d6e3d5 100644
---- a/src/libstd/sys/unix/fast_thread_local.rs
-+++ b/src/libstd/sys/unix/fast_thread_local.rs
+--- a/src/libstd/sys/unix/thread_local_dtor.rs
++++ b/src/libstd/sys/unix/thread_local_dtor.rs
 @@ -15,28 +15,8 @@
      target_os = "emscripten"
  ))]
  pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 -    use crate::mem;
-     use crate::sys_common::thread_local::register_dtor_fallback;
+     use crate::sys_common::thread_local_dtor::register_dtor_fallback;
  
 -    extern "C" {
 -        #[linkage = "extern_weak"]

@@ -74,7 +74,7 @@ impl CommentWriter {
     pub(crate) fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
         let global_comments = if cfg!(debug_assertions) {
             vec![
-                format!("symbol {}", tcx.symbol_name(instance).name.as_str()),
+                format!("symbol {}", tcx.symbol_name(instance).name),
                 format!("instance {:?}", instance),
                 format!(
                     "sig {:?}",
@@ -220,7 +220,7 @@ pub(crate) fn write_clif_file<'tcx>(
             .expect("value location ranges")
     });
 
-    let symbol_name = tcx.symbol_name(instance).name.as_str();
+    let symbol_name = tcx.symbol_name(instance).name;
     let clif_file_name = format!(
         "{}/{}__{}.{}.clif",
         concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/clif"),

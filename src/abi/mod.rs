@@ -195,7 +195,7 @@ pub(crate) fn get_function_name_and_sig<'tcx>(
         tcx.sess.span_fatal(tcx.def_span(inst.def_id()), "Variadic function definitions are not yet supported");
     }
     let sig = clif_sig_from_fn_sig(tcx, triple, fn_sig, tcx.def_span(inst.def_id()), false, inst.def.requires_caller_location(tcx));
-    (tcx.symbol_name(inst).name.as_str().to_string(), sig)
+    (tcx.symbol_name(inst).name.to_string(), sig)
 }
 
 /// Instance must be monomorphized
@@ -465,10 +465,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             .unwrap()
             .unwrap();
 
-        if fx.tcx.symbol_name(instance).name.as_str().starts_with("llvm.") {
+        if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
                 fx,
-                &fx.tcx.symbol_name(instance).name.as_str(),
+                &fx.tcx.symbol_name(instance).name,
                 substs,
                 args,
                 destination,
