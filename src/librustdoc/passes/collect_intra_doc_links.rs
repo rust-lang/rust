@@ -584,25 +584,18 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             let (res, fragment) = {
                 let mut kind = None;
                 let mut disambiguator = None;
-                path_str = if let Some(prefix) = ["struct@", "enum@", "type@", "trait@", "union@"]
-                    .iter()
-                    .find(|p| link.starts_with(**p))
+                path_str = if let Some(prefix) =
+                    ["struct@", "enum@", "type@", "trait@", "union@", "module@", "mod@"]
+                        .iter()
+                        .find(|p| link.starts_with(**p))
                 {
                     kind = Some(TypeNS);
                     disambiguator = Some(&prefix[..prefix.len() - 1]);
                     link.trim_start_matches(prefix)
-                } else if let Some(prefix) = [
-                    "const@",
-                    "static@",
-                    "value@",
-                    "function@",
-                    "mod@",
-                    "fn@",
-                    "module@",
-                    "method@",
-                ]
-                .iter()
-                .find(|p| link.starts_with(**p))
+                } else if let Some(prefix) =
+                    ["const@", "static@", "value@", "function@", "fn@", "method@"]
+                        .iter()
+                        .find(|p| link.starts_with(**p))
                 {
                     kind = Some(ValueNS);
                     disambiguator = Some(&prefix[..prefix.len() - 1]);
