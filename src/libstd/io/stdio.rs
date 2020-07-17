@@ -941,7 +941,7 @@ pub fn input() -> Result<String> {
     stdout().flush()?;
     let mut input = String::new();
     match stdin().read_line(&mut input)? {
-        0 => Err(Error::new(ErrorKind::UnexpectedEof, "input reached eof unexpectedly.")),
+        0 => Err(Error::new(ErrorKind::UnexpectedEof, "input reached eof unexpectedly")),
         _ => Ok(String::from(input.trim_end_matches(&['\n', '\r'][..]))),
     }
 }
