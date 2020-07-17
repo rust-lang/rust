@@ -9,9 +9,8 @@
 /// on the iterator. If the iterator is already fused, the additional [`Fuse`]
 /// wrapper will be a no-op with no performance penalty.
 ///
-/// [`None`]: ../../std/option/enum.Option.html#variant.None
-/// [`Iterator::fuse`]: ../../std/iter/trait.Iterator.html#method.fuse
-/// [`Fuse`]: ../../std/iter/struct.Fuse.html
+/// [`Iterator::fuse`]: crate::iter::Iterator::fuse
+/// [`Fuse`]: crate::iter::Fuse
 #[stable(feature = "fused", since = "1.26.0")]
 #[rustc_unsafe_specialization_marker]
 pub trait FusedIterator: Iterator {}
@@ -35,9 +34,8 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 /// This trait must only be implemented when the contract is upheld.
 /// Consumers of this trait must inspect [`.size_hint`]’s upper bound.
 ///
-/// [`None`]: ../../std/option/enum.Option.html#variant.None
-/// [`usize::MAX`]: ../../std/usize/constant.MAX.html
-/// [`.size_hint`]: ../../std/iter/trait.Iterator.html#method.size_hint
+/// [`usize::MAX`]: crate::usize::MAX
+/// [`.size_hint`]: crate::iter::Iterator::size_hint
 #[unstable(feature = "trusted_len", issue = "37572")]
 #[rustc_unsafe_specialization_marker]
 pub unsafe trait TrustedLen: Iterator {}
