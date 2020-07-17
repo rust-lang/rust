@@ -373,7 +373,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Change the active thread to some enabled thread.
     fn yield_active_thread(&mut self) {
-        // We do not immediately, as swapping out the current stack while execution a MIR statement
+        // We do not yield immediately, as swapping out the current stack while executing a MIR statement
         // could lead to all sorts of confusion.
         // We should only switch stacks between steps.
         self.yield_active_thread = true;
