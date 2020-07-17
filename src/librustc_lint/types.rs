@@ -531,6 +531,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match ty.kind {
             ty::FnPtr(_) => true,
             ty::Ref(..) => true,
+            ty::Adt(def, _)
+                if def.is_box() && matches!(self.mode, ImproperCTypesMode::Definitions) =>
+            {
+                true
+            }
             ty::Adt(def, substs) if def.repr.transparent() && !def.is_union() => {
                 let guaranteed_nonnull_optimization = self
                     .cx
@@ -558,7 +563,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     /// Check if this enum can be safely exported based on the "nullable pointer optimization".
-    /// Currently restricted to function pointers, references, `core::num::NonZero*`,
+    /// Currently restricted to function pointers, boxes, references, `core::num::NonZero*`,
     /// `core::ptr::NonNull`, and `#[repr(transparent)]` newtypes.
     fn is_repr_nullable_ptr(
         &self,
@@ -692,6 +697,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         match ty.kind {
+            ty::Adt(def, _)
+                if def.is_box() && matches!(self.mode, ImproperCTypesMode::Definitions) =>
+            {
+                FfiSafe
+            }
+
             ty::Adt(def, substs) => {
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
