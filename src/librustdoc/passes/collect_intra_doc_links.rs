@@ -2,7 +2,6 @@ use rustc_ast as ast;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtensionKind;
-use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def::{
     DefKind,
@@ -38,13 +37,8 @@ pub const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
 };
 
 pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
-    if !UnstableFeatures::from_environment().is_nightly_build() {
-        krate
-    } else {
-        let mut coll = LinkCollector::new(cx);
-
-        coll.fold_crate(krate)
-    }
+    let mut coll = LinkCollector::new(cx);
+    coll.fold_crate(krate)
 }
 
 enum ErrorKind<'a> {
