@@ -153,11 +153,6 @@ macro_rules! install {
                 config.extended && config.tools.as_ref()
                     .map_or(true, |t| t.contains($path))
             }
-
-            #[allow(dead_code)]
-            fn should_install(builder: &Builder<'_>) -> bool {
-                builder.config.tools.as_ref().map_or(false, |t| t.contains($path))
-            }
         }
 
         impl Step for $name {
@@ -204,8 +199,7 @@ install!((self, builder, _config),
         install_cargo(builder, self.compiler.stage, self.target);
     };
     Rls, "rls", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Rls { compiler: self.compiler, target: self.target }).is_some() ||
-            Self::should_install(builder) {
+        if builder.ensure(dist::Rls { compiler: self.compiler, target: self.target }).is_some() {
             install_rls(builder, self.compiler.stage, self.target);
         } else {
             builder.info(
@@ -215,17 +209,10 @@ install!((self, builder, _config),
     };
     Clippy, "clippy", Self::should_build(_config), only_hosts: true, {
         builder.ensure(dist::Clippy { compiler: self.compiler, target: self.target });
-        if Self::should_install(builder) {
-            install_clippy(builder, self.compiler.stage, self.target);
-        } else {
-            builder.info(
-                &format!("skipping Install clippy stage{} ({})", self.compiler.stage, self.target),
-            );
-        }
+        install_clippy(builder, self.compiler.stage, self.target);
     };
     Miri, "miri", Self::should_build(_config), only_hosts: true, {
-        if builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }).is_some() ||
-            Self::should_install(builder) {
+        if builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }).is_some() {
             install_miri(builder, self.compiler.stage, self.target);
         } else {
             builder.info(
@@ -237,7 +224,7 @@ install!((self, builder, _config),
         if builder.ensure(dist::Rustfmt {
             compiler: self.compiler,
             target: self.target
-        }).is_some() || Self::should_install(builder) {
+        }).is_some() {
             install_rustfmt(builder, self.compiler.stage, self.target);
         } else {
             builder.info(
