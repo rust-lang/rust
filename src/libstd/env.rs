@@ -882,7 +882,7 @@ pub mod consts {
     /// - s390x
     /// - sparc64
     #[stable(feature = "env", since = "1.0.0")]
-    pub const ARCH: &str = super::arch::ARCH;
+    pub const ARCH: &str = env!("STD_ENV_ARCH");
 
     /// The family of the operating system. Example value is `unix`.
     ///
@@ -964,81 +964,6 @@ pub mod consts {
     /// - `""` (an empty string)
     #[stable(feature = "env", since = "1.0.0")]
     pub const EXE_EXTENSION: &str = os::EXE_EXTENSION;
-}
-
-#[cfg(target_arch = "x86")]
-mod arch {
-    pub const ARCH: &str = "x86";
-}
-
-#[cfg(target_arch = "x86_64")]
-mod arch {
-    pub const ARCH: &str = "x86_64";
-}
-
-#[cfg(target_arch = "arm")]
-mod arch {
-    pub const ARCH: &str = "arm";
-}
-
-#[cfg(target_arch = "aarch64")]
-mod arch {
-    pub const ARCH: &str = "aarch64";
-}
-
-#[cfg(target_arch = "mips")]
-mod arch {
-    pub const ARCH: &str = "mips";
-}
-
-#[cfg(target_arch = "mips64")]
-mod arch {
-    pub const ARCH: &str = "mips64";
-}
-
-#[cfg(target_arch = "powerpc")]
-mod arch {
-    pub const ARCH: &str = "powerpc";
-}
-
-#[cfg(target_arch = "powerpc64")]
-mod arch {
-    pub const ARCH: &str = "powerpc64";
-}
-
-#[cfg(target_arch = "s390x")]
-mod arch {
-    pub const ARCH: &str = "s390x";
-}
-
-#[cfg(target_arch = "sparc64")]
-mod arch {
-    pub const ARCH: &str = "sparc64";
-}
-
-#[cfg(target_arch = "le32")]
-mod arch {
-    pub const ARCH: &str = "le32";
-}
-
-#[cfg(target_arch = "asmjs")]
-mod arch {
-    pub const ARCH: &str = "asmjs";
-}
-
-#[cfg(target_arch = "wasm32")]
-mod arch {
-    pub const ARCH: &str = "wasm32";
-}
-
-#[cfg(target_arch = "hexagon")]
-mod arch {
-    pub const ARCH: &'static str = "hexagon";
-}
-
-#[cfg(target_arch = "riscv64")]
-mod arch {
-    pub const ARCH: &'static str = "riscv64";
 }
 
 #[cfg(test)]

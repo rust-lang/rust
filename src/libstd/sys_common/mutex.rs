@@ -17,6 +17,7 @@ impl Mutex {
     /// Also, until `init` is called, behavior is undefined if this
     /// mutex is ever used reentrantly, i.e., `raw_lock` or `try_lock`
     /// are called by the thread currently holding the lock.
+    #[rustc_const_stable(feature = "const_sys_mutex_new", since = "1.0.0")]
     pub const fn new() -> Mutex {
         Mutex(imp::Mutex::new())
     }
