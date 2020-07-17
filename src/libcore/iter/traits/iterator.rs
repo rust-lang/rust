@@ -756,12 +756,11 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// let a = ["1", "lol", "3", "NaN", "5"];
+    /// let a = ["1", "two", "NaN", "four", "5"];
     ///
     /// let mut iter = a.iter().filter_map(|s| s.parse().ok());
     ///
     /// assert_eq!(iter.next(), Some(1));
-    /// assert_eq!(iter.next(), Some(3));
     /// assert_eq!(iter.next(), Some(5));
     /// assert_eq!(iter.next(), None);
     /// ```
@@ -769,10 +768,9 @@ pub trait Iterator {
     /// Here's the same example, but with [`filter`] and [`map`]:
     ///
     /// ```
-    /// let a = ["1", "lol", "3", "NaN", "5"];
+    /// let a = ["1", "two", "NaN", "four", "5"];
     /// let mut iter = a.iter().map(|s| s.parse()).filter(|s| s.is_ok()).map(|s| s.unwrap());
     /// assert_eq!(iter.next(), Some(1));
-    /// assert_eq!(iter.next(), Some(3));
     /// assert_eq!(iter.next(), Some(5));
     /// assert_eq!(iter.next(), None);
     /// ```
