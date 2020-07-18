@@ -3,10 +3,25 @@ use std::fmt;
 
 use paths::{AbsPath, AbsPathBuf};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Entry {
     Files(Vec<AbsPathBuf>),
-    Directory { path: AbsPathBuf, include: Vec<String> },
+    Directories(Directories),
+}
+
+/// Specifies a set of files on the file system.
+///
+/// A file is included if:
+///   * it has included extension
+///   * it is under an `include` path
+///   * it is not under `exclude` path
+///
+/// If many include/exclude paths match, the longest one wins.
+#[derive(Debug, Clone)]
+pub struct Directories {
+    pub extensions: Vec<String>,
+    pub include: Vec<AbsPathBuf>,
+    pub exclude: Vec<AbsPathBuf>,
 }
 
 #[derive(Debug)]
@@ -33,21 +48,70 @@ pub trait Handle: fmt::Debug {
 
 impl Entry {
     pub fn rs_files_recursively(base: AbsPathBuf) -> Entry {
-        Entry::Directory { path: base, include: globs(&["*.rs", "!/.git/"]) }
+        Entry::Directories(dirs(base, &[".git"]))
     }
     pub fn local_cargo_package(base: AbsPathBuf) -> Entry {
-        Entry::Directory { path: base, include: globs(&["*.rs", "!/target/", "!/.git/"]) }
+        Entry::Directories(dirs(base, &[".git", "target"]))
     }
     pub fn cargo_package_dependency(base: AbsPathBuf) -> Entry {
-        Entry::Directory {
-            path: base,
-            include: globs(&["*.rs", "!/tests/", "!/examples/", "!/benches/", "!/.git/"]),
+        Entry::Directories(dirs(base, &[".git", "/tests", "/examples", "/benches"]))
+    }
+
+    pub fn contains_file(&self, path: &AbsPath) -> bool {
+        match self {
+            Entry::Files(files) => files.iter().any(|it| it == path),
+            Entry::Directories(dirs) => dirs.contains_file(path),
+        }
+    }
+    pub fn contains_dir(&self, path: &AbsPath) -> bool {
+        match self {
+            Entry::Files(_) => false,
+            Entry::Directories(dirs) => dirs.contains_dir(path),
         }
     }
 }
 
-fn globs(globs: &[&str]) -> Vec<String> {
-    globs.iter().map(|it| it.to_string()).collect()
+impl Directories {
+    pub fn contains_file(&self, path: &AbsPath) -> bool {
+        let ext = path.extension().unwrap_or_default();
+        if self.extensions.iter().all(|it| it.as_str() != ext) {
+            return false;
+        }
+        self.includes_path(path)
+    }
+    pub fn contains_dir(&self, path: &AbsPath) -> bool {
+        self.includes_path(path)
+    }
+    fn includes_path(&self, path: &AbsPath) -> bool {
+        let mut include = None;
+        for incl in &self.include {
+            if is_prefix(incl, path) {
+                include = Some(match include {
+                    Some(prev) if is_prefix(incl, prev) => prev,
+                    _ => incl,
+                })
+            }
+        }
+        let include = match include {
+            Some(it) => it,
+            None => return false,
+        };
+        for excl in &self.exclude {
+            if is_prefix(excl, path) && is_prefix(include, excl) {
+                return false;
+            }
+        }
+        return true;
+
+        fn is_prefix(short: &AbsPath, long: &AbsPath) -> bool {
+            long.strip_prefix(short).is_some()
+        }
+    }
+}
+
+fn dirs(base: AbsPathBuf, exclude: &[&str]) -> Directories {
+    let exclude = exclude.iter().map(|it| base.join(it)).collect::<Vec<_>>();
+    Directories { extensions: vec!["rs".to_string()], include: vec![base], exclude }
 }
 
 impl fmt::Debug for Message {
