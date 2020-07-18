@@ -1,3 +1,5 @@
+// build-fail
+
 #![feature(const_fn)]
 #![feature(const_unreachable_unchecked)]
 
@@ -8,8 +10,11 @@ const unsafe fn foo(x: bool) -> bool {
     }
 }
 
+#[warn(const_err)]
 const BAR: bool = unsafe { foo(false) };
 
 fn main() {
   assert_eq!(BAR, true);
+  //~^ ERROR E0080
+  //~| ERROR erroneous constant
 }
