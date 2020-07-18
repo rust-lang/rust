@@ -876,6 +876,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     .iter_enumerated()
                     .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
 
+                let mut niche_filling_layout = None;
+
                 // Niche-filling enum optimization.
                 if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
                     let mut dataful_variant = None;
@@ -972,7 +974,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             let largest_niche =
                                 Niche::from_scalar(dl, offset, niche_scalar.clone());
 
-                            return Ok(tcx.intern_layout(Layout {
+                            niche_filling_layout = Some(Layout {
                                 variants: Variants::Multiple {
                                     tag: niche_scalar,
                                     tag_encoding: TagEncoding::Niche {
@@ -991,7 +993,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 largest_niche,
                                 size,
                                 align,
-                            }));
+                            });
                         }
                     }
                 }
@@ -1214,7 +1216,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag.clone());
 
-                tcx.intern_layout(Layout {
+                let tagged_layout = Layout {
                     variants: Variants::Multiple {
                         tag,
                         tag_encoding: TagEncoding::Direct,
@@ -1229,7 +1231,23 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     abi,
                     align,
                     size,
-                })
+                };
+
+                let best_layout = match (tagged_layout, niche_filling_layout) {
+                    (tagged_layout, Some(niche_filling_layout)) => {
+                        // Pick the smaller layout; otherwise,
+                        // pick the layout with the larger niche; otherwise,
+                        // pick tagged as it has simpler codegen.
+                        cmp::min_by_key(tagged_layout, niche_filling_layout, |layout| {
+                            let niche_size =
+                                layout.largest_niche.as_ref().map_or(0, |n| n.available(dl));
+                            (layout.size, cmp::Reverse(niche_size))
+                        })
+                    }
+                    (tagged_layout, None) => tagged_layout,
+                };
+
+                tcx.intern_layout(best_layout)
             }
 
             // Types with no meaningful known layout.
