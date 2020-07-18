@@ -1053,8 +1053,9 @@ impl<'tcx> Predicate<'tcx> {
     ///
     /// Note that this method panics in case this predicate has unbound variables.
     pub fn skip_binders(self) -> PredicateAtom<'tcx> {
+        // TODO no_escaping_vars
         match self.kind() {
-            &PredicateKind::ForAll(binder) => binder.skip_binder().skip_binders(),
+            &PredicateKind::ForAll(binder) => binder.skip_binder(),
             &ty::PredicateKind::Atom(atom) => atom,
         }
     }
@@ -1066,31 +1067,15 @@ impl<'tcx> Predicate<'tcx> {
     /// to end up at the wrong binding level.
     pub fn skip_binders_unchecked(self) -> PredicateAtom<'tcx> {
         match self.kind() {
-            &PredicateKind::ForAll(binder) => binder.skip_binder().skip_binders(),
+            &PredicateKind::ForAll(binder) => binder.skip_binder(),
             &ty::PredicateKind::Atom(atom) => atom,
         }
     }
 
     pub fn bound_atom(self, tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
         match self.kind() {
-            &PredicateKind::ForAll(binder) => binder.map_bound(|inner| match inner.kind() {
-                ty::PredicateKind::ForAll(_) => bug!("unexpect forall"),
-                &ty::PredicateKind::Atom(atom) => atom,
-            }),
+            &PredicateKind::ForAll(binder) => binder,
             &ty::PredicateKind::Atom(atom) => Binder::wrap_nonbinding(tcx, atom),
-        }
-    }
-
-    /// Wraps `self` with the given qualifier if this predicate has any unbound variables.
-    pub fn potentially_quantified(
-        self,
-        tcx: TyCtxt<'tcx>,
-        qualifier: impl FnOnce(Binder<Predicate<'tcx>>) -> PredicateKind<'tcx>,
-    ) -> Predicate<'tcx> {
-        if self.has_escaping_bound_vars() {
-            qualifier(Binder::bind(self)).to_predicate(tcx)
-        } else {
-            self
         }
     }
 }
@@ -1114,7 +1099,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
 #[derive(HashStable, TypeFoldable)]
 pub enum PredicateKind<'tcx> {
     /// `for<'a>: ...`
-    ForAll(Binder<Predicate<'tcx>>),
+    ForAll(Binder<PredicateAtom<'tcx>>),
 
     Atom(PredicateAtom<'tcx>),
 }
@@ -1160,6 +1145,22 @@ pub enum PredicateAtom<'tcx> {
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
+}
+
+impl<'tcx> PredicateAtom<'tcx> {
+    /// Wraps `self` with the given qualifier if this predicate has any unbound variables.
+    pub fn potentially_quantified(
+        self,
+        tcx: TyCtxt<'tcx>,
+        qualifier: impl FnOnce(Binder<PredicateAtom<'tcx>>) -> PredicateKind<'tcx>,
+    ) -> Predicate<'tcx> {
+        if self.has_escaping_bound_vars() {
+            qualifier(Binder::bind(self))
+        } else {
+            PredicateKind::Atom(self)
+        }
+        .to_predicate(tcx)
+    }
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -1249,11 +1250,7 @@ impl<'tcx> Predicate<'tcx> {
         let substs = trait_ref.skip_binder().substs;
         let pred = self.skip_binders();
         let new = pred.subst(tcx, substs);
-        if new != pred {
-            new.to_predicate(tcx).potentially_quantified(tcx, PredicateKind::ForAll)
-        } else {
-            self
-        }
+        if new != pred { new.potentially_quantified(tcx, PredicateKind::ForAll) } else { self }
     }
 }
 
@@ -1381,6 +1378,7 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
 impl ToPredicate<'tcx> for PredicateAtom<'tcx> {
     #[inline(always)]
     fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        debug_assert!(!self.has_escaping_bound_vars(), "excaping bound vars for {:?}", self);
         tcx.mk_predicate(ty::PredicateKind::Atom(*self))
     }
 }
@@ -1408,9 +1406,7 @@ impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
             ty::PredicateAtom::Trait(pred, self.constness).to_predicate(tcx)
         } else {
             ty::PredicateKind::ForAll(
-                self.value.map_bound(|pred| {
-                    ty::PredicateAtom::Trait(pred, self.constness).to_predicate(tcx)
-                }),
+                self.value.map_bound(|pred| ty::PredicateAtom::Trait(pred, self.constness)),
             )
             .to_predicate(tcx)
         }
@@ -1423,9 +1419,7 @@ impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
             PredicateAtom::RegionOutlives(outlives).to_predicate(tcx)
         } else {
             ty::PredicateKind::ForAll(
-                self.map_bound(|outlives| {
-                    PredicateAtom::RegionOutlives(outlives).to_predicate(tcx)
-                }),
+                self.map_bound(|outlives| PredicateAtom::RegionOutlives(outlives)),
             )
             .to_predicate(tcx)
         }
@@ -1438,7 +1432,7 @@ impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
             PredicateAtom::TypeOutlives(outlives).to_predicate(tcx)
         } else {
             ty::PredicateKind::ForAll(
-                self.map_bound(|outlives| PredicateAtom::TypeOutlives(outlives).to_predicate(tcx)),
+                self.map_bound(|outlives| PredicateAtom::TypeOutlives(outlives)),
             )
             .to_predicate(tcx)
         }
@@ -1450,10 +1444,8 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
         if let Some(proj) = self.no_bound_vars() {
             PredicateAtom::Projection(proj).to_predicate(tcx)
         } else {
-            ty::PredicateKind::ForAll(
-                self.map_bound(|proj| PredicateAtom::Projection(proj).to_predicate(tcx)),
-            )
-            .to_predicate(tcx)
+            ty::PredicateKind::ForAll(self.map_bound(|proj| PredicateAtom::Projection(proj)))
+                .to_predicate(tcx)
         }
     }
 }

@@ -1961,7 +1961,6 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                             let region = AstConv::ast_region_to_region(&icx, lifetime, None);
                             predicates.push((
                                 ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, region))
-                                    .to_predicate(tcx)
                                     .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                                 lifetime.span,
                             ))
@@ -1979,8 +1978,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         }
                         _ => bug!(),
                     };
-                    let pred = ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2))
-                        .to_predicate(icx.tcx);
+                    let pred = ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2));
 
                     (pred.potentially_quantified(icx.tcx, ty::PredicateKind::ForAll), span)
                 }))
@@ -2111,7 +2109,6 @@ fn predicates_from_bound<'tcx>(
         hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(param_ty, region))
-                .to_predicate(astconv.tcx())
                 .potentially_quantified(astconv.tcx(), ty::PredicateKind::ForAll);
             vec![(pred, lifetime.span)]
         }

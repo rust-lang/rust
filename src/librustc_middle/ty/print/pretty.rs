@@ -2013,43 +2013,45 @@ define_print_and_forward_display! {
 
     ty::Predicate<'tcx> {
         match self.kind() {
-            &ty::PredicateKind::Atom(atom) => match atom {
-                ty::PredicateAtom::Trait(ref data, constness) => {
-                    if let hir::Constness::Const = constness {
-                        p!(write("const "));
-                    }
-                    p!(print(data))
+            &ty::PredicateKind::Atom(atom) => p!(print(atom)),
+            ty::PredicateKind::ForAll(binder) => p!(print(binder)),
+        }
+    }
+
+    ty::PredicateAtom<'tcx> {
+        match *self {
+            ty::PredicateAtom::Trait(ref data, constness) => {
+                if let hir::Constness::Const = constness {
+                    p!(write("const "));
                 }
-                ty::PredicateAtom::Subtype(predicate) => p!(print(predicate)),
-                ty::PredicateAtom::RegionOutlives(predicate) => p!(print(predicate)),
-                ty::PredicateAtom::TypeOutlives(predicate) => p!(print(predicate)),
-                ty::PredicateAtom::Projection(predicate) => p!(print(predicate)),
-                ty::PredicateAtom::WellFormed(arg) => p!(print(arg), write(" well-formed")),
-                ty::PredicateAtom::ObjectSafe(trait_def_id) => {
-                    p!(write("the trait `"),
-                    print_def_path(trait_def_id, &[]),
-                    write("` is object-safe"))
-                }
-                ty::PredicateAtom::ClosureKind(closure_def_id, _closure_substs, kind) => {
-                    p!(write("the closure `"),
-                    print_value_path(closure_def_id, &[]),
-                    write("` implements the trait `{}`", kind))
-                }
-                ty::PredicateAtom::ConstEvaluatable(def, substs) => {
-                    p!(write("the constant `"),
-                    print_value_path(def.did, substs),
-                    write("` can be evaluated"))
-                }
-                ty::PredicateAtom::ConstEquate(c1, c2) => {
-                    p!(write("the constant `"),
-                    print(c1),
-                    write("` equals `"),
-                    print(c2),
-                    write("`"))
-                }
+                p!(print(data))
             }
-            ty::PredicateKind::ForAll(binder) => {
-                p!(print(binder))
+            ty::PredicateAtom::Subtype(predicate) => p!(print(predicate)),
+            ty::PredicateAtom::RegionOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateAtom::TypeOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateAtom::Projection(predicate) => p!(print(predicate)),
+            ty::PredicateAtom::WellFormed(arg) => p!(print(arg), write(" well-formed")),
+            ty::PredicateAtom::ObjectSafe(trait_def_id) => {
+                p!(write("the trait `"),
+                print_def_path(trait_def_id, &[]),
+                write("` is object-safe"))
+            }
+            ty::PredicateAtom::ClosureKind(closure_def_id, _closure_substs, kind) => {
+                p!(write("the closure `"),
+                print_value_path(closure_def_id, &[]),
+                write("` implements the trait `{}`", kind))
+            }
+            ty::PredicateAtom::ConstEvaluatable(def, substs) => {
+                p!(write("the constant `"),
+                print_value_path(def.did, substs),
+                write("` can be evaluated"))
+            }
+            ty::PredicateAtom::ConstEquate(c1, c2) => {
+                p!(write("the constant `"),
+                print(c1),
+                write("` equals `"),
+                print(c2),
+                write("`"))
             }
         }
     }

@@ -531,11 +531,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             let predicate = match k1.unpack() {
                 GenericArgKind::Lifetime(r1) => {
                     ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2))
-                        .to_predicate(self.tcx)
                 }
                 GenericArgKind::Type(t1) => {
                     ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(t1, r2))
-                        .to_predicate(self.tcx)
                 }
                 GenericArgKind::Const(..) => {
                     // Consts cannot outlive one another, so we don't expect to

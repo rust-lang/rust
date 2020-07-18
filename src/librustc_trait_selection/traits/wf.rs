@@ -93,45 +93,40 @@ pub fn predicate_obligations<'a, 'tcx>(
 ) -> Vec<traits::PredicateObligation<'tcx>> {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item: None };
 
-    match predicate.kind() {
-        ty::PredicateKind::ForAll(binder) => {
-            // It's ok to skip the binder here because wf code is prepared for it
-            return predicate_obligations(infcx, param_env, body_id, binder.skip_binder(), span);
+    // It's ok to skip the binder here because wf code is prepared for it
+    match predicate.skip_binders() {
+        ty::PredicateAtom::Trait(t, _) => {
+            wf.compute_trait_ref(&t.trait_ref, Elaborate::None);
         }
-        &ty::PredicateKind::Atom(atom) => match atom {
-            ty::PredicateAtom::Trait(t, _) => {
-                wf.compute_trait_ref(&t.trait_ref, Elaborate::None);
-            }
-            ty::PredicateAtom::RegionOutlives(..) => {}
-            ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
-                wf.compute(ty.into());
-            }
-            ty::PredicateAtom::Projection(t) => {
-                wf.compute_projection(t.projection_ty);
-                wf.compute(t.ty.into());
-            }
-            ty::PredicateAtom::WellFormed(arg) => {
+        ty::PredicateAtom::RegionOutlives(..) => {}
+        ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+            wf.compute(ty.into());
+        }
+        ty::PredicateAtom::Projection(t) => {
+            wf.compute_projection(t.projection_ty);
+            wf.compute(t.ty.into());
+        }
+        ty::PredicateAtom::WellFormed(arg) => {
+            wf.compute(arg);
+        }
+        ty::PredicateAtom::ObjectSafe(_) => {}
+        ty::PredicateAtom::ClosureKind(..) => {}
+        ty::PredicateAtom::Subtype(ty::SubtypePredicate { a, b, a_is_expected: _ }) => {
+            wf.compute(a.into());
+            wf.compute(b.into());
+        }
+        ty::PredicateAtom::ConstEvaluatable(def, substs) => {
+            let obligations = wf.nominal_obligations(def.did, substs);
+            wf.out.extend(obligations);
+
+            for arg in substs.iter() {
                 wf.compute(arg);
             }
-            ty::PredicateAtom::ObjectSafe(_) => {}
-            ty::PredicateAtom::ClosureKind(..) => {}
-            ty::PredicateAtom::Subtype(ty::SubtypePredicate { a, b, a_is_expected: _ }) => {
-                wf.compute(a.into());
-                wf.compute(b.into());
-            }
-            ty::PredicateAtom::ConstEvaluatable(def, substs) => {
-                let obligations = wf.nominal_obligations(def.did, substs);
-                wf.out.extend(obligations);
-
-                for arg in substs.iter() {
-                    wf.compute(arg);
-                }
-            }
-            ty::PredicateAtom::ConstEquate(c1, c2) => {
-                wf.compute(c1.into());
-                wf.compute(c2.into());
-            }
-        },
+        }
+        ty::PredicateAtom::ConstEquate(c1, c2) => {
+            wf.compute(c1.into());
+            wf.compute(c2.into());
+        }
     }
 
     wf.normalize()

@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, CratePredicatesMap, ToPredicate, TyCtxt};
+use rustc_middle::ty::{self, CratePredicatesMap, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -90,7 +90,6 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CratePredica
                     match kind1.unpack() {
                         GenericArgKind::Type(ty1) => Some((
                             ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty1, region2))
-                                .to_predicate(tcx)
                                 .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                             span,
                         )),
@@ -98,7 +97,6 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CratePredica
                             ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(
                                 region1, region2,
                             ))
-                            .to_predicate(tcx)
                             .potentially_quantified(tcx, ty::PredicateKind::ForAll),
                             span,
                         )),
