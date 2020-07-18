@@ -122,6 +122,13 @@ pub fn assert_instr(
             // generate some code that's hopefully very tight in terms of
             // codegen but is otherwise unique to prevent code from being
             // folded.
+            //
+            // This is avoided on Wasm32 right now since these functions aren't
+            // inlined which breaks our tests since each intrinsic looks like it
+            // calls functions. Turns out functions aren't similar enough to get
+            // merged on wasm32 anyway. This bug is tracked at
+            // rust-lang/rust#74320.
+            #[cfg(not(target_arch = "wasm32"))]
             ::stdarch_test::_DONT_DEDUP.store(
                 std::mem::transmute(#shim_name_str.as_bytes().as_ptr()),
                 std::sync::atomic::Ordering::Relaxed,
@@ -131,8 +138,7 @@ pub fn assert_instr(
     };
 
     let tokens: TokenStream = quote! {
-        #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-        #[cfg_attr(not(target_arch = "wasm32"), test)]
+        #[test]
         #[allow(non_snake_case)]
         fn #assert_name() {
             #to_test
@@ -146,11 +152,6 @@ pub fn assert_instr(
                                    #instr);
         }
     };
-    // why? necessary now to get tests to work?
-    let tokens: TokenStream = tokens
-        .to_string()
-        .parse()
-        .expect("cannot parse tokenstream");
 
     let tokens: TokenStream = quote! {
         #item

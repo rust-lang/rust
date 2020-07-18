@@ -1,9 +1,12 @@
 #![doc(include = "core_arch_docs.md")]
+#![allow(improper_ctypes_definitions)]
 #![allow(dead_code)]
 #![allow(unused_features)]
+#![allow(incomplete_features)]
 #![feature(
     const_fn,
     const_fn_union,
+    const_generics,
     custom_inner_attributes,
     link_llvm_intrinsics,
     platform_intrinsics,
@@ -32,9 +35,12 @@
     adx_target_feature,
     rtm_target_feature,
     f16c_target_feature,
-    external_doc
+    external_doc,
+    allow_internal_unstable,
+    decl_macro
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, untagged_unions))]
+#![cfg_attr(all(test, target_arch = "wasm32"), feature(wasm_simd))]
 #![deny(clippy::missing_inline_in_public_items)]
 #![allow(
     clippy::inline_always,
@@ -66,13 +72,10 @@ extern crate std_detect;
 #[cfg(test)]
 extern crate stdarch_test;
 
-#[cfg(all(test, target_arch = "wasm32"))]
-extern crate wasm_bindgen_test;
-
 #[path = "mod.rs"]
 mod core_arch;
 
-pub use self::core_arch::arch::*;
+pub use self::core_arch::arch;
 
 #[allow(unused_imports)]
 use core::{ffi, hint, intrinsics, marker, mem, ops, ptr, sync};

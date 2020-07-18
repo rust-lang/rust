@@ -56,6 +56,7 @@ cfg_if! {
         mod arch;
     } else {
         // Unimplemented architecture:
+        #[allow(dead_code)]
         mod arch {
             #[doc(hidden)]
             pub(crate) enum Feature {
@@ -117,6 +118,7 @@ cfg_if! {
 
 /// Performs run-time feature detection.
 #[inline]
+#[allow(dead_code)]
 fn check_for(x: Feature) -> bool {
     cache::test(x as u32, self::os::detect_features)
 }

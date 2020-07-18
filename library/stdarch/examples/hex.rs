@@ -12,8 +12,9 @@
 //!
 //! and you should see `746573740a` get printed out.
 
-#![feature(stdsimd)]
+#![feature(stdsimd, wasm_target_feature)]
 #![cfg_attr(test, feature(test))]
+#![cfg_attr(target_arch = "wasm32", feature(wasm_simd))]
 #![allow(
     clippy::result_unwrap_used,
     clippy::print_stdout,
@@ -25,25 +26,15 @@
     clippy::missing_docs_in_private_items
 )]
 
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-#[macro_use(is_x86_feature_detected)]
-extern crate std_detect;
-
-extern crate core_arch;
-
-#[cfg(test)]
-#[macro_use]
-extern crate quickcheck;
-
 use std::{
     io::{self, Read},
     str,
 };
 
 #[cfg(target_arch = "x86")]
-use core_arch::x86::*;
+use {core_arch::arch::x86::*, std_detect::is_x86_feature_detected};
 #[cfg(target_arch = "x86_64")]
-use core_arch::x86_64::*;
+use {core_arch::arch::x86_64::*, std_detect::is_x86_feature_detected};
 
 fn main() {
     let mut input = Vec::new();
@@ -66,6 +57,12 @@ fn hex_encode<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
         }
         if is_x86_feature_detected!("sse4.1") {
             return unsafe { hex_encode_sse41(src, dst) };
+        }
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        if true {
+            return unsafe { hex_encode_simd128(src, dst) };
         }
     }
 
@@ -157,6 +154,54 @@ unsafe fn hex_encode_sse41<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a 
     Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
 }
 
+#[cfg(target_arch = "wasm32")]
+#[target_feature(enable = "simd128")]
+unsafe fn hex_encode_simd128<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
+    use core_arch::arch::wasm32::*;
+
+    let ascii_zero = i8x16_splat(b'0' as i8);
+    let nines = i8x16_splat(9);
+    let ascii_a = i8x16_splat((b'a' - 9 - 1) as i8);
+    let and4bits = i8x16_splat(0xf);
+
+    let mut i = 0_isize;
+    while src.len() >= 16 {
+        let invec = v128_load(src.as_ptr() as *const _);
+
+        let masked1 = v128_and(invec, and4bits);
+        let masked2 = v128_and(i8x16_shr_u(invec, 4), and4bits);
+
+        // return 0xff corresponding to the elements > 9, or 0x00 otherwise
+        let cmpmask1 = i8x16_gt_u(masked1, nines);
+        let cmpmask2 = i8x16_gt_u(masked2, nines);
+
+        // add '0' or the offset depending on the masks
+        let masked1 = i8x16_add(masked1, v128_bitselect(ascii_a, ascii_zero, cmpmask1));
+        let masked2 = i8x16_add(masked2, v128_bitselect(ascii_a, ascii_zero, cmpmask2));
+
+        // Next we need to shuffle around masked{1,2} to get back to the
+        // original source text order. The first element (res1) we'll store uses
+        // all the low bytes from the 2 masks and the second element (res2) uses
+        // all the upper bytes.
+        let res1 = v8x16_shuffle::<0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23>(
+            masked2, masked1,
+        );
+        let res2 = v8x16_shuffle::<8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31>(
+            masked2, masked1,
+        );
+
+        v128_store(dst.as_mut_ptr().offset(i * 2) as *mut _, res1);
+        v128_store(dst.as_mut_ptr().offset(i * 2 + 16) as *mut _, res2);
+        src = &src[16..];
+        i += 16;
+    }
+
+    let i = i as usize;
+    let _ = hex_encode_fallback(src, &mut dst[i * 2..]);
+
+    Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
+}
+
 fn hex_encode_fallback<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
     fn hex(byte: u8) -> u8 {
         static TABLE: &[u8] = b"0123456789abcdef";
@@ -186,10 +231,10 @@ mod tests {
 
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         unsafe {
-            if is_x86_feature_detected!("avx2") {
+            if self::is_x86_feature_detected!("avx2") {
                 assert_eq!(hex_encode_avx2(input, &mut tmp()).unwrap(), output);
             }
-            if is_x86_feature_detected!("sse4.1") {
+            if self::is_x86_feature_detected!("sse4.1") {
                 assert_eq!(hex_encode_sse41(input, &mut tmp()).unwrap(), output);
             }
         }
@@ -236,7 +281,7 @@ mod tests {
         );
     }
 
-    quickcheck! {
+    quickcheck::quickcheck! {
         fn encode_equals_fallback(input: Vec<u8>) -> bool {
             let mut space1 = vec![0; input.len() * 2];
             let mut space2 = vec![0; input.len() * 2];
@@ -247,7 +292,7 @@ mod tests {
 
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         fn avx_equals_fallback(input: Vec<u8>) -> bool {
-            if !is_x86_feature_detected!("avx2") {
+            if !self::is_x86_feature_detected!("avx2") {
                 return true
             }
             let mut space1 = vec![0; input.len() * 2];
@@ -259,7 +304,7 @@ mod tests {
 
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         fn sse41_equals_fallback(input: Vec<u8>) -> bool {
-            if !is_x86_feature_detected!("avx2") {
+            if !self::is_x86_feature_detected!("avx2") {
                 return true
             }
             let mut space1 = vec![0; input.len() * 2];
@@ -328,28 +373,28 @@ mod benches {
 
         #[bench]
         fn small_avx2(b: &mut test::Bencher) {
-            if is_x86_feature_detected!("avx2") {
+            if self::is_x86_feature_detected!("avx2") {
                 doit(b, SMALL_LEN, hex_encode_avx2);
             }
         }
 
         #[bench]
         fn small_sse41(b: &mut test::Bencher) {
-            if is_x86_feature_detected!("sse4.1") {
+            if self::is_x86_feature_detected!("sse4.1") {
                 doit(b, SMALL_LEN, hex_encode_sse41);
             }
         }
 
         #[bench]
         fn large_avx2(b: &mut test::Bencher) {
-            if is_x86_feature_detected!("avx2") {
+            if self::is_x86_feature_detected!("avx2") {
                 doit(b, LARGE_LEN, hex_encode_avx2);
             }
         }
 
         #[bench]
         fn large_sse41(b: &mut test::Bencher) {
-            if is_x86_feature_detected!("sse4.1") {
+            if self::is_x86_feature_detected!("sse4.1") {
                 doit(b, LARGE_LEN, hex_encode_sse41);
             }
         }

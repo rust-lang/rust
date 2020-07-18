@@ -1,49 +1,17 @@
 //! Disassembly calling function for `wasm32` targets.
-use wasm_bindgen::prelude::*;
 
 use crate::Function;
 use std::collections::HashSet;
 
-#[wasm_bindgen(module = "child_process")]
-extern "C" {
-    #[wasm_bindgen(js_name = execFileSync)]
-    fn exec_file_sync(cmd: &str, args: &js_sys::Array, opts: &js_sys::Object) -> Buffer;
-}
-
-#[wasm_bindgen(module = "buffer")]
-extern "C" {
-    type Buffer;
-    #[wasm_bindgen(method, js_name = toString)]
-    fn to_string(this: &Buffer) -> String;
-}
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = require)]
-    fn resolve(module: &str) -> String;
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    pub fn js_console_log(s: &str);
-}
-
 pub(crate) fn disassemble_myself() -> HashSet<Function> {
-    use std::path::Path;
-    ::console_error_panic_hook::set_once();
-    // Our wasm module in the wasm-bindgen test harness is called
-    // "wasm-bindgen-test_bg". When running in node this is actually a shim JS
-    // file. Ask node where that JS file is, and then we use that with a wasm
-    // extension to find the wasm file itself.
-    let js_shim = resolve("wasm-bindgen-test");
-    let js_shim = Path::new(&js_shim).with_file_name("wasm-bindgen-test_bg.wasm");
-
-    // Execute `wasm2wat` synchronously, waiting for and capturing all of its
-    // output. Note that we pass in a custom `maxBuffer` parameter because we're
-    // generating a ton of output that needs to be buffered.
-    let args = js_sys::Array::new();
-    args.push(&js_shim.display().to_string().into());
-    args.push(&"--enable-simd".into());
-    let opts = js_sys::Object::new();
-    js_sys::Reflect::set(&opts, &"maxBuffer".into(), &(200 * 1024 * 1024).into()).unwrap();
-    let output = exec_file_sync("wasm2wat", &args, &opts).to_string();
+    // Use `std::env::args` to find the path to our executable. Assume the
+    // environment is configured such that we can read that file. Read it and
+    // use the `wasmprinter` crate to transform the binary to text, then search
+    // the text for appropriately named functions.
+    let me = std::env::args()
+        .next()
+        .expect("failed to find current wasm file");
+    let output = wasmprinter::print_file(&me).unwrap();
 
     let mut ret: HashSet<Function> = HashSet::new();
     let mut lines = output.lines().map(|s| s.trim());

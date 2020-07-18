@@ -10,8 +10,6 @@
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
-#[cfg(test)]
-use wasm_bindgen_test::wasm_bindgen_test;
 
 extern "C" {
     #[link_name = "llvm.wasm.atomic.wait.i32"]
@@ -22,7 +20,7 @@ extern "C" {
     fn llvm_atomic_notify(ptr: *mut i32, cnt: i32) -> i32;
 }
 
-/// Corresponding intrinsic to wasm's [`i32.atomic.wait` instruction][instr]
+/// Corresponding intrinsic to wasm's [`memory.atomic.wait32` instruction][instr]
 ///
 /// This function, when called, will block the current thread if the memory
 /// pointed to by `ptr` is equal to `expression` (performing this action
@@ -50,14 +48,14 @@ extern "C" {
 /// library is not obtainable via `rustup`, but rather will require the
 /// standard library to be compiled from source.
 ///
-/// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
+/// [instr]: https://webassembly.github.io/threads/syntax/instructions.html#syntax-instr-atomic-memory
 #[inline]
 #[cfg_attr(test, assert_instr("i32.atomic.wait"))]
-pub unsafe fn i32_atomic_wait(ptr: *mut i32, expression: i32, timeout_ns: i64) -> i32 {
+pub unsafe fn memory_atomic_wait32(ptr: *mut i32, expression: i32, timeout_ns: i64) -> i32 {
     llvm_atomic_wait_i32(ptr, expression, timeout_ns)
 }
 
-/// Corresponding intrinsic to wasm's [`i64.atomic.wait` instruction][instr]
+/// Corresponding intrinsic to wasm's [`memory.atomic.wait64` instruction][instr]
 ///
 /// This function, when called, will block the current thread if the memory
 /// pointed to by `ptr` is equal to `expression` (performing this action
@@ -85,14 +83,14 @@ pub unsafe fn i32_atomic_wait(ptr: *mut i32, expression: i32, timeout_ns: i64) -
 /// library is not obtainable via `rustup`, but rather will require the
 /// standard library to be compiled from source.
 ///
-/// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
+/// [instr]: https://webassembly.github.io/threads/syntax/instructions.html#syntax-instr-atomic-memory
 #[inline]
 #[cfg_attr(test, assert_instr("i64.atomic.wait"))]
-pub unsafe fn i64_atomic_wait(ptr: *mut i64, expression: i64, timeout_ns: i64) -> i32 {
+pub unsafe fn memory_atomic_wait64(ptr: *mut i64, expression: i64, timeout_ns: i64) -> i32 {
     llvm_atomic_wait_i64(ptr, expression, timeout_ns)
 }
 
-/// Corresponding intrinsic to wasm's [`atomic.notify` instruction][instr]
+/// Corresponding intrinsic to wasm's [`memory.atomic.notify` instruction][instr]
 ///
 /// This function will notify a number of threads blocked on the address
 /// indicated by `ptr`. Threads previously blocked with the `i32_atomic_wait`
@@ -112,9 +110,9 @@ pub unsafe fn i64_atomic_wait(ptr: *mut i64, expression: i64, timeout_ns: i64) -
 /// library is not obtainable via `rustup`, but rather will require the
 /// standard library to be compiled from source.
 ///
-/// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wake
+/// [instr]: https://webassembly.github.io/threads/syntax/instructions.html#syntax-instr-atomic-memory
 #[inline]
 #[cfg_attr(test, assert_instr("atomic.wake"))]
-pub unsafe fn atomic_notify(ptr: *mut i32, waiters: u32) -> u32 {
+pub unsafe fn memory_atomic_notify(ptr: *mut i32, waiters: u32) -> u32 {
     llvm_atomic_notify(ptr, waiters as i32) as u32
 }

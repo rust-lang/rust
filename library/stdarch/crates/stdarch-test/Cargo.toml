@@ -11,10 +11,13 @@ lazy_static = "1.0"
 rustc-demangle = "0.1.8"
 cfg-if = "0.1"
 
-[target.wasm32-unknown-unknown.dependencies]
-wasm-bindgen = "0.2.47"
-js-sys = "0.3"
-console_error_panic_hook = "0.1"
+# We use a crates.io dependency to disassemble wasm binaries to look for
+# instructions for `#[assert_instr]`. Note that we use an `=` dependency here
+# instead of a floating dependency because the text format for wasm changes over
+# time, and we want to make updates to this explicit rather than automatically
+# picking up updates which might break CI with new instruction names.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasmprinter = "=0.2.6"
 
 [features]
 default = []

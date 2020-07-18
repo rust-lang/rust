@@ -1,7 +1,5 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
-#[cfg(test)]
-use wasm_bindgen_test::wasm_bindgen_test;
 
 extern "C" {
     #[link_name = "llvm.wasm.memory.grow.i32"]

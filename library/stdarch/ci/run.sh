@@ -44,6 +44,16 @@ cargo_test() {
     fi
     cmd="$cmd ${subcmd} --target=$TARGET $1"
     cmd="$cmd -- $2"
+
+    # wasm targets can't catch panics so if a test failures make sure the test
+    # harness isn't trying to capture output, otherwise we won't get any useful
+    # output.
+    case ${TARGET} in
+        wasm32*)
+            cmd="$cmd --nocapture"
+            ;;
+    esac
+
     $cmd
 }
 
@@ -72,20 +82,11 @@ case ${TARGET} in
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
         cargo_test "--release"
         ;;
-    wasm32-unknown-unknown*)
-        # Attempt to actually run some SIMD tests in node.js. Unfortunately
-        # though node.js (transitively through v8) doesn't have support for the
-        # full SIMD spec yet, only some functions. As a result only pass in
-        # some target features and a special `--cfg`
-        # FIXME: broken
-        #export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128 --cfg only_node_compatible_functions"
-        #cargo_test "--release"
-
-        # After that passes make sure that all intrinsics compile, passing in
-        # the extra feature to compile in non-node-compatible SIMD.
-        # FIXME: broken
-        #export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128,+unimplemented-simd128"
-        #cargo_test "--release --no-run"
+    wasm32*)
+        prev="$RUSTFLAGS"
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128,+unimplemented-simd128"
+        cargo_test "--release"
+        export RUSTFLAGS="$prev"
         ;;
     # FIXME: don't build anymore
     #mips-*gnu* | mipsel-*gnu*)
@@ -111,7 +112,7 @@ case ${TARGET} in
 
 esac
 
-if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ] && [ "$TARGET" != "wasm32-unknown-unknown" ]; then
+if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ]; then
     # Test examples
     (
         cd examples

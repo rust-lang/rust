@@ -19,19 +19,8 @@ pub use assert_instr_macro::*;
 pub use simd_test_macro::*;
 use std::{cmp, collections::HashSet, env, hash, str, sync::atomic::AtomicPtr};
 
-// `println!` doesn't work on wasm32 right now, so shadow the compiler's `println!`
-// macro with our own shim that redirects to `console.log`.
-#[allow(unused)]
-#[cfg(target_arch = "wasm32")]
-#[macro_export]
-macro_rules! println {
-    ($($args:tt)*) => (crate::wasm::js_console_log(&format!($($args)*)))
-}
-
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        extern crate wasm_bindgen;
-        extern crate console_error_panic_hook;
         pub mod wasm;
         use wasm::disassemble_myself;
     } else {
