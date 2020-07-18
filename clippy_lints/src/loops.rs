@@ -419,6 +419,39 @@ declare_clippy_lint! {
     "variables used within while expression are not mutated in the body"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks whether a for loop is being used to push a constant
+    /// value into a Vec.
+    ///
+    /// **Why is this bad?** This kind of operation can be expressed more succinctly with
+    /// `vec![item;SIZE]` or `vec.resize(NEW_SIZE, item)` and using these alternatives may also
+    /// have better performance.
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let item1 = 2;
+    /// let item2 = 3;
+    /// let mut vec: Vec<u8> = Vec::new();
+    /// for _ in 0..20 {
+    ///    vec.push(item1);
+    /// }
+    /// for _ in 0..30 {
+    ///     vec.push(item2);
+    /// }
+    /// ```
+    /// could be written as
+    /// ```rust
+    /// let item1 = 2;
+    /// let item2 = 3;
+    /// let mut vec: Vec<u8> = vec![item1; 20];
+    /// vec.resize(20 + 30, item2);
+    /// ```
+    pub SAME_ITEM_PUSH,
+    style,
+    "the same item is pushed inside of a for loop"
+}
+
 declare_lint_pass!(Loops => [
     MANUAL_MEMCPY,
     NEEDLESS_RANGE_LOOP,
@@ -435,6 +468,7 @@ declare_lint_pass!(Loops => [
     NEVER_LOOP,
     MUT_RANGE_BOUND,
     WHILE_IMMUTABLE_CONDITION,
+    SAME_ITEM_PUSH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Loops {
@@ -740,6 +774,7 @@ fn check_for_loop<'tcx>(
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
     detect_manual_memcpy(cx, pat, arg, body, expr);
+    detect_same_item_push(cx, pat, arg, body, expr);
 }
 
 fn same_var<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, var: HirId) -> bool {
@@ -1011,6 +1046,236 @@ fn detect_manual_memcpy<'tcx>(
                     big_sugg,
                     Applicability::Unspecified,
                 );
+            }
+        }
+    }
+}
+
+// Delegate that traverses expression and detects mutable variables being used
+struct UsesMutableDelegate {
+    found_mutable: bool,
+}
+
+impl<'tcx> Delegate<'tcx> for UsesMutableDelegate {
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
+
+    fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
+        // Mutable variable is found
+        if let ty::BorrowKind::MutBorrow = bk {
+            self.found_mutable = true;
+        }
+    }
+
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>) {}
+}
+
+// Uses UsesMutableDelegate to find mutable variables in an expression expr
+fn has_mutable_variables<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    let mut delegate = UsesMutableDelegate { found_mutable: false };
+    let def_id = expr.hir_id.owner.to_def_id();
+    cx.tcx.infer_ctxt().enter(|infcx| {
+        ExprUseVisitor::new(
+            &mut delegate,
+            &infcx,
+            def_id.expect_local(),
+            cx.param_env,
+            cx.tables(),
+        ).walk_expr(expr);
+    });
+
+    delegate.found_mutable
+}
+
+// Scans for the usage of the for loop pattern
+struct ForPatternVisitor<'a, 'tcx> {
+    found_pattern: bool,
+    // Pattern that we are searching for
+    for_pattern: &'a Pat<'tcx>,
+    cx: &'a LateContext<'tcx>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for ForPatternVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+        // Recursively explore an expression until a ExprKind::Path is found
+        match &expr.kind {
+            ExprKind::Array(expr_list) | ExprKind::MethodCall(_, _, expr_list, _) | ExprKind::Tup(expr_list) => {
+                for expr in *expr_list {
+                    self.visit_expr(expr)
+                }
+            },
+            ExprKind::Binary(_, lhs_expr, rhs_expr) => {
+                self.visit_expr(lhs_expr);
+                self.visit_expr(rhs_expr);
+            },
+            ExprKind::Box(expr)
+            | ExprKind::Unary(_, expr)
+            | ExprKind::Cast(expr, _)
+            | ExprKind::Type(expr, _)
+            | ExprKind::AddrOf(_, _, expr)
+            | ExprKind::Struct(_, _, Some(expr)) => self.visit_expr(expr),
+            _ => {
+                // Exploration cannot continue ... calculate the hir_id of the current
+                // expr assuming it is a Path
+                if let Some(hir_id) = var_def_id(self.cx, &expr) {
+                    // Pattern is found
+                    if hir_id == self.for_pattern.hir_id {
+                        self.found_pattern = true;
+                    }
+                    // If the for loop pattern is a tuple, determine whether the current
+                    // expr is inside that tuple pattern
+                    if let PatKind::Tuple(pat_list, _) = &self.for_pattern.kind {
+                        let hir_id_list: Vec<HirId> = pat_list.iter().map(|p| p.hir_id).collect();
+                        if hir_id_list.contains(&hir_id) {
+                            self.found_pattern = true;
+                        }
+                    }
+                }
+            },
+        }
+    }
+
+    // This is triggered by walk_expr() for the case of vec.push(pat)
+    fn visit_qpath(&mut self, qpath: &'tcx QPath<'_>, _: HirId, _: Span) {
+        if_chain! {
+            if let QPath::Resolved(_, path) = qpath;
+            if let Res::Local(hir_id) = &path.res;
+            then {
+                if *hir_id == self.for_pattern.hir_id{
+                    self.found_pattern = true;
+                }
+
+                if let PatKind::Tuple(pat_list, _) = &self.for_pattern.kind {
+                    let hir_id_list: Vec<HirId> = pat_list.iter().map(|p| p.hir_id).collect();
+                    if hir_id_list.contains(&hir_id) {
+                        self.found_pattern = true;
+                    }
+                }
+            }
+        }
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
+// Scans the body of the for loop and determines whether lint should be given
+struct SameItemPushVisitor<'a, 'tcx> {
+    should_lint: bool,
+    // this field holds the last vec push operation visited, which should be the only push seen
+    vec_push: Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>,
+    cx: &'a LateContext<'tcx>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
+        match &expr.kind {
+            // Non-determinism may occur ... don't give a lint
+            ExprKind::Loop(_, _, _) | ExprKind::Match(_, _, _) => self.should_lint = false,
+            ExprKind::Block(block, _) => self.visit_block(block),
+            _ => {},
+        }
+    }
+
+    fn visit_block(&mut self, b: &'tcx Block<'_>) {
+        for stmt in b.stmts.iter() {
+            self.visit_stmt(stmt);
+        }
+    }
+
+    fn visit_stmt(&mut self, s: &'tcx Stmt<'_>) {
+        let vec_push_option = get_vec_push(self.cx, s);
+        if vec_push_option.is_none() {
+            // Current statement is not a push so visit inside
+            match &s.kind {
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(&expr),
+                _ => {},
+            }
+        } else {
+            // Current statement is a push ...check whether another
+            // push had been previously done
+            if self.vec_push.is_none() {
+                self.vec_push = vec_push_option;
+            } else {
+                // There are multiple pushes ... don't lint
+                self.should_lint = false;
+            }
+        }
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
+// Given some statement, determine if that statement is a push on a Vec. If it is, return
+// the Vec being pushed into and the item being pushed
+fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
+    if_chain! {
+            // Extract method being called
+            if let StmtKind::Semi(semi_stmt) = &stmt.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = &semi_stmt.kind;
+            // Figure out the parameters for the method call
+            if let Some(self_expr) = args.get(0);
+            if let Some(pushed_item) = args.get(1);
+            // Check that the method being called is push() on a Vec
+            if match_type(cx, cx.tables().expr_ty(self_expr), &paths::VEC);
+            if path.ident.name.as_str() == "push";
+            then {
+                return Some((self_expr, pushed_item))
+            }
+    }
+    None
+}
+
+/// Detects for loop pushing the same item into a Vec
+fn detect_same_item_push<'tcx>(
+    cx: &LateContext<'tcx>,
+    pat: &'tcx Pat<'_>,
+    _: &'tcx Expr<'_>,
+    body: &'tcx Expr<'_>,
+    _: &'tcx Expr<'_>,
+) {
+    // Determine whether it is safe to lint the body
+    let mut same_item_push_visitor = SameItemPushVisitor {
+        should_lint: true,
+        vec_push: None,
+        cx,
+    };
+    walk_expr(&mut same_item_push_visitor, body);
+    if same_item_push_visitor.should_lint {
+        if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push {
+            // Make sure that the push does not involve possibly mutating values
+            if !has_mutable_variables(cx, pushed_item) {
+                // Walk through the expression being pushed and make sure that it
+                // does not contain the for loop pattern
+                let mut for_pat_visitor = ForPatternVisitor {
+                    found_pattern: false,
+                    for_pattern: pat,
+                    cx,
+                };
+                walk_expr(&mut for_pat_visitor, pushed_item);
+
+                if !for_pat_visitor.found_pattern {
+                    let vec_str = snippet(cx, vec.span, "");
+                    let item_str = snippet(cx, pushed_item.span, "");
+
+                    span_lint_and_help(
+                        cx,
+                        SAME_ITEM_PUSH,
+                        vec.span,
+                        "it looks like the same item is being pushed into this Vec",
+                        None, 
+                        &format!(
+                            "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
+                            item_str, vec_str, item_str
+                        ),
+                    )
+                }
             }
         }
     }
