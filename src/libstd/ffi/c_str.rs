@@ -1551,7 +1551,7 @@ impl ops::Index<ops::RangeFull> for CString {
     }
 }
 
-#[stable(feature = "cstr_range_from", since = "1.45.0")]
+#[stable(feature = "cstr_range_from", since = "1.47.0")]
 impl ops::Index<ops::RangeFrom<usize>> for CStr {
     type Output = CStr;
 
