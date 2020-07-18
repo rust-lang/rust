@@ -442,7 +442,7 @@ impl<'a> Resolver<'a> {
                 );
                 err
             }
-            ResolutionError::ParamInTyOfConstArg(name) => {
+            ResolutionError::ParamInTyOfConstParam(name) => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
