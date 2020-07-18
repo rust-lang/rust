@@ -121,14 +121,10 @@ fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Opti
     // exceptions to get this past `make check` today.
     // FIXME(#32129)
     if file.ends_with("std/io/struct.IoSlice.html")
-        || file.ends_with("std/string/struct.String.html")
     {
         return None;
     }
-    // FIXME(#32553)
-    if file.ends_with("alloc/string/struct.String.html") {
-        return None;
-    }
+
     // FIXME(#32130)
     if file.ends_with("alloc/collections/btree_map/struct.BTreeMap.html")
         || file.ends_with("alloc/collections/btree_set/struct.BTreeSet.html")

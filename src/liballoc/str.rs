@@ -240,8 +240,6 @@ impl str {
     /// While doing so, it attempts to find matches of a pattern. If it finds any, it
     /// replaces them with the replacement string slice.
     ///
-    /// [`String`]: string/struct.String.html
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -279,8 +277,6 @@ impl str {
     /// `replacen` creates a new [`String`], and copies the data from this string slice into it.
     /// While doing so, it attempts to find matches of a pattern. If it finds any, it
     /// replaces them with the replacement string slice at most `count` times.
-    ///
-    /// [`String`]: string/struct.String.html
     ///
     /// # Examples
     ///
@@ -323,8 +319,6 @@ impl str {
     /// Since some characters can expand into multiple characters when changing
     /// the case, this function returns a [`String`] instead of modifying the
     /// parameter in-place.
-    ///
-    /// [`String`]: string/struct.String.html
     ///
     /// # Examples
     ///
@@ -411,8 +405,6 @@ impl str {
     /// the case, this function returns a [`String`] instead of modifying the
     /// parameter in-place.
     ///
-    /// [`String`]: string/struct.String.html
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -459,8 +451,7 @@ impl str {
 
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
-    /// [`String`]: string/struct.String.html
-    /// [`Box<str>`]: boxed/struct.Box.html
+    /// [`Box<str>`]: Box
     ///
     /// # Examples
     ///
@@ -484,8 +475,6 @@ impl str {
     /// # Panics
     ///
     /// This function will panic if the capacity would overflow.
-    ///
-    /// [`String`]: string/struct.String.html
     ///
     /// # Examples
     ///
@@ -525,7 +514,7 @@ impl str {
     /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
     /// ```
     ///
-    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    /// [`make_ascii_uppercase`]: str::make_ascii_uppercase
     /// [`to_uppercase`]: #method.to_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
@@ -555,7 +544,7 @@ impl str {
     /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
     /// ```
     ///
-    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    /// [`make_ascii_lowercase`]: str::make_ascii_lowercase
     /// [`to_lowercase`]: #method.to_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
