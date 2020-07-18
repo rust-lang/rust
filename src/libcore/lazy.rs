@@ -26,20 +26,20 @@ use crate::ops::Deref;
 /// assert_eq!(value, "Hello, World!");
 /// assert!(cell.get().is_some());
 /// ```
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 pub struct OnceCell<T> {
     // Invariant: written to at most once.
     inner: UnsafeCell<Option<T>>,
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T> Default for OnceCell<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: fmt::Debug> fmt::Debug for OnceCell<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.get() {
@@ -49,7 +49,7 @@ impl<T: fmt::Debug> fmt::Debug for OnceCell<T> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: Clone> Clone for OnceCell<T> {
     fn clone(&self) -> OnceCell<T> {
         let res = OnceCell::new();
@@ -63,17 +63,17 @@ impl<T: Clone> Clone for OnceCell<T> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: PartialEq> PartialEq for OnceCell<T> {
     fn eq(&self, other: &Self) -> bool {
         self.get() == other.get()
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: Eq> Eq for OnceCell<T> {}
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T> From<T> for OnceCell<T> {
     fn from(value: T) -> Self {
         OnceCell { inner: UnsafeCell::new(Some(value)) }
@@ -82,7 +82,7 @@ impl<T> From<T> for OnceCell<T> {
 
 impl<T> OnceCell<T> {
     /// Creates a new empty cell.
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new() -> OnceCell<T> {
         OnceCell { inner: UnsafeCell::new(None) }
     }
@@ -90,7 +90,7 @@ impl<T> OnceCell<T> {
     /// Gets the reference to the underlying value.
     ///
     /// Returns `None` if the cell is empty.
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get(&self) -> Option<&T> {
         // Safety: Safe due to `inner`'s invariant
         unsafe { &*self.inner.get() }.as_ref()
@@ -99,7 +99,7 @@ impl<T> OnceCell<T> {
     /// Gets the mutable reference to the underlying value.
     ///
     /// Returns `None` if the cell is empty.
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
         // Safety: Safe because we have unique access
         unsafe { &mut *self.inner.get() }.as_mut()
@@ -127,7 +127,7 @@ impl<T> OnceCell<T> {
     ///
     /// assert!(cell.get().is_some());
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn set(&self, value: T) -> Result<(), T> {
         // Safety: Safe because we cannot have overlapping mutable borrows
         let slot = unsafe { &*self.inner.get() };
@@ -168,7 +168,7 @@ impl<T> OnceCell<T> {
     /// let value = cell.get_or_init(|| unreachable!());
     /// assert_eq!(value, &92);
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get_or_init<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
@@ -206,7 +206,7 @@ impl<T> OnceCell<T> {
     /// assert_eq!(value, Ok(&92));
     /// assert_eq!(cell.get(), Some(&92))
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
     where
         F: FnOnce() -> Result<T, E>,
@@ -241,7 +241,7 @@ impl<T> OnceCell<T> {
     /// cell.set("hello".to_string()).unwrap();
     /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn into_inner(self) -> Option<T> {
         // Because `into_inner` takes `self` by value, the compiler statically verifies
         // that it is not currently borrowed. So it is safe to move out `Option<T>`.
@@ -269,7 +269,7 @@ impl<T> OnceCell<T> {
     /// assert_eq!(cell.take(), Some("hello".to_string()));
     /// assert_eq!(cell.get(), None);
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn take(&mut self) -> Option<T> {
         mem::take(self).into_inner()
     }
@@ -298,13 +298,13 @@ impl<T> OnceCell<T> {
 /// //   92
 /// //   92
 /// ```
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 pub struct Lazy<T, F = fn() -> T> {
     cell: OnceCell<T>,
     init: Cell<Option<F>>,
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: fmt::Debug, F> fmt::Debug for Lazy<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Lazy").field("cell", &self.cell).field("init", &"..").finish()
@@ -329,7 +329,7 @@ impl<T, F> Lazy<T, F> {
     /// assert_eq!(&*lazy, "HELLO, WORLD!");
     /// # }
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new(init: F) -> Lazy<T, F> {
         Lazy { cell: OnceCell::new(), init: Cell::new(Some(init)) }
     }
@@ -353,7 +353,7 @@ impl<T, F: FnOnce() -> T> Lazy<T, F> {
     /// assert_eq!(Lazy::force(&lazy), &92);
     /// assert_eq!(&*lazy, &92);
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn force(this: &Lazy<T, F>) -> &T {
         this.cell.get_or_init(|| match this.init.take() {
             Some(f) => f(),
@@ -362,7 +362,7 @@ impl<T, F: FnOnce() -> T> Lazy<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T, F: FnOnce() -> T> Deref for Lazy<T, F> {
     type Target = T;
     fn deref(&self) -> &T {
@@ -370,7 +370,7 @@ impl<T, F: FnOnce() -> T> Deref for Lazy<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: Default> Default for Lazy<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     fn default() -> Lazy<T> {

@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[doc(inline)]
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 pub use core::lazy::*;
 
 /// A synchronization primitive which can be written to only once.
@@ -38,7 +38,7 @@ pub use core::lazy::*;
 /// assert!(value.is_some());
 /// assert_eq!(value.unwrap().as_str(), "Hello, World!");
 /// ```
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 pub struct SyncOnceCell<T> {
     once: Once,
     // Whether or not the value is initialized is tracked by `state_and_queue`.
@@ -50,24 +50,24 @@ pub struct SyncOnceCell<T> {
 // scoped thread B, which fills the cell, which is
 // then destroyed by A. That is, destructor observes
 // a sent value.
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 unsafe impl<T: Sync + Send> Sync for SyncOnceCell<T> {}
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 unsafe impl<T: Send> Send for SyncOnceCell<T> {}
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: RefUnwindSafe + UnwindSafe> RefUnwindSafe for SyncOnceCell<T> {}
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: UnwindSafe> UnwindSafe for SyncOnceCell<T> {}
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T> Default for SyncOnceCell<T> {
     fn default() -> SyncOnceCell<T> {
         SyncOnceCell::new()
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: fmt::Debug> fmt::Debug for SyncOnceCell<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.get() {
@@ -77,7 +77,7 @@ impl<T: fmt::Debug> fmt::Debug for SyncOnceCell<T> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: Clone> Clone for SyncOnceCell<T> {
     fn clone(&self) -> SyncOnceCell<T> {
         let cell = Self::new();
@@ -91,7 +91,7 @@ impl<T: Clone> Clone for SyncOnceCell<T> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T> From<T> for SyncOnceCell<T> {
     fn from(value: T) -> Self {
         let cell = Self::new();
@@ -102,19 +102,19 @@ impl<T> From<T> for SyncOnceCell<T> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: PartialEq> PartialEq for SyncOnceCell<T> {
     fn eq(&self, other: &SyncOnceCell<T>) -> bool {
         self.get() == other.get()
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: Eq> Eq for SyncOnceCell<T> {}
 
 impl<T> SyncOnceCell<T> {
     /// Creates a new empty cell.
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new() -> SyncOnceCell<T> {
         SyncOnceCell { once: Once::new(), value: UnsafeCell::new(MaybeUninit::uninit()) }
     }
@@ -123,7 +123,7 @@ impl<T> SyncOnceCell<T> {
     ///
     /// Returns `None` if the cell is empty, or being initialized. This
     /// method never blocks.
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get(&self) -> Option<&T> {
         if self.is_initialized() {
             // Safe b/c checked is_initialized
@@ -136,7 +136,7 @@ impl<T> SyncOnceCell<T> {
     /// Gets the mutable reference to the underlying value.
     ///
     /// Returns `None` if the cell is empty. This method never blocks.
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
         if self.is_initialized() {
             // Safe b/c checked is_initialized and we have a unique access
@@ -170,7 +170,7 @@ impl<T> SyncOnceCell<T> {
     ///     assert_eq!(CELL.get(), Some(&92));
     /// }
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn set(&self, value: T) -> Result<(), T> {
         let mut value = Some(value);
         self.get_or_init(|| value.take().unwrap());
@@ -209,7 +209,7 @@ impl<T> SyncOnceCell<T> {
     /// let value = cell.get_or_init(|| unreachable!());
     /// assert_eq!(value, &92);
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get_or_init<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
@@ -248,7 +248,7 @@ impl<T> SyncOnceCell<T> {
     /// assert_eq!(value, Ok(&92));
     /// assert_eq!(cell.get(), Some(&92))
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get_or_try_init<F, E>(&self, f: F) -> Result<&T, E>
     where
         F: FnOnce() -> Result<T, E>,
@@ -286,7 +286,7 @@ impl<T> SyncOnceCell<T> {
     /// cell.set("hello".to_string()).unwrap();
     /// assert_eq!(cell.into_inner(), Some("hello".to_string()));
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn into_inner(mut self) -> Option<T> {
         // Safety: Safe because we immediately free `self` without dropping
         let inner = unsafe { self.take_inner() };
@@ -318,7 +318,7 @@ impl<T> SyncOnceCell<T> {
     /// assert_eq!(cell.take(), Some("hello".to_string()));
     /// assert_eq!(cell.get(), None);
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn take(&mut self) -> Option<T> {
         mem::take(self).into_inner()
     }
@@ -428,13 +428,13 @@ impl<T> Drop for SyncOnceCell<T> {
 ///     //   Some("Hoyten")
 /// }
 /// ```
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 pub struct SyncLazy<T, F = fn() -> T> {
     cell: SyncOnceCell<T>,
     init: Cell<Option<F>>,
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: fmt::Debug, F> fmt::Debug for SyncLazy<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Lazy").field("cell", &self.cell).field("init", &"..").finish()
@@ -446,17 +446,17 @@ impl<T: fmt::Debug, F> fmt::Debug for SyncLazy<T, F> {
 // we do create a `&mut Option<F>` in `force`, but this is
 // properly synchronized, so it only happens once
 // so it also does not contribute to this impl.
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 unsafe impl<T, F: Send> Sync for SyncLazy<T, F> where SyncOnceCell<T>: Sync {}
 // auto-derived `Send` impl is OK.
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T, F: RefUnwindSafe> RefUnwindSafe for SyncLazy<T, F> where SyncOnceCell<T>: RefUnwindSafe {}
 
 impl<T, F> SyncLazy<T, F> {
     /// Creates a new lazy value with the given initializing
     /// function.
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new(f: F) -> SyncLazy<T, F> {
         SyncLazy { cell: SyncOnceCell::new(), init: Cell::new(Some(f)) }
     }
@@ -479,7 +479,7 @@ impl<T, F: FnOnce() -> T> SyncLazy<T, F> {
     /// assert_eq!(SyncLazy::force(&lazy), &92);
     /// assert_eq!(&*lazy, &92);
     /// ```
-    #[unstable(feature = "once_cell", issue = "68198")]
+    #[unstable(feature = "once_cell", issue = "74465")]
     pub fn force(this: &SyncLazy<T, F>) -> &T {
         this.cell.get_or_init(|| match this.init.take() {
             Some(f) => f(),
@@ -488,7 +488,7 @@ impl<T, F: FnOnce() -> T> SyncLazy<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T, F: FnOnce() -> T> Deref for SyncLazy<T, F> {
     type Target = T;
     fn deref(&self) -> &T {
@@ -496,7 +496,7 @@ impl<T, F: FnOnce() -> T> Deref for SyncLazy<T, F> {
     }
 }
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 impl<T: Default> Default for SyncLazy<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     fn default() -> SyncLazy<T> {

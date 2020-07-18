@@ -239,7 +239,7 @@ pub mod char;
 pub mod ffi;
 #[cfg(not(test))] // See #65860
 pub mod iter;
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(feature = "once_cell", issue = "74465")]
 pub mod lazy;
 pub mod option;
 pub mod panic;
