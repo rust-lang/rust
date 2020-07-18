@@ -4,7 +4,7 @@
 //!
 //! For more details, see the [`std::str`] module.
 //!
-//! [`std::str`]: ../../std/str/index.html
+//! [`std::str`]: self
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -163,13 +163,11 @@ Section: Creating a string
 /// Errors which can occur when attempting to interpret a sequence of [`u8`]
 /// as a string.
 ///
-/// [`u8`]: ../../std/primitive.u8.html
-///
 /// As such, the `from_utf8` family of functions and methods for both [`String`]s
 /// and [`&str`]s make use of this error, for example.
 ///
 /// [`String`]: ../../std/string/struct.String.html#method.from_utf8
-/// [`&str`]: ../../std/str/fn.from_utf8.html
+/// [`&str`]: from_utf8
 ///
 /// # Examples
 ///
