@@ -47,17 +47,17 @@
 //!
 //! Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
 //! the serialization API.
-//! To be able to encode a piece of data, it must implement the `serialize::RustcEncodable` trait.
-//! To be able to decode a piece of data, it must implement the `serialize::RustcDecodable` trait.
+//! To be able to encode a piece of data, it must implement the `serialize::Encodable` trait.
+//! To be able to decode a piece of data, it must implement the `serialize::Decodable` trait.
 //! The Rust compiler provides an annotation to automatically generate the code for these traits:
-//! `#[derive(RustcDecodable, RustcEncodable)]`
+//! `#[derive(Decodable, Encodable)]`
 //!
 //! The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
 //! The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
 //! A `json::Json` value can be encoded as a string or buffer using the functions described above.
 //! You can also use the `json::Encoder` object, which implements the `Encoder` trait.
 //!
-//! When using `ToJson` the `RustcEncodable` trait implementation is not mandatory.
+//! When using `ToJson` the `Encodable` trait implementation is not mandatory.
 //!
 //! # Examples of use
 //!
@@ -68,10 +68,11 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! use rustc_macros::{Decodable, Encodable};
 //! use rustc_serialize::json;
 //!
 //! // Automatically generate `Decodable` and `Encodable` trait implementations
-//! #[derive(RustcDecodable, RustcEncodable)]
+//! #[derive(Decodable, Encodable)]
 //! pub struct TestStruct  {
 //!     data_int: u8,
 //!     data_str: String,
@@ -100,6 +101,7 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! use rustc_macros::Encodable;
 //! use rustc_serialize::json::{self, ToJson, Json};
 //!
 //! // A custom data structure
@@ -115,8 +117,8 @@
 //!     }
 //! }
 //!
-//! // Only generate `RustcEncodable` trait implementation
-//! #[derive(RustcEncodable)]
+//! // Only generate `Encodable` trait implementation
+//! #[derive(Encodable)]
 //! pub struct ComplexNumRecord {
 //!     uid: u8,
 //!     dsc: String,
@@ -137,11 +139,12 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
+//! use rustc_macros::Decodable;
 //! use std::collections::BTreeMap;
 //! use rustc_serialize::json::{self, Json, ToJson};
 //!
-//! // Only generate `RustcDecodable` trait implementation
-//! #[derive(RustcDecodable)]
+//! // Only generate `Decodable` trait implementation
+//! #[derive(Decodable)]
 //! pub struct TestStruct {
 //!     data_int: u8,
 //!     data_str: String,

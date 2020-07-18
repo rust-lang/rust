@@ -3877,6 +3877,7 @@ name = "rustc_serialize"
 version = "0.0.0"
 dependencies = [
  "indexmap",
+ "rustc_macros",
  "smallvec 1.4.0",
 ]
 
