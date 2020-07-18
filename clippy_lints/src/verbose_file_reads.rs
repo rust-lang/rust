@@ -62,7 +62,7 @@ fn is_file_read_to_end<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> 
         if let ExprKind::MethodCall(method_name, _, exprs, _) = expr.kind;
         if method_name.ident.as_str() == "read_to_end";
         if let ExprKind::Path(QPath::Resolved(None, _)) = &exprs[0].kind;
-        let ty = cx.tables().expr_ty(&exprs[0]);
+        let ty = cx.typeck_results().expr_ty(&exprs[0]);
         if match_type(cx, ty, &paths::FILE);
         then {
             return true
@@ -76,7 +76,7 @@ fn is_file_read_to_string<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
         if let ExprKind::MethodCall(method_name, _, exprs, _) = expr.kind;
         if method_name.ident.as_str() == "read_to_string";
         if let ExprKind::Path(QPath::Resolved(None, _)) = &exprs[0].kind;
-        let ty = cx.tables().expr_ty(&exprs[0]);
+        let ty = cx.typeck_results().expr_ty(&exprs[0]);
         if match_type(cx, ty, &paths::FILE);
         then {
             return true

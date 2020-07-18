@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for MemDiscriminant {
             if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::MEM_DISCRIMINANT);
             // type is non-enum
-            let ty_param = cx.tables().node_substs(func.hir_id).type_at(0);
+            let ty_param = cx.typeck_results().node_substs(func.hir_id).type_at(0);
             if !ty_param.is_enum();
 
             then {

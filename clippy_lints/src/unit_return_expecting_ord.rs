@@ -72,7 +72,7 @@ fn get_projection_pred<'tcx>(
 
 fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Vec<(usize, String)> {
     let mut args_to_check = Vec::new();
-    if let Some(def_id) = cx.tables().type_dependent_def_id(expr.hir_id) {
+    if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
         let fn_sig = cx.tcx.fn_sig(def_id);
         let generics = cx.tcx.predicates_of(def_id);
         let fn_mut_preds = get_trait_predicates_for_trait_id(cx, generics, cx.tcx.lang_items().fn_mut_trait());
@@ -110,7 +110,7 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
 fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Span, Option<Span>)> {
     if_chain! {
         if let ExprKind::Closure(_, _fn_decl, body_id, span, _) = arg.kind;
-        if let ty::Closure(_def_id, substs) = &cx.tables().node_type(arg.hir_id).kind;
+        if let ty::Closure(_def_id, substs) = &cx.typeck_results().node_type(arg.hir_id).kind;
         let ret_ty = substs.as_closure().sig().output();
         let ty = cx.tcx.erase_late_bound_regions(&ret_ty);
         if ty.is_unit();

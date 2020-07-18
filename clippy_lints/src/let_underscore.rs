@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             if let PatKind::Wild = local.pat.kind;
             if let Some(ref init) = local.init;
             then {
-                let init_ty = cx.tables().expr_ty(init);
+                let init_ty = cx.typeck_results().expr_ty(init);
                 let contains_sync_guard = init_ty.walk().any(|inner| match inner.unpack() {
                     GenericArgKind::Type(inner_ty) => {
                         SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path))
@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`"
                     )
-                } else if is_must_use_ty(cx, cx.tables().expr_ty(init)) {
+                } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init)) {
                     span_lint_and_help(
                         cx,
                         LET_UNDERSCORE_MUST_USE,

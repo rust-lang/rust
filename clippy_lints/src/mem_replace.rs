@@ -138,7 +138,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &E
 fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if_chain! {
         // check if replacement is mem::MaybeUninit::uninit().assume_init()
-        if let Some(method_def_id) = cx.tables().type_dependent_def_id(src.hir_id);
+        if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(src.hir_id);
         if cx.tcx.is_diagnostic_item(sym::assume_init, method_def_id);
         then {
             let mut applicability = Applicability::MachineApplicable;
@@ -179,7 +179,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                     applicability,
                 );
             } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id) &&
-                    !cx.tables().expr_ty(src).is_primitive() {
+                    !cx.typeck_results().expr_ty(src).is_primitive() {
                 span_lint_and_help(
                     cx,
                     MEM_REPLACE_WITH_UNINIT,

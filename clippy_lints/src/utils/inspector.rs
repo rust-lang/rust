@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
         }
         match stmt.kind {
             hir::StmtKind::Local(ref local) => {
-                println!("local variable of type {}", cx.tables().node_type(local.hir_id));
+                println!("local variable of type {}", cx.typeck_results().node_type(local.hir_id));
                 println!("pattern:");
                 print_pat(cx, &local.pat, 0);
                 if let Some(ref e) = local.init {
@@ -144,8 +144,12 @@ fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
 fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
-    println!("{}ty: {}", ind, cx.tables().expr_ty(expr));
-    println!("{}adjustments: {:?}", ind, cx.tables().adjustments().get(expr.hir_id));
+    println!("{}ty: {}", ind, cx.typeck_results().expr_ty(expr));
+    println!(
+        "{}adjustments: {:?}",
+        ind,
+        cx.typeck_results().adjustments().get(expr.hir_id)
+    );
     match expr.kind {
         hir::ExprKind::Box(ref e) => {
             println!("{}Box", ind);

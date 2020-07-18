@@ -20,8 +20,8 @@ pub(super) fn lint<'tcx>(
     map_span: Span,
 ) {
     // lint if the caller of `map()` is an `Option`
-    if is_type_diagnostic_item(cx, cx.tables().expr_ty(&map_args[0]), sym!(option_type)) {
-        if !is_copy(cx, cx.tables().expr_ty(&unwrap_args[1])) {
+    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym!(option_type)) {
+        if !is_copy(cx, cx.typeck_results().expr_ty(&unwrap_args[1])) {
             // Do not lint if the `map` argument uses identifiers in the `map`
             // argument that are also used in the `unwrap_or` argument
 
