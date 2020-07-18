@@ -196,10 +196,6 @@ fn main() {
 
 ```shell
 $ export \
-  CC=clang \
-  CXX=clang++ \
-  CFLAGS='-fsanitize=memory -fsanitize-memory-track-origins' \
-  CXXFLAGS='-fsanitize=memory -fsanitize-memory-track-origins' \
   RUSTFLAGS='-Zsanitizer=memory -Zsanitizer-memory-track-origins' \
   RUSTDOCFLAGS='-Zsanitizer=memory -Zsanitizer-memory-track-origins'
 $ cargo clean
