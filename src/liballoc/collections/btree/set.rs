@@ -22,7 +22,6 @@ use super::Recover;
 /// to any other item, as determined by the [`Ord`] trait, changes while it is in the set. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
 ///
-/// [`BTreeMap`]: struct.BTreeMap.html
 /// [`Ord`]: ../../std/cmp/trait.Ord.html
 /// [`Cell`]: ../../std/cell/struct.Cell.html
 /// [`RefCell`]: ../../std/cell/struct.RefCell.html
@@ -78,8 +77,7 @@ impl<T: Clone> Clone for BTreeSet<T> {
 /// This `struct` is created by the [`iter`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`iter`]: struct.BTreeSet.html#method.iter
+/// [`iter`]: BTreeSet::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>,
@@ -97,8 +95,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 /// This `struct` is created by the [`into_iter`] method on [`BTreeSet`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`into_iter`]: struct.BTreeSet.html#method.into_iter
+/// [`into_iter`]: BTreeSet#method.into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IntoIter<T> {
@@ -110,8 +107,7 @@ pub struct IntoIter<T> {
 /// This `struct` is created by the [`range`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`range`]: struct.BTreeSet.html#method.range
+/// [`range`]: BTreeSet::range
 #[derive(Debug)]
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
@@ -194,8 +190,7 @@ where
 /// This `struct` is created by the [`difference`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`difference`]: struct.BTreeSet.html#method.difference
+/// [`difference`]: BTreeSet::difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a> {
     inner: DifferenceInner<'a, T>,
@@ -227,8 +222,7 @@ impl<T: fmt::Debug> fmt::Debug for Difference<'_, T> {
 /// This `struct` is created by the [`symmetric_difference`] method on
 /// [`BTreeSet`]. See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`symmetric_difference`]: struct.BTreeSet.html#method.symmetric_difference
+/// [`symmetric_difference`]: BTreeSet::symmetric_difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a>(MergeIterInner<Iter<'a, T>>);
 
@@ -244,8 +238,7 @@ impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
 /// This `struct` is created by the [`intersection`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`intersection`]: struct.BTreeSet.html#method.intersection
+/// [`intersection`]: BTreeSet::intersection
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a> {
     inner: IntersectionInner<'a, T>,
@@ -277,8 +270,7 @@ impl<T: fmt::Debug> fmt::Debug for Intersection<'_, T> {
 /// This `struct` is created by the [`union`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`union`]: struct.BTreeSet.html#method.union
+/// [`union`]: BTreeSet::union
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a>(MergeIterInner<Iter<'a, T>>);
 

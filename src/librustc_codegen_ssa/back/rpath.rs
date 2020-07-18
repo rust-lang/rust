@@ -1,3 +1,4 @@
+use pathdiff::diff_paths;
 use rustc_data_structures::fx::FxHashSet;
 use std::env;
 use std::fs;
@@ -109,37 +110,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig<'_>, lib: &Path) -> Str
 // In particular, this handles the case on unix where both paths are
 // absolute but with only the root as the common directory.
 fn path_relative_from(path: &Path, base: &Path) -> Option<PathBuf> {
-    use std::path::Component;
-
-    if path.is_absolute() != base.is_absolute() {
-        path.is_absolute().then(|| PathBuf::from(path))
-    } else {
-        let mut ita = path.components();
-        let mut itb = base.components();
-        let mut comps: Vec<Component<'_>> = vec![];
-        loop {
-            match (ita.next(), itb.next()) {
-                (None, None) => break,
-                (Some(a), None) => {
-                    comps.push(a);
-                    comps.extend(ita.by_ref());
-                    break;
-                }
-                (None, _) => comps.push(Component::ParentDir),
-                (Some(a), Some(b)) if comps.is_empty() && a == b => (),
-                (Some(a), Some(b)) if b == Component::CurDir => comps.push(a),
-                (Some(_), Some(b)) if b == Component::ParentDir => return None,
-                (Some(a), Some(_)) => {
-                    comps.push(Component::ParentDir);
-                    comps.extend(itb.map(|_| Component::ParentDir));
-                    comps.push(a);
-                    comps.extend(ita.by_ref());
-                    break;
-                }
-            }
-        }
-        Some(comps.iter().map(|c| c.as_os_str()).collect())
-    }
+    diff_paths(path, base)
 }
 
 fn get_install_prefix_rpath(config: &mut RPathConfig<'_>) -> String {
