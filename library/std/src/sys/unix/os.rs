@@ -436,7 +436,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     Err(io::Error::new(ErrorKind::Other, "Not yet implemented!"))
 }
 
-#[cfg(target_vendor = "libnx")]
+#[cfg(target_env = "devkita64")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::env;
     // guaranteed by abi to be an absolute path to the executable

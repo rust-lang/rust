@@ -85,6 +85,11 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
+    #[cfg(target_env = "devkita64")]
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        io::default_read_vectored(|x| self.read(x), bufs)
+    }
+
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
         !cfg!(target_env = "devkita64")
@@ -156,6 +161,11 @@ impl FileDesc {
             )
         })?;
         Ok(ret as usize)
+    }
+
+    #[cfg(target_env = "devkita64")]
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        io::default_write_vectored(|x| self.write(x), bufs)
     }
 
     #[inline]

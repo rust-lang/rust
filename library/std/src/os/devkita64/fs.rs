@@ -4,7 +4,7 @@ use crate::fs::Metadata;
 use crate::sys_common::AsInner;
 
 #[allow(deprecated)]
-use crate::os::libnx::raw;
+use crate::os::devkita64::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///

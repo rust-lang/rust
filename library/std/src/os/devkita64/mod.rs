@@ -1,4 +1,4 @@
-//! libnx-specific definitions
+//! DevkitA64-specific definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 

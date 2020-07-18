@@ -1,11 +1,11 @@
-use super::{LinkerFlavor, PanicStrategy, Target, TargetOptions};
+use super::{LinkerFlavor, PanicStrategy, Target, TargetOptions, RelocModel};
 
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
         linker: Some("aarch64-none-elf-gcc".to_owned()),
         features: "+a53,+strict-align,+crc".to_string(),
         executables: true,
-        relocation_model: "pic".to_string(),
+        relocation_model: RelocModel::Pic,
         disable_redzone: true,
         linker_is_gnu: true,
         max_atomic_width: Some(128),

@@ -70,7 +70,7 @@ pub mod solaris;
 pub mod vxworks;
 #[cfg(target_os = "wasi")]
 pub mod wasi;
-#[cfg(target_vendor = "libnx")]
-pub mod libnx;
+#[cfg(target_env = "devkita64")]
+pub mod devkita64;
 
 pub mod raw;

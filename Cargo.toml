@@ -98,5 +98,7 @@ rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
 # source code for this crate.
 backtrace = { path = "library/backtrace" }
 
+libc = { git = 'https://github.com/leo60228/libc.git', branch = 'bindgen-horizon' }
+
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }

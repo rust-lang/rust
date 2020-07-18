@@ -48,7 +48,7 @@ fn main() {
         // redox is handled in lib.rs
     } else if target.contains("cloudabi") {
         println!("cargo:rustc-link-lib=unwind");
-    } else if target.contains("libnx") {
+    } else if target.contains("devkita64") {
         llvm_libunwind::compile();
     }
 }
@@ -122,7 +122,7 @@ mod llvm_libunwind {
             cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
         }
 
-        if target_vendor == "libnx" {
+        if target_env == "devkita64" {
             cfg.define("_LIBUNWIND_IS_BAREMETAL", None);
             cfg.define("_LIBUNWIND_SUPPORT_DWARF_UNWIND", None);
             cfg.define("_LIBUNWIND_SUPPORT_DWARF_INDEX", None);

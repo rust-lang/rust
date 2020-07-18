@@ -71,7 +71,7 @@ impl DoubleEndedIterator for Args {
     target_os = "l4re",
     target_os = "fuchsia",
     target_os = "redox",
-    target_vendor = "libnx"
+    target_env = "devkita64"
 ))]
 mod imp {
     use super::Args;
