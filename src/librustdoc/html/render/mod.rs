@@ -3612,7 +3612,7 @@ fn render_impl(
         };
 
         let (is_hidden, extra_class) =
-            if (trait_.is_none() || item.doc_value().is_some() || item.inner.is_associated())
+            if (trait_.is_none() || item.doc_value().is_some() || item.inner.is_type_alias())
                 && !is_default_item
             {
                 (false, "")

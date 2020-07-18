@@ -282,7 +282,7 @@ pub enum ItemEnum {
 }
 
 impl ItemEnum {
-    pub fn is_associated(&self) -> bool {
+    pub fn is_type_alias(&self) -> bool {
         match *self {
             ItemEnum::TypedefItem(_, _) | ItemEnum::AssocTypeItem(_, _) => true,
             _ => false,
