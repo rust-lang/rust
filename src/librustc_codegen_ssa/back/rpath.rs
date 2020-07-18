@@ -1,8 +1,8 @@
+use pathdiff::diff_paths;
 use rustc_data_structures::fx::FxHashSet;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use pathdiff::diff_paths;
 
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::LibSource;
