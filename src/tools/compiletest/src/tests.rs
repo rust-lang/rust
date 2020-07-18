@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn test_extract_gdb_version() {
-    macro_rules! test { ($($expectation:tt: $input:tt,)*) => {{$(
+    macro_rules! test { ($($expectation:literal: $input:literal,)*) => {{$(
         assert_eq!(extract_gdb_version($input), Some($expectation));
     )*}}}
 
@@ -39,6 +39,17 @@ fn test_extract_gdb_version() {
         7012000: "GNU gdb (GDB) 7.12.20161027-git",
         7012050: "GNU gdb (GDB) 7.12.50.20161027-git",
     }
+}
+
+#[test]
+fn test_extract_lldb_version() {
+    // Apple variants
+    assert_eq!(extract_lldb_version("LLDB-179.5"), Some((179, false)));
+    assert_eq!(extract_lldb_version("lldb-300.2.51"), Some((300, false)));
+
+    // Upstream versions
+    assert_eq!(extract_lldb_version("lldb version 6.0.1"), Some((600, false)));
+    assert_eq!(extract_lldb_version("lldb version 9.0.0"), Some((900, false)));
 }
 
 #[test]
