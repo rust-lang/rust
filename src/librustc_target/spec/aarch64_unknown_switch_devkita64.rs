@@ -10,7 +10,7 @@ pub fn target() -> Result<Target, String> {
         linker_is_gnu: true,
         max_atomic_width: Some(128),
         panic_strategy: PanicStrategy::Unwind,
-        abi_blacklist: super::arm_base::abi_blacklist(),
+        unsupported_abis: super::arm_base::unsupported_abis(),
         target_family: Some("unix".to_string()),
         position_independent_executables: true,
         has_elf_tls: false,
