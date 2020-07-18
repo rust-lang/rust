@@ -12,7 +12,6 @@ use shims::posix::fs::EvalContextExt as _;
 use shims::posix::sync::EvalContextExt as _;
 use shims::posix::thread::EvalContextExt as _;
 
-
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn emulate_foreign_item_by_name(
@@ -77,9 +76,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // host's and target's `isize`. This saves us from
                     // having to handle overflows later.
                     let count = count.min(this.machine_isize_max() as u64).min(isize::MAX as u64);
-                    // This can never fail because `count` was capped
-                    // to be smaller than `isize::MAX`.
-                    let count = isize::try_from(count).unwrap();
 
                     // We want to read at most `count` bytes. We are
                     // sure that `count` is not negative because it
