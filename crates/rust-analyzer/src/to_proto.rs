@@ -271,12 +271,16 @@ pub(crate) fn signature_help(
         }
     };
 
-    let documentation = call_info.doc.map(|doc| {
-        lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
-            kind: lsp_types::MarkupKind::Markdown,
-            value: doc,
+    let documentation = if concise {
+        None
+    } else {
+        call_info.doc.map(|doc| {
+            lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: doc,
+            })
         })
-    });
+    };
 
     let signature =
         lsp_types::SignatureInformation { label, documentation, parameters: Some(parameters) };
