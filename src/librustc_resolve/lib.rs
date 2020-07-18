@@ -2957,7 +2957,7 @@ impl<'a> Resolver<'a> {
                 let crate_id = if !speculative {
                     self.crate_loader.process_path_extern(ident.name, ident.span)
                 } else {
-                    self.crate_loader.maybe_process_path_extern(ident.name, ident.span)?
+                    self.crate_loader.maybe_process_path_extern(ident.name)?
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 Some(

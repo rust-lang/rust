@@ -4,12 +4,5 @@ error: cannot load a crate with a non-ascii name `ьаг`
 LL | extern crate ьаг;
    | ^^^^^^^^^^^^^^^^^
 
-error[E0463]: can't find crate for `ьаг`
-  --> $DIR/crate_name_nonascii_forbidden-1.rs:3:1
-   |
-LL | extern crate ьаг;
-   | ^^^^^^^^^^^^^^^^^ can't find crate
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0463`.

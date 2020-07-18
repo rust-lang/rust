@@ -55,13 +55,11 @@ fn load_plugin(
     metadata_loader: &dyn MetadataLoader,
     ident: Ident,
 ) {
-    let registrar = locator::find_plugin_registrar(sess, metadata_loader, ident.span, ident.name);
-
-    if let Some((lib, disambiguator)) = registrar {
-        let symbol = sess.generate_plugin_registrar_symbol(disambiguator);
-        let fun = dylink_registrar(sess, ident.span, lib, symbol);
-        plugins.push(fun);
-    }
+    let (lib, disambiguator) =
+        locator::find_plugin_registrar(sess, metadata_loader, ident.span, ident.name);
+    let symbol = sess.generate_plugin_registrar_symbol(disambiguator);
+    let fun = dylink_registrar(sess, ident.span, lib, symbol);
+    plugins.push(fun);
 }
 
 // Dynamically link a registrar function into the compiler process.
