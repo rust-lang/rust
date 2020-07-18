@@ -154,7 +154,7 @@ impl CheckAttrVisitor<'tcx> {
                 .emit();
                 false
             }
-            Target::Fn | Target::Method(..) | Target::ForeignFn => true,
+            Target::Closure | Target::Fn | Target::ForeignFn | Target::Method(..) => true,
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
