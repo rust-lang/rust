@@ -133,8 +133,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     };
                     match res {
                         Ok(n) => i64::try_from(n).unwrap(),
-                        // FIXME: set errno to appropriate value
-                        Err(_) => -1,
+                        Err(e) => {
+                            this.set_last_error_from_io_error(e)?;
+                            -1
+                        }
                     }
                 } else {
                     this.write(fd, buf, count)?
