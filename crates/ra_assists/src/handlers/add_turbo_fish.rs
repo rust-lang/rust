@@ -25,7 +25,14 @@ use crate::{
 // }
 // ```
 pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let ident = ctx.find_token_at_offset(SyntaxKind::IDENT)?;
+    let ident = ctx.find_token_at_offset(SyntaxKind::IDENT).or_else(|| {
+        let arg_list = ctx.find_node_at_offset::<ast::ArgList>()?;
+        if arg_list.args().count() > 0 {
+            return None;
+        }
+        mark::hit!(add_turbo_fish_after_call);
+        arg_list.l_paren_token()?.prev_token().filter(|it| it.kind() == SyntaxKind::IDENT)
+    })?;
     let next_token = ident.next_token()?;
     if next_token.kind() == T![::] {
         mark::hit!(add_turbo_fish_one_fish_is_enough);
@@ -71,6 +78,26 @@ mod tests {
 fn make<T>() -> T {}
 fn main() {
     make<|>();
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    make::<${0:_}>();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_turbo_fish_after_call() {
+        mark::check!(add_turbo_fish_after_call);
+        check_assist(
+            add_turbo_fish,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    make()<|>;
 }
 "#,
             r#"
