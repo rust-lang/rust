@@ -25,25 +25,25 @@ unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let _lock = lock::lock();
-        DLMALLOC.malloc(layout.size(), layout.align())
+        unsafe { DLMALLOC.malloc(layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         let _lock = lock::lock();
-        DLMALLOC.calloc(layout.size(), layout.align())
+        unsafe { DLMALLOC.calloc(layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         let _lock = lock::lock();
-        DLMALLOC.free(ptr, layout.size(), layout.align())
+        unsafe { DLMALLOC.free(ptr, layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         let _lock = lock::lock();
-        DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size)
+        unsafe { DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size) }
     }
 }
 
