@@ -43,6 +43,7 @@
 #![feature(option_unwrap_none)]
 #![feature(peekable_next_if)]
 #![feature(partition_point)]
+#![feature(once_cell)]
 #![feature(unsafe_block_in_unsafe_fn)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
@@ -62,6 +63,7 @@ mod fmt;
 mod hash;
 mod intrinsics;
 mod iter;
+mod lazy;
 mod manually_drop;
 mod mem;
 mod nonzero;
