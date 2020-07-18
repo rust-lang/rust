@@ -1349,8 +1349,18 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
                 sess.fatal(&format!("failed to write link script to {}: {}", path.display(), e));
             }
 
-            cmd.arg("--script");
-            cmd.arg(path);
+            if sess.target.target.linker_flavor == LinkerFlavor::Gcc {
+                cmd.arg("-Wl,--script");
+                let path_str = if let Some(s) = path.to_str() {
+                    s
+                } else {
+                    sess.fatal(&format!("linker script path {:?} is invalid Unicode", path));
+                };
+                cmd.arg(format!("-Wl,{}", path_str));
+            } else {
+                cmd.arg("--script");
+                cmd.arg(path);
+            }
         }
         _ => {}
     }
