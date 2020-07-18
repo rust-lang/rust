@@ -130,7 +130,6 @@ fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Opti
         || file.ends_with("alloc/collections/btree_set/struct.BTreeSet.html")
         || file.ends_with("std/collections/btree_map/struct.BTreeMap.html")
         || file.ends_with("std/collections/btree_set/struct.BTreeSet.html")
-        || file.ends_with("std/collections/hash_map/struct.HashMap.html")
         || file.ends_with("std/collections/hash_set/struct.HashSet.html")
     {
         return None;

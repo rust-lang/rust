@@ -148,14 +148,11 @@ use crate::sys;
 /// The easiest way to use `HashMap` with a custom key type is to derive [`Eq`] and [`Hash`].
 /// We must also derive [`PartialEq`].
 ///
-/// [`Eq`]: ../../std/cmp/trait.Eq.html
-/// [`Hash`]: ../../std/hash/trait.Hash.html
-/// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
-/// [`RefCell`]: ../../std/cell/struct.RefCell.html
-/// [`Cell`]: ../../std/cell/struct.Cell.html
-/// [`default`]: #method.default
-/// [`with_hasher`]: #method.with_hasher
-/// [`with_capacity_and_hasher`]: #method.with_capacity_and_hasher
+/// [`RefCell`]: crate::cell::RefCell
+/// [`Cell`]: crate::cell::Cell
+/// [`default`]: Default::default
+/// [`with_hasher`]: Self::with_hasher
+/// [`with_capacity_and_hasher`]: Self::with_capacity_and_hasher
 /// [`fnv`]: https://crates.io/crates/fnv
 ///
 /// ```
@@ -264,8 +261,6 @@ impl<K, V, S> HashMap<K, V, S> {
     /// let mut map = HashMap::with_hasher(s);
     /// map.insert(1, 2);
     /// ```
-    ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
@@ -296,8 +291,6 @@ impl<K, V, S> HashMap<K, V, S> {
     /// let mut map = HashMap::with_capacity_and_hasher(10, s);
     /// map.insert(1, 2);
     /// ```
-    ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
@@ -524,8 +517,6 @@ impl<K, V, S> HashMap<K, V, S> {
 
     /// Returns a reference to the map's [`BuildHasher`].
     ///
-    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -555,8 +546,6 @@ where
     /// # Panics
     ///
     /// Panics if the new allocation size overflows [`usize`].
-    ///
-    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// # Examples
     ///
@@ -676,9 +665,6 @@ where
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
     ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -704,9 +690,6 @@ where
     /// The supplied key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
-    ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
     ///
     /// # Examples
     ///
@@ -734,9 +717,6 @@ where
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
     ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -762,9 +742,6 @@ where
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
-    ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
     ///
     /// # Examples
     ///
@@ -797,8 +774,7 @@ where
     /// types that can be `==` without being identical. See the [module-level
     /// documentation] for more.
     ///
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [module-level documentation]: index.html#insert-and-complex-keys
+    /// [module-level documentation]: crate::collections#insert-and-complex-keys
     ///
     /// # Examples
     ///
@@ -826,9 +802,6 @@ where
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
     ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
-    ///
     /// # Examples
     ///
     /// ```
@@ -855,9 +828,6 @@ where
     /// The key may be any borrowed form of the map's key type, but
     /// [`Hash`] and [`Eq`] on the borrowed form *must* match those for
     /// the key type.
-    ///
-    /// [`Eq`]: ../../std/cmp/trait.Eq.html
-    /// [`Hash`]: ../../std/hash/trait.Hash.html
     ///
     /// # Examples
     ///
@@ -1040,8 +1010,7 @@ where
 /// This `struct` is created by the [`iter`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`iter`]: struct.HashMap.html#method.iter
-/// [`HashMap`]: struct.HashMap.html
+/// [`iter`]: HashMap::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     base: base::Iter<'a, K, V>,
@@ -1068,8 +1037,7 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
 /// This `struct` is created by the [`iter_mut`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`iter_mut`]: struct.HashMap.html#method.iter_mut
-/// [`HashMap`]: struct.HashMap.html
+/// [`iter_mut`]: HashMap::iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     base: base::IterMut<'a, K, V>,
@@ -1088,8 +1056,7 @@ impl<'a, K, V> IterMut<'a, K, V> {
 /// This `struct` is created by the [`into_iter`] method on [`HashMap`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`into_iter`]: struct.HashMap.html#method.into_iter
-/// [`HashMap`]: struct.HashMap.html
+/// [`into_iter`]: IntoIterator::into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
     base: base::IntoIter<K, V>,
@@ -1108,8 +1075,7 @@ impl<K, V> IntoIter<K, V> {
 /// This `struct` is created by the [`keys`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`keys`]: struct.HashMap.html#method.keys
-/// [`HashMap`]: struct.HashMap.html
+/// [`keys`]: HashMap::keys
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -1136,8 +1102,7 @@ impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
 /// This `struct` is created by the [`values`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`values`]: struct.HashMap.html#method.values
-/// [`HashMap`]: struct.HashMap.html
+/// [`values`]: HashMap::values
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -1164,8 +1129,7 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 /// This `struct` is created by the [`drain`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`drain`]: struct.HashMap.html#method.drain
-/// [`HashMap`]: struct.HashMap.html
+/// [`drain`]: HashMap::drain
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, K: 'a, V: 'a> {
     base: base::Drain<'a, K, V>,
@@ -1184,8 +1148,7 @@ impl<'a, K, V> Drain<'a, K, V> {
 /// This `struct` is created by the [`values_mut`] method on [`HashMap`]. See its
 /// documentation for more.
 ///
-/// [`values_mut`]: struct.HashMap.html#method.values_mut
-/// [`HashMap`]: struct.HashMap.html
+/// [`values_mut`]: HashMap::values_mut
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
@@ -1195,7 +1158,7 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 ///
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
 ///
-/// [`HashMap::raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
+/// [`HashMap::raw_entry_mut`]: HashMap::raw_entry_mut
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
@@ -1209,9 +1172,8 @@ pub struct RawEntryBuilderMut<'a, K: 'a, V: 'a, S: 'a> {
 /// This `enum` is constructed through the [`raw_entry_mut`] method on [`HashMap`],
 /// then calling one of the methods of that [`RawEntryBuilderMut`].
 ///
-/// [`HashMap`]: struct.HashMap.html
 /// [`Entry`]: enum.Entry.html
-/// [`raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
+/// [`raw_entry_mut`]: HashMap::raw_entry_mut
 /// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
@@ -1223,8 +1185,6 @@ pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 
 /// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`RawEntryMut`] enum.
-///
-/// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
     base: base::RawOccupiedEntryMut<'a, K, V>,
@@ -1232,8 +1192,6 @@ pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
 
 /// A view into a vacant entry in a `HashMap`.
 /// It is part of the [`RawEntryMut`] enum.
-///
-/// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
     base: base::RawVacantEntryMut<'a, K, V, S>,
@@ -1243,7 +1201,7 @@ pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 ///
 /// See the [`HashMap::raw_entry`] docs for usage examples.
 ///
-/// [`HashMap::raw_entry`]: struct.HashMap.html#method.raw_entry
+/// [`HashMap::raw_entry`]: HashMap::raw_entry
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawEntryBuilder<'a, K: 'a, V: 'a, S: 'a> {
     map: &'a HashMap<K, V, S>,
@@ -1597,8 +1555,7 @@ impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
 ///
 /// This `enum` is constructed from the [`entry`] method on [`HashMap`].
 ///
-/// [`HashMap`]: struct.HashMap.html
-/// [`entry`]: struct.HashMap.html#method.entry
+/// [`entry`]: HashMap::entry
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K: 'a, V: 'a> {
     /// An occupied entry.
@@ -2156,7 +2113,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// If you need a reference to the `OccupiedEntry` which may outlive the
     /// destruction of the `Entry` value, see [`into_mut`].
     ///
-    /// [`into_mut`]: #method.into_mut
+    /// [`into_mut`]: Self::into_mut
     ///
     /// # Examples
     ///
@@ -2189,7 +2146,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///
     /// If you need multiple references to the `OccupiedEntry`, see [`get_mut`].
     ///
-    /// [`get_mut`]: #method.get_mut
+    /// [`get_mut`]: Self::get_mut
     ///
     /// # Examples
     ///
@@ -2475,9 +2432,6 @@ where
 /// [`Hasher`], but the hashers created by two different `RandomState`
 /// instances are unlikely to produce the same result for the same values.
 ///
-/// [`HashMap`]: struct.HashMap.html
-/// [`Hasher`]: ../../hash/trait.Hasher.html
-///
 /// # Examples
 ///
 /// ```
@@ -2547,9 +2501,6 @@ impl BuildHasher for RandomState {
 ///
 /// The internal algorithm is not specified, and so it and its hashes should
 /// not be relied upon over releases.
-///
-/// [`RandomState`]: struct.RandomState.html
-/// [`Hasher`]: ../../hash/trait.Hasher.html
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 #[allow(deprecated)]
 #[derive(Clone, Debug)]
