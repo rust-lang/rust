@@ -676,7 +676,7 @@ supported_targets! {
     ("powerpc64-wrs-vxworks", powerpc64_wrs_vxworks),
 
     ("mipsel-sony-psp", mipsel_sony_psp),
-    ("thumbv4t-nintendo-gba", thumbv4t_nintendo_gba),
+    ("thumbv4t-none-eabi", thumbv4t_none_eabi),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.

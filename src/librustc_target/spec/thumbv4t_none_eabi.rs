@@ -1,11 +1,12 @@
-//! Targets the Nintendo Game Boy Advance (GBA),
-//! a handheld game device from 2001.
+//! Targets the ARMv4T, with code as `t32` code by default.
+//!
+//! Primarily of use for the GBA, but usable with other devices too.
 //!
 //! Please ping @Lokathor if changes are needed.
 //!
-//! The target profile assumes that you have the ARM binutils in your path (specifically the linker, `arm-none-eabi-ld`). They can be obtained for free for all major OSes from the ARM developer's website, and they may also be available in your system's package manager
+//! This target profile assumes that you have the ARM binutils in your path (specifically the linker, `arm-none-eabi-ld`). They can be obtained for free for all major OSes from the ARM developer's website, and they may also be available in your system's package manager. Unfortunately, the standard linker that Rust uses (`lld`) only supports as far back as `ARMv5TE`, so we must use the GNU `ld` linker.
 //!
-//! **Important:** This target profile **does not** specify a linker script or the ROM header. You'll still need to provide these yourself to construct a final  binary. Generally you'd do this with something like `-Clink-arg=-Tmy_script.ld` and `-Clink-arg=my_crt.o`.
+//! **Important:** This target profile **does not** specify a linker script. You just get the default link script when you build a binary for this target. The default link script is very likely wrong, so you should use `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
 use crate::spec::{LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions, TargetResult};
 
@@ -16,8 +17,8 @@ pub fn target() -> TargetResult {
         target_pointer_width: "32".to_string(),
         target_c_int_width: "32".to_string(),
         target_os: "none".to_string(),
-        target_env: "gba".to_string(),
-        target_vendor: "nintendo".to_string(),
+        target_env: "".to_string(),
+        target_vendor: "".to_string(),
         arch: "arm".to_string(),
         /* Data layout args are '-' separated:
          * little endian
@@ -34,10 +35,15 @@ pub fn target() -> TargetResult {
             linker: Some("arm-none-eabi-ld".to_string()),
             linker_is_gnu: true,
 
-            // extra args passed to the external assembler
-            asm_args: vec!["-mcpu=arm7tdmi".to_string(), "-mthumb-interwork".to_string()],
-
-            cpu: "arm7tdmi".to_string(),
+            // extra args passed to the external assembler (assuming `arm-none-eabi-as`):
+            // * activate t32/a32 interworking
+            // * use arch ARMv4T
+            // * use little-endian
+            asm_args: vec![
+                "-mthumb-interwork".to_string(),
+                "-march=armv4t".to_string(),
+                "-mlittle-endian".to_string(),
+            ],
 
             // minimum extra features, these cannot be disabled via -C
             features: "+soft-float,+strict-align".to_string(),
@@ -48,7 +54,7 @@ pub fn target() -> TargetResult {
 
             main_needs_argc_argv: false,
 
-            // if we have thread-local storage
+            // No thread-local storage (just use a static Cell)
             has_elf_tls: false,
 
             // don't have atomic compare-and-swap
@@ -60,7 +66,7 @@ pub fn target() -> TargetResult {
             // ABIs to not use
             unsupported_abis: super::arm_base::unsupported_abis(),
 
-            // this is off just like in the `thumb_base`
+            // this is turned off just like in the `thumb_base` module
             emit_debug_gdb_scripts: false,
 
             ..TargetOptions::default()
