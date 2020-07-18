@@ -471,29 +471,31 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                     }
                 }
 
-            ty::PredicateAtom::ConstEquate(c1, c2) => {
-                debug!("equating consts: c1={:?} c2={:?}", c1, c2);
+                ty::PredicateAtom::ConstEquate(c1, c2) => {
+                    debug!("equating consts: c1={:?} c2={:?}", c1, c2);
 
-                let stalled_on = &mut pending_obligation.stalled_on;
+                    let stalled_on = &mut pending_obligation.stalled_on;
 
-                let mut evaluate = |c: &'tcx Const<'tcx>| {
-                    if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
-                        match self.selcx.infcx().const_eval_resolve(
-                            obligation.param_env,
-                            def,
-                            substs,
-                            promoted,
-                            Some(obligation.cause.span),
-                        ) {
-                            Ok(val) => Ok(Const::from_value(self.selcx.tcx(), val, c.ty)),
-                            Err(ErrorHandled::TooGeneric) => {
-                                stalled_on.append(
-                                    &mut substs
-                                        .types()
-                                        .filter_map(|ty| TyOrConstInferVar::maybe_from_ty(ty))
-                                        .collect(),
-                                );
-                                Err(ErrorHandled::TooGeneric)
+                    let mut evaluate = |c: &'tcx Const<'tcx>| {
+                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                            match self.selcx.infcx().const_eval_resolve(
+                                obligation.param_env,
+                                def,
+                                substs,
+                                promoted,
+                                Some(obligation.cause.span),
+                            ) {
+                                Ok(val) => Ok(Const::from_value(self.selcx.tcx(), val, c.ty)),
+                                Err(ErrorHandled::TooGeneric) => {
+                                    stalled_on.append(
+                                        &mut substs
+                                            .types()
+                                            .filter_map(|ty| TyOrConstInferVar::maybe_from_ty(ty))
+                                            .collect(),
+                                    );
+                                    Err(ErrorHandled::TooGeneric)
+                                }
+                                Err(err) => Err(err),
                             }
                         } else {
                             Ok(c)

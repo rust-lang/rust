@@ -1377,14 +1377,14 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
 
 impl ToPredicate<'tcx> for PredicateAtom<'tcx> {
     #[inline(always)]
-    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         debug_assert!(!self.has_escaping_bound_vars(), "excaping bound vars for {:?}", self);
-        tcx.mk_predicate(ty::PredicateKind::Atom(*self))
+        tcx.mk_predicate(ty::PredicateKind::Atom(self))
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
-    fn to_predicate(&self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         ty::PredicateAtom::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness)
             .to_predicate(tcx)
     }

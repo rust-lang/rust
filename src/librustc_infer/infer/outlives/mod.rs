@@ -16,7 +16,7 @@ pub fn explicit_outlives_bounds<'tcx>(
         .caller_bounds()
         .into_iter()
         .map(ty::Predicate::skip_binders)
-        .filter(TypeFoldable::has_escaping_bound_vars)
+        .filter(|atom| !atom.has_escaping_bound_vars())
         .filter_map(move |atom| match atom {
             ty::PredicateAtom::Projection(..)
             | ty::PredicateAtom::Trait(..)
