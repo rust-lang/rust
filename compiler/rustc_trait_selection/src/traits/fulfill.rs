@@ -214,7 +214,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             .register_obligation(PendingPredicateObligation { obligation, stalled_on: vec![] });
     }
 
-    fn select_all_or_error(
+    fn select_or_error(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
@@ -424,8 +424,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                         None => {
                             // None means that both are unresolved.
                             pending_obligation.stalled_on.clear();
-                            pending_obligation.stalled_on.push(root_ty_or_const_var(subtype.a));
-                            pending_obligation.stalled_on.push(root_ty_or_const_var(subtype.b));
+                            pending_obligation.stalled_on.push(ty_or_const_var(subtype.a));
+                            pending_obligation.stalled_on.push(ty_or_const_var(subtype.b));
                             ProcessResult::Unchanged
                         }
                         Some(Ok(ok)) => ProcessResult::Changed(mk_pending(ok.obligations)),

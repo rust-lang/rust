@@ -320,7 +320,7 @@ fn compare_predicate_entailment<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_or_error(&infcx) {
             infcx.report_fulfillment_errors(errors, None, false);
             return Err(ErrorReported);
         }
@@ -1028,7 +1028,7 @@ crate fn compare_const_impl<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_or_error(&infcx) {
             infcx.report_fulfillment_errors(errors, None, false);
             return;
         }
@@ -1144,7 +1144,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_or_error(&infcx) {
             infcx.report_fulfillment_errors(errors, None, false);
             return Err(ErrorReported);
         }
@@ -1272,7 +1272,7 @@ pub fn check_type_bounds<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_or_error(&infcx) {
             infcx.report_fulfillment_errors(errors, None, false);
             return Err(ErrorReported);
         }

@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, ToPredicate, Ty, WithConstness};
 use super::FulfillmentError;
 use super::{ObligationCause, PredicateObligation};
 
-pub trait TraitEngine<'tcx>: 'tcx {
+pub trait TraitEngine<'tcx> {
     fn normalize_projection_type(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -44,10 +44,22 @@ pub trait TraitEngine<'tcx>: 'tcx {
         obligation: PredicateObligation<'tcx>,
     );
 
-    fn select_all_or_error(
+    fn select_or_error(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>>;
+
+    fn select_all_or_error(
+        mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>>
+    where
+        Self: Sized,
+    {
+        let result = self.select_or_error(infcx);
+        self.deregister(infcx);
+        result
+    }
 
     fn select_where_possible(
         &mut self,
@@ -55,9 +67,12 @@ pub trait TraitEngine<'tcx>: 'tcx {
     ) -> Result<(), Vec<FulfillmentError<'tcx>>>;
 
     fn select_all_where_possible(
-        &mut self,
+        mut self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>>
+    where
+        Self: Sized,
+    {
         let result = self.select_where_possible(infcx);
         self.deregister(infcx);
         result
@@ -66,6 +81,86 @@ pub trait TraitEngine<'tcx>: 'tcx {
     fn deregister(&mut self, _infcx: &InferCtxt<'_, 'tcx>) {}
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
+}
+
+impl<T> TraitEngine<'tcx> for Box<T>
+where
+    T: ?Sized + TraitEngine<'tcx>,
+{
+    fn normalize_projection_type(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        projection_ty: ty::ProjectionTy<'tcx>,
+        cause: ObligationCause<'tcx>,
+    ) -> Ty<'tcx> {
+        T::normalize_projection_type(self, infcx, param_env, projection_ty, cause)
+    }
+
+    fn register_bound(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+        def_id: DefId,
+        cause: ObligationCause<'tcx>,
+    ) {
+        T::register_bound(self, infcx, param_env, ty, def_id, cause)
+    }
+
+    fn register_predicate_obligation(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        obligation: PredicateObligation<'tcx>,
+    ) {
+        T::register_predicate_obligation(self, infcx, obligation)
+    }
+
+    fn select_or_error(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+        T::select_or_error(self, infcx)
+    }
+
+    fn select_all_or_error(
+        mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>>
+    where
+        Self: Sized,
+    {
+        let result = self.select_or_error(infcx);
+        self.deregister(infcx);
+        result
+    }
+
+    fn select_where_possible(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+        T::select_where_possible(self, infcx)
+    }
+
+    fn select_all_where_possible(
+        mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>>
+    where
+        Self: Sized,
+    {
+        let result = self.select_where_possible(infcx);
+        self.deregister(infcx);
+        result
+    }
+
+    fn deregister(&mut self, infcx: &InferCtxt<'_, 'tcx>) {
+        T::deregister(self, infcx)
+    }
+
+    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
+        T::pending_obligations(self)
+    }
 }
 
 pub trait TraitEngineExt<'tcx> {

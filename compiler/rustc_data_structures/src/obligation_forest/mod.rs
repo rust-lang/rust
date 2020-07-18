@@ -216,6 +216,9 @@ pub struct ObligationForest<O: ForestObligation> {
     /// dropping this forest.
     ///
     watcher_offset: Option<O::WatcherOffset>,
+    /// We do not want to process any further obligations after the offset has been deregistered as that could mean unified variables are lost, leading to typecheck failures.
+    /// So we mark this as done and panic if a caller tries to resume processing.
+    done: bool,
     /// Reusable vector for storing unblocked nodes whose watch should be removed.
     temp_unblocked_nodes: Vec<O::Variable>,
 }
@@ -448,6 +451,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             stalled_on_unknown: Default::default(),
             temp_unblocked_nodes: Default::default(),
             watcher_offset: None,
+            done: false,
         }
     }
 
@@ -459,6 +463,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     /// Removes the watcher_offset, allowing it to be deregistered
     pub fn take_watcher_offset(&mut self) -> Option<O::WatcherOffset> {
+        self.done = true;
         self.watcher_offset.take()
     }
 
@@ -562,6 +567,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         let errors = self
             .pending_nodes
             .iter()
+            .filter(|&&index| self.nodes[index].state.get() == NodeState::Pending)
             .map(|&index| Error { error: error.clone(), backtrace: self.error_at(index) })
             .collect();
 
@@ -574,7 +580,14 @@ impl<O: ForestObligation> ObligationForest<O> {
     where
         F: Fn(&O) -> P,
     {
-        self.pending_nodes.iter().map(|&index| f(&self.nodes[index].obligation)).collect()
+        self.pending_nodes
+            .iter()
+            .filter_map(|&index| {
+                let node = &self.nodes[index];
+                if node.state.get() == NodeState::Pending { Some(node) } else { None }
+            })
+            .map(|node| f(&node.obligation))
+            .collect()
     }
 
     fn insert_into_error_cache(&mut self, index: NodeIndex) {
@@ -595,6 +608,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         OUT: OutcomeTrait<Obligation = O, Error = Error<O, P::Error>>,
     {
         if self.watcher_offset.is_none() {
+            assert!(!self.done);
             self.watcher_offset = Some(processor.register_variable_watcher());
         }
         let mut errors = vec![];
@@ -602,100 +616,105 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         self.unblock_nodes(processor);
 
-        let nodes = &self.nodes;
-        self.unblocked.extend(
-            self.stalled_on_unknown
-                .drain(..)
-                .map(|index| Unblocked { index, order: nodes[index].node_number }),
-        );
-        while let Some(Unblocked { index, .. }) = self.unblocked.pop() {
-            // Skip any duplicates since we only need to processes the node once
-            if self.unblocked.peek().map(|u| u.index) == Some(index) {
-                continue;
-            }
+        let mut made_progress_this_iteration = true;
+        while made_progress_this_iteration {
+            made_progress_this_iteration = false;
+            let nodes = &self.nodes;
+            self.unblocked.extend(
+                self.stalled_on_unknown
+                    .drain(..)
+                    .map(|index| Unblocked { index, order: nodes[index].node_number }),
+            );
+            while let Some(Unblocked { index, .. }) = self.unblocked.pop() {
+                // Skip any duplicates since we only need to processes the node once
+                if self.unblocked.peek().map(|u| u.index) == Some(index) {
+                    continue;
+                }
 
-            let node = &mut self.nodes[index];
+                let node = &mut self.nodes[index];
 
-            if node.state.get() != NodeState::Pending {
-                continue;
-            }
+                if node.state.get() != NodeState::Pending {
+                    continue;
+                }
 
-            // One of the variables we stalled on unblocked us. If the node were blocked on other
-            // variables as well then remove those stalls. If the node is still stalled on one of
-            // those variables after `process_obligation` it will simply be added back to
-            // `self.stalled_on`
-            let stalled_on = node.obligation.stalled_on();
-            if stalled_on.len() > 1 {
-                for var in stalled_on {
-                    match self.stalled_on.entry(var.clone()) {
-                        Entry::Vacant(_) => (),
-                        Entry::Occupied(mut entry) => {
-                            let nodes = entry.get_mut();
-                            if let Some(i) = nodes.iter().position(|x| *x == index) {
-                                nodes.swap_remove(i);
+                // One of the variables we stalled on unblocked us. If the node were blocked on other
+                // variables as well then remove those stalls. If the node is still stalled on one of
+                // those variables after `process_obligation` it will simply be added back to
+                // `self.stalled_on`
+                let stalled_on = node.obligation.stalled_on();
+                if stalled_on.len() > 1 {
+                    for var in stalled_on {
+                        match self.stalled_on.entry(var.clone()) {
+                            Entry::Vacant(_) => (),
+                            Entry::Occupied(mut entry) => {
+                                let nodes = entry.get_mut();
+                                if let Some(i) = nodes.iter().position(|x| *x == index) {
+                                    nodes.swap_remove(i);
+                                }
+                                if nodes.is_empty() {
+                                    processor.unwatch_variable(var.clone());
+                                    entry.remove();
+                                }
                             }
-                            if nodes.is_empty() {
-                                processor.unwatch_variable(var.clone());
-                                entry.remove();
+                        }
+                    }
+                }
+
+                // `processor.process_obligation` can modify the predicate within
+                // `node.obligation`, and that predicate is the key used for
+                // `self.active_cache`. This means that `self.active_cache` can get
+                // out of sync with `nodes`. It's not very common, but it does
+                // happen, and code in `compress` has to allow for it.
+                let before = node.obligation.as_cache_key();
+                let result = processor.process_obligation(&mut node.obligation);
+                let after = node.obligation.as_cache_key();
+                if before != after {
+                    node.alternative_predicates.push(before);
+                }
+
+                self.unblock_nodes(processor);
+                let node = &mut self.nodes[index];
+                match result {
+                    ProcessResult::Unchanged => {
+                        let stalled_on = node.obligation.stalled_on();
+                        if stalled_on.is_empty() {
+                            // We stalled but the variables that caused it are unknown so we run
+                            // `index` again at the next opportunity
+                            self.stalled_on_unknown.push(index);
+                        } else {
+                            // Register every variable that we stalled on
+                            for var in stalled_on {
+                                self.stalled_on
+                                    .entry(var.clone())
+                                    .or_insert_with(|| {
+                                        processor.watch_variable(var.clone());
+                                        Vec::new()
+                                    })
+                                    .push(index);
+                            }
+                        }
+                        // No change in state.
+                    }
+                    ProcessResult::Changed(children) => {
+                        made_progress_this_iteration = true;
+                        // We are not (yet) stalled.
+                        stalled = false;
+                        node.state.set(NodeState::Success);
+                        self.success_or_waiting_nodes.push(index);
+
+                        for child in children {
+                            let st = self.register_obligation_at(child, Some(index));
+                            if let Err(()) = st {
+                                // Error already reported - propagate it
+                                // to our node.
+                                self.error_at(index);
                             }
                         }
                     }
-                }
-            }
-
-            // `processor.process_obligation` can modify the predicate within
-            // `node.obligation`, and that predicate is the key used for
-            // `self.active_cache`. This means that `self.active_cache` can get
-            // out of sync with `nodes`. It's not very common, but it does
-            // happen, and code in `compress` has to allow for it.
-            let before = node.obligation.as_cache_key();
-            let result = processor.process_obligation(&mut node.obligation);
-            let after = node.obligation.as_cache_key();
-            if before != after {
-                node.alternative_predicates.push(before);
-            }
-
-            self.unblock_nodes(processor);
-            let node = &mut self.nodes[index];
-            match result {
-                ProcessResult::Unchanged => {
-                    let stalled_on = node.obligation.stalled_on();
-                    if stalled_on.is_empty() {
-                        // We stalled but the variables that caused it are unknown so we run
-                        // `index` again at the next opportunity
-                        self.stalled_on_unknown.push(index);
-                    } else {
-                        // Register every variable that we stalled on
-                        for var in stalled_on {
-                            self.stalled_on
-                                .entry(var.clone())
-                                .or_insert_with(|| {
-                                    processor.watch_variable(var.clone());
-                                    Vec::new()
-                                })
-                                .push(index);
-                        }
+                    ProcessResult::Error(err) => {
+                        stalled = false;
+                        errors.push(Error { error: err, backtrace: self.error_at(index) });
                     }
-                    // No change in state.
-                }
-                ProcessResult::Changed(children) => {
-                    // We are not (yet) stalled.
-                    stalled = false;
-                    node.state.set(NodeState::Success);
-                    self.success_or_waiting_nodes.push(index);
-
-                    for child in children {
-                        let st = self.register_obligation_at(child, Some(index));
-                        if let Err(()) = st {
-                            // Error already reported - propagate it
-                            // to our node.
-                            self.error_at(index);
-                        }
-                    }
-                }
-                ProcessResult::Error(err) => {
-                    stalled = false;
-                    errors.push(Error { error: err, backtrace: self.error_at(index) });
                 }
             }
         }

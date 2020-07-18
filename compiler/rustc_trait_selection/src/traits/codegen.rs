@@ -89,7 +89,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
             debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
-        let impl_source = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, &impl_source);
+        let impl_source = drain_fulfillment_cx_or_panic(&infcx, fulfill_cx, &impl_source);
 
         info!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
         Ok(impl_source)
@@ -109,7 +109,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
 /// the complete picture of the type.
 fn drain_fulfillment_cx_or_panic<T>(
     infcx: &InferCtxt<'_, 'tcx>,
-    fulfill_cx: &mut FulfillmentContext<'tcx>,
+    fulfill_cx: FulfillmentContext<'tcx>,
     result: &T,
 ) -> T
 where

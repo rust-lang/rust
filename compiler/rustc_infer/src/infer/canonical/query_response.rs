@@ -122,7 +122,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         }
 
         // Anything left unselected *now* must be an ambiguity.
-        let ambig_errors = fulfill_cx.select_all_or_error(self).err().unwrap_or_else(Vec::new);
+        let ambig_errors = fulfill_cx.select_or_error(self).err().unwrap_or_else(Vec::new);
         debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
