@@ -85,7 +85,7 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     target_os = "illumos",
     target_os = "redox",
     target_os = "solaris",
-    target_env = "newlib"
+    target_env = "devkita64"
 )))]
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
@@ -97,7 +97,7 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     if ret != 0 { ptr::null_mut() } else { out as *mut u8 }
 }
 
-#[cfg(target_env = "newlib")]
+#[cfg(target_env = "devkita64")]
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     libc::aligned_alloc(layout.align(), layout.size()) as *mut u8

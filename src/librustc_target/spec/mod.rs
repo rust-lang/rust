@@ -678,7 +678,7 @@ supported_targets! {
 
     ("mipsel-sony-psp", mipsel_sony_psp),
     ("thumbv4t-none-eabi", thumbv4t_none_eabi),
-    ("aarch64-unknown-horizon-libnx", aarch64_unknown_horizon_libnx),
+    ("aarch64-unknown-switch-devkita64", aarch64_unknown_switch_devkita64),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.

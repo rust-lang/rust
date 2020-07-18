@@ -1,5 +1,3 @@
-#![cfg_attr(target_env = "newlib", allow(unused_variables, dead_code))]
-
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::sys::fd::FileDesc;

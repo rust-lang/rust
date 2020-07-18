@@ -1,4 +1,4 @@
-#![cfg_attr(target_env = "newlib", allow(unused_variables, dead_code))]
+#![cfg_attr(target_os = "switch", allow(unused_variables, dead_code))]
 
 use crate::cmp;
 use crate::convert::{TryFrom, TryInto};
@@ -23,7 +23,7 @@ cfg_if::cfg_if! {
         target_os = "solaris", target_os = "haiku", target_os = "l4re"))] {
         use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
         use crate::sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
-    } else if #[cfg(not(target_env = "newlib"))] {
+    } else if #[cfg(not(target_os = "switch"))] {
         use crate::sys::net::netc::IPV6_ADD_MEMBERSHIP;
         use crate::sys::net::netc::IPV6_DROP_MEMBERSHIP;
     }
@@ -314,18 +314,18 @@ impl TcpStream {
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
         }
-        #[cfg(target_env = "newlib")] {
+        #[cfg(target_os = "switch")] {
             Ok(())
         }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        #[cfg(not(target_env = "newlib"))]
+        #[cfg(not(target_os = "switch"))]
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)?;
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         let raw: c_int = 64;
         Ok(raw as u32)
     }
@@ -422,37 +422,37 @@ impl TcpListener {
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
         }
-        #[cfg(target_env = "newlib")] {
+        #[cfg(target_os = "switch")] {
             Ok(())
         }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        #[cfg(not(target_env = "newlib"))]
+        #[cfg(not(target_os = "switch"))]
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)?;
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         let raw: c_int = 64;
         Ok(raw as u32)
     }
 
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int)
         }
-        #[cfg(target_env = "newlib")] {
+        #[cfg(target_os = "switch")] {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn only_v6(&self) -> io::Result<bool> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY)?;
             Ok(raw != 0)
         }
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
     }
 
@@ -574,7 +574,7 @@ impl UdpSocket {
     }
 
     pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             setsockopt(
                 &self.inner,
                 c::IPPROTO_IP,
@@ -582,23 +582,23 @@ impl UdpSocket {
                 multicast_loop_v4 as IpV4MultiCastType,
             )
         }
-        #[cfg(target_env = "newlib")] {
+        #[cfg(target_os = "switch")] {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             let raw: IpV4MultiCastType = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)?;
             Ok(raw != 0)
         }
-        #[cfg(target_env = "newlib")] {
+        #[cfg(target_os = "switch")] {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             setsockopt(
                 &self.inner,
                 c::IPPROTO_IP,
@@ -606,99 +606,99 @@ impl UdpSocket {
                 multicast_ttl_v4 as IpV4MultiCastType,
             )
         }
-        #[cfg(target_env = "newlib")] {
+        #[cfg(target_os = "switch")] {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             let raw: IpV4MultiCastType = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)?;
             Ok(raw as u32)
         }
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
     }
 
     pub fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP, multicast_loop_v6 as c_int)
         }
-        #[cfg(target_env = "newlib")] {
+        #[cfg(target_os = "switch")] {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn multicast_loop_v6(&self) -> io::Result<bool> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP)?;
             Ok(raw != 0)
         }
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
     }
 
     pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             let mreq = c::ip_mreq {
                 imr_multiaddr: *multiaddr.as_inner(),
                 imr_interface: *interface.as_inner(),
             };
             setsockopt(&self.inner, c::IPPROTO_IP, c::IP_ADD_MEMBERSHIP, mreq)
         }
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
     }
 
     pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             let mreq = c::ipv6_mreq {
                 ipv6mr_multiaddr: *multiaddr.as_inner(),
                 ipv6mr_interface: to_ipv6mr_interface(interface),
             };
             setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq)
         }
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
     }
 
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             let mreq = c::ip_mreq {
                 imr_multiaddr: *multiaddr.as_inner(),
                 imr_interface: *interface.as_inner(),
             };
             setsockopt(&self.inner, c::IPPROTO_IP, c::IP_DROP_MEMBERSHIP, mreq)
         }
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
     }
 
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             let mreq = c::ipv6_mreq {
                 ipv6mr_multiaddr: *multiaddr.as_inner(),
                 ipv6mr_interface: to_ipv6mr_interface(interface),
             };
             setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq)
         }
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
         }
-        #[cfg(target_env = "newlib")] {
+        #[cfg(target_os = "switch")] {
             Ok(())
         }
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        #[cfg(not(target_env = "newlib"))]
+        #[cfg(not(target_os = "switch"))]
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)?;
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_os = "switch")]
         let raw: c_int = 64;
         Ok(raw as u32)
     }

@@ -109,15 +109,9 @@ cfg_if::cfg_if! {
             cpus as usize
         }
     } else {
-        // FIXME: implement on vxWorks, Redox, HermitCore, Haiku, l4re
+        // FIXME: implement on vxWorks, Redox, HermitCore, Haiku, l4re, libnx
         fn num_cpus() -> usize {
             1
         }
-    }
-
-    #[cfg(target_vendor = "libnx")]
-    fn num_cpus() -> usize {
-        // FIXME: implement
-        1
     }
 }

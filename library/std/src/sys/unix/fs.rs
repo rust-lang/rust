@@ -158,7 +158,7 @@ cfg_has_statx! {{
         stat.st_mtime = buf.stx_mtime.tv_sec as libc::time_t;
         stat.st_ctime = buf.stx_ctime.tv_sec as libc::time_t;
         // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_env = "devkita64"))] {
             stat.st_atime_nsec = buf.stx_atime.tv_nsec as _;
             stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as _;
             stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as _;
@@ -297,9 +297,9 @@ impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_mtime as libc::time_t,
-            #[cfg(target_env = "newlib")]
+            #[cfg(target_env = "devkita64")]
             tv_nsec: 0,
-            #[cfg(not(target_env = "newlib"))]
+            #[cfg(not(target_env = "devkita64"))]
             tv_nsec: self.stat.st_mtime_nsec as _,
         }))
     }
@@ -307,9 +307,9 @@ impl FileAttr {
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_atime as libc::time_t,
-            #[cfg(target_env = "newlib")]
+            #[cfg(target_env = "devkita64")]
             tv_nsec: 0,
-            #[cfg(not(target_env = "newlib"))]
+            #[cfg(not(target_env = "devkita64"))]
             tv_nsec: self.stat.st_atime_nsec as _,
         }))
     }
@@ -569,7 +569,7 @@ impl DirEntry {
         target_os = "l4re",
         target_os = "fuchsia",
         target_os = "redox",
-        target_env = "newlib"
+        target_env = "devkita64"
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -608,7 +608,7 @@ impl DirEntry {
         target_os = "emscripten",
         target_os = "l4re",
         target_os = "haiku",
-        target_env = "newlib"
+        target_env = "devkita64"
     ))]
     fn name_bytes(&self) -> &[u8] {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes() }
@@ -984,7 +984,7 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     Ok(())
 }
 
-#[cfg(not(target_os = "horizon"))]
+#[cfg(not(target_os = "switch"))]
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     let c_path = cstr(p)?;
     let p = c_path.as_ptr();
@@ -1012,12 +1012,12 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(target_os = "horizon")]
+#[cfg(target_os = "switch")]
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    Ok(p.to_path_buf()) // horizon doesn't have symlinks
+    Ok(p.to_path_buf()) // switch doesn't have symlinks
 }
 
-#[cfg(not(target_os = "horizon"))]
+#[cfg(not(target_os = "switch"))]
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
     let src = cstr(src)?;
     let dst = cstr(dst)?;
@@ -1025,9 +1025,9 @@ pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "horizon")]
+#[cfg(target_os = "switch")]
 pub fn symlink(_src: &Path, _dst: &Path) -> io::Result<()> {
-    Err(io::Error::new(io::ErrorKind::Other, "not supported")) // horizon doesn't have symlinks
+    Err(io::Error::new(io::ErrorKind::Other, "not supported")) // switch doesn't have symlinks
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
@@ -1075,7 +1075,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     Ok(FileAttr::from_stat64(stat))
 }
 
-#[cfg(not(target_os = "horizon"))]
+#[cfg(not(target_os = "switch"))]
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     let path = CString::new(p.as_os_str().as_bytes())?;
     let buf;
@@ -1090,9 +1090,9 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     Ok(PathBuf::from(OsString::from_vec(buf)))
 }
 
-#[cfg(target_os = "horizon")]
+#[cfg(target_os = "switch")]
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    // horizon has no symlinks or realpath
+    // switch has no symlinks or realpath
     let mut cwd = crate::env::current_dir()?;
     cwd.push(p);
     Ok(cwd)

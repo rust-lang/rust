@@ -1,4 +1,4 @@
-#![cfg_attr(target_env = "newlib", allow(unused_variables, dead_code))]
+#![cfg_attr(target_env = "devkita64", allow(unused_variables, dead_code))]
 
 use crate::os::unix::prelude::*;
 

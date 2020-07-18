@@ -1,7 +1,6 @@
 //! Implementation of `std::os` functionality for unix systems
 
 #![allow(unused_imports)] // lots of cfg code here
-#![cfg_attr(target_env = "newlib", allow(unused_variables, dead_code))]
 
 use crate::os::unix::prelude::*;
 
@@ -51,7 +50,7 @@ extern "C" {
             target_os = "openbsd",
             target_os = "android",
             target_os = "redox",
-            target_env = "newlib"
+            target_env = "devkita64"
         ),
         link_name = "__errno"
     )]
@@ -102,7 +101,7 @@ pub fn set_errno(e: i32) {
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
     extern "C" {
-        #[cfg_attr(any(target_os = "linux", target_env = "newlib"), link_name = "__xpg_strerror_r")]
+        #[cfg_attr(any(target_os = "linux", target_env = "devkita64"), link_name = "__xpg_strerror_r")]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t) -> c_int;
     }
 
@@ -555,12 +554,12 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     }
 }
 
-#[cfg(not(target_os = "horizon"))]
+#[cfg(not(target_os = "switch"))]
 pub fn page_size() -> usize {
     unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize }
 }
 
-#[cfg(target_os = "horizon")]
+#[cfg(target_os = "switch")]
 pub fn page_size() -> usize {
     0x1000
 }
@@ -583,7 +582,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "ios",
         target_os = "emscripten",
         target_os = "redox",
-        target_os = "horizon"
+        target_os = "switch"
     ))]
     unsafe fn fallback() -> Option<OsString> {
         None
@@ -593,7 +592,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "ios",
         target_os = "emscripten",
         target_os = "redox",
-        target_os = "horizon"
+        target_os = "switch"
     )))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {
@@ -628,14 +627,14 @@ pub fn getpid() -> u32 {
     unsafe { libc::getpid() as u32 }
 }
 
-#[cfg(not(target_os = "horizon"))]
+#[cfg(not(target_os = "switch"))]
 pub fn getppid() -> u32 {
     unsafe { libc::getppid() as u32 }
 }
 
-#[cfg(target_os = "horizon")]
+#[cfg(target_os = "switch")]
 pub fn getppid() -> u32 {
-    1 // horizon doesn't have a process hierarchy
+    1 // switch doesn't have a process hierarchy
 }
 
 #[cfg(target_env = "gnu")]

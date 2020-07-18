@@ -1,4 +1,4 @@
-#![cfg_attr(target_env = "newlib", allow(unused_variables, dead_code))]
+#![cfg_attr(target_os = "switch", allow(unused_variables, dead_code))]
 
 use crate::cmp;
 use crate::ffi::CStr;
@@ -307,21 +307,21 @@ impl Socket {
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        #[cfg(not(target_env = "newlib"))] {
+        #[cfg(not(target_os = "switch"))] {
             setsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY, nodelay as c_int)
         }
-        #[cfg(target_env = "newlib")] {
+        #[cfg(target_os = "switch")] {
             Ok(())
         }
     }
 
-    #[cfg(not(target_env = "newlib"))]
+    #[cfg(not(target_os = "switch"))]
     pub fn nodelay(&self) -> io::Result<bool> {
         let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY)?;
         Ok(raw != 0)
     }
 
-    #[cfg(target_env = "newlib")]
+    #[cfg(target_os = "switch")]
     pub fn nodelay(&self) -> io::Result<bool> {
         Ok(false)
     }

@@ -1,4 +1,4 @@
-#![cfg_attr(target_env = "newlib", allow(unused_variables, dead_code))]
+#![cfg_attr(target_env = "devkita64", allow(unused_variables, dead_code))]
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
 use crate::cmp;
@@ -73,7 +73,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(target_env = "newlib"))]
+    #[cfg(not(target_env = "devkita64"))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::readv(
@@ -87,7 +87,7 @@ impl FileDesc {
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        !cfg!(target_env = "newlib")
+        !cfg!(target_env = "devkita64")
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -99,7 +99,7 @@ impl FileDesc {
         #[cfg(target_os = "android")]
         use super::android::cvt_pread64;
 
-        #[cfg(not(any(target_os = "android", target_env = "newlib")))]
+        #[cfg(not(any(target_os = "android", target_env = "devkita64")))]
         unsafe fn cvt_pread64(
             fd: c_int,
             buf: *mut c_void,
@@ -113,14 +113,14 @@ impl FileDesc {
             cvt(pread64(fd, buf, count, offset))
         }
 
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_env = "devkita64")]
         unsafe fn cvt_pread64(
             fd: c_int,
             buf: *mut c_void,
             count: usize,
             offset: i64,
         ) -> io::Result<isize> {
-            // ported from newlib, because it inexplicably was not being compiled
+            // ported from devkita64, because it inexplicably was not being compiled
             let cur_pos = cvt(libc::lseek(fd, 0, libc::SEEK_CUR))?;
             cvt(libc::lseek(fd, offset, libc::SEEK_SET))?;
             let num_read = cvt(libc::read(fd, buf, count))?;
@@ -146,7 +146,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(target_env = "newlib"))]
+    #[cfg(not(target_env = "devkita64"))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::writev(
@@ -160,14 +160,14 @@ impl FileDesc {
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        !cfg!(target_env = "newlib")
+        !cfg!(target_env = "devkita64")
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         #[cfg(target_os = "android")]
         use super::android::cvt_pwrite64;
 
-        #[cfg(not(any(target_os = "android", target_env = "newlib")))]
+        #[cfg(not(any(target_os = "android", target_env = "devkita64")))]
         unsafe fn cvt_pwrite64(
             fd: c_int,
             buf: *const c_void,
@@ -181,7 +181,7 @@ impl FileDesc {
             cvt(pwrite64(fd, buf, count, offset))
         }
 
-        #[cfg(target_env = "newlib")]
+        #[cfg(target_env = "devkita64")]
         unsafe fn cvt_pwrite64(
             fd: c_int,
             buf: *const c_void,
@@ -213,7 +213,7 @@ impl FileDesc {
     }
 
     #[cfg(not(any(
-        target_env = "newlib",
+        target_env = "devkita64",
         target_os = "solaris",
         target_os = "illumos",
         target_os = "emscripten",
@@ -230,7 +230,7 @@ impl FileDesc {
         }
     }
     #[cfg(any(
-        target_env = "newlib",
+        target_env = "devkita64",
         target_os = "solaris",
         target_os = "illumos",
         target_os = "emscripten",
