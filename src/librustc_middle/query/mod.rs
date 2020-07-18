@@ -103,9 +103,13 @@ rustc_queries! {
         /// // ^ While calling `opt_const_param_of` for other bodies returns `None`.
         /// }
         /// ```
+        // It looks like caching this query on disk actually slightly
+        // worsened performance in #74376.
+        //
+        // Once const generics are more prevalently used, we might want to
+        // consider only caching calls returning `Some`.
         query opt_const_param_of(key: LocalDefId) -> Option<DefId> {
             desc { |tcx| "computing the optional const parameter of `{}`", tcx.def_path_str(key.to_def_id()) }
-            // FIXME(#74113): consider storing this query on disk.
         }
 
         /// Records the type of every item.
