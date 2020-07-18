@@ -513,6 +513,10 @@ mod panicking;
 // compiler
 pub mod rt;
 
+#[path = "../backtrace/src/lib.rs"]
+#[allow(dead_code, unused_attributes)]
+mod backtrace_rs;
+
 // Pull in the `std_detect` crate directly into libstd. The contents of
 // `std_detect` are in a different repository: rust-lang/stdarch.
 //
