@@ -1051,12 +1051,17 @@ impl<'tcx> Predicate<'tcx> {
 
     /// Returns the inner `PredicateAtom`.
     ///
+    /// The returned atom may contain unbound variables bound to binders skipped in this method.
+    /// It is safe to reapply binders to the given atom.
+    ///
     /// Note that this method panics in case this predicate has unbound variables.
     pub fn skip_binders(self) -> PredicateAtom<'tcx> {
-        // TODO no_escaping_vars
         match self.kind() {
             &PredicateKind::ForAll(binder) => binder.skip_binder(),
-            &ty::PredicateKind::Atom(atom) => atom,
+            &PredicateKind::Atom(atom) => {
+                debug_assert!(!atom.has_escaping_bound_vars());
+                atom
+            }
         }
     }
 
@@ -1378,7 +1383,7 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
 impl ToPredicate<'tcx> for PredicateAtom<'tcx> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        debug_assert!(!self.has_escaping_bound_vars(), "excaping bound vars for {:?}", self);
+        debug_assert!(!self.has_escaping_bound_vars(), "escaping bound vars for {:?}", self);
         tcx.mk_predicate(ty::PredicateKind::Atom(self))
     }
 }

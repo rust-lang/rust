@@ -1100,7 +1100,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         for obligation in super::elaborate_predicates(self.tcx, std::iter::once(cond)) {
             if let ty::PredicateAtom::Trait(implication, _) = obligation.predicate.skip_binders() {
                 let error = error.to_poly_trait_ref();
-                let implication = ty::Binder::bind(implication).to_poly_trait_ref();
+                let implication = ty::Binder::bind(implication.trait_ref);
                 // FIXME: I'm just not taking associated types at all here.
                 // Eventually I'll need to implement param-env-aware
                 // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.

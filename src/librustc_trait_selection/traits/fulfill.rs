@@ -3,7 +3,7 @@ use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
-use rustc_infer::traits::{PolyTraitObligation, TraitEngine, TraitEngineExt as _};
+use rustc_infer::traits::{TraitObligation, TraitEngine, TraitEngineExt as _};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::ToPredicate;
@@ -320,41 +320,40 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
         let infcx = self.selcx.infcx();
 
         match obligation.predicate.kind() {
-            ty::PredicateKind::ForAll(binder) => match binder.skip_binder().kind() {
-                ty::PredicateKind::ForAll(_) => bug!("unexpected forall"),
+            ty::PredicateKind::ForAll(binder) => match binder.skip_binder() {
                 // Evaluation will discard candidates using the leak check.
                 // This means we need to pass it the bound version of our
                 // predicate.
-                &ty::PredicateKind::Atom(atom) => match atom {
-                    ty::PredicateAtom::Trait(trait_ref, _constness) => {
-                        let trait_obligation = obligation.with(Binder::bind(trait_ref));
+                ty::PredicateAtom::Trait(trait_ref, _constness) => {
+                    let trait_obligation = obligation.with(Binder::bind(trait_ref));
 
-                        self.process_trait_obligation(
-                            obligation,
-                            trait_obligation,
-                            &mut pending_obligation.stalled_on,
-                        )
-                    }
-                    ty::PredicateAtom::Projection(projection) => {
-                        let project_obligation = obligation.with(Binder::bind(projection));
+                    self.process_trait_obligation(
+                        obligation,
+                        trait_obligation,
+                        &mut pending_obligation.stalled_on,
+                    )
+                }
+                ty::PredicateAtom::Projection(data) => {
+                    let project_obligation = obligation.with(Binder::bind(data));
 
-                        self.process_projection_obligation(
-                            project_obligation,
-                            &mut pending_obligation.stalled_on,
-                        )
-                    }
-                    ty::PredicateAtom::RegionOutlives(_)
-                    | ty::PredicateAtom::TypeOutlives(_)
-                    | ty::PredicateAtom::WellFormed(_)
-                    | ty::PredicateAtom::ObjectSafe(_)
-                    | ty::PredicateAtom::ClosureKind(..)
-                    | ty::PredicateAtom::Subtype(_)
-                    | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..) => {
-                        let (pred, _) = infcx.replace_bound_vars_with_placeholders(binder);
-                        ProcessResult::Changed(mk_pending(vec![obligation.with(pred)]))
-                    }
-                },
+                    self.process_projection_obligation(
+                        project_obligation,
+                        &mut pending_obligation.stalled_on,
+                    )
+                }
+                ty::PredicateAtom::RegionOutlives(_)
+                | ty::PredicateAtom::TypeOutlives(_)
+                | ty::PredicateAtom::WellFormed(_)
+                | ty::PredicateAtom::ObjectSafe(_)
+                | ty::PredicateAtom::ClosureKind(..)
+                | ty::PredicateAtom::Subtype(_)
+                | ty::PredicateAtom::ConstEvaluatable(..)
+                | ty::PredicateAtom::ConstEquate(..) => {
+                    let (pred, _) = infcx.replace_bound_vars_with_placeholders(binder);
+                    ProcessResult::Changed(mk_pending(vec![
+                        obligation.with(pred.to_predicate(self.selcx.tcx())),
+                    ]))
+                }
             },
             &ty::PredicateKind::Atom(atom) => match atom {
                 ty::PredicateAtom::Trait(ref data, _) => {
@@ -560,7 +559,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
     fn process_trait_obligation(
         &mut self,
         obligation: &PredicateObligation<'tcx>,
-        trait_obligation: PolyTraitObligation<'tcx>,
+        trait_obligation: TraitObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar<'tcx>>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         let infcx = self.selcx.infcx();

@@ -486,11 +486,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
     type Lifted = ty::PredicateKind<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-        match *self {
-            ty::PredicateKind::ForAll(ref binder) => {
-                tcx.lift(binder).map(ty::PredicateKind::ForAll)
-            }
-            ty::PredicateKind::Atom(ref atom) => tcx.lift(atom).map(ty::PredicateKind::Atom),
+        match self {
+            ty::PredicateKind::ForAll(binder) => tcx.lift(binder).map(ty::PredicateKind::ForAll),
+            ty::PredicateKind::Atom(atom) => tcx.lift(atom).map(ty::PredicateKind::Atom),
         }
     }
 }
