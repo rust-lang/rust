@@ -7,7 +7,7 @@ fn main() {
     // not applicable
     vec![1, 2, 3, 4, 5].resize(2, 5);
 
-    // applicable here, but only implemented for integer litterals for now
+    // applicable here, but only implemented for integer literals for now
     vec!["foo", "bar", "baz"].resize(0, "bar");
 
     // not applicable

@@ -40,9 +40,8 @@ declare_clippy_lint! {
     ///     assert_eq!(v.len(), 42);
     /// }
     /// ```
-    ///
+    /// should be
     /// ```rust
-    /// // should be
     /// fn foo(v: &[i32]) {
     ///     assert_eq!(v.len(), 42);
     /// }

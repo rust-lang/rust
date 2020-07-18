@@ -36,7 +36,7 @@ pub struct NumericLiteral<'a> {
     pub integer: &'a str,
     /// The fraction part of the number.
     pub fraction: Option<&'a str>,
-    /// The character used as exponent seperator (b'e' or b'E') and the exponent part.
+    /// The character used as exponent separator (b'e' or b'E') and the exponent part.
     pub exponent: Option<(char, &'a str)>,
 
     /// The type suffix, including preceding underscore if present.

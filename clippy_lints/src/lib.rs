@@ -300,6 +300,7 @@ mod trivially_copy_pass_by_ref;
 mod try_err;
 mod types;
 mod unicode;
+mod unit_return_expecting_ord;
 mod unnamed_address;
 mod unnecessary_sort_by;
 mod unnested_or_patterns;
@@ -462,7 +463,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     );
     store.register_removed(
         "clippy::replace_consts",
-        "associated-constants `MIN`/`MAX` of integers are prefered to `{min,max}_value()` and module constants",
+        "associated-constants `MIN`/`MAX` of integers are preferred to `{min,max}_value()` and module constants",
     );
     store.register_removed(
         "clippy::regex_macro",
@@ -826,6 +827,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &unicode::NON_ASCII_LITERAL,
         &unicode::UNICODE_NOT_NFC,
         &unicode::ZERO_WIDTH_SPACE,
+        &unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD,
         &unnamed_address::FN_ADDRESS_COMPARISONS,
         &unnamed_address::VTABLE_ADDRESS_COMPARISONS,
         &unnecessary_sort_by::UNNECESSARY_SORT_BY,
@@ -891,6 +893,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box attrs::Attributes);
     store.register_late_pass(|| box blocks_in_if_conditions::BlocksInIfConditions);
     store.register_late_pass(|| box unicode::Unicode);
+    store.register_late_pass(|| box unit_return_expecting_ord::UnitReturnExpectingOrd);
     store.register_late_pass(|| box strings::StringAdd);
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
     store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
@@ -1436,6 +1439,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::UNNECESSARY_CAST),
         LintId::of(&types::VEC_BOX),
         LintId::of(&unicode::ZERO_WIDTH_SPACE),
+        LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
@@ -1692,6 +1696,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::CAST_REF_TO_MUT),
         LintId::of(&types::UNIT_CMP),
         LintId::of(&unicode::ZERO_WIDTH_SPACE),
+        LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),

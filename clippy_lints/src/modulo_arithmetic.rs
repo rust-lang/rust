@@ -8,7 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use std::fmt::Display;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for modulo arithemtic.
+    /// **What it does:** Checks for modulo arithmetic.
     ///
     /// **Why is this bad?** The results of modulo (%) operation might differ
     /// depending on the language, when negative numbers are involved.

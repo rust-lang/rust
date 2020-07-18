@@ -153,7 +153,7 @@ declare_deprecated_lint! {
     ///
     /// **Deprecation reason:** Associated-constants are now preferred.
     pub REPLACE_CONSTS,
-    "associated-constants `MIN`/`MAX` of integers are prefered to `{min,max}_value()` and module constants"
+    "associated-constants `MIN`/`MAX` of integers are preferred to `{min,max}_value()` and module constants"
 }
 
 declare_deprecated_lint! {

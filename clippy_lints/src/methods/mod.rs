@@ -2354,8 +2354,8 @@ fn lint_iter_nth_zero<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, nth_ar
                 cx,
                 ITER_NTH_ZERO,
                 expr.span,
-                "called `.nth(0)` on a `std::iter::Iterator`",
-                "try calling",
+                "called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent",
+                "try calling `.next()` instead of `.nth(0)`",
                 format!("{}.next()", snippet_with_applicability(cx, nth_args[0].span, "..", &mut applicability)),
                 applicability,
             );
@@ -3290,7 +3290,12 @@ fn lint_option_as_ref_deref<'tcx>(
                         if let hir::ExprKind::Path(qpath) = &args[0].kind;
                         if let hir::def::Res::Local(local_id) = cx.qpath_res(qpath, args[0].hir_id);
                         if closure_body.params[0].pat.hir_id == local_id;
-                        let adj = cx.typeck_results().expr_adjustments(&args[0]).iter().map(|x| &x.kind).collect::<Box<[_]>>();
+                        let adj = cx
+                            .typeck_results()
+                            .expr_adjustments(&args[0])
+                            .iter()
+                            .map(|x| &x.kind)
+                            .collect::<Box<[_]>>();
                         if let [ty::adjustment::Adjust::Deref(None), ty::adjustment::Adjust::Borrow(_)] = *adj;
                         then {
                             let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap();

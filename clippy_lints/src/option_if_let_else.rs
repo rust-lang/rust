@@ -79,7 +79,7 @@ fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
     }
 }
 
-/// A struct containing information about occurences of the
+/// A struct containing information about occurrences of the
 /// `if let Some(..) = .. else` construct that this lint detects.
 struct OptionIfLetElseOccurence {
     option: String,
