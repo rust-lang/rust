@@ -20,7 +20,7 @@ use rustc_hir::lang_items;
 use rustc_hir::Mutability;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::stability;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{AssocKind, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -286,6 +286,15 @@ impl ItemEnum {
         match *self {
             ItemEnum::TypedefItem(_, _) | ItemEnum::AssocTypeItem(_, _) => true,
             _ => false,
+        }
+    }
+
+    pub fn as_assoc_kind(&self) -> Option<AssocKind> {
+        match *self {
+            ItemEnum::AssocConstItem(..) => Some(AssocKind::Const),
+            ItemEnum::AssocTypeItem(..) => Some(AssocKind::Type),
+            ItemEnum::TyMethodItem(..) | ItemEnum::MethodItem(..) => Some(AssocKind::Fn),
+            _ => None,
         }
     }
 }

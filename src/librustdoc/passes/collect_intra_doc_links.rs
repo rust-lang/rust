@@ -185,7 +185,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         current_item: &Option<String>,
         parent_id: Option<DefId>,
         extra_fragment: &Option<String>,
-        item_opt: Option<&Item>,
     ) -> Result<(Res, Option<String>), ErrorKind> {
         let cx = self.cx;
 
@@ -245,13 +244,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
                 }
                 return Ok((prim, Some(path.to_owned())));
-            } else {
-                // If resolution failed, it may still be a method
-                // because methods are not handled by the resolver
-                // If so, bail when we're not looking for a value.
-                if ns != ValueNS {
-                    return Err(ErrorKind::ResolutionFailure);
-                }
             }
 
             // Try looking for methods and associated items.
@@ -299,65 +291,54 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 })
                 .map_err(|_| ErrorKind::ResolutionFailure)?;
             if let Res::Err = ty_res {
-                return self.variant_field(path_str, current_item, module_id);
+                return if ns == Namespace::ValueNS {
+                    self.variant_field(path_str, current_item, module_id)
+                } else {
+                    Err(ErrorKind::ResolutionFailure)
+                };
             }
             let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
-            match ty_res {
+            let res = match ty_res {
                 Res::Def(
                     DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias,
                     did,
                 ) => {
+                    debug!("looking for associated item named {} for item {:?}", item_name, did);
                     // Checks if item_name belongs to `impl SomeItem`
-                    let impl_item = cx
+                    let kind = cx
                         .tcx
                         .inherent_impls(did)
                         .iter()
-                        .flat_map(|imp| cx.tcx.associated_items(*imp).in_definition_order())
-                        .find(|item| item.ident.name == item_name);
-                    let trait_item = item_opt
-                        .and_then(|item| self.cx.as_local_hir_id(item.def_id))
-                        .and_then(|item_hir| {
-                            // Checks if item_name belongs to `impl SomeTrait for SomeItem`
-                            let parent_hir = self.cx.tcx.hir().get_parent_item(item_hir);
-                            let item_parent = self.cx.tcx.hir().find(parent_hir);
-                            match item_parent {
-                                Some(hir::Node::Item(hir::Item {
-                                    kind: hir::ItemKind::Impl { of_trait: Some(_), self_ty, .. },
-                                    ..
-                                })) => cx
-                                    .tcx
-                                    .associated_item_def_ids(self_ty.hir_id.owner)
-                                    .iter()
-                                    .map(|child| {
-                                        let associated_item = cx.tcx.associated_item(*child);
-                                        associated_item
-                                    })
-                                    .find(|child| child.ident.name == item_name),
-                                _ => None,
-                            }
+                        .flat_map(|&imp| {
+                            cx.tcx.associated_items(imp).find_by_name_and_namespace(
+                                cx.tcx,
+                                Ident::with_dummy_span(item_name),
+                                ns,
+                                imp,
+                            )
+                        })
+                        .map(|item| item.kind)
+                        // There should only ever be one associated item that matches from any inherent impl
+                        .next()
+                        // Check if item_name belongs to `impl SomeTrait for SomeItem`
+                        // This gives precedence to `impl SomeItem`:
+                        // Although having both would be ambiguous, use impl version for compat. sake.
+                        // To handle that properly resolve() would have to support
+                        // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
+                        .or_else(|| {
+                            let kind = resolve_associated_trait_item(did, item_name, ns, &self.cx);
+                            debug!("got associated item kind {:?}", kind);
+                            kind
                         });
-                    let item = match (impl_item, trait_item) {
-                        (Some(from_impl), Some(_)) => {
-                            // Although it's ambiguous, return impl version for compat. sake.
-                            // To handle that properly resolve() would have to support
-                            // something like
-                            // [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
-                            Some(from_impl)
-                        }
-                        (None, Some(from_trait)) => Some(from_trait),
-                        (Some(from_impl), None) => Some(from_impl),
-                        _ => None,
-                    };
 
-                    if let Some(item) = item {
-                        let out = match item.kind {
-                            ty::AssocKind::Fn if ns == ValueNS => "method",
-                            ty::AssocKind::Const if ns == ValueNS => "associatedconstant",
-                            ty::AssocKind::Type if ns == ValueNS => "associatedtype",
-                            _ => return self.variant_field(path_str, current_item, module_id),
+                    if let Some(kind) = kind {
+                        let out = match kind {
+                            ty::AssocKind::Fn => "method",
+                            ty::AssocKind::Const => "associatedconstant",
+                            ty::AssocKind::Type => "associatedtype",
                         };
-                        if extra_fragment.is_some() {
-                            Err(ErrorKind::AnchorFailure(if item.kind == ty::AssocKind::Fn {
+                        Some(if extra_fragment.is_some() {
+                            Err(ErrorKind::AnchorFailure(if kind == ty::AssocKind::Fn {
                                 AnchorFailure::Method
                             } else {
                                 AnchorFailure::AssocConstant
@@ -368,18 +349,19 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             // Store the kind in a side channel so that only the disambiguator logic looks at it.
                             self.kind_side_channel.replace(Some(item.kind.as_def_kind()));
                             Ok((ty_res, Some(format!("{}.{}", out, item_name))))
-                        }
-                    } else {
+                        })
+                    } else if ns == Namespace::ValueNS {
                         match cx.tcx.type_of(did).kind {
                             ty::Adt(def, _) => {
-                                if let Some(item) = if def.is_enum() {
+                                let field = if def.is_enum() {
                                     def.all_fields().find(|item| item.ident.name == item_name)
                                 } else {
                                     def.non_enum_variant()
                                         .fields
                                         .iter()
                                         .find(|item| item.ident.name == item_name)
-                                } {
+                                };
+                                field.map(|item| {
                                     if extra_fragment.is_some() {
                                         Err(ErrorKind::AnchorFailure(if def.is_enum() {
                                             AnchorFailure::Variant
@@ -400,31 +382,31 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                             )),
                                         ))
                                     }
-                                } else {
-                                    self.variant_field(path_str, current_item, module_id)
-                                }
+                                })
                             }
-                            _ => self.variant_field(path_str, current_item, module_id),
+                            _ => None,
                         }
+                    } else {
+                        // We already know this isn't in ValueNS, so no need to check variant_field
+                        return Err(ErrorKind::ResolutionFailure);
                     }
                 }
-                Res::Def(DefKind::Trait, did) => {
-                    let item = cx
-                        .tcx
-                        .associated_item_def_ids(did)
-                        .iter()
-                        .map(|item| cx.tcx.associated_item(*item))
-                        .find(|item| item.ident.name == item_name);
-                    if let Some(item) = item {
-                        let kind =
-                            match item.kind {
-                                ty::AssocKind::Const if ns == ValueNS => "associatedconstant",
-                                ty::AssocKind::Type if ns == TypeNS => "associatedtype",
-                                ty::AssocKind::Fn if ns == ValueNS => {
-                                    if item.defaultness.has_value() { "method" } else { "tymethod" }
+                Res::Def(DefKind::Trait, did) => cx
+                    .tcx
+                    .associated_items(did)
+                    .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, did)
+                    .map(|item| {
+                        let kind = match item.kind {
+                            ty::AssocKind::Const => "associatedconstant",
+                            ty::AssocKind::Type => "associatedtype",
+                            ty::AssocKind::Fn => {
+                                if item.defaultness.has_value() {
+                                    "method"
+                                } else {
+                                    "tymethod"
                                 }
-                                _ => return self.variant_field(path_str, current_item, module_id),
-                            };
+                            }
+                        };
 
                         if extra_fragment.is_some() {
                             Err(ErrorKind::AnchorFailure(if item.kind == ty::AssocKind::Const {
@@ -438,17 +420,133 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             let res = Res::Def(item.kind.as_def_kind(), item.def_id);
                             Ok((res, Some(format!("{}.{}", kind, item_name))))
                         }
-                    } else {
-                        self.variant_field(path_str, current_item, module_id)
-                    }
+                    }),
+                _ => None,
+            };
+            res.unwrap_or_else(|| {
+                if ns == Namespace::ValueNS {
+                    self.variant_field(path_str, current_item, module_id)
+                } else {
+                    Err(ErrorKind::ResolutionFailure)
                 }
-                _ => self.variant_field(path_str, current_item, module_id),
-            }
+            })
         } else {
             debug!("attempting to resolve item without parent module: {}", path_str);
             Err(ErrorKind::ResolutionFailure)
         }
     }
+}
+
+fn resolve_associated_trait_item(
+    did: DefId,
+    item_name: Symbol,
+    ns: Namespace,
+    cx: &DocContext<'_>,
+) -> Option<ty::AssocKind> {
+    use rustc_hir::def_id::LOCAL_CRATE;
+
+    let ty = cx.tcx.type_of(did);
+    // First consider automatic impls: `impl From<T> for T`
+    let implicit_impls = crate::clean::get_auto_trait_and_blanket_impls(cx, ty, did);
+    let mut candidates: Vec<_> = implicit_impls
+        .flat_map(|impl_outer| {
+            match impl_outer.inner {
+                ImplItem(impl_) => {
+                    debug!("considering auto or blanket impl for trait {:?}", impl_.trait_);
+                    // Give precedence to methods that were overridden
+                    if !impl_.provided_trait_methods.contains(&*item_name.as_str()) {
+                        let mut items = impl_.items.into_iter().filter_map(|assoc| {
+                            if assoc.name.as_deref() != Some(&*item_name.as_str()) {
+                                return None;
+                            }
+                            let kind = assoc
+                                .inner
+                                .as_assoc_kind()
+                                .expect("inner items for a trait should be associated items");
+                            if kind.namespace() != ns {
+                                return None;
+                            }
+
+                            trace!("considering associated item {:?}", assoc.inner);
+                            // We have a slight issue: normal methods come from `clean` types,
+                            // but provided methods come directly from `tcx`.
+                            // Fortunately, we don't need the whole method, we just need to know
+                            // what kind of associated item it is.
+                            Some((assoc.def_id, kind))
+                        });
+                        let assoc = items.next();
+                        debug_assert_eq!(items.count(), 0);
+                        assoc
+                    } else {
+                        // These are provided methods or default types:
+                        // ```
+                        // trait T {
+                        //   type A = usize;
+                        //   fn has_default() -> A { 0 }
+                        // }
+                        // ```
+                        let trait_ = impl_.trait_.unwrap().def_id().unwrap();
+                        cx.tcx
+                            .associated_items(trait_)
+                            .find_by_name_and_namespace(
+                                cx.tcx,
+                                Ident::with_dummy_span(item_name),
+                                ns,
+                                trait_,
+                            )
+                            .map(|assoc| (assoc.def_id, assoc.kind))
+                    }
+                }
+                _ => panic!("get_impls returned something that wasn't an impl"),
+            }
+        })
+        .collect();
+    // Next consider explicit impls: `impl MyTrait for MyType`
+    // There isn't a cheap way to do this. Just look at every trait!
+    for &trait_ in cx.tcx.all_traits(LOCAL_CRATE) {
+        trace!("considering explicit impl for trait {:?}", trait_);
+        // We can skip the trait if it doesn't have the associated item `item_name`
+        let assoc_item = cx
+            .tcx
+            .associated_items(trait_)
+            .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
+            .map(|assoc| (assoc.def_id, assoc.kind));
+        if let Some(assoc_item) = assoc_item {
+            debug!("considering item {:?}", assoc_item);
+            // Look at each trait implementation to see if it's an impl for `did`
+            cx.tcx.for_each_relevant_impl(trait_, ty, |impl_| {
+                use ty::TyKind;
+
+                let trait_ref = cx.tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
+                // Check if these are the same type.
+                let impl_type = trait_ref.self_ty();
+                debug!(
+                    "comparing type {} with kind {:?} against def_id {:?}",
+                    impl_type, impl_type.kind, did
+                );
+                // Fast path: if this is a primitive simple `==` will work
+                let same_type = impl_type == ty
+                    || match impl_type.kind {
+                        // Check if these are the same def_id
+                        TyKind::Adt(def, _) => {
+                            debug!("adt did: {:?}", def.did);
+                            def.did == did
+                        }
+                        TyKind::Foreign(def_id) => def_id == did,
+                        _ => false,
+                    };
+                if same_type {
+                    // We found it!
+                    debug!("found a match!");
+                    candidates.push(assoc_item);
+                }
+            });
+        }
+    }
+
+    // FIXME: warn about ambiguity
+    debug!("the candidates were {:?}", candidates);
+    candidates.pop().map(|(_, kind)| kind)
 }
 
 /// Check for resolve collisions between a trait and its derive
@@ -644,7 +742,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             &current_item,
                             base_node,
                             &extra_fragment,
-                            Some(&item),
                         ) {
                             Ok(res) => res,
                             Err(ErrorKind::ResolutionFailure) => {
@@ -673,13 +770,16 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 &current_item,
                                 base_node,
                                 &extra_fragment,
-                                Some(&item),
                             ) {
+                                Ok(res) => {
+                                    debug!("got res in TypeNS: {:?}", res);
+                                    Some(res)
+                                }
                                 Err(ErrorKind::AnchorFailure(msg)) => {
                                     anchor_failure(cx, &item, &ori_link, &dox, link_range, msg);
                                     continue;
                                 }
-                                x => x.ok(),
+                                Err(ErrorKind::ResolutionFailure) => None,
                             },
                             value_ns: match self.resolve(
                                 path_str,
@@ -688,13 +788,13 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 &current_item,
                                 base_node,
                                 &extra_fragment,
-                                Some(&item),
                             ) {
+                                Ok(res) => Some(res),
                                 Err(ErrorKind::AnchorFailure(msg)) => {
                                     anchor_failure(cx, &item, &ori_link, &dox, link_range, msg);
                                     continue;
                                 }
-                                x => x.ok(),
+                                Err(ErrorKind::ResolutionFailure) => None,
                             }
                             .and_then(|(res, fragment)| {
                                 // Constructors are picked up in the type namespace.
