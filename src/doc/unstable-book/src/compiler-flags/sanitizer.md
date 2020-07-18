@@ -26,6 +26,9 @@ of bugs:
 * Double-free, invalid free
 * Memory leaks
 
+The memory leak detection is enabled by default on Linux, and can be enabled
+with runtime flag `ASAN_OPTIONS=detect_leaks=1` on macOS.
+
 AddressSanitizer is supported on the following targets:
 
 * `x86_64-apple-darwin`
