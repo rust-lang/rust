@@ -131,7 +131,42 @@ impl Layout {
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
         debug_assert!(Layout::from_size_align(size, align).is_ok());
-        // SAFETY: see rationale in `new` for why this is using an unsafe variant below
+        // SAFETY: see rationale in `new` for why this is using the unsafe variant
+        unsafe { Layout::from_size_align_unchecked(size, align) }
+    }
+
+    /// Produces layout describing a record that could be used to
+    /// allocate backing structure for `T` (which could be a trait
+    /// or other unsized type like a slice).
+    ///
+    /// # Safety
+    ///
+    /// This function is only safe to call if the following conditions hold:
+    ///
+    /// - If `T` is `Sized`, this function is always safe to call.
+    /// - If the unsized tail of `T` is:
+    ///     - a [slice], then the length of the slice tail must be an intialized
+    ///       integer, and the size of the *entire value*
+    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///     - a [trait object], then the vtable part of the pointer must point
+    ///       to a valid vtable for the type `T` acquired by an unsizing coersion,
+    ///       and the size of the *entire value*
+    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///     - an (unstable) [extern type], then this function is always safe to
+    ///       call, but may panic or otherwise return the wrong value, as the
+    ///       extern type's layout is not known. This is the same behavior as
+    ///       [`Layout::for_value`] on a reference to an extern type tail.
+    ///     - otherwise, it is conservatively not allowed to call this function.
+    ///
+    /// [slice]: ../../std/primitive.slice.html
+    /// [trait object]: ../../book/ch17-02-trait-objects.html
+    /// [extern type]: ../../unstable-book/language-features/extern-types.html
+    #[unstable(feature = "layout_for_ptr", issue = "69835")]
+    pub unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
+        // SAFETY: we pass along the prerequisites of these functions to the caller
+        let (size, align) = unsafe { (mem::size_of_val_raw(t), mem::align_of_val_raw(t)) };
+        debug_assert!(Layout::from_size_align(size, align).is_ok());
+        // SAFETY: see rationale in `new` for why this is using the unsafe variant
         unsafe { Layout::from_size_align_unchecked(size, align) }
     }
 
