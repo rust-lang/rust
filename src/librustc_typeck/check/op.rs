@@ -563,7 +563,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                    requires ownership of the string on the left";
 
         let string_type = self.tcx.get_diagnostic_item(sym::string_type);
-        let is_std_string = |ty: Ty<'tcx>| match &ty.ty_adt_def() {
+        let is_std_string = |ty: Ty<'tcx>| match ty.ty_adt_def() {
             Some(ty_def) => Some(ty_def.did) == string_type,
             None => false,
         };
