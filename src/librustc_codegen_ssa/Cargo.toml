@@ -18,6 +18,7 @@ log = "0.4.5"
 libc = "0.2.50"
 jobserver = "0.1.11"
 tempfile = "3.1"
+pathdiff = "0.2.0"
 
 rustc_serialize = { path = "../librustc_serialize" }
 rustc_ast = { path = "../librustc_ast" }

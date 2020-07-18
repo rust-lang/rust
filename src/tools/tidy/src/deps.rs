@@ -123,6 +123,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "opaque-debug",
     "parking_lot",
     "parking_lot_core",
+    "pathdiff",
     "pkg-config",
     "polonius-engine",
     "ppv-lite86",
