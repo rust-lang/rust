@@ -482,12 +482,12 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
         match self.skip_binders() {
             ty::PredicateAtom::Trait(pred, _) => Some(ty::Binder::bind(pred).clean(cx)),
-            ty::PredicateAtom::Subtype(pred) => Some(ty::Binder::bind(pred).clean(cx)),
-            ty::PredicateAtom::RegionOutlives(pred) => ty::Binder::bind(pred).clean(cx),
-            ty::PredicateAtom::TypeOutlives(pred) => ty::Binder::bind(pred).clean(cx),
-            ty::PredicateAtom::Projection(pred) => Some(ty::Binder::bind(pred).clean(cx)),
+            ty::PredicateAtom::RegionOutlives(pred) => pred.clean(cx),
+            ty::PredicateAtom::TypeOutlives(pred) => pred.clean(cx),
+            ty::PredicateAtom::Projection(pred) => Some(pred.clean(cx)),
 
-            ty::PredicateAtom::WellFormed(..)
+            ty::PredicateAtom::Subtype(..)
+            | ty::PredicateAtom::WellFormed(..)
             | ty::PredicateAtom::ObjectSafe(..)
             | ty::PredicateAtom::ClosureKind(..)
             | ty::PredicateAtom::ConstEvaluatable(..)
@@ -506,20 +506,11 @@ impl<'a> Clean<WherePredicate> for ty::PolyTraitPredicate<'a> {
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::PolySubtypePredicate<'tcx> {
-    fn clean(&self, _cx: &DocContext<'_>) -> WherePredicate {
-        panic!(
-            "subtype predicates are an internal rustc artifact \
-                and should not be seen by rustdoc"
-        )
-    }
-}
-
 impl<'tcx> Clean<Option<WherePredicate>>
-    for ty::PolyOutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
+    for ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
 {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        let ty::OutlivesPredicate(a, b) = self.skip_binder();
+        let ty::OutlivesPredicate(a, b) = self;
 
         if let (ty::ReEmpty(_), ty::ReEmpty(_)) = (a, b) {
             return None;
@@ -532,9 +523,9 @@ impl<'tcx> Clean<Option<WherePredicate>>
     }
 }
 
-impl<'tcx> Clean<Option<WherePredicate>> for ty::PolyOutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
+impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
     fn clean(&self, cx: &DocContext<'_>) -> Option<WherePredicate> {
-        let ty::OutlivesPredicate(ty, lt) = self.skip_binder();
+        let ty::OutlivesPredicate(ty, lt) = self;
 
         if let ty::ReEmpty(_) = lt {
             return None;
@@ -547,9 +538,9 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::PolyOutlivesPredicate<Ty<'tcx>,
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::PolyProjectionPredicate<'tcx> {
+impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> WherePredicate {
-        let ty::ProjectionPredicate { projection_ty, ty } = self.skip_binder();
+        let ty::ProjectionPredicate { projection_ty, ty } = self;
         WherePredicate::EqPredicate { lhs: projection_ty.clean(cx), rhs: ty.clean(cx) }
     }
 }
@@ -1666,8 +1657,8 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             ty::PredicateAtom::Trait(tr, _constness) => {
                                 ty::Binder::bind(tr.trait_ref)
                             }
-                            ty::PredicateAtom::TypeOutlives(pred) => {
-                                if let Some(r) = pred.1.clean(cx) {
+                            ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(_ty, reg)) => {
+                                if let Some(r) = reg.clean(cx) {
                                     regions.push(GenericBound::Outlives(r));
                                 }
                                 return None;
@@ -1686,9 +1677,8 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             .predicates
                             .iter()
                             .filter_map(|pred| {
-                                // We never rebind `proj`, so `skip_binders_unchecked` is safe here.
                                 if let ty::PredicateAtom::Projection(proj) =
-                                    pred.skip_binders_unchecked()
+                                    pred.bound_atom(cx.tcx).skip_binder()
                                 {
                                     if proj.projection_ty.trait_ref(cx.tcx)
                                         == trait_ref.skip_binder()
