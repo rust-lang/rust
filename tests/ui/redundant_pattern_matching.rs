@@ -11,6 +11,9 @@
 )]
 
 fn main() {
+    let result: Result<usize, usize> = Err(5);
+    if let Ok(_) = &result {}
+
     if let Ok(_) = Ok::<i32, i32>(42) {}
 
     if let Err(_) = Err::<i32, i32>(42) {}
