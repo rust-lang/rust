@@ -387,7 +387,7 @@ mod extern_keyword {}
 //
 /// A value of type [`bool`] representing logical **false**.
 ///
-/// Logically `false` is not equal to [`true`].
+/// `false` is the logical opposite of [`true`].
 ///
 /// See the documentation for [`true`] for more information.
 ///
