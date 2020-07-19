@@ -48,10 +48,6 @@ pub fn target() -> TargetResult {
             // minimum extra features, these cannot be disabled via -C
             features: "+soft-float,+strict-align".to_string(),
 
-            executables: true,
-
-            relocation_model: RelocModel::Static,
-
             main_needs_argc_argv: false,
 
             // No thread-local storage (just use a static Cell)
@@ -60,16 +56,7 @@ pub fn target() -> TargetResult {
             // don't have atomic compare-and-swap
             atomic_cas: false,
 
-            // always just abort
-            panic_strategy: PanicStrategy::Abort,
-
-            // ABIs to not use
-            unsupported_abis: super::arm_base::unsupported_abis(),
-
-            // this is turned off just like in the `thumb_base` module
-            emit_debug_gdb_scripts: false,
-
-            ..TargetOptions::default()
+            ..super::thumb_base::opts()
         },
     })
 }
