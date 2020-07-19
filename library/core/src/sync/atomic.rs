@@ -358,6 +358,26 @@ impl AtomicBool {
         unsafe { &mut *(self.v.get() as *mut bool) }
     }
 
+    /// Get atomic access to a `&mut bool`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_mut)]
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// let mut some_bool = true;
+    /// let a = AtomicBool::from_mut(&mut some_bool);
+    /// a.store(false, Ordering::Relaxed);
+    /// assert_eq!(some_bool, false);
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_from_mut", issue = "none")]
+    pub fn from_mut(v: &mut bool) -> &Self {
+        // SAFETY: the mutable reference guarantees unique ownership.
+        unsafe { &*(v as *mut bool as *mut Self) }
+    }
+
     /// Consumes the atomic and returns the contained value.
     ///
     /// This is safe because passing `self` by value guarantees that no other threads are
@@ -914,6 +934,26 @@ impl<T> AtomicPtr<T> {
         unsafe { &mut *self.p.get() }
     }
 
+    /// Get atomic access to a pointer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_mut)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let mut some_ptr = &mut 123 as *mut i32;
+    /// let a = AtomicPtr::from_mut(&mut some_ptr);
+    /// a.store(&mut 456, Ordering::Relaxed);
+    /// assert_eq!(unsafe { *some_ptr }, 456);
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_from_mut", issue = "none")]
+    pub fn from_mut(v: &mut *mut T) -> &Self {
+        // SAFETY: the mutable reference guarantees unique ownership,
+        unsafe { &*(v as *mut *mut T as *mut Self) }
+    }
+
     /// Consumes the atomic and returns the contained value.
     ///
     /// This is safe because passing `self` by value guarantees that no other threads are
@@ -1355,6 +1395,29 @@ assert_eq!(some_var.load(Ordering::SeqCst), 5);
                 pub fn get_mut(&mut self) -> &mut $int_type {
                     // SAFETY: the mutable reference guarantees unique ownership.
                     unsafe { &mut *self.v.get() }
+                }
+            }
+
+            doc_comment! {
+                concat!("Get atomic access to a `&mut ", stringify!($int_type), "`.
+
+# Examples
+
+```
+#![feature(atomic_from_mut)]
+", $extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
+
+let mut some_int = 123;
+let a = ", stringify!($atomic_type), "::from_mut(&mut some_int);
+a.store(100, Ordering::Relaxed);
+assert_eq!(some_int, 100);
+```
+                "),
+                #[inline]
+                #[unstable(feature = "atomic_from_mut", issue = "none")]
+                pub fn from_mut(v: &mut $int_type) -> &Self {
+                    // SAFETY: the mutable reference guarantees unique ownership.
+                    unsafe { &*(v as *mut $int_type as *mut Self) }
                 }
             }
 
