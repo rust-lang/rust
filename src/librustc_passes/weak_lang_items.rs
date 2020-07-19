@@ -3,14 +3,13 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::fake_lang_items::FAKE_ITEMS_REFS;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::lang_items;
-use rustc_hir::lang_items::ITEM_REFS;
 use rustc_hir::weak_lang_items::WEAK_ITEMS_REFS;
 use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
-use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -77,15 +76,14 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
             if self.items.require(item).is_err() {
                 self.items.missing.push(item);
             }
-        } else if name == sym::count_code_region {
-            // `core::intrinsics::code_count_region()` is (currently) the only `extern` lang item
-            // that is never actually linked. It is not a `weak_lang_item` that can be registered
-            // when used, and should be registered here instead.
-            if let Some((item_index, _)) = ITEM_REFS.get(&name).cloned() {
-                if self.items.items[item_index].is_none() {
-                    let item_def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
-                    self.items.items[item_index] = Some(item_def_id);
-                }
+        } else if let Some(&item) = FAKE_ITEMS_REFS.get(&name) {
+            // Ensure "fake lang items" are registered. These are `extern` lang items that are
+            // injected into the MIR automatically (such as source code coverage counters), but are
+            // never actually linked; therefore, unlike "weak lang items", they cannot by registered
+            // when used, because they never appear to be used.
+            if self.items.items[item as usize].is_none() {
+                let item_def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
+                self.items.items[item as usize] = Some(item_def_id);
             }
         } else {
             struct_span_err!(self.tcx.sess, span, E0264, "unknown external lang item: `{}`", name)

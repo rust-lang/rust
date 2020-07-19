@@ -10,6 +10,7 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
     fn add_counter_region(
         &mut self,
         instance: Instance<'tcx>,
+        function_source_hash: u64,
         index: u32,
         start_byte_pos: u32,
         end_byte_pos: u32,

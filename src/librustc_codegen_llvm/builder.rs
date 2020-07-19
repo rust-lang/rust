@@ -1060,7 +1060,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             fn_name, hash, num_counters, index
         );
 
-        let llfn = unsafe { llvm::LLVMRustGetInstrprofIncrementIntrinsic(self.cx().llmod) };
+        let llfn = unsafe { llvm::LLVMRustGetInstrProfIncrementIntrinsic(self.cx().llmod) };
         let args = &[fn_name, hash, num_counters, index];
         let args = self.check_call("call", llfn, args);
 

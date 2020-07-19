@@ -276,8 +276,6 @@ language_item_table! {
 
     StartFnLangItem,               sym::start,              start_fn,                Target::Fn;
 
-    CountCodeRegionFnLangItem,     sym::count_code_region,  count_code_region_fn,    Target::Fn;
-
     EhPersonalityLangItem,         sym::eh_personality,     eh_personality,          Target::Fn;
     EhCatchTypeinfoLangItem,       sym::eh_catch_typeinfo,  eh_catch_typeinfo,       Target::Static;
 
@@ -295,4 +293,9 @@ language_item_table! {
     TerminationTraitLangItem,      sym::termination,        termination,             Target::Trait;
 
     TryTraitLangItem,              kw::Try,                 try_trait,               Target::Trait;
+
+    // language items related to source code coverage instrumentation (-Zinstrument-coverage)
+    CountCodeRegionFnLangItem,         sym::count_code_region,         count_code_region_fn,         Target::Fn;
+    CoverageCounterAddFnLangItem,      sym::coverage_counter_add,      coverage_counter_add_fn,      Target::Fn;
+    CoverageCounterSubtractFnLangItem, sym::coverage_counter_subtract, coverage_counter_subtract_fn, Target::Fn;
 }

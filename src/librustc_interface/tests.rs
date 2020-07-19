@@ -401,7 +401,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(incremental, Some(String::from("abc")));
     // `link_arg` is omitted because it just forwards to `link_args`.
     untracked!(link_args, vec![String::from("abc"), String::from("def")]);
-    untracked!(link_dead_code, true);
+    untracked!(link_dead_code, Some(true));
     untracked!(linker, Some(PathBuf::from("linker")));
     untracked!(linker_flavor, Some(LinkerFlavor::Gcc));
     untracked!(no_stack_check, true);

@@ -90,45 +90,64 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         args: &Vec<Operand<'tcx>>,
         caller_instance: ty::Instance<'tcx>,
     ) -> bool {
-        match intrinsic {
-            sym::count_code_region => {
-                use coverage::count_code_region_args::*;
-                self.add_counter_region(
-                    caller_instance,
-                    op_to_u32(&args[COUNTER_INDEX]),
-                    op_to_u32(&args[START_BYTE_POS]),
-                    op_to_u32(&args[END_BYTE_POS]),
-                );
-                true // Also inject the counter increment in the backend
+        if self.tcx.sess.opts.debugging_opts.instrument_coverage {
+            // Add the coverage information from the MIR to the Codegen context. Some coverage
+            // intrinsics are used only to pass along the coverage information (returns `false`
+            // for `is_codegen_intrinsic()`), but `count_code_region` is also converted into an
+            // LLVM intrinsic to increment a coverage counter.
+            match intrinsic {
+                sym::count_code_region => {
+                    use coverage::count_code_region_args::*;
+                    self.add_counter_region(
+                        caller_instance,
+                        op_to_u64(&args[FUNCTION_SOURCE_HASH]),
+                        op_to_u32(&args[COUNTER_INDEX]),
+                        op_to_u32(&args[START_BYTE_POS]),
+                        op_to_u32(&args[END_BYTE_POS]),
+                    );
+                    return true; // Also inject the counter increment in the backend
+                }
+                sym::coverage_counter_add | sym::coverage_counter_subtract => {
+                    use coverage::coverage_counter_expression_args::*;
+                    self.add_counter_expression_region(
+                        caller_instance,
+                        op_to_u32(&args[COUNTER_EXPRESSION_INDEX]),
+                        op_to_u32(&args[LEFT_INDEX]),
+                        if intrinsic == sym::coverage_counter_add {
+                            CounterOp::Add
+                        } else {
+                            CounterOp::Subtract
+                        },
+                        op_to_u32(&args[RIGHT_INDEX]),
+                        op_to_u32(&args[START_BYTE_POS]),
+                        op_to_u32(&args[END_BYTE_POS]),
+                    );
+                    return false; // Does not inject backend code
+                }
+                sym::coverage_unreachable => {
+                    use coverage::coverage_unreachable_args::*;
+                    self.add_unreachable_region(
+                        caller_instance,
+                        op_to_u32(&args[START_BYTE_POS]),
+                        op_to_u32(&args[END_BYTE_POS]),
+                    );
+                    return false; // Does not inject backend code
+                }
+                _ => {}
             }
-            sym::coverage_counter_add | sym::coverage_counter_subtract => {
-                use coverage::coverage_counter_expression_args::*;
-                self.add_counter_expression_region(
-                    caller_instance,
-                    op_to_u32(&args[COUNTER_EXPRESSION_INDEX]),
-                    op_to_u32(&args[LEFT_INDEX]),
-                    if intrinsic == sym::coverage_counter_add {
-                        CounterOp::Add
-                    } else {
-                        CounterOp::Subtract
-                    },
-                    op_to_u32(&args[RIGHT_INDEX]),
-                    op_to_u32(&args[START_BYTE_POS]),
-                    op_to_u32(&args[END_BYTE_POS]),
-                );
-                false // Does not inject backend code
+        } else {
+            // NOT self.tcx.sess.opts.debugging_opts.instrument_coverage
+            if intrinsic == sym::count_code_region {
+                // An external crate may have been pre-compiled with coverage instrumentation, and
+                // some references from the current crate to the external crate might carry along
+                // the call terminators to coverage intrinsics, like `count_code_region` (for
+                // example, when instantiating a generic function). If the current crate has
+                // `instrument_coverage` disabled, the `count_code_region` call terminators should
+                // be ignored.
+                return false; // Do not inject coverage counters inlined from external crates
             }
-            sym::coverage_unreachable => {
-                use coverage::coverage_unreachable_args::*;
-                self.add_unreachable_region(
-                    caller_instance,
-                    op_to_u32(&args[START_BYTE_POS]),
-                    op_to_u32(&args[END_BYTE_POS]),
-                );
-                false // Does not inject backend code
-            }
-            _ => true, // Unhandled intrinsics should be passed to `codegen_intrinsic_call()`
         }
+        true // Unhandled intrinsics should be passed to `codegen_intrinsic_call()`
     }
 
     fn codegen_intrinsic_call(
@@ -197,12 +216,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let coverageinfo = tcx.coverageinfo(caller_instance.def_id());
                 let mangled_fn = tcx.symbol_name(caller_instance);
                 let (mangled_fn_name, _len_val) = self.const_str(Symbol::intern(mangled_fn.name));
-                let hash = self.const_u64(coverageinfo.hash);
                 let num_counters = self.const_u32(coverageinfo.num_counters);
                 use coverage::count_code_region_args::*;
+                let hash = args[FUNCTION_SOURCE_HASH].immediate();
                 let index = args[COUNTER_INDEX].immediate();
                 debug!(
-                    "count_code_region to LLVM intrinsic instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
+                    "translating Rust intrinsic `count_code_region()` to LLVM intrinsic: \
+                    instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
                     mangled_fn.name, hash, num_counters, index,
                 );
                 self.instrprof_increment(mangled_fn_name, hash, num_counters, index)
@@ -2221,4 +2241,8 @@ fn float_type_width(ty: Ty<'_>) -> Option<u64> {
 
 fn op_to_u32<'tcx>(op: &Operand<'tcx>) -> u32 {
     Operand::scalar_from_const(op).to_u32().expect("Scalar is u32")
+}
+
+fn op_to_u64<'tcx>(op: &Operand<'tcx>) -> u64 {
+    Operand::scalar_from_const(op).to_u64().expect("Scalar is u64")
 }

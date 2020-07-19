@@ -216,9 +216,10 @@ use crate::creader::Library;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::struct_span_err;
 use rustc_middle::middle::cstore::{CrateSource, MetadataLoader};
 use rustc_session::config::{self, CrateType};
 use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
@@ -228,25 +229,12 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::{Target, TargetTriple};
 
-use std::cmp;
-use std::fmt;
-use std::fs;
-use std::io::{self, Read};
+use flate2::read::DeflateDecoder;
+use log::{debug, info, warn};
+use std::io::{Read, Result as IoResult, Write};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
-
-use flate2::read::DeflateDecoder;
-
-use rustc_data_structures::owning_ref::OwningRef;
-
-use log::{debug, info, warn};
-
-#[derive(Clone)]
-struct CrateMismatch {
-    path: PathBuf,
-    got: String,
-}
+use std::{cmp, fmt, fs};
 
 #[derive(Clone)]
 crate struct CrateLocator<'a> {
@@ -263,7 +251,6 @@ crate struct CrateLocator<'a> {
     pub target: &'a Target,
     pub triple: TargetTriple,
     pub filesearch: FileSearch<'a>,
-    span: Span,
     root: Option<&'a CratePaths>,
     pub is_proc_macro: Option<bool>,
 
@@ -275,6 +262,7 @@ crate struct CrateLocator<'a> {
     rejected_via_filename: Vec<CrateMismatch>,
 }
 
+#[derive(Clone)]
 crate struct CratePaths {
     name: Symbol,
     source: CrateSource,
@@ -287,7 +275,7 @@ impl CratePaths {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-enum CrateFlavor {
+crate enum CrateFlavor {
     Rlib,
     Rmeta,
     Dylib,
@@ -313,7 +301,6 @@ impl<'a> CrateLocator<'a> {
         extra_filename: Option<&'a str>,
         is_host: bool,
         path_kind: PathKind,
-        span: Span,
         root: Option<&'a CratePaths>,
         is_proc_macro: Option<bool>,
     ) -> CrateLocator<'a> {
@@ -349,7 +336,6 @@ impl<'a> CrateLocator<'a> {
             } else {
                 sess.target_filesearch(path_kind)
             },
-            span,
             root,
             is_proc_macro,
             rejected_via_hash: Vec::new(),
@@ -368,166 +354,30 @@ impl<'a> CrateLocator<'a> {
         self.rejected_via_filename.clear();
     }
 
-    crate fn maybe_load_library_crate(&mut self) -> Option<Library> {
+    crate fn maybe_load_library_crate(&mut self) -> Result<Option<Library>, CrateError> {
         if !self.exact_paths.is_empty() {
             return self.find_commandline_library();
         }
         let mut seen_paths = FxHashSet::default();
-        match self.extra_filename {
-            Some(s) => self
-                .find_library_crate(s, &mut seen_paths)
-                .or_else(|| self.find_library_crate("", &mut seen_paths)),
-            None => self.find_library_crate("", &mut seen_paths),
-        }
-    }
-
-    crate fn report_errs(self) -> ! {
-        let add = match self.root {
-            None => String::new(),
-            Some(r) => format!(" which `{}` depends on", r.name),
-        };
-        let mut msg = "the following crate versions were found:".to_string();
-        let mut err = if !self.rejected_via_hash.is_empty() {
-            let mut err = struct_span_err!(
-                self.sess,
-                self.span,
-                E0460,
-                "found possibly newer version of crate `{}`{}",
-                self.crate_name,
-                add
-            );
-            err.note("perhaps that crate needs to be recompiled?");
-            let mismatches = self.rejected_via_hash.iter();
-            for &CrateMismatch { ref path, .. } in mismatches {
-                msg.push_str(&format!("\ncrate `{}`: {}", self.crate_name, path.display()));
-            }
-            match self.root {
-                None => {}
-                Some(r) => {
-                    for path in r.source.paths() {
-                        msg.push_str(&format!("\ncrate `{}`: {}", r.name, path.display()));
-                    }
-                }
-            }
-            err.note(&msg);
-            err
-        } else if !self.rejected_via_triple.is_empty() {
-            let mut err = struct_span_err!(
-                self.sess,
-                self.span,
-                E0461,
-                "couldn't find crate `{}` \
-                                            with expected target triple {}{}",
-                self.crate_name,
-                self.triple,
-                add
-            );
-            let mismatches = self.rejected_via_triple.iter();
-            for &CrateMismatch { ref path, ref got } in mismatches {
-                msg.push_str(&format!(
-                    "\ncrate `{}`, target triple {}: {}",
-                    self.crate_name,
-                    got,
-                    path.display()
-                ));
-            }
-            err.note(&msg);
-            err
-        } else if !self.rejected_via_kind.is_empty() {
-            let mut err = struct_span_err!(
-                self.sess,
-                self.span,
-                E0462,
-                "found staticlib `{}` instead of rlib or dylib{}",
-                self.crate_name,
-                add
-            );
-            err.help("please recompile that crate using --crate-type lib");
-            let mismatches = self.rejected_via_kind.iter();
-            for &CrateMismatch { ref path, .. } in mismatches {
-                msg.push_str(&format!("\ncrate `{}`: {}", self.crate_name, path.display()));
-            }
-            err.note(&msg);
-            err
-        } else if !self.rejected_via_version.is_empty() {
-            let mut err = struct_span_err!(
-                self.sess,
-                self.span,
-                E0514,
-                "found crate `{}` compiled by an incompatible version \
-                                            of rustc{}",
-                self.crate_name,
-                add
-            );
-            err.help(&format!(
-                "please recompile that crate using this compiler ({})",
-                rustc_version()
-            ));
-            let mismatches = self.rejected_via_version.iter();
-            for &CrateMismatch { ref path, ref got } in mismatches {
-                msg.push_str(&format!(
-                    "\ncrate `{}` compiled by {}: {}",
-                    self.crate_name,
-                    got,
-                    path.display()
-                ));
-            }
-            err.note(&msg);
-            err
-        } else {
-            let mut err = struct_span_err!(
-                self.sess,
-                self.span,
-                E0463,
-                "can't find crate for `{}`{}",
-                self.crate_name,
-                add
-            );
-
-            if (self.crate_name == sym::std || self.crate_name == sym::core)
-                && self.triple != TargetTriple::from_triple(config::host_triple())
-            {
-                err.note(&format!("the `{}` target may not be installed", self.triple));
-            } else if self.crate_name == sym::profiler_builtins {
-                err.note(&"the compiler may have been built without the profiler runtime");
-            }
-            err.span_label(self.span, "can't find crate");
-            err
-        };
-
-        if !self.rejected_via_filename.is_empty() {
-            let dylibname = self.dylibname();
-            let mismatches = self.rejected_via_filename.iter();
-            for &CrateMismatch { ref path, .. } in mismatches {
-                err.note(&format!(
-                    "extern location for {} is of an unknown type: {}",
-                    self.crate_name,
-                    path.display()
-                ))
-                .help(&format!(
-                    "file name should be lib*.rlib or {}*.{}",
-                    dylibname.0, dylibname.1
-                ));
+        if let Some(extra_filename) = self.extra_filename {
+            if let library @ Some(_) = self.find_library_crate(extra_filename, &mut seen_paths)? {
+                return Ok(library);
             }
         }
-
-        err.emit();
-        self.sess.abort_if_errors();
-        unreachable!();
+        self.find_library_crate("", &mut seen_paths)
     }
 
     fn find_library_crate(
         &mut self,
         extra_prefix: &str,
         seen_paths: &mut FxHashSet<PathBuf>,
-    ) -> Option<Library> {
-        let dypair = self.dylibname();
-        let staticpair = self.staticlibname();
-
+    ) -> Result<Option<Library>, CrateError> {
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
-        let dylib_prefix = format!("{}{}{}", dypair.0, self.crate_name, extra_prefix);
+        let dylib_prefix =
+            format!("{}{}{}", self.target.options.dll_prefix, self.crate_name, extra_prefix);
         let rlib_prefix = format!("lib{}{}", self.crate_name, extra_prefix);
-        let staticlib_prefix = format!("{}{}{}", staticpair.0, self.crate_name, extra_prefix);
+        let staticlib_prefix =
+            format!("{}{}{}", self.target.options.staticlib_prefix, self.crate_name, extra_prefix);
 
         let mut candidates: FxHashMap<_, (FxHashMap<_, _>, FxHashMap<_, _>, FxHashMap<_, _>)> =
             Default::default();
@@ -555,10 +405,18 @@ impl<'a> CrateLocator<'a> {
                 (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
             } else if file.starts_with(&rlib_prefix) && file.ends_with(".rmeta") {
                 (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
-            } else if file.starts_with(&dylib_prefix) && file.ends_with(&dypair.1) {
-                (&file[(dylib_prefix.len())..(file.len() - dypair.1.len())], CrateFlavor::Dylib)
+            } else if file.starts_with(&dylib_prefix)
+                && file.ends_with(&self.target.options.dll_suffix)
+            {
+                (
+                    &file
+                        [(dylib_prefix.len())..(file.len() - self.target.options.dll_suffix.len())],
+                    CrateFlavor::Dylib,
+                )
             } else {
-                if file.starts_with(&staticlib_prefix) && file.ends_with(&staticpair.1) {
+                if file.starts_with(&staticlib_prefix)
+                    && file.ends_with(&self.target.options.staticlib_suffix)
+                {
                     staticlibs
                         .push(CrateMismatch { path: spf.path.clone(), got: "static".to_string() });
                 }
@@ -567,9 +425,7 @@ impl<'a> CrateLocator<'a> {
 
             info!("lib candidate: {}", spf.path.display());
 
-            let hash_str = hash.to_string();
-            let slot = candidates.entry(hash_str).or_default();
-            let (ref mut rlibs, ref mut rmetas, ref mut dylibs) = *slot;
+            let (rlibs, rmetas, dylibs) = candidates.entry(hash.to_string()).or_default();
             fs::canonicalize(&spf.path)
                 .map(|p| {
                     if seen_paths.contains(&p) {
@@ -577,16 +433,10 @@ impl<'a> CrateLocator<'a> {
                     };
                     seen_paths.insert(p.clone());
                     match found_kind {
-                        CrateFlavor::Rlib => {
-                            rlibs.insert(p, kind);
-                        }
-                        CrateFlavor::Rmeta => {
-                            rmetas.insert(p, kind);
-                        }
-                        CrateFlavor::Dylib => {
-                            dylibs.insert(p, kind);
-                        }
-                    }
+                        CrateFlavor::Rlib => rlibs.insert(p, kind),
+                        CrateFlavor::Rmeta => rmetas.insert(p, kind),
+                        CrateFlavor::Dylib => dylibs.insert(p, kind),
+                    };
                     FileMatches
                 })
                 .unwrap_or(FileDoesntMatch)
@@ -603,7 +453,7 @@ impl<'a> CrateLocator<'a> {
         // search is being performed for.
         let mut libraries = FxHashMap::default();
         for (_hash, (rlibs, rmetas, dylibs)) in candidates {
-            if let Some((svh, lib)) = self.extract_lib(rlibs, rmetas, dylibs) {
+            if let Some((svh, lib)) = self.extract_lib(rlibs, rmetas, dylibs)? {
                 libraries.insert(svh, lib);
             }
         }
@@ -612,39 +462,9 @@ impl<'a> CrateLocator<'a> {
         // what we've got and figure out if we found multiple candidates for
         // libraries or not.
         match libraries.len() {
-            0 => None,
-            1 => Some(libraries.into_iter().next().unwrap().1),
-            _ => {
-                let mut err = struct_span_err!(
-                    self.sess,
-                    self.span,
-                    E0464,
-                    "multiple matching crates for `{}`",
-                    self.crate_name
-                );
-                let candidates = libraries
-                    .iter()
-                    .filter_map(|(_, lib)| {
-                        let crate_name = &lib.metadata.get_root().name().as_str();
-                        match &(&lib.source.dylib, &lib.source.rlib) {
-                            &(&Some((ref pd, _)), &Some((ref pr, _))) => Some(format!(
-                                "\ncrate `{}`: {}\n{:>padding$}",
-                                crate_name,
-                                pd.display(),
-                                pr.display(),
-                                padding = 8 + crate_name.len()
-                            )),
-                            &(&Some((ref p, _)), &None) | &(&None, &Some((ref p, _))) => {
-                                Some(format!("\ncrate `{}`: {}", crate_name, p.display()))
-                            }
-                            &(&None, &None) => None,
-                        }
-                    })
-                    .collect::<String>();
-                err.note(&format!("candidates:{}", candidates));
-                err.emit();
-                None
-            }
+            0 => Ok(None),
+            1 => Ok(Some(libraries.into_iter().next().unwrap().1)),
+            _ => Err(CrateError::MultipleMatchingCrates(self.crate_name, libraries)),
         }
     }
 
@@ -653,16 +473,16 @@ impl<'a> CrateLocator<'a> {
         rlibs: FxHashMap<PathBuf, PathKind>,
         rmetas: FxHashMap<PathBuf, PathKind>,
         dylibs: FxHashMap<PathBuf, PathKind>,
-    ) -> Option<(Svh, Library)> {
+    ) -> Result<Option<(Svh, Library)>, CrateError> {
         let mut slot = None;
         // Order here matters, rmeta should come first. See comment in
         // `extract_one` below.
         let source = CrateSource {
-            rmeta: self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot),
-            rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot),
-            dylib: self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot),
+            rmeta: self.extract_one(rmetas, CrateFlavor::Rmeta, &mut slot)?,
+            rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)?,
+            dylib: self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot)?,
         };
-        slot.map(|(svh, metadata)| (svh, Library { source, metadata }))
+        Ok(slot.map(|(svh, metadata)| (svh, Library { source, metadata })))
     }
 
     fn needs_crate_flavor(&self, flavor: CrateFlavor) -> bool {
@@ -698,10 +518,7 @@ impl<'a> CrateLocator<'a> {
         m: FxHashMap<PathBuf, PathKind>,
         flavor: CrateFlavor,
         slot: &mut Option<(Svh, MetadataBlob)>,
-    ) -> Option<(PathBuf, PathKind)> {
-        let mut ret: Option<(PathBuf, PathKind)> = None;
-        let mut error = 0;
-
+    ) -> Result<Option<(PathBuf, PathKind)>, CrateError> {
         // If we are producing an rlib, and we've already loaded metadata, then
         // we should not attempt to discover further crate sources (unless we're
         // locating a proc macro; exact logic is in needs_crate_flavor). This means
@@ -718,13 +535,14 @@ impl<'a> CrateLocator<'a> {
         // from the other crate sources.
         if slot.is_some() {
             if m.is_empty() || !self.needs_crate_flavor(flavor) {
-                return None;
+                return Ok(None);
             } else if m.len() == 1 {
-                return Some(m.into_iter().next().unwrap());
+                return Ok(Some(m.into_iter().next().unwrap()));
             }
         }
 
-        let mut err: Option<DiagnosticBuilder<'_>> = None;
+        let mut ret: Option<(PathBuf, PathKind)> = None;
+        let mut err_data: Option<Vec<PathBuf>> = None;
         for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
             let (hash, metadata) =
@@ -744,30 +562,18 @@ impl<'a> CrateLocator<'a> {
                 };
             // If we see multiple hashes, emit an error about duplicate candidates.
             if slot.as_ref().map_or(false, |s| s.0 != hash) {
-                let mut e = struct_span_err!(
-                    self.sess,
-                    self.span,
-                    E0465,
-                    "multiple {} candidates for `{}` found",
-                    flavor,
-                    self.crate_name
-                );
-                e.span_note(
-                    self.span,
-                    &format!(r"candidate #1: {}", ret.as_ref().unwrap().0.display()),
-                );
-                if let Some(ref mut e) = err {
-                    e.emit();
+                if let Some(candidates) = err_data {
+                    return Err(CrateError::MultipleCandidates(
+                        self.crate_name,
+                        flavor,
+                        candidates,
+                    ));
                 }
-                err = Some(e);
-                error = 1;
+                err_data = Some(vec![ret.as_ref().unwrap().0.clone()]);
                 *slot = None;
             }
-            if error > 0 {
-                error += 1;
-                err.as_mut()
-                    .unwrap()
-                    .span_note(self.span, &format!(r"candidate #{}: {}", error, lib.display()));
+            if let Some(candidates) = &mut err_data {
+                candidates.push(lib);
                 continue;
             }
 
@@ -790,7 +596,7 @@ impl<'a> CrateLocator<'a> {
             // As a result, we favor the sysroot crate here. Note that the
             // candidates are all canonicalized, so we canonicalize the sysroot
             // as well.
-            if let Some((ref prev, _)) = ret {
+            if let Some((prev, _)) = &ret {
                 let sysroot = &self.sess.sysroot;
                 let sysroot = sysroot.canonicalize().unwrap_or_else(|_| sysroot.to_path_buf());
                 if prev.starts_with(&sysroot) {
@@ -801,11 +607,10 @@ impl<'a> CrateLocator<'a> {
             ret = Some((lib, kind));
         }
 
-        if error > 0 {
-            err.unwrap().emit();
-            None
+        if let Some(candidates) = err_data {
+            Err(CrateError::MultipleCandidates(self.crate_name, flavor, candidates))
         } else {
-            ret
+            Ok(ret)
         }
     }
 
@@ -860,71 +665,29 @@ impl<'a> CrateLocator<'a> {
         Some(hash)
     }
 
-    // Returns the corresponding (prefix, suffix) that files need to have for
-    // dynamic libraries
-    fn dylibname(&self) -> (String, String) {
-        let t = &self.target;
-        (t.options.dll_prefix.clone(), t.options.dll_suffix.clone())
-    }
-
-    // Returns the corresponding (prefix, suffix) that files need to have for
-    // static libraries
-    fn staticlibname(&self) -> (String, String) {
-        let t = &self.target;
-        (t.options.staticlib_prefix.clone(), t.options.staticlib_suffix.clone())
-    }
-
-    fn find_commandline_library(&mut self) -> Option<Library> {
+    fn find_commandline_library(&mut self) -> Result<Option<Library>, CrateError> {
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.
-        let sess = self.sess;
-        let dylibname = self.dylibname();
         let mut rlibs = FxHashMap::default();
         let mut rmetas = FxHashMap::default();
         let mut dylibs = FxHashMap::default();
-        {
-            let crate_name = self.crate_name;
-            let rejected_via_filename = &mut self.rejected_via_filename;
-            let locs = self.exact_paths.iter().filter(|loc| {
-                if !loc.exists() {
-                    sess.err(&format!(
-                        "extern location for {} does not exist: {}",
-                        crate_name,
-                        loc.display()
-                    ));
-                    return false;
+        for loc in &self.exact_paths {
+            if !loc.exists() {
+                return Err(CrateError::ExternLocationNotExist(self.crate_name, loc.clone()));
+            }
+            let file = match loc.file_name().and_then(|s| s.to_str()) {
+                Some(file) => file,
+                None => {
+                    return Err(CrateError::ExternLocationNotFile(self.crate_name, loc.clone()));
                 }
-                let file = match loc.file_name().and_then(|s| s.to_str()) {
-                    Some(file) => file,
-                    None => {
-                        sess.err(&format!(
-                            "extern location for {} is not a file: {}",
-                            crate_name,
-                            loc.display()
-                        ));
-                        return false;
-                    }
-                };
-                if file.starts_with("lib") && (file.ends_with(".rlib") || file.ends_with(".rmeta"))
-                {
-                    return true;
-                } else {
-                    let (ref prefix, ref suffix) = dylibname;
-                    if file.starts_with(&prefix[..]) && file.ends_with(&suffix[..]) {
-                        return true;
-                    }
-                }
+            };
 
-                rejected_via_filename
-                    .push(CrateMismatch { path: (*loc).clone(), got: String::new() });
-
-                false
-            });
-
-            // Now that we have an iterator of good candidates, make sure
-            // there's at most one rlib and at most one dylib.
-            for loc in locs {
+            if file.starts_with("lib") && (file.ends_with(".rlib") || file.ends_with(".rmeta"))
+                || file.starts_with(&self.target.options.dll_prefix)
+                    && file.ends_with(&self.target.options.dll_suffix)
+            {
+                // Make sure there's at most one rlib and at most one dylib.
                 if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
                     rlibs.insert(fs::canonicalize(&loc).unwrap(), PathKind::ExternFlag);
                 } else if loc.file_name().unwrap().to_str().unwrap().ends_with(".rmeta") {
@@ -932,25 +695,30 @@ impl<'a> CrateLocator<'a> {
                 } else {
                     dylibs.insert(fs::canonicalize(&loc).unwrap(), PathKind::ExternFlag);
                 }
+            } else {
+                self.rejected_via_filename
+                    .push(CrateMismatch { path: loc.clone(), got: String::new() });
             }
-        };
+        }
 
         // Extract the dylib/rlib/rmeta triple.
-        self.extract_lib(rlibs, rmetas, dylibs).map(|(_, lib)| lib)
+        Ok(self.extract_lib(rlibs, rmetas, dylibs)?.map(|(_, lib)| lib))
     }
-}
 
-// Just a small wrapper to time how long reading metadata takes.
-fn get_metadata_section(
-    target: &Target,
-    flavor: CrateFlavor,
-    filename: &Path,
-    loader: &dyn MetadataLoader,
-) -> Result<MetadataBlob, String> {
-    let start = Instant::now();
-    let ret = get_metadata_section_imp(target, flavor, filename, loader);
-    info!("reading {:?} => {:?}", filename.file_name().unwrap(), start.elapsed());
-    ret
+    crate fn into_error(self) -> CrateError {
+        CrateError::LocatorCombined(CombinedLocatorError {
+            crate_name: self.crate_name,
+            root: self.root.cloned(),
+            triple: self.triple,
+            dll_prefix: self.target.options.dll_prefix.clone(),
+            dll_suffix: self.target.options.dll_suffix.clone(),
+            rejected_via_hash: self.rejected_via_hash,
+            rejected_via_triple: self.rejected_via_triple,
+            rejected_via_kind: self.rejected_via_kind,
+            rejected_via_version: self.rejected_via_version,
+            rejected_via_filename: self.rejected_via_filename,
+        })
+    }
 }
 
 /// A trivial wrapper for `Mmap` that implements `StableDeref`.
@@ -966,7 +734,7 @@ impl Deref for StableDerefMmap {
 
 unsafe impl stable_deref_trait::StableDeref for StableDerefMmap {}
 
-fn get_metadata_section_imp(
+fn get_metadata_section(
     target: &Target,
     flavor: CrateFlavor,
     filename: &Path,
@@ -1026,12 +794,19 @@ pub fn find_plugin_registrar(
     metadata_loader: &dyn MetadataLoader,
     span: Span,
     name: Symbol,
-) -> Option<(PathBuf, CrateDisambiguator)> {
+) -> (PathBuf, CrateDisambiguator) {
+    match find_plugin_registrar_impl(sess, metadata_loader, name) {
+        Ok(res) => res,
+        Err(err) => err.report(sess, span),
+    }
+}
+
+fn find_plugin_registrar_impl<'a>(
+    sess: &'a Session,
+    metadata_loader: &dyn MetadataLoader,
+    name: Symbol,
+) -> Result<(PathBuf, CrateDisambiguator), CrateError> {
     info!("find plugin registrar `{}`", name);
-    let target_triple = sess.opts.target_triple.clone();
-    let host_triple = TargetTriple::from_triple(config::host_triple());
-    let is_cross = target_triple != host_triple;
-    let mut target_only = false;
     let mut locator = CrateLocator::new(
         sess,
         metadata_loader,
@@ -1041,57 +816,16 @@ pub fn find_plugin_registrar(
         None, // extra_filename
         true, // is_host
         PathKind::Crate,
-        span,
         None, // root
         None, // is_proc_macro
     );
 
-    let library = locator.maybe_load_library_crate().or_else(|| {
-        if !is_cross {
-            return None;
-        }
-        // Try loading from target crates. This will abort later if we
-        // try to load a plugin registrar function,
-        target_only = true;
-
-        locator.target = &sess.target.target;
-        locator.triple = target_triple;
-        locator.filesearch = sess.target_filesearch(PathKind::Crate);
-
-        locator.maybe_load_library_crate()
-    });
-    let library = match library {
-        Some(l) => l,
-        None => locator.report_errs(),
-    };
-
-    if target_only {
-        let message = format!(
-            "plugin `{}` is not available for triple `{}` (only found {})",
-            name,
-            config::host_triple(),
-            sess.opts.target_triple
-        );
-        struct_span_err!(sess, span, E0456, "{}", &message).emit();
-        return None;
-    }
-
-    match library.source.dylib {
-        Some(dylib) => Some((dylib.0, library.metadata.get_root().disambiguator())),
-        None => {
-            struct_span_err!(
-                sess,
-                span,
-                E0457,
-                "plugin `{}` only found in rlib format, but must be available \
-                        in dylib format",
-                name
-            )
-            .emit();
-            // No need to abort because the loading code will just ignore this
-            // empty dylib.
-            None
-        }
+    match locator.maybe_load_library_crate()? {
+        Some(library) => match library.source.dylib {
+            Some(dylib) => Ok((dylib.0, library.metadata.get_root().disambiguator())),
+            None => Err(CrateError::NonDylibPlugin(name)),
+        },
+        None => Err(locator.into_error()),
     }
 }
 
@@ -1100,8 +834,8 @@ pub fn list_file_metadata(
     target: &Target,
     path: &Path,
     metadata_loader: &dyn MetadataLoader,
-    out: &mut dyn io::Write,
-) -> io::Result<()> {
+    out: &mut dyn Write,
+) -> IoResult<()> {
     let filename = path.file_name().unwrap().to_str().unwrap();
     let flavor = if filename.ends_with(".rlib") {
         CrateFlavor::Rlib
@@ -1113,5 +847,261 @@ pub fn list_file_metadata(
     match get_metadata_section(target, flavor, path, metadata_loader) {
         Ok(metadata) => metadata.list_crate_metadata(out),
         Err(msg) => write!(out, "{}\n", msg),
+    }
+}
+
+// ------------------------------------------ Error reporting -------------------------------------
+
+#[derive(Clone)]
+struct CrateMismatch {
+    path: PathBuf,
+    got: String,
+}
+
+/// Candidate rejection reasons collected during crate search.
+/// If no candidate is accepted, then these reasons are presented to the user,
+/// otherwise they are ignored.
+crate struct CombinedLocatorError {
+    crate_name: Symbol,
+    root: Option<CratePaths>,
+    triple: TargetTriple,
+    dll_prefix: String,
+    dll_suffix: String,
+    rejected_via_hash: Vec<CrateMismatch>,
+    rejected_via_triple: Vec<CrateMismatch>,
+    rejected_via_kind: Vec<CrateMismatch>,
+    rejected_via_version: Vec<CrateMismatch>,
+    rejected_via_filename: Vec<CrateMismatch>,
+}
+
+crate enum CrateError {
+    NonAsciiName(Symbol),
+    ExternLocationNotExist(Symbol, PathBuf),
+    ExternLocationNotFile(Symbol, PathBuf),
+    MultipleCandidates(Symbol, CrateFlavor, Vec<PathBuf>),
+    MultipleMatchingCrates(Symbol, FxHashMap<Svh, Library>),
+    SymbolConflictsCurrent(Symbol),
+    SymbolConflictsOthers(Symbol),
+    DlOpen(String),
+    DlSym(String),
+    LocatorCombined(CombinedLocatorError),
+    NonDylibPlugin(Symbol),
+}
+
+impl CrateError {
+    crate fn report(self, sess: &Session, span: Span) -> ! {
+        let mut err = match self {
+            CrateError::NonAsciiName(crate_name) => sess.struct_span_err(
+                span,
+                &format!("cannot load a crate with a non-ascii name `{}`", crate_name),
+            ),
+            CrateError::ExternLocationNotExist(crate_name, loc) => sess.struct_span_err(
+                span,
+                &format!("extern location for {} does not exist: {}", crate_name, loc.display()),
+            ),
+            CrateError::ExternLocationNotFile(crate_name, loc) => sess.struct_span_err(
+                span,
+                &format!("extern location for {} is not a file: {}", crate_name, loc.display()),
+            ),
+            CrateError::MultipleCandidates(crate_name, flavor, candidates) => {
+                let mut err = struct_span_err!(
+                    sess,
+                    span,
+                    E0465,
+                    "multiple {} candidates for `{}` found",
+                    flavor,
+                    crate_name,
+                );
+                for (i, candidate) in candidates.iter().enumerate() {
+                    err.span_note(span, &format!("candidate #{}: {}", i + 1, candidate.display()));
+                }
+                err
+            }
+            CrateError::MultipleMatchingCrates(crate_name, libraries) => {
+                let mut err = struct_span_err!(
+                    sess,
+                    span,
+                    E0464,
+                    "multiple matching crates for `{}`",
+                    crate_name
+                );
+                let candidates = libraries
+                    .iter()
+                    .filter_map(|(_, lib)| {
+                        let crate_name = &lib.metadata.get_root().name().as_str();
+                        match (&lib.source.dylib, &lib.source.rlib) {
+                            (Some((pd, _)), Some((pr, _))) => Some(format!(
+                                "\ncrate `{}`: {}\n{:>padding$}",
+                                crate_name,
+                                pd.display(),
+                                pr.display(),
+                                padding = 8 + crate_name.len()
+                            )),
+                            (Some((p, _)), None) | (None, Some((p, _))) => {
+                                Some(format!("\ncrate `{}`: {}", crate_name, p.display()))
+                            }
+                            (None, None) => None,
+                        }
+                    })
+                    .collect::<String>();
+                err.note(&format!("candidates:{}", candidates));
+                err
+            }
+            CrateError::SymbolConflictsCurrent(root_name) => struct_span_err!(
+                sess,
+                span,
+                E0519,
+                "the current crate is indistinguishable from one of its dependencies: it has the \
+                 same crate-name `{}` and was compiled with the same `-C metadata` arguments. \
+                 This will result in symbol conflicts between the two.",
+                root_name,
+            ),
+            CrateError::SymbolConflictsOthers(root_name) => struct_span_err!(
+                sess,
+                span,
+                E0523,
+                "found two different crates with name `{}` that are not distinguished by differing \
+                 `-C metadata`. This will result in symbol conflicts between the two.",
+                root_name,
+            ),
+            CrateError::DlOpen(s) | CrateError::DlSym(s) => sess.struct_span_err(span, &s),
+            CrateError::LocatorCombined(locator) => {
+                let crate_name = locator.crate_name;
+                let add = match &locator.root {
+                    None => String::new(),
+                    Some(r) => format!(" which `{}` depends on", r.name),
+                };
+                let mut msg = "the following crate versions were found:".to_string();
+                let mut err = if !locator.rejected_via_hash.is_empty() {
+                    let mut err = struct_span_err!(
+                        sess,
+                        span,
+                        E0460,
+                        "found possibly newer version of crate `{}`{}",
+                        crate_name,
+                        add,
+                    );
+                    err.note("perhaps that crate needs to be recompiled?");
+                    let mismatches = locator.rejected_via_hash.iter();
+                    for CrateMismatch { path, .. } in mismatches {
+                        msg.push_str(&format!("\ncrate `{}`: {}", crate_name, path.display()));
+                    }
+                    if let Some(r) = locator.root {
+                        for path in r.source.paths() {
+                            msg.push_str(&format!("\ncrate `{}`: {}", r.name, path.display()));
+                        }
+                    }
+                    err.note(&msg);
+                    err
+                } else if !locator.rejected_via_triple.is_empty() {
+                    let mut err = struct_span_err!(
+                        sess,
+                        span,
+                        E0461,
+                        "couldn't find crate `{}` with expected target triple {}{}",
+                        crate_name,
+                        locator.triple,
+                        add,
+                    );
+                    let mismatches = locator.rejected_via_triple.iter();
+                    for CrateMismatch { path, got } in mismatches {
+                        msg.push_str(&format!(
+                            "\ncrate `{}`, target triple {}: {}",
+                            crate_name,
+                            got,
+                            path.display(),
+                        ));
+                    }
+                    err.note(&msg);
+                    err
+                } else if !locator.rejected_via_kind.is_empty() {
+                    let mut err = struct_span_err!(
+                        sess,
+                        span,
+                        E0462,
+                        "found staticlib `{}` instead of rlib or dylib{}",
+                        crate_name,
+                        add,
+                    );
+                    err.help("please recompile that crate using --crate-type lib");
+                    let mismatches = locator.rejected_via_kind.iter();
+                    for CrateMismatch { path, .. } in mismatches {
+                        msg.push_str(&format!("\ncrate `{}`: {}", crate_name, path.display()));
+                    }
+                    err.note(&msg);
+                    err
+                } else if !locator.rejected_via_version.is_empty() {
+                    let mut err = struct_span_err!(
+                        sess,
+                        span,
+                        E0514,
+                        "found crate `{}` compiled by an incompatible version of rustc{}",
+                        crate_name,
+                        add,
+                    );
+                    err.help(&format!(
+                        "please recompile that crate using this compiler ({})",
+                        rustc_version(),
+                    ));
+                    let mismatches = locator.rejected_via_version.iter();
+                    for CrateMismatch { path, got } in mismatches {
+                        msg.push_str(&format!(
+                            "\ncrate `{}` compiled by {}: {}",
+                            crate_name,
+                            got,
+                            path.display(),
+                        ));
+                    }
+                    err.note(&msg);
+                    err
+                } else {
+                    let mut err = struct_span_err!(
+                        sess,
+                        span,
+                        E0463,
+                        "can't find crate for `{}`{}",
+                        crate_name,
+                        add,
+                    );
+
+                    if (crate_name == sym::std || crate_name == sym::core)
+                        && locator.triple != TargetTriple::from_triple(config::host_triple())
+                    {
+                        err.note(&format!("the `{}` target may not be installed", locator.triple));
+                    } else if crate_name == sym::profiler_builtins {
+                        err.note(&"the compiler may have been built without the profiler runtime");
+                    }
+                    err.span_label(span, "can't find crate");
+                    err
+                };
+
+                if !locator.rejected_via_filename.is_empty() {
+                    let mismatches = locator.rejected_via_filename.iter();
+                    for CrateMismatch { path, .. } in mismatches {
+                        err.note(&format!(
+                            "extern location for {} is of an unknown type: {}",
+                            crate_name,
+                            path.display(),
+                        ))
+                        .help(&format!(
+                            "file name should be lib*.rlib or {}*.{}",
+                            locator.dll_prefix, locator.dll_suffix
+                        ));
+                    }
+                }
+                err
+            }
+            CrateError::NonDylibPlugin(crate_name) => struct_span_err!(
+                sess,
+                span,
+                E0457,
+                "plugin `{}` only found in rlib format, but must be available in dylib format",
+                crate_name,
+            ),
+        };
+
+        err.emit();
+        sess.abort_if_errors();
+        unreachable!();
     }
 }

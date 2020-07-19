@@ -12,7 +12,7 @@ use libc::c_uint;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_llvm::RustString;
 use std::cell::RefCell;
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::str::FromStr;
 use std::string::FromUtf8Error;
 
@@ -189,6 +189,42 @@ pub fn mk_section_iter(llof: &ffi::ObjectFile) -> SectionIter<'_> {
     unsafe { SectionIter { llsi: LLVMGetSections(llof) } }
 }
 
+pub fn set_section(llglobal: &Value, section_name: &str) {
+    let section_name_cstr = CString::new(section_name).expect("unexpected CString error");
+    unsafe {
+        LLVMSetSection(llglobal, section_name_cstr.as_ptr());
+    }
+}
+
+pub fn add_global<'a>(llmod: &'a Module, ty: &'a Type, name: &str) -> &'a Value {
+    let name_cstr = CString::new(name).expect("unexpected CString error");
+    unsafe { LLVMAddGlobal(llmod, ty, name_cstr.as_ptr()) }
+}
+
+pub fn set_initializer(llglobal: &Value, constant_val: &Value) {
+    unsafe {
+        LLVMSetInitializer(llglobal, constant_val);
+    }
+}
+
+pub fn set_global_constant(llglobal: &Value, is_constant: bool) {
+    unsafe {
+        LLVMSetGlobalConstant(llglobal, if is_constant { ffi::True } else { ffi::False });
+    }
+}
+
+pub fn set_linkage(llglobal: &Value, linkage: Linkage) {
+    unsafe {
+        LLVMRustSetLinkage(llglobal, linkage);
+    }
+}
+
+pub fn set_alignment(llglobal: &Value, bytes: usize) {
+    unsafe {
+        ffi::LLVMSetAlignment(llglobal, bytes as c_uint);
+    }
+}
+
 /// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
 pub fn get_param(llfn: &Value, index: c_uint) -> &Value {
     unsafe {
@@ -223,6 +259,12 @@ pub fn build_string(f: impl FnOnce(&RustString)) -> Result<String, FromUtf8Error
     let sr = RustString { bytes: RefCell::new(Vec::new()) };
     f(&sr);
     String::from_utf8(sr.bytes.into_inner())
+}
+
+pub fn build_byte_buffer(f: impl FnOnce(&RustString)) -> Vec<u8> {
+    let sr = RustString { bytes: RefCell::new(Vec::new()) };
+    f(&sr);
+    sr.bytes.into_inner()
 }
 
 pub fn twine_to_string(tr: &Twine) -> String {

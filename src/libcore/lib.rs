@@ -92,6 +92,7 @@
 #![feature(const_slice_ptr_len)]
 #![feature(const_type_name)]
 #![feature(const_likely)]
+#![feature(const_unreachable_unchecked)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
@@ -239,6 +240,8 @@ pub mod char;
 pub mod ffi;
 #[cfg(not(test))] // See #65860
 pub mod iter;
+#[unstable(feature = "once_cell", issue = "74465")]
+pub mod lazy;
 pub mod option;
 pub mod panic;
 pub mod panicking;

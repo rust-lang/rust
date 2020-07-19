@@ -161,7 +161,7 @@ where
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
-    if !tcx.sess.opts.cg.link_dead_code {
+    if tcx.sess.opts.cg.link_dead_code != Some(true) {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         internalize_symbols(tcx, &mut post_inlining, inlining_map);
     }
@@ -906,7 +906,7 @@ fn collect_and_partition_mono_items(
             }
         }
         None => {
-            if tcx.sess.opts.cg.link_dead_code {
+            if tcx.sess.opts.cg.link_dead_code == Some(true) {
                 MonoItemCollectionMode::Eager
             } else {
                 MonoItemCollectionMode::Lazy

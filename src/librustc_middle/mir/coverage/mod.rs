@@ -2,9 +2,10 @@
 
 /// Positional arguments to `libcore::count_code_region()`
 pub mod count_code_region_args {
-    pub const COUNTER_INDEX: usize = 0;
-    pub const START_BYTE_POS: usize = 1;
-    pub const END_BYTE_POS: usize = 2;
+    pub const FUNCTION_SOURCE_HASH: usize = 0;
+    pub const COUNTER_INDEX: usize = 1;
+    pub const START_BYTE_POS: usize = 2;
+    pub const END_BYTE_POS: usize = 3;
 }
 
 /// Positional arguments to `libcore::coverage_counter_add()` and
