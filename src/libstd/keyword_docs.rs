@@ -473,7 +473,7 @@ mod fn_keyword {}
 /// * `for` is also used for [higher-ranked trait bounds] as in `for<'a> &'a T: PartialEq<i32>`.
 ///
 /// for-in-loops, or to be more precise, iterator loops, are a simple syntactic sugar over a common
-/// practice within Rust, which is to loop over anything that implements `IntoIterator` until the
+/// practice within Rust, which is to loop over anything that implements [`IntoIterator`] until the
 /// temporary iterator returns `None` (or `break` is called).
 ///
 /// ```rust
