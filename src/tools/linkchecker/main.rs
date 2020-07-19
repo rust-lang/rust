@@ -29,7 +29,7 @@ use crate::Redirect::*;
 // [(generated_documentation_page, &[broken_links])]
 const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     // These are methods on slice, and `Self` does not work on primitive impls
-    // in intra-doc links (intra-doc links are weird)
+    // in intra-doc links (primitive impls are weird)
     // https://github.com/rust-lang/rust/issues/62834 is necessary to be
     // able to link to slices
     (
