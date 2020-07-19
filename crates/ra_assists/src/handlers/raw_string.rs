@@ -131,7 +131,7 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let token = ctx.find_token_at_offset(RAW_STRING).and_then(ast::RawString::cast)?;
 
     let text = token.text().as_str();
-    if !text.starts_with("r#") && text.ends_with("#") {
+    if !text.starts_with("r#") && text.ends_with('#') {
         return None;
     }
 

@@ -242,7 +242,7 @@ impl GlobalState {
             })
             .map(move |cargo| {
                 let cargo_project_root = cargo.workspace_root().to_path_buf();
-                FlycheckHandle::spawn(sender, config.clone(), cargo_project_root.into())
+                FlycheckHandle::spawn(sender, config, cargo_project_root.into())
             })
     }
 }
