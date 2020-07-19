@@ -92,7 +92,7 @@ intrinsics! {
         i64_div_rem(a, b).1
     }
 
-    #[aapcs_on_arm]
+    #[maybe_use_optimized_c_shim]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __divmoddi4(a: i64, b: i64, rem: &mut i64) -> i64 {
         let quo_rem = i64_div_rem(a, b);

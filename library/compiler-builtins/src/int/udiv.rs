@@ -187,6 +187,7 @@ intrinsics! {
         u64_div_rem(n, d).1
     }
 
+    #[maybe_use_optimized_c_shim]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
         let quo_rem = u64_div_rem(n, d);
