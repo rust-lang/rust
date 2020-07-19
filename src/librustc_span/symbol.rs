@@ -1435,6 +1435,11 @@ impl Symbol {
     pub fn to_ident_string(self) -> String {
         Ident::with_dummy_span(self).to_string()
     }
+
+    pub fn is_empty(self) -> bool {
+        // Invalid is "" (the empty string)
+        self == kw::Invalid
+    }
 }
 
 impl fmt::Debug for Symbol {

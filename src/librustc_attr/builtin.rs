@@ -21,6 +21,7 @@ enum AttrError {
     MultipleItem(String),
     UnknownMetaItem(String, &'static [&'static str]),
     MissingSince,
+    EmptyFeature,
     MissingFeature,
     MultipleStabilityLevels,
     UnsupportedLiteral(&'static str, /* is_bytestr */ bool),
@@ -40,6 +41,9 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
         }
         AttrError::MissingSince => {
             struct_span_err!(diag, span, E0542, "missing 'since'").emit();
+        }
+        AttrError::EmptyFeature => {
+            struct_span_err!(diag, span, E0546, "empty 'feature' attribute").emit();
         }
         AttrError::MissingFeature => {
             struct_span_err!(diag, span, E0546, "missing 'feature'").emit();
@@ -427,6 +431,10 @@ where
 
                     match (feature, reason, issue) {
                         (Some(feature), reason, Some(_)) => {
+                            if feature.is_empty() {
+                                handle_errors(sess, attr.span, AttrError::EmptyFeature);
+                                continue;
+                            }
                             let level = Unstable { reason, issue: issue_num, is_soft };
                             if sym::unstable == meta_name {
                                 stab = Some(Stability { level, feature, rustc_depr: None });
