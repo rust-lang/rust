@@ -119,16 +119,16 @@ fn no_system_llvm() {
 fn llvm_version() {
     let mut config = config();
 
-    config.llvm_version = Some("8.1.2-rust".to_owned());
+    config.llvm_version = Some(80102);
     assert!(parse_rs(&config, "// min-llvm-version: 9.0").ignore);
 
-    config.llvm_version = Some("9.0.1-rust-1.43.0-dev".to_owned());
+    config.llvm_version = Some(90001);
     assert!(parse_rs(&config, "// min-llvm-version: 9.2").ignore);
 
-    config.llvm_version = Some("9.3.1-rust-1.43.0-dev".to_owned());
+    config.llvm_version = Some(90301);
     assert!(!parse_rs(&config, "// min-llvm-version: 9.2").ignore);
 
-    config.llvm_version = Some("10.0.0-rust".to_owned());
+    config.llvm_version = Some(100000);
     assert!(!parse_rs(&config, "// min-llvm-version: 9.0").ignore);
 }
 

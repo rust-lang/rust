@@ -181,67 +181,33 @@ impl EarlyProps {
             if config.system_llvm && line.starts_with("no-system-llvm") {
                 return true;
             }
-            if let Some(ref actual_version) = config.llvm_version {
-                let actual_version = version_to_int(actual_version);
-                if line.starts_with("min-llvm-version") {
-                    let min_version = line
-                        .trim_end()
-                        .rsplit(' ')
-                        .next()
-                        .expect("Malformed llvm version directive");
+            if let Some(actual_version) = config.llvm_version {
+                if let Some(rest) = line.strip_prefix("min-llvm-version:").map(str::trim) {
+                    let min_version = extract_llvm_version(rest).unwrap();
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    actual_version < version_to_int(min_version)
-                } else if line.starts_with("min-system-llvm-version") {
-                    let min_version = line
-                        .trim_end()
-                        .rsplit(' ')
-                        .next()
-                        .expect("Malformed llvm version directive");
+                    actual_version < min_version
+                } else if let Some(rest) =
+                    line.strip_prefix("min-system-llvm-version:").map(str::trim)
+                {
+                    let min_version = extract_llvm_version(rest).unwrap();
                     // Ignore if using system LLVM and actual version
                     // is smaller the minimum required version
-                    config.system_llvm && actual_version < version_to_int(min_version)
-                } else if line.starts_with("ignore-llvm-version") {
-                    // Syntax is: "ignore-llvm-version <version1> [- <version2>]"
-                    let range_components = line
-                        .split(' ')
-                        .skip(1) // Skip the directive.
-                        .map(|s| s.trim())
-                        .filter(|word| !word.is_empty() && word != &"-")
-                        .take(3) // 3 or more = invalid, so take at most 3.
-                        .collect::<Vec<&str>>();
-                    match range_components.len() {
-                        1 => actual_version == version_to_int(range_components[0]),
-                        2 => {
-                            let v_min = version_to_int(range_components[0]);
-                            let v_max = version_to_int(range_components[1]);
-                            if v_max < v_min {
-                                panic!("Malformed LLVM version range: max < min")
-                            }
-                            // Ignore if version lies inside of range.
-                            actual_version >= v_min && actual_version <= v_max
-                        }
-                        _ => panic!("Malformed LLVM version directive"),
+                    config.system_llvm && actual_version < min_version
+                } else if let Some(rest) = line.strip_prefix("ignore-llvm-version:").map(str::trim)
+                {
+                    // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
+                    let (v_min, v_max) = extract_version_range(rest, extract_llvm_version);
+                    if v_max < v_min {
+                        panic!("Malformed LLVM version range: max < min")
                     }
+                    // Ignore if version lies inside of range.
+                    actual_version >= v_min && actual_version <= v_max
                 } else {
                     false
                 }
             } else {
                 false
-            }
-        }
-
-        fn version_to_int(version: &str) -> u32 {
-            let version_without_suffix = version.trim_end_matches("git").split('-').next().unwrap();
-            let components: Vec<u32> = version_without_suffix
-                .split('.')
-                .map(|s| s.parse().expect("Malformed version component"))
-                .collect();
-            match components.len() {
-                1 => components[0] * 10000,
-                2 => components[0] * 10000 + components[1] * 100,
-                3 => components[0] * 10000 + components[1] * 100 + components[2],
-                _ => panic!("Malformed version"),
             }
         }
     }
@@ -952,6 +918,21 @@ fn parse_normalization_string(line: &mut &str) -> Option<String> {
     let result = line[begin..end].to_owned();
     *line = &line[end + 1..];
     Some(result)
+}
+
+pub fn extract_llvm_version(version: &str) -> Option<u32> {
+    let version_without_suffix = version.trim_end_matches("git").split('-').next().unwrap();
+    let components: Vec<u32> = version_without_suffix
+        .split('.')
+        .map(|s| s.parse().expect("Malformed version component"))
+        .collect();
+    let version = match *components {
+        [a] => a * 10_000,
+        [a, b] => a * 10_000 + b * 100,
+        [a, b, c] => a * 10_000 + b * 100 + c,
+        _ => panic!("Malformed version"),
+    };
+    Some(version)
 }
 
 // Takes a directive of the form "<version1> [- <version2>]",

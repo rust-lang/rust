@@ -177,6 +177,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some("never") => ColorConfig::NeverColor,
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
+    let llvm_version =
+        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
@@ -217,7 +219,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         gdb_native_rust,
         lldb_version,
         lldb_native_rust,
-        llvm_version: matches.opt_str("llvm-version"),
+        llvm_version,
         system_llvm: matches.opt_present("system-llvm"),
         android_cross_path,
         adb_path: opt_str2(matches.opt_str("adb-path")),

@@ -1,3 +1,4 @@
+use super::header::extract_llvm_version;
 use super::*;
 
 #[test]
@@ -59,4 +60,12 @@ fn is_test_test() {
     assert_eq!(false, is_test(&OsString::from("a_cat.gif")));
     assert_eq!(false, is_test(&OsString::from("#a_dog_gif")));
     assert_eq!(false, is_test(&OsString::from("~a_temp_file")));
+}
+
+#[test]
+fn test_extract_llvm_version() {
+    assert_eq!(extract_llvm_version("8.1.2-rust"), Some(80102));
+    assert_eq!(extract_llvm_version("9.0.1-rust-1.43.0-dev"), Some(90001));
+    assert_eq!(extract_llvm_version("9.3.1-rust-1.43.0-dev"), Some(90301));
+    assert_eq!(extract_llvm_version("10.0.0-rust"), Some(100000));
 }

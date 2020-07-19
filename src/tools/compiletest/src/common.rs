@@ -274,7 +274,7 @@ pub struct Config {
     pub lldb_native_rust: bool,
 
     /// Version of LLVM
-    pub llvm_version: Option<String>,
+    pub llvm_version: Option<u32>,
 
     /// Is LLVM a system LLVM
     pub system_llvm: bool,
