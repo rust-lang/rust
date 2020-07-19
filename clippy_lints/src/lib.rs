@@ -276,6 +276,7 @@ mod ptr_offset_with_cast;
 mod question_mark;
 mod ranges;
 mod redundant_clone;
+mod redundant_closure_call;
 mod redundant_field_names;
 mod redundant_pub_crate;
 mod redundant_static_lifetimes;
@@ -702,7 +703,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &misc_early::DOUBLE_NEG,
         &misc_early::DUPLICATE_UNDERSCORE_ARGUMENT,
         &misc_early::MIXED_CASE_HEX_LITERALS,
-        &misc_early::REDUNDANT_CLOSURE_CALL,
         &misc_early::REDUNDANT_PATTERN,
         &misc_early::UNNEEDED_FIELD_PATTERN,
         &misc_early::UNNEEDED_WILDCARD_PATTERN,
@@ -759,6 +759,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &ranges::RANGE_ZIP_WITH_LEN,
         &ranges::REVERSED_EMPTY_RANGES,
         &redundant_clone::REDUNDANT_CLONE,
+        &redundant_closure_call::REDUNDANT_CLOSURE_CALL,
         &redundant_field_names::REDUNDANT_FIELD_NAMES,
         &redundant_pub_crate::REDUNDANT_PUB_CRATE,
         &redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
@@ -1018,6 +1019,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box int_plus_one::IntPlusOne);
     store.register_early_pass(|| box formatting::Formatting);
     store.register_early_pass(|| box misc_early::MiscEarlyLints);
+    store.register_early_pass(|| box redundant_closure_call::RedundantClosureCall);
+    store.register_late_pass(|| box redundant_closure_call::RedundantClosureCall);
     store.register_early_pass(|| box returns::Return);
     store.register_late_pass(|| box let_and_return::LetReturn);
     store.register_early_pass(|| box collapsible_if::CollapsibleIf);
@@ -1359,7 +1362,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc_early::DOUBLE_NEG),
         LintId::of(&misc_early::DUPLICATE_UNDERSCORE_ARGUMENT),
         LintId::of(&misc_early::MIXED_CASE_HEX_LITERALS),
-        LintId::of(&misc_early::REDUNDANT_CLOSURE_CALL),
         LintId::of(&misc_early::REDUNDANT_PATTERN),
         LintId::of(&misc_early::UNNEEDED_WILDCARD_PATTERN),
         LintId::of(&misc_early::ZERO_PREFIXED_LITERAL),
@@ -1393,6 +1395,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&ranges::RANGE_ZIP_WITH_LEN),
         LintId::of(&ranges::REVERSED_EMPTY_RANGES),
         LintId::of(&redundant_clone::REDUNDANT_CLONE),
+        LintId::of(&redundant_closure_call::REDUNDANT_CLOSURE_CALL),
         LintId::of(&redundant_field_names::REDUNDANT_FIELD_NAMES),
         LintId::of(&redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
         LintId::of(&reference::DEREF_ADDROF),
@@ -1593,7 +1596,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&methods::UNNECESSARY_FILTER_MAP),
         LintId::of(&methods::USELESS_ASREF),
         LintId::of(&misc::SHORT_CIRCUIT_STATEMENT),
-        LintId::of(&misc_early::REDUNDANT_CLOSURE_CALL),
         LintId::of(&misc_early::UNNEEDED_WILDCARD_PATTERN),
         LintId::of(&misc_early::ZERO_PREFIXED_LITERAL),
         LintId::of(&needless_bool::BOOL_COMPARISON),
@@ -1608,6 +1610,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&precedence::PRECEDENCE),
         LintId::of(&ptr_offset_with_cast::PTR_OFFSET_WITH_CAST),
         LintId::of(&ranges::RANGE_ZIP_WITH_LEN),
+        LintId::of(&redundant_closure_call::REDUNDANT_CLOSURE_CALL),
         LintId::of(&reference::DEREF_ADDROF),
         LintId::of(&reference::REF_IN_DEREF),
         LintId::of(&repeat_once::REPEAT_ONCE),

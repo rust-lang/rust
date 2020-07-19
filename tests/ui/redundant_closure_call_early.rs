@@ -4,18 +4,14 @@
 
 fn main() {
     let mut i = 1;
+
+    // lint here
     let mut k = (|m| m + 1)(i);
 
+    // lint here
     k = (|a, b| a * b)(1, 5);
 
-    let closure = || 32;
-    i = closure();
-
-    let closure = |i| i + 1;
-    i = closure(3);
-
-    i = closure(4);
-
+    // don't lint these
     #[allow(clippy::needless_return)]
     (|| return 2)();
     (|| -> Option<i32> { None? })();

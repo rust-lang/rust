@@ -1835,7 +1835,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "complexity",
         desc: "throwaway closures called in the expression they are defined",
         deprecation: None,
-        module: "misc_early",
+        module: "redundant_closure_call",
     },
     Lint {
         name: "redundant_closure_for_method_calls",
