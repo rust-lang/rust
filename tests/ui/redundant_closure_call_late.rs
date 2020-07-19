@@ -14,9 +14,14 @@ fn main() {
     let redun_closure = || 1;
     i = redun_closure();
 
-    // the lint is applicable here but the lint doesn't support redefinition
-    let redefined_closure = || 1;
-    i = redefined_closure();
-    let redefined_closure = || 2;
-    i = redefined_closure();
+    // shadowed closures are supported, lint here
+    let shadowed_closure = || 1;
+    i = shadowed_closure();
+    let shadowed_closure = || 2;
+    i = shadowed_closure();
+
+    // don't lint here
+    let shadowed_closure = || 2;
+    i = shadowed_closure();
+    i = shadowed_closure();
 }

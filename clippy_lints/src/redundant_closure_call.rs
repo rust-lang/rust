@@ -11,7 +11,6 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintCon
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
     /// **What it does:** Detects closures called in the same expression where they
@@ -96,9 +95,9 @@ impl EarlyLintPass for RedundantClosureCall {
 
 impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
-        fn count_closure_usage<'tcx>(block: &'tcx hir::Block<'_>, ident: &'tcx Ident) -> usize {
+        fn count_closure_usage<'tcx>(block: &'tcx hir::Block<'_>, path: &'tcx hir::Path<'tcx>) -> usize {
             struct ClosureUsageCount<'tcx> {
-                ident: &'tcx Ident,
+                path: &'tcx hir::Path<'tcx>,
                 count: usize,
             };
             impl<'tcx> hir_visit::Visitor<'tcx> for ClosureUsageCount<'tcx> {
@@ -108,7 +107,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                     if_chain! {
                         if let hir::ExprKind::Call(ref closure, _) = expr.kind;
                         if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = closure.kind;
-                        if self.ident == &path.segments[0].ident;
+                        if self.path.segments[0].ident == path.segments[0].ident
+                            && self.path.res == path.res;
                         then {
                             self.count += 1;
                         }
@@ -120,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                     hir_visit::NestedVisitorMap::None
                 }
             };
-            let mut closure_usage_count = ClosureUsageCount { ident, count: 0 };
+            let mut closure_usage_count = ClosureUsageCount { path, count: 0 };
             closure_usage_count.visit_block(block);
             closure_usage_count.count
         }
@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 if let hir::ExprKind::Call(ref closure, _) = call.kind;
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = closure.kind;
                 if ident == path.segments[0].ident;
-                if  count_closure_usage(block, &ident) == 1;
+                if  count_closure_usage(block, path) == 1;
                 then {
                     span_lint(
                         cx,
