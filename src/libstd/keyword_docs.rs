@@ -387,10 +387,11 @@ mod extern_keyword {}
 //
 /// A value of type [`bool`] representing logical **false**.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `false` is the logical opposite of [`true`].
 ///
-/// [`bool`]: primitive.bool.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// See the documentation for [`true`] for more information.
+///
+/// [`true`]: keyword.true.html
 mod false_keyword {}
 
 #[doc(keyword = "fn")]
