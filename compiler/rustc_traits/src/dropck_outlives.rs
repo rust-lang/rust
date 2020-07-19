@@ -210,12 +210,20 @@ fn dtorck_constraint_for_ty<'tcx>(
             Ok::<_, NoSolution>(())
         })?,
 
-        ty::Closure(_, substs) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
-            for ty in substs.as_closure().upvar_tys() {
-                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
+        ty::Closure(_, substs) => {
+            if !substs.as_closure().is_valid() {
+                // By the time this code runs, all type variables ought to
+                // be fully resolved.
+                return Err(NoSolution);
             }
-            Ok::<_, NoSolution>(())
-        })?,
+
+            rustc_data_structures::stack::ensure_sufficient_stack(|| {
+                for ty in substs.as_closure().upvar_tys() {
+                    dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
+                }
+                Ok::<_, NoSolution>(())
+            })?
+        }
 
         ty::Generator(_, substs, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
@@ -240,6 +248,12 @@ fn dtorck_constraint_for_ty<'tcx>(
             // only take place through references with lifetimes
             // derived from lifetimes attached to the upvars and resume
             // argument, and we *do* incorporate those here.
+
+            if !substs.as_generator().is_valid() {
+                // By the time this code runs, all type variables ought to
+                // be fully resolved.
+                return Err(NoSolution);
+            }
 
             constraints.outlives.extend(
                 substs

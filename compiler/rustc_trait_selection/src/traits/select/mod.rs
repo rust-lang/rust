@@ -1631,7 +1631,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Closure(_, substs) => {
                 // (*) binder moved here
-                Where(ty::Binder::bind(substs.as_closure().upvar_tys().collect()))
+                let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
+                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
+                    // Not yet resolved.
+                    Ambiguous
+                } else {
+                    Where(ty::Binder::bind(substs.as_closure().upvar_tys().collect()))
+                }
             }
 
             ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) => {
@@ -1700,11 +1706,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 tys.iter().map(|k| k.expect_ty()).collect()
             }
 
-            ty::Closure(_, ref substs) => substs.as_closure().upvar_tys().collect(),
+            ty::Closure(_, ref substs) => {
+                let ty = self.infcx.shallow_resolve(substs.as_closure().tupled_upvars_ty());
+                if let ty::Infer(ty::TyVar(_)) = ty.kind() {
+                    // The inference variable will be replaced by a tuple once capture analysis
+                    // completes. If the tuple meets a bound, so do all the elements within it.
+                    vec![ty]
+                } else {
+                    substs.as_closure().upvar_tys().collect()
+                }
+            }
 
             ty::Generator(_, ref substs, _) => {
-                let witness = substs.as_generator().witness();
-                substs.as_generator().upvar_tys().chain(iter::once(witness)).collect()
+                let upvar_tys_resolved =
+                    self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
+
+                if let ty::Infer(ty::TyVar(_)) = upvar_tys_resolved.kind() {
+                    // The inference variable will be replaced by a tuple once capture analysis
+                    // completes, if the tuple meets a bound, so do all the elements within it.
+                    let witness_resolved =
+                        self.infcx.shallow_resolve(substs.as_generator().witness());
+                    vec![upvar_tys_resolved, witness_resolved]
+                } else {
+                    let witness = substs.as_generator().witness();
+                    substs.as_generator().upvar_tys().chain(iter::once(witness)).collect()
+                }
             }
 
             ty::GeneratorWitness(types) => {

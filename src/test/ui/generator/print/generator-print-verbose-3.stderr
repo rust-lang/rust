@@ -12,7 +12,7 @@ LL | |     };
    | |_____^ expected `()`, found generator
    |
    = note: expected unit type `()`
-              found generator `[main::{closure#0} upvar_tys=(unavailable) _#5t]`
+              found generator `[main::{closure#0} upvar_tys=(unavailable)]`
 
 error: aborting due to previous error
 
