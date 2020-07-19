@@ -1,5 +1,6 @@
 use crate::ich::{self, StableHashingContext};
 use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -226,7 +227,8 @@ pub fn ancestors(
     start_from_impl: DefId,
 ) -> Result<Ancestors<'tcx>, ErrorReported> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id);
-    if specialization_graph.has_errored {
+
+    if specialization_graph.has_errored || tcx.type_of(start_from_impl).references_error() {
         Err(ErrorReported)
     } else {
         Ok(Ancestors {
