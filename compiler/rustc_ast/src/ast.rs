@@ -1900,6 +1900,7 @@ pub struct BareFnTy {
     pub ext: Extern,
     pub generic_params: Vec<GenericParam>,
     pub decl: P<FnDecl>,
+    pub constness: Const
 }
 
 /// The various kinds of type recognized by the compiler.

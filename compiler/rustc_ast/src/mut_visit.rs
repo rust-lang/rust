@@ -462,7 +462,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             vis.visit_mt(mt);
         }
         TyKind::BareFn(bft) => {
-            let BareFnTy { unsafety: _, ext: _, generic_params, decl } = bft.deref_mut();
+            let BareFnTy { unsafety: _, ext: _, constness: _, generic_params, decl } = bft.deref_mut();
             generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
             vis.visit_fn_decl(decl);
         }

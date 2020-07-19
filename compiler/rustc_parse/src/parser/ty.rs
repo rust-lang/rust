@@ -330,13 +330,10 @@ impl<'a> Parser<'a> {
         let ast::FnHeader { ext, unsafety, constness, asyncness } = self.parse_fn_front_matter()?;
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No)?;
         let whole_span = lo.to(self.prev_token.span);
-        if let ast::Const::Yes(span) = constness {
-            self.error_fn_ptr_bad_qualifier(whole_span, span, "const");
-        }
         if let ast::Async::Yes { span, .. } = asyncness {
             self.error_fn_ptr_bad_qualifier(whole_span, span, "async");
         }
-        Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl })))
+        Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl, constness })))
     }
 
     /// Emit an error for the given bad function pointer qualifier.
