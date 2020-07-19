@@ -17,7 +17,7 @@ pub struct PublicType;
 pub struct Public {
     /// [`PublicType`]
     /// [`PrivateType`]
-    //[public]~^ WARNING public documentation for `public_item` links to a private
+    //[public]~^ WARNING public documentation for `public_item` links to private item `PrivateType`
     pub public_item: u32,
 
     /// [`PublicType`]

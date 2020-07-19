@@ -1,5 +1,5 @@
 use rustc_ast::ast;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
@@ -45,7 +45,17 @@ pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
 enum ErrorKind {
     ResolutionFailure,
-    AnchorFailure(&'static str),
+    AnchorFailure(AnchorFailure),
+}
+
+enum AnchorFailure {
+    MultipleAnchors,
+    Primitive,
+    Variant,
+    AssocConstant,
+    AssocType,
+    Field,
+    Method,
 }
 
 struct LinkCollector<'a, 'tcx> {
@@ -197,9 +207,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // Not a trait item; just return what we found.
                     Res::PrimTy(..) => {
                         if extra_fragment.is_some() {
-                            return Err(ErrorKind::AnchorFailure(
-                                "primitive types cannot be followed by anchors",
-                            ));
+                            return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
                         }
                         return Ok((res, Some(path_str.to_owned())));
                     }
@@ -209,9 +217,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         if disambiguator == Some("type") {
                             if let Some(prim) = is_primitive(path_str, ns) {
                                 if extra_fragment.is_some() {
-                                    return Err(ErrorKind::AnchorFailure(
-                                        "primitive types cannot be followed by anchors",
-                                    ));
+                                    return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
                                 }
                                 return Ok((prim, Some(path_str.to_owned())));
                             }
@@ -228,9 +234,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
             } else if let Some(prim) = is_primitive(path_str, ns) {
                 if extra_fragment.is_some() {
-                    return Err(ErrorKind::AnchorFailure(
-                        "primitive types cannot be followed by anchors",
-                    ));
+                    return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
                 }
                 return Ok((prim, Some(path_str.to_owned())));
             } else {
@@ -338,9 +342,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         };
                         if extra_fragment.is_some() {
                             Err(ErrorKind::AnchorFailure(if item.kind == ty::AssocKind::Fn {
-                                "methods cannot be followed by anchors"
+                                AnchorFailure::Method
                             } else {
-                                "associated constants cannot be followed by anchors"
+                                AnchorFailure::AssocConstant
                             }))
                         } else {
                             Ok((ty_res, Some(format!("{}.{}", out, item_name))))
@@ -358,9 +362,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                 } {
                                     if extra_fragment.is_some() {
                                         Err(ErrorKind::AnchorFailure(if def.is_enum() {
-                                            "enum variants cannot be followed by anchors"
+                                            AnchorFailure::Variant
                                         } else {
-                                            "struct fields cannot be followed by anchors"
+                                            AnchorFailure::Field
                                         }))
                                     } else {
                                         Ok((
@@ -404,11 +408,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
                         if extra_fragment.is_some() {
                             Err(ErrorKind::AnchorFailure(if item.kind == ty::AssocKind::Const {
-                                "associated constants cannot be followed by anchors"
+                                AnchorFailure::AssocConstant
                             } else if item.kind == ty::AssocKind::Type {
-                                "associated types cannot be followed by anchors"
+                                AnchorFailure::AssocType
                             } else {
-                                "methods cannot be followed by anchors"
+                                AnchorFailure::Method
                             }))
                         } else {
                             Ok((ty_res, Some(format!("{}.{}", kind, item_name))))
@@ -559,16 +563,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             let link = ori_link.replace("`", "");
             let parts = link.split('#').collect::<Vec<_>>();
             let (link, extra_fragment) = if parts.len() > 2 {
-                build_diagnostic(
-                    cx,
-                    &item,
-                    &link,
-                    &dox,
-                    link_range,
-                    "has an issue with the link anchor.",
-                    "only one `#` is allowed in a link",
-                    None,
-                );
+                anchor_failure(cx, &item, &link, &dox, link_range, AnchorFailure::MultipleAnchors);
                 continue;
             } else if parts.len() == 2 {
                 if parts[0].trim().is_empty() {
@@ -803,21 +798,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         && (item.visibility == Visibility::Public)
                         && !self.cx.render_options.document_private
                     {
-                        let item_name = item.name.as_deref().unwrap_or("<unknown>");
-                        let err_msg = format!(
-                            "public documentation for `{}` links to a private item",
-                            item_name
-                        );
-                        build_diagnostic(
-                            cx,
-                            &item,
-                            path_str,
-                            &dox,
-                            link_range,
-                            &err_msg,
-                            "this item is private",
-                            None,
-                        );
+                        privacy_error(cx, &item, &path_str, &dox, link_range);
                         continue;
                     }
                 }
@@ -851,24 +832,33 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     }
 }
 
-fn build_diagnostic(
+/// Reports a diagnostic for an intra-doc link.
+///
+/// If no link range is provided, or the source span of the link cannot be determined, the span of
+/// the entire documentation block is used for the lint. If a range is provided but the span
+/// calculation fails, a note is added to the diagnostic pointing to the link in the markdown.
+///
+/// The `decorate` callback is invoked in all cases to allow further customization of the
+/// diagnostic before emission. If the span of the link was able to be determined, the second
+/// parameter of the callback will contain it, and the primary span of the diagnostic will be set
+/// to it.
+fn report_diagnostic(
     cx: &DocContext<'_>,
+    msg: &str,
     item: &Item,
-    path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
-    err_msg: &str,
-    short_err_msg: &str,
-    help_msg: Option<&str>,
+    decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<rustc_span::Span>),
 ) {
     let hir_id = match cx.as_local_hir_id(item.def_id) {
         Some(hir_id) => hir_id,
         None => {
             // If non-local, no need to check anything.
-            info!("ignoring warning from parent crate: {}", err_msg);
+            info!("ignoring warning from parent crate: {}", msg);
             return;
         }
     };
+
     let attrs = &item.attrs;
     let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
@@ -877,12 +867,15 @@ fn build_diagnostic(
         hir_id,
         sp,
         |lint| {
-            let mut diag = lint.build(&format!("`[{}]` {}", path_str, err_msg));
+            let mut diag = lint.build(msg);
+
+            let span = link_range
+                .as_ref()
+                .and_then(|range| super::source_span_for_markdown_range(cx, dox, range, attrs));
+
             if let Some(link_range) = link_range {
-                if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs)
-                {
+                if let Some(sp) = span {
                     diag.set_span(sp);
-                    diag.span_label(sp, short_err_msg);
                 } else {
                     // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
                     //                       ^     ~~~~
@@ -902,20 +895,15 @@ fn build_diagnostic(
                         found = link_range.len(),
                     ));
                 }
-            };
-            if let Some(help_msg) = help_msg {
-                diag.help(help_msg);
             }
+
+            decorate(&mut diag, span);
+
             diag.emit();
         },
     );
 }
 
-/// Reports a resolution failure diagnostic.
-///
-/// If we cannot find the exact source span of the resolution failure, we use the span of the
-/// documentation attributes themselves. This is a little heavy-handed, so we display the markdown
-/// line containing the failure as a note as well.
 fn resolution_failure(
     cx: &DocContext<'_>,
     item: &Item,
@@ -923,15 +911,19 @@ fn resolution_failure(
     dox: &str,
     link_range: Option<Range<usize>>,
 ) {
-    build_diagnostic(
+    report_diagnostic(
         cx,
+        &format!("unresolved link to `{}`", path_str),
         item,
-        path_str,
         dox,
         link_range,
-        "cannot be resolved, ignoring it.",
-        "cannot be resolved, ignoring",
-        Some("to escape `[` and `]` characters, just add '\\' before them like `\\[` or `\\]`"),
+        |diag, sp| {
+            if let Some(sp) = sp {
+                diag.span_label(sp, "unresolved link");
+            }
+
+            diag.help(r#"to escape `[` and `]` characters, add '\' before them like `\[` or `\]`"#);
+        },
     );
 }
 
@@ -941,18 +933,39 @@ fn anchor_failure(
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
-    msg: &str,
+    failure: AnchorFailure,
 ) {
-    build_diagnostic(
-        cx,
-        item,
-        path_str,
-        dox,
-        link_range,
-        "has an issue with the link anchor.",
-        msg,
-        None,
-    );
+    let msg = match failure {
+        AnchorFailure::MultipleAnchors => format!("`{}` contains multiple anchors", path_str),
+        AnchorFailure::Primitive
+        | AnchorFailure::Variant
+        | AnchorFailure::AssocConstant
+        | AnchorFailure::AssocType
+        | AnchorFailure::Field
+        | AnchorFailure::Method => {
+            let kind = match failure {
+                AnchorFailure::Primitive => "primitive type",
+                AnchorFailure::Variant => "enum variant",
+                AnchorFailure::AssocConstant => "associated constant",
+                AnchorFailure::AssocType => "associated type",
+                AnchorFailure::Field => "struct field",
+                AnchorFailure::Method => "method",
+                AnchorFailure::MultipleAnchors => unreachable!("should be handled already"),
+            };
+
+            format!(
+                "`{}` contains an anchor, but links to {kind}s are already anchored",
+                path_str,
+                kind = kind
+            )
+        }
+    };
+
+    report_diagnostic(cx, &msg, item, dox, link_range, |diag, sp| {
+        if let Some(sp) = sp {
+            diag.span_label(sp, "contains invalid anchor");
+        }
+    });
 }
 
 fn ambiguity_error(
@@ -963,121 +976,100 @@ fn ambiguity_error(
     link_range: Option<Range<usize>>,
     candidates: PerNS<Option<Res>>,
 ) {
-    let hir_id = match cx.as_local_hir_id(item.def_id) {
-        Some(hir_id) => hir_id,
-        None => {
-            // If non-local, no need to check anything.
-            return;
+    let mut msg = format!("`{}` is ", path_str);
+
+    let candidates = [TypeNS, ValueNS, MacroNS]
+        .iter()
+        .filter_map(|&ns| candidates[ns].map(|res| (res, ns)))
+        .collect::<Vec<_>>();
+    match candidates.as_slice() {
+        [(first_def, _), (second_def, _)] => {
+            msg += &format!(
+                "both {} {} and {} {}",
+                first_def.article(),
+                first_def.descr(),
+                second_def.article(),
+                second_def.descr(),
+            );
         }
-    };
-    let attrs = &item.attrs;
-    let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
-
-    cx.tcx.struct_span_lint_hir(
-        lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-        hir_id,
-        sp,
-        |lint| {
-            let mut msg = format!("`{}` is ", path_str);
-
-            let candidates = [TypeNS, ValueNS, MacroNS]
-                .iter()
-                .filter_map(|&ns| candidates[ns].map(|res| (res, ns)))
-                .collect::<Vec<_>>();
-            match candidates.as_slice() {
-                [(first_def, _), (second_def, _)] => {
-                    msg += &format!(
-                        "both {} {} and {} {}",
-                        first_def.article(),
-                        first_def.descr(),
-                        second_def.article(),
-                        second_def.descr(),
-                    );
-                }
-                _ => {
-                    let mut candidates = candidates.iter().peekable();
-                    while let Some((res, _)) = candidates.next() {
-                        if candidates.peek().is_some() {
-                            msg += &format!("{} {}, ", res.article(), res.descr());
-                        } else {
-                            msg += &format!("and {} {}", res.article(), res.descr());
-                        }
-                    }
+        _ => {
+            let mut candidates = candidates.iter().peekable();
+            while let Some((res, _)) = candidates.next() {
+                if candidates.peek().is_some() {
+                    msg += &format!("{} {}, ", res.article(), res.descr());
+                } else {
+                    msg += &format!("and {} {}", res.article(), res.descr());
                 }
             }
+        }
+    }
 
-            let mut diag = lint.build(&msg);
+    report_diagnostic(cx, &msg, item, dox, link_range.clone(), |diag, sp| {
+        if let Some(sp) = sp {
+            diag.span_label(sp, "ambiguous link");
 
-            if let Some(link_range) = link_range {
-                if let Some(sp) = super::source_span_for_markdown_range(cx, dox, &link_range, attrs)
-                {
-                    diag.set_span(sp);
-                    diag.span_label(sp, "ambiguous link");
+            let link_range = link_range.expect("must have a link range if we have a span");
 
-                    for (res, ns) in candidates {
-                        let (action, mut suggestion) = match res {
-                            Res::Def(DefKind::AssocFn | DefKind::Fn, _) => {
-                                ("add parentheses", format!("{}()", path_str))
-                            }
-                            Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
-                                ("add an exclamation mark", format!("{}!", path_str))
-                            }
-                            _ => {
-                                let type_ = match (res, ns) {
-                                    (Res::Def(DefKind::Const, _), _) => "const",
-                                    (Res::Def(DefKind::Static, _), _) => "static",
-                                    (Res::Def(DefKind::Struct, _), _) => "struct",
-                                    (Res::Def(DefKind::Enum, _), _) => "enum",
-                                    (Res::Def(DefKind::Union, _), _) => "union",
-                                    (Res::Def(DefKind::Trait, _), _) => "trait",
-                                    (Res::Def(DefKind::Mod, _), _) => "module",
-                                    (_, TypeNS) => "type",
-                                    (_, ValueNS) => "value",
-                                    (Res::Def(DefKind::Macro(MacroKind::Derive), _), MacroNS) => {
-                                        "derive"
-                                    }
-                                    (_, MacroNS) => "macro",
-                                };
-
-                                // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
-                                ("prefix with the item type", format!("{}@{}", type_, path_str))
-                            }
+            for (res, ns) in candidates {
+                let (action, mut suggestion) = match res {
+                    Res::Def(DefKind::AssocFn | DefKind::Fn, _) => {
+                        ("add parentheses", format!("{}()", path_str))
+                    }
+                    Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
+                        ("add an exclamation mark", format!("{}!", path_str))
+                    }
+                    _ => {
+                        let type_ = match (res, ns) {
+                            (Res::Def(DefKind::Const, _), _) => "const",
+                            (Res::Def(DefKind::Static, _), _) => "static",
+                            (Res::Def(DefKind::Struct, _), _) => "struct",
+                            (Res::Def(DefKind::Enum, _), _) => "enum",
+                            (Res::Def(DefKind::Union, _), _) => "union",
+                            (Res::Def(DefKind::Trait, _), _) => "trait",
+                            (Res::Def(DefKind::Mod, _), _) => "module",
+                            (_, TypeNS) => "type",
+                            (_, ValueNS) => "value",
+                            (Res::Def(DefKind::Macro(MacroKind::Derive), _), MacroNS) => "derive",
+                            (_, MacroNS) => "macro",
                         };
 
-                        if dox.bytes().nth(link_range.start) == Some(b'`') {
-                            suggestion = format!("`{}`", suggestion);
-                        }
-
-                        diag.span_suggestion(
-                            sp,
-                            &format!("to link to the {}, {}", res.descr(), action),
-                            suggestion,
-                            Applicability::MaybeIncorrect,
-                        );
+                        // FIXME: if this is an implied shortcut link, it's bad style to suggest `@`
+                        ("prefix with the item type", format!("{}@{}", type_, path_str))
                     }
-                } else {
-                    // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-                    //                       ^     ~~~~
-                    //                       |     link_range
-                    //                       last_new_line_offset
-                    let last_new_line_offset =
-                        dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
-                    let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+                };
 
-                    // Print the line containing the `link_range` and manually mark it with '^'s.
-                    diag.note(&format!(
-                        "the link appears in this line:\n\n{line}\n\
-                         {indicator: <before$}{indicator:^<found$}",
-                        line = line,
-                        indicator = "",
-                        before = link_range.start - last_new_line_offset,
-                        found = link_range.len(),
-                    ));
+                if dox.bytes().nth(link_range.start) == Some(b'`') {
+                    suggestion = format!("`{}`", suggestion);
                 }
+
+                // FIXME: Create a version of this suggestion for when we don't have the span.
+                diag.span_suggestion(
+                    sp,
+                    &format!("to link to the {}, {}", res.descr(), action),
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
             }
-            diag.emit();
-        },
-    );
+        }
+    });
+}
+
+fn privacy_error(
+    cx: &DocContext<'_>,
+    item: &Item,
+    path_str: &str,
+    dox: &str,
+    link_range: Option<Range<usize>>,
+) {
+    let item_name = item.name.as_deref().unwrap_or("<unknown>");
+    let msg =
+        format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
+
+    report_diagnostic(cx, &msg, item, dox, link_range, |diag, sp| {
+        if let Some(sp) = sp {
+            diag.span_label(sp, "this item is private");
+        }
+    });
 }
 
 /// Given an enum variant's res, return the res of its enum and the associated fragment.
@@ -1089,7 +1081,7 @@ fn handle_variant(
     use rustc_middle::ty::DefIdTree;
 
     if extra_fragment.is_some() {
-        return Err(ErrorKind::AnchorFailure("variants cannot be followed by anchors"));
+        return Err(ErrorKind::AnchorFailure(AnchorFailure::Variant));
     }
     let parent = if let Some(parent) = cx.tcx.parent(res.def_id()) {
         parent
