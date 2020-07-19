@@ -766,7 +766,7 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`read`]: trait.Read.html#tymethod.read
+    /// [`read`]: Read::read
     /// [`File`]: ../fs/struct.File.html
     /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
     /// [`ErrorKind::UnexpectedEof`]: ../../std/io/enum.ErrorKind.html#variant.UnexpectedEof
