@@ -493,10 +493,14 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             }
 
             if attrs.flags.contains(CodegenFnAttrFlags::USED) {
-                // This static will be stored in the llvm.used variable which is an array of i8*
-                let cast = llvm::LLVMConstPointerCast(g, self.type_i8p());
-                self.used_statics.borrow_mut().push(cast);
+                self.add_used_global(g);
             }
         }
+    }
+
+    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
+    fn add_used_global(&self, global: &'ll Value) {
+        let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_i8p()) };
+        self.used_statics.borrow_mut().push(cast);
     }
 }

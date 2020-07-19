@@ -1,0 +1,55 @@
+    1|      2|pub fn will_be_called() -> &'static str {
+    2|      2|    let val = "called";
+    3|      2|    println!("{}", val);
+    4|      2|    val
+    5|      2|}
+    6|       |
+    7|      0|pub fn will_not_be_called() -> bool {
+    8|      0|    println!("should not have been called");
+    9|      0|    false
+   10|      0|}
+   11|       |
+   12|       |pub fn print<T>(left: &str, value: T, right: &str)
+   13|       |where
+   14|       |    T: std::fmt::Display,
+   15|      1|{
+   16|      1|    println!("{}{}{}", left, value, right);
+   17|      1|}
+   18|       |
+   19|       |pub fn wrap_with<F, T>(inner: T, should_wrap: bool, wrapper: F)
+   20|       |where
+   21|       |    F: FnOnce(&T)
+   22|      2|{
+   23|      2|    if should_wrap {
+   24|      2|        wrapper(&inner)
+   25|      2|    }
+   26|      2|}
+  ------------------
+  | main[317d481089b8c8fe]::wrap_with::<main[317d481089b8c8fe]::main::{closure#0}, &str>:
+  |   22|      1|{
+  |   23|      1|    if should_wrap {
+  |   24|      1|        wrapper(&inner)
+  |   25|      1|    }
+  |   26|      1|}
+  ------------------
+  | main[317d481089b8c8fe]::wrap_with::<main[317d481089b8c8fe]::main::{closure#1}, &str>:
+  |   22|      1|{
+  |   23|      1|    if should_wrap {
+  |   24|      1|        wrapper(&inner)
+  |   25|      1|    }
+  |   26|      1|}
+  ------------------
+   27|       |
+   28|      1|fn main() {
+   29|      1|    let less = 1;
+   30|      1|    let more = 100;
+   31|      1|
+   32|      1|    if less < more {
+   33|      1|        wrap_with(will_be_called(), less < more, |inner| print(" ***", inner, "*** "));
+   34|      1|        wrap_with(will_be_called(), more < less, |inner| print(" ***", inner, "*** "));
+                                                                       ^0
+   35|      1|    } else {
+   36|      1|        wrap_with(will_not_be_called(), true, |inner| print("wrapped result is: ", inner, ""));
+   37|      1|    }
+   38|      1|}
+

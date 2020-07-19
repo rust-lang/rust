@@ -715,7 +715,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "extra arguments to append to the linker invocation (space separated)"),
-    link_dead_code: bool = (false, parse_bool, [UNTRACKED],
+    link_dead_code: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
         "keep dead code at link time (useful for code coverage) (default: no)"),
     linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "system linker to link outputs with"),
@@ -880,10 +880,12 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         (such as entering an empty infinite loop) by inserting llvm.sideeffect \
         (default: no)"),
     instrument_coverage: bool = (false, parse_bool, [TRACKED],
-        "instrument the generated code with LLVM code region counters to (in the \
-        future) generate coverage reports; disables/overrides some optimization \
-        options (note, the compiler build config must include `profiler = true`) \
-        (default: no)"),
+        "instrument the generated code to support LLVM source-based code coverage \
+        reports (note, the compiler build config must include `profiler = true`, \
+        and is mutually exclusive with `-C profile-generate`/`-C profile-use`); \
+        implies `-C link-dead-code` (unless explicitly disabled)` and
+        `-Z symbol-mangling-version=v0`; and disables/overrides some optimization \
+        options (default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],

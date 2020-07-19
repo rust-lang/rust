@@ -932,6 +932,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::hint::unreachable_unchecked`](../../std/hint/fn.unreachable_unchecked.html).
+    #[rustc_const_unstable(feature = "const_unreachable_unchecked", issue = "53188")]
     pub fn unreachable() -> !;
 
     /// Informs the optimizer that a condition is always true.
@@ -1957,8 +1958,14 @@ extern "rust-intrinsic" {
     /// Internal placeholder for injecting code coverage counters when the "instrument-coverage"
     /// option is enabled. The placeholder is replaced with `llvm.instrprof.increment` during code
     /// generation.
+    #[cfg(not(bootstrap))]
     #[lang = "count_code_region"]
-    pub fn count_code_region(index: u32, start_byte_pos: u32, end_byte_pos: u32);
+    pub fn count_code_region(
+        function_source_hash: u64,
+        index: u32,
+        start_byte_pos: u32,
+        end_byte_pos: u32,
+    );
 
     /// Internal marker for code coverage expressions, injected into the MIR when the
     /// "instrument-coverage" option is enabled. This intrinsic is not converted into a
@@ -1966,6 +1973,8 @@ extern "rust-intrinsic" {
     /// "coverage map", which is injected into the generated code, as additional data.
     /// This marker identifies a code region and two other counters or counter expressions
     /// whose sum is the number of times the code region was executed.
+    #[cfg(not(bootstrap))]
+    #[lang = "coverage_counter_add"]
     pub fn coverage_counter_add(
         index: u32,
         left_index: u32,
@@ -1977,6 +1986,8 @@ extern "rust-intrinsic" {
     /// This marker identifies a code region and two other counters or counter expressions
     /// whose difference is the number of times the code region was executed.
     /// (See `coverage_counter_add` for more information.)
+    #[cfg(not(bootstrap))]
+    #[lang = "coverage_counter_subtract"]
     pub fn coverage_counter_subtract(
         index: u32,
         left_index: u32,

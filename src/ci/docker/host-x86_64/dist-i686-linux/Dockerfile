@@ -1,34 +1,44 @@
-FROM centos:5
+# We use Debian 6 (glibc 2.11, kernel 2.6.32) as a common base for other
+# distros that still need Rust support: RHEL 6 (glibc 2.12, kernel 2.6.32) and
+# SLES 11 SP4 (glibc 2.11, kernel 3.0).
+FROM debian:6
 
 WORKDIR /build
 
-# Centos 5 is EOL and is no longer available from the usual mirrors, so switch
-# to http://vault.centos.org/
-RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
-RUN sed -i 's/mirrorlist/#mirrorlist/' /etc/yum.repos.d/*.repo
-RUN sed -i 's|#\(baseurl.*\)mirror.centos.org/centos/$releasever|\1vault.centos.org/5.11|' /etc/yum.repos.d/*.repo
+# Debian 6 is EOL and no longer available from the usual mirrors,
+# so we'll need to switch to http://archive.debian.org/
+RUN sed -i '/updates/d' /etc/apt/sources.list && \
+    sed -i 's/httpredir/archive/' /etc/apt/sources.list
 
-RUN yum upgrade -y && yum install -y \
-      curl \
+RUN apt-get update && \
+    apt-get install --allow-unauthenticated -y --no-install-recommends \
+      automake \
       bzip2 \
-      gcc \
-      gcc-c++ \
-      make \
-      glibc-devel \
-      perl \
-      zlib-devel \
+      ca-certificates \
+      curl \
       file \
-      xz \
-      which \
-      pkgconfig \
+      g++ \
+      g++-multilib \
+      gcc \
+      gcc-multilib \
+      git \
+      lib32z1-dev \
+      libedit-dev \
+      libncurses-dev \
+      make \
+      patch \
+      perl \
+      pkg-config \
+      unzip \
       wget \
-      autoconf \
-      gettext
+      xz-utils \
+      zlib1g-dev
 
 ENV PATH=/rustroot/bin:$PATH
-ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
+ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib32:/rustroot/lib
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
 WORKDIR /tmp
+RUN mkdir /home/user
 COPY host-x86_64/dist-x86_64-linux/shared.sh /tmp/
 
 # We need a build of openssl which supports SNI to download artifacts from
@@ -38,14 +48,14 @@ COPY host-x86_64/dist-x86_64-linux/shared.sh /tmp/
 COPY host-x86_64/dist-x86_64-linux/build-openssl.sh /tmp/
 RUN ./build-openssl.sh
 
-# The `curl` binary on CentOS doesn't support SNI which is needed for fetching
+# The `curl` binary on Debian 6 doesn't support SNI which is needed for fetching
 # some https urls we have, so install a new version of libcurl + curl which is
 # using the openssl we just built previously.
 #
 # Note that we also disable a bunch of optional features of curl that we don't
 # really need.
 COPY host-x86_64/dist-x86_64-linux/build-curl.sh /tmp/
-RUN ./build-curl.sh
+RUN ./build-curl.sh && apt-get remove -y curl
 
 # binutils < 2.22 has a bug where the 32-bit executables it generates
 # immediately segfault in Rust, so we need to install our own binutils.
@@ -54,39 +64,23 @@ RUN ./build-curl.sh
 COPY host-x86_64/dist-x86_64-linux/build-binutils.sh /tmp/
 RUN ./build-binutils.sh
 
-# libssh2 (a dependency of Cargo) requires cmake 2.8.11 or higher but CentOS
-# only has 2.6.4, so build our own
-COPY host-x86_64/dist-x86_64-linux/build-cmake.sh /tmp/
-RUN ./build-cmake.sh
-
-# Need a newer version of gcc than centos has to compile LLVM nowadays
+# Need at least GCC 5.1 to compile LLVM nowadays
 COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
-RUN ./build-gcc.sh
+RUN ./build-gcc.sh && apt-get remove -y gcc g++
 
-# CentOS 5.5 has Python 2.4 by default, but LLVM needs 2.7+
+# Debian 6 has Python 2.6 by default, but LLVM needs 2.7+
 COPY host-x86_64/dist-x86_64-linux/build-python.sh /tmp/
 RUN ./build-python.sh
 
-# Now build LLVM+Clang 7, afterwards configuring further compilations to use the
+# LLVM needs cmake 3.4.3 or higher, and is planning to raise to 3.13.4.
+COPY host-x86_64/dist-x86_64-linux/build-cmake.sh /tmp/
+RUN ./build-cmake.sh
+
+# Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
-COPY host-x86_64/dist-x86_64-linux/build-clang.sh host-x86_64/dist-x86_64-linux/llvm-project-centos.patch /tmp/
+COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
-
-# Apparently CentOS 5.5 desn't have `git` in yum, but we're gonna need it for
-# cloning, so download and build it here.
-COPY host-x86_64/dist-x86_64-linux/build-git.sh /tmp/
-RUN ./build-git.sh
-
-# for sanitizers, we need kernel headers files newer than the ones CentOS ships
-# with so we install newer ones here
-COPY host-x86_64/dist-x86_64-linux/build-headers.sh /tmp/
-RUN ./build-headers.sh
-
-# OpenSSL requires a more recent version of perl
-# with so we install newer ones here
-COPY host-x86_64/dist-x86_64-linux/build-perl.sh /tmp/
-RUN ./build-perl.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -116,5 +110,12 @@ ENV CFLAGS -mstackrealign
 # When we build cargo in this container, we don't want it to use the system
 # libcurl, instead it should compile its own.
 ENV LIBCURL_NO_PKG_CONFIG 1
+
+# There was a bad interaction between "old" 32-bit binaries on current 64-bit
+# kernels with selinux enabled, where ASLR mmap would sometimes choose a low
+# address and then block it for being below `vm.mmap_min_addr` -> `EACCES`.
+# This is probably a kernel bug, but setting `ulimit -Hs` works around it.
+# See also `src/ci/run.sh` where this takes effect.
+ENV SET_HARD_RLIMIT_STACK 1
 
 ENV DIST_REQUIRE_ALL_TOOLS 1

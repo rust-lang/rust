@@ -305,6 +305,7 @@
 #![feature(ptr_internals)]
 #![feature(raw)]
 #![feature(raw_ref_macros)]
+#![feature(ready_macro)]
 #![feature(renamed_spin_loop)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]

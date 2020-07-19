@@ -370,6 +370,7 @@ impl<'a> Builder<'a> {
                 tool::Cargo,
                 tool::Rls,
                 tool::RustAnalyzer,
+                tool::RustDemangler,
                 tool::Rustdoc,
                 tool::Clippy,
                 tool::CargoClippy,
