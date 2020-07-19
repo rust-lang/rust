@@ -95,6 +95,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let (dest, ret) = match ret {
             None => match intrinsic_name {
                 sym::transmute => throw_ub_format!("transmuting to uninhabited type"),
+                sym::unreachable => throw_ub!(Unreachable),
                 sym::abort => M::abort(self)?,
                 // Unsupported diverging intrinsic.
                 _ => return Ok(false),
