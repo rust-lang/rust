@@ -12,11 +12,9 @@ use ra_syntax::ast::{self, NameOwner, VisibilityOwner};
 use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 
 use crate::{
-    attr::{Attr, AttrInput},
     body::{CfgExpander, LowerCtx},
     db::DefDatabase,
     item_tree::{AttrOwner, Field, Fields, ItemTree, ModItem},
-    path::{ModPath, PathKind},
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
@@ -69,21 +67,7 @@ pub enum ReprKind {
 }
 
 fn repr_from_value(item_tree: &ItemTree, of: AttrOwner) -> Option<ReprKind> {
-    item_tree.attrs(of).iter().find_map(|a| {
-        if let Attr {
-            path: ModPath { kind: PathKind::Plain, segments },
-            input: Some(AttrInput::TokenTree(subtree)),
-        } = a
-        {
-            if segments.len() == 1 && segments[0].to_string() == "repr" {
-                parse_repr_tt(subtree)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    })
+    item_tree.attrs(of).by_key("repr").tt_values().find_map(parse_repr_tt)
 }
 
 fn parse_repr_tt(tt: &Subtree) -> Option<ReprKind> {
@@ -93,11 +77,8 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprKind> {
     }
 
     let mut it = tt.token_trees.iter();
-    match it.next() {
-        None => None,
-        Some(TokenTree::Leaf(Leaf::Ident(ident))) if ident.text == "packed" => {
-            Some(ReprKind::Packed)
-        }
+    match it.next()? {
+        TokenTree::Leaf(Leaf::Ident(ident)) if ident.text == "packed" => Some(ReprKind::Packed),
         _ => Some(ReprKind::Other),
     }
 }

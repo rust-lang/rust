@@ -671,41 +671,11 @@ fn highlight_element(
                 T![ref] => {
                     let modifier: Option<HighlightModifier> = (|| {
                         let bind_pat = element.parent().and_then(ast::BindPat::cast)?;
-                        let parent = bind_pat.syntax().parent()?;
-
-                        let ty = if let Some(pat_list) =
-                            ast::RecordFieldPatList::cast(parent.clone())
-                        {
-                            let record_pat =
-                                pat_list.syntax().parent().and_then(ast::RecordPat::cast)?;
-                            sema.type_of_pat(&ast::Pat::RecordPat(record_pat))
-                        } else if let Some(let_stmt) = ast::LetStmt::cast(parent.clone()) {
-                            let field_expr =
-                                if let ast::Expr::FieldExpr(field_expr) = let_stmt.initializer()? {
-                                    field_expr
-                                } else {
-                                    return None;
-                                };
-
-                            sema.type_of_expr(&field_expr.expr()?)
-                        } else if let Some(record_field_pat) = ast::RecordFieldPat::cast(parent) {
-                            let record_pat = record_field_pat
-                                .syntax()
-                                .parent()
-                                .and_then(ast::RecordFieldPatList::cast)?
-                                .syntax()
-                                .parent()
-                                .and_then(ast::RecordPat::cast)?;
-                            sema.type_of_pat(&ast::Pat::RecordPat(record_pat))
+                        if sema.is_unsafe_pat(&ast::Pat::BindPat(bind_pat)) {
+                            Some(HighlightModifier::Unsafe)
                         } else {
                             None
-                        }?;
-
-                        if !ty.is_packed(db) {
-                            return None;
                         }
-
-                        Some(HighlightModifier::Unsafe)
                     })();
 
                     if let Some(modifier) = modifier {
