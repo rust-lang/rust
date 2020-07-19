@@ -22,9 +22,9 @@ use super::Recover;
 /// to any other item, as determined by the [`Ord`] trait, changes while it is in the set. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
 ///
-/// [`Ord`]: ../../std/cmp/trait.Ord.html
-/// [`Cell`]: ../../std/cell/struct.Cell.html
-/// [`RefCell`]: ../../std/cell/struct.RefCell.html
+/// [`Ord`]: core::cmp::Ord
+/// [`Cell`]: core::cell::Cell
+/// [`RefCell`]: core::cell::RefCell
 ///
 /// # Examples
 ///
