@@ -176,9 +176,9 @@ impl fmt::Display for PanicInfo<'_> {
 ///
 /// # Comparisons
 ///
-/// Comparisons for equality and ordering are made in file, line, then column priority. Such
-/// comparisons can occasionally have surprising results. See [`Location::file`]'s documentation for
-/// more discussion.
+/// Comparisons for equality and ordering are made in file, line, then column priority.
+/// Files are compared as strings, not `Path`, which could be unexpected.
+/// See [`Location::file`]'s documentation for more discussion.
 #[lang = "panic_location"]
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
