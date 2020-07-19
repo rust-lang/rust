@@ -318,13 +318,12 @@ a.test-arrow {
 	font-size: 100%;
 	color: #788797;
 	border-radius: 4px;
-	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
-	background-color: rgba(255, 255, 255, 0);
+	background-color: rgba(57, 175, 215, 0.09);
 }
 
 a.test-arrow:hover {
-	background-color: rgba(242, 151, 24, 0.05);
-	color: #ffb44c;
+	background-color: rgba(57, 175, 215, 0.368);
+	color: #c5c5c5;
 }
 
 .toggle-label {
