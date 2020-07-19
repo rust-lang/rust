@@ -2,7 +2,7 @@
 
 // revisions:x86_64 i686 arm
 
-// min-llvm-version 9.0
+// min-llvm-version: 9.0
 
 //[x86_64] compile-flags: --target x86_64-unknown-uefi
 //[i686] compile-flags: --target i686-unknown-linux-musl

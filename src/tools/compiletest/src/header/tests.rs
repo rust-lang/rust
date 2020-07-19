@@ -120,16 +120,16 @@ fn llvm_version() {
     let mut config = config();
 
     config.llvm_version = Some("8.1.2-rust".to_owned());
-    assert!(parse_rs(&config, "// min-llvm-version 9.0").ignore);
+    assert!(parse_rs(&config, "// min-llvm-version: 9.0").ignore);
 
     config.llvm_version = Some("9.0.1-rust-1.43.0-dev".to_owned());
-    assert!(parse_rs(&config, "// min-llvm-version 9.2").ignore);
+    assert!(parse_rs(&config, "// min-llvm-version: 9.2").ignore);
 
     config.llvm_version = Some("9.3.1-rust-1.43.0-dev".to_owned());
-    assert!(!parse_rs(&config, "// min-llvm-version 9.2").ignore);
+    assert!(!parse_rs(&config, "// min-llvm-version: 9.2").ignore);
 
     config.llvm_version = Some("10.0.0-rust".to_owned());
-    assert!(!parse_rs(&config, "// min-llvm-version 9.0").ignore);
+    assert!(!parse_rs(&config, "// min-llvm-version: 9.0").ignore);
 }
 
 #[test]
