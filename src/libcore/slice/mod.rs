@@ -3241,12 +3241,18 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        (self.start..slice.len()).index(slice)
+        if self.start > slice.len() {
+            slice_index_len_fail(self.start, slice.len());
+        }
+        unsafe { &*self.get_unchecked(slice) }
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        (self.start..slice.len()).index_mut(slice)
+        if self.start > slice.len() {
+            slice_index_len_fail(self.start, slice.len());
+        }
+        unsafe { &mut *self.get_unchecked_mut(slice) }
     }
 }
 

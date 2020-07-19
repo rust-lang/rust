@@ -1088,7 +1088,7 @@ mod slice_index {
 
             good: data[6..] == [];
             bad: data[7..];
-            message: "but ends at"; // perhaps not ideal
+            message: "out of range";
         }
 
         in mod rangeto_len {
