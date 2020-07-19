@@ -950,9 +950,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::ImplPolarity::Negative if !self.allow_negative_impls => {
                     let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
                     let self_ty = trait_ref.self_ty();
-                    let string = format!("trait_ref: {:?}, self_ty: {:?}, pred: {:?}", trait_ref, self_ty, pred);
+                    let string = format!(
+                        "trait_ref: {:?}, self_ty: {:?}, pred: {:?}",
+                        trait_ref, self_ty, pred
+                    );
                     warn!("trait_ref: {:?}, self_ty: {:?}, pred: {:?}", trait_ref, self_ty, pred);
-                    if string == "trait_ref: <Foo<()> as std::marker::Send>, self_ty: Foo<()>, pred: Binder(TraitPredicate(<Foo<_> as std::marker::Send>))" {
+                    if string
+                        == "trait_ref: <Foo<()> as std::marker::Send>, self_ty: Foo<()>, pred: Binder(TraitPredicate(<Foo<_> as std::marker::Send>))"
+                    {
                         return Ok(None);
                     } else {
                         return Err(Unimplemented);
@@ -1062,7 +1067,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report "`Bar` does
         // not implement `Clone`".
         if candidates.len() == 1 {
-            return self.filter_negative_and_reservation_impls(stack.obligation.predicate, candidates.pop().unwrap());
+            return self.filter_negative_and_reservation_impls(
+                stack.obligation.predicate,
+                candidates.pop().unwrap(),
+            );
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -1135,7 +1143,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Just one candidate left.
-        self.filter_negative_and_reservation_impls(stack.obligation.predicate, candidates.pop().unwrap().candidate)
+        self.filter_negative_and_reservation_impls(
+            stack.obligation.predicate,
+            candidates.pop().unwrap().candidate,
+        )
     }
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Option<Conflict> {
