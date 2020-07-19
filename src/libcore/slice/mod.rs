@@ -2974,8 +2974,15 @@ where
 #[inline(never)]
 #[cold]
 #[track_caller]
-fn slice_index_len_fail(index: usize, len: usize) -> ! {
-    panic!("index {} out of range for slice of length {}", index, len);
+fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
+    panic!("range start index {} out of range for slice of length {}", index, len);
+}
+
+#[inline(never)]
+#[cold]
+#[track_caller]
+fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
+    panic!("range end index {} out of range for slice of length {}", index, len);
 }
 
 #[inline(never)]
@@ -3160,7 +3167,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         if self.start > self.end {
             slice_index_order_fail(self.start, self.end);
         } else if self.end > slice.len() {
-            slice_index_len_fail(self.end, slice.len());
+            slice_end_index_len_fail(self.end, slice.len());
         }
         unsafe { &*self.get_unchecked(slice) }
     }
@@ -3170,7 +3177,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         if self.start > self.end {
             slice_index_order_fail(self.start, self.end);
         } else if self.end > slice.len() {
-            slice_index_len_fail(self.end, slice.len());
+            slice_end_index_len_fail(self.end, slice.len());
         }
         unsafe { &mut *self.get_unchecked_mut(slice) }
     }
@@ -3241,12 +3248,18 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        (self.start..slice.len()).index(slice)
+        if self.start > slice.len() {
+            slice_start_index_len_fail(self.start, slice.len());
+        }
+        unsafe { &*self.get_unchecked(slice) }
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        (self.start..slice.len()).index_mut(slice)
+        if self.start > slice.len() {
+            slice_start_index_len_fail(self.start, slice.len());
+        }
+        unsafe { &mut *self.get_unchecked_mut(slice) }
     }
 }
 
