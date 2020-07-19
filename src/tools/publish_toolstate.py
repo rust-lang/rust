@@ -26,7 +26,7 @@ except ImportError:
 MAINTAINERS = {
     'miri': {'oli-obk', 'RalfJung', 'eddyb'},
     'rls': {'Xanewok'},
-    'rustfmt': {'topecongiro'},
+    'rustfmt': {'topecongiro', 'calebcartwright'},
     'book': {'carols10cents', 'steveklabnik'},
     'nomicon': {'frewsxcv', 'Gankra'},
     'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
