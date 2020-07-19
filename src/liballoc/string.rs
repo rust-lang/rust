@@ -65,7 +65,7 @@ use crate::vec::Vec;
 ///
 /// # Examples
 ///
-/// You can create a `String` from a literal string with [`String::from`]:
+/// You can create a `String` from [a literal string][str] with [`String::from`]:
 ///
 /// [`String::from`]: From::from
 ///
