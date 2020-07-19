@@ -238,25 +238,14 @@
 //! contract. The implementation of many of these functions are subject to change over
 //! time and may call fewer or more syscalls/library functions.
 //!
-//! [`Read`]: trait.Read.html
-//! [`Write`]: trait.Write.html
-//! [`Seek`]: trait.Seek.html
-//! [`BufRead`]: trait.BufRead.html
-//! [`File`]: ../fs/struct.File.html
-//! [`TcpStream`]: ../net/struct.TcpStream.html
-//! [`Vec<T>`]: ../vec/struct.Vec.html
-//! [`BufReader`]: struct.BufReader.html
-//! [`BufWriter`]: struct.BufWriter.html
-//! [`Write::write`]: trait.Write.html#tymethod.write
-//! [`io::stdout`]: fn.stdout.html
-//! [`println!`]: ../macro.println.html
-//! [`Lines`]: struct.Lines.html
-//! [`io::Result`]: type.Result.html
+//! [`File`]: crate::fs::File
+//! [`TcpStream`]: crate::net::TcpStream
+//! [`Vec<T>`]: crate::vec::Vec
+//! [`io::stdout`]: stdout
+//! [`io::Result`]: crate::io::Result
 //! [`?` operator]: ../../book/appendix-02-operators.html
-//! [`Read::read`]: trait.Read.html#tymethod.read
-//! [`Result`]: ../result/enum.Result.html
-//! [`.unwrap()`]: ../result/enum.Result.html#method.unwrap
-// ignore-tidy-filelength
+//! [`Result`]: crate::result::Result
+//! [`.unwrap()`]: crate::result::Result::unwrap
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -491,12 +480,10 @@ where
 /// }
 /// ```
 ///
-/// [`read()`]: trait.Read.html#tymethod.read
-/// [`std::io`]: ../../std/io/index.html
-/// [`File`]: ../fs/struct.File.html
-/// [`BufRead`]: trait.BufRead.html
-/// [`BufReader`]: struct.BufReader.html
-/// [`&str`]: ../../std/primitive.str.html
+/// [`read()`]: Read::read
+/// [`&str`]: str
+/// [`std::io`]: self
+/// [`File`]: crate::fs::File
 /// [slice]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
@@ -535,7 +522,7 @@ pub trait Read {
     /// before calling `read`. Calling `read` with an uninitialized `buf` (of the kind one
     /// obtains via [`MaybeUninit<T>`]) is not safe, and can lead to undefined behavior.
     ///
-    /// [`MaybeUninit<T>`]: ../mem/union.MaybeUninit.html
+    /// [`MaybeUninit<T>`]: crate::mem::MaybeUninit
     ///
     /// # Errors
     ///
@@ -550,10 +537,8 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`Ok(n)`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`File`]: ../fs/struct.File.html
+    /// [`Ok(n)`]: Ok
+    /// [`File`]: crate::fs::File
     ///
     /// ```no_run
     /// use std::io;
@@ -620,9 +605,6 @@ pub trait Read {
     /// This method is unsafe because a `Read`er could otherwise return a
     /// non-zeroing `Initializer` from another `Read` type without an `unsafe`
     /// block.
-    ///
-    /// [`Initializer::nop()`]: ../../std/io/struct.Initializer.html#method.nop
-    /// [`Initializer`]: ../../std/io/struct.Initializer.html
     #[unstable(feature = "read_initializer", issue = "42788")]
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
@@ -652,10 +634,9 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`read()`]: trait.Read.html#tymethod.read
-    /// [`Ok(0)`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`File`]: ../fs/struct.File.html
+    /// [`read()`]: Read::read
+    /// [`Ok(0)`]: Ok
+    /// [`File`]: crate::fs::File
     ///
     /// ```no_run
     /// use std::io;
@@ -675,7 +656,7 @@ pub trait Read {
     /// (See also the [`std::fs::read`] convenience function for reading from a
     /// file.)
     ///
-    /// [`std::fs::read`]: ../fs/fn.read.html
+    /// [`std::fs::read`]: crate::fs::read
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
         read_to_end(self, buf)
@@ -693,13 +674,13 @@ pub trait Read {
     ///
     /// See [`read_to_end`][readtoend] for other error semantics.
     ///
-    /// [readtoend]: #method.read_to_end
+    /// [readtoend]: Self::read_to_end
     ///
     /// # Examples
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../fs/struct.File.html
+    /// [file]: crate::fs::File
     ///
     /// ```no_run
     /// use std::io;
@@ -718,7 +699,7 @@ pub trait Read {
     /// (See also the [`std::fs::read_to_string`] convenience function for
     /// reading from a file.)
     ///
-    /// [`std::fs::read_to_string`]: ../fs/fn.read_to_string.html
+    /// [`std::fs::read_to_string`]: crate::fs::read_to_string
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
         // Note that we do *not* call `.read_to_end()` here. We are passing
@@ -764,9 +745,7 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`File`]: ../fs/struct.File.html
-    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`ErrorKind::UnexpectedEof`]: ../../std/io/enum.ErrorKind.html#variant.UnexpectedEof
+    /// [`File`]: crate::fs::File
     ///
     /// ```no_run
     /// use std::io;
@@ -811,7 +790,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../fs/struct.File.html
+    /// [file]: crate::fs::File
     ///
     /// ```no_run
     /// use std::io;
@@ -855,14 +834,10 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../fs/struct.File.html
-    /// [`Iterator`]: ../../std/iter/trait.Iterator.html
-    /// [`Result`]: ../../std/result/enum.Result.html
-    /// [`io::Error`]: ../../std/io/struct.Error.html
-    /// [`u8`]: ../../std/primitive.u8.html
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [file]: crate::fs::File
+    /// [`Iterator`]: crate::iter::Iterator
+    /// [`Result`]: crate::result::Result
+    /// [`io::Error`]: self::Error
     ///
     /// ```no_run
     /// use std::io;
@@ -896,7 +871,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../fs/struct.File.html
+    /// [file]: crate::fs::File
     ///
     /// ```no_run
     /// use std::io;
@@ -935,9 +910,9 @@ pub trait Read {
     ///
     /// [`File`]s implement `Read`:
     ///
-    /// [`File`]: ../fs/struct.File.html
-    /// [`Ok(0)`]: ../../std/result/enum.Result.html#variant.Ok
-    /// [`read()`]: trait.Read.html#tymethod.read
+    /// [`File`]: crate::fs::File
+    /// [`Ok(0)`]: Ok
+    /// [`read()`]: Read::read
     ///
     /// ```no_run
     /// use std::io;
@@ -1233,8 +1208,8 @@ impl Initializer {
 /// throughout [`std::io`] take and provide types which implement the `Write`
 /// trait.
 ///
-/// [`write`]: #tymethod.write
-/// [`flush`]: #tymethod.flush
+/// [`write`]: Self::write
+/// [`flush`]: Self::flush
 /// [`std::io`]: index.html
 ///
 /// # Examples
@@ -1260,7 +1235,7 @@ impl Initializer {
 /// The trait also provides convenience methods like [`write_all`], which calls
 /// `write` in a loop until its entire input has been written.
 ///
-/// [`write_all`]: #method.write_all
+/// [`write_all`]: Self::write_all
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
 pub trait Write {
@@ -1291,10 +1266,6 @@ pub trait Write {
     ///
     /// An error of the [`ErrorKind::Interrupted`] kind is non-fatal and the
     /// write operation should be retried if there is nothing else to do.
-    ///
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
-    /// [`Ok(n)`]:  ../../std/result/enum.Result.html#variant.Ok
-    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
     ///
     /// # Examples
     ///
@@ -1381,8 +1352,7 @@ pub trait Write {
     /// This function will return the first error of
     /// non-[`ErrorKind::Interrupted`] kind that [`write`] returns.
     ///
-    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
-    /// [`write`]: #tymethod.write
+    /// [`write`]: Self::write
     ///
     /// # Examples
     ///
@@ -1423,8 +1393,7 @@ pub trait Write {
     ///
     /// If the buffer contains no data, this will never call [`write_vectored`].
     ///
-    /// [`write_vectored`]: #method.write_vectored
-    /// [`ErrorKind::Interrupted`]: ../../std/io/enum.ErrorKind.html#variant.Interrupted
+    /// [`write_vectored`]: Self::write_vectored
     ///
     /// # Notes
     ///
@@ -1480,19 +1449,16 @@ pub trait Write {
     /// encountered.
     ///
     /// This method is primarily used to interface with the
-    /// [`format_args!`][formatargs] macro, but it is rare that this should
-    /// explicitly be called. The [`write!`][write] macro should be favored to
+    /// [`format_args!()`] macro, but it is rare that this should
+    /// explicitly be called. The [`write!()`] macro should be favored to
     /// invoke this method instead.
-    ///
-    /// [formatargs]: ../macro.format_args.html
-    /// [write]: ../macro.write.html
     ///
     /// This function internally uses the [`write_all`][writeall] method on
     /// this trait and hence will continuously write data so long as no errors
     /// are received. This also means that partial writes are not indicated in
     /// this signature.
     ///
-    /// [writeall]: #method.write_all
+    /// [writeall]: Self::write_all
     ///
     /// # Errors
     ///
@@ -1589,7 +1555,7 @@ pub trait Write {
 ///
 /// [`File`][file]s implement `Seek`:
 ///
-/// [file]: ../fs/struct.File.html
+/// [file]: crate::fs::File
 ///
 /// ```no_run
 /// use std::io;
@@ -1789,9 +1755,9 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
 /// [`BufReader`] to the rescue!
 ///
 /// [`BufReader`]: struct.BufReader.html
-/// [`File`]: ../fs/struct.File.html
-/// [`read_line`]: #method.read_line
-/// [`lines`]: #method.lines
+/// [`File`]: crate::fs::File
+/// [`read_line`]: Self::read_line
+/// [`lines`]: Self::lines
 /// [`Read`]: trait.Read.html
 ///
 /// ```no_run
@@ -1823,7 +1789,7 @@ pub trait BufRead: Read {
     /// be called with the number of bytes that are consumed from this buffer to
     /// ensure that the bytes are never returned twice.
     ///
-    /// [`consume`]: #tymethod.consume
+    /// [`consume`]: Self::consume
     ///
     /// An empty buffer returned indicates that the stream has reached EOF.
     ///
@@ -1873,7 +1839,7 @@ pub trait BufRead: Read {
     /// Since `consume()` is meant to be used with [`fill_buf`],
     /// that method's example includes an example of `consume()`.
     ///
-    /// [`fill_buf`]: #tymethod.fill_buf
+    /// [`fill_buf`]: Self::fill_buf
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
 
@@ -1897,7 +1863,7 @@ pub trait BufRead: Read {
     /// If an I/O error is encountered then all bytes read so far will be
     /// present in `buf` and its length will have been adjusted appropriately.
     ///
-    /// [`fill_buf`]: #tymethod.fill_buf
+    /// [`fill_buf`]: Self::fill_buf
     /// [`ErrorKind::Interrupted`]: enum.ErrorKind.html#variant.Interrupted
     ///
     /// # Examples
@@ -1962,7 +1928,7 @@ pub trait BufRead: Read {
     /// error is encountered then `buf` may contain some bytes already read in
     /// the event that all data read so far was valid UTF-8.
     ///
-    /// [`read_until`]: #method.read_until
+    /// [`read_until`]: Self::read_until
     ///
     /// # Examples
     ///
@@ -2015,9 +1981,9 @@ pub trait BufRead: Read {
     /// This function will yield errors whenever [`read_until`] would have
     /// also yielded an error.
     ///
-    /// [`io::Result`]: type.Result.html
-    /// [`Vec<u8>`]: ../vec/struct.Vec.html
-    /// [`read_until`]: #method.read_until
+    /// [`io::Result`]: self::Result
+    /// [`Vec<u8>`]: crate::vec::Vec
+    /// [`read_until`]: Self::read_until
     ///
     /// # Examples
     ///
@@ -2052,16 +2018,13 @@ pub trait BufRead: Read {
     /// [`io::Result`]`<`[`String`]`>`. Each string returned will *not* have a newline
     /// byte (the 0xA byte) or CRLF (0xD, 0xA bytes) at the end.
     ///
-    /// [`io::Result`]: type.Result.html
-    /// [`String`]: ../string/struct.String.html
+    /// [`io::Result`]: self::Result
     ///
     /// # Examples
     ///
     /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
     /// this example, we use [`Cursor`] to iterate over all the lines in a byte
     /// slice.
-    ///
-    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
     /// use std::io::{self, BufRead};
@@ -2252,8 +2215,6 @@ impl<T> Take<T> {
     ///
     /// This instance may reach `EOF` after reading fewer bytes than indicated by
     /// this method if the underlying [`Read`] instance reaches EOF.
-    ///
-    /// [`Read`]: ../../std/io/trait.Read.html
     ///
     /// # Examples
     ///

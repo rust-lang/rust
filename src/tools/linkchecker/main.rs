@@ -23,6 +23,32 @@ use std::rc::Rc;
 
 use crate::Redirect::*;
 
+// Add linkcheck exceptions here
+// If at all possible you should use intra-doc links to avoid linkcheck issues. These
+// are cases where that does not work
+// [(generated_documentation_page, &[broken_links])]
+const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
+    // These are methods on slice, and `Self` does not work on primitive impls
+    // in intra-doc links (primitive impls are weird)
+    // https://github.com/rust-lang/rust/issues/62834 is necessary to be
+    // able to link to slices
+    (
+        "std/io/struct.IoSlice.html",
+        &[
+            "#method.as_mut_ptr",
+            "#method.sort_by_key",
+            "#method.make_ascii_uppercase",
+            "#method.make_ascii_lowercase",
+        ],
+    ),
+    // These try to link to std::collections, but are defined in alloc
+    // https://github.com/rust-lang/rust/issues/74481
+    ("std/collections/btree_map/struct.BTreeMap.html", &["#insert-and-complex-keys"]),
+    ("std/collections/btree_set/struct.BTreeSet.html", &["#insert-and-complex-keys"]),
+    ("alloc/collections/btree_map/struct.BTreeMap.html", &["#insert-and-complex-keys"]),
+    ("alloc/collections/btree_set/struct.BTreeSet.html", &["#insert-and-complex-keys"]),
+];
+
 macro_rules! t {
     ($e:expr) => {
         match $e {
@@ -111,32 +137,17 @@ fn walk(cache: &mut Cache, root: &Path, dir: &Path, errors: &mut bool) {
     }
 }
 
+fn is_exception(file: &Path, link: &str) -> bool {
+    if let Some(entry) = LINKCHECK_EXCEPTIONS.iter().find(|&(f, _)| file.ends_with(f)) {
+        entry.1.contains(&link)
+    } else {
+        false
+    }
+}
+
 fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Option<PathBuf> {
     // Ignore non-HTML files.
     if file.extension().and_then(|s| s.to_str()) != Some("html") {
-        return None;
-    }
-
-    // Unfortunately we're not 100% full of valid links today to we need a few
-    // exceptions to get this past `make check` today.
-    // FIXME(#32129)
-    if file.ends_with("std/io/struct.IoSlice.html")
-        || file.ends_with("std/string/struct.String.html")
-    {
-        return None;
-    }
-    // FIXME(#32553)
-    if file.ends_with("alloc/string/struct.String.html") {
-        return None;
-    }
-    // FIXME(#32130)
-    if file.ends_with("alloc/collections/btree_map/struct.BTreeMap.html")
-        || file.ends_with("alloc/collections/btree_set/struct.BTreeSet.html")
-        || file.ends_with("std/collections/btree_map/struct.BTreeMap.html")
-        || file.ends_with("std/collections/btree_set/struct.BTreeSet.html")
-        || file.ends_with("std/collections/hash_map/struct.HashMap.html")
-        || file.ends_with("std/collections/hash_set/struct.HashSet.html")
-    {
         return None;
     }
 
@@ -254,17 +265,20 @@ fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Opti
                 let entry = &mut cache.get_mut(&pretty_path).unwrap();
                 entry.parse_ids(&pretty_path, &contents, errors);
 
-                if !entry.ids.contains(*fragment) {
+                if !entry.ids.contains(*fragment) && !is_exception(file, &format!("#{}", fragment))
+                {
                     *errors = true;
                     print!("{}:{}: broken link fragment ", pretty_file.display(), i + 1);
                     println!("`#{}` pointing to `{}`", fragment, pretty_path.display());
                 };
             }
         } else {
-            *errors = true;
-            print!("{}:{}: broken link - ", pretty_file.display(), i + 1);
             let pretty_path = path.strip_prefix(root).unwrap_or(&path);
-            println!("{}", pretty_path.display());
+            if !is_exception(file, pretty_path.to_str().unwrap()) {
+                *errors = true;
+                print!("{}:{}: broken link - ", pretty_file.display(), i + 1);
+                println!("{}", pretty_path.display());
+            }
         }
     });
     Some(pretty_file)
