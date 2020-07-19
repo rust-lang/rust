@@ -680,7 +680,7 @@ mod impl_keyword {}
 //
 /// Iterate over a series of values with [`for`].
 ///
-/// The expression immediately following `in` must implement the [`Iterator`] trait.
+/// The expression immediately following `in` must implement the [`IntoIterator`] trait.
 ///
 /// ## Literal Examples:
 ///
@@ -689,7 +689,7 @@ mod impl_keyword {}
 ///
 /// (Read more about [range patterns])
 ///
-/// [`Iterator`]: ../book/ch13-04-performance.html
+/// [`IntoIterator`]: ../book/ch13-04-performance.html
 /// [range patterns]: ../reference/patterns.html?highlight=range#range-patterns
 /// [`for`]: keyword.for.html
 mod in_keyword {}
