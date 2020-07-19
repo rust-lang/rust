@@ -133,7 +133,7 @@ impl EarlyProps {
         fn ignore_gdb(config: &Config, line: &str) -> bool {
             if let Some(actual_version) = config.gdb_version {
                 if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
-                    let (start_ver, end_ver) = extract_gdb_version_range(rest);
+                    let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version);
 
                     if start_ver != end_ver {
                         panic!("Expected single GDB version")
@@ -142,7 +142,8 @@ impl EarlyProps {
                     // version
                     return actual_version < start_ver;
                 } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
-                    let (min_version, max_version) = extract_gdb_version_range(rest);
+                    let (min_version, max_version) =
+                        extract_version_range(rest, extract_gdb_version);
 
                     if max_version < min_version {
                         panic!("Malformed GDB version range: max < min")
@@ -152,36 +153,6 @@ impl EarlyProps {
                 }
             }
             false
-        }
-
-        // Takes a directive of the form "<version1> [- <version2>]",
-        // returns the numeric representation of <version1> and <version2> as
-        // tuple: (<version1> as u32, <version2> as u32)
-        // If the <version2> part is omitted, the second component of the tuple
-        // is the same as <version1>.
-        fn extract_gdb_version_range(line: &str) -> (u32, u32) {
-            const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
-
-            let range_components = line
-                .split(&[' ', '-'][..])
-                .filter(|word| !word.is_empty())
-                .map(extract_gdb_version)
-                .skip_while(Option::is_none)
-                .take(3) // 3 or more = invalid, so take at most 3.
-                .collect::<Vec<Option<u32>>>();
-
-            match *range_components {
-                [v] => {
-                    let v = v.unwrap();
-                    (v, v)
-                }
-                [min, max] => {
-                    let v_min = min.unwrap();
-                    let v_max = max.expect(ERROR_MESSAGE);
-                    (v_min, v_max)
-                }
-                _ => panic!(ERROR_MESSAGE),
-            }
         }
 
         fn ignore_lldb(config: &Config, line: &str) -> bool {
@@ -981,4 +952,35 @@ fn parse_normalization_string(line: &mut &str) -> Option<String> {
     let result = line[begin..end].to_owned();
     *line = &line[end + 1..];
     Some(result)
+}
+
+// Takes a directive of the form "<version1> [- <version2>]",
+// returns the numeric representation of <version1> and <version2> as
+// tuple: (<version1> as u32, <version2> as u32)
+// If the <version2> part is omitted, the second component of the tuple
+// is the same as <version1>.
+fn extract_version_range<F>(line: &str, parse: F) -> (u32, u32)
+where
+    F: Fn(&str) -> Option<u32>,
+{
+    let range_components = line
+        .split(&[' ', '-'][..])
+        .filter(|word| !word.is_empty())
+        .map(parse)
+        .skip_while(Option::is_none)
+        .take(3) // 3 or more = invalid, so take at most 3.
+        .collect::<Vec<Option<u32>>>();
+
+    match *range_components {
+        [v] => {
+            let v = v.unwrap();
+            (v, v)
+        }
+        [min, max] => {
+            let v_min = min.unwrap();
+            let v_max = max.expect("Malformed version directive");
+            (v_min, v_max)
+        }
+        _ => panic!("Malformed version directive"),
+    }
 }
