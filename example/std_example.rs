@@ -146,6 +146,7 @@ unsafe fn test_simd() {
 
     // FIXME(#666) implement `#[rustc_arg_required_const(..)]` support
     //test_mm_extract_epi8();
+    //test_mm_insert_epi16();
 
     let mask1 = _mm_movemask_epi8(dbg!(_mm_setr_epi8(255u8 as i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
     assert_eq!(mask1, 1);
@@ -277,6 +278,14 @@ unsafe fn test_mm_extract_epi8() {
     let r2 = _mm_extract_epi8(a, 19);
     assert_eq!(r1, 0xFF);
     assert_eq!(r2, 3);
+}
+
+#[target_feature(enable = "sse2")]
+unsafe fn test_mm_insert_epi16() {
+    let a = _mm_setr_epi16(0, 1, 2, 3, 4, 5, 6, 7);
+    let r = _mm_insert_epi16(a, 9, 0);
+    let e = _mm_setr_epi16(9, 1, 2, 3, 4, 5, 6, 7);
+    assert_eq_m128i(r, e);
 }
 
 fn test_checked_mul() {

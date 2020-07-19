@@ -33,6 +33,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         };
 
+        // FIXME support float comparisons
         simd_eq, (c x, c y) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_cmp!(fx, Equal(x, y) -> ret);
@@ -113,7 +114,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
         };
 
-        simd_insert, (c base, o idx, v _val) {
+        simd_insert, (c base, o idx, c val) {
             // FIXME validate
             let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
                 idx_const
@@ -132,13 +133,9 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_insert] idx {} >= lane_count {}", idx, lane_count));
             }
 
-            // FIXME implement this
-            fx.tcx.sess.span_warn(
-                fx.mir.span,
-                "`simd_insert` is not yet implemented. Calling this function will panic.",
-            );
-            let val = crate::trap::trap_unimplemented_ret_value(fx, ret.layout(), "`simd_insert` is not yet implemented");
-            ret.write_cvalue(fx, val);
+            ret.write_cvalue(fx, base);
+            let ret_lane = ret.place_field(fx, mir::Field::new(idx.try_into().unwrap()));
+            ret_lane.write_cvalue(fx, val);
         };
 
         simd_extract, (c v, o idx) {
@@ -233,5 +230,12 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
             simd_flt_binop!(fx, fmax(x, y) -> ret);
         };
+
+        // simd_fabs
+        // simd_saturating_add
+        // simd_bitmask
+        // simd_select
+        // simd_reduce_add_{,un}ordered
+        // simd_rem
     }
 }
