@@ -63,7 +63,7 @@ pub use crate::completion::{
 // There also snippet completions:
 //
 // .Expressions
-// - `pd` -> `eprintln!(" = {:?}", );")`
+// - `pd` -> `eprintln!(" = {:?}", );`
 // - `ppd` -> `eprintln!(" = {:#?}", );`
 //
 // .Items
