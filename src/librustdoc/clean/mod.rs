@@ -2358,7 +2358,7 @@ impl Clean<Stability> for attr::Stability {
     fn clean(&self, _: &DocContext<'_>) -> Stability {
         Stability {
             level: stability::StabilityLevel::from_attr_level(&self.level),
-            feature: Some(self.feature.to_string()).filter(|f| !f.is_empty()),
+            feature: self.feature.to_string(),
             since: match self.level {
                 attr::Stable { ref since } => since.to_string(),
                 _ => String::new(),
