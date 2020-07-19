@@ -1526,7 +1526,7 @@ pub struct ProcMacro {
 #[derive(Clone, Debug)]
 pub struct Stability {
     pub level: stability::StabilityLevel,
-    pub feature: Option<String>,
+    pub feature: String,
     pub since: String,
     pub deprecation: Option<Deprecation>,
     pub unstable_reason: Option<String>,
