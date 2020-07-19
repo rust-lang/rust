@@ -2501,7 +2501,22 @@ impl<T> [T] {
     where
         T: Copy,
     {
-        assert_eq!(self.len(), src.len(), "destination and source slices have different lengths");
+        // The panic code path was put into a cold function to not bloat the
+        // call site.
+        #[inline(never)]
+        #[cold]
+        #[track_caller]
+        fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
+            panic!(
+                "source slice length ({}) does not match destination slice length ({})",
+                src_len, dst_len,
+            );
+        }
+
+        if self.len() != src.len() {
+            len_mismatch_fail(self.len(), src.len());
+        }
+
         // SAFETY: `self` is valid for `self.len()` elements by definition, and `src` was
         // checked to have the same length. The slices cannot overlap because
         // mutable references are exclusive.
