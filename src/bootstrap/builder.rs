@@ -1444,6 +1444,10 @@ pub struct Cargo {
 }
 
 impl Cargo {
+    pub fn rustdocflag(&mut self, arg: &str) -> &mut Cargo {
+        self.rustdocflags.arg(arg);
+        self
+    }
     pub fn rustflag(&mut self, arg: &str) -> &mut Cargo {
         self.rustflags.arg(arg);
         self
@@ -1466,6 +1470,9 @@ impl Cargo {
     }
 
     pub fn env(&mut self, key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Cargo {
+        // These are managed through rustflag/rustdocflag interfaces.
+        assert_ne!(key.as_ref(), "RUSTFLAGS");
+        assert_ne!(key.as_ref(), "RUSTDOCFLAGS");
         self.command.env(key.as_ref(), value.as_ref());
         self
     }
