@@ -2082,7 +2082,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => params.into_iter().map(|k| k.expect_ty()),
                 _ => bug!(),
             };
-            self.mk_fn_sig(params_iter, s.output(), s.c_variadic, unsafety, abi::Abi::Rust)
+            self.mk_fn_sig(params_iter, s.output(), s.c_variadic, unsafety, abi::Abi::Rust, hir::Constness::NotConst,)
         })
     }
 
@@ -2459,6 +2459,7 @@ impl<'tcx> TyCtxt<'tcx> {
         c_variadic: bool,
         unsafety: hir::Unsafety,
         abi: abi::Abi,
+        constness: hir::Constness,
     ) -> <I::Item as InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>::Output
     where
         I: Iterator<Item: InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>,
@@ -2468,6 +2469,7 @@ impl<'tcx> TyCtxt<'tcx> {
             c_variadic,
             unsafety,
             abi,
+            constness
         })
     }
 

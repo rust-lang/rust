@@ -125,6 +125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sig.c_variadic,
                 sig.unsafety,
                 sig.abi,
+                sig.constness,
             )
         });
 
@@ -288,6 +289,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             false,
             hir::Unsafety::Normal,
             Abi::Rust,
+            hir::Constness::NotConst,
         );
         debug!("deduce_sig_from_projection: sig={:?}", sig);
 
@@ -403,6 +405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,
+            hir::Constness::NotConst,
         ));
 
         // `deduce_expectations_from_expected_type` introduces
@@ -582,6 +585,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,
+            hir::Constness::NotConst,
         ));
 
         debug!("supplied_sig_of_closure: result={:?}", result);
@@ -717,6 +721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,
+            hir::Constness::NotConst,
         ));
 
         debug!("supplied_sig_of_closure: result={:?}", result);

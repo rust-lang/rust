@@ -648,6 +648,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::FnSig<'a> {
             c_variadic: self.c_variadic,
             unsafety: self.unsafety,
             abi: self.abi,
+            constness: self.constness
         })
     }
 }
@@ -670,6 +671,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             Mismatch => Mismatch,
             UnsafetyMismatch(x) => UnsafetyMismatch(x),
             AbiMismatch(x) => AbiMismatch(x),
+            ConstnessMismatch(x) => ConstnessMismatch(x),
             Mutability => Mutability,
             TupleSize(x) => TupleSize(x),
             FixedArraySize(x) => FixedArraySize(x),

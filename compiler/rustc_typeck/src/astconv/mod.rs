@@ -2019,6 +2019,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.mk_fn_ptr(self.ty_of_fn(
                     bf.unsafety,
                     bf.abi,
+                    bf.constness,
                     &bf.decl,
                     &hir::Generics::empty(),
                     None,
@@ -2157,6 +2158,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         unsafety: hir::Unsafety,
         abi: abi::Abi,
+        constness: hir::Constness,
         decl: &hir::FnDecl<'_>,
         generics: &hir::Generics<'_>,
         ident_span: Option<Span>,
@@ -2184,7 +2186,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         debug!("ty_of_fn: output_ty={:?}", output_ty);
 
         let bare_fn_ty =
-            ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi));
+            ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi, constness,));
 
         if !self.allow_ty_infer() {
             // We always collect the spans for placeholder types when evaluating `fn`s, but we

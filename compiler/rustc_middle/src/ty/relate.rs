@@ -165,6 +165,7 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
         }
         let unsafety = relation.relate(a.unsafety, b.unsafety)?;
         let abi = relation.relate(a.abi, b.abi)?;
+        let constness = relation.relate(a.constness, b.constness)?;
 
         if a.inputs().len() != b.inputs().len() {
             return Err(TypeError::ArgCount);
@@ -189,6 +190,7 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             c_variadic: a.c_variadic,
             unsafety,
             abi,
+            constness
         })
     }
 }
@@ -214,6 +216,17 @@ impl<'tcx> Relate<'tcx> for abi::Abi {
         b: abi::Abi,
     ) -> RelateResult<'tcx, abi::Abi> {
         if a == b { Ok(a) } else { Err(TypeError::AbiMismatch(expected_found(relation, a, b))) }
+    }
+}
+
+impl<'tcx> Relate<'tcx> for ast::Constness {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ast::Constness,
+        b: ast::Constness
+    ) -> RelateResult<'tcx, ast::Constness> {
+        if a == b || (a == ast::Constness::Const && b == ast::Constness::NotConst) { Ok(a) }
+        else { Err(TypeError::ConstnessMismatch(expected_found(relation, a, b))) }
     }
 }
 

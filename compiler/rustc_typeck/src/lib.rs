@@ -236,6 +236,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: LocalDefId) {
                 false,
                 hir::Unsafety::Normal,
                 Abi::Rust,
+                hir::Constness::NotConst,
             )));
 
             require_same_types(
@@ -323,6 +324,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
                 false,
                 hir::Unsafety::Normal,
                 Abi::Rust,
+                hir::Constness::NotConst,
             )));
 
             require_same_types(

@@ -25,6 +25,7 @@ fn equate_intrinsic_type<'tcx>(
     n_tps: usize,
     abi: Abi,
     safety: hir::Unsafety,
+    constness: hir::Constness,
     inputs: Vec<Ty<'tcx>>,
     output: Ty<'tcx>,
 ) {
@@ -59,6 +60,7 @@ fn equate_intrinsic_type<'tcx>(
         false,
         safety,
         abi,
+        constness,
     )));
     let cause = ObligationCause::new(it.span, it.hir_id, ObligationCauseCode::IntrinsicType);
     require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(def_id)), fty);
@@ -334,6 +336,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust,
+                    hir::Constness::NotConst,
                 ));
                 let catch_fn_ty = ty::Binder::bind(tcx.mk_fn_sig(
                     [mut_u8, mut_u8].iter().cloned(),
@@ -341,6 +344,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                     false,
                     hir::Unsafety::Normal,
                     Abi::Rust,
+                    hir::Constness::NotConst,
                 ));
                 (
                     0,
@@ -376,7 +380,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         };
         (n_tps, inputs, output, unsafety)
     };
-    equate_intrinsic_type(tcx, it, def_id, n_tps, Abi::RustIntrinsic, unsafety, inputs, output)
+    equate_intrinsic_type(tcx, it, def_id, n_tps, Abi::RustIntrinsic, unsafety, hir::Constness::NotConst, inputs, output)
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
@@ -469,6 +473,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         n_tps,
         Abi::PlatformIntrinsic,
         hir::Unsafety::Unsafe,
+        hir::Constness::NotConst,
         inputs,
         output,
     )

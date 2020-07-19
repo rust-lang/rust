@@ -1159,6 +1159,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     false,
                     hir::Unsafety::Normal,
                     abi::Abi::Rust,
+                    hir::Constness::NotConst
                 )
             } else {
                 tcx.mk_fn_sig(
@@ -1167,6 +1168,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     false,
                     hir::Unsafety::Normal,
                     abi::Abi::Rust,
+                    hir::Constness::NotConst,
                 )
             };
             ty::Binder::bind(sig).to_string()

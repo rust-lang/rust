@@ -1556,6 +1556,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     &icx,
                     sig.header.unsafety,
                     sig.header.abi,
+                    sig.header.constness,
                     &sig.decl,
                     &generics,
                     Some(ident.span),
@@ -1569,7 +1570,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             generics,
             ..
         }) => {
-            AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl, &generics, Some(ident.span))
+            AstConv::ty_of_fn(&icx, header.unsafety, header.abi, header.constness, decl, &generics, Some(ident.span))
         }
 
         ForeignItem(&hir::ForeignItem {
@@ -1591,6 +1592,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                 false,
                 hir::Unsafety::Normal,
                 abi::Abi::Rust,
+                hir::Constness::NotConst,
             ))
         }
 
@@ -2263,6 +2265,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         &ItemCtxt::new(tcx, def_id),
         unsafety,
         abi,
+        hir::Constness::NotConst,
         decl,
         &hir::Generics::empty(),
         Some(ident.span),

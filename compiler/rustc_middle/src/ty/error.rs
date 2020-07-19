@@ -36,6 +36,7 @@ pub enum TypeError<'tcx> {
     Mismatch,
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
+    ConstnessMismatch(ExpectedFound<hir::Constness>),
     Mutability,
     TupleSize(ExpectedFound<usize>),
     FixedArraySize(ExpectedFound<u64>),
@@ -107,6 +108,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 write!(f, "expected {} fn, found {} fn", values.expected, values.found)
             }
             AbiMismatch(values) => {
+                write!(f, "expected {} fn, found {} fn", values.expected, values.found)
+            }
+            ConstnessMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn", values.expected, values.found)
             }
             Mutability => write!(f, "types differ in mutability"),
@@ -197,9 +201,9 @@ impl<'tcx> TypeError<'tcx> {
     pub fn must_include_note(&self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_)
-            | FixedArraySize(_) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_) | ConstnessMismatch(_) | FixedArraySize(_)
+            | Sorts(_) | IntMismatch(_) | FloatMismatch(_) | VariadicMismatch(_)
+            | TargetFeatureCast(_) => false,
 
             Mutability
             | TupleSize(_)

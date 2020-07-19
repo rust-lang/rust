@@ -683,6 +683,7 @@ fn gen_fn<'ll, 'tcx>(
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust,
+        hir::Constness::NotConst,
     ));
     let fn_abi = FnAbi::of_fn_ptr(cx, rust_fn_sig, &[]);
     let llfn = cx.declare_fn(name, &fn_abi);
@@ -716,6 +717,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust,
+        hir::Constness::NotConst,
     )));
     let catch_fn_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
         [i8p, i8p].iter().cloned(),
@@ -723,6 +725,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
         false,
         hir::Unsafety::Unsafe,
         Abi::Rust,
+        hir::Constness::NotConst,
     )));
     let output = tcx.types.i32;
     let rust_try = gen_fn(cx, "__rust_try", vec![try_fn_ty, i8p, catch_fn_ty], output, codegen);

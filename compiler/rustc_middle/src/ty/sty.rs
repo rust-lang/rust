@@ -1127,6 +1127,7 @@ pub struct FnSig<'tcx> {
     pub c_variadic: bool,
     pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
+    pub constness: hir::Constness
 }
 
 impl<'tcx> FnSig<'tcx> {
@@ -1146,6 +1147,7 @@ impl<'tcx> FnSig<'tcx> {
             c_variadic: false,
             unsafety: hir::Unsafety::Normal,
             abi: abi::Abi::Rust,
+            constness: hir::Constness::NotConst,
         }
     }
 }

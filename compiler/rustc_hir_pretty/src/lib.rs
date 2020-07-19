@@ -404,6 +404,7 @@ impl<'a> State<'a> {
                 self.print_ty_fn(
                     f.abi,
                     f.unsafety,
+                    f.constness,
                     &f.decl,
                     None,
                     &f.generic_params,
@@ -2310,6 +2311,7 @@ impl<'a> State<'a> {
         &mut self,
         abi: Abi,
         unsafety: hir::Unsafety,
+        constness: hir::Constness,
         decl: &hir::FnDecl<'_>,
         name: Option<Symbol>,
         generic_params: &[hir::GenericParam<'_>],
@@ -2330,7 +2332,7 @@ impl<'a> State<'a> {
             hir::FnHeader {
                 unsafety,
                 abi,
-                constness: hir::Constness::NotConst,
+                constness,
                 asyncness: hir::IsAsync::NotAsync,
             },
             name,
