@@ -392,7 +392,6 @@ mod extern_keyword {}
 /// See the documentation for [`true`] for more information.
 ///
 /// [`true`]: keyword.true.html
-/// [`bool`]: primitive.bool.html
 mod false_keyword {}
 
 #[doc(keyword = "fn")]
