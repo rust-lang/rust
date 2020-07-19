@@ -26,6 +26,7 @@ use crate::Redirect::*;
 // Add linkcheck exceptions here
 // If at all possible you should use intra-doc links to avoid linkcheck issues. These
 // are cases where that does not work
+// [(generated_documentation_page, &[broken_links])]
 const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     // These are methods on slice, and `Self` does not work on primitive impls
     // in intra-doc links (intra-doc links are weird)
