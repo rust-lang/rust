@@ -47,6 +47,10 @@ fn lang_start_internal(
         // Store our args if necessary in a squirreled away location
         sys::args::init(argc, argv);
 
+        // Load romfs (which contains debug info) on DevkitA64
+        #[cfg(target_env = "devkita64")]
+        crate::os::devkita64::initialize_romfs();
+
         // Let's run some code!
         let exit_code = panic::catch_unwind(main);
 
