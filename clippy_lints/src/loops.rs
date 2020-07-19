@@ -1114,6 +1114,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ForPatternVisitor<'a, 'tcx> {
             | ExprKind::Cast(expr, _)
             | ExprKind::Type(expr, _)
             | ExprKind::AddrOf(_, _, expr)
+            | ExprKind::Field(expr, _)
             | ExprKind::Struct(_, _, Some(expr)) => self.visit_expr(expr),
             _ => {
                 // Exploration cannot continue ... calculate the hir_id of the current

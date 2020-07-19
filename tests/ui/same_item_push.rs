@@ -74,4 +74,16 @@ fn main() {
     for _ in 0..5 {
         println!("Same Item Push");
     }
+
+    struct A {
+        kind: u32,
+    }
+    let mut vec_a: Vec<A> = Vec::new();
+    for i in 0..30 {
+        vec_a.push(A{kind: i});
+    }
+    let mut vec12: Vec<u8> = Vec::new();
+    for a in vec_a {
+        vec12.push(2u8.pow(a.kind));
+    }
 }
