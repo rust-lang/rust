@@ -745,7 +745,10 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 let (mut callee, substs) = match *fn_ty.kind() {
                     ty::FnDef(def_id, substs) => (def_id, substs),
 
-                    ty::FnPtr(_) => {
+                    ty::FnPtr(fn_sig) => {
+                        // At this point, we are calling a function by raw pointer because
+                        // we know that it is const
+                        if fn_sig.constness() == hir::Constness::Const { return; }
                         self.check_op(ops::FnCallIndirect);
                         return;
                     }
