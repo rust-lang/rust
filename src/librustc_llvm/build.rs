@@ -104,8 +104,16 @@ fn main() {
         optional_components.push("riscv");
     }
 
-    let required_components =
-        &["ipo", "bitreader", "bitwriter", "linker", "asmparser", "lto", "instrumentation"];
+    let required_components = &[
+        "ipo",
+        "bitreader",
+        "bitwriter",
+        "linker",
+        "asmparser",
+        "lto",
+        "coverage",
+        "instrumentation",
+    ];
 
     let components = output(Command::new(&llvm_config).arg("--components"));
     let mut components = components.split_whitespace().collect::<Vec<_>>();
@@ -169,6 +177,7 @@ fn main() {
     cfg.file("../rustllvm/PassWrapper.cpp")
         .file("../rustllvm/RustWrapper.cpp")
         .file("../rustllvm/ArchiveWrapper.cpp")
+        .file("../rustllvm/CoverageMappingWrapper.cpp")
         .file("../rustllvm/Linker.cpp")
         .cpp(true)
         .cpp_link_stdlib(None) // we handle this below

@@ -186,6 +186,9 @@ pub struct Config {
     /// The rustdoc executable.
     pub rustdoc_path: Option<PathBuf>,
 
+    /// The rust-demangler executable.
+    pub rust_demangler_path: Option<PathBuf>,
+
     /// The Python executable to use for LLDB.
     pub lldb_python: String,
 

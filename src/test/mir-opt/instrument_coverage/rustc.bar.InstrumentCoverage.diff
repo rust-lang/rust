@@ -3,34 +3,40 @@
   
   fn bar() -> bool {
       let mut _0: bool;                    // return place in scope 0 at $DIR/instrument_coverage.rs:18:13: 18:17
-+     let mut _1: ();                      // in scope 0 at $DIR/instrument_coverage.rs:18:1: 20:2
++     let mut _1: ();                      // in scope 0 at $DIR/instrument_coverage.rs:18:18: 18:18
   
       bb0: {
-+         StorageLive(_1);                 // scope 0 at $DIR/instrument_coverage.rs:18:1: 20:2
-+         _1 = const std::intrinsics::count_code_region(const 0_u32, const 484_u32, const 513_u32) -> bb2; // scope 0 at $DIR/instrument_coverage.rs:18:1: 20:2
++         StorageLive(_1);                 // scope 0 at $DIR/instrument_coverage.rs:18:18: 18:18
++         _1 = const std::intrinsics::count_code_region(const 10208505205182607101_u64, const 0_u32, const 501_u32, const 513_u32) -> bb2; // scope 0 at $DIR/instrument_coverage.rs:18:18: 18:18
 +                                          // ty::Const
-+                                          // + ty: unsafe extern "rust-intrinsic" fn(u32, u32, u32) {std::intrinsics::count_code_region}
++                                          // + ty: unsafe extern "rust-intrinsic" fn(u64, u32, u32, u32) {std::intrinsics::count_code_region}
 +                                          // + val: Value(Scalar(<ZST>))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:18:1: 18:1
-+                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
++                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
++                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u64, u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
++                                          // ty::Const
++                                          // + ty: u64
++                                          // + val: Value(Scalar(0x8dabe565aaa2aefd))
++                                          // mir::Constant
++                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
++                                          // + literal: Const { ty: u64, val: Value(Scalar(0x8dabe565aaa2aefd)) }
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000000))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:18:1: 18:1
++                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
 +                                          // ty::Const
 +                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x000001e4))
++                                          // + val: Value(Scalar(0x000001f5))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:18:1: 18:1
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x000001e4)) }
++                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x000001f5)) }
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000201))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:18:1: 18:1
++                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000201)) }
 +     }
 + 

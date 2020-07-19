@@ -1022,6 +1022,10 @@ impl Step for Compiletest {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }
 
+        if mode == "run-make" && suite.ends_with("fulldeps") {
+            cmd.arg("--rust-demangler-path").arg(builder.tool_exe(Tool::RustDemangler));
+        }
+
         cmd.arg("--src-base").arg(builder.src.join("src/test").join(suite));
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
