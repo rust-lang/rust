@@ -220,3 +220,18 @@ fn sanitizers() {
     assert!(parse_rs(&config, "// needs-sanitizer-memory").ignore);
     assert!(parse_rs(&config, "// needs-sanitizer-thread").ignore);
 }
+
+#[test]
+fn test_extract_version_range() {
+    use super::{extract_llvm_version, extract_version_range};
+
+    assert_eq!(extract_version_range("1.2.3 - 4.5.6", extract_llvm_version), Some((10203, 40506)));
+    assert_eq!(extract_version_range("0   - 4.5.6", extract_llvm_version), Some((0, 40506)));
+    assert_eq!(extract_version_range("1.2.3 -", extract_llvm_version), None);
+    assert_eq!(extract_version_range("1.2.3 - ", extract_llvm_version), None);
+    assert_eq!(extract_version_range("- 4.5.6", extract_llvm_version), None);
+    assert_eq!(extract_version_range("-", extract_llvm_version), None);
+    assert_eq!(extract_version_range(" - 4.5.6", extract_llvm_version), None);
+    assert_eq!(extract_version_range("   - 4.5.6", extract_llvm_version), None);
+    assert_eq!(extract_version_range("0  -", extract_llvm_version), None);
+}

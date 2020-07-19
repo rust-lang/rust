@@ -133,7 +133,10 @@ impl EarlyProps {
         fn ignore_gdb(config: &Config, line: &str) -> bool {
             if let Some(actual_version) = config.gdb_version {
                 if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
-                    let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version);
+                    let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
+                        .unwrap_or_else(|| {
+                            panic!("couldn't parse version range: {:?}", rest);
+                        });
 
                     if start_ver != end_ver {
                         panic!("Expected single GDB version")
@@ -143,7 +146,9 @@ impl EarlyProps {
                     return actual_version < start_ver;
                 } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
                     let (min_version, max_version) =
-                        extract_version_range(rest, extract_gdb_version);
+                        extract_version_range(rest, extract_gdb_version).unwrap_or_else(|| {
+                            panic!("couldn't parse version range: {:?}", rest);
+                        });
 
                     if max_version < min_version {
                         panic!("Malformed GDB version range: max < min")
@@ -197,7 +202,10 @@ impl EarlyProps {
                 } else if let Some(rest) = line.strip_prefix("ignore-llvm-version:").map(str::trim)
                 {
                     // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
-                    let (v_min, v_max) = extract_version_range(rest, extract_llvm_version);
+                    let (v_min, v_max) = extract_version_range(rest, extract_llvm_version)
+                        .unwrap_or_else(|| {
+                            panic!("couldn't parse version range: {:?}", rest);
+                        });
                     if v_max < v_min {
                         panic!("Malformed LLVM version range: max < min")
                     }
@@ -940,28 +948,28 @@ pub fn extract_llvm_version(version: &str) -> Option<u32> {
 // tuple: (<version1> as u32, <version2> as u32)
 // If the <version2> part is omitted, the second component of the tuple
 // is the same as <version1>.
-fn extract_version_range<F>(line: &str, parse: F) -> (u32, u32)
+fn extract_version_range<F>(line: &str, parse: F) -> Option<(u32, u32)>
 where
     F: Fn(&str) -> Option<u32>,
 {
-    let range_components = line
-        .split(&[' ', '-'][..])
-        .filter(|word| !word.is_empty())
-        .map(parse)
-        .skip_while(Option::is_none)
-        .take(3) // 3 or more = invalid, so take at most 3.
-        .collect::<Vec<Option<u32>>>();
-
-    match *range_components {
-        [v] => {
-            let v = v.unwrap();
-            (v, v)
-        }
-        [min, max] => {
-            let v_min = min.unwrap();
-            let v_max = max.expect("Malformed version directive");
-            (v_min, v_max)
-        }
-        _ => panic!("Malformed version directive"),
+    let mut splits = line.splitn(2, "- ").map(str::trim);
+    let min = splits.next().unwrap();
+    if min.ends_with('-') {
+        return None;
     }
+
+    let max = splits.next();
+
+    if min.is_empty() {
+        return None;
+    }
+
+    let min = parse(min)?;
+    let max = match max {
+        Some(max) if max.is_empty() => return None,
+        Some(max) => parse(max)?,
+        _ => min,
+    };
+
+    Some((min, max))
 }
