@@ -7,8 +7,10 @@
 //! Test that panic locations for `#[track_caller]` functions in std have the correct
 //! location reported.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::ops::{Index, IndexMut};
+use std::panic::{AssertUnwindSafe, UnwindSafe};
 
 fn main() {
     // inspect the `PanicInfo` we receive to ensure the right file is the source
@@ -20,7 +22,7 @@ fn main() {
         }
     }));
 
-    fn assert_panicked(f: impl FnOnce() + std::panic::UnwindSafe) {
+    fn assert_panicked(f: impl FnOnce() + UnwindSafe) {
         std::panic::catch_unwind(f).unwrap_err();
     }
 
@@ -57,4 +59,9 @@ fn main() {
     let weirdo: VecDeque<()> = Default::default();
     assert_panicked(|| { weirdo.index(1); });
     assert_panicked(|| { weirdo[1]; });
+
+    let refcell: RefCell<()> = Default::default();
+    let _conflicting = refcell.borrow_mut();
+    assert_panicked(AssertUnwindSafe(|| { refcell.borrow(); }));
+    assert_panicked(AssertUnwindSafe(|| { refcell.borrow_mut(); }));
 }
