@@ -77,13 +77,13 @@ impl EarlyLintPass for RedundantClosureCall {
                         cx,
                         REDUNDANT_CLOSURE_CALL,
                         expr.span,
-                        "Try not to call a closure in the expression where it is declared.",
+                        "try not to call a closure in the expression where it is declared.",
                         |diag| {
                             if decl.inputs.is_empty() {
                                 let mut app = Applicability::MachineApplicable;
                                 let hint =
                                     snippet_with_applicability(cx, block.span, "..", &mut app).into_owned();
-                                diag.span_suggestion(expr.span, "Try doing something like: ", hint, app);
+                                diag.span_suggestion(expr.span, "try doing something like", hint, app);
                             }
                         },
                     );
@@ -136,13 +136,13 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 if let hir::ExprKind::Call(ref closure, _) = call.kind;
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = closure.kind;
                 if ident == path.segments[0].ident;
-                if  count_closure_usage(block, path) == 1;
+                if count_closure_usage(block, path) == 1;
                 then {
                     span_lint(
                         cx,
                         REDUNDANT_CLOSURE_CALL,
                         second.span,
-                        "Closure called just once immediately after it was declared",
+                        "closure called just once immediately after it was declared",
                     );
                 }
             }
