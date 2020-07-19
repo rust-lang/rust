@@ -237,16 +237,6 @@ a {
 
 #crate-search+.search-input:focus {
 	box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
-	color: #ffffff;
-	background-color: #141920;
-	box-shadow: none;
-	transition: box-shadow 150ms ease-in-out;
-	border-radius: 4px;
-	margin-left: 8px;
-}
-
-#crate-search+.search-input:focus {
-	box-shadow: 0px 6px 20px 0px black;
 }
 
 .search-focus:disabled {
