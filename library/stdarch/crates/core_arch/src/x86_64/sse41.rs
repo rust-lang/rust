@@ -17,8 +17,11 @@ use stdarch_test::assert_instr;
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi64(a: __m128i, imm8: i32) -> i64 {
-    let imm8 = (imm8 & 1) as u32;
-    simd_extract(a.as_i64x2(), imm8)
+    let a = a.as_i64x2();
+    match imm8 & 1 {
+        0 => simd_extract(a, 0),
+        _ => simd_extract(a, 1),
+    }
 }
 
 /// Returns a copy of `a` with the 64-bit integer from `i` inserted at a
@@ -31,7 +34,11 @@ pub unsafe fn _mm_extract_epi64(a: __m128i, imm8: i32) -> i64 {
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi64(a: __m128i, i: i64, imm8: i32) -> __m128i {
-    transmute(simd_insert(a.as_i64x2(), (imm8 & 1) as u32, i))
+    let a = a.as_i64x2();
+    match imm8 & 1 {
+        0 => transmute(simd_insert(a, 0, i)),
+        _ => transmute(simd_insert(a, 1, i)),
+    }
 }
 
 #[cfg(test)]

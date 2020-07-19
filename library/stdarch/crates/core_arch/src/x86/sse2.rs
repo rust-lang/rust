@@ -506,7 +506,13 @@ pub unsafe fn _mm_bsrli_si128(a: __m128i, imm8: i32) -> __m128i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_slli_epi16(a: __m128i, imm8: i32) -> __m128i {
-    transmute(pslliw(a.as_i16x8(), imm8))
+    let a = a.as_i16x8();
+    macro_rules! call {
+        ($imm8:expr) => {
+            transmute(pslliw(a, $imm8))
+        };
+    }
+    constify_imm8!(imm8, call)
 }
 
 /// Shifts packed 16-bit integers in `a` left by `count` while shifting in
@@ -530,7 +536,13 @@ pub unsafe fn _mm_sll_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_slli_epi32(a: __m128i, imm8: i32) -> __m128i {
-    transmute(psllid(a.as_i32x4(), imm8))
+    let a = a.as_i32x4();
+    macro_rules! call {
+        ($imm8:expr) => {
+            transmute(psllid(a, $imm8))
+        };
+    }
+    constify_imm8!(imm8, call)
 }
 
 /// Shifts packed 32-bit integers in `a` left by `count` while shifting in
@@ -554,7 +566,13 @@ pub unsafe fn _mm_sll_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_slli_epi64(a: __m128i, imm8: i32) -> __m128i {
-    transmute(pslliq(a.as_i64x2(), imm8))
+    let a = a.as_i64x2();
+    macro_rules! call {
+        ($imm8:expr) => {
+            transmute(pslliq(a, $imm8))
+        };
+    }
+    constify_imm8!(imm8, call)
 }
 
 /// Shifts packed 64-bit integers in `a` left by `count` while shifting in
@@ -579,7 +597,13 @@ pub unsafe fn _mm_sll_epi64(a: __m128i, count: __m128i) -> __m128i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_srai_epi16(a: __m128i, imm8: i32) -> __m128i {
-    transmute(psraiw(a.as_i16x8(), imm8))
+    let a = a.as_i16x8();
+    macro_rules! call {
+        ($imm8:expr) => {
+            transmute(psraiw(a, $imm8))
+        };
+    }
+    constify_imm8!(imm8, call)
 }
 
 /// Shifts packed 16-bit integers in `a` right by `count` while shifting in sign
@@ -604,7 +628,13 @@ pub unsafe fn _mm_sra_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_srai_epi32(a: __m128i, imm8: i32) -> __m128i {
-    transmute(psraid(a.as_i32x4(), imm8))
+    let a = a.as_i32x4();
+    macro_rules! call {
+        ($imm8:expr) => {
+            transmute(psraid(a, $imm8))
+        };
+    }
+    constify_imm8!(imm8, call)
 }
 
 /// Shifts packed 32-bit integers in `a` right by `count` while shifting in sign
@@ -696,7 +726,13 @@ unsafe fn _mm_srli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_srli_epi16(a: __m128i, imm8: i32) -> __m128i {
-    transmute(psrliw(a.as_i16x8(), imm8))
+    let a = a.as_i16x8();
+    macro_rules! call {
+        ($imm8:expr) => {
+            transmute(psrliw(a, $imm8))
+        };
+    }
+    constify_imm8!(imm8, call)
 }
 
 /// Shifts packed 16-bit integers in `a` right by `count` while shifting in
@@ -721,7 +757,13 @@ pub unsafe fn _mm_srl_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_srli_epi32(a: __m128i, imm8: i32) -> __m128i {
-    transmute(psrlid(a.as_i32x4(), imm8))
+    let a = a.as_i32x4();
+    macro_rules! call {
+        ($imm8:expr) => {
+            transmute(psrlid(a, $imm8))
+        };
+    }
+    constify_imm8!(imm8, call)
 }
 
 /// Shifts packed 32-bit integers in `a` right by `count` while shifting in
@@ -1375,7 +1417,13 @@ pub unsafe fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi16(a: __m128i, imm8: i32) -> i32 {
-    simd_extract::<_, u16>(a.as_u16x8(), (imm8 & 7) as u32) as i32
+    let a = a.as_u16x8();
+    macro_rules! call {
+        ($imm3:expr) => {
+            simd_extract::<_, u16>(a, $imm3) as i32
+        };
+    }
+    constify_imm3!(imm8, call)
 }
 
 /// Returns a new vector where the `imm8` element of `a` is replaced with `i`.
@@ -1387,7 +1435,13 @@ pub unsafe fn _mm_extract_epi16(a: __m128i, imm8: i32) -> i32 {
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi16(a: __m128i, i: i32, imm8: i32) -> __m128i {
-    transmute(simd_insert(a.as_i16x8(), (imm8 & 7) as u32, i as i16))
+    let a = a.as_i16x8();
+    macro_rules! call {
+        ($imm3:expr) => {
+            transmute(simd_insert(a, $imm3, i as i16))
+        };
+    }
+    constify_imm3!(imm8, call)
 }
 
 /// Returns a mask of the most significant bit of each element in `a`.

@@ -167,7 +167,12 @@ pub unsafe fn _mm_blend_ps(a: __m128, b: __m128, imm4: i32) -> __m128 {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_ps(a: __m128, imm8: i32) -> i32 {
-    transmute(simd_extract::<_, f32>(a, imm8 as u32 & 0b11))
+    macro_rules! call {
+        ($imm2:expr) => {
+            transmute(simd_extract::<_, f32>(a, $imm2))
+        };
+    }
+    constify_imm2!(imm8, call)
 }
 
 /// Extracts an 8-bit integer from `a`, selected with `imm8`. Returns a 32-bit
@@ -182,8 +187,13 @@ pub unsafe fn _mm_extract_ps(a: __m128, imm8: i32) -> i32 {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi8(a: __m128i, imm8: i32) -> i32 {
-    let imm8 = (imm8 & 15) as u32;
-    simd_extract::<_, u8>(a.as_u8x16(), imm8) as i32
+    let a = a.as_u8x16();
+    macro_rules! call {
+        ($imm4:expr) => {
+            simd_extract::<_, u8>(a, $imm4) as i32
+        };
+    }
+    constify_imm4!(imm8, call)
 }
 
 /// Extracts an 32-bit integer from `a` selected with `imm8`
@@ -198,8 +208,13 @@ pub unsafe fn _mm_extract_epi8(a: __m128i, imm8: i32) -> i32 {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi32(a: __m128i, imm8: i32) -> i32 {
-    let imm8 = (imm8 & 3) as u32;
-    simd_extract::<_, i32>(a.as_i32x4(), imm8)
+    let a = a.as_i32x4();
+    macro_rules! call {
+        ($imm2:expr) => {
+            simd_extract::<_, i32>(a, $imm2)
+        };
+    }
+    constify_imm2!(imm8, call)
 }
 
 /// Select a single value in `a` to store at some position in `b`,
@@ -250,7 +265,13 @@ pub unsafe fn _mm_insert_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi8(a: __m128i, i: i32, imm8: i32) -> __m128i {
-    transmute(simd_insert(a.as_i8x16(), (imm8 & 0b1111) as u32, i as i8))
+    let a = a.as_i8x16();
+    macro_rules! call {
+        ($imm4:expr) => {
+            transmute(simd_insert(a, $imm4, i as i8))
+        };
+    }
+    constify_imm4!(imm8, call)
 }
 
 /// Returns a copy of `a` with the 32-bit integer from `i` inserted at a
@@ -263,7 +284,13 @@ pub unsafe fn _mm_insert_epi8(a: __m128i, i: i32, imm8: i32) -> __m128i {
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi32(a: __m128i, i: i32, imm8: i32) -> __m128i {
-    transmute(simd_insert(a.as_i32x4(), (imm8 & 0b11) as u32, i))
+    let a = a.as_i32x4();
+    macro_rules! call {
+        ($imm2:expr) => {
+            transmute(simd_insert(a, $imm2, i))
+        };
+    }
+    constify_imm2!(imm8, call)
 }
 
 /// Compares packed 8-bit integers in `a` and `b` and returns packed maximum

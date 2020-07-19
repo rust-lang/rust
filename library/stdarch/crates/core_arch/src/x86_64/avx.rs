@@ -28,7 +28,13 @@ use crate::{
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi64(a: __m256i, i: i64, index: i32) -> __m256i {
-    transmute(simd_insert(a.as_i64x4(), (index as u32) & 3, i))
+    let a = a.as_i64x4();
+    match index & 3 {
+        0 => transmute(simd_insert(a, 0, i)),
+        1 => transmute(simd_insert(a, 1, i)),
+        2 => transmute(simd_insert(a, 2, i)),
+        _ => transmute(simd_insert(a, 3, i)),
+    }
 }
 
 #[cfg(test)]

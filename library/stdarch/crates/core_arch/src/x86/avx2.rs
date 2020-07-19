@@ -3744,8 +3744,13 @@ pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extract_epi8(a: __m256i, imm8: i32) -> i32 {
-    let imm8 = (imm8 & 31) as u32;
-    simd_extract::<_, u8>(a.as_u8x32(), imm8) as i32
+    let a = a.as_u8x32();
+    macro_rules! call {
+        ($imm5:expr) => {
+            simd_extract::<_, u8>(a, $imm5) as i32
+        };
+    }
+    constify_imm5!(imm8, call)
 }
 
 /// Extracts a 16-bit integer from `a`, selected with `imm8`. Returns a 32-bit
@@ -3760,8 +3765,13 @@ pub unsafe fn _mm256_extract_epi8(a: __m256i, imm8: i32) -> i32 {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extract_epi16(a: __m256i, imm8: i32) -> i32 {
-    let imm8 = (imm8 & 15) as u32;
-    simd_extract::<_, u16>(a.as_u16x16(), imm8) as i32
+    let a = a.as_u16x16();
+    macro_rules! call {
+        ($imm4:expr) => {
+            simd_extract::<_, u16>(a, $imm4) as i32
+        };
+    }
+    constify_imm4!((imm8 & 15), call)
 }
 
 /// Extracts a 32-bit integer from `a`, selected with `imm8`.
@@ -3773,8 +3783,13 @@ pub unsafe fn _mm256_extract_epi16(a: __m256i, imm8: i32) -> i32 {
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extract_epi32(a: __m256i, imm8: i32) -> i32 {
-    let imm8 = (imm8 & 7) as u32;
-    simd_extract(a.as_i32x8(), imm8)
+    let a = a.as_i32x8();
+    macro_rules! call {
+        ($imm3:expr) => {
+            simd_extract(a, $imm3)
+        };
+    }
+    constify_imm3!((imm8 & 7), call)
 }
 
 /// Returns the first element of the input vector of `[4 x double]`.

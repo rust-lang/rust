@@ -29,8 +29,13 @@ use crate::core_arch::{simd_llvm::*, x86::*};
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extract_epi64(a: __m256i, imm8: i32) -> i64 {
-    let imm8 = (imm8 & 3) as u32;
-    simd_extract(a.as_i64x4(), imm8)
+    let a = a.as_i64x4();
+    match imm8 & 3 {
+        0 => simd_extract(a, 0),
+        1 => simd_extract(a, 1),
+        2 => simd_extract(a, 2),
+        _ => simd_extract(a, 3),
+    }
 }
 
 #[cfg(test)]

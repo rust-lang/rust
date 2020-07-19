@@ -1579,7 +1579,13 @@ pub unsafe fn _mm256_insertf128_si256(a: __m256i, b: __m128i, imm8: i32) -> __m2
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
-    transmute(simd_insert(a.as_i8x32(), (index as u32) & 31, i))
+    let a = a.as_i8x32();
+    macro_rules! call {
+        ($index:expr) => {
+            simd_insert(a, $index, i)
+        };
+    }
+    transmute(constify_imm5!(index, call))
 }
 
 /// Copies `a` to result, and inserts the 16-bit integer `i` into result
@@ -1592,7 +1598,13 @@ pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
-    transmute(simd_insert(a.as_i16x16(), (index as u32) & 15, i))
+    let a = a.as_i16x16();
+    macro_rules! call {
+        ($index:expr) => {
+            simd_insert(a, $index, i)
+        };
+    }
+    transmute(constify_imm4!((index & 15), call))
 }
 
 /// Copies `a` to result, and inserts the 32-bit integer `i` into result
@@ -1605,7 +1617,13 @@ pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi32(a: __m256i, i: i32, index: i32) -> __m256i {
-    transmute(simd_insert(a.as_i32x8(), (index as u32) & 7, i))
+    let a = a.as_i32x8();
+    macro_rules! call {
+        ($index:expr) => {
+            simd_insert(a, $index, i)
+        };
+    }
+    transmute(constify_imm8!((index & 7), call))
 }
 
 /// Loads 256-bits (composed of 4 packed double-precision (64-bit)
