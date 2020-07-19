@@ -54,7 +54,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         self.db.struct_datum(self.krate, struct_id)
     }
     fn adt_repr(&self, _struct_id: AdtId) -> rust_ir::AdtRepr {
-        unreachable!()
+        rust_ir::AdtRepr { repr_c: false, repr_packed: false }
     }
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
         self.db.impl_datum(self.krate, impl_id)
