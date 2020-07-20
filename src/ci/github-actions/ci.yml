@@ -92,6 +92,15 @@ x--expand-yaml-anchors--remove:
         if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'
         <<: *step
 
+      # Rust Log Analyzer can't currently detect the PR number of a GitHub
+      # Actions build on its own, so a hint in the log message is needed to
+      # point it in the right direction.
+      - name: configure the PR in which the error message will be posted
+        run: echo "[CI_PR_NUMBER=$num]"
+        env:
+          num: ${{ github.event.number }}
+        if: success() && !env.SKIP_JOBS && github.event_name == 'pull_request'
+
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
