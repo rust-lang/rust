@@ -221,15 +221,11 @@ impl<'tcx> Relate<'tcx> for abi::Abi {
 
 impl<'tcx> Relate<'tcx> for ast::Constness {
     fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
+        _relation: &mut R,
         a: ast::Constness,
         b: ast::Constness,
     ) -> RelateResult<'tcx, ast::Constness> {
-        if a == b || (a == ast::Constness::Const && b == ast::Constness::NotConst) {
-            Ok(b)
-        } else {
-            Err(TypeError::ConstnessMismatch(expected_found(relation, a, b)))
-        }
+        if a == b { Ok(a) } else { Ok(ast::Constness::NotConst) }
     }
 }
 
