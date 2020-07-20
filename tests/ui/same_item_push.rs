@@ -80,7 +80,7 @@ fn main() {
     }
     let mut vec_a: Vec<A> = Vec::new();
     for i in 0..30 {
-        vec_a.push(A{kind: i});
+        vec_a.push(A { kind: i });
     }
     let mut vec12: Vec<u8> = Vec::new();
     for a in vec_a {

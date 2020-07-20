@@ -1081,7 +1081,8 @@ fn has_mutable_variables<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> 
             def_id.expect_local(),
             cx.param_env,
             cx.typeck_results(),
-        ).walk_expr(expr);
+        )
+        .walk_expr(expr);
     });
 
     delegate.found_mutable
@@ -1271,7 +1272,7 @@ fn detect_same_item_push<'tcx>(
                         SAME_ITEM_PUSH,
                         vec.span,
                         "it looks like the same item is being pushed into this Vec",
-                        None, 
+                        None,
                         &format!(
                             "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
                             item_str, vec_str, item_str
