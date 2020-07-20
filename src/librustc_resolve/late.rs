@@ -1500,11 +1500,17 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         pat_src: PatternSource,
         bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) {
+        let is_tuple_struct_pat = matches!(pat.kind, PatKind::TupleStruct(_, _));
+
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
             debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
             match pat.kind {
-                PatKind::Ident(bmode, ident, ref sub) => {
+                // In tuple struct patterns ignore the invalid `ident @ ...`.
+                // It will be handled as an error by the AST lowering.
+                PatKind::Ident(bmode, ident, ref sub)
+                    if !(is_tuple_struct_pat && sub.as_ref().filter(|p| p.is_rest()).is_some()) =>
+                {
                     // First try to resolve the identifier as some existing entity,
                     // then fall back to a fresh binding.
                     let has_sub = sub.is_some();
