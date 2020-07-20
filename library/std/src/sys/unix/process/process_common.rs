@@ -13,7 +13,7 @@ use crate::sys_common::process::CommandEnv;
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
 
-use libc::{c_char, c_int, gid_t, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
+use libc::{c_char, c_int, gid_t, strlen, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
@@ -75,6 +75,7 @@ pub struct Command {
     args: Vec<CString>,
     argv: Argv,
     env: CommandEnv,
+    arg_max: Option<isize>,
 
     cwd: Option<CString>,
     uid: Option<uid_t>,
@@ -137,6 +138,7 @@ impl Command {
             args: vec![program.clone()],
             program,
             env: Default::default(),
+            arg_max: Default::default(),
             cwd: None,
             uid: None,
             gid: None,
@@ -200,6 +202,49 @@ impl Command {
     #[allow(dead_code)]
     pub fn get_gid(&self) -> Option<gid_t> {
         self.gid
+    }
+
+    pub fn get_size(&mut self) -> io::Result<usize> {
+        use crate::mem;
+        let argv = self.argv.0;
+        let argv_size: usize = argv.iter().map(|x| unsafe { strlen(*x) + 1 }).sum::<usize>()
+            + (argv.len() + 1) * mem::size_of::<*const u8>();
+
+        // Envp size calculation is approximate.
+        let env = self.env.capture();
+        let env_size: usize = env
+            .iter()
+            .map(|(k, v)| unsafe {
+                os2c(k.as_ref(), &mut self.saw_nul).to_bytes().len()
+                    + os2c(v.as_ref(), &mut self.saw_nul).to_bytes().len()
+                    + 2
+            })
+            .sum::<usize>()
+            + (env.len() + 1) * mem::size_of::<*const u8>();
+
+        Ok(argv_size + env_size)
+    }
+
+    pub fn check_size(&mut self, refresh: bool) -> io::Result<bool> {
+        use crate::sys;
+        use core::convert::TryInto;
+        if refresh || self.arg_max.is_none() {
+            let (limit, errno) = unsafe {
+                let old_errno = sys::os::errno();
+                sys::os::set_errno(0);
+                let limit = libc::sysconf(libc::_SC_ARG_MAX);
+                let errno = sys::os::errno();
+                sys::os::set_errno(old_errno);
+                (limit, errno)
+            };
+
+            if errno != 0 {
+                return Err(io::Error::from_raw_os_error(errno));
+            } else {
+                self.arg_max = limit.try_into().ok();
+            }
+        }
+        Ok(self.arg_max.unwrap() < 0 || self.get_size()? < (self.arg_max.unwrap() as usize))
     }
 
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {

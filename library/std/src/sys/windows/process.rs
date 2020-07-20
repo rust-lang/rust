@@ -65,6 +65,8 @@ fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     }
 }
 
+// 32768 minus NUL plus starting space in our implementation
+const CMDLINE_MAX: usize = 32768;
 pub struct Command {
     program: OsString,
     args: Vec<OsString>,
@@ -75,6 +77,8 @@ pub struct Command {
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
+    cmdline: Vec<u16>,
+    cmdline_error: Option<io::Error>,
 }
 
 pub enum Stdio {
@@ -106,11 +110,32 @@ impl Command {
             stdin: None,
             stdout: None,
             stderr: None,
+            cmdline: Vec::new(),
+            cmdline_error: None,
         }
     }
 
+    pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
+        self.args.push(arg.to_os_string());
+        self.cmdline.push(' ' as u16);
+        let result = append_arg(&mut cmd, arg, false);
+        if result.is_err() {
+            self.cmdline.truncate(self.cmdline.len() - 1);
+            result
+        } else if self.cmdline.size() >= CMDLINE_MAX {
+            // Roll back oversized
+            self.cmdline.truncate(self.cmdline.len() - 1 - result.unwrap());
+            Err(io::Error::new(ErrorKind::InvalidInput, "oversized cmdline"))
+        }
+        Ok()
+    }
     pub fn arg(&mut self, arg: &OsStr) {
-        self.args.push(arg.to_os_string())
+        if self.cmdline_error.is_none() {
+            let result = self.maybe_arg(self, arg);
+            if result.is_err() {
+                self.cmdline_error = Some(result.expect_err());
+            }
+        }
     }
     pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
@@ -136,33 +161,44 @@ impl Command {
         default: Stdio,
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
+        if self.cmdline_error.is_some() {
+            return self.cmdline_error.unwrap();
+        }
+
         let maybe_env = self.env.capture_if_changed();
         // To have the spawning semantics of unix/windows stay the same, we need
         // to read the *child's* PATH if one is provided. See #15149 for more
         // details.
-        let program = maybe_env.as_ref().and_then(|env| {
-            if let Some(v) = env.get(OsStr::new("PATH")) {
-                // Split the value and test each path to see if the
-                // program exists.
-                for path in split_paths(&v) {
-                    let path = path
-                        .join(self.program.to_str().unwrap())
-                        .with_extension(env::consts::EXE_EXTENSION);
-                    if fs::metadata(&path).is_ok() {
-                        return Some(path.into_os_string());
+        let program = maybe_env
+            .as_ref()
+            .and_then(|env| {
+                if let Some(v) = env.get(OsStr::new("PATH")) {
+                    // Split the value and test each path to see if the
+                    // program exists.
+                    for path in split_paths(&v) {
+                        let path = path
+                            .join(self.program.to_str().unwrap())
+                            .with_extension(env::consts::EXE_EXTENSION);
+                        if fs::metadata(&path).is_ok() {
+                            return Some(path.into_os_string());
+                        }
                     }
                 }
-            }
-            None
-        });
+                None
+            })
+            .as_ref()
+            .unwrap_or(&self.program);
+
+        // Prepare and terminate the application name and the cmdline
+        // XXX: this won't work for 16-bit, might be preferable to do a extend_from_slice
+        let program_str: Vec<u16> = Vec::new();
+        append_arg(&mut program_str, program, true)?;
+        program_str.push(0);
+        self.cmdline.push(0);
 
         let mut si = zeroed_startupinfo();
         si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
         si.dwFlags = c::STARTF_USESTDHANDLES;
-
-        let program = program.as_ref().unwrap_or(&self.program);
-        let mut cmd_str = make_command_line(program, &self.args)?;
-        cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
         let mut flags = self.flags | c::CREATE_UNICODE_ENVIRONMENT;
@@ -201,8 +237,8 @@ impl Command {
 
         unsafe {
             cvt(c::CreateProcessW(
-                ptr::null(),
-                cmd_str.as_mut_ptr(),
+                program_str.as_mut_ptr(),
+                self.cmdline.as_mut_ptr().offset(1), // Skip the starting space
                 ptr::null_mut(),
                 ptr::null_mut(),
                 c::TRUE,
@@ -220,6 +256,14 @@ impl Command {
         drop(Handle::new(pi.hThread));
 
         Ok((Process { handle: Handle::new(pi.hProcess) }, pipes))
+    }
+
+    pub fn get_size(&mut self) -> io::Result<usize> {
+        let (_, cmd_str) = self.prepare_command_line()?;
+        Ok(cmd_str.len())
+    }
+    pub fn check_size(&mut self, _refresh: bool) -> io::Result<bool> {
+        Ok(self.get_size()? < 32767)
     }
 }
 
@@ -445,6 +489,44 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
     }
 }
 
+fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> io::Result<usize> {
+    let mut addsize: usize = 0;
+    // If an argument has 0 characters then we need to quote it to ensure
+    // that it actually gets passed through on the command line or otherwise
+    // it will be dropped entirely when parsed on the other end.
+    ensure_no_nuls(arg)?;
+    let arg_bytes = &arg.as_inner().inner.as_inner();
+    let quote =
+        force_quotes || arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t') || arg_bytes.is_empty();
+    if quote {
+        cmd.push('"' as u16);
+        addsize += 1;
+    }
+
+    let mut backslashes: usize = 0;
+    for x in arg.encode_wide() {
+        if x == '\\' as u16 {
+            backslashes += 1;
+        } else {
+            if x == '"' as u16 {
+                // Add n+1 backslashes to total 2n+1 before internal '"'.
+                cmd.extend((0..=backslashes).map(|_| '\\' as u16));
+                addsize += backslashes + 1;
+            }
+            backslashes = 0;
+        }
+        cmd.push(x);
+    }
+
+    if quote {
+        // Add n backslashes to total 2n before ending '"'.
+        cmd.extend((0..backslashes).map(|_| '\\' as u16));
+        cmd.push('"' as u16);
+        addsize += backslashes + 1;
+    }
+    Ok(addsize)
+}
+
 // Produces a wide string *without terminating null*; returns an error if
 // `prog` or any of the `args` contain a nul.
 fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
@@ -459,41 +541,6 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
         append_arg(&mut cmd, arg, false)?;
     }
     return Ok(cmd);
-
-    fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> io::Result<()> {
-        // If an argument has 0 characters then we need to quote it to ensure
-        // that it actually gets passed through on the command line or otherwise
-        // it will be dropped entirely when parsed on the other end.
-        ensure_no_nuls(arg)?;
-        let arg_bytes = &arg.as_inner().inner.as_inner();
-        let quote = force_quotes
-            || arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t')
-            || arg_bytes.is_empty();
-        if quote {
-            cmd.push('"' as u16);
-        }
-
-        let mut backslashes: usize = 0;
-        for x in arg.encode_wide() {
-            if x == '\\' as u16 {
-                backslashes += 1;
-            } else {
-                if x == '"' as u16 {
-                    // Add n+1 backslashes to total 2n+1 before internal '"'.
-                    cmd.extend((0..=backslashes).map(|_| '\\' as u16));
-                }
-                backslashes = 0;
-            }
-            cmd.push(x);
-        }
-
-        if quote {
-            // Add n backslashes to total 2n before ending '"'.
-            cmd.extend((0..backslashes).map(|_| '\\' as u16));
-            cmd.push('"' as u16);
-        }
-        Ok(())
-    }
 }
 
 fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut c_void, Vec<u16>)> {
