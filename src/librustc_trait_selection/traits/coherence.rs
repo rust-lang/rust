@@ -438,6 +438,15 @@ fn orphan_check_trait_ref<'tcx>(
 ///
 /// This is just `ty` itself unless `ty` is `#[fundamental]`,
 /// in which case we recursively look into this type.
+///
+/// If `ty` is local itself, this method returns an empty `Vec`.
+///
+/// # Examples
+///
+/// - `u32` is not local, so this returns `[u32]`.
+/// - for `Foo<u32>`, where `Foo` is a local type, this returns `[]`.
+/// - `&mut u32` returns `[u32]`, as `&mut` is a fundamental type, similar to `Box`.
+/// - `Box<Foo<u32>>` returns `[]`, as `Box` is a fundamental type and `Foo` is local.
 fn contained_non_local_types(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
         Vec::new()
@@ -493,7 +502,7 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
 }
 
 fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
-    debug!("ty_is_non_local_constructor({:?})", ty);
+    debug!("ty_is_local_constructor({:?})", ty);
 
     match ty.kind {
         ty::Bool
