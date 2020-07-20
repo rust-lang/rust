@@ -341,7 +341,7 @@ impl Ty {
                     let segment = remaining_segments.first().unwrap();
                     let found = associated_type_by_name_including_super_traits(
                         ctx.db,
-                        trait_ref.clone(),
+                        trait_ref,
                         &segment.name,
                     );
                     match found {

@@ -215,7 +215,7 @@ impl<'a> CompletionContext<'a> {
 
     fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
-        let syntax_element = NodeOrToken::Token(fake_ident_token.clone());
+        let syntax_element = NodeOrToken::Token(fake_ident_token);
         self.block_expr_parent = has_block_expr_parent(syntax_element.clone());
         self.unsafe_is_prev = unsafe_is_prev(syntax_element.clone());
         self.if_is_prev = if_is_prev(syntax_element.clone());
@@ -228,7 +228,7 @@ impl<'a> CompletionContext<'a> {
         self.trait_as_prev_sibling = has_trait_as_prev_sibling(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
         self.has_item_list_or_source_file_parent =
-            has_item_list_or_source_file_parent(syntax_element.clone());
+            has_item_list_or_source_file_parent(syntax_element);
     }
 
     fn fill(

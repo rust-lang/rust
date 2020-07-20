@@ -106,7 +106,7 @@ fn maybe_replace_path(
     path: ast::Path,
     target: ast::Path,
 ) -> Option<()> {
-    if !path_eq(path.clone(), target.clone()) {
+    if !path_eq(path.clone(), target) {
         return None;
     }
 

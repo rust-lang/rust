@@ -183,7 +183,7 @@ fn missing_struct_field_fix(
     }
     new_field = format!("\n{}{}", indent, new_field);
 
-    let needs_comma = !last_field_syntax.to_string().ends_with(",");
+    let needs_comma = !last_field_syntax.to_string().ends_with(',');
     if needs_comma {
         new_field = format!(",{}", new_field);
     }

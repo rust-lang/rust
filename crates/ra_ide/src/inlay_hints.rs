@@ -171,7 +171,7 @@ fn get_param_name_hints(
         .map(|(param_name, arg)| InlayHint {
             range: arg.syntax().text_range(),
             kind: InlayKind::ParameterHint,
-            label: param_name.to_string().into(),
+            label: param_name.into(),
         });
 
     acc.extend(hints);
