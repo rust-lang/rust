@@ -77,6 +77,10 @@ pub use crate::sys_common::os_str_bytes as os_str;
 
 #[cfg(not(test))]
 pub fn init() {
+    // Load romfs (which contains debug info) on DevkitA64
+    #[cfg(target_env = "devkita64")]
+    platform::initialize_romfs();
+
     // By default, some platforms will send a *signal* when an EPIPE error
     // would otherwise be delivered. This runtime doesn't install a SIGPIPE
     // handler, causing it to kill the program, which isn't exactly what we
