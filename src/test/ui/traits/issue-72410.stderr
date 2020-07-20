@@ -1,0 +1,18 @@
+error[E0038]: the trait `Bar` cannot be made into an object
+  --> $DIR/issue-72410.rs:14:19
+   |
+LL | pub trait Bar {
+   |           --- this trait cannot be made into an object...
+LL |     fn map()
+   |        --- ...because associated function `map` has no `self` parameter
+LL |     where for<'a> &'a mut [dyn Bar]: ;
+   |                   ^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
+   |
+help: consider turning `map` into a method by giving it a `&self` argument or constraining it so it does not apply to trait objects
+   |
+LL |     where for<'a> &'a mut [dyn Bar]:, Self: Sized ;
+   |                                     ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.
