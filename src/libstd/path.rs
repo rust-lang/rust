@@ -2244,6 +2244,9 @@ impl Path {
     ///
     /// let path = Path::new("foo.rs");
     /// assert_eq!(path.with_extension("txt"), PathBuf::from("foo.txt"));
+    ///
+    /// let path = Path::new("foo.tar.gz");
+    /// assert_eq!(path.with_extension(""), PathBuf::from("foo.tar"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
