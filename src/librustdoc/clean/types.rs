@@ -195,7 +195,8 @@ impl Item {
                 classes.push("unstable");
             }
 
-            if s.deprecation.is_some() {
+            // FIXME: what about non-staged API items that are deprecated?
+            if self.deprecation.is_some() {
                 classes.push("deprecated");
             }
 
@@ -216,14 +217,6 @@ impl Item {
         ItemType::from(self)
     }
 
-    /// Returns the info in the item's `#[deprecated]` or `#[rustc_deprecated]` attributes.
-    ///
-    /// If the item is not deprecated, returns `None`.
-    pub fn deprecation(&self) -> Option<&Deprecation> {
-        self.deprecation
-            .as_ref()
-            .or_else(|| self.stability.as_ref().and_then(|s| s.deprecation.as_ref()))
-    }
     pub fn is_default(&self) -> bool {
         match self.inner {
             ItemEnum::MethodItem(ref meth) => {
@@ -1528,7 +1521,6 @@ pub struct Stability {
     pub level: stability::StabilityLevel,
     pub feature: Option<String>,
     pub since: String,
-    pub deprecation: Option<Deprecation>,
     pub unstable_reason: Option<String>,
     pub issue: Option<NonZeroU32>,
 }
@@ -1537,6 +1529,7 @@ pub struct Stability {
 pub struct Deprecation {
     pub since: Option<String>,
     pub note: Option<String>,
+    pub is_since_rustc_version: bool,
 }
 
 /// An type binding on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or

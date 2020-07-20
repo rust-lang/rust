@@ -129,7 +129,6 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
-    pub rustc_depr: Option<RustcDeprecation>,
 }
 
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
@@ -160,15 +159,6 @@ impl StabilityLevel {
     pub fn is_stable(&self) -> bool {
         if let StabilityLevel::Stable { .. } = *self { true } else { false }
     }
-}
-
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
-#[derive(HashStable_Generic)]
-pub struct RustcDeprecation {
-    pub since: Symbol,
-    pub reason: Symbol,
-    /// A text snippet used to completely replace any use of the deprecated item in an expression.
-    pub suggestion: Option<Symbol>,
 }
 
 /// Checks if `attrs` contains an attribute like `#![feature(feature_name)]`.
@@ -204,7 +194,6 @@ where
     use StabilityLevel::*;
 
     let mut stab: Option<Stability> = None;
-    let mut rustc_depr: Option<RustcDeprecation> = None;
     let mut const_stab: Option<ConstStability> = None;
     let mut promotable = false;
     let mut allow_const_fn_ptr = false;
@@ -255,45 +244,6 @@ where
                     false
                 }
             };
-
-            macro_rules! get_meta {
-                ($($name:ident),+) => {
-                    $(
-                        let mut $name = None;
-                    )+
-                    for meta in metas {
-                        if let Some(mi) = meta.meta_item() {
-                            match mi.name_or_empty() {
-                                $(
-                                    sym::$name => if !get(mi, &mut $name) { continue 'outer },
-                                )+
-                                _ => {
-                                    let expected = &[ $( stringify!($name) ),+ ];
-                                    handle_errors(
-                                        sess,
-                                        mi.span,
-                                        AttrError::UnknownMetaItem(
-                                            pprust::path_to_string(&mi.path),
-                                            expected,
-                                        ),
-                                    );
-                                    continue 'outer
-                                }
-                            }
-                        } else {
-                            handle_errors(
-                                sess,
-                                meta.span(),
-                                AttrError::UnsupportedLiteral(
-                                    "unsupported literal",
-                                    false,
-                                ),
-                            );
-                            continue 'outer
-                        }
-                    }
-                }
-            }
 
             let meta_name = meta.name_or_empty();
             match meta_name {
@@ -398,7 +348,7 @@ where
                         (Some(feature), reason, Some(_)) => {
                             let level = Unstable { reason, issue: issue_num, is_soft };
                             if sym::unstable == meta_name {
-                                stab = Some(Stability { level, feature, rustc_depr: None });
+                                stab = Some(Stability { level, feature });
                             } else {
                                 const_stab = Some(ConstStability {
                                     level,
@@ -470,7 +420,7 @@ where
                         (Some(feature), Some(since)) => {
                             let level = Stable { since };
                             if sym::stable == meta_name {
-                                stab = Some(Stability { level, feature, rustc_depr: None });
+                                stab = Some(Stability { level, feature });
                             } else {
                                 const_stab = Some(ConstStability {
                                     level,
