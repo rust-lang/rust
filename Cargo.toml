@@ -55,6 +55,17 @@ overflow-checks = false
 # per-crate configuration isn't specifiable in the environment.
 codegen-units = 10000
 
+[profile.release.package.miniz_oxide]
+debug = 0
+[profile.release.package.gimli]
+debug = 0
+[profile.release.package.addr2line]
+debug = 0
+[profile.release.package.object]
+debug = 0
+[profile.release.package.adler]
+debug = 0
+
 # We want the RLS to use the version of Cargo that we've got vendored in this
 # repository to ensure that the same exact version of Cargo is used by both the
 # RLS and the Cargo binary itself. The RLS depends on Cargo as a git repository
