@@ -178,7 +178,7 @@ impl Config {
     pub fn update(&mut self, json: serde_json::Value) {
         log::info!("Config::update({:#})", json);
 
-        if json.is_null() {
+        if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
             return;
         }
 
