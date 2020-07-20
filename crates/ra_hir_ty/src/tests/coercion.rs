@@ -1,32 +1,7 @@
+use expect::expect;
 use test_utils::mark;
 
-use expect::{expect, Expect};
-
-// Infer with some common definitions and impls.
-fn check_infer(ra_fixture: &str, expect: Expect) {
-    let defs = r#"
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T: ?Sized> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
-
-        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-    "#;
-
-    // Append to the end to keep positions unchanged.
-    let mut actual = super::infer(&format!("{}{}", ra_fixture, defs));
-    actual.push('\n');
-    expect.assert_eq(&actual);
-}
-
-fn check_infer_with_mismatches(ra_fixture: &str, expect: Expect) {
-    let mut actual = super::infer_with_mismatches(ra_fixture, true);
-    actual.push('\n');
-    expect.assert_eq(&actual);
-}
+use super::{check_infer, check_infer_with_mismatches};
 
 #[test]
 fn infer_block_expr_type_mismatch() {

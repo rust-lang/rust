@@ -10,6 +10,7 @@ mod display_source_code;
 
 use std::sync::Arc;
 
+use expect::Expect;
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
     child_by_source::ChildBySource,
@@ -343,4 +344,30 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         });
         assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
     }
+}
+
+// Infer with some common definitions and impls.
+fn check_infer(ra_fixture: &str, expect: Expect) {
+    let defs = r#"
+        #[lang = "sized"]
+        pub trait Sized {}
+        #[lang = "unsize"]
+        pub trait Unsize<T: ?Sized> {}
+        #[lang = "coerce_unsized"]
+        pub trait CoerceUnsized<T> {}
+
+        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+    "#;
+
+    // Append to the end to keep positions unchanged.
+    let mut actual = infer(&format!("{}{}", ra_fixture, defs));
+    actual.push('\n');
+    expect.assert_eq(&actual);
+}
+
+fn check_infer_with_mismatches(ra_fixture: &str, expect: Expect) {
+    let mut actual = infer_with_mismatches(ra_fixture, true);
+    actual.push('\n');
+    expect.assert_eq(&actual);
 }
