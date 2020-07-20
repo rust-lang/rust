@@ -23,7 +23,7 @@ fn infer_block_expr_type_mismatch() {
 #[test]
 fn coerce_places() {
     check_infer(
-        r"
+        r#"
         struct S<T> { a: T }
 
         fn f<T>(_: &[T]) -> T { loop {} }
@@ -45,7 +45,17 @@ fn coerce_places() {
             let f: [&[_]; 2] = [arr; 2];
             let g: (&[_], &[_]) = (arr, arr);
         }
-        ",
+
+        #[lang = "sized"]
+        pub trait Sized {}
+        #[lang = "unsize"]
+        pub trait Unsize<T: ?Sized> {}
+        #[lang = "coerce_unsized"]
+        pub trait CoerceUnsized<T> {}
+
+        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+        "#,
         expect![[r"
             30..31 '_': &[T]
             44..55 '{ loop {} }': T
@@ -121,7 +131,7 @@ fn infer_let_stmt_coerce() {
 #[test]
 fn infer_custom_coerce_unsized() {
     check_infer(
-        r"
+        r#"
         struct A<T: ?Sized>(*const T);
         struct B<T: ?Sized>(*const T);
         struct C<T: ?Sized> { inner: *const T }
@@ -138,7 +148,18 @@ fn infer_custom_coerce_unsized() {
             let e = foo2(b);
             let f = foo3(c);
         }
-        ",
+
+
+        #[lang = "sized"]
+        pub trait Sized {}
+        #[lang = "unsize"]
+        pub trait Unsize<T: ?Sized> {}
+        #[lang = "coerce_unsized"]
+        pub trait CoerceUnsized<T> {}
+
+        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+        "#,
         expect![[r"
             257..258 'x': A<[T]>
             278..283 '{ x }': A<[T]>
@@ -172,7 +193,7 @@ fn infer_custom_coerce_unsized() {
 #[test]
 fn infer_if_coerce() {
     check_infer(
-        r"
+        r#"
         fn foo<T>(x: &[T]) -> &[T] { loop {} }
         fn test() {
             let x = if true {
@@ -181,7 +202,13 @@ fn infer_if_coerce() {
                 &[1]
             };
         }
-        ",
+
+
+        #[lang = "sized"]
+        pub trait Sized {}
+        #[lang = "unsize"]
+        pub trait Unsize<T: ?Sized> {}
+        "#,
         expect![[r"
             10..11 'x': &[T]
             27..38 '{ loop {} }': &[T]
@@ -208,7 +235,7 @@ fn infer_if_coerce() {
 #[test]
 fn infer_if_else_coerce() {
     check_infer(
-        r"
+        r#"
         fn foo<T>(x: &[T]) -> &[T] { loop {} }
         fn test() {
             let x = if true {
@@ -217,7 +244,17 @@ fn infer_if_else_coerce() {
                 foo(&[1])
             };
         }
-        ",
+
+        #[lang = "sized"]
+        pub trait Sized {}
+        #[lang = "unsize"]
+        pub trait Unsize<T: ?Sized> {}
+        #[lang = "coerce_unsized"]
+        pub trait CoerceUnsized<T> {}
+
+        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+        "#,
         expect![[r"
             10..11 'x': &[T]
             27..38 '{ loop {} }': &[T]
@@ -244,7 +281,7 @@ fn infer_if_else_coerce() {
 #[test]
 fn infer_match_first_coerce() {
     check_infer(
-        r"
+        r#"
         fn foo<T>(x: &[T]) -> &[T] { loop {} }
         fn test(i: i32) {
             let x = match i {
@@ -253,7 +290,12 @@ fn infer_match_first_coerce() {
                 _ => &[3],
             };
         }
-        ",
+
+        #[lang = "sized"]
+        pub trait Sized {}
+        #[lang = "unsize"]
+        pub trait Unsize<T: ?Sized> {}
+        "#,
         expect![[r"
             10..11 'x': &[T]
             27..38 '{ loop {} }': &[T]
@@ -287,7 +329,7 @@ fn infer_match_first_coerce() {
 #[test]
 fn infer_match_second_coerce() {
     check_infer(
-        r"
+        r#"
         fn foo<T>(x: &[T]) -> &[T] { loop {} }
         fn test(i: i32) {
             let x = match i {
@@ -296,7 +338,17 @@ fn infer_match_second_coerce() {
                 _ => &[3],
             };
         }
-        ",
+
+        #[lang = "sized"]
+        pub trait Sized {}
+        #[lang = "unsize"]
+        pub trait Unsize<T: ?Sized> {}
+        #[lang = "coerce_unsized"]
+        pub trait CoerceUnsized<T> {}
+
+        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+        "#,
         expect![[r"
             10..11 'x': &[T]
             27..38 '{ loop {} }': &[T]

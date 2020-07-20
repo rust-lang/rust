@@ -346,22 +346,8 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     }
 }
 
-// Infer with some common definitions and impls.
 fn check_infer(ra_fixture: &str, expect: Expect) {
-    let defs = r#"
-        #[lang = "sized"]
-        pub trait Sized {}
-        #[lang = "unsize"]
-        pub trait Unsize<T: ?Sized> {}
-        #[lang = "coerce_unsized"]
-        pub trait CoerceUnsized<T> {}
-
-        impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-        impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
-    "#;
-
-    // Append to the end to keep positions unchanged.
-    let mut actual = infer(&format!("{}{}", ra_fixture, defs));
+    let mut actual = infer(ra_fixture);
     actual.push('\n');
     expect.assert_eq(&actual);
 }
