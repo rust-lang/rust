@@ -1079,7 +1079,7 @@ fn has_mutable_variables<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> 
             &infcx,
             def_id.expect_local(),
             cx.param_env,
-            cx.tables(),
+            cx.typeck_results(),
         ).walk_expr(expr);
     });
 
@@ -1224,7 +1224,7 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
             if let Some(self_expr) = args.get(0);
             if let Some(pushed_item) = args.get(1);
             // Check that the method being called is push() on a Vec
-            if match_type(cx, cx.tables().expr_ty(self_expr), &paths::VEC);
+            if match_type(cx, cx.typeck_results().expr_ty(self_expr), &paths::VEC);
             if path.ident.name.as_str() == "push";
             then {
                 return Some((self_expr, pushed_item))
