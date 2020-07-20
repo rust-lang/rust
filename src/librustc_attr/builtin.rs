@@ -495,22 +495,6 @@ where
         }
     }
 
-    // Merge the deprecation info into the stability info
-    if let Some(rustc_depr) = rustc_depr {
-        if let Some(ref mut stab) = stab {
-            stab.rustc_depr = Some(rustc_depr);
-        } else {
-            struct_span_err!(
-                diagnostic,
-                item_sp,
-                E0549,
-                "rustc_deprecated attribute must be paired with \
-                       either stable or unstable attribute"
-            )
-            .emit();
-        }
-    }
-
     // Merge the const-unstable info into the stability info
     if promotable || allow_const_fn_ptr {
         if let Some(ref mut stab) = const_stab {
