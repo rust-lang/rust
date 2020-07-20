@@ -225,7 +225,7 @@ impl<'tcx> Relate<'tcx> for ast::Constness {
         a: ast::Constness,
         b: ast::Constness
     ) -> RelateResult<'tcx, ast::Constness> {
-        if a == b || (a == ast::Constness::Const && b == ast::Constness::NotConst) { Ok(a) }
+        if a == b || (a == ast::Constness::Const && b == ast::Constness::NotConst) { Ok(b) }
         else { Err(TypeError::ConstnessMismatch(expected_found(relation, a, b))) }
     }
 }

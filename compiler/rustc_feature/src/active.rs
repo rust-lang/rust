@@ -602,6 +602,9 @@ declare_features! (
     /// Allows `#[instruction_set(_)]` attribute
     (active, isa_attribute, "1.48.0", Some(74727), None),
 
+    /// Allow const fn pointer
+    (active, const_fn_pointer, "1.49.0", Some(63997), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

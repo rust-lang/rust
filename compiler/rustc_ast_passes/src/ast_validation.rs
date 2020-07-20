@@ -22,6 +22,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use std::mem;
 use std::ops::DerefMut;
+use rustc_session::parse::feature_err;
 
 const MORE_EXTERN: &str =
     "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
@@ -824,6 +825,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     )
                     .emit();
                 });
+                if !self.session.features_untracked().const_fn_pointer {
+                    if let Const::Yes(span) = bfty.constness {
+                        feature_err(
+                            &self.session.parse_sess,
+                            sym::const_fn_pointer,
+                            span,
+                            "`const fn` pointer type is unstable"
+                        ).emit()
+                    }
+                }
                 self.check_late_bound_lifetime_defs(&bfty.generic_params);
             }
             TyKind::TraitObject(ref bounds, ..) => {
