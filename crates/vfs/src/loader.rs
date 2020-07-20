@@ -83,11 +83,11 @@ impl Directories {
         self.includes_path(path)
     }
     fn includes_path(&self, path: &AbsPath) -> bool {
-        let mut include = None;
+        let mut include: Option<&AbsPathBuf> = None;
         for incl in &self.include {
-            if is_prefix(incl, path) {
+            if path.starts_with(incl) {
                 include = Some(match include {
-                    Some(prev) if is_prefix(incl, prev) => prev,
+                    Some(prev) if prev.starts_with(incl) => prev,
                     _ => incl,
                 })
             }
@@ -97,15 +97,11 @@ impl Directories {
             None => return false,
         };
         for excl in &self.exclude {
-            if is_prefix(excl, path) && is_prefix(include, excl) {
+            if path.starts_with(excl) && excl.starts_with(include) {
                 return false;
             }
         }
-        return true;
-
-        fn is_prefix(short: &AbsPath, long: &AbsPath) -> bool {
-            long.strip_prefix(short).is_some()
-        }
+        true
     }
 }
 

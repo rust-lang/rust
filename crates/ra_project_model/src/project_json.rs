@@ -34,6 +34,7 @@ pub struct Crate {
     pub(crate) target: Option<String>,
     pub(crate) out_dir: Option<AbsPathBuf>,
     pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
+    pub(crate) is_workspace_member: bool,
 }
 
 impl ProjectJson {
@@ -43,32 +44,42 @@ impl ProjectJson {
             crates: data
                 .crates
                 .into_iter()
-                .map(|crate_data| Crate {
-                    root_module: base.join(crate_data.root_module),
-                    edition: crate_data.edition.into(),
-                    deps: crate_data
-                        .deps
-                        .into_iter()
-                        .map(|dep_data| Dependency {
-                            crate_id: CrateId(dep_data.krate as u32),
-                            name: dep_data.name,
-                        })
-                        .collect::<Vec<_>>(),
-                    cfg: {
-                        let mut cfg = CfgOptions::default();
-                        for entry in &crate_data.cfg {
-                            match split_delim(entry, '=') {
-                                Some((key, value)) => {
-                                    cfg.insert_key_value(key.into(), value.into());
+                .map(|crate_data| {
+                    let is_workspace_member = crate_data.is_workspace_member.unwrap_or_else(|| {
+                        crate_data.root_module.is_relative()
+                            && !crate_data.root_module.starts_with("..")
+                            || crate_data.root_module.starts_with(base)
+                    });
+                    Crate {
+                        root_module: base.join(crate_data.root_module),
+                        edition: crate_data.edition.into(),
+                        deps: crate_data
+                            .deps
+                            .into_iter()
+                            .map(|dep_data| Dependency {
+                                crate_id: CrateId(dep_data.krate as u32),
+                                name: dep_data.name,
+                            })
+                            .collect::<Vec<_>>(),
+                        cfg: {
+                            let mut cfg = CfgOptions::default();
+                            for entry in &crate_data.cfg {
+                                match split_delim(entry, '=') {
+                                    Some((key, value)) => {
+                                        cfg.insert_key_value(key.into(), value.into());
+                                    }
+                                    None => cfg.insert_atom(entry.into()),
                                 }
-                                None => cfg.insert_atom(entry.into()),
                             }
-                        }
-                        cfg
-                    },
-                    target: crate_data.target,
-                    out_dir: crate_data.out_dir.map(|it| base.join(it)),
-                    proc_macro_dylib_path: crate_data.proc_macro_dylib_path.map(|it| base.join(it)),
+                            cfg
+                        },
+                        target: crate_data.target,
+                        out_dir: crate_data.out_dir.map(|it| base.join(it)),
+                        proc_macro_dylib_path: crate_data
+                            .proc_macro_dylib_path
+                            .map(|it| base.join(it)),
+                        is_workspace_member,
+                    }
                 })
                 .collect::<Vec<_>>(),
         }
@@ -91,6 +102,7 @@ struct CrateData {
     target: Option<String>,
     out_dir: Option<PathBuf>,
     proc_macro_dylib_path: Option<PathBuf>,
+    is_workspace_member: Option<bool>,
 }
 
 #[derive(Deserialize)]
