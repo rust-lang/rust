@@ -1,3 +1,10 @@
+//! DevkitA64 Nintendo Switch homebrew toolchain.
+//!
+//! # Building
+//! The recommended way to build Rust for this target is using Docker. You can start a build in a
+//! container with `./src/ci/docker/run.sh aarch64-devkita64` from the Rust source tree. For
+//! development, you can add `--dev` as the first argument to get a shell inside the container.
+
 use super::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
 // DevkitA64 has custom linker requirements.
