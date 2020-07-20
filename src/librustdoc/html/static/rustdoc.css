@@ -1511,6 +1511,11 @@ h4 > .important-traits {
 	#main > .line-numbers {
 		margin-top: 0;
 	}
+
+	.important-traits .important-traits-tooltiptext {
+		left: 0;
+		top: 100%;
+	}
 }
 
 @media print {
