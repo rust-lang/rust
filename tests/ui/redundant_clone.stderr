@@ -108,61 +108,61 @@ LL |     let _t = tup.0.clone();
    |              ^^^^^
 
 error: redundant clone
-  --> $DIR/redundant_clone.rs:61:22
+  --> $DIR/redundant_clone.rs:62:22
    |
 LL |         (a.clone(), a.clone())
    |                      ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> $DIR/redundant_clone.rs:61:21
+  --> $DIR/redundant_clone.rs:62:21
    |
 LL |         (a.clone(), a.clone())
    |                     ^
 
 error: redundant clone
-  --> $DIR/redundant_clone.rs:121:15
-   |
-LL |     let _s = s.clone();
-   |               ^^^^^^^^ help: remove this
-   |
-note: this value is dropped without further use
-  --> $DIR/redundant_clone.rs:121:14
-   |
-LL |     let _s = s.clone();
-   |              ^
-
-error: redundant clone
   --> $DIR/redundant_clone.rs:122:15
    |
-LL |     let _t = t.clone();
+LL |     let _s = s.clone();
    |               ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
   --> $DIR/redundant_clone.rs:122:14
    |
+LL |     let _s = s.clone();
+   |              ^
+
+error: redundant clone
+  --> $DIR/redundant_clone.rs:123:15
+   |
+LL |     let _t = t.clone();
+   |               ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/redundant_clone.rs:123:14
+   |
 LL |     let _t = t.clone();
    |              ^
 
 error: redundant clone
-  --> $DIR/redundant_clone.rs:132:19
+  --> $DIR/redundant_clone.rs:133:19
    |
 LL |         let _f = f.clone();
    |                   ^^^^^^^^ help: remove this
    |
 note: this value is dropped without further use
-  --> $DIR/redundant_clone.rs:132:18
+  --> $DIR/redundant_clone.rs:133:18
    |
 LL |         let _f = f.clone();
    |                  ^
 
 error: redundant clone
-  --> $DIR/redundant_clone.rs:144:14
+  --> $DIR/redundant_clone.rs:145:14
    |
 LL |     let y = x.clone().join("matthias");
    |              ^^^^^^^^ help: remove this
    |
 note: cloned value is neither consumed nor mutated
-  --> $DIR/redundant_clone.rs:144:13
+  --> $DIR/redundant_clone.rs:145:13
    |
 LL |     let y = x.clone().join("matthias");
    |             ^^^^^^^^^
