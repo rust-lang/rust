@@ -425,6 +425,8 @@ fn main() {
       //^^ Test<i32>
     let zz_ref = &zz;
       //^^^^^^ &Test<i32>
+    let test = || zz;
+      //^^^^ || -> Test<i32>
 }"#,
         );
     }
