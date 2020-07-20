@@ -71,6 +71,14 @@ pub struct poly8x16x4_t(
 
 #[allow(improper_ctypes)]
 extern "C" {
+    // absolute value
+    #[link_name = "llvm.aarch64.neon.abs.i64"]
+    fn vabsd_s64_(a: i64) -> i64;
+    #[link_name = "llvm.aarch64.neon.abs.v1i64"]
+    fn vabs_s64_(a: int64x1_t) -> int64x1_t;
+    #[link_name = "llvm.aarch64.neon.abs.v2i64"]
+    fn vabsq_s64_(a: int64x2_t) -> int64x2_t;
+
     #[link_name = "llvm.aarch64.neon.pmull64"]
     fn vmull_p64_(a: i64, b: i64) -> int8x16_t;
 
@@ -244,6 +252,28 @@ extern "C" {
         b3: int8x16_t,
         c: uint8x16_t,
     ) -> int8x16_t;
+}
+
+/// Absolute Value (wrapping).
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(abs))]
+pub unsafe fn vabsd_s64(a: i64) -> i64 {
+    vabsd_s64_(a)
+}
+/// Absolute Value (wrapping).
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(abs))]
+pub unsafe fn vabs_s64(a: int64x1_t) -> int64x1_t {
+    vabs_s64_(a)
+}
+/// Absolute Value (wrapping).
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(abs))]
+pub unsafe fn vabsq_s64(a: int64x2_t) -> int64x2_t {
+    vabsq_s64_(a)
 }
 
 /// Add pairwise
@@ -2502,6 +2532,33 @@ mod tests {
     #[simd_test(enable = "neon")]
     unsafe fn test_vsubq_f64() {
         testq_ari_f64(|i, j| vsubq_f64(i, j), |a: f64, b: f64| -> f64 { a - b });
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabsd_s64() {
+        assert_eq!(vabsd_s64(-1), 1);
+        assert_eq!(vabsd_s64(0), 0);
+        assert_eq!(vabsd_s64(1), 1);
+        assert_eq!(vabsd_s64(i64::MIN), i64::MIN);
+        assert_eq!(vabsd_s64(i64::MIN + 1), i64::MAX);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabs_s64() {
+        let a = i64x1::new(i64::MIN);
+        let r: i64x1 = transmute(vabs_s64(transmute(a)));
+        let e = i64x1::new(i64::MIN);
+        assert_eq!(r, e);
+        let a = i64x1::new(i64::MIN + 1);
+        let r: i64x1 = transmute(vabs_s64(transmute(a)));
+        let e = i64x1::new(i64::MAX);
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabsq_s64() {
+        let a = i64x2::new(i64::MIN, i64::MIN + 1);
+        let r: i64x2 = transmute(vabsq_s64(transmute(a)));
+        let e = i64x2::new(i64::MIN, i64::MAX);
+        assert_eq!(r, e);
     }
 }
 
