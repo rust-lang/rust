@@ -81,7 +81,7 @@ topic = "I-prioritize #{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* issue #{number} has been requested for prioritization.
 
-# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#Unprioritized-I-prioritize)
+# [Procedure](https://forge.rust-lang.org/compiler/prioritization/procedure.html#assign-priority-to-unprioritized-issues-with-i-prioritize-label)
 - Priority?
 - Regression?
 - Notify people/groups?
@@ -96,7 +96,7 @@ topic = "I-nominated #{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* #{number} has been nominated for discussion in `T-compiler` meeting.
 
-# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#I-nominated)
+# [Procedure](https://forge.rust-lang.org/compiler/prioritization/procedure.html#summarize-i-nominated-issues)
 - Already discussed?
 - Worth the meeting time?
 - Add agenda entry:
@@ -113,7 +113,7 @@ topic = "Backport #{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* PR #{number} has been requested for beta backport.
 
-# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#StableBeta-nominations)
+# [Procedure](https://forge.rust-lang.org/compiler/prioritization/procedure.html#summarize-stablebeta-nominations)
 Prepare agenda entry:
 - Why nominated?
 - Author, assignee?
@@ -127,7 +127,7 @@ topic = "Backport #{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* PR #{number} has been requested for stable backport.
 
-# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#StableBeta-nominations)
+# [Procedure](https://forge.rust-lang.org/compiler/prioritization/procedure.html#summarize-stablebeta-nominations)
 Prepare agenda entry:
 - Why nominated?
 - Author, assignee?
@@ -142,7 +142,7 @@ topic = "S-waiting-on-team #{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* PR #{number} is waiting on `T-compiler`.
 
-# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#PR%E2%80%99s-waiting-on-team)
+# [Procedure](https://forge.rust-lang.org/compiler/prioritization/procedure.html#summarize-prs-waiting-on-team)
 - Prepare agenda entry:
   - What is it waiting for?
   - Important details?
@@ -156,7 +156,7 @@ topic = "P-critical #{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* issue #{number} has been assigned `P-critical`.
 
-# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#P-critical-and-Unassigned-P-high-regressions)
+# [Procedure](https://forge.rust-lang.org/compiler/prioritization/procedure.html#summarize-p-critical-and-unassigned-p-high-regressions)
 - Notify people/groups?
 - Assign if possible?
 - Add to agenda:
@@ -172,7 +172,7 @@ topic = "P-high regression #{number} {title}"
 message_on_add = """\
 @*WG-prioritization/alerts* issue #{number} has been assigned `P-high` and is a regression.
 
-# [Procedure](https://hackmd.io/WJ0G17DHTHGgv0OW9I2PxA?view#P-critical-and-Unassigned-P-high-regressions)
+# [Procedure](https://forge.rust-lang.org/compiler/prioritization/procedure.html#summarize-p-critical-and-unassigned-p-high-regressions)
 Is issue assigned? If not:
 - Try to find an assignee?
 - Otherwise add to agenda:
