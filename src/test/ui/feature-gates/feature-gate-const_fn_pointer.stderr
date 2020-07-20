@@ -1,0 +1,48 @@
+error[E0658]: `const fn` pointer type is unstable
+  --> $DIR/feature-gate-const_fn_pointer.rs:2:10
+   |
+LL | const x: const fn() = foo;
+   |          ^^^^^
+   |
+   = note: see issue #63997 <https://github.com/rust-lang/rust/issues/63997> for more information
+   = help: add `#![feature(const_fn_pointer)]` to the crate attributes to enable
+
+error[E0658]: `const fn` pointer type is unstable
+  --> $DIR/feature-gate-const_fn_pointer.rs:5:11
+   |
+LL | static y: const fn() = foo;
+   |           ^^^^^
+   |
+   = note: see issue #63997 <https://github.com/rust-lang/rust/issues/63997> for more information
+   = help: add `#![feature(const_fn_pointer)]` to the crate attributes to enable
+
+error[E0658]: `const fn` pointer type is unstable
+  --> $DIR/feature-gate-const_fn_pointer.rs:8:17
+   |
+LL | const fn bar(f: const fn()) { f() }
+   |                 ^^^^^
+   |
+   = note: see issue #63997 <https://github.com/rust-lang/rust/issues/63997> for more information
+   = help: add `#![feature(const_fn_pointer)]` to the crate attributes to enable
+
+error[E0658]: `const fn` pointer type is unstable
+  --> $DIR/feature-gate-const_fn_pointer.rs:11:21
+   |
+LL | struct Foo { field: const fn() }
+   |                     ^^^^^
+   |
+   = note: see issue #63997 <https://github.com/rust-lang/rust/issues/63997> for more information
+   = help: add `#![feature(const_fn_pointer)]` to the crate attributes to enable
+
+error[E0658]: `const fn` pointer type is unstable
+  --> $DIR/feature-gate-const_fn_pointer.rs:16:15
+   |
+LL |   let local2: const fn() = foo;
+   |               ^^^^^
+   |
+   = note: see issue #63997 <https://github.com/rust-lang/rust/issues/63997> for more information
+   = help: add `#![feature(const_fn_pointer)]` to the crate attributes to enable
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

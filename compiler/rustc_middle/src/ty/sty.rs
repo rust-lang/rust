@@ -1127,7 +1127,7 @@ pub struct FnSig<'tcx> {
     pub c_variadic: bool,
     pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
-    pub constness: hir::Constness
+    pub constness: hir::Constness,
 }
 
 impl<'tcx> FnSig<'tcx> {
@@ -1179,7 +1179,9 @@ impl<'tcx> PolyFnSig<'tcx> {
     pub fn abi(&self) -> abi::Abi {
         self.skip_binder().abi
     }
-    pub fn constness(&self) -> hir::Constness { self.skip_binder().constness }
+    pub fn constness(&self) -> hir::Constness {
+        self.skip_binder().constness
+    }
 }
 
 pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<FnSig<'tcx>>>;

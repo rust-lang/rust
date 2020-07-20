@@ -2035,7 +2035,7 @@ pub struct BareFnTy<'hir> {
     pub generic_params: &'hir [GenericParam<'hir>],
     pub decl: &'hir FnDecl<'hir>,
     pub param_names: &'hir [Ident],
-    pub constness: Constness
+    pub constness: Constness,
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -2522,7 +2522,7 @@ impl fmt::Display for Constness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
             Self::Const => "const",
-            Self::NotConst => ""
+            Self::NotConst => "",
         })
     }
 }

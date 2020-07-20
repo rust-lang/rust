@@ -648,7 +648,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::FnSig<'a> {
             c_variadic: self.c_variadic,
             unsafety: self.unsafety,
             abi: self.abi,
-            constness: self.constness
+            constness: self.constness,
         })
     }
 }

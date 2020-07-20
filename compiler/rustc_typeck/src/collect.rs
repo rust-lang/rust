@@ -1569,9 +1569,15 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             ident,
             generics,
             ..
-        }) => {
-            AstConv::ty_of_fn(&icx, header.unsafety, header.abi, header.constness, decl, &generics, Some(ident.span))
-        }
+        }) => AstConv::ty_of_fn(
+            &icx,
+            header.unsafety,
+            header.abi,
+            header.constness,
+            decl,
+            &generics,
+            Some(ident.span),
+        ),
 
         ForeignItem(&hir::ForeignItem {
             kind: ForeignItemKind::Fn(ref fn_decl, _, _),

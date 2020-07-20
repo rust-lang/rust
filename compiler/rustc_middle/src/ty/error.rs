@@ -201,9 +201,9 @@ impl<'tcx> TypeError<'tcx> {
     pub fn must_include_note(&self) -> bool {
         use self::TypeError::*;
         match self {
-            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_) | ConstnessMismatch(_) | FixedArraySize(_)
-            | Sorts(_) | IntMismatch(_) | FloatMismatch(_) | VariadicMismatch(_)
-            | TargetFeatureCast(_) => false,
+            CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_)
+            | ConstnessMismatch(_) | FixedArraySize(_) | Sorts(_) | IntMismatch(_)
+            | FloatMismatch(_) | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
             | TupleSize(_)

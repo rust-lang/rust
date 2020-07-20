@@ -380,7 +380,17 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
         };
         (n_tps, inputs, output, unsafety)
     };
-    equate_intrinsic_type(tcx, it, def_id, n_tps, Abi::RustIntrinsic, unsafety, hir::Constness::NotConst, inputs, output)
+    equate_intrinsic_type(
+        tcx,
+        it,
+        def_id,
+        n_tps,
+        Abi::RustIntrinsic,
+        unsafety,
+        hir::Constness::NotConst,
+        inputs,
+        output,
+    )
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.

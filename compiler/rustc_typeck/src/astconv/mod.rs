@@ -2185,8 +2185,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("ty_of_fn: output_ty={:?}", output_ty);
 
-        let bare_fn_ty =
-            ty::Binder::bind(tcx.mk_fn_sig(input_tys, output_ty, decl.c_variadic, unsafety, abi, constness,));
+        let bare_fn_ty = ty::Binder::bind(tcx.mk_fn_sig(
+            input_tys,
+            output_ty,
+            decl.c_variadic,
+            unsafety,
+            abi,
+            constness,
+        ));
 
         if !self.allow_ty_infer() {
             // We always collect the spans for placeholder types when evaluating `fn`s, but we

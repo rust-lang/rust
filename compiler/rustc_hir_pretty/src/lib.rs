@@ -2329,12 +2329,7 @@ impl<'a> State<'a> {
         };
         self.print_fn(
             decl,
-            hir::FnHeader {
-                unsafety,
-                abi,
-                constness,
-                asyncness: hir::IsAsync::NotAsync,
-            },
+            hir::FnHeader { unsafety, abi, constness, asyncness: hir::IsAsync::NotAsync },
             name,
             &generics,
             &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Inherited },

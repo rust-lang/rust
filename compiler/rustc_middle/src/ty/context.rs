@@ -2082,7 +2082,14 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => params.into_iter().map(|k| k.expect_ty()),
                 _ => bug!(),
             };
-            self.mk_fn_sig(params_iter, s.output(), s.c_variadic, unsafety, abi::Abi::Rust, hir::Constness::NotConst,)
+            self.mk_fn_sig(
+                params_iter,
+                s.output(),
+                s.c_variadic,
+                unsafety,
+                abi::Abi::Rust,
+                hir::Constness::NotConst,
+            )
         })
     }
 
@@ -2469,7 +2476,7 @@ impl<'tcx> TyCtxt<'tcx> {
             c_variadic,
             unsafety,
             abi,
-            constness
+            constness,
         })
     }
 

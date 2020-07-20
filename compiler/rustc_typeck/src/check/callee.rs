@@ -397,7 +397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         false,
                         hir::Unsafety::Normal,
                         abi::Abi::Rust,
-                        hir::Constness::NotConst
+                        hir::Constness::NotConst,
                     )),
                     None,
                 )

@@ -17,12 +17,12 @@ use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
+use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use std::mem;
 use std::ops::DerefMut;
-use rustc_session::parse::feature_err;
 
 const MORE_EXTERN: &str =
     "for more information, visit https://doc.rust-lang.org/std/keyword.extern.html";
@@ -831,8 +831,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             &self.session.parse_sess,
                             sym::const_fn_pointer,
                             span,
-                            "`const fn` pointer type is unstable"
-                        ).emit()
+                            "`const fn` pointer type is unstable",
+                        )
+                        .emit()
                     }
                 }
                 self.check_late_bound_lifetime_defs(&bfty.generic_params);

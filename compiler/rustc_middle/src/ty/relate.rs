@@ -190,7 +190,7 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             c_variadic: a.c_variadic,
             unsafety,
             abi,
-            constness
+            constness,
         })
     }
 }
@@ -223,10 +223,13 @@ impl<'tcx> Relate<'tcx> for ast::Constness {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: ast::Constness,
-        b: ast::Constness
+        b: ast::Constness,
     ) -> RelateResult<'tcx, ast::Constness> {
-        if a == b || (a == ast::Constness::Const && b == ast::Constness::NotConst) { Ok(b) }
-        else { Err(TypeError::ConstnessMismatch(expected_found(relation, a, b))) }
+        if a == b || (a == ast::Constness::Const && b == ast::Constness::NotConst) {
+            Ok(b)
+        } else {
+            Err(TypeError::ConstnessMismatch(expected_found(relation, a, b)))
+        }
     }
 }
 
