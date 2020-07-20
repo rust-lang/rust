@@ -848,6 +848,8 @@ impl<T> [T] {
     /// slice, then the last up to `N-1` elements will be omitted and can be retrieved
     /// from the `remainder` function of the iterator.
     ///
+    /// This method is the const generic equivalent of [`chunks_exact`].
+    ///
     /// # Panics
     ///
     /// Panics if `N` is 0.
@@ -864,7 +866,7 @@ impl<T> [T] {
     /// assert_eq!(iter.remainder(), &['m']);
     /// ```
     ///
-    /// [`chunks`]: #method.chunks
+    /// [`chunks_exact`]: #method.chunks_exact
     #[unstable(feature = "array_chunks", issue = "none")]
     #[inline]
     pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
