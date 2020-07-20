@@ -1,4 +1,4 @@
-//! DevkitA64 has very limited support for multiple processes, so a dummy implementation is used
+//! devkitA64 has very limited support for multiple processes, so a dummy implementation is used
 //! there (similar to WebAssembly).
 
 use crate::fmt;

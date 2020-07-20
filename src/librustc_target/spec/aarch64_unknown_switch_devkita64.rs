@@ -1,4 +1,4 @@
-//! DevkitA64 Nintendo Switch homebrew toolchain.
+//! devkitA64 Nintendo Switch homebrew toolchain.
 //!
 //! # Building
 //! The recommended way to build Rust for this target is using Docker. You can start a build in a
@@ -7,7 +7,7 @@
 
 use super::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
-// DevkitA64 has custom linker requirements.
+// devkitA64 has custom linker requirements.
 const LINKER_SCRIPT: &str = include_str!("./aarch64_unknown_switch_devkita64_script.ld");
 
 pub fn target() -> Result<Target, String> {

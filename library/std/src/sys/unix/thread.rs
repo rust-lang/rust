@@ -155,7 +155,7 @@ impl Thread {
         target_os = "redox"
     ))]
     pub fn set_name(_name: &CStr) {
-        // DevkitA64, Haiku, and Emscripten have no way to set a thread name.
+        // devkitA64, Haiku, and Emscripten have no way to set a thread name.
     }
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(_name: &CStr) {

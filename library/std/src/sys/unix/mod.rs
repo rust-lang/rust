@@ -77,7 +77,7 @@ pub use crate::sys_common::os_str_bytes as os_str;
 
 #[cfg(not(test))]
 pub fn init() {
-    // Load romfs (which contains debug info) on DevkitA64
+    // Load romfs (which contains debug info) on devkitA64
     #[cfg(target_env = "devkita64")]
     platform::initialize_romfs();
 

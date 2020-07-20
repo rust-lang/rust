@@ -1,4 +1,4 @@
-//! DevkitA64-specific definitions
+//! devkitA64-specific definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 
