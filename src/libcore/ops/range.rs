@@ -39,7 +39,7 @@ use crate::hash::Hash;
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
 #[doc(alias = "..")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
 
@@ -71,7 +71,7 @@ impl fmt::Debug for RangeFull {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);
 /// ```
 #[doc(alias = "..")]
-#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, Default, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).

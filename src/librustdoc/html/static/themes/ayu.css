@@ -237,16 +237,6 @@ a {
 
 #crate-search+.search-input:focus {
 	box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
-	color: #ffffff;
-	background-color: #141920;
-	box-shadow: none;
-	transition: box-shadow 150ms ease-in-out;
-	border-radius: 4px;
-	margin-left: 8px;
-}
-
-#crate-search+.search-input:focus {
-	box-shadow: 0px 6px 20px 0px black;
 }
 
 .search-focus:disabled {
@@ -318,12 +308,12 @@ a.test-arrow {
 	font-size: 100%;
 	color: #788797;
 	border-radius: 4px;
-	background-color: rgba(255, 255, 255, 0);
+	background-color: rgba(57, 175, 215, 0.09);
 }
 
 a.test-arrow:hover {
-	background-color: rgba(242, 151, 24, 0.05);
-	color: #ffb44c;
+	background-color: rgba(57, 175, 215, 0.368);
+	color: #c5c5c5;
 }
 
 .toggle-label {

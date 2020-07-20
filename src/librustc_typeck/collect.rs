@@ -1927,7 +1927,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         let re_root_empty = tcx.lifetimes.re_root_empty;
                         let predicate = ty::OutlivesPredicate(ty, re_root_empty);
                         predicates.push((
-                            ty::PredicateKind::TypeOutlives(ty::Binder::dummy(predicate))
+                            ty::PredicateKind::TypeOutlives(ty::Binder::bind(predicate))
                                 .to_predicate(tcx),
                             span,
                         ));
