@@ -1672,7 +1672,7 @@ impl<T> [T] {
     /// Sorts the slice, but may not preserve the order of equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place
-    /// (i.e., does not allocate), and `O(n * log(n))` worst-case.
+    /// (i.e., does not allocate), and *O*(*n* \* log(*n*)) worst-case.
     ///
     /// # Current implementation
     ///
@@ -1708,7 +1708,7 @@ impl<T> [T] {
     /// elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place
-    /// (i.e., does not allocate), and `O(n * log(n))` worst-case.
+    /// (i.e., does not allocate), and *O*(*n* \* log(*n*)) worst-case.
     ///
     /// The comparator function must define a total ordering for the elements in the slice. If
     /// the ordering is not total, the order of the elements is unspecified. An order is a
@@ -1763,8 +1763,8 @@ impl<T> [T] {
     /// elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place
-    /// (i.e., does not allocate), and `O(m * n * log(n))` worst-case, where the key function is
-    /// `O(m)`.
+    /// (i.e., does not allocate), and *O*(m \* *n* \* log(*n*)) worst-case, where the key function is
+    /// *O*(*m*).
     ///
     /// # Current implementation
     ///
@@ -1803,7 +1803,7 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
     /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
-    /// (i.e. does not allocate), and `O(n)` worst-case. This function is also/ known as "kth
+    /// (i.e. does not allocate), and *O*(*n*) worst-case. This function is also/ known as "kth
     /// element" in other libraries. It returns a triplet of the following values: all elements less
     /// than the one at the given index, the value at the given index, and all elements greater than
     /// the one at the given index.
@@ -1852,7 +1852,7 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the comparator function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and `O(n)` worst-case. This function
+    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
     /// is also known as "kth element" in other libraries. It returns a triplet of the following
     /// values: all elements less than the one at the given index, the value at the given index,
     /// and all elements greater than the one at the given index, using the provided comparator
@@ -1906,7 +1906,7 @@ impl<T> [T] {
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the key extraction function.
     /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
-    /// position `index`), in-place (i.e. does not allocate), and `O(n)` worst-case. This function
+    /// position `index`), in-place (i.e. does not allocate), and *O*(*n*) worst-case. This function
     /// is also known as "kth element" in other libraries. It returns a triplet of the following
     /// values: all elements less than the one at the given index, the value at the given index, and
     /// all elements greater than the one at the given index, using the provided key extraction

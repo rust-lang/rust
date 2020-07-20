@@ -86,7 +86,7 @@
 //! cost are suffixed with a `~`.
 //!
 //! All amortized costs are for the potential need to resize when capacity is
-//! exhausted. If a resize occurs it will take O(n) time. Our collections never
+//! exhausted. If a resize occurs it will take *O*(*n*) time. Our collections never
 //! automatically shrink, so removal operations aren't amortized. Over a
 //! sufficiently large series of operations, the average cost per operation will
 //! deterministically equal the given cost.

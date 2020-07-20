@@ -772,7 +772,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     }
 
     /// Returns those indices that are true in rows `a` and `b`. This
-    /// is an O(n) operation where `n` is the number of elements
+    /// is an *O*(*n*) operation where *n* is the number of elements
     /// (somewhat independent from the actual size of the
     /// intersection, in particular).
     pub fn intersect_rows(&self, row1: R, row2: R) -> Vec<C> {

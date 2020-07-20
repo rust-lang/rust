@@ -121,7 +121,7 @@ where
 
 /// Partially sorts a slice by shifting several out-of-order elements around.
 ///
-/// Returns `true` if the slice is sorted at the end. This function is `O(n)` worst-case.
+/// Returns `true` if the slice is sorted at the end. This function is *O*(*n*) worst-case.
 #[cold]
 fn partial_insertion_sort<T, F>(v: &mut [T], is_less: &mut F) -> bool
 where
@@ -168,7 +168,7 @@ where
     false
 }
 
-/// Sorts a slice using insertion sort, which is `O(n^2)` worst-case.
+/// Sorts a slice using insertion sort, which is *O*(*n*^2) worst-case.
 fn insertion_sort<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
@@ -178,7 +178,7 @@ where
     }
 }
 
-/// Sorts `v` using heapsort, which guarantees `O(n * log(n))` worst-case.
+/// Sorts `v` using heapsort, which guarantees *O*(*n* \* log(*n*)) worst-case.
 #[cold]
 pub fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
 where
@@ -751,7 +751,7 @@ where
     }
 }
 
-/// Sorts `v` using pattern-defeating quicksort, which is `O(n * log(n))` worst-case.
+/// Sorts `v` using pattern-defeating quicksort, which is *O*(*n* \* log(*n*)) worst-case.
 pub fn quicksort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,

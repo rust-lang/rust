@@ -1,9 +1,9 @@
 //! A priority queue implemented with a binary heap.
 //!
-//! Insertion and popping the largest element have `O(log(n))` time complexity.
-//! Checking the largest element is `O(1)`. Converting a vector to a binary heap
-//! can be done in-place, and has `O(n)` complexity. A binary heap can also be
-//! converted to a sorted vector in-place, allowing it to be used for an `O(n * log(n))`
+//! Insertion and popping the largest element have *O*(log(*n*)) time complexity.
+//! Checking the largest element is *O*(1). Converting a vector to a binary heap
+//! can be done in-place, and has *O*(*n*) complexity. A binary heap can also be
+//! converted to a sorted vector in-place, allowing it to be used for an *O*(*n* \* log(*n*))
 //! in-place heapsort.
 //!
 //! # Examples
@@ -235,7 +235,7 @@ use super::SpecExtend;
 ///
 /// | [push] | [pop]     | [peek]/[peek\_mut] |
 /// |--------|-----------|--------------------|
-/// | O(1)~  | O(log(n)) | O(1)               |
+/// | O(1)~  | *O*(log(*n*)) | *O*(1)               |
 ///
 /// The value for `push` is an expected cost; the method documentation gives a
 /// more detailed analysis.
@@ -398,7 +398,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Time complexity
     ///
-    /// Cost is `O(1)` in the worst case.
+    /// Cost is *O*(1) in the worst case.
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
         if self.is_empty() { None } else { Some(PeekMut { heap: self, sift: true }) }
@@ -422,7 +422,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Time complexity
     ///
-    /// The worst case cost of `pop` on a heap containing *n* elements is `O(log(n))`.
+    /// The worst case cost of `pop` on a heap containing *n* elements is *O*(log(*n*)).
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<T> {
         self.data.pop().map(|mut item| {
@@ -455,15 +455,15 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// The expected cost of `push`, averaged over every possible ordering of
     /// the elements being pushed, and over a sufficiently large number of
-    /// pushes, is `O(1)`. This is the most meaningful cost metric when pushing
+    /// pushes, is *O*(1). This is the most meaningful cost metric when pushing
     /// elements that are *not* already in any sorted pattern.
     ///
     /// The time complexity degrades if elements are pushed in predominantly
     /// ascending order. In the worst case, elements are pushed in ascending
-    /// sorted order and the amortized cost per push is `O(log(n))` against a heap
+    /// sorted order and the amortized cost per push is *O*(log(*n*)) against a heap
     /// containing *n* elements.
     ///
-    /// The worst case cost of a *single* call to `push` is `O(n)`. The worst case
+    /// The worst case cost of a *single* call to `push` is *O*(*n*). The worst case
     /// occurs when capacity is exhausted and needs a resize. The resize cost
     /// has been amortized in the previous figures.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -643,7 +643,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// The remaining elements will be removed on drop in heap order.
     ///
     /// Note:
-    /// * `.drain_sorted()` is `O(n * log(n))`; much slower than `.drain()`.
+    /// * `.drain_sorted()` is *O*(*n* \* log(*n*)); much slower than `.drain()`.
     ///   You should use the latter for most cases.
     ///
     /// # Examples
@@ -756,7 +756,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// # Time complexity
     ///
-    /// Cost is `O(1)` in the worst case.
+    /// Cost is *O*(1) in the worst case.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peek(&self) -> Option<&T> {
         self.data.get(0)
@@ -1312,7 +1312,7 @@ unsafe impl<T: Ord> TrustedLen for DrainSorted<'_, T> {}
 impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
     /// Converts a `Vec<T>` into a `BinaryHeap<T>`.
     ///
-    /// This conversion happens in-place, and has `O(n)` time complexity.
+    /// This conversion happens in-place, and has *O*(*n*) time complexity.
     fn from(vec: Vec<T>) -> BinaryHeap<T> {
         let mut heap = BinaryHeap { data: vec };
         heap.rebuild();
