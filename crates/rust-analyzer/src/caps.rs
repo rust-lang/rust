@@ -7,16 +7,18 @@ use lsp_types::{
     DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability, HoverProviderCapability,
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
     SelectionRangeProviderCapability, SemanticTokensDocumentProvider, SemanticTokensLegend,
-    SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
-    WorkDoneProgressOptions,
+    SemanticTokensOptions, SemanticTokensServerCapabilities, ServerCapabilities,
+    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
 };
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::semantic_tokens;
 
 pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabilities {
     let code_action_provider = code_action_capabilities(client_caps);
+    let semantic_tokens_provider = semantic_tokens_capabilities(client_caps);
+    let experimental = experimental_capabilities(client_caps);
 
     ServerCapabilities {
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
@@ -69,29 +71,58 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         execute_command_provider: None,
         workspace: None,
         call_hierarchy_provider: Some(CallHierarchyServerCapability::Simple(true)),
-        semantic_tokens_provider: Some(
-            SemanticTokensOptions {
-                legend: SemanticTokensLegend {
-                    token_types: semantic_tokens::SUPPORTED_TYPES.to_vec(),
-                    token_modifiers: semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
-                },
-
-                document_provider: Some(SemanticTokensDocumentProvider::Bool(true)),
-                range_provider: Some(true),
-                work_done_progress_options: Default::default(),
-            }
-            .into(),
-        ),
-        experimental: Some(json!({
-            "joinLines": true,
-            "ssr": true,
-            "onEnter": true,
-            "parentModule": true,
-            "runnables": {
-                "kinds": [ "cargo" ],
-            },
-        })),
+        semantic_tokens_provider,
+        experimental,
     }
+}
+
+fn experimental_capabilities(client_caps: &ClientCapabilities) -> Option<Value> {
+    client_caps.experimental.as_ref().and_then(|it| {
+        it.as_object().map(|map| {
+            let mut obj = json!({});
+            let result = obj.as_object_mut().unwrap();
+
+            if map.contains_key("joinLines") {
+                result.insert("joinLines".into(), true.into());
+            }
+
+            if map.contains_key("ssr") {
+                result.insert("ssr".into(), true.into());
+            }
+
+            if map.contains_key("onEnter") {
+                result.insert("onEnter".into(), true.into());
+            }
+
+            if map.contains_key("parentModule") {
+                result.insert("parentModule".into(), true.into());
+            }
+
+            if map.contains_key("runnables") {
+                result.insert("runnables".into(), json!({ "kinds": [ "cargo" ] }));
+            }
+
+            obj
+        })
+    })
+}
+
+fn semantic_tokens_capabilities(
+    client_caps: &ClientCapabilities,
+) -> Option<SemanticTokensServerCapabilities> {
+    client_caps.text_document.as_ref().and_then(|it| it.semantic_tokens.as_ref()).map(|_|
+            // client supports semanticTokens
+            SemanticTokensOptions {
+            legend: SemanticTokensLegend {
+                token_types: semantic_tokens::SUPPORTED_TYPES.to_vec(),
+                token_modifiers: semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
+            },
+
+            document_provider: Some(SemanticTokensDocumentProvider::Bool(true)),
+            range_provider: Some(true),
+            work_done_progress_options: Default::default(),
+        }
+        .into())
 }
 
 fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProviderCapability {
@@ -100,19 +131,24 @@ fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProvi
         .as_ref()
         .and_then(|it| it.code_action.as_ref())
         .and_then(|it| it.code_action_literal_support.as_ref())
-        .map_or(CodeActionProviderCapability::Simple(true), |_| {
+        .map_or(CodeActionProviderCapability::Simple(true), |caps| {
+            let mut action_kinds = vec![
+                CodeActionKind::EMPTY,
+                CodeActionKind::QUICKFIX,
+                CodeActionKind::REFACTOR,
+                CodeActionKind::REFACTOR_EXTRACT,
+                CodeActionKind::REFACTOR_INLINE,
+                CodeActionKind::REFACTOR_REWRITE,
+            ];
+
+            // Not all clients can fall back gracefully for unknown values.
+            // Microsoft.VisualStudio.LanguageServer.Protocol.CodeActionKind does not support CodeActionKind::EMPTY
+            // So have to filter out.
+            action_kinds
+                .retain(|it| caps.code_action_kind.value_set.contains(&it.as_str().to_owned()));
+
             CodeActionProviderCapability::Options(CodeActionOptions {
-                // Advertise support for all built-in CodeActionKinds.
-                // Ideally we would base this off of the client capabilities
-                // but the client is supposed to fall back gracefully for unknown values.
-                code_action_kinds: Some(vec![
-                    CodeActionKind::EMPTY,
-                    CodeActionKind::QUICKFIX,
-                    CodeActionKind::REFACTOR,
-                    CodeActionKind::REFACTOR_EXTRACT,
-                    CodeActionKind::REFACTOR_INLINE,
-                    CodeActionKind::REFACTOR_REWRITE,
-                ]),
+                code_action_kinds: Some(action_kinds),
                 work_done_progress_options: Default::default(),
             })
         })
