@@ -36,7 +36,7 @@ pub fn target() -> Result<Target, String> {
     ]);
     let opts = TargetOptions {
         linker: Some("aarch64-none-elf-gcc".to_owned()),
-        features: "+a53,+strict-align,+crc".to_string(),
+        features: "+a53,+strict-align,+crc,+read-tp-soft".to_string(),
         executables: true,
         relocation_model: RelocModel::Pic,
         disable_redzone: true,
@@ -46,7 +46,7 @@ pub fn target() -> Result<Target, String> {
         unsupported_abis: super::arm_base::unsupported_abis(),
         target_family: Some("unix".to_string()),
         position_independent_executables: true,
-        has_elf_tls: false,
+        has_elf_tls: true,
         trap_unreachable: true,
         emit_debug_gdb_scripts: true,
         requires_uwtable: true,
