@@ -468,6 +468,8 @@ impl GlobalState {
                             }
                             (None, Some(mut configs)) => {
                                 if let Some(json) = configs.get_mut(0) {
+                                    // Note that json can be null according to the spec if the client can't
+                                    // provide a configuration. This is handled in Config::update below.
                                     let mut config = this.config.clone();
                                     config.update(json.take());
                                     this.update_configuration(config);

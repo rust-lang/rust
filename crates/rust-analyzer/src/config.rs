@@ -177,6 +177,11 @@ impl Config {
 
     pub fn update(&mut self, json: serde_json::Value) {
         log::info!("Config::update({:#})", json);
+
+        if json.is_null() {
+            return;
+        }
+
         let data = ConfigData::from_json(json);
 
         self.with_sysroot = data.withSysroot;
