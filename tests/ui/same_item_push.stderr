@@ -5,7 +5,7 @@ LL |         spaces.push(vec![b' ']);
    |         ^^^^^^
    |
    = note: `-D clippy::same-item-push` implied by `-D warnings`
-   = help: try using vec![<[_]>::into_vec(box [$($x),+]);SIZE] or spaces.resize(NEW_SIZE, <[_]>::into_vec(box [$($x),+]))
+   = help: try using vec![vec![b' '];SIZE] or spaces.resize(NEW_SIZE, vec![b' '])
 
 error: it looks like the same item is being pushed into this Vec
   --> $DIR/same_item_push.rs:22:9

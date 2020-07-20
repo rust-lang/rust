@@ -3,9 +3,10 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
-    get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
-    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt, snippet_with_applicability, span_lint,
+    get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher,
+    implements_trait, is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item,
+    last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, qpath_res,
+    snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
     span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
@@ -1262,8 +1263,8 @@ fn detect_same_item_push<'tcx>(
                 walk_expr(&mut for_pat_visitor, pushed_item);
 
                 if !for_pat_visitor.found_pattern {
-                    let vec_str = snippet(cx, vec.span, "");
-                    let item_str = snippet(cx, pushed_item.span, "");
+                    let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
+                    let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
 
                     span_lint_and_help(
                         cx,
