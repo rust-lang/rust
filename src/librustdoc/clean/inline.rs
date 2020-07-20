@@ -346,9 +346,11 @@ pub fn build_impl(
         // such. This helps prevent dependencies of the standard library, for
         // example, from getting documented as "traits `u32` implements" which
         // isn't really too helpful.
-        if let Some(stab) = cx.tcx.lookup_stability(did) {
-            if stab.level.is_unstable() {
-                return;
+        if let Some(trait_did) = associated_trait {
+            if let Some(stab) = cx.tcx.lookup_stability(trait_did.def_id) {
+                if stab.level.is_unstable() {
+                    return;
+                }
             }
         }
     }
