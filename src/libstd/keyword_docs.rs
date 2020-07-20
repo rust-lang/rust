@@ -474,7 +474,7 @@ mod fn_keyword {}
 ///
 /// for-in-loops, or to be more precise, iterator loops, are a simple syntactic sugar over a common
 /// practice within Rust, which is to loop over anything that implements [`IntoIterator`] until the
-/// temporary iterator returns `None` (or `break` is called).
+/// iterator returned by `.into_iter()` returns `None` (or the loop body uses `break`).
 ///
 /// ```rust
 /// for i in 0..5 {
