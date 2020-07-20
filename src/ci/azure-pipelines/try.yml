@@ -14,7 +14,7 @@ trigger:
 - try
 
 variables:
-- group: prod-credentials
+- group: dummy-credentials
 
 jobs:
 - job: Linux
