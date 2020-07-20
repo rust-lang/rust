@@ -52,6 +52,7 @@ fn main() {
     borrower_propagation();
     not_consumed();
     issue_5405();
+    manually_drop();
 }
 
 #[derive(Clone)]
@@ -169,4 +170,18 @@ fn issue_5405() {
 
     let c: [usize; 2] = [2, 3];
     let _d: usize = c[1].clone();
+}
+
+fn manually_drop() {
+    use std::mem::ManuallyDrop;
+    use std::sync::Arc;
+
+    let a = ManuallyDrop::new(Arc::new("Hello!".to_owned()));
+    let _ = a.clone(); // OK
+
+    let p: *const String = Arc::into_raw(ManuallyDrop::into_inner(a));
+    unsafe {
+        Arc::from_raw(p);
+        Arc::from_raw(p);
+    }
 }
