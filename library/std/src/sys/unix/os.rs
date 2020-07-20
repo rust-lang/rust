@@ -101,7 +101,10 @@ pub fn set_errno(e: i32) {
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
     extern "C" {
-        #[cfg_attr(any(target_os = "linux", target_env = "devkita64"), link_name = "__xpg_strerror_r")]
+        #[cfg_attr(
+            any(target_os = "linux", target_env = "devkita64"),
+            link_name = "__xpg_strerror_r"
+        )]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t) -> c_int;
     }
 
@@ -440,9 +443,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::env;
     // guaranteed by abi to be an absolute path to the executable
-    env::args_os().next().map(From::from).ok_or_else(|| {
-        io::Error::new(io::ErrorKind::Other, "no current exe available")
-    })
+    env::args_os()
+        .next()
+        .map(From::from)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "no current exe available"))
 }
 
 pub struct Env {

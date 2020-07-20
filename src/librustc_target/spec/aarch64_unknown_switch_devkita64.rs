@@ -1,39 +1,42 @@
-use super::{LinkerFlavor, PanicStrategy, Target, TargetOptions, RelocModel, LinkArgs};
+use super::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
 // DevkitA64 has custom linker requirements.
 const LINKER_SCRIPT: &str = include_str!("./aarch64_unknown_switch_devkita64_script.ld");
 
 pub fn target() -> Result<Target, String> {
     let mut link_args = LinkArgs::new();
-    link_args.insert(LinkerFlavor::Gcc, vec![
-        "-march=armv8-a".to_string(),
-        "-mtune=cortex-a57".to_string(),
-        "-mtp=soft".to_string(),
-        "-nodefaultlibs".to_string(),
-        "-nostdlib".to_string(),
-        "-nostartfiles".to_string(),
-        "-L/opt/devkitpro/portlibs/switch/lib".to_string(),
-        "-L/opt/devkitpro/libnx/lib".to_string(),
-        "-L/opt/devkitpro/devkitA64/lib/gcc/aarch64-none-elf/10.1.0/pic".to_string(),
-        "-L/opt/devkitpro/devkitA64/aarch64-none-elf/lib/pic".to_string(),
-        "-Wl,--start-group".to_string(),
-        "-lgcc".to_string(),
-        "-lc".to_string(),
-        "-lnx".to_string(),
-        "-lsysbase".to_string(),
-        "-lm".to_string(),
-        "-l:crtbegin.o".to_string(),
-        "-l:crtend.o".to_string(),
-        "-l:crti.o".to_string(),
-        "-l:crtn.o".to_string(),
-        "-Wl,--end-group".to_string(),
-        "-fPIE".to_string(),
-        "-pie".to_string(),
-        "-Wl,-z,text".to_string(),
-        "-Wl,-z,muldefs".to_string(),
-        "-Wl,--export-dynamic".to_string(),
-        "-Wl,--eh-frame-hdr".to_string(),
-    ]);
+    link_args.insert(
+        LinkerFlavor::Gcc,
+        vec![
+            "-march=armv8-a".to_string(),
+            "-mtune=cortex-a57".to_string(),
+            "-mtp=soft".to_string(),
+            "-nodefaultlibs".to_string(),
+            "-nostdlib".to_string(),
+            "-nostartfiles".to_string(),
+            "-L/opt/devkitpro/portlibs/switch/lib".to_string(),
+            "-L/opt/devkitpro/libnx/lib".to_string(),
+            "-L/opt/devkitpro/devkitA64/lib/gcc/aarch64-none-elf/10.1.0/pic".to_string(),
+            "-L/opt/devkitpro/devkitA64/aarch64-none-elf/lib/pic".to_string(),
+            "-Wl,--start-group".to_string(),
+            "-lgcc".to_string(),
+            "-lc".to_string(),
+            "-lnx".to_string(),
+            "-lsysbase".to_string(),
+            "-lm".to_string(),
+            "-l:crtbegin.o".to_string(),
+            "-l:crtend.o".to_string(),
+            "-l:crti.o".to_string(),
+            "-l:crtn.o".to_string(),
+            "-Wl,--end-group".to_string(),
+            "-fPIE".to_string(),
+            "-pie".to_string(),
+            "-Wl,-z,text".to_string(),
+            "-Wl,-z,muldefs".to_string(),
+            "-Wl,--export-dynamic".to_string(),
+            "-Wl,--eh-frame-hdr".to_string(),
+        ],
+    );
     let opts = TargetOptions {
         linker: Some("aarch64-none-elf-gcc".to_owned()),
         features: "+a53,+strict-align,+crc,+read-tp-soft".to_string(),

@@ -307,10 +307,12 @@ impl Socket {
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             setsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY, nodelay as c_int)
         }
-        #[cfg(target_os = "switch")] {
+        #[cfg(target_os = "switch")]
+        {
             Ok(())
         }
     }

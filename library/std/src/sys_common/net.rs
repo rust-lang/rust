@@ -314,10 +314,12 @@ impl TcpStream {
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
         }
-        #[cfg(target_os = "switch")] {
+        #[cfg(target_os = "switch")]
+        {
             Ok(())
         }
     }
@@ -422,10 +424,12 @@ impl TcpListener {
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
         }
-        #[cfg(target_os = "switch")] {
+        #[cfg(target_os = "switch")]
+        {
             Ok(())
         }
     }
@@ -439,16 +443,19 @@ impl TcpListener {
     }
 
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int)
         }
-        #[cfg(target_os = "switch")] {
+        #[cfg(target_os = "switch")]
+        {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn only_v6(&self) -> io::Result<bool> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY)?;
             Ok(raw != 0)
         }
@@ -574,7 +581,8 @@ impl UdpSocket {
     }
 
     pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             setsockopt(
                 &self.inner,
                 c::IPPROTO_IP,
@@ -582,23 +590,28 @@ impl UdpSocket {
                 multicast_loop_v4 as IpV4MultiCastType,
             )
         }
-        #[cfg(target_os = "switch")] {
+        #[cfg(target_os = "switch")]
+        {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
-        #[cfg(not(target_os = "switch"))] {
-            let raw: IpV4MultiCastType = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)?;
+        #[cfg(not(target_os = "switch"))]
+        {
+            let raw: IpV4MultiCastType =
+                getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP)?;
             Ok(raw != 0)
         }
-        #[cfg(target_os = "switch")] {
+        #[cfg(target_os = "switch")]
+        {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             setsockopt(
                 &self.inner,
                 c::IPPROTO_IP,
@@ -606,14 +619,17 @@ impl UdpSocket {
                 multicast_ttl_v4 as IpV4MultiCastType,
             )
         }
-        #[cfg(target_os = "switch")] {
+        #[cfg(target_os = "switch")]
+        {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        #[cfg(not(target_os = "switch"))] {
-            let raw: IpV4MultiCastType = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)?;
+        #[cfg(not(target_os = "switch"))]
+        {
+            let raw: IpV4MultiCastType =
+                getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL)?;
             Ok(raw as u32)
         }
         #[cfg(target_os = "switch")]
@@ -621,16 +637,24 @@ impl UdpSocket {
     }
 
     pub fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
-            setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP, multicast_loop_v6 as c_int)
+        #[cfg(not(target_os = "switch"))]
+        {
+            setsockopt(
+                &self.inner,
+                c::IPPROTO_IPV6,
+                c::IPV6_MULTICAST_LOOP,
+                multicast_loop_v6 as c_int,
+            )
         }
-        #[cfg(target_os = "switch")] {
+        #[cfg(target_os = "switch")]
+        {
             Err(io::Error::new(io::ErrorKind::Other, "operation not supported"))
         }
     }
 
     pub fn multicast_loop_v6(&self) -> io::Result<bool> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP)?;
             Ok(raw != 0)
         }
@@ -639,7 +663,8 @@ impl UdpSocket {
     }
 
     pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             let mreq = c::ip_mreq {
                 imr_multiaddr: *multiaddr.as_inner(),
                 imr_interface: *interface.as_inner(),
@@ -651,7 +676,8 @@ impl UdpSocket {
     }
 
     pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             let mreq = c::ipv6_mreq {
                 ipv6mr_multiaddr: *multiaddr.as_inner(),
                 ipv6mr_interface: to_ipv6mr_interface(interface),
@@ -663,7 +689,8 @@ impl UdpSocket {
     }
 
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             let mreq = c::ip_mreq {
                 imr_multiaddr: *multiaddr.as_inner(),
                 imr_interface: *interface.as_inner(),
@@ -675,7 +702,8 @@ impl UdpSocket {
     }
 
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             let mreq = c::ipv6_mreq {
                 ipv6mr_multiaddr: *multiaddr.as_inner(),
                 ipv6mr_interface: to_ipv6mr_interface(interface),
@@ -687,10 +715,12 @@ impl UdpSocket {
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
-        #[cfg(not(target_os = "switch"))] {
+        #[cfg(not(target_os = "switch"))]
+        {
             setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
         }
-        #[cfg(target_os = "switch")] {
+        #[cfg(target_os = "switch")]
+        {
             Ok(())
         }
     }

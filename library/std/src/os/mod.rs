@@ -40,6 +40,8 @@ cfg_if::cfg_if! {
 
 #[cfg(target_os = "android")]
 pub mod android;
+#[cfg(target_env = "devkita64")]
+pub mod devkita64;
 #[cfg(target_os = "dragonfly")]
 pub mod dragonfly;
 #[cfg(target_os = "emscripten")]
@@ -70,7 +72,5 @@ pub mod solaris;
 pub mod vxworks;
 #[cfg(target_os = "wasi")]
 pub mod wasi;
-#[cfg(target_env = "devkita64")]
-pub mod devkita64;
 
 pub mod raw;

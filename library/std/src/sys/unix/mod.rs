@@ -7,6 +7,8 @@ pub use crate::os::linux as platform;
 
 #[cfg(all(not(doc), target_os = "android"))]
 pub use crate::os::android as platform;
+#[cfg(all(not(doc), target_env = "devkita64"))]
+pub use crate::os::devkita64 as platform;
 #[cfg(all(not(doc), target_os = "dragonfly"))]
 pub use crate::os::dragonfly as platform;
 #[cfg(all(not(doc), target_os = "emscripten"))]
@@ -33,8 +35,6 @@ pub use crate::os::openbsd as platform;
 pub use crate::os::redox as platform;
 #[cfg(all(not(doc), target_os = "solaris"))]
 pub use crate::os::solaris as platform;
-#[cfg(all(not(doc), target_env = "devkita64"))]
-pub use crate::os::devkita64 as platform;
 
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;

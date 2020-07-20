@@ -3,8 +3,8 @@
 
 use crate::fmt;
 use crate::io;
-use crate::sys::process::process_common::*;
 use crate::os::raw::c_int;
+use crate::sys::process::process_common::*;
 
 pub use crate::ffi::OsString as EnvKey;
 
