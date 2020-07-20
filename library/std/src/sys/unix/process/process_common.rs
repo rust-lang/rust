@@ -7,12 +7,14 @@ use crate::collections::BTreeMap;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
+use crate::mem;
 use crate::path::Path;
 use crate::ptr;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
+pub use crate::sys_common::process_ext::{Arg, Problem};
 
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
@@ -69,11 +71,14 @@ pub struct Command {
     /// `args` to properly update this as well.
     argv: Argv,
     env: CommandEnv,
+    env_size: Option<usize>,
+    arg_max: Option<isize>,
+    arg_size: usize,
 
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
-    saw_nul: bool,
+    problem: Result<(), Problem>,
     closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
     groups: Option<Box<[gid_t]>>,
     stdin: Option<Stdio>,
@@ -125,17 +130,21 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        let mut saw_nul = false;
-        let program = os2c(program, &mut saw_nul);
+        let mut problem = Ok(());
+        let program = os2c(program, &mut problem);
+        let program_size = program.to_bytes_with_nul().len();
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
             args: vec![program.clone()],
             program,
             env: Default::default(),
+            env_size: None,
+            arg_max: Default::default(),
+            arg_size: 2 * mem::size_of::<*const u8>() + program_size,
             cwd: None,
             uid: None,
             gid: None,
-            saw_nul,
+            problem,
             closures: Vec::new(),
             groups: None,
             stdin: None,
@@ -146,16 +155,32 @@ impl Command {
 
     pub fn set_arg_0(&mut self, arg: &OsStr) {
         // Set a new arg0
-        let arg = os2c(arg, &mut self.saw_nul);
+        let arg = os2c(arg, &mut self.problem);
         debug_assert!(self.argv.0.len() > 1);
+        self.arg_size -= self.args[0].to_bytes().len();
+        self.arg_size += arg.to_bytes().len();
         self.argv.0[0] = arg.as_ptr();
         self.args[0] = arg;
+    }
+
+    #[allow(dead_code)]
+    pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
+        self.arg(arg);
+        self.problem?;
+        if self.check_size(false)? == false {
+            self.problem = Err(Problem::Oversized);
+        }
+        match &self.problem {
+            Err(err) => Err(err.into()),
+            Ok(()) => Ok(()),
+        }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
         // Overwrite the trailing null pointer in `argv` and then add a new null
         // pointer.
-        let arg = os2c(arg, &mut self.saw_nul);
+        let arg = os2c(arg, &mut self.problem);
+        self.arg_size += arg.to_bytes_with_nul().len() + mem::size_of::<*const u8>();
         self.argv.0[self.args.len()] = arg.as_ptr();
         self.argv.0.push(ptr::null());
 
@@ -165,7 +190,7 @@ impl Command {
     }
 
     pub fn cwd(&mut self, dir: &OsStr) {
-        self.cwd = Some(os2c(dir, &mut self.saw_nul));
+        self.cwd = Some(os2c(dir, &mut self.problem));
     }
     pub fn uid(&mut self, id: uid_t) {
         self.uid = Some(id);
@@ -177,8 +202,8 @@ impl Command {
         self.groups = Some(Box::from(groups));
     }
 
-    pub fn saw_nul(&self) -> bool {
-        self.saw_nul
+    pub fn problem(&self) -> Result<(), Problem> {
+        self.problem
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -224,6 +249,62 @@ impl Command {
         self.groups.as_deref()
     }
 
+    pub fn get_size(&mut self) -> io::Result<usize> {
+        // Envp size calculation is approximate.
+        let env = &self.env;
+        let problem = &mut self.problem;
+        let env_size = self.env_size.get_or_insert_with(|| {
+            let env_map = env.capture();
+            env_map
+                .iter()
+                .map(|(k, v)| {
+                    os2c(k.as_ref(), problem).to_bytes().len()
+                        + os2c(v.as_ref(), problem).to_bytes().len()
+                        + 2
+                })
+                .sum::<usize>()
+                + (env_map.len() + 1) * mem::size_of::<*const u8>()
+        });
+
+        Ok(self.arg_size + *env_size)
+    }
+
+    pub fn check_size(&mut self, refresh: bool) -> io::Result<bool> {
+        Ok(self.available_size(refresh)? > 0)
+    }
+
+    pub fn available_size(&mut self, refresh: bool) -> io::Result<isize> {
+        use crate::sys;
+        use core::convert::TryInto;
+        if refresh || self.arg_max.is_none() {
+            let (limit, errno) = unsafe {
+                let old_errno = sys::os::errno();
+                sys::os::set_errno(0);
+                let limit = libc::sysconf(libc::_SC_ARG_MAX);
+                let errno = sys::os::errno();
+                sys::os::set_errno(old_errno);
+                (limit, errno)
+            };
+
+            if errno != 0 {
+                return Err(io::Error::from_raw_os_error(errno));
+            } else {
+                // FIXME: don't panic
+                let amax: isize = limit.try_into().unwrap();
+                let psize: isize = sys::os::page_size() as isize;
+                // POSIX says the headroom should be 2048.
+                // Most implementations do 4096. Let's just do a whole page.
+                debug_assert!(amax < 0 || amax > psize);
+                self.arg_max = Some(amax - psize);
+            }
+        }
+        if self.arg_max.unwrap() < 0 {
+            Ok(isize::MAX) // HACK: more like "infinity", but not much different
+        } else {
+            Ok(self.arg_max.unwrap() - self.get_size()? as isize)
+        }
+    }
+
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
         &mut self.closures
     }
@@ -245,12 +326,13 @@ impl Command {
     }
 
     pub fn env_mut(&mut self) -> &mut CommandEnv {
+        self.env_size = None;
         &mut self.env
     }
 
     pub fn capture_env(&mut self) -> Option<CStringArray> {
         let maybe_env = self.env.capture_if_changed();
-        maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
+        maybe_env.map(|env| construct_envp(env, &mut self.problem))
     }
 
     #[allow(dead_code)]
@@ -282,9 +364,9 @@ impl Command {
     }
 }
 
-fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
+fn os2c(s: &OsStr, problem: &mut Result<(), Problem>) -> CString {
     CString::new(s.as_bytes()).unwrap_or_else(|_e| {
-        *saw_nul = true;
+        *problem = Err(Problem::SawNul);
         CString::new("<string-with-nul>").unwrap()
     })
 }
@@ -315,7 +397,10 @@ impl CStringArray {
     }
 }
 
-fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStringArray {
+fn construct_envp(
+    env: BTreeMap<OsString, OsString>,
+    problem: &mut Result<(), Problem>,
+) -> CStringArray {
     let mut result = CStringArray::with_capacity(env.len());
     for (mut k, v) in env {
         // Reserve additional space for '=' and null terminator
@@ -327,7 +412,7 @@ fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStr
         if let Ok(item) = CString::new(k.into_vec()) {
             result.push(item);
         } else {
-            *saw_nul = true;
+            *problem = Err(Problem::SawNul);
         }
     }
 
@@ -398,6 +483,32 @@ impl ChildStdio {
             #[cfg(target_os = "fuchsia")]
             ChildStdio::Null => None,
         }
+    }
+}
+
+#[unstable(feature = "command_sized", issue = "74549")]
+impl Arg for &OsStr {
+    fn arg_size(&self, _: bool) -> Result<usize, Problem> {
+        let mut nul_problem: Result<(), Problem> = Ok(());
+        let cstr = os2c(self, &mut nul_problem);
+        nul_problem?;
+        Ok(cstr.to_bytes_with_nul().len() + mem::size_of::<*const u8>())
+    }
+    fn to_plain(&self) -> &OsStr {
+        self
+    }
+}
+
+#[unstable(feature = "command_sized", issue = "74549")]
+impl<'a, T> Arg for &'a T
+where
+    T: Arg,
+{
+    fn arg_size(&self, _fq: bool) -> Result<usize, Problem> {
+        (*self).arg_size(_fq)
+    }
+    fn to_plain(&self) -> &OsStr {
+        (*self).to_plain()
     }
 }
 

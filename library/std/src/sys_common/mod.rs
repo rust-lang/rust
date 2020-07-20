@@ -31,6 +31,9 @@ pub mod mutex;
 #[cfg(any(doc, not(windows)))]
 pub mod os_str_bytes;
 pub mod process;
+#[cfg(any(unix, windows))]
+#[macro_use]
+pub(crate) mod process_ext;
 pub mod remutex;
 #[macro_use]
 pub mod rt;

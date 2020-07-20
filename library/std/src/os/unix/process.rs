@@ -1,5 +1,4 @@
 //! Unix-specific extensions to primitives in the `std::process` module.
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ffi::OsStr;
@@ -9,6 +8,9 @@ use crate::process;
 use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
+
+use crate::sys_common::process_ext;
+impl_command_sized! { prelude }
 
 /// Unix-specific extensions to the [`process::Command`] builder.
 ///
@@ -334,4 +336,26 @@ impl IntoRawFd for process::ChildStderr {
 #[stable(feature = "unix_ppid", since = "1.27.0")]
 pub fn parent_id() -> u32 {
     crate::sys::os::getppid()
+}
+
+fn maybe_arg_ext(celf: &mut sys::process::Command, arg: impl Arg) -> io::Result<()> {
+    celf.maybe_arg(arg.to_plain())
+}
+
+fn args_ext(
+    celf: &mut process::Command,
+    args: impl IntoIterator<Item = impl Arg>,
+) -> &mut process::Command {
+    for arg in args {
+        celf.arg(arg.to_plain());
+    }
+    celf
+}
+
+#[unstable(feature = "command_sized", issue = "74549")]
+#[cfg(unix)] // doc hack
+impl process_ext::CommandSized for process::Command {
+    impl_command_sized! { marg  maybe_arg_ext }
+    impl_command_sized! { margs maybe_arg_ext }
+    impl_command_sized! { xargs args_ext }
 }

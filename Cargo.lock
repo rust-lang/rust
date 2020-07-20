@@ -263,7 +263,14 @@ dependencies = [
  "cargo-util",
  "clap",
  "crates-io",
+<<<<<<< HEAD
  "crossbeam-utils 0.8.3",
+||||||| parent of 1725fb7e1bd (actually get size adjustment to work)
+ "crossbeam-utils 0.8.0",
+=======
+ "crossbeam-utils 0.8.0",
+ "crypto-hash",
+>>>>>>> 1725fb7e1bd (actually get size adjustment to work)
  "curl",
  "curl-sys",
  "env_logger 0.8.1",
@@ -5569,11 +5576,12 @@ checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "vergen"
-version = "5.1.0"
+version = "5.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfbc87f9a7a9d61b15d51d1d3547284f67b6b4f1494ce3fc5814c101f35a5183"
+checksum = "adf0b57f76a4f7e9673db1e7ffa4541d215ae8336fee45f5c1378bdeb22a0314"
 dependencies = [
  "anyhow",
+ "cfg-if 1.0.0",
  "chrono",
  "enum-iterator",
  "getset",
