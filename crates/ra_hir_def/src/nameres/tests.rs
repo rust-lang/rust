@@ -21,7 +21,7 @@ fn compute_crate_def_map(fixture: &str) -> Arc<CrateDefMap> {
 fn check(ra_fixture: &str, expect: Expect) {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.crate_graph().iter().next().unwrap();
-    let actual = db.crate_def_map(krate).dump() + "\n";
+    let actual = db.crate_def_map(krate).dump();
     expect.assert_eq(&actual);
 }
 
