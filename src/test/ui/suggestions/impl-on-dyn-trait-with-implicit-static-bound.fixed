@@ -34,7 +34,7 @@ mod bar {
     impl Irrelevant for dyn ObjectTrait {}
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> &'a () {
-        val.use_self() //~ ERROR E0767
+        val.use_self() //~ ERROR E0772
     }
 }
 
@@ -51,7 +51,7 @@ mod baz {
     impl Irrelevant for Box<dyn ObjectTrait> {}
 
     fn use_it<'a>(val: &'a Box<dyn ObjectTrait + 'a>) -> &'a () {
-        val.use_self() //~ ERROR E0767
+        val.use_self() //~ ERROR E0772
     }
 }
 
@@ -66,7 +66,7 @@ mod bat {
     }
 
     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
-        val.use_self() //~ ERROR E0767
+        val.use_self() //~ ERROR E0772
     }
 }
 
