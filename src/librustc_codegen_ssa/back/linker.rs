@@ -301,7 +301,7 @@ impl<'a> Linker for GccLinker<'a> {
                 if !self.is_ld {
                     // Note that combination `-static -pie` doesn't work as expected
                     // for the gcc wrapper, `-static` in that case suppresses `-pie`.
-                    self.cmd.args(&["-static-pie", "-pie", "-fPIE"]);
+                    self.cmd.arg("-static-pie");
                 } else {
                     // `--no-dynamic-linker` and `-z text` are not strictly necessary for producing
                     // a static pie, but currently passed because gcc and clang pass them.

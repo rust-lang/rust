@@ -4,38 +4,35 @@ use super::{LinkerFlavor, PanicStrategy, Target, TargetOptions, RelocModel, Link
 const LINKER_SCRIPT: &str = include_str!("./aarch64_unknown_switch_devkita64_script.ld");
 
 pub fn target() -> Result<Target, String> {
-    let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(LinkerFlavor::Gcc, vec![
-        // from https://github.com/switchbrew/switch-examples/blob/master/templates/application/Makefile#L50
+    let mut link_args = LinkArgs::new();
+    link_args.insert(LinkerFlavor::Gcc, vec![
         "-march=armv8-a".to_string(),
         "-mtune=cortex-a57".to_string(),
         "-mtp=soft".to_string(),
-        // from https://github.com/switchbrew/switch-examples/blob/master/templates/application/Makefile#L68
+        "-nodefaultlibs".to_string(),
+        "-nostdlib".to_string(),
+        "-nostartfiles".to_string(),
         "-L/opt/devkitpro/portlibs/switch/lib".to_string(),
         "-L/opt/devkitpro/libnx/lib".to_string(),
-        // from https://github.com/switchbrew/libnx/blob/master/nx/switch.specs
-        "-nostartfiles".to_string(),
-        "-l:crti.o".to_string(),
-        "-l:crtbegin.o".to_string(),
-    ]);
-    let mut late_link_args = LinkArgs::new();
-    late_link_args.insert(LinkerFlavor::Gcc, vec![
-        // from https://github.com/switchbrew/switch-examples/blob/master/templates/application/Makefile#L62
+        "-L/opt/devkitpro/devkitA64/lib/gcc/aarch64-none-elf/10.1.0/pic".to_string(),
+        "-L/opt/devkitpro/devkitA64/aarch64-none-elf/lib/pic".to_string(),
+        "-Wl,--start-group".to_string(),
+        "-lgcc".to_string(),
+        "-lc".to_string(),
         "-lnx".to_string(),
-    ]);
-    let mut post_link_args = LinkArgs::new();
-    post_link_args.insert(LinkerFlavor::Gcc, vec![
-        // from https://github.com/switchbrew/libnx/blob/master/nx/switch.specs
-        "-Wl,-z,text".to_string(),
-        "-Wl,-z,nodynamic-undefined-weak".to_string(),
-        "-Wl,--build-id=sha1".to_string(),
-        "-Wl,--nx-module-name".to_string(),
-        // from https://github.com/switchbrew/libnx/blob/master/nx/switch.specs (implicit)
+        "-lsysbase".to_string(),
+        "-lm".to_string(),
+        "-l:crtbegin.o".to_string(),
         "-l:crtend.o".to_string(),
-        // this shouldn't be necessary (it isn't used in C), maybe it's needed because libc explicitly links `-lc`?
+        "-l:crti.o".to_string(),
+        "-l:crtn.o".to_string(),
+        "-Wl,--end-group".to_string(),
+        "-fPIE".to_string(),
+        "-pie".to_string(),
+        "-Wl,-z,text".to_string(),
         "-Wl,-z,muldefs".to_string(),
-        // force an _DYNAMIC symbol to be added even in static binaries (needed by crt0)
         "-Wl,--export-dynamic".to_string(),
+        "-Wl,--eh-frame-hdr".to_string(),
     ]);
     let opts = TargetOptions {
         linker: Some("aarch64-none-elf-gcc".to_owned()),
@@ -49,16 +46,11 @@ pub fn target() -> Result<Target, String> {
         unsupported_abis: super::arm_base::unsupported_abis(),
         target_family: Some("unix".to_string()),
         position_independent_executables: true,
-        static_position_independent_executables: true,
         has_elf_tls: true,
-        crt_static_default: true,
         trap_unreachable: true,
         emit_debug_gdb_scripts: true,
         requires_uwtable: true,
-        pre_link_args,
-        late_link_args,
-        post_link_args,
-        no_default_libraries: false,
+        post_link_args: link_args,
         link_script: Some(LINKER_SCRIPT.to_string()),
         ..Default::default()
     };
