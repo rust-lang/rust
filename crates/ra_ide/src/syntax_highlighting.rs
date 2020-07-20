@@ -543,7 +543,10 @@ fn highlight_element(
             T![::] | T![->] | T![=>] | T![&] => HighlightTag::Operator.into(),
             T![@] => HighlightTag::Operator | HighlightModifier::ControlFlow,
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
-                Highlight::new(HighlightTag::Macro)
+                HighlightTag::Macro.into()
+            }
+            T![*] if element.parent().and_then(ast::PointerType::cast).is_some() => {
+                HighlightTag::Keyword.into()
             }
             T![*] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
                 let prefix_expr = element.parent().and_then(ast::PrefixExpr::cast)?;
