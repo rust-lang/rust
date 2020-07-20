@@ -16,8 +16,6 @@ pub fn target() -> Result<Target, String> {
             "-nostartfiles".to_string(),
             "-L/opt/devkitpro/portlibs/switch/lib".to_string(),
             "-L/opt/devkitpro/libnx/lib".to_string(),
-            "-L/opt/devkitpro/devkitA64/lib/gcc/aarch64-none-elf/10.1.0/pic".to_string(),
-            "-L/opt/devkitpro/devkitA64/aarch64-none-elf/lib/pic".to_string(),
             "-Wl,--start-group".to_string(),
             "-lgcc".to_string(),
             "-lc".to_string(),
