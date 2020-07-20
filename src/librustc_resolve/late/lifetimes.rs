@@ -173,6 +173,8 @@ crate struct LifetimeContext<'a, 'tcx> {
     /// Used to disallow the use of in-band lifetimes in `fn` or `Fn` syntax.
     is_in_fn_syntax: bool,
 
+    is_in_const_generic: bool,
+
     /// List of labels in the function/method currently under analysis.
     labels_in_fn: Vec<Ident>,
 
@@ -333,6 +335,7 @@ fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {
             scope: ROOT_SCOPE,
             trait_ref_hack: false,
             is_in_fn_syntax: false,
+            is_in_const_generic: false,
             labels_in_fn: vec![],
             xcrate_object_lifetime_defaults: Default::default(),
             lifetime_uses: &mut Default::default(),
@@ -828,6 +831,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             self.insert_lifetime(lifetime_ref, Region::Static);
             return;
         }
+        if self.is_in_const_generic && lifetime_ref.name != LifetimeName::Error {
+            self.emit_non_static_lt_in_const_generic_error(lifetime_ref);
+            return;
+        }
         self.resolve_lifetime_ref(lifetime_ref);
     }
 
@@ -860,8 +867,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }
                 }
                 GenericParamKind::Const { ref ty, .. } => {
+                    let was_in_const_generic = self.is_in_const_generic;
+                    self.is_in_const_generic = true;
                     walk_list!(self, visit_param_bound, param.bounds);
                     self.visit_ty(&ty);
+                    self.is_in_const_generic = was_in_const_generic;
                 }
             }
         }
@@ -1317,6 +1327,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             scope: &wrap_scope,
             trait_ref_hack: self.trait_ref_hack,
             is_in_fn_syntax: self.is_in_fn_syntax,
+            is_in_const_generic: self.is_in_const_generic,
             labels_in_fn,
             xcrate_object_lifetime_defaults,
             lifetime_uses,
