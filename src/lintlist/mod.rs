@@ -1938,9 +1938,9 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "same_item_push",
         group: "style",
-        desc: "default lint description",
+        desc: "the same item is pushed inside of a for loop",
         deprecation: None,
-        module: "same_item_push",
+        module: "loops",
     },
     Lint {
         name: "search_is_some",
