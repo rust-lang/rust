@@ -100,6 +100,7 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
+    #[cfg(not(target_env = "devkita64"))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         #[cfg(target_os = "android")]
         use super::android::cvt_pread64;
@@ -158,6 +159,7 @@ impl FileDesc {
         !cfg!(target_env = "devkita64")
     }
 
+    #[cfg(not(target_env = "devkita64"))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         #[cfg(target_os = "android")]
         use super::android::cvt_pwrite64;

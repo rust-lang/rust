@@ -213,12 +213,24 @@ pub trait FileExt {
 }
 
 #[stable(feature = "file_offset", since = "1.15.0")]
+#[cfg(not(target_env = "devkita64"))]
 impl FileExt for fs::File {
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.as_inner().read_at(buf, offset)
     }
     fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.as_inner().write_at(buf, offset)
+    }
+}
+
+#[stable(feature = "file_offset", since = "1.15.0")]
+#[cfg(target_env = "devkita64")]
+impl FileExt for fs::File {
+    fn read_at(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
+        unimplemented!()
+    }
+    fn write_at(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
+        unimplemented!()
     }
 }
 

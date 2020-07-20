@@ -798,6 +798,7 @@ impl File {
         self.0.is_read_vectored()
     }
 
+    #[cfg(not(target_env = "devkita64"))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.0.read_at(buf, offset)
     }
@@ -815,6 +816,7 @@ impl File {
         self.0.is_write_vectored()
     }
 
+    #[cfg(not(target_env = "devkita64"))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.0.write_at(buf, offset)
     }
