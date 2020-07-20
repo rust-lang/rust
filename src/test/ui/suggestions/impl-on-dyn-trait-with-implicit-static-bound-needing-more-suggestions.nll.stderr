@@ -1,5 +1,5 @@
 error[E0597]: `val` does not live long enough
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:22:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:21:9
    |
 LL |     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32>>) -> impl OtherTrait<'a> {
    |               -- lifetime `'a` defined here                  ------------------- opaque type requires that `val` is borrowed for `'a`
@@ -14,7 +14,7 @@ LL |     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32>>) -> impl OtherTrai
    |                                                                                  ^^^^
 
 error[E0515]: cannot return value referencing function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:44:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:43:9
    |
 LL |         val.use_self()
    |         ---^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |         val.use_self()
    |         `val` is borrowed here
 
 error[E0515]: cannot return value referencing function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:110:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:109:9
    |
 LL |         val.use_self()
    |         ---^^^^^^^^^^^

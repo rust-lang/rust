@@ -48,7 +48,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let mut err = struct_span_err!(
                         tcx.sess,
                         cause.span,
-                        E0767,
+                        E0772,
                         "{} has {} but calling `{}` introduces an implicit `'static` lifetime \
                          requirement",
                         param
@@ -196,7 +196,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         if let (Some(ident), true) = (override_error_code, fn_returns.is_empty()) {
             // Provide a more targetted error code and description.
-            err.code(rustc_errors::error_code!(E0767));
+            err.code(rustc_errors::error_code!(E0772));
             err.set_primary_message(&format!(
                 "{} has {} but calling `{}` introduces an implicit `'static` lifetime \
                 requirement",
