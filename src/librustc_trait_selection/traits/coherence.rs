@@ -289,11 +289,11 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///     - but (knowing that `Vec<T>` is non-fundamental, and assuming it's
 ///       not local), `Vec<LocalType>` is bad, because `Vec<->` is between
 ///       the local type and the type parameter.
-/// 3. Every type parameter before the local key parameter is fully known in C.
-///     - e.g., `impl<T> T: Trait<LocalType>` is bad, because `T` might be
-///       an unknown type.
-///     - but `impl<T> LocalType: Trait<T>` is OK, because `LocalType`
-///       occurs before `T`.
+/// 3. Before this local type, no generic type parameter of the impl must
+///    be reachable through fundamental types.
+///     - e.g. `impl<T> Trait<LocalType> for Vec<T>` is fine, as `Vec` is not fundamental.
+///     - while `impl<T> Trait<LocalType for Box<T>` results in an error, as `T` is
+///       reachable through the fundamental type `Box`.
 /// 4. Every type in the local key parameter not known in C, going
 ///    through the parameter's type tree, must appear only as a subtree of
 ///    a type local to C, with only fundamental types between the type
@@ -387,8 +387,8 @@ fn orphan_check_trait_ref<'tcx>(
         ty: Ty<'tcx>,
         in_crate: InCrate,
     ) -> Vec<Ty<'tcx>> {
-        // FIXME(eddyb) figure out if this is redundant with `ty_is_non_local`,
-        // or maybe if this should be calling `ty_is_non_local_constructor`.
+        // FIXME: this is currently somewhat overly complicated,
+        // but fixing this requires a more complicated refactor.
         if !contained_non_local_types(tcx, ty, in_crate).is_empty() {
             if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
                 return inner_tys
