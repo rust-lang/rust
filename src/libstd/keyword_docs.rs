@@ -387,10 +387,11 @@ mod extern_keyword {}
 //
 /// A value of type [`bool`] representing logical **false**.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `false` is the logical opposite of [`true`].
 ///
-/// [`bool`]: primitive.bool.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// See the documentation for [`true`] for more information.
+///
+/// [`true`]: keyword.true.html
 mod false_keyword {}
 
 #[doc(keyword = "fn")]
@@ -473,8 +474,8 @@ mod fn_keyword {}
 /// * `for` is also used for [higher-ranked trait bounds] as in `for<'a> &'a T: PartialEq<i32>`.
 ///
 /// for-in-loops, or to be more precise, iterator loops, are a simple syntactic sugar over a common
-/// practice within Rust, which is to loop over an iterator until that iterator returns `None` (or
-/// `break` is called).
+/// practice within Rust, which is to loop over anything that implements [`IntoIterator`] until the
+/// iterator returned by `.into_iter()` returns `None` (or the loop body uses `break`).
 ///
 /// ```rust
 /// for i in 0..5 {
@@ -680,7 +681,7 @@ mod impl_keyword {}
 //
 /// Iterate over a series of values with [`for`].
 ///
-/// The expression immediately following `in` must implement the [`Iterator`] trait.
+/// The expression immediately following `in` must implement the [`IntoIterator`] trait.
 ///
 /// ## Literal Examples:
 ///
@@ -689,7 +690,7 @@ mod impl_keyword {}
 ///
 /// (Read more about [range patterns])
 ///
-/// [`Iterator`]: ../book/ch13-04-performance.html
+/// [`IntoIterator`]: ../book/ch13-04-performance.html
 /// [range patterns]: ../reference/patterns.html?highlight=range#range-patterns
 /// [`for`]: keyword.for.html
 mod in_keyword {}
