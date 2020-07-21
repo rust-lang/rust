@@ -876,7 +876,7 @@ impl fmt::Debug for StderrLock<'_> {
 
 /// Prints the given `str` and reads a [`String`] from
 /// [standard input](Stdin). The trailing newline is stripped.
-/// Gives an error on EOF (Ctrl-D).
+/// Gives an error on EOF (end of file).
 ///
 /// # Note
 ///
