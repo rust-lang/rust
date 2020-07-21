@@ -1627,7 +1627,7 @@ impl WithOptConstParam<LocalDefId> {
     /// Returns `Some((did, param_did))` if `def_id` is a const argument,
     /// `None` otherwise.
     #[inline(always)]
-    pub fn try_fetch(did: LocalDefId, tcx: TyCtxt<'_>) -> Option<(LocalDefId, DefId)> {
+    pub fn try_lookup(did: LocalDefId, tcx: TyCtxt<'_>) -> Option<(LocalDefId, DefId)> {
         tcx.opt_const_param_of(did).map(|param_did| (did, param_did))
     }
 

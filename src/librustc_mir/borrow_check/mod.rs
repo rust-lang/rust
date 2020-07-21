@@ -89,7 +89,7 @@ const DEREF_PROJECTION: &[PlaceElem<'_>; 1] = &[ProjectionElem::Deref];
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         mir_borrowck: |tcx, did| {
-            if let Some(def) = ty::WithOptConstParam::try_fetch(did, tcx) {
+            if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
                 tcx.mir_borrowck_const_arg(def)
             } else {
                 mir_borrowck(tcx, ty::WithOptConstParam::unknown(did))
