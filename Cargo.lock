@@ -1164,6 +1164,7 @@ dependencies = [
 name = "ra_ssr"
 version = "0.1.0"
 dependencies = [
+ "expect",
  "ra_db",
  "ra_hir",
  "ra_ide_db",

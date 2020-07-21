@@ -1,4 +1,5 @@
 use crate::{MatchFinder, SsrRule};
+use expect::{expect, Expect};
 use ra_db::{FileId, SourceDatabaseExt};
 use test_utils::mark;
 
@@ -61,16 +62,11 @@ fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FileId) {
     ra_ide_db::RootDatabase::with_single_file(code)
 }
 
-fn assert_ssr_transform(rule: &str, input: &str, result: &str) {
-    assert_ssr_transforms(&[rule], input, result);
+fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
+    assert_ssr_transforms(&[rule], input, expected);
 }
 
-fn normalize_code(code: &str) -> String {
-    let (db, file_id) = single_file(code);
-    db.file_text(file_id).to_string()
-}
-
-fn assert_ssr_transforms(rules: &[&str], input: &str, result: &str) {
+fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     let (db, file_id) = single_file(input);
     let mut match_finder = MatchFinder::new(&db);
     for rule in rules {
@@ -80,12 +76,9 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, result: &str) {
     if let Some(edits) = match_finder.edits_for_file(file_id) {
         // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
         // stuff.
-        let mut after = db.file_text(file_id).to_string();
-        edits.apply(&mut after);
-        // Likewise, we need to make sure that whatever transformations fixture parsing applies,
-        // also get applied to our expected result.
-        let result = normalize_code(result);
-        assert_eq!(after, result);
+        let mut actual = db.file_text(file_id).to_string();
+        edits.apply(&mut actual);
+        expected.assert_eq(&actual);
     } else {
         panic!("No edits were made");
     }
@@ -149,7 +142,7 @@ fn ssr_function_to_method() {
     assert_ssr_transform(
         "my_function($a, $b) ==>> ($a).my_method($b)",
         "fn my_function() {} fn main() { loop { my_function( other_func(x, y), z + w) } }",
-        "fn my_function() {} fn main() { loop { (other_func(x, y)).my_method(z + w) } }",
+        expect![["fn my_function() {} fn main() { loop { (other_func(x, y)).my_method(z + w) } }"]],
     )
 }
 
@@ -158,7 +151,7 @@ fn ssr_nested_function() {
     assert_ssr_transform(
         "foo($a, $b, $c) ==>> bar($c, baz($a, $b))",
         "fn foo() {} fn main { foo  (x + value.method(b), x+y-z, true && false) }",
-        "fn foo() {} fn main { bar(true && false, baz(x + value.method(b), x+y-z)) }",
+        expect![["fn foo() {} fn main { bar(true && false, baz(x + value.method(b), x+y-z)) }"]],
     )
 }
 
@@ -167,7 +160,7 @@ fn ssr_expected_spacing() {
     assert_ssr_transform(
         "foo($x) + bar() ==>> bar($x)",
         "fn foo() {} fn bar() {} fn main() { foo(5) + bar() }",
-        "fn foo() {} fn bar() {} fn main() { bar(5) }",
+        expect![["fn foo() {} fn bar() {} fn main() { bar(5) }"]],
     );
 }
 
@@ -176,7 +169,7 @@ fn ssr_with_extra_space() {
     assert_ssr_transform(
         "foo($x  ) +    bar() ==>> bar($x)",
         "fn foo() {} fn bar() {} fn main() { foo(  5 )  +bar(   ) }",
-        "fn foo() {} fn bar() {} fn main() { bar(5) }",
+        expect![["fn foo() {} fn bar() {} fn main() { bar(5) }"]],
     );
 }
 
@@ -185,7 +178,7 @@ fn ssr_keeps_nested_comment() {
     assert_ssr_transform(
         "foo($x) ==>> bar($x)",
         "fn foo() {} fn main() { foo(other(5 /* using 5 */)) }",
-        "fn foo() {} fn main() { bar(other(5 /* using 5 */)) }",
+        expect![["fn foo() {} fn main() { bar(other(5 /* using 5 */)) }"]],
     )
 }
 
@@ -194,7 +187,7 @@ fn ssr_keeps_comment() {
     assert_ssr_transform(
         "foo($x) ==>> bar($x)",
         "fn foo() {} fn main() { foo(5 /* using 5 */) }",
-        "fn foo() {} fn main() { bar(5)/* using 5 */ }",
+        expect![["fn foo() {} fn main() { bar(5)/* using 5 */ }"]],
     )
 }
 
@@ -203,7 +196,7 @@ fn ssr_struct_lit() {
     assert_ssr_transform(
         "foo{a: $a, b: $b} ==>> foo::new($a, $b)",
         "fn foo() {} fn main() { foo{b:2, a:1} }",
-        "fn foo() {} fn main() { foo::new(1, 2) }",
+        expect![["fn foo() {} fn main() { foo::new(1, 2) }"]],
     )
 }
 
@@ -417,7 +410,7 @@ fn replace_function_call() {
     assert_ssr_transform(
         "foo() ==>> bar()",
         "fn foo() {} fn f1() {foo(); foo();}",
-        "fn foo() {} fn f1() {bar(); bar();}",
+        expect![["fn foo() {} fn f1() {bar(); bar();}"]],
     );
 }
 
@@ -426,7 +419,7 @@ fn replace_function_call_with_placeholders() {
     assert_ssr_transform(
         "foo($a, $b) ==>> bar($b, $a)",
         "fn foo() {} fn f1() {foo(5, 42)}",
-        "fn foo() {} fn f1() {bar(42, 5)}",
+        expect![["fn foo() {} fn f1() {bar(42, 5)}"]],
     );
 }
 
@@ -435,7 +428,7 @@ fn replace_nested_function_calls() {
     assert_ssr_transform(
         "foo($a) ==>> bar($a)",
         "fn foo() {} fn f1() {foo(foo(42))}",
-        "fn foo() {} fn f1() {bar(bar(42))}",
+        expect![["fn foo() {} fn f1() {bar(bar(42))}"]],
     );
 }
 
@@ -444,7 +437,7 @@ fn replace_type() {
     assert_ssr_transform(
         "Result<(), $a> ==>> Option<$a>",
         "struct Result<T, E> {} fn f1() -> Result<(), Vec<Error>> {foo()}",
-        "struct Result<T, E> {} fn f1() -> Option<Vec<Error>> {foo()}",
+        expect![["struct Result<T, E> {} fn f1() -> Option<Vec<Error>> {foo()}"]],
     );
 }
 
@@ -453,7 +446,7 @@ fn replace_struct_init() {
     assert_ssr_transform(
         "Foo {a: $a, b: $b} ==>> Foo::new($a, $b)",
         "struct Foo {} fn f1() {Foo{b: 1, a: 2}}",
-        "struct Foo {} fn f1() {Foo::new(2, 1)}",
+        expect![["struct Foo {} fn f1() {Foo::new(2, 1)}"]],
     );
 }
 
@@ -462,12 +455,12 @@ fn replace_macro_invocations() {
     assert_ssr_transform(
         "try!($a) ==>> $a?",
         "macro_rules! try {() => {}} fn f1() -> Result<(), E> {bar(try!(foo()));}",
-        "macro_rules! try {() => {}} fn f1() -> Result<(), E> {bar(foo()?);}",
+        expect![["macro_rules! try {() => {}} fn f1() -> Result<(), E> {bar(foo()?);}"]],
     );
     assert_ssr_transform(
         "foo!($a($b)) ==>> foo($b, $a)",
         "macro_rules! foo {() => {}} fn f1() {foo!(abc(def() + 2));}",
-        "macro_rules! foo {() => {}} fn f1() {foo(def() + 2, abc);}",
+        expect![["macro_rules! foo {() => {}} fn f1() {foo(def() + 2, abc);}"]],
     );
 }
 
@@ -476,12 +469,12 @@ fn replace_binary_op() {
     assert_ssr_transform(
         "$a + $b ==>> $b + $a",
         "fn f() {2 * 3 + 4 * 5}",
-        "fn f() {4 * 5 + 2 * 3}",
+        expect![["fn f() {4 * 5 + 2 * 3}"]],
     );
     assert_ssr_transform(
         "$a + $b ==>> $b + $a",
         "fn f() {1 + 2 + 3 + 4}",
-        "fn f() {4 + 3 + 2 + 1}",
+        expect![["fn f() {4 + 3 + 2 + 1}"]],
     );
 }
 
@@ -495,7 +488,7 @@ fn multiple_rules() {
     assert_ssr_transforms(
         &["$a + 1 ==>> add_one($a)", "$a + $b ==>> add($a, $b)"],
         "fn f() -> i32 {3 + 2 + 1}",
-        "fn f() -> i32 {add_one(add(3, 2))}",
+        expect![["fn f() -> i32 {add_one(add(3, 2))}"]],
     )
 }
 
@@ -527,12 +520,14 @@ fn replace_within_macro_expansion() {
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(5.x().foo().o2())}"#,
-        r#"
+            fn f() {macro1!(5.x().foo().o2())}
+            "#,
+        expect![[r#"
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(bar(5.x()).o2())}"#,
+            fn f() {macro1!(bar(5.x()).o2())}
+            "#]],
     )
 }
 
@@ -544,12 +539,14 @@ fn preserves_whitespace_within_macro_expansion() {
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(1   *   2 + 3 + 4}"#,
-        r#"
+            fn f() {macro1!(1   *   2 + 3 + 4}
+            "#,
+        expect![[r#"
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(4 - 3 - 1   *   2}"#,
+            fn f() {macro1!(4 - 3 - 1   *   2}
+            "#]],
     )
 }
 
