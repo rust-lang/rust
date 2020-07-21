@@ -540,8 +540,9 @@ fn highlight_element(
             }
         }
         p if p.is_punct() => match p {
-            T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] => HighlightTag::Operator.into(),
-            T![@] => HighlightTag::Operator | HighlightModifier::ControlFlow,
+            T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] | T![@] => {
+                HighlightTag::Operator.into()
+            }
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
                 HighlightTag::Macro.into()
             }
