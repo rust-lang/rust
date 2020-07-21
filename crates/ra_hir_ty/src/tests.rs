@@ -10,6 +10,7 @@ mod display_source_code;
 
 use std::sync::Arc;
 
+use expect::Expect;
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
     child_by_source::ChildBySource,
@@ -343,4 +344,16 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         });
         assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
     }
+}
+
+fn check_infer(ra_fixture: &str, expect: Expect) {
+    let mut actual = infer(ra_fixture);
+    actual.push('\n');
+    expect.assert_eq(&actual);
+}
+
+fn check_infer_with_mismatches(ra_fixture: &str, expect: Expect) {
+    let mut actual = infer_with_mismatches(ra_fixture, true);
+    actual.push('\n');
+    expect.assert_eq(&actual);
 }
