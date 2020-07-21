@@ -17,7 +17,7 @@ pub enum Entry {
 ///   * it is not under `exclude` path
 ///
 /// If many include/exclude paths match, the longest one wins.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Directories {
     pub extensions: Vec<String>,
     pub include: Vec<AbsPathBuf>,
