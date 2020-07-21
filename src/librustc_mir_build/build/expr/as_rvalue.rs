@@ -4,7 +4,7 @@ use rustc_index::vec::Idx;
 
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::hair::*;
+use crate::thir::*;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::*;

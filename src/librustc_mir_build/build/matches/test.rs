@@ -7,8 +7,8 @@
 
 use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
 use crate::build::Builder;
-use crate::hair::pattern::compare_const_vals;
-use crate::hair::*;
+use crate::thir::pattern::compare_const_vals;
+use crate::thir::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::RangeEnd;
 use rustc_index::bit_set::BitSet;
@@ -443,7 +443,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 destination: Some((eq_result, eq_block)),
                 cleanup: Some(cleanup),
                 from_hir_call: false,
-                fn_span: source_info.span
+                fn_span: source_info.span,
             },
         );
 
