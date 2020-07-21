@@ -148,6 +148,7 @@ impl Config {
             rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
             flycheck: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
+                target_tripple: None,
                 all_targets: true,
                 all_features: false,
                 extra_args: Vec::new(),
@@ -198,7 +199,7 @@ impl Config {
             all_features: data.cargo_allFeatures,
             features: data.cargo_features.clone(),
             load_out_dirs_from_check: data.cargo_loadOutDirsFromCheck,
-            target: data.cargo_target,
+            target: data.cargo_target.clone(),
         };
 
         self.proc_macro_srv = if data.procMacro_enable {
@@ -223,6 +224,7 @@ impl Config {
                 }
                 Some(_) | None => FlycheckConfig::CargoCommand {
                     command: data.checkOnSave_command,
+                    target_tripple: data.checkOnSave_target.or(data.cargo_target),
                     all_targets: data.checkOnSave_allTargets,
                     all_features: data.checkOnSave_allFeatures.unwrap_or(data.cargo_allFeatures),
                     features: data.checkOnSave_features.unwrap_or(data.cargo_features),
@@ -384,10 +386,11 @@ config_data! {
         cargo_noDefaultFeatures: bool    = false,
         cargo_target: Option<String>     = None,
 
+        checkOnSave_enable: bool                         = false,
         checkOnSave_allFeatures: Option<bool>            = None,
         checkOnSave_allTargets: bool                     = true,
         checkOnSave_command: String                      = "check".into(),
-        checkOnSave_enable: bool                         = false,
+        checkOnSave_target: Option<String>               = None,
         checkOnSave_extraArgs: Vec<String>               = Vec::new(),
         checkOnSave_features: Option<Vec<String>>        = None,
         checkOnSave_overrideCommand: Option<Vec<String>> = None,
