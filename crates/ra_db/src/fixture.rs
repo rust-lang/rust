@@ -222,7 +222,7 @@ impl From<Fixture> for FileMeta {
                 .edition
                 .as_ref()
                 .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
-            env: Env::from(f.env.iter()),
+            env: f.env.into_iter().collect(),
         }
     }
 }

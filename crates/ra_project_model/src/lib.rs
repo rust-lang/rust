@@ -258,10 +258,7 @@ impl ProjectWorkspace {
                         let file_path = &krate.root_module;
                         let file_id = load(&file_path)?;
 
-                        let mut env = Env::default();
-                        for (k, v) in &krate.env {
-                            env.set(k, v.clone());
-                        }
+                        let env = krate.env.clone().into_iter().collect();
                         let proc_macro = krate
                             .proc_macro_dylib_path
                             .clone()

@@ -6,7 +6,7 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, ops, str::FromStr, sync::Arc};
+use std::{fmt, iter::FromIterator, ops, str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
@@ -298,18 +298,9 @@ impl fmt::Display for Edition {
     }
 }
 
-impl<'a, T> From<T> for Env
-where
-    T: Iterator<Item = (&'a String, &'a String)>,
-{
-    fn from(iter: T) -> Self {
-        let mut result = Self::default();
-
-        for (k, v) in iter {
-            result.entries.insert(k.to_owned(), v.to_owned());
-        }
-
-        result
+impl FromIterator<(String, String)> for Env {
+    fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
+        Env { entries: FromIterator::from_iter(iter) }
     }
 }
 
