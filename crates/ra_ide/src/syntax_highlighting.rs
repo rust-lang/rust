@@ -539,21 +539,52 @@ fn highlight_element(
                 _ => h,
             }
         }
-        T![*] => {
-            let prefix_expr = element.parent().and_then(ast::PrefixExpr::cast)?;
-
-            let expr = prefix_expr.expr()?;
-            let ty = sema.type_of_expr(&expr)?;
-            if !ty.is_raw_ptr() {
-                return None;
-            } else {
-                HighlightTag::Operator | HighlightModifier::Unsafe
+        p if p.is_punct() => match p {
+            T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] | T![@] => {
+                HighlightTag::Operator.into()
             }
-        }
-        T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
-            Highlight::new(HighlightTag::Macro)
-        }
-        p if p.is_punct() => HighlightTag::Punctuation.into(),
+            T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
+                HighlightTag::Macro.into()
+            }
+            T![*] if element.parent().and_then(ast::PointerType::cast).is_some() => {
+                HighlightTag::Keyword.into()
+            }
+            T![*] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
+                let prefix_expr = element.parent().and_then(ast::PrefixExpr::cast)?;
+
+                let expr = prefix_expr.expr()?;
+                let ty = sema.type_of_expr(&expr)?;
+                if ty.is_raw_ptr() {
+                    HighlightTag::Operator | HighlightModifier::Unsafe
+                } else if let Some(ast::PrefixOp::Deref) = prefix_expr.op_kind() {
+                    HighlightTag::Operator.into()
+                } else {
+                    HighlightTag::Punctuation.into()
+                }
+            }
+            T![-] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
+                HighlightTag::NumericLiteral.into()
+            }
+            _ if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::BinExpr::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::RangeExpr::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::RangePat::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::DotDotPat::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::Attr::cast).is_some() => {
+                HighlightTag::Attribute.into()
+            }
+            _ => HighlightTag::Punctuation.into(),
+        },
 
         k if k.is_keyword() => {
             let h = Highlight::new(HighlightTag::Keyword);

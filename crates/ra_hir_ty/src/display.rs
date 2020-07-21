@@ -257,7 +257,12 @@ impl HirDisplay for ApplicationTy {
                 write!(f, ")")?;
                 let ret = sig.ret();
                 if *ret != Ty::unit() {
-                    write!(f, " -> {}", ret.display(f.db))?;
+                    let ret_display = if f.omit_verbose_types() {
+                        ret.display_truncated(f.db, f.max_size)
+                    } else {
+                        ret.display(f.db)
+                    };
+                    write!(f, " -> {}", ret_display)?;
                 }
             }
             TypeCtor::FnDef(def) => {
@@ -288,7 +293,12 @@ impl HirDisplay for ApplicationTy {
                 write!(f, ")")?;
                 let ret = sig.ret();
                 if *ret != Ty::unit() {
-                    write!(f, " -> {}", ret.display(f.db))?;
+                    let ret_display = if f.omit_verbose_types() {
+                        ret.display_truncated(f.db, f.max_size)
+                    } else {
+                        ret.display(f.db)
+                    };
+                    write!(f, " -> {}", ret_display)?;
                 }
             }
             TypeCtor::Adt(def_id) => {
@@ -397,7 +407,13 @@ impl HirDisplay for ApplicationTy {
                         f.write_joined(sig.params(), ", ")?;
                         write!(f, "|")?;
                     };
-                    write!(f, " -> {}", sig.ret().display(f.db))?;
+
+                    let ret_display = if f.omit_verbose_types() {
+                        sig.ret().display_truncated(f.db, f.max_size)
+                    } else {
+                        sig.ret().display(f.db)
+                    };
+                    write!(f, " -> {}", ret_display)?;
                 } else {
                     write!(f, "{{closure}}")?;
                 }

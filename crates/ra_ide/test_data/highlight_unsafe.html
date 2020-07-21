@@ -40,15 +40,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">struct</span> <span class="struct declaration">HasUnsafeFn</span><span class="punctuation">;</span>
 
 <span class="keyword">impl</span> <span class="struct">HasUnsafeFn</span> <span class="punctuation">{</span>
-    <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function declaration unsafe">unsafe_method</span><span class="punctuation">(</span><span class="punctuation">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="punctuation">{</span><span class="punctuation">}</span>
+    <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function declaration unsafe">unsafe_method</span><span class="punctuation">(</span><span class="operator">&</span><span class="self_keyword">self</span><span class="punctuation">)</span> <span class="punctuation">{</span><span class="punctuation">}</span>
 <span class="punctuation">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="punctuation">(</span><span class="punctuation">)</span> <span class="punctuation">{</span>
-    <span class="keyword">let</span> <span class="variable declaration">x</span> <span class="punctuation">=</span> <span class="punctuation">&</span><span class="numeric_literal">5</span> <span class="keyword">as</span> *<span class="keyword">const</span> <span class="builtin_type">usize</span><span class="punctuation">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">x</span> <span class="operator">=</span> <span class="operator">&</span><span class="numeric_literal">5</span> <span class="keyword">as</span> <span class="keyword">*</span><span class="keyword">const</span> <span class="builtin_type">usize</span><span class="punctuation">;</span>
     <span class="keyword unsafe">unsafe</span> <span class="punctuation">{</span>
         <span class="function unsafe">unsafe_fn</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
         <span class="struct">HasUnsafeFn</span><span class="punctuation">.</span><span class="function unsafe">unsafe_method</span><span class="punctuation">(</span><span class="punctuation">)</span><span class="punctuation">;</span>
-        <span class="keyword">let</span> <span class="variable declaration">y</span> <span class="punctuation">=</span> <span class="operator unsafe">*</span><span class="punctuation">(</span><span class="variable">x</span><span class="punctuation">)</span><span class="punctuation">;</span>
-        <span class="keyword">let</span> <span class="variable declaration">z</span> <span class="punctuation">=</span> <span class="punctuation">-</span><span class="variable">x</span><span class="punctuation">;</span>
+        <span class="keyword">let</span> <span class="variable declaration">y</span> <span class="operator">=</span> <span class="operator unsafe">*</span><span class="punctuation">(</span><span class="variable">x</span><span class="punctuation">)</span><span class="punctuation">;</span>
+        <span class="keyword">let</span> <span class="variable declaration">z</span> <span class="operator">=</span> <span class="numeric_literal">-</span><span class="variable">x</span><span class="punctuation">;</span>
     <span class="punctuation">}</span>
 <span class="punctuation">}</span></code></pre>

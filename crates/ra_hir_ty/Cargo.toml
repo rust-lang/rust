@@ -28,9 +28,9 @@ test_utils = { path = "../test_utils" }
 
 scoped-tls = "1"
 
-chalk-solve = { version = "0.17.0" }
-chalk-ir = { version = "0.17.0" }
-chalk-recursive = { version = "0.17.0" }
+chalk-solve = { version = "0.18.0" }
+chalk-ir = { version = "0.18.0" }
+chalk-recursive = { version = "0.18.0" }
 
 [dev-dependencies]
 insta = "0.16.0"
