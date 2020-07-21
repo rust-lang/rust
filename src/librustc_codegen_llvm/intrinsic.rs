@@ -702,6 +702,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         _ => self.sess().fatal("unknown ordering in atomic intrinsic"),
                     },
                     4 => match (split[2], split[3]) {
+                        ("rel", "acq") if is_cxchg => (Release, Acquire),
                         ("acq", "failrelaxed") if is_cxchg => (Acquire, Monotonic),
                         ("acqrel", "failrelaxed") if is_cxchg => (AcquireRelease, Monotonic),
                         _ => self.sess().fatal("unknown ordering in atomic intrinsic"),

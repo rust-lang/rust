@@ -104,6 +104,18 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
+    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// as the `success` and
+    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// as the `failure` parameters. For example,
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
+    pub fn atomic_cxchg_rel_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::AcqRel`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `success` and
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
@@ -203,6 +215,18 @@ extern "rust-intrinsic" {
     ///
     /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_rel<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+    /// Stores a value if the current value is the same as the `old` value.
+    ///
+    /// The stabilized version of this intrinsic is available on the
+    /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
+    /// [`Ordering::Release`](../../std/sync/atomic/enum.Ordering.html)
+    /// as the `success` and
+    /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
+    /// as the `failure` parameters. For example,
+    /// [`AtomicBool::compare_exchange_weak`][cew].
+    ///
+    /// [cew]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
+    pub fn atomic_cxchgweak_rel_acq<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     ///
     /// The stabilized version of this intrinsic is available on the

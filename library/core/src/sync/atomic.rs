@@ -2421,6 +2421,8 @@ unsafe fn atomic_compare_exchange<T: Copy>(
     let (val, ok) = unsafe {
         match (success, failure) {
             (Acquire, Acquire) => intrinsics::atomic_cxchg_acq(dst, old, new),
+            #[cfg(not(bootstrap))]
+            (Release, Acquire) => intrinsics::atomic_cxchg_rel_acq(dst, old, new),
             (Release, Relaxed) => intrinsics::atomic_cxchg_rel(dst, old, new),
             (AcqRel, Acquire) => intrinsics::atomic_cxchg_acqrel(dst, old, new),
             (Relaxed, Relaxed) => intrinsics::atomic_cxchg_relaxed(dst, old, new),
@@ -2450,6 +2452,8 @@ unsafe fn atomic_compare_exchange_weak<T: Copy>(
     let (val, ok) = unsafe {
         match (success, failure) {
             (Acquire, Acquire) => intrinsics::atomic_cxchgweak_acq(dst, old, new),
+            #[cfg(not(bootstrap))]
+            (Release, Acquire) => intrinsics::atomic_cxchgweak_rel_acq(dst, old, new),
             (Release, Relaxed) => intrinsics::atomic_cxchgweak_rel(dst, old, new),
             (AcqRel, Acquire) => intrinsics::atomic_cxchgweak_acqrel(dst, old, new),
             (Relaxed, Relaxed) => intrinsics::atomic_cxchgweak_relaxed(dst, old, new),
