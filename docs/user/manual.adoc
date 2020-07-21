@@ -290,7 +290,7 @@ interface Crate {
     /// By default, inferred from the `root_module` (members are the crates which reside
     /// inside the directory opened in the editor).
     ///
-    /// Set this too `false` for things like standard library and 3rd party crates to
+    /// Set this to `false` for things like standard library and 3rd party crates to
     /// enable performance optimizations (rust-analyzer assumes that non-member crates
     /// don't change).
     is_workspace_member?: boolean;
@@ -309,11 +309,11 @@ interface Crate {
     },
     /// The set of cfgs activated for a given crate, like `["unix", "feature=foo", "feature=bar"]`.
     cfg: string[];
-    /// Target tripple for this Crate.
+    /// Target triple for this Crate.
     ///
-    /// It is use when running `rustc --print cfg` to get target-specific cfgs.
+    /// Used when running `rustc --print cfg` to get target-specific cfgs.
     target?: string;
-    /// Environment variables, used for `env!` macro
+    /// Environment variables, used for the `env!` macro
     env: : { [key: string]: string; },
 
     /// For proc-macro crates, path to compiles proc-macro (.so file).
