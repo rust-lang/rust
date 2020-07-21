@@ -32,9 +32,9 @@ jobs:
     name: PR
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
-      SCCACHE_BUCKET: rust-lang-gha-caches
-      TOOLSTATE_REPO: "https://github.com/pietroalbini/rust-toolstate"
-      CACHE_DOMAIN: ci-caches-gha.rust-lang.org
+      SCCACHE_BUCKET: rust-lang-ci-sccache2
+      TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
+      CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'pull_request'"
     strategy:
       matrix:
@@ -63,6 +63,11 @@ jobs:
         with:
           github_token: "${{ secrets.github_token }}"
         if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+      - name: configure the PR in which the error message will be posted
+        run: "echo \"[CI_PR_NUMBER=$num]\""
+        env:
+          num: "${{ github.event.number }}"
+        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
@@ -133,14 +138,14 @@ jobs:
     name: try
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
-      SCCACHE_BUCKET: rust-lang-gha-caches
-      DEPLOY_BUCKET: rust-lang-gha
-      TOOLSTATE_REPO: "https://github.com/pietroalbini/rust-toolstate"
-      TOOLSTATE_ISSUES_API_URL: "https://api.github.com/repos/pietroalbini/rust-toolstate/issues"
+      SCCACHE_BUCKET: rust-lang-ci-sccache2
+      DEPLOY_BUCKET: rust-lang-ci2
+      TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
+      TOOLSTATE_ISSUES_API_URL: "https://api.github.com/repos/rust-lang/rust/issues"
       TOOLSTATE_PUBLISH: 1
-      CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
-      ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
-      CACHE_DOMAIN: ci-caches-gha.rust-lang.org
+      CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
+      ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+      CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
     strategy:
       matrix:
@@ -162,6 +167,11 @@ jobs:
         with:
           github_token: "${{ secrets.github_token }}"
         if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+      - name: configure the PR in which the error message will be posted
+        run: "echo \"[CI_PR_NUMBER=$num]\""
+        env:
+          num: "${{ github.event.number }}"
+        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
@@ -232,14 +242,14 @@ jobs:
     name: auto
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
-      SCCACHE_BUCKET: rust-lang-gha-caches
-      DEPLOY_BUCKET: rust-lang-gha
-      TOOLSTATE_REPO: "https://github.com/pietroalbini/rust-toolstate"
-      TOOLSTATE_ISSUES_API_URL: "https://api.github.com/repos/pietroalbini/rust-toolstate/issues"
+      SCCACHE_BUCKET: rust-lang-ci-sccache2
+      DEPLOY_BUCKET: rust-lang-ci2
+      TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
+      TOOLSTATE_ISSUES_API_URL: "https://api.github.com/repos/rust-lang/rust/issues"
       TOOLSTATE_PUBLISH: 1
-      CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
-      ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
-      CACHE_DOMAIN: ci-caches-gha.rust-lang.org
+      CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
+      ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+      CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
     strategy:
       matrix:
@@ -479,6 +489,11 @@ jobs:
         with:
           github_token: "${{ secrets.github_token }}"
         if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+      - name: configure the PR in which the error message will be posted
+        run: "echo \"[CI_PR_NUMBER=$num]\""
+        env:
+          num: "${{ github.event.number }}"
+        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
@@ -604,6 +619,11 @@ jobs:
         with:
           github_token: "${{ secrets.github_token }}"
         if: "success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'"
+      - name: configure the PR in which the error message will be posted
+        run: "echo \"[CI_PR_NUMBER=$num]\""
+        env:
+          num: "${{ github.event.number }}"
+        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
@@ -674,14 +694,14 @@ jobs:
     name: master
     runs-on: ubuntu-latest
     env:
-      SCCACHE_BUCKET: rust-lang-gha-caches
-      DEPLOY_BUCKET: rust-lang-gha
-      TOOLSTATE_REPO: "https://github.com/pietroalbini/rust-toolstate"
-      TOOLSTATE_ISSUES_API_URL: "https://api.github.com/repos/pietroalbini/rust-toolstate/issues"
+      SCCACHE_BUCKET: rust-lang-ci-sccache2
+      DEPLOY_BUCKET: rust-lang-ci2
+      TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
+      TOOLSTATE_ISSUES_API_URL: "https://api.github.com/repos/rust-lang/rust/issues"
       TOOLSTATE_PUBLISH: 1
-      CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZOMUQATD5
-      ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZH5AYXDVF
-      CACHE_DOMAIN: ci-caches-gha.rust-lang.org
+      CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
+      ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+      CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'"
     steps:
       - name: checkout the source code

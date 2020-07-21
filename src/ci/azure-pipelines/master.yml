@@ -18,7 +18,7 @@ trigger:
   - master
 
 variables:
-- group: prod-credentials
+- group: dummy-credentials
 
 pool:
   vmImage: ubuntu-16.04

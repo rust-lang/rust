@@ -35,11 +35,26 @@ x--expand-yaml-anchors--remove:
     CI_JOB_NAME: ${{ matrix.name }}
 
   - &public-variables
-    SCCACHE_BUCKET: rust-lang-gha-caches
-    TOOLSTATE_REPO: https://github.com/pietroalbini/rust-toolstate
-    CACHE_DOMAIN: ci-caches-gha.rust-lang.org
+    SCCACHE_BUCKET: rust-lang-ci-sccache2
+    TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
+    CACHE_DOMAIN: ci-caches.rust-lang.org
 
   - &prod-variables
+    SCCACHE_BUCKET: rust-lang-ci-sccache2
+    DEPLOY_BUCKET: rust-lang-ci2
+    TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
+    TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
+    TOOLSTATE_PUBLISH: 1
+    # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
+    # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
+    # rotate them in a single branch while keeping the old key in another
+    # branch, which wouldn't be possible if the key was named with the kind
+    # (caches, artifacts...).
+    CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
+    ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
+    CACHE_DOMAIN: ci-caches.rust-lang.org
+
+  - &dummy-variables
     SCCACHE_BUCKET: rust-lang-gha-caches
     DEPLOY_BUCKET: rust-lang-gha
     TOOLSTATE_REPO: https://github.com/pietroalbini/rust-toolstate
@@ -91,6 +106,15 @@ x--expand-yaml-anchors--remove:
           github_token: "${{ secrets.github_token }}"
         if: success() && !env.SKIP_JOB && github.ref != 'refs/heads/try'
         <<: *step
+
+      # Rust Log Analyzer can't currently detect the PR number of a GitHub
+      # Actions build on its own, so a hint in the log message is needed to
+      # point it in the right direction.
+      - name: configure the PR in which the error message will be posted
+        run: echo "[CI_PR_NUMBER=$num]"
+        env:
+          num: ${{ github.event.number }}
+        if: success() && !env.SKIP_JOBS && github.event_name == 'pull_request'
 
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
@@ -556,7 +580,7 @@ jobs:
     <<: *base-ci-job
     name: auto-fallible
     env:
-      <<: [*shared-ci-variables, *prod-variables]
+      <<: [*shared-ci-variables, *dummy-variables]
     if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
     strategy:
       matrix:

@@ -18,7 +18,7 @@ trigger:
   - auto
 
 variables:
-- group: prod-credentials
+- group: dummy-credentials
 
 jobs:
 - job: Linux
@@ -79,6 +79,9 @@ jobs:
     vmImage: macos-10.15
   steps:
   - template: steps/run.yml
+  variables:
+    # We're still uploading macOS builds from Azure Pipelines.
+    - group: prod-credentials
   strategy:
     matrix:
       # OSX builders running tests, these run the full test suite.
