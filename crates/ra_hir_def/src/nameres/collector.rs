@@ -310,7 +310,7 @@ impl DefCollector<'_> {
         if export {
             self.update(
                 self.def_map.root,
-                &[(name, PerNs::macros(macro_, Visibility::Public))],
+                &[(Some(name), PerNs::macros(macro_, Visibility::Public))],
                 Visibility::Public,
                 ImportType::Named,
             );
@@ -336,7 +336,7 @@ impl DefCollector<'_> {
     fn define_proc_macro(&mut self, name: Name, macro_: MacroDefId) {
         self.update(
             self.def_map.root,
-            &[(name, PerNs::macros(macro_, Visibility::Public))],
+            &[(Some(name), PerNs::macros(macro_, Visibility::Public))],
             Visibility::Public,
             ImportType::Named,
         );
@@ -534,7 +534,7 @@ impl DefCollector<'_> {
                             let name = variant_data.name.clone();
                             let variant = EnumVariantId { parent: e, local_id };
                             let res = PerNs::both(variant.into(), variant.into(), vis);
-                            (name, res)
+                            (Some(name), res)
                         })
                         .collect::<Vec<_>>();
                     self.update(module_id, &resolutions, vis, ImportType::Glob);
@@ -550,15 +550,15 @@ impl DefCollector<'_> {
             match import.path.segments.last() {
                 Some(last_segment) => {
                     let name = match &import.alias {
-                        Some(ImportAlias::Alias(name)) => name.clone(),
-                        Some(ImportAlias::Underscore) => last_segment.clone(), // FIXME rust-analyzer#2736
-                        None => last_segment.clone(),
+                        Some(ImportAlias::Alias(name)) => Some(name.clone()),
+                        Some(ImportAlias::Underscore) => None,
+                        None => Some(last_segment.clone()),
                     };
                     log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
 
                     // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
                     if import.is_extern_crate && module_id == self.def_map.root {
-                        if let Some(def) = def.take_types() {
+                        if let (Some(def), Some(name)) = (def.take_types(), name.as_ref()) {
                             self.def_map.extern_prelude.insert(name.clone(), def);
                         }
                     }
@@ -573,7 +573,7 @@ impl DefCollector<'_> {
     fn update(
         &mut self,
         module_id: LocalModuleId,
-        resolutions: &[(Name, PerNs)],
+        resolutions: &[(Option<Name>, PerNs)],
         vis: Visibility,
         import_type: ImportType,
     ) {
@@ -584,7 +584,7 @@ impl DefCollector<'_> {
     fn update_recursive(
         &mut self,
         module_id: LocalModuleId,
-        resolutions: &[(Name, PerNs)],
+        resolutions: &[(Option<Name>, PerNs)],
         // All resolutions are imported with this visibility; the visibilies in
         // the `PerNs` values are ignored and overwritten
         vis: Visibility,
@@ -595,15 +595,46 @@ impl DefCollector<'_> {
             // prevent stack overflows (but this shouldn't be possible)
             panic!("infinite recursion in glob imports!");
         }
-        let scope = &mut self.def_map.modules[module_id].scope;
         let mut changed = false;
+
         for (name, res) in resolutions {
-            changed |= scope.push_res_with_import(
-                &mut self.from_glob_import,
-                (module_id, name.clone()),
-                res.with_visibility(vis),
-                import_type,
-            );
+            match name {
+                Some(name) => {
+                    let scope = &mut self.def_map.modules[module_id].scope;
+                    changed |= scope.push_res_with_import(
+                        &mut self.from_glob_import,
+                        (module_id, name.clone()),
+                        res.with_visibility(vis),
+                        import_type,
+                    );
+                }
+                None => {
+                    let tr = match res.take_types() {
+                        Some(ModuleDefId::TraitId(tr)) => tr,
+                        Some(other) => {
+                            log::debug!("non-trait `_` import of {:?}", other);
+                            continue;
+                        }
+                        None => continue,
+                    };
+                    let old_vis = self.def_map.modules[module_id].scope.unnamed_trait_vis(tr);
+                    let should_update = match old_vis {
+                        None => true,
+                        Some(old_vis) => {
+                            let max_vis = old_vis.max(vis, &self.def_map).unwrap_or_else(|| {
+                                panic!("`Tr as _` imports with unrelated visibilities {:?} and {:?} (trait {:?})", old_vis, vis, tr);
+                            });
+
+                            max_vis != old_vis
+                        }
+                    };
+
+                    if should_update {
+                        changed = true;
+                        self.def_map.modules[module_id].scope.push_unnamed_trait(tr, vis);
+                    }
+                }
+            }
         }
 
         if !changed {
@@ -950,7 +981,7 @@ impl ModCollector<'_, '_> {
                         .unwrap_or(Visibility::Public);
                     self.def_collector.update(
                         self.module_id,
-                        &[(name.clone(), PerNs::from_def(id, vis, has_constructor))],
+                        &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor))],
                         vis,
                         ImportType::Named,
                     )
@@ -1057,7 +1088,7 @@ impl ModCollector<'_, '_> {
         self.def_collector.def_map.modules[self.module_id].scope.define_def(def);
         self.def_collector.update(
             self.module_id,
-            &[(name, PerNs::from_def(def, vis, false))],
+            &[(Some(name), PerNs::from_def(def, vis, false))],
             vis,
             ImportType::Named,
         );

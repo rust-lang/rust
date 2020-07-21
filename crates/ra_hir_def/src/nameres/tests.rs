@@ -558,3 +558,134 @@ mod b {
         "#]],
     );
 }
+
+#[test]
+fn underscore_import() {
+    check(
+        r#"
+//- /main.rs
+use tr::Tr as _;
+use tr::Tr2 as _;
+
+mod tr {
+    pub trait Tr {}
+    pub trait Tr2 {}
+}
+    "#,
+        expect![[r#"
+            crate
+            _: t
+            _: t
+            tr: t
+
+            crate::tr
+            Tr: t
+            Tr2: t
+        "#]],
+    );
+}
+
+#[test]
+fn underscore_reexport() {
+    check(
+        r#"
+//- /main.rs
+mod tr {
+    pub trait PubTr {}
+    pub trait PrivTr {}
+}
+mod reex {
+    use crate::tr::PrivTr as _;
+    pub use crate::tr::PubTr as _;
+}
+use crate::reex::*;
+    "#,
+        expect![[r#"
+            crate
+            _: t
+            reex: t
+            tr: t
+
+            crate::tr
+            PrivTr: t
+            PubTr: t
+
+            crate::reex
+            _: t
+            _: t
+        "#]],
+    );
+}
+
+#[test]
+fn underscore_pub_crate_reexport() {
+    check(
+        r#"
+//- /main.rs crate:main deps:lib
+use lib::*;
+
+//- /lib.rs crate:lib
+use tr::Tr as _;
+pub use tr::Tr as _;
+
+mod tr {
+    pub trait Tr {
+        fn method(&self) {}
+    }
+}
+    "#,
+        expect![[r#"
+            crate
+            _: t
+        "#]],
+    );
+}
+
+#[test]
+fn underscore_nontrait() {
+    check(
+        r#"
+//- /main.rs
+mod m {
+    pub struct Struct;
+    pub enum Enum {}
+    pub const CONST: () = ();
+}
+use crate::m::{Struct as _, Enum as _, CONST as _};
+    "#,
+        expect![[r#"
+            crate
+            m: t
+
+            crate::m
+            CONST: v
+            Enum: t
+            Struct: t v
+        "#]],
+    );
+}
+
+#[test]
+fn underscore_name_conflict() {
+    check(
+        r#"
+//- /main.rs
+struct Tr;
+
+use tr::Tr as _;
+
+mod tr {
+    pub trait Tr {}
+}
+    "#,
+        expect![[r#"
+            crate
+            _: t
+            Tr: t v
+            tr: t
+
+            crate::tr
+            Tr: t
+        "#]],
+    );
+}
