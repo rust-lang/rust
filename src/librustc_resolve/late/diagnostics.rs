@@ -760,8 +760,10 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         if !module.no_implicit_prelude {
                             let extern_prelude = self.r.extern_prelude.clone();
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
-                                self.r.crate_loader.maybe_process_path_extern(ident.name).and_then(
-                                    |crate_id| {
+                                self.r
+                                    .crate_loader
+                                    .maybe_process_path_extern(ident.name, ident.span)
+                                    .and_then(|crate_id| {
                                         let crate_mod = Res::Def(
                                             DefKind::Mod,
                                             DefId { krate: crate_id, index: CRATE_DEF_INDEX },
@@ -772,8 +774,7 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                                         } else {
                                             None
                                         }
-                                    },
-                                )
+                                    })
                             }));
 
                             if let Some(prelude) = self.r.prelude {
@@ -1138,24 +1139,6 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     add `#![feature(in_band_lifetimes)]` to the crate attributes",
             );
         }
-        err.emit();
-    }
-
-    // FIXME(const_generics): This patches over a ICE caused by non-'static lifetimes in const
-    // generics. We are disallowing this until we can decide on how we want to handle non-'static
-    // lifetimes in const generics. See issue #74052 for discussion.
-    crate fn emit_non_static_lt_in_const_generic_error(&self, lifetime_ref: &hir::Lifetime) {
-        let mut err = struct_span_err!(
-            self.tcx.sess,
-            lifetime_ref.span,
-            E0771,
-            "use of non-static lifetime `{}` in const generic",
-            lifetime_ref
-        );
-        err.note(
-            "for more information, see issue #74052 \
-            <https://github.com/rust-lang/rust/issues/74052>",
-        );
         err.emit();
     }
 

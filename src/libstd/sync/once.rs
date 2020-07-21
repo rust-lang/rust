@@ -132,7 +132,6 @@ unsafe impl Send for Once {}
 #[derive(Debug)]
 pub struct OnceState {
     poisoned: bool,
-    set_state_on_drop_to: Cell<usize>,
 }
 
 /// Initialization value for static [`Once`] values.
@@ -322,7 +321,7 @@ impl Once {
         }
 
         let mut f = Some(f);
-        self.call_inner(true, &mut |p| f.take().unwrap()(p));
+        self.call_inner(true, &mut |p| f.take().unwrap()(&OnceState { poisoned: p }));
     }
 
     /// Returns `true` if some `call_once` call has completed
@@ -386,7 +385,7 @@ impl Once {
     // currently no way to take an `FnOnce` and call it via virtual dispatch
     // without some allocation overhead.
     #[cold]
-    fn call_inner(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&OnceState)) {
+    fn call_inner(&self, ignore_poisoning: bool, init: &mut dyn FnMut(bool)) {
         let mut state_and_queue = self.state_and_queue.load(Ordering::Acquire);
         loop {
             match state_and_queue {
@@ -414,12 +413,8 @@ impl Once {
                     };
                     // Run the initialization function, letting it know if we're
                     // poisoned or not.
-                    let init_state = OnceState {
-                        poisoned: state_and_queue == POISONED,
-                        set_state_on_drop_to: Cell::new(COMPLETE),
-                    };
-                    init(&init_state);
-                    waiter_queue.set_state_on_drop_to = init_state.set_state_on_drop_to.get();
+                    init(state_and_queue == POISONED);
+                    waiter_queue.set_state_on_drop_to = COMPLETE;
                     break;
                 }
                 _ => {
@@ -558,14 +553,6 @@ impl OnceState {
     #[unstable(feature = "once_poison", issue = "33577")]
     pub fn poisoned(&self) -> bool {
         self.poisoned
-    }
-
-    /// Poison the associated [`Once`] without explicitly panicking.
-    ///
-    /// [`Once`]: struct.Once.html
-    // NOTE: This is currently only exposed for the `lazy` module
-    pub(crate) fn poison(&self) {
-        self.set_state_on_drop_to.set(POISONED);
     }
 }
 

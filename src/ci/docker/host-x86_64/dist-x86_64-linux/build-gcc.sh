@@ -37,3 +37,4 @@ ln -s gcc /rustroot/bin/cc
 cd ..
 rm -rf gcc-build
 rm -rf gcc-$GCC
+yum erase -y gcc gcc-c++ binutils

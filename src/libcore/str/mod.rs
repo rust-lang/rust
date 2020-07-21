@@ -4,7 +4,7 @@
 //!
 //! For more details, see the [`std::str`] module.
 //!
-//! [`std::str`]: self
+//! [`std::str`]: ../../std/str/index.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -31,8 +31,9 @@ pub mod lossy;
 /// `FromStr`'s [`from_str`] method is often used implicitly, through
 /// [`str`]'s [`parse`] method. See [`parse`]'s documentation for examples.
 ///
-/// [`from_str`]: FromStr::from_str
-/// [`parse`]: str::parse
+/// [`from_str`]: #tymethod.from_str
+/// [`str`]: ../../std/primitive.str.html
+/// [`parse`]: ../../std/primitive.str.html#method.parse
 ///
 /// `FromStr` does not have a lifetime parameter, and so you can only parse types
 /// that do not contain a lifetime parameter themselves. In other words, you can
@@ -142,7 +143,7 @@ impl FromStr for bool {
 
 /// An error returned when parsing a `bool` using [`from_str`] fails
 ///
-/// [`from_str`]: FromStr::from_str
+/// [`from_str`]: ../../std/primitive.bool.html#method.from_str
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseBoolError {
@@ -163,11 +164,13 @@ Section: Creating a string
 /// Errors which can occur when attempting to interpret a sequence of [`u8`]
 /// as a string.
 ///
+/// [`u8`]: ../../std/primitive.u8.html
+///
 /// As such, the `from_utf8` family of functions and methods for both [`String`]s
 /// and [`&str`]s make use of this error, for example.
 ///
 /// [`String`]: ../../std/string/struct.String.html#method.from_utf8
-/// [`&str`]: from_utf8
+/// [`&str`]: ../../std/str/fn.from_utf8.html
 ///
 /// # Examples
 ///
@@ -263,7 +266,8 @@ impl Utf8Error {
 /// that it is valid UTF-8. `from_utf8()` checks to ensure that the bytes are valid
 /// UTF-8, and then does the conversion.
 ///
-/// [`&str`]: str
+/// [`&str`]: ../../std/primitive.str.html
+/// [`u8`]: ../../std/primitive.u8.html
 /// [byteslice]: ../../std/primitive.slice.html
 ///
 /// If you are sure that the byte slice is valid UTF-8, and you don't want to
@@ -394,7 +398,7 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 /// it are valid UTF-8. If this constraint is violated, undefined behavior
 /// results, as the rest of Rust assumes that [`&str`]s are valid UTF-8.
 ///
-/// [`&str`]: str
+/// [`&str`]: ../../std/primitive.str.html
 ///
 /// # Examples
 ///
@@ -425,7 +429,9 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8; mutable version.
 ///
-/// See the immutable version, [`from_utf8_unchecked()`] for more information.
+/// See the immutable version, [`from_utf8_unchecked()`][fromutf8], for more information.
+///
+/// [fromutf8]: fn.from_utf8_unchecked.html
 ///
 /// # Examples
 ///
@@ -470,11 +476,13 @@ Section: Iterators
 
 /// An iterator over the [`char`]s of a string slice.
 ///
+/// [`char`]: ../../std/primitive.char.html
 ///
 /// This struct is created by the [`chars`] method on [`str`].
 /// See its documentation for more.
 ///
-/// [`chars`]: str::chars
+/// [`chars`]: ../../std/primitive.str.html#method.chars
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
@@ -668,10 +676,13 @@ impl<'a> Chars<'a> {
 
 /// An iterator over the [`char`]s of a string slice, and their positions.
 ///
+/// [`char`]: ../../std/primitive.char.html
+///
 /// This struct is created by the [`char_indices`] method on [`str`].
 /// See its documentation for more.
 ///
-/// [`char_indices`]: str::char_indices
+/// [`char_indices`]: ../../std/primitive.str.html#method.char_indices
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CharIndices<'a> {
@@ -745,7 +756,8 @@ impl<'a> CharIndices<'a> {
 /// This struct is created by the [`bytes`] method on [`str`].
 /// See its documentation for more.
 ///
-/// [`bytes`]: str::bytes
+/// [`bytes`]: ../../std/primitive.str.html#method.bytes
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Bytes<'a>(Copied<slice::Iter<'a, u8>>);
@@ -1237,12 +1249,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`split`].
         ///
-        /// [`split`]: str::split
+        /// [`split`]: ../../std/primitive.str.html#method.split
         struct Split;
     reverse:
         /// Created with the method [`rsplit`].
         ///
-        /// [`rsplit`]: str::rsplit
+        /// [`rsplit`]: ../../std/primitive.str.html#method.rsplit
         struct RSplit;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -1255,12 +1267,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`split_terminator`].
         ///
-        /// [`split_terminator`]: str::split_terminator
+        /// [`split_terminator`]: ../../std/primitive.str.html#method.split_terminator
         struct SplitTerminator;
     reverse:
         /// Created with the method [`rsplit_terminator`].
         ///
-        /// [`rsplit_terminator`]: str::rsplit_terminator
+        /// [`rsplit_terminator`]: ../../std/primitive.str.html#method.rsplit_terminator
         struct RSplitTerminator;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -1331,12 +1343,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`splitn`].
         ///
-        /// [`splitn`]: str::splitn
+        /// [`splitn`]: ../../std/primitive.str.html#method.splitn
         struct SplitN;
     reverse:
         /// Created with the method [`rsplitn`].
         ///
-        /// [`rsplitn`]: str::rsplitn
+        /// [`rsplitn`]: ../../std/primitive.str.html#method.rsplitn
         struct RSplitN;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -1386,12 +1398,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`match_indices`].
         ///
-        /// [`match_indices`]: str::match_indices
+        /// [`match_indices`]: ../../std/primitive.str.html#method.match_indices
         struct MatchIndices;
     reverse:
         /// Created with the method [`rmatch_indices`].
         ///
-        /// [`rmatch_indices`]: str::rmatch_indices
+        /// [`rmatch_indices`]: ../../std/primitive.str.html#method.rmatch_indices
         struct RMatchIndices;
     stability:
         #[stable(feature = "str_match_indices", since = "1.5.0")]
@@ -1443,12 +1455,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`matches`].
         ///
-        /// [`matches`]: str::matches
+        /// [`matches`]: ../../std/primitive.str.html#method.matches
         struct Matches;
     reverse:
         /// Created with the method [`rmatches`].
         ///
-        /// [`rmatches`]: str::rmatches
+        /// [`rmatches`]: ../../std/primitive.str.html#method.rmatches
         struct RMatches;
     stability:
         #[stable(feature = "str_matches", since = "1.2.0")]
@@ -1462,7 +1474,8 @@ generate_pattern_iterators! {
 /// This struct is created with the [`lines`] method on [`str`].
 /// See its documentation for more.
 ///
-/// [`lines`]: str::lines
+/// [`lines`]: ../../std/primitive.str.html#method.lines
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
@@ -1500,7 +1513,7 @@ impl FusedIterator for Lines<'_> {}
 
 /// Created with the method [`lines_any`].
 ///
-/// [`lines_any`]: str::lines_any
+/// [`lines_any`]: ../../std/primitive.str.html#method.lines_any
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
 #[derive(Clone, Debug)]
@@ -2334,7 +2347,9 @@ impl str {
     }
 
     /// Converts a string slice to a byte slice. To convert the byte slice back
-    /// into a string slice, use the [`from_utf8`] function.
+    /// into a string slice, use the [`str::from_utf8`] function.
+    ///
+    /// [`str::from_utf8`]: ./str/fn.from_utf8.html
     ///
     /// # Examples
     ///
@@ -2414,7 +2429,8 @@ impl str {
     /// The caller must ensure that the returned pointer is never written to.
     /// If you need to mutate the contents of the string slice, use [`as_mut_ptr`].
     ///
-    /// [`as_mut_ptr`]: str::as_mut_ptr
+    /// [`u8`]: primitive.u8.html
+    /// [`as_mut_ptr`]: #method.as_mut_ptr
     ///
     /// # Examples
     ///
@@ -2439,6 +2455,8 @@ impl str {
     ///
     /// It is your responsibility to make sure that the string slice only gets
     /// modified in a way that it remains valid UTF-8.
+    ///
+    /// [`u8`]: primitive.u8.html
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
@@ -2449,6 +2467,8 @@ impl str {
     ///
     /// This is the non-panicking alternative to indexing the `str`. Returns
     /// [`None`] whenever equivalent indexing operation would panic.
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -2474,6 +2494,8 @@ impl str {
     ///
     /// This is the non-panicking alternative to indexing the `str`. Returns
     /// [`None`] whenever equivalent indexing operation would panic.
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -2578,7 +2600,8 @@ impl str {
     /// This is generally not recommended, use with caution! For a safe
     /// alternative see [`str`] and [`Index`].
     ///
-    /// [`Index`]: crate::ops::Index
+    /// [`str`]: primitive.str.html
+    /// [`Index`]: ops/trait.Index.html
     ///
     /// This new slice goes from `begin` to `end`, including `begin` but
     /// excluding `end`.
@@ -2586,7 +2609,7 @@ impl str {
     /// To get a mutable string slice instead, see the
     /// [`slice_mut_unchecked`] method.
     ///
-    /// [`slice_mut_unchecked`]: str::slice_mut_unchecked
+    /// [`slice_mut_unchecked`]: #method.slice_mut_unchecked
     ///
     /// # Safety
     ///
@@ -2629,7 +2652,8 @@ impl str {
     /// This is generally not recommended, use with caution! For a safe
     /// alternative see [`str`] and [`IndexMut`].
     ///
-    /// [`IndexMut`]: crate::ops::IndexMut
+    /// [`str`]: primitive.str.html
+    /// [`IndexMut`]: ops/trait.IndexMut.html
     ///
     /// This new slice goes from `begin` to `end`, including `begin` but
     /// excluding `end`.
@@ -2637,7 +2661,7 @@ impl str {
     /// To get an immutable string slice instead, see the
     /// [`slice_unchecked`] method.
     ///
-    /// [`slice_unchecked`]: str::slice_unchecked
+    /// [`slice_unchecked`]: #method.slice_unchecked
     ///
     /// # Safety
     ///
@@ -2668,7 +2692,7 @@ impl str {
     /// To get mutable string slices instead, see the [`split_at_mut`]
     /// method.
     ///
-    /// [`split_at_mut`]: str::split_at_mut
+    /// [`split_at_mut`]: #method.split_at_mut
     ///
     /// # Panics
     ///
@@ -2709,7 +2733,7 @@ impl str {
     ///
     /// To get immutable string slices instead, see the [`split_at`] method.
     ///
-    /// [`split_at`]: str::split_at
+    /// [`split_at`]: #method.split_at
     ///
     /// # Panics
     ///
@@ -2889,7 +2913,7 @@ impl str {
     /// Core Property `White_Space`. If you only want to split on ASCII whitespace
     /// instead, use [`split_ascii_whitespace`].
     ///
-    /// [`split_ascii_whitespace`]: str::split_ascii_whitespace
+    /// [`split_ascii_whitespace`]: #method.split_ascii_whitespace
     ///
     /// # Examples
     ///
@@ -2930,7 +2954,7 @@ impl str {
     ///
     /// To split by Unicode `Whitespace` instead, use [`split_whitespace`].
     ///
-    /// [`split_whitespace`]: str::split_whitespace
+    /// [`split_whitespace`]: #method.split_whitespace
     ///
     /// # Examples
     ///
@@ -3044,7 +3068,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3070,7 +3095,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3095,7 +3121,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3123,7 +3150,9 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`None`]: option/enum.Option.html#variant.None
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3170,7 +3199,9 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`None`]: option/enum.Option.html#variant.None
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3216,7 +3247,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3224,10 +3256,12 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, e.g., [`char`], but not for `&str`.
     ///
+    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rsplit`] method can be used.
     ///
-    /// [`rsplit`]: str::rsplit
+    /// [`rsplit`]: #method.rsplit
     ///
     /// # Examples
     ///
@@ -3314,7 +3348,7 @@ impl str {
     ///
     /// Use [`split_whitespace`] for this behavior.
     ///
-    /// [`split_whitespace`]: str::split_whitespace
+    /// [`split_whitespace`]: #method.split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
@@ -3335,7 +3369,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -3374,7 +3409,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3382,9 +3418,11 @@ impl str {
     /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
+    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    ///
     /// For iterating from the front, the [`split`] method can be used.
     ///
-    /// [`split`]: str::split
+    /// [`split`]: #method.split
     ///
     /// # Examples
     ///
@@ -3425,12 +3463,13 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// Equivalent to [`split`], except that the trailing substring
     /// is skipped if empty.
     ///
-    /// [`split`]: str::split
+    /// [`split`]: #method.split
     ///
     /// This method can be used for string data that is _terminated_,
     /// rather than _separated_ by a pattern.
@@ -3441,10 +3480,12 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, e.g., [`char`], but not for `&str`.
     ///
+    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rsplit_terminator`] method can be used.
     ///
-    /// [`rsplit_terminator`]: str::rsplit_terminator
+    /// [`rsplit_terminator`]: #method.rsplit_terminator
     ///
     /// # Examples
     ///
@@ -3469,12 +3510,13 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// Equivalent to [`split`], except that the trailing substring is
     /// skipped if empty.
     ///
-    /// [`split`]: str::split
+    /// [`split`]: #method.split
     ///
     /// This method can be used for string data that is _terminated_,
     /// rather than _separated_ by a pattern.
@@ -3488,7 +3530,7 @@ impl str {
     /// For iterating from the front, the [`split_terminator`] method can be
     /// used.
     ///
-    /// [`split_terminator`]: str::split_terminator
+    /// [`split_terminator`]: #method.split_terminator
     ///
     /// # Examples
     ///
@@ -3517,7 +3559,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3527,7 +3570,7 @@ impl str {
     /// If the pattern allows a reverse search, the [`rsplitn`] method can be
     /// used.
     ///
-    /// [`rsplitn`]: str::rsplitn
+    /// [`rsplitn`]: #method.rsplitn
     ///
     /// # Examples
     ///
@@ -3569,7 +3612,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3578,7 +3622,7 @@ impl str {
     ///
     /// For splitting from the front, the [`splitn`] method can be used.
     ///
-    /// [`splitn`]: str::splitn
+    /// [`splitn`]: #method.splitn
     ///
     /// # Examples
     ///
@@ -3616,7 +3660,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3624,10 +3669,12 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, e.g., [`char`], but not for `&str`.
     ///
+    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rmatches`] method can be used.
     ///
-    /// [`rmatches`]: str::matches
+    /// [`rmatches`]: #method.rmatches
     ///
     /// # Examples
     ///
@@ -3652,7 +3699,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3660,9 +3708,11 @@ impl str {
     /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
+    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    ///
     /// For iterating from the front, the [`matches`] method can be used.
     ///
-    /// [`matches`]: str::matches
+    /// [`matches`]: #method.matches
     ///
     /// # Examples
     ///
@@ -3693,7 +3743,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3701,10 +3752,12 @@ impl str {
     /// allows a reverse search and forward/reverse search yields the same
     /// elements. This is true for, e.g., [`char`], but not for `&str`.
     ///
+    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, the [`rmatch_indices`] method can be used.
     ///
-    /// [`rmatch_indices`]: str::match_indices
+    /// [`rmatch_indices`]: #method.rmatch_indices
     ///
     /// # Examples
     ///
@@ -3735,7 +3788,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Iterator behavior
     ///
@@ -3743,9 +3797,11 @@ impl str {
     /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
+    /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+    ///
     /// For iterating from the front, the [`match_indices`] method can be used.
     ///
-    /// [`match_indices`]: str::match_indices
+    /// [`match_indices`]: #method.match_indices
     ///
     /// # Examples
     ///
@@ -3953,7 +4009,8 @@ impl str {
     /// The [pattern] can be a [`char`], a slice of [`char`]s, or a function
     /// or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -4000,7 +4057,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4044,7 +4102,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -4071,7 +4130,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Examples
     ///
@@ -4097,7 +4157,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4145,7 +4206,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4181,7 +4243,8 @@ impl str {
     /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
     /// function or closure that determines if a character matches.
     ///
-    /// [pattern]: self::pattern
+    /// [`char`]: primitive.char.html
+    /// [pattern]: str/pattern/index.html
     ///
     /// # Text directionality
     ///
@@ -4229,14 +4292,15 @@ impl str {
     /// you're trying to parse into.
     ///
     /// `parse` can parse any type that implements the [`FromStr`] trait.
-
+    ///
+    /// [`FromStr`]: str/trait.FromStr.html
     ///
     /// # Errors
     ///
     /// Will return [`Err`] if it's not possible to parse this string slice into
     /// the desired type.
     ///
-    /// [`Err`]: FromStr::Err
+    /// [`Err`]: str/trait.FromStr.html#associatedtype.Err
     ///
     /// # Examples
     ///
@@ -4364,6 +4428,8 @@ impl str {
     /// Note: only extended grapheme codepoints that begin the string will be
     /// escaped.
     ///
+    /// [`char::escape_debug`]: ../std/primitive.char.html#method.escape_debug
+    ///
     /// # Examples
     ///
     /// As an iterator:
@@ -4408,6 +4474,8 @@ impl str {
 
     /// Return an iterator that escapes each char in `self` with [`char::escape_default`].
     ///
+    /// [`char::escape_default`]: ../std/primitive.char.html#method.escape_default
+    ///
     /// # Examples
     ///
     /// As an iterator:
@@ -4443,6 +4511,8 @@ impl str {
     }
 
     /// Return an iterator that escapes each char in `self` with [`char::escape_unicode`].
+    ///
+    /// [`char::escape_unicode`]: ../std/primitive.char.html#method.escape_unicode
     ///
     /// # Examples
     ///
@@ -4526,7 +4596,8 @@ impl Default for &mut str {
 /// This struct is created by the [`split_whitespace`] method on [`str`].
 /// See its documentation for more.
 ///
-/// [`split_whitespace`]: str::split_whitespace
+/// [`split_whitespace`]: ../../std/primitive.str.html#method.split_whitespace
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "split_whitespace", since = "1.1.0")]
 #[derive(Clone, Debug)]
 pub struct SplitWhitespace<'a> {
@@ -4539,7 +4610,8 @@ pub struct SplitWhitespace<'a> {
 /// This struct is created by the [`split_ascii_whitespace`] method on [`str`].
 /// See its documentation for more.
 ///
-/// [`split_ascii_whitespace`]: str::split_ascii_whitespace
+/// [`split_ascii_whitespace`]: ../../std/primitive.str.html#method.split_ascii_whitespace
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct SplitAsciiWhitespace<'a> {
@@ -4554,7 +4626,8 @@ pub struct SplitAsciiWhitespace<'a> {
 /// This struct is created by the [`split_inclusive`] method on [`str`].
 /// See its documentation for more.
 ///
-/// [`split_inclusive`]: str::split_inclusive
+/// [`split_inclusive`]: ../../std/primitive.str.html#method.split_inclusive
+/// [`str`]: ../../std/primitive.str.html
 #[unstable(feature = "split_inclusive", issue = "72360")]
 pub struct SplitInclusive<'a, P: Pattern<'a>>(SplitInternal<'a, P>);
 
@@ -4688,10 +4761,13 @@ impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
 
 /// An iterator of [`u16`] over the string encoded as UTF-16.
 ///
+/// [`u16`]: ../../std/primitive.u16.html
+///
 /// This struct is created by the [`encode_utf16`] method on [`str`].
 /// See its documentation for more.
 ///
-/// [`encode_utf16`]: str::encode_utf16
+/// [`encode_utf16`]: ../../std/primitive.str.html#method.encode_utf16
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone)]
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub struct EncodeUtf16<'a> {
@@ -4742,6 +4818,8 @@ impl<'a> Iterator for EncodeUtf16<'a> {
 impl FusedIterator for EncodeUtf16<'_> {}
 
 /// The return type of [`str::escape_debug`].
+///
+/// [`str::escape_debug`]: ../../std/primitive.str.html#method.escape_debug
 #[stable(feature = "str_escape", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct EscapeDebug<'a> {
@@ -4752,6 +4830,8 @@ pub struct EscapeDebug<'a> {
 }
 
 /// The return type of [`str::escape_default`].
+///
+/// [`str::escape_default`]: ../../std/primitive.str.html#method.escape_default
 #[stable(feature = "str_escape", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct EscapeDefault<'a> {
@@ -4759,6 +4839,8 @@ pub struct EscapeDefault<'a> {
 }
 
 /// The return type of [`str::escape_unicode`].
+///
+/// [`str::escape_unicode`]: ../../std/primitive.str.html#method.escape_unicode
 #[stable(feature = "str_escape", since = "1.34.0")]
 #[derive(Clone, Debug)]
 pub struct EscapeUnicode<'a> {

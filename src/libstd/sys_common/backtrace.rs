@@ -1,4 +1,3 @@
-use crate::backtrace_rs::{self, BacktraceFmt, BytesOrWideString, PrintFmt};
 use crate::borrow::Cow;
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
@@ -9,6 +8,8 @@ use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
 use crate::sync::atomic::{self, Ordering};
 use crate::sys::mutex::Mutex;
+
+use backtrace_rs::{BacktraceFmt, BytesOrWideString, PrintFmt};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;

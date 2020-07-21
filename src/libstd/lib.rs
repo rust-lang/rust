@@ -224,7 +224,10 @@
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform, ptr_wrapping_offset_from)
 )]
-#![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"), feature(fixed_size_array))]
+#![cfg_attr(
+    all(test, target_vendor = "fortanix", target_env = "sgx"),
+    feature(fixed_size_array, maybe_uninit_extra)
+)]
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
@@ -284,7 +287,6 @@
 #![feature(linkage)]
 #![feature(llvm_asm)]
 #![feature(log_syntax)]
-#![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(min_specialization)]
@@ -292,7 +294,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(once_cell)]
 #![feature(optin_builtin_traits)]
 #![feature(or_patterns)]
 #![feature(panic_info_message)]
@@ -302,7 +303,6 @@
 #![feature(ptr_internals)]
 #![feature(raw)]
 #![feature(raw_ref_macros)]
-#![feature(ready_macro)]
 #![feature(renamed_spin_loop)]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
@@ -477,9 +477,6 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-#[unstable(feature = "once_cell", issue = "74465")]
-pub mod lazy;
-
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
@@ -510,10 +507,6 @@ mod panicking;
 // The runtime entry point and a few unstable public functions used by the
 // compiler
 pub mod rt;
-
-#[path = "../backtrace/src/lib.rs"]
-#[allow(dead_code, unused_attributes)]
-mod backtrace_rs;
 
 // Pull in the `std_detect` crate directly into libstd. The contents of
 // `std_detect` are in a different repository: rust-lang/stdarch.

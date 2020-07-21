@@ -349,7 +349,6 @@ class RustBuild(object):
         self.use_vendored_sources = ''
         self.verbose = False
         self.git_version = None
-        self.nix_deps_dir = None
 
     def download_stage0(self):
         """Fetch the build system for Rust, written in Rust
@@ -389,12 +388,8 @@ class RustBuild(object):
             filename = "rustc-{}-{}{}".format(rustc_channel, self.build,
                                               tarball_suffix)
             self._download_stage0_helper(filename, "rustc", tarball_suffix)
-            self.fix_bin_or_dylib("{}/bin/rustc".format(self.bin_root()))
-            self.fix_bin_or_dylib("{}/bin/rustdoc".format(self.bin_root()))
-            lib_dir = "{}/lib".format(self.bin_root())
-            for lib in os.listdir(lib_dir):
-                if lib.endswith(".so"):
-                    self.fix_bin_or_dylib("{}/{}".format(lib_dir, lib))
+            self.fix_executable("{}/bin/rustc".format(self.bin_root()))
+            self.fix_executable("{}/bin/rustdoc".format(self.bin_root()))
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(self.date)
 
@@ -413,7 +408,7 @@ class RustBuild(object):
             filename = "cargo-{}-{}{}".format(cargo_channel, self.build,
                                               tarball_suffix)
             self._download_stage0_helper(filename, "cargo", tarball_suffix)
-            self.fix_bin_or_dylib("{}/bin/cargo".format(self.bin_root()))
+            self.fix_executable("{}/bin/cargo".format(self.bin_root()))
             with output(self.cargo_stamp()) as cargo_stamp:
                 cargo_stamp.write(self.date)
 
@@ -426,8 +421,8 @@ class RustBuild(object):
                 [channel, date] = rustfmt_channel.split('-', 1)
                 filename = "rustfmt-{}-{}{}".format(channel, self.build, tarball_suffix)
                 self._download_stage0_helper(filename, "rustfmt-preview", tarball_suffix, date)
-                self.fix_bin_or_dylib("{}/bin/rustfmt".format(self.bin_root()))
-                self.fix_bin_or_dylib("{}/bin/cargo-fmt".format(self.bin_root()))
+                self.fix_executable("{}/bin/rustfmt".format(self.bin_root()))
+                self.fix_executable("{}/bin/cargo-fmt".format(self.bin_root()))
                 with output(self.rustfmt_stamp()) as rustfmt_stamp:
                     rustfmt_stamp.write(self.date + self.rustfmt_channel)
 
@@ -445,12 +440,12 @@ class RustBuild(object):
             get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
         unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
 
-    def fix_bin_or_dylib(self, fname):
-        """Modifies the interpreter section of 'fname' to fix the dynamic linker,
-        or the RPATH section, to fix the dynamic library search path
+    @staticmethod
+    def fix_executable(fname):
+        """Modifies the interpreter section of 'fname' to fix the dynamic linker
 
         This method is only required on NixOS and uses the PatchELF utility to
-        change the interpreter/RPATH of ELF executables.
+        change the dynamic linker of ELF executables.
 
         Please see https://nixos.org/patchelf.html for more information
         """
@@ -477,61 +472,38 @@ class RustBuild(object):
         nix_os_msg = "info: you seem to be running NixOS. Attempting to patch"
         print(nix_os_msg, fname)
 
-        # Only build `stage0/.nix-deps` once.
-        nix_deps_dir = self.nix_deps_dir
-        if not nix_deps_dir:
-            nix_deps_dir = "{}/.nix-deps".format(self.bin_root())
-            if not os.path.exists(nix_deps_dir):
-                os.makedirs(nix_deps_dir)
+        try:
+            interpreter = subprocess.check_output(
+                ["patchelf", "--print-interpreter", fname])
+            interpreter = interpreter.strip().decode(default_encoding)
+        except subprocess.CalledProcessError as reason:
+            print("warning: failed to call patchelf:", reason)
+            return
 
-            nix_deps = [
-                # Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
-                "stdenv.cc.bintools",
-
-                # Needed as a system dependency of `libLLVM-*.so`.
-                "zlib",
-
-                # Needed for patching ELF binaries (see doc comment above).
-                "patchelf",
-            ]
-
-            # Run `nix-build` to "build" each dependency (which will likely reuse
-            # the existing `/nix/store` copy, or at most download a pre-built copy).
-            # Importantly, we don't rely on `nix-build` printing the `/nix/store`
-            # path on stdout, but use `-o` to symlink it into `stage0/.nix-deps/$dep`,
-            # ensuring garbage collection will never remove the `/nix/store` path
-            # (which would break our patched binaries that hardcode those paths).
-            for dep in nix_deps:
-                try:
-                    subprocess.check_output([
-                        "nix-build", "<nixpkgs>",
-                        "-A", dep,
-                        "-o", "{}/{}".format(nix_deps_dir, dep),
-                    ])
-                except subprocess.CalledProcessError as reason:
-                    print("warning: failed to call nix-build:", reason)
-                    return
-
-            self.nix_deps_dir = nix_deps_dir
-
-        patchelf = "{}/patchelf/bin/patchelf".format(nix_deps_dir)
-
-        if fname.endswith(".so"):
-            # Dynamic library, patch RPATH to point to system dependencies.
-            dylib_deps = ["zlib"]
-            rpath_entries = [
-                # Relative default, all binary and dynamic libraries we ship
-                # appear to have this (even when `../lib` is redundant).
-                "$ORIGIN/../lib",
-            ] + ["{}/{}/lib".format(nix_deps_dir, dep) for dep in dylib_deps]
-            patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
-        else:
-            bintools_dir = "{}/stdenv.cc.bintools".format(nix_deps_dir)
-            with open("{}/nix-support/dynamic-linker".format(bintools_dir)) as dynamic_linker:
-                patchelf_args = ["--set-interpreter", dynamic_linker.read().rstrip()]
+        loader = interpreter.split("/")[-1]
 
         try:
-            subprocess.check_output([patchelf] + patchelf_args + [fname])
+            ldd_output = subprocess.check_output(
+                ['ldd', '/run/current-system/sw/bin/sh'])
+            ldd_output = ldd_output.strip().decode(default_encoding)
+        except subprocess.CalledProcessError as reason:
+            print("warning: unable to call ldd:", reason)
+            return
+
+        for line in ldd_output.splitlines():
+            libname = line.split()[0]
+            if libname.endswith(loader):
+                loader_path = libname[:len(libname) - len(loader)]
+                break
+        else:
+            print("warning: unable to find the path to the dynamic linker")
+            return
+
+        correct_interpreter = loader_path + loader
+
+        try:
+            subprocess.check_output(
+                ["patchelf", "--set-interpreter", correct_interpreter, fname])
         except subprocess.CalledProcessError as reason:
             print("warning: failed to call patchelf:", reason)
             return

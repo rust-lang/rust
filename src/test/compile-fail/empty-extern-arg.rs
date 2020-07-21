@@ -1,4 +1,4 @@
 // compile-flags: --extern std=
-// error-pattern: extern location for std does not exist
+// error-pattern: can't find crate for `std`
 
 fn main() {}

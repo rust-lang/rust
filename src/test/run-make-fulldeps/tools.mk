@@ -18,9 +18,6 @@ endif
 HTMLDOCCK := '$(PYTHON)' '$(S)/src/etc/htmldocck.py'
 CGREP := "$(S)/src/etc/cat-and-grep.sh"
 
-# diff with common flags for multi-platform diffs against text output
-DIFF := diff -u --strip-trailing-cr
-
 # This is the name of the binary we will generate and run; use this
 # e.g. for `$(CC) -o $(RUN_BINFILE)`.
 RUN_BINFILE = $(TMPDIR)/$(1)
