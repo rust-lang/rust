@@ -37,7 +37,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
     let expr = node.ancestors().find_map(valid_target_expr)?;
-    let (anchor_stmt, wrap_in_block) = anchor_stmt(expr.clone())?;
+    let (anchor_stmt, wrap_in_block) = anchor_stmt(&expr)?;
     let indent = anchor_stmt.prev_sibling_or_token()?.as_token()?.clone();
     if indent.kind() != WHITESPACE {
         return None;
@@ -143,7 +143,7 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
 /// to produce correct code.
 /// It can be a statement, the last in a block expression or a wanna be block
 /// expression like a lambda or match arm.
-fn anchor_stmt(expr: ast::Expr) -> Option<(SyntaxNode, bool)> {
+fn anchor_stmt(expr: &ast::Expr) -> Option<(SyntaxNode, bool)> {
     expr.syntax().ancestors().find_map(|node| {
         if let Some(expr) = node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.expr()) {
             if expr.syntax() == &node {
