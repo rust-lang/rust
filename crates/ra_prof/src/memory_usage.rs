@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use cfg_if::cfg_if;
 use std::fmt;
 
 pub struct MemoryUsage {
@@ -8,18 +9,22 @@ pub struct MemoryUsage {
 }
 
 impl MemoryUsage {
-    #[cfg(all(feature = "jemalloc", not(target_env = "msvc")))]
     pub fn current() -> MemoryUsage {
-        jemalloc_ctl::epoch::advance().unwrap();
-        MemoryUsage {
-            allocated: Bytes(jemalloc_ctl::stats::allocated::read().unwrap()),
-            resident: Bytes(jemalloc_ctl::stats::resident::read().unwrap()),
+        cfg_if! {
+            if #[cfg(all(feature = "jemalloc", not(target_env = "msvc")))] {
+                jemalloc_ctl::epoch::advance().unwrap();
+                MemoryUsage {
+                    allocated: Bytes(jemalloc_ctl::stats::allocated::read().unwrap()),
+                    resident: Bytes(jemalloc_ctl::stats::resident::read().unwrap()),
+                }
+            } else if #[cfg(target_os = "linux")] {
+                // Note: This is incredibly slow.
+                let alloc = unsafe { libc::mallinfo() }.uordblks as u32 as usize;
+                MemoryUsage { allocated: Bytes(alloc), resident: Bytes(0) }
+            } else {
+                MemoryUsage { allocated: Bytes(0), resident: Bytes(0) }
+            }
         }
-    }
-
-    #[cfg(any(not(feature = "jemalloc"), target_env = "msvc"))]
-    pub fn current() -> MemoryUsage {
-        MemoryUsage { allocated: Bytes(0), resident: Bytes(0) }
     }
 }
 

@@ -1198,8 +1198,10 @@ name = "ra_prof"
 version = "0.1.0"
 dependencies = [
  "backtrace",
+ "cfg-if",
  "jemalloc-ctl",
  "jemallocator",
+ "libc",
  "mimalloc",
  "once_cell",
  "ra_arena",
