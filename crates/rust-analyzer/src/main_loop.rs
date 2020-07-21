@@ -432,19 +432,26 @@ impl GlobalState {
                 Ok(())
             })?
             .on::<lsp_types::notification::DidCloseTextDocument>(|this, params| {
+                let mut version = None;
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if this.mem_docs.remove(&path).is_none() {
-                        log::error!("orphan DidCloseTextDocument: {}", path)
+                    match this.mem_docs.remove(&path) {
+                        Some(entry) => version = entry,
+                        None => log::error!("orphan DidCloseTextDocument: {}", path),
                     }
+
                     if let Some(path) = path.as_path() {
                         this.loader.handle.invalidate(path.to_path_buf());
                     }
                 }
+
+                // Clear the diagnostics for the previously known version of the file.
+                // This prevents stale "cargo check" diagnostics if the file is
+                // closed, "cargo check" is run and then the file is reopened.
                 this.send_notification::<lsp_types::notification::PublishDiagnostics>(
                     lsp_types::PublishDiagnosticsParams {
                         uri: params.text_document.uri,
                         diagnostics: Vec::new(),
-                        version: None,
+                        version,
                     },
                 );
                 Ok(())
