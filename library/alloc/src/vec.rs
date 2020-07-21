@@ -1513,17 +1513,17 @@ impl<T> Vec<T> {
     /// #![feature(vec_leak)]
     ///
     /// let x = vec![1, 2, 3];
-    /// let static_ref: &'static mut [usize] = Vec::leak(x);
+    /// let static_ref: &'static mut [usize] = x.leak();
     /// static_ref[0] += 1;
     /// assert_eq!(static_ref, &[2, 2, 3]);
     /// ```
     #[unstable(feature = "vec_leak", issue = "62195")]
     #[inline]
-    pub fn leak<'a>(vec: Vec<T>) -> &'a mut [T]
+    pub fn leak<'a>(self) -> &'a mut [T]
     where
         T: 'a, // Technically not needed, but kept to be explicit.
     {
-        Box::leak(vec.into_boxed_slice())
+        Box::leak(self.into_boxed_slice())
     }
 }
 
