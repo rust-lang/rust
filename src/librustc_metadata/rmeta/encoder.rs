@@ -259,10 +259,33 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         let len = hi - lo;
         len.encode(self)?;
 
-        // FIXME: Once #69976 is merged, treat proc-macros normally
-        // Currently, we can't encode `SyntaxContextData` for proc-macro crates,
-        // since the `SyntaxContextData`/`ExpnData` might reference `DefIds` from
-        // dependencies (which are not currently loaded during decoding).
+        // Don't serialize any `SyntaxContext`s from a proc-macro crate,
+        // since we don't load proc-macro dependencies during serialization.
+        // This means that any hygiene information from macros used *within*
+        // a proc-macro crate (e.g. invoking a macro that expands to a proc-macro
+        // definition) will be lost.
+        //
+        // This can show up in two ways:
+        //
+        // 1. Any hygiene information associated with identifier of
+        // a proc macro (e.g. `#[proc_macro] pub fn $name`) will be lost.
+        // Since proc-macros can only be invoked from a different crate,
+        // real code should never need to care about this.
+        //
+        // 2. Using `Span::def_site` or `Span::mixed_site` will not
+        // include any hygiene information associated with the defintion
+        // site. This means that a proc-macro cannot emit a `$crate`
+        // identifier which resolves to one of its dependencies,
+        // which also should never come up in practice.
+        //
+        // Additionally, this affects `Span::parent`, and any other
+        // span inspection APIs that would otherwise allow traversing
+        // the `SyntaxContexts` associated with a span.
+        //
+        // None of these user-visible effects should result in any
+        // cross-crate inconsistencies (getting one behavior in the same
+        // crate, and a different behavior in another crate) due to the
+        // limited surface that proc-macros can expose.
         if self.is_proc_macro {
             SyntaxContext::root().encode(self)?;
         } else {

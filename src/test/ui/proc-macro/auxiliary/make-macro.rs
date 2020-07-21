@@ -6,7 +6,13 @@ macro_rules! make_it {
         #[proc_macro]
         pub fn $name(input: TokenStream) -> TokenStream {
             println!("Def site: {:?}", Span::def_site());
-            input
+            println!("Input: {:?}", input);
+            let new: TokenStream = input.into_iter().map(|mut t| {
+                t.set_span(Span::def_site());
+                t
+            }).collect();
+            println!("Respanned: {:?}", new);
+            new
         }
     };
 }
