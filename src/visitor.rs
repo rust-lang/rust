@@ -671,15 +671,15 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 };
                 let rewrite = match ty {
                     None => rewrite_associated(),
-                    Some(ty) => match ty.kind.opaque_top_hack() {
-                        Some(generic_bounds) => rewrite_opaque_impl_type(
+                    Some(ty) => match ty.kind {
+                        ast::TyKind::ImplTrait(_, ref bounds) => rewrite_opaque_impl_type(
                             &self.get_context(),
                             ii.ident,
                             generics,
-                            generic_bounds,
+                            bounds,
                             self.block_indent,
                         ),
-                        None => rewrite_associated(),
+                        _ => rewrite_associated(),
                     },
                 };
                 self.push_rewrite(ii.span, rewrite);

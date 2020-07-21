@@ -481,6 +481,9 @@ mod test {
 
     #[test]
     fn test_valid_license_template_path() {
+        if !crate::is_nightly_channel!() {
+            return;
+        }
         let toml = r#"license_template_path = "tests/license-template/lt.txt""#;
         let config = Config::from_toml(toml, Path::new("")).unwrap();
         assert!(config.license_template.is_some());

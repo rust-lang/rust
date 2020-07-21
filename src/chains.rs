@@ -145,7 +145,7 @@ impl ChainItemKind {
 
     fn from_ast(context: &RewriteContext<'_>, expr: &ast::Expr) -> (ChainItemKind, Span) {
         let (kind, span) = match expr.kind {
-            ast::ExprKind::MethodCall(ref segment, ref expressions) => {
+            ast::ExprKind::MethodCall(ref segment, ref expressions, _) => {
                 let types = if let Some(ref generic_args) = segment.args {
                     if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
                         data.args
@@ -399,7 +399,7 @@ impl Chain {
     // is a try! macro, we'll convert it to shorthand when the option is set.
     fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext<'_>) -> Option<ast::Expr> {
         match expr.kind {
-            ast::ExprKind::MethodCall(_, ref expressions) => {
+            ast::ExprKind::MethodCall(_, ref expressions, _) => {
                 Some(Self::convert_try(&expressions[0], context))
             }
             ast::ExprKind::Field(ref subexpr, _)
