@@ -118,7 +118,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .memory
             .get_raw(vtable_slot.alloc_id)?
             .read_ptr_sized(self, vtable_slot)?
-            .not_undef()?;
+            .check_init()?;
         Ok(self.memory.get_fn(fn_ptr)?)
     }
 
@@ -137,7 +137,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )?
             .expect("cannot be a ZST");
         let drop_fn =
-            self.memory.get_raw(vtable.alloc_id)?.read_ptr_sized(self, vtable)?.not_undef()?;
+            self.memory.get_raw(vtable.alloc_id)?.read_ptr_sized(self, vtable)?.check_init()?;
         // We *need* an instance here, no other kind of function value, to be able
         // to determine the type.
         let drop_instance = self.memory.get_fn(drop_fn)?.as_instance()?;
@@ -165,10 +165,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .check_ptr_access(vtable, 3 * pointer_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
         let alloc = self.memory.get_raw(vtable.alloc_id)?;
-        let size = alloc.read_ptr_sized(self, vtable.offset(pointer_size, self)?)?.not_undef()?;
+        let size = alloc.read_ptr_sized(self, vtable.offset(pointer_size, self)?)?.check_init()?;
         let size = u64::try_from(self.force_bits(size, pointer_size)?).unwrap();
         let align =
-            alloc.read_ptr_sized(self, vtable.offset(pointer_size * 2, self)?)?.not_undef()?;
+            alloc.read_ptr_sized(self, vtable.offset(pointer_size * 2, self)?)?.check_init()?;
         let align = u64::try_from(self.force_bits(align, pointer_size)?).unwrap();
 
         if size >= self.tcx.data_layout.obj_size_bound() {

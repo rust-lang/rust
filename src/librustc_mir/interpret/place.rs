@@ -292,9 +292,9 @@ where
             val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type").ty;
         let layout = self.layout_of(pointee_type)?;
         let (ptr, meta) = match *val {
-            Immediate::Scalar(ptr) => (ptr.not_undef()?, MemPlaceMeta::None),
+            Immediate::Scalar(ptr) => (ptr.check_init()?, MemPlaceMeta::None),
             Immediate::ScalarPair(ptr, meta) => {
-                (ptr.not_undef()?, MemPlaceMeta::Meta(meta.not_undef()?))
+                (ptr.check_init()?, MemPlaceMeta::Meta(meta.check_init()?))
             }
         };
 
@@ -541,7 +541,7 @@ where
                 let n = self.access_local(self.frame(), local, Some(layout))?;
                 let n = self.read_scalar(n)?;
                 let n = u64::try_from(
-                    self.force_bits(n.not_undef()?, self.tcx.data_layout.pointer_size)?,
+                    self.force_bits(n.check_init()?, self.tcx.data_layout.pointer_size)?,
                 )
                 .unwrap();
                 self.mplace_index(base, n)?

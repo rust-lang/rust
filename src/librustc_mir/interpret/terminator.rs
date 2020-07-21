@@ -58,7 +58,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
-                        let fn_ptr = self.read_scalar(func)?.not_undef()?;
+                        let fn_ptr = self.read_scalar(func)?.check_init()?;
                         let fn_val = self.memory.get_fn(fn_ptr)?;
                         (fn_val, caller_abi)
                     }

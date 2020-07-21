@@ -500,7 +500,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // types below!
                 if self.ref_tracking_for_consts.is_some() {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
-                    let is_bits = value.not_undef().map_or(false, |v| v.is_bits());
+                    let is_bits = value.check_init().map_or(false, |v| v.is_bits());
                     if !is_bits {
                         throw_validation_failure!(self.path,
                             { "{}", value } expected { "initialized plain (non-pointer) bytes" }
@@ -537,7 +537,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             ty::FnPtr(_sig) => {
                 let value = self.ecx.read_scalar(value)?;
                 let _fn = try_validation!(
-                    value.not_undef().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
+                    value.check_init().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
@@ -596,7 +596,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         }
         // At least one value is excluded. Get the bits.
         let value = try_validation!(
-            value.not_undef(),
+            value.check_init(),
             self.path,
             err_ub!(InvalidUninitBytes(None)) => { "{}", value }
                 expected { "something {}", wrapping_range_format(valid_range, max_hi) },

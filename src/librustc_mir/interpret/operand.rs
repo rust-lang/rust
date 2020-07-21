@@ -72,14 +72,14 @@ impl<'tcx, Tag> Immediate<Tag> {
 
     #[inline]
     pub fn to_scalar(self) -> InterpResult<'tcx, Scalar<Tag>> {
-        self.to_scalar_or_undef().not_undef()
+        self.to_scalar_or_undef().check_init()
     }
 
     #[inline]
     pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
         match self {
             Immediate::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
-            Immediate::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?)),
+            Immediate::ScalarPair(a, b) => Ok((a.check_init()?, b.check_init()?)),
         }
     }
 }
