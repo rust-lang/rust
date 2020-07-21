@@ -34,8 +34,8 @@ use crate::{
 };
 
 // These tests compare the inference results for all expressions in a file
-// against snapshots of the expected results using insta. Use cargo-insta to
-// update the snapshots.
+// against snapshots of the expected results using expect. Use
+// `env UPDATE_EXPECT=1 cargo test -p ra_hir_ty` to update the snapshots.
 
 fn setup_tracing() -> tracing::subscriber::DefaultGuard {
     use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};

@@ -170,8 +170,7 @@ The innermost and most elaborate boundary is `hir`. It has a much richer
 vocabulary of types than `ide`, but the basic testing setup is the same: we
 create a database, run some queries, assert result.
 
-For comparisons, we use [insta](https://github.com/mitsuhiko/insta/) library for
-snapshot testing.
+For comparisons, we use the `expect` crate for snapshot testing.
 
 To test various analysis corner cases and avoid forgetting about old tests, we
 use so-called marks. See the `marks` module in the `test_utils` crate for more.

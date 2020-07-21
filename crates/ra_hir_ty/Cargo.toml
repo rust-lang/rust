@@ -33,7 +33,6 @@ chalk-ir = { version = "0.18.0" }
 chalk-recursive = { version = "0.18.0" }
 
 [dev-dependencies]
-insta = "0.16.0"
 expect = { path = "../expect" }
 
 tracing = "0.1"
