@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use paths::{AbsPath, AbsPathBuf};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, CrateName, Dependency, Edition};
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de, Deserialize};
 use stdx::split_delim;
 
@@ -24,7 +24,7 @@ pub struct Crate {
     pub(crate) deps: Vec<Dependency>,
     pub(crate) cfg: CfgOptions,
     pub(crate) target: Option<String>,
-    pub(crate) out_dir: Option<AbsPathBuf>,
+    pub(crate) env: FxHashMap<String, String>,
     pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
     pub(crate) is_workspace_member: bool,
     pub(crate) include: Vec<AbsPathBuf>,
@@ -78,7 +78,7 @@ impl ProjectJson {
                             cfg
                         },
                         target: crate_data.target,
-                        out_dir: crate_data.out_dir.map(|it| base.join(it)),
+                        env: crate_data.env,
                         proc_macro_dylib_path: crate_data
                             .proc_macro_dylib_path
                             .map(|it| base.join(it)),
@@ -105,7 +105,8 @@ struct CrateData {
     #[serde(default)]
     cfg: FxHashSet<String>,
     target: Option<String>,
-    out_dir: Option<PathBuf>,
+    #[serde(default)]
+    env: FxHashMap<String, String>,
     proc_macro_dylib_path: Option<PathBuf>,
     is_workspace_member: Option<bool>,
     source: Option<CrateSource>,

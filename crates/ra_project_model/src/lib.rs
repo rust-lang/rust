@@ -259,11 +259,8 @@ impl ProjectWorkspace {
                         let file_id = load(&file_path)?;
 
                         let mut env = Env::default();
-                        if let Some(out_dir) = &krate.out_dir {
-                            // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
-                            if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
-                                env.set("OUT_DIR", out_dir);
-                            }
+                        for (k, v) in &krate.env {
+                            env.set(k, v.clone());
                         }
                         let proc_macro = krate
                             .proc_macro_dylib_path
