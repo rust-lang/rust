@@ -19,7 +19,7 @@ use crate::borrow_check::{
     MirBorrowckCtxt,
 };
 
-use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
+use super::{OutlivesSuggestionBuilder, RegionName};
 
 impl ConstraintDescription for ConstraintCategory {
     fn description(&self) -> &'static str {
@@ -396,18 +396,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             diag.span_label(upvar_span, "variable captured here");
         }
 
-        match self.give_region_a_name(*outlived_fr).unwrap().source {
-            RegionNameSource::NamedEarlyBoundRegion(fr_span)
-            | RegionNameSource::NamedFreeRegion(fr_span)
-            | RegionNameSource::SynthesizedFreeEnvRegion(fr_span, _)
-            | RegionNameSource::CannotMatchHirTy(fr_span, _)
-            | RegionNameSource::MatchedHirTy(fr_span)
-            | RegionNameSource::MatchedAdtAndSegment(fr_span)
-            | RegionNameSource::AnonRegionFromUpvar(fr_span, _)
-            | RegionNameSource::AnonRegionFromOutput(fr_span, _, _) => {
-                diag.span_label(fr_span, "inferred to be a `FnMut` closure");
-            }
-            _ => {}
+        if let Some(fr_span) = self.give_region_a_name(*outlived_fr).unwrap().span() {
+            diag.span_label(fr_span, "inferred to be a `FnMut` closure");
         }
 
         diag.note(

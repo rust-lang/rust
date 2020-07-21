@@ -68,6 +68,22 @@ impl RegionName {
         }
     }
 
+    crate fn span(&self) -> Option<Span> {
+        match self.source {
+            RegionNameSource::Static => None,
+            RegionNameSource::NamedEarlyBoundRegion(span)
+            | RegionNameSource::NamedFreeRegion(span)
+            | RegionNameSource::SynthesizedFreeEnvRegion(span, _)
+            | RegionNameSource::CannotMatchHirTy(span, _)
+            | RegionNameSource::MatchedHirTy(span)
+            | RegionNameSource::MatchedAdtAndSegment(span)
+            | RegionNameSource::AnonRegionFromUpvar(span, _)
+            | RegionNameSource::AnonRegionFromOutput(span, _, _)
+            | RegionNameSource::AnonRegionFromYieldTy(span, _)
+            | RegionNameSource::AnonRegionFromAsyncFn(span) => Some(span),
+        }
+    }
+
     crate fn highlight_region_name(&self, diag: &mut DiagnosticBuilder<'_>) {
         match &self.source {
             RegionNameSource::NamedFreeRegion(span)
