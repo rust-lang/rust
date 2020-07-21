@@ -1065,6 +1065,8 @@ impl EncodeContext<'tcx> {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
             record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
+            record!(self.tables.unused_generic_params[def_id.to_def_id()] <-
+                    self.tcx.unused_generic_params(def_id));
         }
     }
 

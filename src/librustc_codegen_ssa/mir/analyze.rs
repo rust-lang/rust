@@ -124,8 +124,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(cx.tcx(), elem).ty;
-                let elem_ty = self.fx.monomorphize(&elem_ty);
+                let elem_ty = base_ty.projection_ty(cx.tcx(), self.fx.monomorphize(&elem)).ty;
                 let span = self.fx.mir.local_decls[place_ref.local].source_info.span;
                 if cx.spanned_layout_of(elem_ty, span).is_zst() {
                     return;

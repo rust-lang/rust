@@ -168,7 +168,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => return true,
         };
 
-        tcx.substitute_normalize_and_test_predicates((def_id, &substs))
+        !tcx.subst_and_check_impossible_predicates((def_id, &substs))
     }
 
     pub fn to_string(&self, tcx: TyCtxt<'tcx>, debug: bool) -> String {

@@ -13,7 +13,7 @@ use log::debug;
 use rustc_codegen_ssa::traits::*;
 
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
-use rustc_middle::ty::{Instance, TypeFoldable};
+use rustc_middle::ty::{self, Instance, TypeFoldable};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -29,14 +29,18 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
 
     assert!(!instance.substs.needs_infer());
     assert!(!instance.substs.has_escaping_bound_vars());
-    assert!(!instance.substs.has_param_types_or_consts());
 
     if let Some(&llfn) = cx.instances.borrow().get(&instance) {
         return llfn;
     }
 
     let sym = tcx.symbol_name(instance).name;
-    debug!("get_fn({:?}: {:?}) => {}", instance, instance.monomorphic_ty(cx.tcx()), sym);
+    debug!(
+        "get_fn({:?}: {:?}) => {}",
+        instance,
+        instance.ty(cx.tcx(), ty::ParamEnv::reveal_all()),
+        sym
+    );
 
     let fn_abi = FnAbi::of_instance(cx, instance, &[]);
 

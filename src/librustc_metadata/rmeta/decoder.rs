@@ -1132,6 +1132,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, tcx))
     }
 
+    fn get_unused_generic_params(&self, id: DefIndex) -> FiniteBitSet<u64> {
+        self.root
+            .tables
+            .unused_generic_params
+            .get(self, id)
+            .filter(|_| !self.is_proc_macro(id))
+            .map(|params| params.decode(self))
+            .unwrap_or_default()
+    }
+
     fn get_promoted_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> IndexVec<Promoted, Body<'tcx>> {
         self.root
             .tables

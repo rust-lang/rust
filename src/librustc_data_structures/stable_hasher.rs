@@ -469,6 +469,15 @@ impl<R: vec::Idx, C: vec::Idx, CTX> HashStable<CTX> for bit_set::BitMatrix<R, C>
     }
 }
 
+impl<T, CTX> HashStable<CTX> for bit_set::FiniteBitSet<T>
+where
+    T: HashStable<CTX> + bit_set::FiniteBitSetTy,
+{
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.0.hash_stable(hcx, hasher);
+    }
+}
+
 impl_stable_hash_via_hash!(::std::path::Path);
 impl_stable_hash_via_hash!(::std::path::PathBuf);
 

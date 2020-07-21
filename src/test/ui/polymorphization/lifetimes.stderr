@@ -1,0 +1,17 @@
+error: item has unused generic parameters
+  --> $DIR/lifetimes.rs:9:8
+   |
+LL | pub fn unused<'a, T>(_: &'a u32) {
+   |        ^^^^^^     - generic parameter `T` is unused
+
+error: item has unused generic parameters
+  --> $DIR/lifetimes.rs:16:19
+   |
+LL | pub fn used<'a, T: Default>(_: &'a u32) -> u32 {
+   |                 - generic parameter `T` is unused
+LL |     let _: T = Default::default();
+LL |     let add_one = |x: u32| x + 1;
+   |                   ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

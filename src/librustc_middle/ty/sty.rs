@@ -318,6 +318,7 @@ pub struct ClosureSubsts<'tcx> {
 /// Struct returned by `split()`. Note that these are subslices of the
 /// parent slice and not canonical substs themselves.
 struct SplitClosureSubsts<'tcx> {
+    parent: &'tcx [GenericArg<'tcx>],
     closure_kind_ty: GenericArg<'tcx>,
     closure_sig_as_fn_ptr_ty: GenericArg<'tcx>,
     tupled_upvars_ty: GenericArg<'tcx>,
@@ -329,8 +330,13 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// ordering.
     fn split(self) -> SplitClosureSubsts<'tcx> {
         match self.substs[..] {
-            [.., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
-                SplitClosureSubsts { closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty }
+            [ref parent @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
+                SplitClosureSubsts {
+                    parent,
+                    closure_kind_ty,
+                    closure_sig_as_fn_ptr_ty,
+                    tupled_upvars_ty,
+                }
             }
             _ => bug!("closure substs missing synthetics"),
         }
@@ -345,9 +351,20 @@ impl<'tcx> ClosureSubsts<'tcx> {
         self.substs.len() >= 3 && matches!(self.split().tupled_upvars_ty.expect_ty().kind, Tuple(_))
     }
 
+    /// Returns the substitutions of the closure's parent.
+    pub fn parent_substs(self) -> &'tcx [GenericArg<'tcx>] {
+        self.split().parent
+    }
+
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        self.split().tupled_upvars_ty.expect_ty().tuple_fields()
+        self.tupled_upvars_ty().tuple_fields()
+    }
+
+    /// Returns the tuple type representing the upvars for this closure.
+    #[inline]
+    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
+        self.split().tupled_upvars_ty.expect_ty()
     }
 
     /// Returns the closure kind for this closure; may return a type
@@ -392,6 +409,7 @@ pub struct GeneratorSubsts<'tcx> {
 }
 
 struct SplitGeneratorSubsts<'tcx> {
+    parent: &'tcx [GenericArg<'tcx>],
     resume_ty: GenericArg<'tcx>,
     yield_ty: GenericArg<'tcx>,
     return_ty: GenericArg<'tcx>,
@@ -402,8 +420,15 @@ struct SplitGeneratorSubsts<'tcx> {
 impl<'tcx> GeneratorSubsts<'tcx> {
     fn split(self) -> SplitGeneratorSubsts<'tcx> {
         match self.substs[..] {
-            [.., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
-                SplitGeneratorSubsts { resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty }
+            [ref parent @ .., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
+                SplitGeneratorSubsts {
+                    parent,
+                    resume_ty,
+                    yield_ty,
+                    return_ty,
+                    witness,
+                    tupled_upvars_ty,
+                }
             }
             _ => bug!("generator substs missing synthetics"),
         }
@@ -418,6 +443,11 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         self.substs.len() >= 5 && matches!(self.split().tupled_upvars_ty.expect_ty().kind, Tuple(_))
     }
 
+    /// Returns the substitutions of the generator's parent.
+    pub fn parent_substs(self) -> &'tcx [GenericArg<'tcx>] {
+        self.split().parent
+    }
+
     /// This describes the types that can be contained in a generator.
     /// It will be a type variable initially and unified in the last stages of typeck of a body.
     /// It contains a tuple of all the types that could end up on a generator frame.
@@ -429,7 +459,13 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 
     #[inline]
     pub fn upvar_tys(self) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
-        self.split().tupled_upvars_ty.expect_ty().tuple_fields()
+        self.tupled_upvars_ty().tuple_fields()
+    }
+
+    /// Returns the tuple type representing the upvars for this generator.
+    #[inline]
+    pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
+        self.split().tupled_upvars_ty.expect_ty()
     }
 
     /// Returns the type representing the resume type of the generator.

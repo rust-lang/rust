@@ -2299,12 +2299,22 @@ impl<'tcx> ty::Instance<'tcx> {
     // or should go through `FnAbi` instead, to avoid losing any
     // adjustments `FnAbi::of_instance` might be performing.
     fn fn_sig_for_fn_abi(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let ty = self.monomorphic_ty(tcx);
+        // FIXME(davidtwco,eddyb): A `ParamEnv` should be passed through to this function.
+        let ty = self.ty(tcx, ty::ParamEnv::reveal_all());
         match ty.kind {
-            ty::FnDef(..) |
-            // Shims currently have type FnPtr. Not sure this should remain.
-            ty::FnPtr(_) => {
-                let mut sig = ty.fn_sig(tcx);
+            ty::FnDef(..) => {
+                // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
+                // parameters unused if they show up in the signature, but not in the `mir::Body`
+                // (i.e. due to being inside a projection that got normalized, see
+                // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
+                // track of a polymorphization `ParamEnv` to allow normalizing later.
+                let mut sig = match ty.kind {
+                    ty::FnDef(def_id, substs) => tcx
+                        .normalize_erasing_regions(tcx.param_env(def_id), tcx.fn_sig(def_id))
+                        .subst(tcx, substs),
+                    _ => unreachable!(),
+                };
+
                 if let ty::InstanceDef::VtableShim(..) = self.def {
                     // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
                     sig = sig.map_bound(|mut sig| {
@@ -2320,13 +2330,15 @@ impl<'tcx> ty::Instance<'tcx> {
                 let sig = substs.as_closure().sig();
 
                 let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-                sig.map_bound(|sig| tcx.mk_fn_sig(
-                    iter::once(env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
-                    sig.output(),
-                    sig.c_variadic,
-                    sig.unsafety,
-                    sig.abi
-                ))
+                sig.map_bound(|sig| {
+                    tcx.mk_fn_sig(
+                        iter::once(env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                        sig.output(),
+                        sig.c_variadic,
+                        sig.unsafety,
+                        sig.abi,
+                    )
+                })
             }
             ty::Generator(_, substs, _) => {
                 let sig = substs.as_generator().poly_sig();
@@ -2342,10 +2354,8 @@ impl<'tcx> ty::Instance<'tcx> {
                 sig.map_bound(|sig| {
                     let state_did = tcx.require_lang_item(GeneratorStateLangItem, None);
                     let state_adt_ref = tcx.adt_def(state_did);
-                    let state_substs = tcx.intern_substs(&[
-                        sig.yield_ty.into(),
-                        sig.return_ty.into(),
-                    ]);
+                    let state_substs =
+                        tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
                     let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
                     tcx.mk_fn_sig(
@@ -2353,11 +2363,11 @@ impl<'tcx> ty::Instance<'tcx> {
                         &ret_ty,
                         false,
                         hir::Unsafety::Normal,
-                        rustc_target::spec::abi::Abi::Rust
+                        rustc_target::spec::abi::Abi::Rust,
                     )
                 })
             }
-            _ => bug!("unexpected type {:?} in Instance::fn_sig", ty)
+            _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
         }
     }
 }

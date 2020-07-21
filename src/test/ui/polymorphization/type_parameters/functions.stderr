@@ -1,0 +1,35 @@
+error: item has unused generic parameters
+  --> $DIR/functions.rs:13:8
+   |
+LL | pub fn unused<T>() {
+   |        ^^^^^^ - generic parameter `T` is unused
+
+error: item has unused generic parameters
+  --> $DIR/functions.rs:44:12
+   |
+LL | impl<F: Default> Foo<F> {
+   |      - generic parameter `F` is unused
+...
+LL |     pub fn unused_impl() {
+   |            ^^^^^^^^^^^
+
+error: item has unused generic parameters
+  --> $DIR/functions.rs:50:12
+   |
+LL | impl<F: Default> Foo<F> {
+   |      - generic parameter `F` is unused
+...
+LL |     pub fn unused_both<G: Default>() {
+   |            ^^^^^^^^^^^ - generic parameter `G` is unused
+
+error: item has unused generic parameters
+  --> $DIR/functions.rs:62:12
+   |
+LL | impl<F: Default> Foo<F> {
+   |      - generic parameter `F` is unused
+...
+LL |     pub fn used_fn<G: Default>() {
+   |            ^^^^^^^
+
+error: aborting due to 4 previous errors
+

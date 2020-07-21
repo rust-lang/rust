@@ -205,14 +205,17 @@ pub fn push_debuginfo_type_name<'tcx>(
                 tcx.def_key(def_id).disambiguated_data.disambiguator
             ));
         }
+        // Type parameters from polymorphized functions.
+        ty::Param(_) => {
+            output.push_str(&format!("{:?}", t));
+        }
         ty::Error(_)
         | ty::Infer(_)
         | ty::Placeholder(..)
         | ty::Projection(..)
         | ty::Bound(..)
         | ty::Opaque(..)
-        | ty::GeneratorWitness(..)
-        | ty::Param(_) => {
+        | ty::GeneratorWitness(..) => {
             bug!(
                 "debuginfo: Trying to create type name for \
                   unexpected type: {:?}",

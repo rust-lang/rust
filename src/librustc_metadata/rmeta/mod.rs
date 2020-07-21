@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_hir::lang_items;
-use rustc_index::vec::IndexVec;
+use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
@@ -277,6 +277,7 @@ define_tables! {
     super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
     mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
+    unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u64>>>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]

@@ -1346,7 +1346,7 @@ pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
             .predicates
             .iter()
             .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-    !traits::normalize_and_test_predicates(
+    traits::impossible_predicates(
         cx.tcx,
         traits::elaborate_predicates(cx.tcx, predicates)
             .map(|o| o.predicate)

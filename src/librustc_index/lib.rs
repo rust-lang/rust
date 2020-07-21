@@ -1,4 +1,5 @@
 #![feature(allow_internal_unstable)]
+#![feature(bool_to_option)]
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(extend_one)]

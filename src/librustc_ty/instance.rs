@@ -3,7 +3,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeFoldable};
-use rustc_span::sym;
+use rustc_span::{sym, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use traits::{translate_substs, Reveal};
@@ -67,12 +67,19 @@ fn inner_resolve_instance<'tcx>(
                 let ty = substs.type_at(0);
 
                 if ty.needs_drop(tcx, param_env) {
-                    // `DropGlue` requires a monomorphic aka concrete type.
-                    if ty.needs_subst() {
-                        return Ok(None);
+                    debug!(" => nontrivial drop glue");
+                    match ty.kind {
+                        ty::Closure(..)
+                        | ty::Generator(..)
+                        | ty::Tuple(..)
+                        | ty::Adt(..)
+                        | ty::Dynamic(..)
+                        | ty::Array(..)
+                        | ty::Slice(..) => {}
+                        // Drop shims can only be built from ADTs.
+                        _ => return Ok(None),
                     }
 
-                    debug!(" => nontrivial drop glue");
                     ty::InstanceDef::DropGlue(def_id, Some(ty))
                 } else {
                     debug!(" => trivial drop glue");
@@ -224,17 +231,13 @@ fn resolve_associated_item<'tcx>(
                 trait_closure_kind,
             ))
         }
-        traits::ImplSourceFnPointer(ref data) => {
-            // `FnPtrShim` requires a monomorphic aka concrete type.
-            if data.fn_ty.needs_subst() {
-                return Ok(None);
-            }
-
-            Some(Instance {
+        traits::ImplSourceFnPointer(ref data) => match data.fn_ty.kind {
+            ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
                 def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
                 substs: rcvr_substs,
-            })
-        }
+            }),
+            _ => None,
+        },
         traits::ImplSourceObject(ref data) => {
             let index = traits::get_vtable_index_of_object_method(tcx, data, def_id);
             Some(Instance { def: ty::InstanceDef::Virtual(def_id, index), substs: rcvr_substs })
@@ -246,10 +249,12 @@ fn resolve_associated_item<'tcx>(
                 if name == sym::clone {
                     let self_ty = trait_ref.self_ty();
 
-                    // `CloneShim` requires a monomorphic aka concrete type.
-                    if self_ty.needs_subst() {
-                        return Ok(None);
-                    }
+                    let is_copy = self_ty.is_copy_modulo_regions(tcx.at(DUMMY_SP), param_env);
+                    match self_ty.kind {
+                        _ if is_copy => (),
+                        ty::Array(..) | ty::Closure(..) | ty::Tuple(..) => {}
+                        _ => return Ok(None),
+                    };
 
                     Some(Instance {
                         def: ty::InstanceDef::CloneShim(def_id, self_ty),

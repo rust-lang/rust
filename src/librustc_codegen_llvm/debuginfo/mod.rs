@@ -26,7 +26,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Instance, ParamEnv, Ty};
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeFoldable};
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::Symbol;
 use rustc_span::{self, BytePos, Span};
@@ -470,7 +470,9 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     match impl_self_ty.kind {
                         ty::Adt(def, ..) if !def.is_box() => {
                             // Again, only create type information if full debuginfo is enabled
-                            if cx.sess().opts.debuginfo == DebugInfo::Full {
+                            if cx.sess().opts.debuginfo == DebugInfo::Full
+                                && !impl_self_ty.needs_subst()
+                            {
                                 Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
                             } else {
                                 Some(namespace::item_namespace(cx, def.did))

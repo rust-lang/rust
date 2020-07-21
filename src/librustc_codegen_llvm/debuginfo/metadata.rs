@@ -700,6 +700,8 @@ pub fn type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>, usage_site_span: Sp
             prepare_tuple_metadata(cx, t, &tys, unique_type_id, usage_site_span, NO_SCOPE_METADATA)
                 .finalize(cx)
         }
+        // Type parameters from polymorphized functions.
+        ty::Param(_) => MetadataCreationResult::new(param_type_metadata(cx, t), false),
         _ => bug!("debuginfo: unexpected type in type_metadata: {:?}", t),
     };
 
@@ -953,6 +955,20 @@ fn pointer_type_metadata(
             name.len(),
         )
     }
+}
+
+fn param_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
+    debug!("param_type_metadata: {:?}", t);
+    let name = format!("{:?}", t);
+    return unsafe {
+        llvm::LLVMRustDIBuilderCreateBasicType(
+            DIB(cx),
+            name.as_ptr().cast(),
+            name.len(),
+            Size::ZERO.bits(),
+            DW_ATE_unsigned,
+        )
+    };
 }
 
 pub fn compile_unit_metadata(
@@ -2465,7 +2481,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
-    let variable_type = Instance::mono(cx.tcx, def_id).monomorphic_ty(cx.tcx);
+    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, ty::ParamEnv::reveal_all());
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(def_id).as_str();
     let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id)).name;

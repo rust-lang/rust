@@ -358,9 +358,9 @@ fn collect_items_rec<'tcx>(
             let instance = Instance::mono(tcx, def_id);
 
             // Sanity check whether this ended up being collected accidentally
-            debug_assert!(should_monomorphize_locally(tcx, &instance));
+            debug_assert!(should_codegen_locally(tcx, &instance));
 
-            let ty = instance.monomorphic_ty(tcx);
+            let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
             visit_drop_use(tcx, ty, true, starting_point.span, &mut neighbors);
 
             recursion_depth_reset = None;
@@ -371,7 +371,7 @@ fn collect_items_rec<'tcx>(
         }
         MonoItem::Fn(instance) => {
             // Sanity check whether this ended up being collected accidentally
-            debug_assert!(should_monomorphize_locally(tcx, &instance));
+            debug_assert!(should_codegen_locally(tcx, &instance));
 
             // Keep track of the monomorphization recursion depth
             recursion_depth_reset =
@@ -584,8 +584,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                             substs,
                             ty::ClosureKind::FnOnce,
                         );
-                        if should_monomorphize_locally(self.tcx, &instance) {
-                            self.output.push(create_fn_mono_item(instance, span));
+                        if should_codegen_locally(self.tcx, &instance) {
+                            self.output.push(create_fn_mono_item(self.tcx, instance, span));
                         }
                     }
                     _ => bug!(),
@@ -596,14 +596,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let exchange_malloc_fn_def_id =
                     tcx.require_lang_item(ExchangeMallocFnLangItem, None);
                 let instance = Instance::mono(tcx, exchange_malloc_fn_def_id);
-                if should_monomorphize_locally(tcx, &instance) {
-                    self.output.push(create_fn_mono_item(instance, span));
+                if should_codegen_locally(tcx, &instance) {
+                    self.output.push(create_fn_mono_item(self.tcx, instance, span));
                 }
             }
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(self.tcx.is_thread_local_static(def_id));
                 let instance = Instance::mono(self.tcx, def_id);
-                if should_monomorphize_locally(self.tcx, &instance) {
+                if should_codegen_locally(self.tcx, &instance) {
                     trace!("collecting thread-local static {:?}", def_id);
                     self.output.push(respan(span, MonoItem::Static(def_id)));
                 }
@@ -664,7 +664,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
                             let instance = Instance::mono(self.tcx, def_id);
-                            if should_monomorphize_locally(self.tcx, &instance) {
+                            if should_codegen_locally(self.tcx, &instance) {
                                 trace!("collecting asm sym static {:?}", def_id);
                                 self.output.push(respan(source, MonoItem::Static(def_id)));
                             }
@@ -735,7 +735,7 @@ fn visit_instance_use<'tcx>(
     output: &mut Vec<Spanned<MonoItem<'tcx>>>,
 ) {
     debug!("visit_item_use({:?}, is_direct_call={:?})", instance, is_direct_call);
-    if !should_monomorphize_locally(tcx, &instance) {
+    if !should_codegen_locally(tcx, &instance) {
         return;
     }
 
@@ -748,7 +748,7 @@ fn visit_instance_use<'tcx>(
         ty::InstanceDef::DropGlue(_, None) => {
             // Don't need to emit noop drop glue if we are calling directly.
             if !is_direct_call {
-                output.push(create_fn_mono_item(instance, source));
+                output.push(create_fn_mono_item(tcx, instance, source));
             }
         }
         ty::InstanceDef::DropGlue(_, Some(_))
@@ -758,7 +758,7 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceDef::Item(..)
         | ty::InstanceDef::FnPtrShim(..)
         | ty::InstanceDef::CloneShim(..) => {
-            output.push(create_fn_mono_item(instance, source));
+            output.push(create_fn_mono_item(tcx, instance, source));
         }
     }
 }
@@ -766,7 +766,7 @@ fn visit_instance_use<'tcx>(
 // Returns `true` if we should codegen an instance in the local crate.
 // Returns `false` if we can just link to the upstream crate and therefore don't
 // need a mono item.
-fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) -> bool {
+fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) -> bool {
     let def_id = match instance.def {
         ty::InstanceDef::Item(def) => def.did,
         ty::InstanceDef::DropGlue(def_id, Some(_)) => def_id,
@@ -781,20 +781,19 @@ fn should_monomorphize_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx
     };
 
     if tcx.is_foreign_item(def_id) {
-        // Foreign items are always linked against, there's no way of
-        // instantiating them.
+        // Foreign items are always linked against, there's no way of instantiating them.
         return false;
     }
 
     if def_id.is_local() {
-        // Local items cannot be referred to locally without
-        // monomorphizing them locally.
+        // Local items cannot be referred to locally without monomorphizing them locally.
         return true;
     }
 
-    if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(tcx).is_some() {
-        // We can link to the item in question, no instance needed
-        // in this crate.
+    if tcx.is_reachable_non_generic(def_id)
+        || instance.polymorphize(tcx).upstream_monomorphization(tcx).is_some()
+    {
+        // We can link to the item in question, no instance needed in this crate.
         return false;
     }
 
@@ -903,9 +902,13 @@ fn find_vtable_types_for_unsizing<'tcx>(
     }
 }
 
-fn create_fn_mono_item(instance: Instance<'_>, source: Span) -> Spanned<MonoItem<'_>> {
+fn create_fn_mono_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    source: Span,
+) -> Spanned<MonoItem<'tcx>> {
     debug!("create_fn_mono_item(instance={})", instance);
-    respan(source, MonoItem::Fn(instance))
+    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
@@ -917,12 +920,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
     source: Span,
     output: &mut Vec<Spanned<MonoItem<'tcx>>>,
 ) {
-    assert!(
-        !trait_ty.needs_subst()
-            && !trait_ty.has_escaping_bound_vars()
-            && !impl_ty.needs_subst()
-            && !impl_ty.has_escaping_bound_vars()
-    );
+    assert!(!trait_ty.has_escaping_bound_vars() && !impl_ty.has_escaping_bound_vars());
 
     if let ty::Dynamic(ref trait_ty, ..) = trait_ty.kind {
         if let Some(principal) = trait_ty.principal() {
@@ -944,8 +942,8 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                     )
                     .unwrap()
                 })
-                .filter(|&instance| should_monomorphize_locally(tcx, &instance))
-                .map(|item| create_fn_mono_item(item, source));
+                .filter(|&instance| should_codegen_locally(tcx, &instance))
+                .map(|item| create_fn_mono_item(tcx, item, source));
             output.extend(methods);
         }
 
@@ -997,7 +995,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                         );
 
                         let ty = Instance::new(def_id.to_def_id(), InternalSubsts::empty())
-                            .monomorphic_ty(self.tcx);
+                            .ty(self.tcx, ty::ParamEnv::reveal_all());
                         visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                     }
                 }
@@ -1069,7 +1067,7 @@ impl RootCollector<'_, 'v> {
             debug!("RootCollector::push_if_root: found root def_id={:?}", def_id);
 
             let instance = Instance::mono(self.tcx, def_id.to_def_id());
-            self.output.push(create_fn_mono_item(instance, DUMMY_SP));
+            self.output.push(create_fn_mono_item(self.tcx, instance, DUMMY_SP));
         }
     }
 
@@ -1106,7 +1104,7 @@ impl RootCollector<'_, 'v> {
         .unwrap()
         .unwrap();
 
-        self.output.push(create_fn_mono_item(start_instance, DUMMY_SP));
+        self.output.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
     }
 }
 
@@ -1163,9 +1161,8 @@ fn create_mono_items_for_default_impls<'tcx>(
                         .unwrap()
                         .unwrap();
 
-                    let mono_item = create_fn_mono_item(instance, DUMMY_SP);
-                    if mono_item.node.is_instantiable(tcx)
-                        && should_monomorphize_locally(tcx, &instance)
+                    let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);
+                    if mono_item.node.is_instantiable(tcx) && should_codegen_locally(tcx, &instance)
                     {
                         output.push(mono_item);
                     }
@@ -1186,7 +1183,7 @@ fn collect_miri<'tcx>(
         GlobalAlloc::Static(def_id) => {
             assert!(!tcx.is_thread_local_static(def_id));
             let instance = Instance::mono(tcx, def_id);
-            if should_monomorphize_locally(tcx, &instance) {
+            if should_codegen_locally(tcx, &instance) {
                 trace!("collecting static {:?}", def_id);
                 output.push(dummy_spanned(MonoItem::Static(def_id)));
             }
@@ -1200,9 +1197,9 @@ fn collect_miri<'tcx>(
             }
         }
         GlobalAlloc::Function(fn_instance) => {
-            if should_monomorphize_locally(tcx, &fn_instance) {
+            if should_codegen_locally(tcx, &fn_instance) {
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
-                output.push(create_fn_mono_item(fn_instance, DUMMY_SP));
+                output.push(create_fn_mono_item(tcx, fn_instance, DUMMY_SP));
             }
         }
     }

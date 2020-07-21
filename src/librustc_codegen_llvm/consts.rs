@@ -203,7 +203,7 @@ impl CodegenCx<'ll, 'tcx> {
             def_id
         );
 
-        let ty = instance.monomorphic_ty(self.tcx);
+        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
         let sym = self.tcx.symbol_name(instance).name;
 
         debug!("get_static: sym={} instance={:?}", sym, instance);
@@ -361,7 +361,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             };
 
             let instance = Instance::mono(self.tcx, def_id);
-            let ty = instance.monomorphic_ty(self.tcx);
+            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
             let llty = self.layout_of(ty).llvm_type(self);
             let g = if val_llty == llty {
                 g
