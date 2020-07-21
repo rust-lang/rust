@@ -36,3 +36,4 @@ hide_output make install
 cd ..
 rm -rf curl-build
 rm -rf curl-$VERSION
+yum erase -y curl

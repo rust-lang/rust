@@ -103,13 +103,9 @@ rustc_queries! {
         /// // ^ While calling `opt_const_param_of` for other bodies returns `None`.
         /// }
         /// ```
-        // It looks like caching this query on disk actually slightly
-        // worsened performance in #74376.
-        //
-        // Once const generics are more prevalently used, we might want to
-        // consider only caching calls returning `Some`.
         query opt_const_param_of(key: LocalDefId) -> Option<DefId> {
             desc { |tcx| "computing the optional const parameter of `{}`", tcx.def_path_str(key.to_def_id()) }
+            // FIXME(#74113): consider storing this query on disk.
         }
 
         /// Records the type of every item.
@@ -1313,13 +1309,6 @@ rustc_queries! {
         query codegen_unit(_: Symbol) -> &'tcx CodegenUnit<'tcx> {
             desc { "codegen_unit" }
         }
-        query unused_generic_params(key: DefId) -> FiniteBitSet<u64> {
-            cache_on_disk_if { key.is_local() }
-            desc {
-                |tcx| "determining which generic parameters are unused by `{}`",
-                    tcx.def_path_str(key)
-            }
-        }
         query backend_optimization_level(_: CrateNum) -> OptLevel {
             desc { "optimization level used by backend" }
         }
@@ -1472,9 +1461,9 @@ rustc_queries! {
             desc { "normalizing `{:?}`", goal }
         }
 
-        query subst_and_check_impossible_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
+        query substitute_normalize_and_test_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
             desc { |tcx|
-                "impossible substituted predicates:`{}`",
+                "testing substituted normalized predicates:`{}`",
                 tcx.def_path_str(key.0)
             }
         }

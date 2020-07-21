@@ -85,19 +85,7 @@ impl FlagComputation {
             }
 
             &ty::Generator(_, ref substs, _) => {
-                let substs = substs.as_generator();
-                let should_remove_further_specializable =
-                    !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-                self.add_substs(substs.parent_substs());
-                if should_remove_further_specializable {
-                    self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
-                }
-
-                self.add_ty(substs.resume_ty());
-                self.add_ty(substs.return_ty());
-                self.add_ty(substs.witness());
-                self.add_ty(substs.yield_ty());
-                self.add_ty(substs.tupled_upvars_ty());
+                self.add_substs(substs);
             }
 
             &ty::GeneratorWitness(ts) => {
@@ -107,17 +95,7 @@ impl FlagComputation {
             }
 
             &ty::Closure(_, substs) => {
-                let substs = substs.as_closure();
-                let should_remove_further_specializable =
-                    !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
-                self.add_substs(substs.parent_substs());
-                if should_remove_further_specializable {
-                    self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
-                }
-
-                self.add_ty(substs.sig_as_fn_ptr_ty());
-                self.add_ty(substs.kind_ty());
-                self.add_ty(substs.tupled_upvars_ty());
+                self.add_substs(substs);
             }
 
             &ty::Bound(debruijn, _) => {

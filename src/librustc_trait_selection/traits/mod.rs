@@ -418,14 +418,15 @@ where
     Ok(resolved_value)
 }
 
-/// Normalizes the predicates and checks whether they hold in an empty environment. If this
-/// returns true, then either normalize encountered an error or one of the predicates did not
-/// hold. Used when creating vtables to check for unsatisfiable methods.
-pub fn impossible_predicates<'tcx>(
+/// Normalizes the predicates and checks whether they hold in an empty
+/// environment. If this returns false, then either normalize
+/// encountered an error or one of the predicates did not hold. Used
+/// when creating vtables to check for unsatisfiable methods.
+pub fn normalize_and_test_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: Vec<ty::Predicate<'tcx>>,
 ) -> bool {
-    debug!("impossible_predicates(predicates={:?})", predicates);
+    debug!("normalize_and_test_predicates(predicates={:?})", predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
         let param_env = ty::ParamEnv::reveal_all();
@@ -442,23 +443,22 @@ pub fn impossible_predicates<'tcx>(
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
         }
 
-        fulfill_cx.select_all_or_error(&infcx).is_err()
+        fulfill_cx.select_all_or_error(&infcx).is_ok()
     });
-    debug!("impossible_predicates(predicates={:?}) = {:?}", predicates, result);
+    debug!("normalize_and_test_predicates(predicates={:?}) = {:?}", predicates, result);
     result
 }
 
-fn subst_and_check_impossible_predicates<'tcx>(
+fn substitute_normalize_and_test_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (DefId, SubstsRef<'tcx>),
 ) -> bool {
-    debug!("subst_and_check_impossible_predicates(key={:?})", key);
+    debug!("substitute_normalize_and_test_predicates(key={:?})", key);
 
-    let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
-    predicates.retain(|predicate| !predicate.needs_subst());
-    let result = impossible_predicates(tcx, predicates);
+    let predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
+    let result = normalize_and_test_predicates(tcx, predicates);
 
-    debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
+    debug!("substitute_normalize_and_test_predicates(key={:?}) = {:?}", key, result);
     result
 }
 
@@ -510,7 +510,7 @@ fn vtable_methods<'tcx>(
             // Note that this method could then never be called, so we
             // do not want to try and codegen it, in that case (see #23435).
             let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-            if impossible_predicates(tcx, predicates.predicates) {
+            if !normalize_and_test_predicates(tcx, predicates.predicates) {
                 debug!("vtable_methods: predicates do not hold");
                 return None;
             }
@@ -558,8 +558,8 @@ pub fn provide(providers: &mut ty::query::Providers) {
         specializes: specialize::specializes,
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
         vtable_methods,
+        substitute_normalize_and_test_predicates,
         type_implements_trait,
-        subst_and_check_impossible_predicates,
         ..*providers
     };
 }

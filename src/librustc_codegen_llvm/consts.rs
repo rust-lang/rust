@@ -203,7 +203,7 @@ impl CodegenCx<'ll, 'tcx> {
             def_id
         );
 
-        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+        let ty = instance.monomorphic_ty(self.tcx);
         let sym = self.tcx.symbol_name(instance).name;
 
         debug!("get_static: sym={} instance={:?}", sym, instance);
@@ -361,7 +361,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             };
 
             let instance = Instance::mono(self.tcx, def_id);
-            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            let ty = instance.monomorphic_ty(self.tcx);
             let llty = self.layout_of(ty).llvm_type(self);
             let g = if val_llty == llty {
                 g
@@ -493,14 +493,10 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             }
 
             if attrs.flags.contains(CodegenFnAttrFlags::USED) {
-                self.add_used_global(g);
+                // This static will be stored in the llvm.used variable which is an array of i8*
+                let cast = llvm::LLVMConstPointerCast(g, self.type_i8p());
+                self.used_statics.borrow_mut().push(cast);
             }
         }
-    }
-
-    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
-    fn add_used_global(&self, global: &'ll Value) {
-        let cast = unsafe { llvm::LLVMConstPointerCast(global, self.type_i8p()) };
-        self.used_statics.borrow_mut().push(cast);
     }
 }
