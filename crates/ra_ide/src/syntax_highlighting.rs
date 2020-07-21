@@ -540,7 +540,6 @@ fn highlight_element(
             }
         }
         p if p.is_punct() => match p {
-            T![#] => HighlightTag::Attribute.into(),
             T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] | T![@] => {
                 HighlightTag::Operator.into()
             }
@@ -580,6 +579,9 @@ fn highlight_element(
             }
             _ if element.parent().and_then(ast::DotDotPat::cast).is_some() => {
                 HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::Attr::cast).is_some() => {
+                HighlightTag::Attribute.into()
             }
             _ => HighlightTag::Punctuation.into(),
         },
