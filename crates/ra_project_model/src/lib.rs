@@ -7,7 +7,6 @@ mod sysroot;
 use std::{
     fs::{self, read_dir, ReadDir},
     io,
-    path::Path,
     process::{Command, Output},
 };
 
@@ -35,7 +34,7 @@ pub enum ProjectWorkspace {
 /// `PackageRoot` describes a package root folder.
 /// Which may be an external dependency, or a member of
 /// the current workspace.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PackageRoot {
     /// Is a member of the current workspace
     pub is_member: bool,
@@ -178,14 +177,16 @@ impl ProjectWorkspace {
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
             ProjectWorkspace::Json { project } => project
-                .roots
+                .crates
                 .iter()
-                .map(|r| {
-                    let path = r.path.clone();
-                    let include = vec![path];
-                    PackageRoot { is_member: true, include, exclude: Vec::new() }
+                .map(|krate| PackageRoot {
+                    is_member: krate.is_workspace_member,
+                    include: krate.include.clone(),
+                    exclude: krate.exclude.clone(),
                 })
-                .collect(),
+                .collect::<FxHashSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>(),
             ProjectWorkspace::Cargo { cargo, sysroot } => cargo
                 .packages()
                 .map(|pkg| {
@@ -504,18 +505,6 @@ impl ProjectWorkspace {
             }
         }
         crate_graph
-    }
-
-    pub fn workspace_root_for(&self, path: &Path) -> Option<&AbsPath> {
-        match self {
-            ProjectWorkspace::Cargo { cargo, .. } => {
-                Some(cargo.workspace_root()).filter(|root| path.starts_with(root))
-            }
-            ProjectWorkspace::Json { project: ProjectJson { roots, .. }, .. } => roots
-                .iter()
-                .find(|root| path.starts_with(&root.path))
-                .map(|root| root.path.as_path()),
-        }
     }
 }
 

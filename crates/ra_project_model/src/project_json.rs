@@ -12,15 +12,7 @@ use stdx::split_delim;
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectJson {
-    pub(crate) roots: Vec<Root>,
     pub(crate) crates: Vec<Crate>,
-}
-
-/// A root points to the directory which contains Rust crates. rust-analyzer watches all files in
-/// all roots. Roots might be nested.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Root {
-    pub(crate) path: AbsPathBuf,
 }
 
 /// A crate points to the root module of a crate and lists the dependencies of the crate. This is
@@ -35,12 +27,13 @@ pub struct Crate {
     pub(crate) out_dir: Option<AbsPathBuf>,
     pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
     pub(crate) is_workspace_member: bool,
+    pub(crate) include: Vec<AbsPathBuf>,
+    pub(crate) exclude: Vec<AbsPathBuf>,
 }
 
 impl ProjectJson {
     pub fn new(base: &AbsPath, data: ProjectJsonData) -> ProjectJson {
         ProjectJson {
-            roots: data.roots.into_iter().map(|path| Root { path: base.join(path) }).collect(),
             crates: data
                 .crates
                 .into_iter()
@@ -50,8 +43,19 @@ impl ProjectJson {
                             && !crate_data.root_module.starts_with("..")
                             || crate_data.root_module.starts_with(base)
                     });
+                    let root_module = base.join(crate_data.root_module);
+                    let (include, exclude) = match crate_data.source {
+                        Some(src) => {
+                            let absolutize = |dirs: Vec<PathBuf>| {
+                                dirs.into_iter().map(|it| base.join(it)).collect::<Vec<_>>()
+                            };
+                            (absolutize(src.include_dirs), absolutize(src.exclude_dirs))
+                        }
+                        None => (vec![root_module.parent().unwrap().to_path_buf()], Vec::new()),
+                    };
+
                     Crate {
-                        root_module: base.join(crate_data.root_module),
+                        root_module,
                         edition: crate_data.edition.into(),
                         deps: crate_data
                             .deps
@@ -79,6 +83,8 @@ impl ProjectJson {
                             .proc_macro_dylib_path
                             .map(|it| base.join(it)),
                         is_workspace_member,
+                        include,
+                        exclude,
                     }
                 })
                 .collect::<Vec<_>>(),
@@ -88,7 +94,6 @@ impl ProjectJson {
 
 #[derive(Deserialize)]
 pub struct ProjectJsonData {
-    roots: Vec<PathBuf>,
     crates: Vec<CrateData>,
 }
 
@@ -103,6 +108,7 @@ struct CrateData {
     out_dir: Option<PathBuf>,
     proc_macro_dylib_path: Option<PathBuf>,
     is_workspace_member: Option<bool>,
+    source: Option<CrateSource>,
 }
 
 #[derive(Deserialize)]
@@ -130,6 +136,12 @@ struct DepData {
     krate: usize,
     #[serde(deserialize_with = "deserialize_crate_name")]
     name: CrateName,
+}
+
+#[derive(Deserialize)]
+struct CrateSource {
+    include_dirs: Vec<PathBuf>,
+    exclude_dirs: Vec<PathBuf>,
 }
 
 fn deserialize_crate_name<'de, D>(de: D) -> Result<CrateName, D::Error>
