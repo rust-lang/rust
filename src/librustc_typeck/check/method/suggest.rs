@@ -571,9 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut type_params = FxHashMap::default();
                     let mut bound_spans = vec![];
 
-                    let mut collect_type_param_suggestions = {
-                        // We need to move `tcx` while only borrowing the rest,
-                        // this is kind of ugly.
+                    let mut collect_type_param_suggestions =
                         |self_ty: Ty<'tcx>, parent_pred: &ty::Predicate<'tcx>, obligation: &str| {
                             // We don't care about regions here, so it's fine to skip the binder here.
                             if let (ty::Param(_), ty::PredicateAtom::Trait(p, _)) =
@@ -601,8 +599,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     }
                                 }
                             }
-                        }
-                    };
+                        };
                     let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
                         let msg = format!(
                             "doesn't satisfy `{}`",
