@@ -9,15 +9,18 @@ use crate::build::scope::DropKind;
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use crate::hair::{self, *};
-use rustc_data_structures::{fx::{FxHashMap, FxHashSet}, stack::ensure_sufficient_stack};
+use crate::thir::{self, *};
+use rustc_data_structures::{
+    fx::{FxHashMap, FxHashSet},
+    stack::ensure_sufficient_stack,
+};
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::Span;
 use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use smallvec::{smallvec, SmallVec};
 
@@ -395,7 +398,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         ..
                     },
                 ascription:
-                    hair::pattern::Ascription { user_ty: pat_ascription_ty, variance: _, user_ty_span },
+                    thir::pattern::Ascription { user_ty: pat_ascription_ty, variance: _, user_ty_span },
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
@@ -631,7 +634,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: hair::pattern::Ascription { ref user_ty, user_ty_span, variance: _ },
+                ascription: thir::pattern::Ascription { ref user_ty, user_ty_span, variance: _ },
             } => {
                 // This corresponds to something like
                 //
@@ -1982,16 +1985,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             source_info,
             internal: false,
             is_block_tail: None,
-            local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                binding_mode,
-                // hypothetically, `visit_primary_bindings` could try to unzip
-                // an outermost hir::Ty as we descend, matching up
-                // idents in pat; but complex w/ unclear UI payoff.
-                // Instead, just abandon providing diagnostic info.
-                opt_ty_info: None,
-                opt_match_place,
-                pat_span,
-            })))),
+            local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                VarBindingForm {
+                    binding_mode,
+                    // hypothetically, `visit_primary_bindings` could try to unzip
+                    // an outermost hir::Ty as we descend, matching up
+                    // idents in pat; but complex w/ unclear UI payoff.
+                    // Instead, just abandon providing diagnostic info.
+                    opt_ty_info: None,
+                    opt_match_place,
+                    pat_span,
+                },
+            )))),
         };
         let for_arm_body = self.local_decls.push(local);
         self.var_debug_info.push(VarDebugInfo {
@@ -2009,7 +2014,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 source_info,
                 internal: false,
                 is_block_tail: None,
-                local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard))),
+                local_info: Some(box LocalInfo::User(ClearCrossCrate::Set(
+                    BindingForm::RefForGuard,
+                ))),
             });
             self.var_debug_info.push(VarDebugInfo {
                 name,

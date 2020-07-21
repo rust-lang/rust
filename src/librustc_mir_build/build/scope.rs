@@ -1,6 +1,6 @@
 /*!
 Managing the scope stack. The scopes are tied to lexical scopes, so as
-we descend the HAIR, we push a scope on the stack, build its
+we descend the THIR, we push a scope on the stack, build its
 contents, and then pop it off. Every scope is named by a
 `region::Scope`.
 
@@ -83,12 +83,12 @@ should go to.
 */
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use crate::hair::{Expr, ExprRef, LintLevel};
-use rustc_middle::middle::region;
-use rustc_middle::mir::*;
+use crate::thir::{Expr, ExprRef, LintLevel};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::GeneratorKind;
+use rustc_middle::middle::region;
+use rustc_middle::mir::*;
 use rustc_span::{Span, DUMMY_SP};
 use std::collections::hash_map::Entry;
 use std::mem;

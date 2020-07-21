@@ -1,6 +1,6 @@
-use crate::hair::cx::to_ref::ToRef;
-use crate::hair::cx::Cx;
-use crate::hair::{self, *};
+use crate::thir::cx::to_ref::ToRef;
+use crate::thir::cx::Cx;
+use crate::thir::{self, *};
 
 use rustc_hir as hir;
 use rustc_middle::middle::region;
@@ -71,7 +71,7 @@ fn mirror_stmts<'a, 'tcx>(
                             ty: pattern.ty,
                             span: pattern.span,
                             kind: Box::new(PatKind::AscribeUserType {
-                                ascription: hair::pattern::Ascription {
+                                ascription: thir::pattern::Ascription {
                                     user_ty: PatTyProj::from_user_type(user_ty),
                                     user_ty_span: ty.span,
                                     variance: ty::Variance::Covariant,

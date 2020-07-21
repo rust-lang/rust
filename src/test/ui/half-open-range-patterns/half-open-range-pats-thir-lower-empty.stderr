@@ -1,155 +1,155 @@
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:12:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:12:11
    |
 LL |     m!(0, ..core::u8::MIN);
    |           ^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:15:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:15:11
    |
 LL |     m!(0, ..core::u16::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:18:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:18:11
    |
 LL |     m!(0, ..core::u32::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:21:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:21:11
    |
 LL |     m!(0, ..core::u64::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:24:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:24:11
    |
 LL |     m!(0, ..core::u128::MIN);
    |           ^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:28:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:28:11
    |
 LL |     m!(0, ..core::i8::MIN);
    |           ^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:31:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:31:11
    |
 LL |     m!(0, ..core::i16::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:34:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:34:11
    |
 LL |     m!(0, ..core::i32::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:37:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:37:11
    |
 LL |     m!(0, ..core::i64::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:40:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:40:11
    |
 LL |     m!(0, ..core::i128::MIN);
    |           ^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:44:14
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:44:14
    |
 LL |     m!(0f32, ..core::f32::NEG_INFINITY);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:47:14
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:47:14
    |
 LL |     m!(0f64, ..core::f64::NEG_INFINITY);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:51:13
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:51:13
    |
 LL |     m!('a', ..'\u{0}');
    |             ^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:12:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:12:11
    |
 LL |     m!(0, ..core::u8::MIN);
    |           ^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:15:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:15:11
    |
 LL |     m!(0, ..core::u16::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:18:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:18:11
    |
 LL |     m!(0, ..core::u32::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:21:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:21:11
    |
 LL |     m!(0, ..core::u64::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:24:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:24:11
    |
 LL |     m!(0, ..core::u128::MIN);
    |           ^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:28:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:28:11
    |
 LL |     m!(0, ..core::i8::MIN);
    |           ^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:31:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:31:11
    |
 LL |     m!(0, ..core::i16::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:34:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:34:11
    |
 LL |     m!(0, ..core::i32::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:37:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:37:11
    |
 LL |     m!(0, ..core::i64::MIN);
    |           ^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:40:11
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:40:11
    |
 LL |     m!(0, ..core::i128::MIN);
    |           ^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:44:14
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:44:14
    |
 LL |     m!(0f32, ..core::f32::NEG_INFINITY);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:47:14
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:47:14
    |
 LL |     m!(0f64, ..core::f64::NEG_INFINITY);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0579]: lower range bound must be less than upper
-  --> $DIR/half-open-range-pats-hair-lower-empty.rs:51:13
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:51:13
    |
 LL |     m!('a', ..'\u{0}');
    |             ^^^^^^^^^

@@ -1,4 +1,4 @@
-use crate::hair::*;
+use crate::thir::*;
 
 use rustc_hir as hir;
 
@@ -11,7 +11,7 @@ impl<'tcx> ToRef for &'tcx hir::Expr<'tcx> {
     type Output = ExprRef<'tcx>;
 
     fn to_ref(self) -> ExprRef<'tcx> {
-        ExprRef::Hair(self)
+        ExprRef::Thir(self)
     }
 }
 
@@ -19,7 +19,7 @@ impl<'tcx> ToRef for &'tcx &'tcx hir::Expr<'tcx> {
     type Output = ExprRef<'tcx>;
 
     fn to_ref(self) -> ExprRef<'tcx> {
-        ExprRef::Hair(&**self)
+        ExprRef::Thir(&**self)
     }
 }
 

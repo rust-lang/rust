@@ -1,5 +1,5 @@
-//! The MIR is built from some high-level abstract IR
-//! (HAIR). This section defines the HAIR along with a trait for
+//! The MIR is built from some typed high-level IR
+//! (THIR). This section defines the THIR along with a trait for
 //! accessing it. The intention is to allow MIR construction to be
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
@@ -99,18 +99,18 @@ crate enum StmtKind<'tcx> {
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(Expr<'_>, 168);
 
-/// The Hair trait implementor lowers their expressions (`&'tcx H::Expr`)
+/// The Thir trait implementor lowers their expressions (`&'tcx H::Expr`)
 /// into instances of this `Expr` enum. This lowering can be done
 /// basically as lazily or as eagerly as desired: every recursive
 /// reference to an expression in this enum is an `ExprRef<'tcx>`, which
 /// may in turn be another instance of this enum (boxed), or else an
 /// unlowered `&'tcx H::Expr`. Note that instances of `Expr` are very
-/// short-lived. They are created by `Hair::to_expr`, analyzed and
+/// short-lived. They are created by `Thir::to_expr`, analyzed and
 /// converted into MIR, and then discarded.
 ///
 /// If you compare `Expr` to the full compiler AST, you will see it is
 /// a good bit simpler. In fact, a number of the more straight-forward
-/// MIR simplifications are already done in the impl of `Hair`. For
+/// MIR simplifications are already done in the impl of `Thir`. For
 /// example, method calls and overloaded operators are absent: they are
 /// expected to be converted into `Expr::Call` instances.
 #[derive(Clone, Debug)]
@@ -302,7 +302,7 @@ crate enum ExprKind<'tcx> {
 
 #[derive(Clone, Debug)]
 crate enum ExprRef<'tcx> {
-    Hair(&'tcx hir::Expr<'tcx>),
+    Thir(&'tcx hir::Expr<'tcx>),
     Mirror(Box<Expr<'tcx>>),
 }
 
@@ -342,7 +342,7 @@ crate enum LogicalOp {
 impl<'tcx> ExprRef<'tcx> {
     crate fn span(&self) -> Span {
         match self {
-            ExprRef::Hair(expr) => expr.span,
+            ExprRef::Thir(expr) => expr.span,
             ExprRef::Mirror(expr) => expr.span,
         }
     }
@@ -385,7 +385,7 @@ crate enum InlineAsmOperand<'tcx> {
 // The Mirror trait
 
 /// "Mirroring" is the process of converting from a HIR type into one
-/// of the HAIR types defined in this file. This is basically a "on
+/// of the THIR types defined in this file. This is basically a "on
 /// the fly" desugaring step that hides a lot of the messiness in the
 /// tcx. For example, the mirror of a `&'tcx hir::Expr` is an
 /// `Expr<'tcx>`.
@@ -394,7 +394,7 @@ crate enum InlineAsmOperand<'tcx> {
 /// + e2`, the references to the inner expressions `e1` and `e2` are
 /// `ExprRef<'tcx>` instances, and they may or may not be eagerly
 /// mirrored. This allows a single AST node from the compiler to
-/// expand into one or more Hair nodes, which lets the Hair nodes be
+/// expand into one or more Thir nodes, which lets the Thir nodes be
 /// simpler.
 crate trait Mirror<'tcx> {
     type Output;
@@ -415,7 +415,7 @@ impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
 
     fn make_mirror(self, hir: &mut Cx<'_, 'tcx>) -> Expr<'tcx> {
         match self {
-            ExprRef::Hair(h) => h.make_mirror(hir),
+            ExprRef::Thir(h) => h.make_mirror(hir),
             ExprRef::Mirror(m) => *m,
         }
     }
