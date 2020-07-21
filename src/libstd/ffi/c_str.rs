@@ -1551,6 +1551,27 @@ impl ops::Index<ops::RangeFull> for CString {
     }
 }
 
+#[stable(feature = "cstr_range_from", since = "1.47.0")]
+impl ops::Index<ops::RangeFrom<usize>> for CStr {
+    type Output = CStr;
+
+    fn index(&self, index: ops::RangeFrom<usize>) -> &CStr {
+        let bytes = self.to_bytes_with_nul();
+        // we need to manually check the starting index to account for the null
+        // byte, since otherwise we could get an empty string that doesn't end
+        // in a null.
+        if index.start < bytes.len() {
+            unsafe { CStr::from_bytes_with_nul_unchecked(&bytes[index.start..]) }
+        } else {
+            panic!(
+                "index out of bounds: the len is {} but the index is {}",
+                bytes.len(),
+                index.start
+            );
+        }
+    }
+}
+
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 impl AsRef<CStr> for CStr {
     #[inline]
@@ -1746,5 +1767,22 @@ mod tests {
         const CSTR: &CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"Hello, world!\0") };
 
         assert_eq!(CSTR.to_str().unwrap(), "Hello, world!");
+    }
+
+    #[test]
+    fn cstr_index_from() {
+        let original = b"Hello, world!\0";
+        let cstr = CStr::from_bytes_with_nul(original).unwrap();
+        let result = CStr::from_bytes_with_nul(&original[7..]).unwrap();
+
+        assert_eq!(&cstr[7..], result);
+    }
+
+    #[test]
+    #[should_panic]
+    fn cstr_index_from_empty() {
+        let original = b"Hello, world!\0";
+        let cstr = CStr::from_bytes_with_nul(original).unwrap();
+        let _ = &cstr[original.len()..];
     }
 }

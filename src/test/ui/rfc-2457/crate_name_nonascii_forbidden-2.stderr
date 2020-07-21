@@ -4,12 +4,5 @@ error: cannot load a crate with a non-ascii name `му_сгате`
 LL | use му_сгате::baz;
    |     ^^^^^^^^
 
-error[E0463]: can't find crate for `му_сгате`
-  --> $DIR/crate_name_nonascii_forbidden-2.rs:5:5
-   |
-LL | use му_сгате::baz;
-   |     ^^^^^^^^ can't find crate
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0463`.
