@@ -657,15 +657,33 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let (return_span, mir_description) = match tcx.hir().get(self.mir_hir_id()) {
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(_, return_ty, _, span, gen_move),
+                kind: hir::ExprKind::Closure(_, return_ty, body_id, span, _),
                 ..
-            }) => (
-                match return_ty.output {
+            }) => {
+                let mut span = match return_ty.output {
                     hir::FnRetTy::DefaultReturn(_) => tcx.sess.source_map().end_point(*span),
                     hir::FnRetTy::Return(_) => return_ty.output.span(),
-                },
-                if gen_move.is_some() { " of generator" } else { " of closure" },
-            ),
+                };
+                let mir_description = match tcx.hir().body(*body_id).generator_kind {
+                    Some(hir::GeneratorKind::Async(gen)) => match gen {
+                        hir::AsyncGeneratorKind::Block => " of async block",
+                        hir::AsyncGeneratorKind::Closure => " of async closure",
+                        hir::AsyncGeneratorKind::Fn => {
+                            span = tcx
+                                .hir()
+                                .get(tcx.hir().get_parent_item(mir_hir_id))
+                                .fn_decl()
+                                .expect("generator lowered from async fn should be in fn")
+                                .output
+                                .span();
+                            " of async function"
+                        }
+                    },
+                    Some(hir::GeneratorKind::Gen) => " of generator",
+                    None => " of closure",
+                };
+                (span, mir_description)
+            }
             hir::Node::ImplItem(hir::ImplItem {
                 kind: hir::ImplItemKind::Fn(method_sig, _),
                 ..
