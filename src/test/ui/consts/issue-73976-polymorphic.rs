@@ -6,8 +6,9 @@
 // Currently we just disallow this usage and require pattern is monomorphic.
 
 #![feature(const_type_id)]
+#![feature(const_type_name)]
 
-use std::any::TypeId;
+use std::any::{self, TypeId};
 
 pub struct GetTypeId<T>(T);
 
@@ -21,6 +22,19 @@ const fn check_type_id<T: 'static>() -> bool {
     //~| ERROR could not evaluate constant pattern
 }
 
+pub struct GetTypeNameLen<T>(T);
+
+impl<T: 'static> GetTypeNameLen<T> {
+    pub const VALUE: usize = any::type_name::<T>().len();
+}
+
+const fn check_type_name_len<T: 'static>() -> bool {
+    matches!(GetTypeNameLen::<T>::VALUE, GetTypeNameLen::<T>::VALUE)
+    //~^ ERROR could not evaluate constant pattern
+    //~| ERROR could not evaluate constant pattern
+}
+
 fn main() {
     assert!(check_type_id::<usize>());
+    assert!(check_type_name_len::<usize>());
 }
