@@ -1351,12 +1351,9 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
 
             if sess.target.target.linker_flavor == LinkerFlavor::Gcc {
                 cmd.arg("-Wl,--script");
-                let path_str = if let Some(s) = path.to_str() {
-                    s
-                } else {
-                    sess.fatal(&format!("linker script path {:?} is invalid Unicode", path));
-                };
-                cmd.arg(format!("-Wl,{}", path_str));
+                let mut arg = OsString::from("-Wl,");
+                arg.push(path);
+                cmd.arg(&arg);
             } else {
                 cmd.arg("--script");
                 cmd.arg(path);
