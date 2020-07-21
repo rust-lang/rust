@@ -540,6 +540,7 @@ fn highlight_element(
             }
         }
         p if p.is_punct() => match p {
+            T![#] => HighlightTag::Attribute.into(),
             T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] | T![@] => {
                 HighlightTag::Operator.into()
             }
