@@ -1,9 +1,9 @@
 use std::fs;
 
-use insta::assert_snapshot;
+use expect::expect;
 use test_utils::project_dir;
 
-use super::{check_types, infer};
+use super::{check_infer, check_types};
 
 #[test]
 fn cfg_impl_def() {
@@ -46,204 +46,204 @@ impl S {
 
 #[test]
 fn infer_macros_expanded() {
-    assert_snapshot!(
-        infer(r#"
-struct Foo(Vec<i32>);
+    check_infer(
+        r#"
+        struct Foo(Vec<i32>);
 
-macro_rules! foo {
-    ($($item:expr),*) => {
-            {
-                Foo(vec![$($item,)*])
-            }
-    };
-}
+        macro_rules! foo {
+            ($($item:expr),*) => {
+                    {
+                        Foo(vec![$($item,)*])
+                    }
+            };
+        }
 
-fn main() {
-    let x = foo!(1,2);
-}
-"#),
-        @r###"
-    !0..17 '{Foo(v...,2,])}': Foo
-    !1..4 'Foo': Foo({unknown}) -> Foo
-    !1..16 'Foo(vec![1,2,])': Foo
-    !5..15 'vec![1,2,]': {unknown}
-    155..181 '{     ...,2); }': ()
-    165..166 'x': Foo
-    "###
+        fn main() {
+            let x = foo!(1,2);
+        }
+        "#,
+        expect![[r#"
+            !0..17 '{Foo(v...,2,])}': Foo
+            !1..4 'Foo': Foo({unknown}) -> Foo
+            !1..16 'Foo(vec![1,2,])': Foo
+            !5..15 'vec![1,2,]': {unknown}
+            155..181 '{     ...,2); }': ()
+            165..166 'x': Foo
+        "#]],
     );
 }
 
 #[test]
 fn infer_legacy_textual_scoped_macros_expanded() {
-    assert_snapshot!(
-        infer(r#"
-struct Foo(Vec<i32>);
+    check_infer(
+        r#"
+        struct Foo(Vec<i32>);
 
-#[macro_use]
-mod m {
-    macro_rules! foo {
-        ($($item:expr),*) => {
-            {
-                Foo(vec![$($item,)*])
+        #[macro_use]
+        mod m {
+            macro_rules! foo {
+                ($($item:expr),*) => {
+                    {
+                        Foo(vec![$($item,)*])
+                    }
+                };
             }
-        };
-    }
-}
+        }
 
-fn main() {
-    let x = foo!(1,2);
-    let y = crate::foo!(1,2);
-}
-"#),
-        @r###"
-    !0..17 '{Foo(v...,2,])}': Foo
-    !1..4 'Foo': Foo({unknown}) -> Foo
-    !1..16 'Foo(vec![1,2,])': Foo
-    !5..15 'vec![1,2,]': {unknown}
-    194..250 '{     ...,2); }': ()
-    204..205 'x': Foo
-    227..228 'y': {unknown}
-    231..247 'crate:...!(1,2)': {unknown}
-    "###
+        fn main() {
+            let x = foo!(1,2);
+            let y = crate::foo!(1,2);
+        }
+        "#,
+        expect![[r#"
+            !0..17 '{Foo(v...,2,])}': Foo
+            !1..4 'Foo': Foo({unknown}) -> Foo
+            !1..16 'Foo(vec![1,2,])': Foo
+            !5..15 'vec![1,2,]': {unknown}
+            194..250 '{     ...,2); }': ()
+            204..205 'x': Foo
+            227..228 'y': {unknown}
+            231..247 'crate:...!(1,2)': {unknown}
+        "#]],
     );
 }
 
 #[test]
 fn infer_path_qualified_macros_expanded() {
-    assert_snapshot!(
-        infer(r#"
-#[macro_export]
-macro_rules! foo {
-    () => { 42i32 }
-}
+    check_infer(
+        r#"
+        #[macro_export]
+        macro_rules! foo {
+            () => { 42i32 }
+        }
 
-mod m {
-    pub use super::foo as bar;
-}
+        mod m {
+            pub use super::foo as bar;
+        }
 
-fn main() {
-    let x = crate::foo!();
-    let y = m::bar!();
-}
-"#),
-        @r###"
-    !0..5 '42i32': i32
-    !0..5 '42i32': i32
-    110..163 '{     ...!(); }': ()
-    120..121 'x': i32
-    147..148 'y': i32
-    "###
+        fn main() {
+            let x = crate::foo!();
+            let y = m::bar!();
+        }
+        "#,
+        expect![[r#"
+            !0..5 '42i32': i32
+            !0..5 '42i32': i32
+            110..163 '{     ...!(); }': ()
+            120..121 'x': i32
+            147..148 'y': i32
+        "#]],
     );
 }
 
 #[test]
 fn expr_macro_expanded_in_various_places() {
-    assert_snapshot!(
-        infer(r#"
-macro_rules! spam {
-    () => (1isize);
-}
+    check_infer(
+        r#"
+        macro_rules! spam {
+            () => (1isize);
+        }
 
-fn spam() {
-    spam!();
-    (spam!());
-    spam!().spam(spam!());
-    for _ in spam!() {}
-    || spam!();
-    while spam!() {}
-    break spam!();
-    return spam!();
-    match spam!() {
-        _ if spam!() => spam!(),
-    }
-    spam!()(spam!());
-    Spam { spam: spam!() };
-    spam!()[spam!()];
-    await spam!();
-    spam!() as usize;
-    &spam!();
-    -spam!();
-    spam!()..spam!();
-    spam!() + spam!();
-}
-"#),
-        @r###"
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    !0..6 '1isize': isize
-    53..456 '{     ...!(); }': ()
-    87..108 'spam!(...am!())': {unknown}
-    114..133 'for _ ...!() {}': ()
-    118..119 '_': {unknown}
-    131..133 '{}': ()
-    138..148 '|| spam!()': || -> isize
-    154..170 'while ...!() {}': ()
-    168..170 '{}': ()
-    175..188 'break spam!()': !
-    194..208 'return spam!()': !
-    214..268 'match ...     }': isize
-    238..239 '_': isize
-    273..289 'spam!(...am!())': {unknown}
-    295..317 'Spam {...m!() }': {unknown}
-    323..339 'spam!(...am!()]': {unknown}
-    364..380 'spam!(... usize': usize
-    386..394 '&spam!()': &isize
-    400..408 '-spam!()': isize
-    414..430 'spam!(...pam!()': {unknown}
-    436..453 'spam!(...pam!()': isize
-    "###
+        fn spam() {
+            spam!();
+            (spam!());
+            spam!().spam(spam!());
+            for _ in spam!() {}
+            || spam!();
+            while spam!() {}
+            break spam!();
+            return spam!();
+            match spam!() {
+                _ if spam!() => spam!(),
+            }
+            spam!()(spam!());
+            Spam { spam: spam!() };
+            spam!()[spam!()];
+            await spam!();
+            spam!() as usize;
+            &spam!();
+            -spam!();
+            spam!()..spam!();
+            spam!() + spam!();
+        }
+        "#,
+        expect![[r#"
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            53..456 '{     ...!(); }': ()
+            87..108 'spam!(...am!())': {unknown}
+            114..133 'for _ ...!() {}': ()
+            118..119 '_': {unknown}
+            131..133 '{}': ()
+            138..148 '|| spam!()': || -> isize
+            154..170 'while ...!() {}': ()
+            168..170 '{}': ()
+            175..188 'break spam!()': !
+            194..208 'return spam!()': !
+            214..268 'match ...     }': isize
+            238..239 '_': isize
+            273..289 'spam!(...am!())': {unknown}
+            295..317 'Spam {...m!() }': {unknown}
+            323..339 'spam!(...am!()]': {unknown}
+            364..380 'spam!(... usize': usize
+            386..394 '&spam!()': &isize
+            400..408 '-spam!()': isize
+            414..430 'spam!(...pam!()': {unknown}
+            436..453 'spam!(...pam!()': isize
+        "#]],
     );
 }
 
 #[test]
 fn infer_type_value_macro_having_same_name() {
-    assert_snapshot!(
-        infer(r#"
-#[macro_export]
-macro_rules! foo {
-    () => {
-        mod foo {
-            pub use super::foo;
+    check_infer(
+        r#"
+        #[macro_export]
+        macro_rules! foo {
+            () => {
+                mod foo {
+                    pub use super::foo;
+                }
+            };
+            ($x:tt) => {
+                $x
+            };
         }
-    };
-    ($x:tt) => {
-        $x
-    };
-}
 
-foo!();
+        foo!();
 
-fn foo() {
-    let foo = foo::foo!(42i32);
-}
-"#),
-        @r###"
-    !0..5 '42i32': i32
-    170..205 '{     ...32); }': ()
-    180..183 'foo': i32
-    "###
+        fn foo() {
+            let foo = foo::foo!(42i32);
+        }
+        "#,
+        expect![[r#"
+            !0..5 '42i32': i32
+            170..205 '{     ...32); }': ()
+            180..183 'foo': i32
+        "#]],
     );
 }
 
@@ -372,50 +372,50 @@ expand!();
 
 #[test]
 fn infer_type_value_non_legacy_macro_use_as() {
-    assert_snapshot!(
-        infer(r#"
-mod m {
-    macro_rules! _foo {
-        ($x:ident) => { type $x = u64; }
-    }
-    pub(crate) use _foo as foo;
-}
+    check_infer(
+        r#"
+        mod m {
+            macro_rules! _foo {
+                ($x:ident) => { type $x = u64; }
+            }
+            pub(crate) use _foo as foo;
+        }
 
-m::foo!(foo);
-use foo as bar;
-fn f() -> bar { 0 }
-fn main() {
-    let _a  = f();
-}
-"#),
-        @r###"
-    158..163 '{ 0 }': u64
-    160..161 '0': u64
-    174..196 '{     ...f(); }': ()
-    184..186 '_a': u64
-    190..191 'f': fn f() -> u64
-    190..193 'f()': u64
-    "###
+        m::foo!(foo);
+        use foo as bar;
+        fn f() -> bar { 0 }
+        fn main() {
+            let _a  = f();
+        }
+        "#,
+        expect![[r#"
+            158..163 '{ 0 }': u64
+            160..161 '0': u64
+            174..196 '{     ...f(); }': ()
+            184..186 '_a': u64
+            190..191 'f': fn f() -> u64
+            190..193 'f()': u64
+        "#]],
     );
 }
 
 #[test]
 fn infer_local_macro() {
-    assert_snapshot!(
-        infer(r#"
-fn main() {
-    macro_rules! foo {
-        () => { 1usize }
-    }
-    let _a  = foo!();
-}
-"#),
-        @r###"
-    !0..6 '1usize': usize
-    10..89 '{     ...!(); }': ()
-    16..65 'macro_...     }': {unknown}
-    74..76 '_a': usize
-    "###
+    check_infer(
+        r#"
+        fn main() {
+            macro_rules! foo {
+                () => { 1usize }
+            }
+            let _a  = foo!();
+        }
+        "#,
+        expect![[r#"
+            !0..6 '1usize': usize
+            10..89 '{     ...!(); }': ()
+            16..65 'macro_...     }': {unknown}
+            74..76 '_a': usize
+        "#]],
     );
 }
 
@@ -446,77 +446,77 @@ macro_rules! bar {
 
 #[test]
 fn infer_builtin_macros_line() {
-    assert_snapshot!(
-        infer(r#"
-#[rustc_builtin_macro]
-macro_rules! line {() => {}}
+    check_infer(
+        r#"
+        #[rustc_builtin_macro]
+        macro_rules! line {() => {}}
 
-fn main() {
-    let x = line!();
-}
-"#),
-        @r###"
-    !0..1 '0': i32
-    63..87 '{     ...!(); }': ()
-    73..74 'x': i32
-    "###
+        fn main() {
+            let x = line!();
+        }
+        "#,
+        expect![[r#"
+            !0..1 '0': i32
+            63..87 '{     ...!(); }': ()
+            73..74 'x': i32
+        "#]],
     );
 }
 
 #[test]
 fn infer_builtin_macros_file() {
-    assert_snapshot!(
-        infer(r#"
-#[rustc_builtin_macro]
-macro_rules! file {() => {}}
+    check_infer(
+        r#"
+        #[rustc_builtin_macro]
+        macro_rules! file {() => {}}
 
-fn main() {
-    let x = file!();
-}
-"#),
-        @r###"
-    !0..2 '""': &str
-    63..87 '{     ...!(); }': ()
-    73..74 'x': &str
-    "###
+        fn main() {
+            let x = file!();
+        }
+        "#,
+        expect![[r#"
+            !0..2 '""': &str
+            63..87 '{     ...!(); }': ()
+            73..74 'x': &str
+        "#]],
     );
 }
 
 #[test]
 fn infer_builtin_macros_column() {
-    assert_snapshot!(
-        infer(r#"
-#[rustc_builtin_macro]
-macro_rules! column {() => {}}
+    check_infer(
+        r#"
+        #[rustc_builtin_macro]
+        macro_rules! column {() => {}}
 
-fn main() {
-    let x = column!();
-}
-"#),
-        @r###"
-    !0..1 '0': i32
-    65..91 '{     ...!(); }': ()
-    75..76 'x': i32
-    "###
+        fn main() {
+            let x = column!();
+        }
+        "#,
+        expect![[r#"
+            !0..1 '0': i32
+            65..91 '{     ...!(); }': ()
+            75..76 'x': i32
+        "#]],
     );
 }
 
 #[test]
 fn infer_builtin_macros_concat() {
-    assert_snapshot!(
-        infer(r#"
-#[rustc_builtin_macro]
-macro_rules! concat {() => {}}
+    check_infer(
+        r#"
+        #[rustc_builtin_macro]
+        macro_rules! concat {() => {}}
 
-fn main() {
-    let x = concat!("hello", concat!("world", "!"));
-}
-"#),
-        @r###"
-    !0..13 '"helloworld!"': &str
-    65..121 '{     ...")); }': ()
-    75..76 'x': &str
-    "###
+        fn main() {
+            let x = concat!("hello", concat!("world", "!"));
+        }
+        "#,
+        expect![[r#"
+            !0..13 '"helloworld!"': &str
+            65..121 '{     ...")); }': ()
+            75..76 'x': &str
+        "#]],
     );
 }
 
@@ -622,7 +622,7 @@ macro_rules! include {() => {}}
 include!("main.rs");
 
 fn main() {
-    0
+            0
 } //^ i32
 "#,
     );
@@ -630,42 +630,42 @@ fn main() {
 
 #[test]
 fn infer_builtin_macros_concat_with_lazy() {
-    assert_snapshot!(
-        infer(r#"
-macro_rules! hello {() => {"hello"}}
+    check_infer(
+        r#"
+        macro_rules! hello {() => {"hello"}}
 
-#[rustc_builtin_macro]
-macro_rules! concat {() => {}}
+        #[rustc_builtin_macro]
+        macro_rules! concat {() => {}}
 
-fn main() {
-    let x = concat!(hello!(), concat!("world", "!"));
-}
-"#),
-        @r###"
-    !0..13 '"helloworld!"': &str
-    103..160 '{     ...")); }': ()
-    113..114 'x': &str
-    "###
+        fn main() {
+            let x = concat!(hello!(), concat!("world", "!"));
+        }
+        "#,
+        expect![[r#"
+            !0..13 '"helloworld!"': &str
+            103..160 '{     ...")); }': ()
+            113..114 'x': &str
+        "#]],
     );
 }
 
 #[test]
 fn infer_builtin_macros_env() {
-    assert_snapshot!(
-        infer(r#"
-//- /main.rs env:foo=bar
-#[rustc_builtin_macro]
-macro_rules! env {() => {}}
+    check_infer(
+        r#"
+        //- /main.rs env:foo=bar
+        #[rustc_builtin_macro]
+        macro_rules! env {() => {}}
 
-fn main() {
-    let x = env!("foo");
-}
-"#),
-        @r###"
-    !0..22 '"__RA_...TED__"': &str
-    62..90 '{     ...o"); }': ()
-    72..73 'x': &str
-    "###
+        fn main() {
+            let x = env!("foo");
+        }
+        "#,
+        expect![[r#"
+            !0..22 '"__RA_...TED__"': &str
+            62..90 '{     ...o"); }': ()
+            72..73 'x': &str
+        "#]],
     );
 }
 
@@ -763,25 +763,25 @@ fn test() {
 
 #[test]
 fn macro_in_arm() {
-    assert_snapshot!(
-        infer(r#"
-macro_rules! unit {
-    () => { () };
-}
+    check_infer(
+        r#"
+        macro_rules! unit {
+            () => { () };
+        }
 
-fn main() {
-    let x = match () {
-        unit!() => 92u32,
-    };
-}
-"#),
-        @r###"
-    51..110 '{     ...  }; }': ()
-    61..62 'x': u32
-    65..107 'match ...     }': u32
-    71..73 '()': ()
-    84..91 'unit!()': ()
-    95..100 '92u32': u32
-    "###
+        fn main() {
+            let x = match () {
+                unit!() => 92u32,
+            };
+        }
+        "#,
+        expect![[r#"
+            51..110 '{     ...  }; }': ()
+            61..62 'x': u32
+            65..107 'match ...     }': u32
+            71..73 '()': ()
+            84..91 'unit!()': ()
+            95..100 '92u32': u32
+        "#]],
     );
 }
