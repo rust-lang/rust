@@ -3,7 +3,6 @@
 use crate::cmp;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
 use crate::mem;
-use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::cvt;
 use crate::sys_common::AsInner;
 
@@ -223,50 +222,9 @@ impl FileDesc {
     pub fn duplicate(&self) -> io::Result<FileDesc> {
         // We want to atomically duplicate this file descriptor and set the
         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
-        // flag, however, isn't supported on older Linux kernels (earlier than
-        // 2.6.24).
-        //
-        // To detect this and ensure that CLOEXEC is still set, we
-        // follow a strategy similar to musl [1] where if passing
-        // F_DUPFD_CLOEXEC causes `fcntl` to return EINVAL it means it's not
-        // supported (the third parameter, 0, is always valid), so we stop
-        // trying that.
-        //
-        // Also note that Android doesn't have F_DUPFD_CLOEXEC, but get it to
-        // resolve so we at least compile this.
-        //
-        // [1]: http://comments.gmane.org/gmane.linux.lib.musl.general/2963
-        #[cfg(any(target_os = "android", target_os = "haiku"))]
-        use libc::F_DUPFD as F_DUPFD_CLOEXEC;
-        #[cfg(not(any(target_os = "android", target_os = "haiku")))]
-        use libc::F_DUPFD_CLOEXEC;
-
-        let make_filedesc = |fd| {
-            let fd = FileDesc::new(fd);
-            fd.set_cloexec()?;
-            Ok(fd)
-        };
-        static TRY_CLOEXEC: AtomicBool = AtomicBool::new(!cfg!(target_os = "android"));
-        let fd = self.raw();
-        if TRY_CLOEXEC.load(Ordering::Relaxed) {
-            match cvt(unsafe { libc::fcntl(fd, F_DUPFD_CLOEXEC, 0) }) {
-                // We *still* call the `set_cloexec` method as apparently some
-                // linux kernel at some point stopped setting CLOEXEC even
-                // though it reported doing so on F_DUPFD_CLOEXEC.
-                Ok(fd) => {
-                    return Ok(if cfg!(target_os = "linux") {
-                        make_filedesc(fd)?
-                    } else {
-                        FileDesc::new(fd)
-                    });
-                }
-                Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {
-                    TRY_CLOEXEC.store(false, Ordering::Relaxed);
-                }
-                Err(e) => return Err(e),
-            }
-        }
-        cvt(unsafe { libc::fcntl(fd, libc::F_DUPFD, 0) }).and_then(make_filedesc)
+        // is a POSIX flag that was added to Linux in 2.6.24.
+        let fd = cvt(unsafe { libc::fcntl(self.raw(), libc::F_DUPFD_CLOEXEC, 0) })?;
+        Ok(FileDesc::new(fd))
     }
 }
 
