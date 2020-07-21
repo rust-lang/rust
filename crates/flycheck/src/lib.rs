@@ -22,7 +22,7 @@ pub use cargo_metadata::diagnostic::{
 pub enum FlycheckConfig {
     CargoCommand {
         command: String,
-        target_tripple: Option<String>,
+        target_triple: Option<String>,
         all_targets: bool,
         all_features: bool,
         features: Vec<String>,
@@ -179,7 +179,7 @@ impl FlycheckActor {
         let mut cmd = match &self.config {
             FlycheckConfig::CargoCommand {
                 command,
-                target_tripple,
+                target_triple,
                 all_targets,
                 all_features,
                 extra_args,
@@ -190,7 +190,7 @@ impl FlycheckActor {
                 cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
                     .arg(self.workspace_root.join("Cargo.toml"));
 
-                if let Some(target) = target_tripple {
+                if let Some(target) = target_triple {
                     cmd.args(&["--target", target.as_str()]);
                 }
                 if *all_targets {

@@ -148,7 +148,7 @@ impl Config {
             rustfmt: RustfmtConfig::Rustfmt { extra_args: Vec::new() },
             flycheck: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
-                target_tripple: None,
+                target_triple: None,
                 all_targets: true,
                 all_features: false,
                 extra_args: Vec::new(),
@@ -224,7 +224,7 @@ impl Config {
                 }
                 Some(_) | None => FlycheckConfig::CargoCommand {
                     command: data.checkOnSave_command,
-                    target_tripple: data.checkOnSave_target.or(data.cargo_target),
+                    target_triple: data.checkOnSave_target.or(data.cargo_target),
                     all_targets: data.checkOnSave_allTargets,
                     all_features: data.checkOnSave_allFeatures.unwrap_or(data.cargo_allFeatures),
                     features: data.checkOnSave_features.unwrap_or(data.cargo_features),
