@@ -273,9 +273,6 @@ However, if you use some other build system, you'll have to describe the structu
 [source,TypeScript]
 ----
 interface JsonProject {
-   /// The set of paths containing the crates for this project.
-   /// Any `Crate` must be nested inside some `root`.
-   roots: string[];
    /// The set of crates comprising the current project.
    /// Must include all transitive dependencies as well as sysroot crate (libstd, libcore and such).
    crates: Crate[];
@@ -288,11 +285,37 @@ interface Crate {
     edition: "2015" | "2018";
     /// Dependencies
     deps: Dep[];
+    /// Should this crate be treated as a member of current "workspace".
+    ///
+    /// By default, inferred from the `root_module` (members are the crates which reside
+    /// inside the directory opened in the editor).
+    ///
+    /// Set this too `false` for things like standard library and 3rd party crates to
+    /// enable performance optimizations (rust-analyzer assumes that non-member crates
+    /// don't change).
+    is_workspace_member?: boolean;
+    /// Optionally specify the (super)set of `.rs` files comprising this crate.
+    ///
+    /// By default, rust-analyzer assumes that only files under `root_module.parent` can belong to a crate.
+    /// `include_dirs` are included recursively, unless a subdirectory is in `exclude_dirs`.
+    ///
+    /// Different crates can share the same `source`.
+
+    /// If two crates share an `.rs` file in common, they *must* have the same `source`.
+    /// rust-analyzer assumes that files from one source can't refer to files in another source.
+    source?: {
+        include_dirs: string[],
+        exclude_dirs: string[],
+    },
     /// The set of cfgs activated for a given crate, like `["unix", "feature=foo", "feature=bar"]`.
     cfg: string[];
+    /// Target tripple for this Crate.
+    ///
+    /// It is use when running `rustc --print cfg` to get target-specific cfgs.
+    target?: string;
+    /// Environment variables, used for `env!` macro
+    env: : { [key: string]: string; },
 
-    /// value of the OUT_DIR env variable.
-    out_dir?: string;
     /// For proc-macro crates, path to compiles proc-macro (.so file).
     proc_macro_dylib_path?: string;
 }
