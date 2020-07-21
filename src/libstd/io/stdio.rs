@@ -890,7 +890,6 @@ impl fmt::Debug for StderrLock<'_> {
 /// use std::io::input;
 ///
 /// fn main() -> std::io::Result<()> {
-///
 ///     let name = input("Enter name: ")?;
 ///
 ///     println!("Your name is {}!", name);
