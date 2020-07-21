@@ -904,8 +904,10 @@ impl fmt::Debug for StderrLock<'_> {
     issue = "none"
 )]
 pub fn input(prompt: &str) -> Result<String> {
-    stdout().write_all(prompt.as_bytes())?;
-    stdout().flush()?;
+    let stdout = stdout();
+    let mut lock = stdout.lock();
+    lock.write_all(prompt.as_bytes())?;
+    lock.flush()?;
     let mut input = String::new();
     match stdin().read_line(&mut input)? {
         0 => Err(Error::new(ErrorKind::UnexpectedEof, "input reached eof unexpectedly")),
