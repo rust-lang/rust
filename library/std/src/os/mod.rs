@@ -40,8 +40,6 @@ cfg_if::cfg_if! {
 
 #[cfg(target_os = "android")]
 pub mod android;
-#[cfg(target_env = "devkita64")]
-pub mod devkita64;
 #[cfg(target_os = "dragonfly")]
 pub mod dragonfly;
 #[cfg(target_os = "emscripten")]
@@ -58,6 +56,8 @@ pub mod haiku;
 pub mod illumos;
 #[cfg(target_os = "ios")]
 pub mod ios;
+#[cfg(target_env = "libnx")]
+pub mod libnx;
 #[cfg(target_os = "macos")]
 pub mod macos;
 #[cfg(target_os = "netbsd")]

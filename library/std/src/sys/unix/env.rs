@@ -174,7 +174,7 @@ pub mod os {
     pub const EXE_EXTENSION: &str = "";
 }
 
-#[cfg(target_env = "devkita64")]
+#[cfg(target_env = "libnx")]
 pub mod os {
     pub const FAMILY: &str = "unix";
     pub const OS: &str = "switch";

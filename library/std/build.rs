@@ -71,7 +71,7 @@ fn main() {
         || target.contains("vxworks")
         || target.contains("wasm32")
         || target.contains("asmjs")
-        || target.contains("devkita64")
+        || target.contains("libnx")
     {
         // These platforms don't have any special requirements.
     } else {

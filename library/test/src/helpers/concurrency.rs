@@ -109,7 +109,7 @@ cfg_if::cfg_if! {
             cpus as usize
         }
     } else {
-        // FIXME: implement on vxWorks, Redox, HermitCore, Haiku, l4re, devkita64
+        // FIXME: implement on vxWorks, Redox, HermitCore, Haiku, l4re, libnx
         fn num_cpus() -> usize {
             1
         }

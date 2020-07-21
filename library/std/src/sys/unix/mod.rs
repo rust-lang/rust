@@ -7,8 +7,6 @@ pub use crate::os::linux as platform;
 
 #[cfg(all(not(doc), target_os = "android"))]
 pub use crate::os::android as platform;
-#[cfg(all(not(doc), target_env = "devkita64"))]
-pub use crate::os::devkita64 as platform;
 #[cfg(all(not(doc), target_os = "dragonfly"))]
 pub use crate::os::dragonfly as platform;
 #[cfg(all(not(doc), target_os = "emscripten"))]
@@ -23,6 +21,8 @@ pub use crate::os::haiku as platform;
 pub use crate::os::illumos as platform;
 #[cfg(all(not(doc), target_os = "ios"))]
 pub use crate::os::ios as platform;
+#[cfg(all(not(doc), target_env = "libnx"))]
+pub use crate::os::libnx as platform;
 #[cfg(all(not(doc), target_os = "l4re"))]
 pub use crate::os::linux as platform;
 #[cfg(all(not(doc), target_os = "macos"))]
@@ -77,8 +77,8 @@ pub use crate::sys_common::os_str_bytes as os_str;
 
 #[cfg(not(test))]
 pub fn init() {
-    // Load romfs (which contains debug info) on devkitA64
-    #[cfg(target_env = "devkita64")]
+    // Load romfs (which contains debug info) on libnx
+    #[cfg(target_env = "libnx")]
     platform::initialize_romfs();
 
     // By default, some platforms will send a *signal* when an EPIPE error

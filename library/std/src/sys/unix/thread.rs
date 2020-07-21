@@ -148,14 +148,14 @@ impl Thread {
     }
 
     #[cfg(any(
-        target_env = "devkita64",
+        target_env = "libnx",
         target_os = "haiku",
         target_os = "l4re",
         target_os = "emscripten",
         target_os = "redox"
     ))]
     pub fn set_name(_name: &CStr) {
-        // devkitA64, Haiku, and Emscripten have no way to set a thread name.
+        // libnx, Haiku, and Emscripten have no way to set a thread name.
     }
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(_name: &CStr) {

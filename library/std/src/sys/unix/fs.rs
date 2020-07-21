@@ -158,7 +158,7 @@ cfg_has_statx! {{
         stat.st_mtime = buf.stx_mtime.tv_sec as libc::time_t;
         stat.st_ctime = buf.stx_ctime.tv_sec as libc::time_t;
         // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
-        #[cfg(not(target_env = "devkita64"))] {
+        #[cfg(not(target_env = "libnx"))] {
             stat.st_atime_nsec = buf.stx_atime.tv_nsec as _;
             stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as _;
             stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as _;
@@ -297,9 +297,9 @@ impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_mtime as libc::time_t,
-            #[cfg(target_env = "devkita64")]
+            #[cfg(target_env = "libnx")]
             tv_nsec: 0,
-            #[cfg(not(target_env = "devkita64"))]
+            #[cfg(not(target_env = "libnx"))]
             tv_nsec: self.stat.st_mtime_nsec as _,
         }))
     }
@@ -307,9 +307,9 @@ impl FileAttr {
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
             tv_sec: self.stat.st_atime as libc::time_t,
-            #[cfg(target_env = "devkita64")]
+            #[cfg(target_env = "libnx")]
             tv_nsec: 0,
-            #[cfg(not(target_env = "devkita64"))]
+            #[cfg(not(target_env = "libnx"))]
             tv_nsec: self.stat.st_atime_nsec as _,
         }))
     }
@@ -569,7 +569,7 @@ impl DirEntry {
         target_os = "l4re",
         target_os = "fuchsia",
         target_os = "redox",
-        target_env = "devkita64"
+        target_env = "libnx"
     ))]
     pub fn ino(&self) -> u64 {
         self.entry.d_ino as u64
@@ -608,7 +608,7 @@ impl DirEntry {
         target_os = "emscripten",
         target_os = "l4re",
         target_os = "haiku",
-        target_env = "devkita64"
+        target_env = "libnx"
     ))]
     fn name_bytes(&self) -> &[u8] {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes() }
@@ -798,7 +798,7 @@ impl File {
         self.0.is_read_vectored()
     }
 
-    #[cfg(not(target_env = "devkita64"))]
+    #[cfg(not(target_env = "libnx"))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.0.read_at(buf, offset)
     }
@@ -816,7 +816,7 @@ impl File {
         self.0.is_write_vectored()
     }
 
-    #[cfg(not(target_env = "devkita64"))]
+    #[cfg(not(target_env = "libnx"))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.0.write_at(buf, offset)
     }

@@ -1,14 +1,14 @@
-//! devkitA64 Nintendo Switch homebrew toolchain.
+//! libnx Nintendo Switch homebrew toolchain.
 //!
 //! # Building
 //! The recommended way to build Rust for this target is using Docker. You can start a build in a
-//! container with `./src/ci/docker/run.sh aarch64-devkita64` from the Rust source tree. For
+//! container with `./src/ci/docker/run.sh aarch64-libnx` from the Rust source tree. For
 //! development, you can add `--dev` as the first argument to get a shell inside the container.
 
 use super::{LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
 
-// devkitA64 has custom linker requirements.
-const LINKER_SCRIPT: &str = include_str!("./aarch64_unknown_switch_devkita64_script.ld");
+// libnx has custom linker requirements.
+const LINKER_SCRIPT: &str = include_str!("./aarch64_unknown_switch_libnx_script.ld");
 
 pub fn target() -> Result<Target, String> {
     let mut link_args = LinkArgs::new();
@@ -68,7 +68,7 @@ pub fn target() -> Result<Target, String> {
         target_pointer_width: "64".to_string(),
         target_c_int_width: "32".to_string(),
         target_os: "switch".to_string(),
-        target_env: "devkita64".to_string(),
+        target_env: "libnx".to_string(),
         target_vendor: "unknown".to_string(),
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".to_string(),
         arch: "aarch64".to_string(),

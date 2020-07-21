@@ -213,7 +213,7 @@ pub trait FileExt {
 }
 
 #[stable(feature = "file_offset", since = "1.15.0")]
-#[cfg(not(target_env = "devkita64"))]
+#[cfg(not(target_env = "libnx"))]
 impl FileExt for fs::File {
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.as_inner().read_at(buf, offset)
@@ -224,7 +224,7 @@ impl FileExt for fs::File {
 }
 
 #[stable(feature = "file_offset", since = "1.15.0")]
-#[cfg(target_env = "devkita64")]
+#[cfg(target_env = "libnx")]
 impl FileExt for fs::File {
     fn read_at(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
         unimplemented!()
@@ -703,33 +703,33 @@ impl MetadataExt for fs::Metadata {
     fn atime(&self) -> i64 {
         self.st_atime()
     }
-    #[cfg(not(target_env = "devkita64"))]
+    #[cfg(not(target_env = "libnx"))]
     fn atime_nsec(&self) -> i64 {
         self.st_atime_nsec()
     }
-    #[cfg(target_env = "devkita64")]
+    #[cfg(target_env = "libnx")]
     fn atime_nsec(&self) -> i64 {
         0
     }
     fn mtime(&self) -> i64 {
         self.st_mtime()
     }
-    #[cfg(not(target_env = "devkita64"))]
+    #[cfg(not(target_env = "libnx"))]
     fn mtime_nsec(&self) -> i64 {
         self.st_mtime_nsec()
     }
-    #[cfg(target_env = "devkita64")]
+    #[cfg(target_env = "libnx")]
     fn mtime_nsec(&self) -> i64 {
         0
     }
     fn ctime(&self) -> i64 {
         self.st_ctime()
     }
-    #[cfg(not(target_env = "devkita64"))]
+    #[cfg(not(target_env = "libnx"))]
     fn ctime_nsec(&self) -> i64 {
         self.st_ctime_nsec()
     }
-    #[cfg(target_env = "devkita64")]
+    #[cfg(target_env = "libnx")]
     fn ctime_nsec(&self) -> i64 {
         0
     }

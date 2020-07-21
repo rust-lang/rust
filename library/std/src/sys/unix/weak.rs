@@ -58,7 +58,7 @@ impl<F> Weak<F> {
     }
 }
 
-#[cfg(not(target_env = "devkita64"))]
+#[cfg(not(target_env = "libnx"))]
 unsafe fn fetch(name: &str) -> usize {
     let name = match CStr::from_bytes_with_nul(name.as_bytes()) {
         Ok(cstr) => cstr,
@@ -67,7 +67,7 @@ unsafe fn fetch(name: &str) -> usize {
     libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
 }
 
-#[cfg(target_env = "devkita64")]
+#[cfg(target_env = "libnx")]
 unsafe fn fetch(_name: &str) -> usize {
     0
 }

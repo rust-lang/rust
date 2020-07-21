@@ -1,4 +1,4 @@
-#![cfg_attr(target_env = "devkita64", allow(unused_variables, dead_code))]
+#![cfg_attr(target_env = "libnx", allow(unused_variables, dead_code))]
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
 use crate::cmp;
@@ -73,7 +73,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(target_env = "devkita64"))]
+    #[cfg(not(target_env = "libnx"))]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::readv(
@@ -85,14 +85,14 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(target_env = "devkita64")]
+    #[cfg(target_env = "libnx")]
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         io::default_read_vectored(|x| self.read(x), bufs)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        !cfg!(target_env = "devkita64")
+        !cfg!(target_env = "libnx")
     }
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
@@ -100,7 +100,7 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
-    #[cfg(not(target_env = "devkita64"))]
+    #[cfg(not(target_env = "libnx"))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         #[cfg(target_os = "android")]
         use super::android::cvt_pread64;
@@ -137,7 +137,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(target_env = "devkita64"))]
+    #[cfg(not(target_env = "libnx"))]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::writev(
@@ -149,17 +149,17 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(target_env = "devkita64")]
+    #[cfg(target_env = "libnx")]
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         io::default_write_vectored(|x| self.write(x), bufs)
     }
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        !cfg!(target_env = "devkita64")
+        !cfg!(target_env = "libnx")
     }
 
-    #[cfg(not(target_env = "devkita64"))]
+    #[cfg(not(target_env = "libnx"))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         #[cfg(target_os = "android")]
         use super::android::cvt_pwrite64;
@@ -195,7 +195,7 @@ impl FileDesc {
     }
 
     #[cfg(not(any(
-        target_env = "devkita64",
+        target_env = "libnx",
         target_os = "solaris",
         target_os = "illumos",
         target_os = "emscripten",
@@ -212,7 +212,7 @@ impl FileDesc {
         }
     }
     #[cfg(any(
-        target_env = "devkita64",
+        target_env = "libnx",
         target_os = "solaris",
         target_os = "illumos",
         target_os = "emscripten",

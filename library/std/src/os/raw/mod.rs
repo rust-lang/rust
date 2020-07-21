@@ -48,7 +48,7 @@
         )
     ),
     all(target_os = "fuchsia", target_arch = "aarch64"),
-    target_env = "devkita64"
+    target_env = "libnx"
 ))]
 #[stable(feature = "raw_os", since = "1.1.0")]
 pub type c_char = u8;
@@ -92,7 +92,7 @@ pub type c_char = u8;
         )
     ),
     all(target_os = "fuchsia", target_arch = "aarch64"),
-    target_env = "devkita64"
+    target_env = "libnx"
 )))]
 #[stable(feature = "raw_os", since = "1.1.0")]
 pub type c_char = i8;

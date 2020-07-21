@@ -50,7 +50,7 @@ extern "C" {
             target_os = "openbsd",
             target_os = "android",
             target_os = "redox",
-            target_env = "devkita64"
+            target_env = "libnx"
         ),
         link_name = "__errno"
     )]
@@ -101,10 +101,7 @@ pub fn set_errno(e: i32) {
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
     extern "C" {
-        #[cfg_attr(
-            any(target_os = "linux", target_env = "devkita64"),
-            link_name = "__xpg_strerror_r"
-        )]
+        #[cfg_attr(any(target_os = "linux", target_env = "libnx"), link_name = "__xpg_strerror_r")]
         fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t) -> c_int;
     }
 
@@ -439,7 +436,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     Err(io::Error::new(ErrorKind::Other, "Not yet implemented!"))
 }
 
-#[cfg(target_env = "devkita64")]
+#[cfg(target_env = "libnx")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::env;
     // guaranteed by abi to be an absolute path to the executable

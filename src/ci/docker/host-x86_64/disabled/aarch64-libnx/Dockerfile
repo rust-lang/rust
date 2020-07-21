@@ -15,11 +15,11 @@ RUN sh /scripts/sccache.sh
 
 ENV PATH=$PATH:/opt/devkitpro/devkitA64/bin/
 
-ENV CC_aarch64_unknown_switch_devkita64=aarch64-none-elf-gcc \
-    AR_aarch64_unknown_switch_devkita64=aarch64-none-elf-ar \
-    CXX_aarch64_unknown_switch_devkita64=aarch64-none-elf-g++
+ENV CC_aarch64_unknown_switch_libnx=aarch64-none-elf-gcc \
+    AR_aarch64_unknown_switch_libnx=aarch64-none-elf-ar \
+    CXX_aarch64_unknown_switch_libnx=aarch64-none-elf-g++
 
-ENV TARGETS=aarch64-unknown-switch-devkita64
+ENV TARGETS=aarch64-unknown-switch-libnx
 
 ENV RUST_CONFIGURE_ARGS \
       --disable-docs
