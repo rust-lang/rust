@@ -336,8 +336,9 @@ impl<T> MaybeUninit<T> {
     /// assert_eq!(x, (0, false));
     /// ```
     ///
-    /// *Incorrect* usage of this function: initializing a struct with zero, where some fields
-    /// cannot hold 0 as a valid value.
+    /// *Incorrect* usage of this function: assuming zero filled memory is initialized,
+    /// where some fields cannot hold 0 as a valid value, without overwriting with a
+    /// valid bit-pattern.
     ///
     /// ```rust,no_run
     /// use std::mem::MaybeUninit;
