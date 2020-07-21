@@ -5,6 +5,9 @@
 > top-level directory has separate directories for the compiler, build-system,
 > std libs, etc, rather than one huge `src/` directory.
 
+Now that we have [seen what the compiler does](./overview.md), let's take a
+look at the structure of the contents of the rust-lang/rust repo.
+
 ## Workspace structure
 
 The `rust-lang/rust` repository consists of a single large cargo workspace
@@ -34,6 +37,10 @@ This code is fairly similar to most other Rust crates except that it must be
 built in a special way because it can use unstable features.
 
 ## Compiler
+
+> You may find it helpful to read [The Overview Chapter](./overview.md) first,
+> which gives an overview of how the compiler works. The crates mentioned in
+> this section implement the compiler.
 
 The compiler crates all have names starting with `librustc_*`. These are a large
 collection of interdependent crates. There is also the `rustc` crate which is
