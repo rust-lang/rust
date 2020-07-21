@@ -2,7 +2,6 @@ use ra_syntax::{
     ast::{self, AstNode},
     SyntaxKind::{
         BLOCK_EXPR, BREAK_EXPR, COMMENT, LAMBDA_EXPR, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
-        WHITESPACE,
     },
     SyntaxNode,
 };
@@ -36,22 +35,20 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         mark::hit!(extract_var_in_comment_is_not_applicable);
         return None;
     }
-    let expr = node.ancestors().find_map(valid_target_expr)?;
-    let (anchor_stmt, wrap_in_block) = anchor_stmt(&expr)?;
-    let indent = anchor_stmt.prev_sibling_or_token()?.as_token()?.clone();
-    if indent.kind() != WHITESPACE {
-        return None;
-    }
-    let target = expr.syntax().text_range();
+    let to_extract = node.ancestors().find_map(valid_target_expr)?;
+    let anchor = Anchor::from(&to_extract)?;
+    let indent = anchor.syntax().prev_sibling_or_token()?.as_token()?.clone();
+    let target = to_extract.syntax().text_range();
     acc.add(
         AssistId("extract_variable", AssistKind::RefactorExtract),
         "Extract into variable",
         target,
         move |edit| {
-            let field_shorthand = match expr.syntax().parent().and_then(ast::RecordField::cast) {
-                Some(field) => field.name_ref(),
-                None => None,
-            };
+            let field_shorthand =
+                match to_extract.syntax().parent().and_then(ast::RecordField::cast) {
+                    Some(field) => field.name_ref(),
+                    None => None,
+                };
 
             let mut buf = String::new();
 
@@ -60,26 +57,20 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
                 None => "var_name".to_string(),
             };
             let expr_range = match &field_shorthand {
-                Some(it) => it.syntax().text_range().cover(expr.syntax().text_range()),
-                None => expr.syntax().text_range(),
+                Some(it) => it.syntax().text_range().cover(to_extract.syntax().text_range()),
+                None => to_extract.syntax().text_range(),
             };
 
-            if wrap_in_block {
+            if let Anchor::WrapInBlock(_) = anchor {
                 format_to!(buf, "{{ let {} = ", var_name);
             } else {
                 format_to!(buf, "let {} = ", var_name);
             };
-            format_to!(buf, "{}", expr.syntax());
+            format_to!(buf, "{}", to_extract.syntax());
 
-            let full_stmt = ast::ExprStmt::cast(anchor_stmt.clone());
-            let is_full_stmt = if let Some(expr_stmt) = &full_stmt {
-                Some(expr.syntax().clone()) == expr_stmt.expr().map(|e| e.syntax().clone())
-            } else {
-                false
-            };
-            if is_full_stmt {
+            if let Anchor::Replace(stmt) = anchor {
                 mark::hit!(test_extract_var_expr_stmt);
-                if full_stmt.unwrap().semicolon_token().is_none() {
+                if stmt.semicolon_token().is_none() {
                     buf.push_str(";");
                 }
                 match ctx.config.snippet_cap {
@@ -107,7 +98,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             }
 
             edit.replace(expr_range, var_name.clone());
-            let offset = anchor_stmt.text_range().start();
+            let offset = anchor.syntax().text_range().start();
             match ctx.config.snippet_cap {
                 Some(cap) => {
                     let snip =
@@ -117,8 +108,8 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
                 None => edit.insert(offset, buf),
             }
 
-            if wrap_in_block {
-                edit.insert(anchor_stmt.text_range().end(), " }");
+            if let Anchor::WrapInBlock(_) = anchor {
+                edit.insert(anchor.syntax().text_range().end(), " }");
             }
         },
     )
@@ -138,32 +129,48 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
     }
 }
 
-/// Returns the syntax node which will follow the freshly extractd var
-/// and a boolean indicating whether we have to wrap it within a { } block
-/// to produce correct code.
-/// It can be a statement, the last in a block expression or a wanna be block
-/// expression like a lambda or match arm.
-fn anchor_stmt(expr: &ast::Expr) -> Option<(SyntaxNode, bool)> {
-    expr.syntax().ancestors().find_map(|node| {
-        if let Some(expr) = node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.expr()) {
-            if expr.syntax() == &node {
-                mark::hit!(test_extract_var_last_expr);
-                return Some((node, false));
+enum Anchor {
+    Before(SyntaxNode),
+    Replace(ast::ExprStmt),
+    WrapInBlock(SyntaxNode),
+}
+
+impl Anchor {
+    fn from(to_extract: &ast::Expr) -> Option<Anchor> {
+        to_extract.syntax().ancestors().find_map(|node| {
+            if let Some(expr) =
+                node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.expr())
+            {
+                if expr.syntax() == &node {
+                    mark::hit!(test_extract_var_last_expr);
+                    return Some(Anchor::Before(node));
+                }
             }
-        }
 
-        if let Some(parent) = node.parent() {
-            if parent.kind() == MATCH_ARM || parent.kind() == LAMBDA_EXPR {
-                return Some((node, true));
+            if let Some(parent) = node.parent() {
+                if parent.kind() == MATCH_ARM || parent.kind() == LAMBDA_EXPR {
+                    return Some(Anchor::WrapInBlock(node));
+                }
             }
-        }
 
-        if ast::Stmt::cast(node.clone()).is_some() {
-            return Some((node, false));
-        }
+            if let Some(stmt) = ast::Stmt::cast(node.clone()) {
+                if let ast::Stmt::ExprStmt(stmt) = stmt {
+                    if stmt.expr().as_ref() == Some(to_extract) {
+                        return Some(Anchor::Replace(stmt));
+                    }
+                }
+                return Some(Anchor::Before(node));
+            }
+            None
+        })
+    }
 
-        None
-    })
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Anchor::Before(it) | Anchor::WrapInBlock(it) => it,
+            Anchor::Replace(stmt) => stmt.syntax(),
+        }
+    }
 }
 
 #[cfg(test)]
