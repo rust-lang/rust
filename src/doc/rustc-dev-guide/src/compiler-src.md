@@ -140,7 +140,7 @@ You can read more about rustdoc in [this chapter][rustdocch].
 [`src/tools/rustdoc-js`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-js
 [`src/tools/rustdoc-themes`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-themes
 
-[rustdocch]: ./rustdoc-internals.md
+[rustdocch]: ./rustdoc.md
 
 ## Tests
 
