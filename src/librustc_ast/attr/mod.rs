@@ -7,7 +7,7 @@ use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Path, PathSegment};
 use crate::mut_visit::visit_clobber;
 use crate::ptr::P;
-use crate::token::{self, Token};
+use crate::token::{self, CommentKind, Token};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndJoint};
 
 use rustc_data_structures::sync::Lock;
@@ -169,7 +169,7 @@ impl Attribute {
     pub fn has_name(&self, name: Symbol) -> bool {
         match self.kind {
             AttrKind::Normal(ref item) => item.path == name,
-            AttrKind::DocComment(_) => false,
+            AttrKind::DocComment(..) => false,
         }
     }
 
@@ -198,7 +198,7 @@ impl Attribute {
                     None
                 }
             }
-            AttrKind::DocComment(_) => None,
+            AttrKind::DocComment(..) => None,
         }
     }
     pub fn name_or_empty(&self) -> Symbol {
@@ -218,7 +218,7 @@ impl Attribute {
                 Some(MetaItem { kind: MetaItemKind::List(list), .. }) => Some(list),
                 _ => None,
             },
-            AttrKind::DocComment(_) => None,
+            AttrKind::DocComment(..) => None,
         }
     }
 
@@ -314,13 +314,13 @@ impl Attribute {
     pub fn is_doc_comment(&self) -> bool {
         match self.kind {
             AttrKind::Normal(_) => false,
-            AttrKind::DocComment(_) => true,
+            AttrKind::DocComment(..) => true,
         }
     }
 
     pub fn doc_str(&self) -> Option<Symbol> {
         match self.kind {
-            AttrKind::DocComment(symbol) => Some(symbol),
+            AttrKind::DocComment(.., data) => Some(data),
             AttrKind::Normal(ref item) if item.path == sym::doc => {
                 item.meta(self.span).and_then(|meta| meta.value_str())
             }
@@ -331,14 +331,14 @@ impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match self.kind {
             AttrKind::Normal(ref item) => item,
-            AttrKind::DocComment(_) => panic!("unexpected doc comment"),
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
 
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
             AttrKind::Normal(item) => item,
-            AttrKind::DocComment(_) => panic!("unexpected doc comment"),
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
         }
     }
 
@@ -405,8 +405,13 @@ pub fn mk_attr_outer(item: MetaItem) -> Attribute {
     mk_attr(AttrStyle::Outer, item.path, item.kind.mac_args(item.span), item.span)
 }
 
-pub fn mk_doc_comment(style: AttrStyle, comment: Symbol, span: Span) -> Attribute {
-    Attribute { kind: AttrKind::DocComment(comment), id: mk_attr_id(), style, span }
+pub fn mk_doc_comment(
+    comment_kind: CommentKind,
+    style: AttrStyle,
+    data: Symbol,
+    span: Span,
+) -> Attribute {
+    Attribute { kind: AttrKind::DocComment(comment_kind, data), id: mk_attr_id(), style, span }
 }
 
 pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {

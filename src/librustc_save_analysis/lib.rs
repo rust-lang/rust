@@ -822,8 +822,8 @@ impl<'tcx> SaveContext<'tcx> {
 
         for attr in attrs {
             if let Some(val) = attr.doc_str() {
-                if attr.is_doc_comment() {
-                    result.push_str(&strip_doc_comment_decoration(val));
+                if let ast::AttrKind::DocComment(comment_kind, _) = attr.kind {
+                    result.push_str(&strip_doc_comment_decoration(val, comment_kind));
                 } else {
                     result.push_str(&val.as_str());
                 }

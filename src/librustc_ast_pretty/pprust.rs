@@ -8,7 +8,7 @@ use rustc_ast::ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, CommentKind, DelimToken, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::util::{classify, comments};
@@ -152,8 +152,8 @@ pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
 // and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     if let TokenTree::Token(token) = prev {
-        if let token::DocComment(s) = token.kind {
-            return !s.as_str().starts_with("//");
+        if let token::DocComment(comment_kind, ..) = token.kind {
+            return comment_kind != CommentKind::Line;
         }
     }
     match tt {
@@ -191,6 +191,19 @@ fn binop_to_string(op: BinOpToken) -> &'static str {
         token::Or => "|",
         token::Shl => "<<",
         token::Shr => ">>",
+    }
+}
+
+fn doc_comment_to_string(
+    comment_kind: CommentKind,
+    attr_style: ast::AttrStyle,
+    data: Symbol,
+) -> String {
+    match (comment_kind, attr_style) {
+        (CommentKind::Line, ast::AttrStyle::Outer) => format!("///{}", data),
+        (CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{}", data),
+        (CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{}*/", data),
+        (CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{}*/", data),
     }
 }
 
@@ -271,7 +284,9 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
         token::Lifetime(s) => s.to_string(),
 
         /* Other */
-        token::DocComment(s) => s.to_string(),
+        token::DocComment(comment_kind, attr_style, data) => {
+            doc_comment_to_string(comment_kind, attr_style, data)
+        }
         token::Eof => "<eof>".to_string(),
         token::Whitespace => " ".to_string(),
         token::Comment => "/* */".to_string(),
@@ -599,8 +614,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.print_attr_item(&item, attr.span);
                 self.word("]");
             }
-            ast::AttrKind::DocComment(comment) => {
-                self.word(comment.to_string());
+            ast::AttrKind::DocComment(comment_kind, data) => {
+                self.word(doc_comment_to_string(comment_kind, attr.style, data));
                 self.hardbreak()
             }
         }

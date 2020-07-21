@@ -506,11 +506,15 @@ impl Attributes {
             .iter()
             .filter_map(|attr| {
                 if let Some(value) = attr.doc_str() {
-                    let (value, mk_fragment): (_, fn(_, _, _) -> _) = if attr.is_doc_comment() {
-                        (strip_doc_comment_decoration(value), DocFragment::SugaredDoc)
-                    } else {
-                        (value.to_string(), DocFragment::RawDoc)
-                    };
+                    let (value, mk_fragment): (_, fn(_, _, _) -> _) =
+                        if let ast::AttrKind::DocComment(comment_kind, _) = attr.kind {
+                            (
+                                strip_doc_comment_decoration(value, comment_kind),
+                                DocFragment::SugaredDoc,
+                            )
+                        } else {
+                            (value.to_string(), DocFragment::RawDoc)
+                        };
 
                     let line = doc_line;
                     doc_line += value.lines().count();

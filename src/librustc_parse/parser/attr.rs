@@ -2,10 +2,9 @@ use super::{Parser, PathStyle};
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Nonterminal};
-use rustc_ast::util::comments;
 use rustc_ast_pretty::pprust;
 use rustc_errors::{error_code, PResult};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 
 use log::debug;
 
@@ -47,8 +46,8 @@ impl<'a> Parser<'a> {
                 let attr = self.parse_attribute_with_inner_parse_policy(inner_parse_policy)?;
                 attrs.push(attr);
                 just_parsed_doc_comment = false;
-            } else if let token::DocComment(s) = self.token.kind {
-                let attr = self.mk_doc_comment(s);
+            } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
+                let attr = attr::mk_doc_comment(comment_kind, attr_style, data, self.token.span);
                 if attr.style != ast::AttrStyle::Outer {
                     self.sess
                         .span_diagnostic
@@ -71,10 +70,6 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(attrs)
-    }
-
-    fn mk_doc_comment(&self, s: Symbol) -> ast::Attribute {
-        attr::mk_doc_comment(comments::doc_comment_style(s), s, self.token.span)
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.
@@ -184,9 +179,9 @@ impl<'a> Parser<'a> {
                 let attr = self.parse_attribute(true)?;
                 assert_eq!(attr.style, ast::AttrStyle::Inner);
                 attrs.push(attr);
-            } else if let token::DocComment(s) = self.token.kind {
+            } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
                 // We need to get the position of this token before we bump.
-                let attr = self.mk_doc_comment(s);
+                let attr = attr::mk_doc_comment(comment_kind, attr_style, data, self.token.span);
                 if attr.style == ast::AttrStyle::Inner {
                     attrs.push(attr);
                     self.bump();

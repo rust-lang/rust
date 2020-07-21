@@ -244,20 +244,20 @@ fn crlf_doc_comments() {
         let source = "/// doc comment\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name_1, source, &sess).unwrap().unwrap();
         let doc = item.attrs.iter().filter_map(|at| at.doc_str()).next().unwrap();
-        assert_eq!(doc.as_str(), "/// doc comment");
+        assert_eq!(doc.as_str(), " doc comment");
 
         let name_2 = FileName::Custom("crlf_source_2".to_string());
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name_2, source, &sess).unwrap().unwrap();
         let docs = item.attrs.iter().filter_map(|at| at.doc_str()).collect::<Vec<_>>();
-        let b: &[_] = &[Symbol::intern("/// doc comment"), Symbol::intern("/// line 2")];
+        let b: &[_] = &[Symbol::intern(" doc comment"), Symbol::intern(" line 2")];
         assert_eq!(&docs[..], b);
 
         let name_3 = FileName::Custom("clrf_source_3".to_string());
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name_3, source, &sess).unwrap().unwrap();
         let doc = item.attrs.iter().filter_map(|at| at.doc_str()).next().unwrap();
-        assert_eq!(doc.as_str(), "/** doc comment\n *  with CRLF */");
+        assert_eq!(doc.as_str(), " doc comment\n *  with CRLF ");
     });
 }
 

@@ -1419,7 +1419,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn eat_incorrect_doc_comment_for_param_type(&mut self) {
-        if let token::DocComment(_) = self.token.kind {
+        if let token::DocComment(..) = self.token.kind {
             self.struct_span_err(
                 self.token.span,
                 "documentation comments cannot be applied to a function parameter's type",

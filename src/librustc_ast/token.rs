@@ -17,6 +17,12 @@ use rustc_span::{self, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::{fmt, mem};
 
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub enum CommentKind {
+    Line,
+    Block,
+}
+
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 #[derive(HashStable_Generic)]
 pub enum BinOpToken {
@@ -238,9 +244,10 @@ pub enum TokenKind {
 
     Interpolated(Lrc<Nonterminal>),
 
-    // Can be expanded into several tokens.
-    /// A doc comment.
-    DocComment(Symbol),
+    /// A doc comment token.
+    /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
+    /// similarly to symbols in string literal tokens.
+    DocComment(CommentKind, ast::AttrStyle, Symbol),
 
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for

@@ -1,10 +1,9 @@
 pub use CommentStyle::*;
 
-use crate::ast;
+use crate::ast::AttrStyle;
+use crate::token::CommentKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos, Symbol};
-
-use log::debug;
 
 #[cfg(test)]
 mod tests;
@@ -28,43 +27,46 @@ pub struct Comment {
     pub pos: BytePos,
 }
 
-pub fn is_line_doc_comment(s: &str) -> bool {
-    let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/')
-        || s.starts_with("//!");
-    debug!("is {:?} a doc comment? {}", s, res);
-    res
-}
-
-pub fn is_block_doc_comment(s: &str) -> bool {
-    // Prevent `/**/` from being parsed as a doc comment
-    let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*')
-        || s.starts_with("/*!"))
-        && s.len() >= 5;
-    debug!("is {:?} a doc comment? {}", s, res);
-    res
-}
-
-// FIXME(#64197): Try to privatize this again.
-pub fn is_doc_comment(s: &str) -> bool {
-    (s.starts_with("///") && is_line_doc_comment(s))
-        || s.starts_with("//!")
-        || (s.starts_with("/**") && is_block_doc_comment(s))
-        || s.starts_with("/*!")
-}
-
-pub fn doc_comment_style(comment: Symbol) -> ast::AttrStyle {
-    let comment = &comment.as_str();
-    assert!(is_doc_comment(comment));
-    if comment.starts_with("//!") || comment.starts_with("/*!") {
-        ast::AttrStyle::Inner
-    } else {
-        ast::AttrStyle::Outer
+/// For a full line comment string returns its doc comment style if it's a doc comment
+/// and returns `None` if it's a regular comment.
+pub fn line_doc_comment_style(line_comment: &str) -> Option<AttrStyle> {
+    let line_comment = line_comment.as_bytes();
+    assert!(line_comment.starts_with(b"//"));
+    match line_comment.get(2) {
+        // `//!` is an inner line doc comment.
+        Some(b'!') => Some(AttrStyle::Inner),
+        Some(b'/') => match line_comment.get(3) {
+            // `////` (more than 3 slashes) is not considered a doc comment.
+            Some(b'/') => None,
+            // Otherwise `///` is an outer line doc comment.
+            _ => Some(AttrStyle::Outer),
+        },
+        _ => None,
     }
 }
 
-pub fn strip_doc_comment_decoration(comment: Symbol) -> String {
-    let comment = &comment.as_str();
+/// For a full block comment string returns its doc comment style if it's a doc comment
+/// and returns `None` if it's a regular comment.
+pub fn block_doc_comment_style(block_comment: &str, terminated: bool) -> Option<AttrStyle> {
+    let block_comment = block_comment.as_bytes();
+    assert!(block_comment.starts_with(b"/*"));
+    assert!(!terminated || block_comment.ends_with(b"*/"));
+    match block_comment.get(2) {
+        // `/*!` is an inner block doc comment.
+        Some(b'!') => Some(AttrStyle::Inner),
+        Some(b'*') => match block_comment.get(3) {
+            // `/***` (more than 2 stars) is not considered a doc comment.
+            Some(b'*') => None,
+            // `/**/` is not considered a doc comment.
+            Some(b'/') if block_comment.len() == 4 => None,
+            // Otherwise `/**` is an outer block doc comment.
+            _ => Some(AttrStyle::Outer),
+        },
+        _ => None,
+    }
+}
 
+pub fn strip_doc_comment_decoration(data: Symbol, comment_kind: CommentKind) -> String {
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: Vec<String>) -> Vec<String> {
         let mut i = 0;
@@ -126,26 +128,19 @@ pub fn strip_doc_comment_decoration(comment: Symbol) -> String {
         }
     }
 
-    // one-line comments lose their prefix
-    const ONELINERS: &[&str] = &["///!", "///", "//!", "//"];
-
-    for prefix in ONELINERS {
-        if comment.starts_with(*prefix) {
-            return (&comment[prefix.len()..]).to_string();
+    match comment_kind {
+        CommentKind::Line => {
+            let data = data.as_str();
+            let prefix_len = if data.starts_with('!') { 1 } else { 0 };
+            data[prefix_len..].to_string()
+        }
+        CommentKind::Block => {
+            let lines = data.as_str().lines().map(|s| s.to_string()).collect::<Vec<String>>();
+            let lines = vertical_trim(lines);
+            let lines = horizontal_trim(lines);
+            lines.join("\n")
         }
     }
-
-    if comment.starts_with("/*") {
-        let lines =
-            comment[3..comment.len() - 2].lines().map(|s| s.to_string()).collect::<Vec<String>>();
-
-        let lines = vertical_trim(lines);
-        let lines = horizontal_trim(lines);
-
-        return lines.join("\n");
-    }
-
-    panic!("not a doc-comment: {}", comment);
 }
 
 /// Returns `None` if the first `col` chars of `s` contain a non-whitespace char.
@@ -226,8 +221,8 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                     }
                 }
             }
-            rustc_lexer::TokenKind::BlockComment { terminated: _ } => {
-                if !is_block_doc_comment(token_text) {
+            rustc_lexer::TokenKind::BlockComment { terminated } => {
+                if block_doc_comment_style(token_text, terminated).is_none() {
                     let code_to_the_right = match text[pos + token.len..].chars().next() {
                         Some('\r' | '\n') => false,
                         _ => true,
@@ -249,7 +244,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                 }
             }
             rustc_lexer::TokenKind::LineComment => {
-                if !is_doc_comment(token_text) {
+                if line_doc_comment_style(token_text).is_none() {
                     comments.push(Comment {
                         style: if code_to_the_left { Trailing } else { Isolated },
                         lines: vec![token_text.to_string()],

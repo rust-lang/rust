@@ -148,9 +148,8 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                 tt!(Punct::new('\'', true))
             }
             Literal(lit) => tt!(Literal { lit }),
-            DocComment(c) => {
-                let style = comments::doc_comment_style(c);
-                let stripped = comments::strip_doc_comment_decoration(c);
+            DocComment(comment_kind, attr_style, data) => {
+                let stripped = comments::strip_doc_comment_decoration(data, comment_kind);
                 let mut escaped = String::new();
                 for ch in stripped.chars() {
                     escaped.extend(ch.escape_debug());
@@ -169,7 +168,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
                     span: DelimSpan::from_single(span),
                     flatten: false,
                 }));
-                if style == ast::AttrStyle::Inner {
+                if attr_style == ast::AttrStyle::Inner {
                     stack.push(tt!(Punct::new('!', false)));
                 }
                 tt!(Punct::new('#', false))
