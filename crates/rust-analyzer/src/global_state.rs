@@ -12,7 +12,7 @@ use parking_lot::RwLock;
 use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::{
     config::Config,
@@ -69,7 +69,7 @@ pub(crate) struct GlobalState {
     pub(crate) config: Config,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
-    pub(crate) mem_docs: FxHashSet<VfsPath>,
+    pub(crate) mem_docs: FxHashMap<VfsPath, Option<i64>>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) status: Status,
     pub(crate) source_root_config: SourceRootConfig,
@@ -84,6 +84,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) analysis: Analysis,
     pub(crate) check_fixes: CheckFixes,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
+    mem_docs: FxHashMap<VfsPath, Option<i64>>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
 }
@@ -117,7 +118,7 @@ impl GlobalState {
             config,
             analysis_host,
             diagnostics: Default::default(),
-            mem_docs: FxHashSet::default(),
+            mem_docs: FxHashMap::default(),
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
             status: Status::default(),
             source_root_config: SourceRootConfig::default(),
@@ -183,6 +184,7 @@ impl GlobalState {
             vfs: Arc::clone(&self.vfs),
             latest_requests: Arc::clone(&self.latest_requests),
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
+            mem_docs: self.mem_docs.clone(),
         }
     }
 
@@ -253,6 +255,11 @@ impl GlobalStateSnapshot {
 
     pub(crate) fn file_line_endings(&self, id: FileId) -> LineEndings {
         self.vfs.read().1[&id]
+    }
+
+    pub(crate) fn url_file_version(&self, url: &Url) -> Option<i64> {
+        let path = from_proto::vfs_path(&url).ok()?;
+        self.mem_docs.get(&path).copied()?
     }
 
     pub(crate) fn anchored_path(&self, file_id: FileId, path: &str) -> Url {

@@ -480,9 +480,10 @@ pub(crate) fn url_from_abs_path(path: &Path) -> lsp_types::Url {
 pub(crate) fn versioned_text_document_identifier(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
-    version: Option<i64>,
 ) -> lsp_types::VersionedTextDocumentIdentifier {
-    lsp_types::VersionedTextDocumentIdentifier { uri: url(snap, file_id), version }
+    let url = url(snap, file_id);
+    let version = snap.url_file_version(&url);
+    lsp_types::VersionedTextDocumentIdentifier { uri: url, version }
 }
 
 pub(crate) fn location(
@@ -571,7 +572,7 @@ pub(crate) fn snippet_text_document_edit(
     is_snippet: bool,
     source_file_edit: SourceFileEdit,
 ) -> Result<lsp_ext::SnippetTextDocumentEdit> {
-    let text_document = versioned_text_document_identifier(snap, source_file_edit.file_id, None);
+    let text_document = versioned_text_document_identifier(snap, source_file_edit.file_id);
     let line_index = snap.analysis.file_line_index(source_file_edit.file_id)?;
     let line_endings = snap.file_line_endings(source_file_edit.file_id);
     let edits = source_file_edit
