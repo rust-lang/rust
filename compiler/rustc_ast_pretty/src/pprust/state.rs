@@ -1005,7 +1005,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             ast::TyKind::BareFn(ref f) => {
-                self.print_ty_fn(f.ext, f.unsafety, &f.decl, None, &f.generic_params);
+                self.print_ty_fn(f.ext, f.unsafety, f.constness, &f.decl, None, &f.generic_params);
             }
             ast::TyKind::Path(None, ref path) => {
                 self.print_path(path, false, 0);
@@ -2812,6 +2812,7 @@ impl<'a> State<'a> {
         &mut self,
         ext: ast::Extern,
         unsafety: ast::Unsafe,
+        constness: ast::Const,
         decl: &ast::FnDecl,
         name: Option<Ident>,
         generic_params: &[ast::GenericParam],
@@ -2830,7 +2831,7 @@ impl<'a> State<'a> {
             },
             span: rustc_span::DUMMY_SP,
         };
-        let header = ast::FnHeader { unsafety, ext, ..ast::FnHeader::default() };
+        let header = ast::FnHeader { unsafety, constness, ext, ..ast::FnHeader::default() };
         self.print_fn(decl, header, name, &generics);
         self.end();
     }

@@ -218,7 +218,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             ty::FnPtr(a_f) => {
                 // We permit coercion of fn pointers to drop the
-                // unsafe qualifier.
+                // unsafe or const qualifier.
                 self.coerce_from_fn_pointer(a, a_f, b)
             }
             ty::Closure(_, substs_a) => {
@@ -660,26 +660,53 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(coercion)
     }
 
-    fn coerce_from_safe_fn<F, G>(
+    fn coerce_from_const_safe_fn<F, G, H, I>(
         &self,
         a: Ty<'tcx>,
         fn_ty_a: ty::PolyFnSig<'tcx>,
         b: Ty<'tcx>,
         to_unsafe: F,
-        normal: G,
+        to_unconst: G,
+        to_unsafe_unconst: H,
+        normal: I,
     ) -> CoerceResult<'tcx>
     where
         F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
         G: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
+        H: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
+        I: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     {
         if let ty::FnPtr(fn_ty_b) = b.kind() {
-            if let (hir::Unsafety::Normal, hir::Unsafety::Unsafe) =
-                (fn_ty_a.unsafety(), fn_ty_b.unsafety())
-            {
-                let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                return self.unify_and(unsafe_a, b, to_unsafe);
+            let a_unsafety = fn_ty_a.unsafety();
+            let b_unsafety = fn_ty_b.unsafety();
+            let a_constness = fn_ty_a.constness();
+            let b_constness = fn_ty_b.constness();
+
+            match (a_unsafety, b_unsafety) {
+                (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
+                    return match (a_constness, b_constness) {
+                        (hir::Constness::Const, hir::Constness::NotConst) => {
+                            let unconst_unsafe_a =
+                                self.tcx.const_safe_to_normal_unsafe_fn_ty(fn_ty_a);
+                            self.unify_and(unconst_unsafe_a, b, to_unsafe_unconst)
+                        }
+                        _ => {
+                            let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
+                            self.unify_and(unsafe_a, b, to_unsafe)
+                        }
+                    };
+                }
+                _ => {
+                    if (a_constness, b_constness)
+                        == (hir::Constness::Const, hir::Constness::NotConst)
+                    {
+                        let unconst_a = self.tcx.const_to_normal_fn_ty(fn_ty_a);
+                        return self.unify_and(unconst_a, b, to_unconst);
+                    }
+                }
             }
         }
+
         self.unify_and(a, b, normal)
     }
 
@@ -696,13 +723,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let b = self.shallow_resolve(b);
         debug!("coerce_from_fn_pointer(a={:?}, b={:?})", a, b);
 
-        self.coerce_from_safe_fn(
+        let InferOk { value, obligations } = self.coerce_from_const_safe_fn(
             a,
             fn_ty_a,
             b,
             simple(Adjust::Pointer(PointerCast::UnsafeFnPointer)),
+            simple(Adjust::Pointer(PointerCast::NotConstFnPointer)),
+            simple(Adjust::Pointer(PointerCast::UnsafeNotConstFnPointer)),
             identity,
-        )
+        )?;
+
+        Ok(InferOk { value, obligations })
     }
 
     fn coerce_from_fn_item(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
@@ -733,7 +764,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
-                let InferOk { value, obligations: o2 } = self.coerce_from_safe_fn(
+
+                let InferOk { value, obligations: o2 } = self.coerce_from_const_safe_fn(
                     a_fn_pointer,
                     a_sig,
                     b,
@@ -749,10 +781,35 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             },
                         ]
                     },
+                    |unconst_ty| {
+                        vec![
+                            Adjustment {
+                                kind: Adjust::Pointer(PointerCast::ReifyFnPointer),
+                                target: a_fn_pointer,
+                            },
+                            Adjustment {
+                                kind: Adjust::Pointer(PointerCast::NotConstFnPointer),
+                                target: unconst_ty,
+                            },
+                        ]
+                    },
+                    |unsafe_unconst_ty| {
+                        vec![
+                            Adjustment {
+                                kind: Adjust::Pointer(PointerCast::ReifyFnPointer),
+                                target: a_fn_pointer,
+                            },
+                            Adjustment {
+                                kind: Adjust::Pointer(PointerCast::UnsafeNotConstFnPointer),
+                                target: unsafe_unconst_ty,
+                            },
+                        ]
+                    },
                     simple(Adjust::Pointer(PointerCast::ReifyFnPointer)),
                 )?;
 
                 obligations.extend(o2);
+
                 Ok(InferOk { value, obligations })
             }
             _ => self.unify_and(a, b, identity),

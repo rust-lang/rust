@@ -17,7 +17,6 @@ use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY;
 use rustc_session::lint::LintBuffer;
-use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
@@ -825,17 +824,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     )
                     .emit();
                 });
-                if !self.session.features_untracked().const_fn_pointer {
-                    if let Const::Yes(span) = bfty.constness {
-                        feature_err(
-                            &self.session.parse_sess,
-                            sym::const_fn_pointer,
-                            span,
-                            "`const fn` pointer type is unstable",
-                        )
-                        .emit()
-                    }
-                }
                 self.check_late_bound_lifetime_defs(&bfty.generic_params);
             }
             TyKind::TraitObject(ref bounds, ..) => {

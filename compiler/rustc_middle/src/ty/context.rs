@@ -2065,6 +2065,23 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig }))
     }
 
+    pub fn const_to_normal_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
+        assert_eq!(sig.constness(), hir::Constness::Const);
+        self.mk_fn_ptr(
+            sig.map_bound(|sig| ty::FnSig { constness: hir::Constness::NotConst, ..sig }),
+        )
+    }
+
+    pub fn const_safe_to_normal_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
+        assert_eq!(sig.unsafety(), hir::Unsafety::Normal);
+        assert_eq!(sig.constness(), hir::Constness::Const);
+        self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig {
+            unsafety: hir::Unsafety::Unsafe,
+            constness: hir::Constness::NotConst,
+            ..sig
+        }))
+    }
+
     /// Given a closure signature, returns an equivalent fn signature. Detuples
     /// and so forth -- so e.g., if we have a sig with `Fn<(u32, i32)>` then
     /// you would get a `fn(u32, i32)`.

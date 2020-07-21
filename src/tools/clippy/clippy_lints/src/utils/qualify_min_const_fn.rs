@@ -149,7 +149,11 @@ fn check_rvalue(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, rvalue: &Rv
         },
         Rvalue::Cast(
             CastKind::Pointer(
-                PointerCast::UnsafeFnPointer | PointerCast::ClosureFnPointer(_) | PointerCast::ReifyFnPointer,
+                PointerCast::UnsafeFnPointer
+                | PointerCast::ClosureFnPointer(_)
+                | PointerCast::ReifyFnPointer
+                | PointerCast::NotConstFnPointer
+                | PointerCast::UnsafeNotConstFnPointer,
             ),
             _,
             _,

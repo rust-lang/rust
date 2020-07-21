@@ -943,19 +943,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let (lt1, sig1) = get_lifetimes(sig1);
         let (lt2, sig2) = get_lifetimes(sig2);
 
-        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        // const unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         let mut values = (
             DiagnosticStyledString::normal("".to_string()),
             DiagnosticStyledString::normal("".to_string()),
         );
 
-        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        // ^^^^^^
+        // const unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        // ^^^^^
+        values.0.push(sig1.constness.prefix_str(), sig1.constness != sig2.constness);
+        values.1.push(sig2.constness.prefix_str(), sig1.constness != sig2.constness);
+
+        // const unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //       ^^^^^^
         values.0.push(sig1.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
         values.1.push(sig2.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
 
-        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        //        ^^^^^^^^^^
+        // const unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //              ^^^^^^^^^^
         if sig1.abi != abi::Abi::Rust {
             values.0.push(format!("extern {} ", sig1.abi), sig1.abi != sig2.abi);
         }
@@ -963,19 +968,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             values.1.push(format!("extern {} ", sig2.abi), sig1.abi != sig2.abi);
         }
 
-        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        //                   ^^^^^^^^
+        // const unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                         ^^^^^^^^
         let lifetime_diff = lt1 != lt2;
         values.0.push(lt1, lifetime_diff);
         values.1.push(lt2, lifetime_diff);
 
-        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        //                           ^^^
+        // const unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                                ^^^
         values.0.push_normal("fn(");
         values.1.push_normal("fn(");
 
-        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        //                              ^^^^^
+        // const unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                                    ^^^^^
         let len1 = sig1.inputs().len();
         let len2 = sig2.inputs().len();
         if len1 == len2 {
@@ -1013,13 +1018,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             values.1.push("...", !sig1.c_variadic);
         }
 
-        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        //                                   ^
+        // const unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                                         ^
         values.0.push_normal(")");
         values.1.push_normal(")");
 
-        // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        //                                     ^^^^^^^^
+        // const unsafe extern "C" for<'a> fn(&'a T) -> &'a T
+        //                                           ^^^^^^^^
         let output1 = sig1.output();
         let output2 = sig2.output();
         let (x1, x2) = self.cmp(output1, output2);

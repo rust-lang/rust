@@ -1980,6 +1980,8 @@ define_print_and_forward_display! {
 
     ty::FnSig<'tcx> {
         p!(write("{}", self.unsafety.prefix_str()));
+        p!(write("{}", self.constness.prefix_str()));
+
 
         if self.abi != Abi::Rust {
             p!(write("extern {} ", self.abi));

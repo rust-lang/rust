@@ -1,0 +1,30 @@
+error[E0308]: mismatched types
+  --> $DIR/const_fn_ptr_cast.rs:14:23
+   |
+LL | const _: const fn() = not_const_fn;
+   |                       ^^^^^^^^^^^^ expected const fn, found  fn
+   |
+   = note: expected fn pointer `const fn()`
+                 found fn item `fn() {not_const_fn}`
+
+error[E0308]: mismatched types
+  --> $DIR/const_fn_ptr_cast.rs:17:23
+   |
+LL | const _: const fn() = unsafe_fn;
+   |                       ^^^^^^^^^ expected normal fn, found unsafe fn
+   |
+   = note: expected fn pointer `const fn()`
+                 found fn item `unsafe fn() {unsafe_fn}`
+
+error[E0308]: mismatched types
+  --> $DIR/const_fn_ptr_cast.rs:20:30
+   |
+LL | const _: const unsafe fn() = unsafe_fn;
+   |                              ^^^^^^^^^ expected const fn, found  fn
+   |
+   = note: expected fn pointer `const unsafe fn()`
+                 found fn item `unsafe fn() {unsafe_fn}`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

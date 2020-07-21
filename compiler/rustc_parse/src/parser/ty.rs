@@ -330,6 +330,9 @@ impl<'a> Parser<'a> {
         let ast::FnHeader { ext, unsafety, constness, asyncness } = self.parse_fn_front_matter()?;
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No)?;
         let whole_span = lo.to(self.prev_token.span);
+        if let ast::Const::Yes(span) = constness {
+            self.sess.gated_spans.gate(sym::const_fn_pointer, span);
+        }
         if let ast::Async::Yes { span, .. } = asyncness {
             self.error_fn_ptr_bad_qualifier(whole_span, span, "async");
         }

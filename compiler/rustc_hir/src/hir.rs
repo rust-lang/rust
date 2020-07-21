@@ -2518,6 +2518,15 @@ pub enum Constness {
     NotConst,
 }
 
+impl Constness {
+    pub fn prefix_str(&self) -> &'static str {
+        match self {
+            Self::Const => "const ",
+            Self::NotConst => "",
+        }
+    }
+}
+
 impl fmt::Display for Constness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
