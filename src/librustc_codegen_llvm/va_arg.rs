@@ -128,8 +128,7 @@ fn emit_aapcs_va_arg(
     // it could be on the stack so we have to update the offset and then check
     // the offset again.
 
-    if layout.align.abi.bytes() > 8 {
-        assert!(layout.align.abi.bytes() <= 16);
+    if gr_type && layout.align.abi.bytes() > 8 {
         reg_off_v = maybe_reg.add(reg_off_v, bx.const_i32(15));
         reg_off_v = maybe_reg.and(reg_off_v, bx.const_i32(-16));
     }
