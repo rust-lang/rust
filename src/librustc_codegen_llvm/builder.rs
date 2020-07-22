@@ -1330,7 +1330,12 @@ impl Builder<'a, 'll, 'tcx> {
         self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
     }
 
-    fn phi(&mut self, ty: &'ll Type, vals: &[&'ll Value], bbs: &[&'ll BasicBlock]) -> &'ll Value {
+    pub(crate) fn phi(
+        &mut self,
+        ty: &'ll Type,
+        vals: &[&'ll Value],
+        bbs: &[&'ll BasicBlock],
+    ) -> &'ll Value {
         assert_eq!(vals.len(), bbs.len());
         let phi = unsafe { llvm::LLVMBuildPhi(self.llbuilder, ty, UNNAMED) };
         unsafe {
