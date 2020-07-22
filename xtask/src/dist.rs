@@ -57,8 +57,6 @@ fn dist_server() -> Result<()> {
         env::set_var("CC", "clang");
         run!(
             "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release"
-            // We'd want to add, but that requires setting the right linker somehow
-            // --features=jemalloc
         )?;
     } else {
         run!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release")?;

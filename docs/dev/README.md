@@ -397,13 +397,7 @@ To log all communication between the server and the client, there are two choice
 
 There are also two VS Code commands which might be of interest:
 
-* `Rust Analyzer: Status` shows some memory-usage statistics. To take full
-  advantage of it, you need to compile rust-analyzer with jemalloc support:
-  ```
-  $ cargo install --path crates/rust-analyzer --force --features jemalloc
-  ```
-
-  There's an alias for this: `cargo xtask install --server --jemalloc`.
+* `Rust Analyzer: Status` shows some memory-usage statistics.
 
 * `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
 
