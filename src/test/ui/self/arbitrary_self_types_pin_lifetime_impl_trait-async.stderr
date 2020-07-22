@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:16
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }

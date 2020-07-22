@@ -1,0 +1,134 @@
+error[E0759]: `val` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:20:13
+   |
+LL |     fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 'a {
+   |                           ---------------------- this data with lifetime `'a`...
+LL |         val.use_self::<T>()
+   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:14:32
+   |
+LL |     impl<T> MyTrait<T> for dyn ObjectTrait<T> {
+   |                                ^^^^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+LL |         fn use_self<K>(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl<T> MyTrait<T> for dyn ObjectTrait<T> + '_ {
+   |                                               ^^^^
+
+error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an implicit `'static` lifetime requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:69:13
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |                        ------------------- this data with lifetime `'a`...
+LL |         val.use_self()
+   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here because of an implicit lifetime bound on the inherent `impl`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:64:14
+   |
+LL |     impl dyn ObjectTrait {
+   |              ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl dyn ObjectTrait + '_ {
+   |                          ^^^^
+
+error[E0759]: `val` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:88:13
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
+   |                        ------------------- this data with lifetime `'a`...
+LL |         val.use_self()
+   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:85:26
+   |
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+...
+LL |     impl MyTrait for dyn ObjectTrait {}
+   |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                      ^^^^
+help: to declare that the `impl Trait` captures data from argument `val`, you can add an explicit `'a` lifetime bound
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |                                                                    ^^^^
+
+error[E0759]: `val` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:108:27
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |                        ------------------- this data with lifetime `'a`...
+LL |         MyTrait::use_self(val)
+   |                           ^^^ ...is captured here...
+   |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:108:9
+   |
+LL |         MyTrait::use_self(val)
+   |         ^^^^^^^^^^^^^^^^^
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:104:26
+   |
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+...
+LL |     impl MyTrait for dyn ObjectTrait {}
+   |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                      ^^^^
+
+error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an implicit `'static` lifetime requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:37:13
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> &'a () {
+   |                        ------------------- this data with lifetime `'a`...
+LL |         val.use_self()
+   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:31:26
+   |
+LL |     impl MyTrait for dyn ObjectTrait {
+   |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {
+   |                                      ^^^^
+
+error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an implicit `'static` lifetime requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:54:13
+   |
+LL |     fn use_it<'a>(val: &'a Box<dyn ObjectTrait + 'a>) -> &'a () {
+   |                        ----------------------------- this data with lifetime `'a`...
+LL |         val.use_self()
+   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:48:30
+   |
+LL |     impl MyTrait for Box<dyn ObjectTrait> {
+   |                              ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+LL |         fn use_self(&self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s 'static` requirement
+help: consider relaxing the implicit `'static` requirement
+   |
+LL |     impl MyTrait for Box<dyn ObjectTrait + '_> {
+   |                                          ^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0759`.

@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `items` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/dyn-trait-underscore.rs:8:20
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {

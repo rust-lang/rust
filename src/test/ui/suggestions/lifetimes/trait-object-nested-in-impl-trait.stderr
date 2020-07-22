@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/trait-object-nested-in-impl-trait.rs:30:31
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
@@ -23,7 +23,7 @@ help: to declare that the trait object captures data from argument `self`, you c
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo + '_>> {
    |                                                        ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/trait-object-nested-in-impl-trait.rs:41:31
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
@@ -44,7 +44,7 @@ help: to declare that the trait object captures data from argument `self`, you c
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo + '_>> + '_ {
    |                                                        ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `self` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/trait-object-nested-in-impl-trait.rs:52:31
    |
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
@@ -65,7 +65,7 @@ help: to declare that the trait object captures data from argument `self`, you c
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo + 'a>> + 'a {
    |                                                               ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `self` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/trait-object-nested-in-impl-trait.rs:63:31
    |
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {

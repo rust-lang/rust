@@ -6,7 +6,7 @@ fn borrowed_proc<'a>(x: &'a isize) -> Box<dyn FnMut()->(isize) + 'a> {
 
 fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + 'static> {
     // This is illegal, because the region bound on `proc` is 'static.
-    Box::new(move || { *x }) //~ ERROR cannot infer an appropriate lifetime
+    Box::new(move || { *x }) //~ ERROR E0759
 }
 
 fn main() { }
