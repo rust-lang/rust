@@ -764,19 +764,57 @@ mod prim_str {}
 mod prim_tuple {}
 
 #[doc(primitive = "f32")]
-/// The 32-bit floating point type.
+/// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
+///
+/// This type can represent a wide range of decimal numbers, like `3.5`, `27`,
+/// `-113.75`, `0.0078125`, `34359738368`, `0`, `-1`. So unlike integer types
+/// (like `i32`), floating point types can represent non-integer numbers, too.
+///
+/// However, being able to represent this wide range of numbers comes at the
+/// cost of precision: floats can only represent some of the real numbers and
+/// calculation with floats round to a nearby representable number. For example,
+/// `5.0` and `1.0` can be exactly represented as `f32`, but `1.0 / 5.0` results
+/// in `0.20000000298023223876953125` since `0.2` cannot be exactly represented
+/// as `f32`. Note however, that printing floats with `println` and friends will
+/// often discard insignificant digits: `println!("{}", 1.0f32 / 5.0f32)` will
+/// print `0.2`.
+///
+/// The precision is better for numbers near 0 and worse for large numbers. For
+/// example, above 2<sup>24</sup>, not even all integers are representable.
+///
+/// Additionally, `f32` can represent a couple of special values:
+///
+/// - `-0`: this is just due to how floats are encoded. It is semantically
+///   equivalent to `0` and `-0.0 == 0.0` results in `true`.
+/// - [∞](#associatedconstant.INFINITY) and
+///   [-∞](#associatedconstant.NEG_INFINITY): these result from calculations
+///   like `1.0 / 0.0`.
+/// - [NaN (not a number)](#associatedconstant.NAN): this value results from
+///   calculations like `(-1.0).sqrt()`. NaN has some potentially unexpected
+///   behavior: it is unequal to any float, including itself! It is also neither
+///   smaller nor greater than any float, making it impossible to sort. Lastly,
+///   it is considered infectious as almost all calculations where one of the
+///   operands is NaN will also result in NaN.
+///
+/// For more information on floating point numbers, see [Wikipedia][wikipedia].
 ///
 /// *[See also the `std::f32::consts` module](f32/consts/index.html).*
 ///
+/// [wikipedia]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
 
 #[doc(primitive = "f64")]
-//
-/// The 64-bit floating point type.
+/// A 64-bit floating point type (specifically, the "binary64" type defined in IEEE 754-2008).
+///
+/// This type is very similar to [`f32`](primitive.f32.html), but has increased
+/// precision by using twice as many bits. Please see [the documentation for
+/// `f32`](primitive.f32.html) or [Wikipedia on double precision
+/// values][wikipedia] for more information.
 ///
 /// *[See also the `std::f64::consts` module](f64/consts/index.html).*
 ///
+/// [wikipedia]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 {}
 
