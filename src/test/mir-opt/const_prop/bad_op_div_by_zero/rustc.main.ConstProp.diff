@@ -38,15 +38,22 @@
 -                                          // + span: $DIR/bad_op_div_by_zero.rs:5:14: 5:19
 +                                          // + span: $DIR/bad_op_div_by_zero.rs:5:18: 5:19
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
+-         assert(!move _4, "attempt to divide {} by zero", const 1_i32) -> bb1; // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
 +         _4 = const true;                 // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
+                                           // ty::Const
++                                          // + ty: bool
++                                          // + val: Value(Scalar(0x01))
++                                          // mir::Constant
++                                          // + span: $DIR/bad_op_div_by_zero.rs:5:14: 5:19
++                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
++         assert(!const true, "attempt to divide {} by zero", const 1_i32) -> bb1; // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
 +                                          // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x01))
 +                                          // mir::Constant
 +                                          // + span: $DIR/bad_op_div_by_zero.rs:5:14: 5:19
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-          assert(!move _4, "attempt to divide {} by zero", const 1_i32) -> bb1; // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
-                                           // ty::Const
++                                          // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000001))
                                            // mir::Constant
@@ -90,29 +97,42 @@
 -         _7 = BitAnd(move _5, move _6);   // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
 -         assert(!move _7, "attempt to compute `{} / {}` which would overflow", const 1_i32, _3) -> bb2; // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+         assert(!const false, "attempt to compute `{} / {}` which would overflow", const 1_i32, _3) -> bb2; // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
-+                                          // ty::Const
++         assert(!const false, "attempt to compute `{} / {}` which would overflow", const 1_i32, const 0_i32) -> bb2; // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
+                                           // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x00))
 +                                          // mir::Constant
 +                                          // + span: $DIR/bad_op_div_by_zero.rs:5:14: 5:19
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-                                           // ty::Const
++                                          // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000001))
                                            // mir::Constant
                                            // + span: $DIR/bad_op_div_by_zero.rs:5:14: 5:15
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
++                                          // ty::Const
++                                          // + ty: i32
++                                          // + val: Value(Scalar(0x00000000))
++                                          // mir::Constant
++                                          // + span: $DIR/bad_op_div_by_zero.rs:5:14: 5:19
++                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
       }
   
       bb2: {
-          _2 = Div(const 1_i32, move _3);  // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
+-         _2 = Div(const 1_i32, move _3);  // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
++         _2 = Div(const 1_i32, const 0_i32); // scope 1 at $DIR/bad_op_div_by_zero.rs:5:14: 5:19
                                            // ty::Const
                                            // + ty: i32
                                            // + val: Value(Scalar(0x00000001))
                                            // mir::Constant
                                            // + span: $DIR/bad_op_div_by_zero.rs:5:14: 5:15
                                            // + literal: Const { ty: i32, val: Value(Scalar(0x00000001)) }
++                                          // ty::Const
++                                          // + ty: i32
++                                          // + val: Value(Scalar(0x00000000))
++                                          // mir::Constant
++                                          // + span: $DIR/bad_op_div_by_zero.rs:5:14: 5:19
++                                          // + literal: Const { ty: i32, val: Value(Scalar(0x00000000)) }
           StorageDead(_3);                 // scope 1 at $DIR/bad_op_div_by_zero.rs:5:18: 5:19
           _0 = const ();                   // scope 0 at $DIR/bad_op_div_by_zero.rs:3:11: 6:2
                                            // ty::Const
