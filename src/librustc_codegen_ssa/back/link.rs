@@ -1598,7 +1598,9 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    cmd.add_eh_frame_header();
+    if sess.target.target.options.eh_frame_header {
+        cmd.add_eh_frame_header();
+    }
 
     // NO-OPT-OUT, OBJECT-FILES-NO
     if crt_objects_fallback {

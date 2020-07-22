@@ -23,6 +23,7 @@ pub fn opts() -> TargetOptions {
         is_like_solaris: true,
         limit_rdylib_exports: false, // Linker doesn't support this
         eliminate_frame_pointer: false,
+        eh_frame_header: false,
         late_link_args,
 
         // While we support ELF TLS, rust requires a way to register

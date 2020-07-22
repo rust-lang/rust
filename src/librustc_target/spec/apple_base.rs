@@ -31,6 +31,7 @@ pub fn opts() -> TargetOptions {
         has_elf_tls: version >= (10, 7),
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
+        eh_frame_header: false,
 
         // This environment variable is pretty magical but is intended for
         // producing deterministic builds. This was first discovered to be used
