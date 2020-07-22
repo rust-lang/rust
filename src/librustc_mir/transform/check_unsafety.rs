@@ -439,7 +439,11 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         unsafety_check_result: |tcx, def_id| {
-            unsafety_check_result(tcx, ty::WithOptConstParam::unknown(def_id))
+            if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
+                tcx.unsafety_check_result_for_const_arg(def)
+            } else {
+                unsafety_check_result(tcx, ty::WithOptConstParam::unknown(def_id))
+            }
         },
         unsafety_check_result_for_const_arg: |tcx, (did, param_did)| {
             unsafety_check_result(
@@ -499,12 +503,6 @@ fn unsafety_check_result<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx UnsafetyCheckResult {
-    if def.const_param_did.is_none() {
-        if let Some(param_did) = tcx.opt_const_param_of(def.did) {
-            return tcx.unsafety_check_result_for_const_arg((def.did, param_did));
-        }
-    }
-
     debug!("unsafety_violations({:?})", def);
 
     // N.B., this borrow is valid because all the consumers of

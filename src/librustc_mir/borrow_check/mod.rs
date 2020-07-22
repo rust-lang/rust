@@ -88,7 +88,13 @@ const DEREF_PROJECTION: &[PlaceElem<'_>; 1] = &[ProjectionElem::Deref];
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        mir_borrowck: |tcx, did| mir_borrowck(tcx, ty::WithOptConstParam::unknown(did)),
+        mir_borrowck: |tcx, did| {
+            if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
+                tcx.mir_borrowck_const_arg(def)
+            } else {
+                mir_borrowck(tcx, ty::WithOptConstParam::unknown(did))
+            }
+        },
         mir_borrowck_const_arg: |tcx, (did, param_did)| {
             mir_borrowck(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
         },
@@ -100,12 +106,6 @@ fn mir_borrowck<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx BorrowCheckResult<'tcx> {
-    if def.const_param_did.is_none() {
-        if let Some(param_did) = tcx.opt_const_param_of(def.did) {
-            return tcx.mir_borrowck_const_arg((def.did, param_did));
-        }
-    }
-
     let (input_body, promoted) = tcx.mir_validated(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
 
