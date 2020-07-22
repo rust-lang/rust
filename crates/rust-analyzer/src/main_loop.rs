@@ -210,7 +210,7 @@ impl GlobalState {
                             let vfs = &mut self.vfs.write().0;
                             for (path, contents) in files {
                                 let path = VfsPath::from(path);
-                                if !self.mem_docs.contains(&path) {
+                                if !self.mem_docs.contains_key(&path) {
                                     vfs.set_file_contents(path, contents)
                                 }
                             }
@@ -299,7 +299,7 @@ impl GlobalState {
         if self.status == Status::Ready && (state_changed || prev_status == Status::Loading) {
             let subscriptions = self
                 .mem_docs
-                .iter()
+                .keys()
                 .map(|path| self.vfs.read().0.file_id(&path).unwrap())
                 .collect::<Vec<_>>();
 
@@ -310,8 +310,12 @@ impl GlobalState {
             for file_id in diagnostic_changes {
                 let url = file_id_to_url(&self.vfs.read().0, file_id);
                 let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
+                let version = from_proto::vfs_path(&url)
+                    .map(|path| self.mem_docs.get(&path).copied().flatten())
+                    .unwrap_or_default();
+
                 self.send_notification::<lsp_types::notification::PublishDiagnostics>(
-                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None },
+                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version },
                 );
             }
         }
@@ -400,7 +404,11 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidOpenTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if !this.mem_docs.insert(path.clone()) {
+                    if this
+                        .mem_docs
+                        .insert(path.clone(), Some(params.text_document.version))
+                        .is_some()
+                    {
                         log::error!("duplicate DidOpenTextDocument: {}", path)
                     }
                     this.vfs
@@ -412,29 +420,38 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    assert!(this.mem_docs.contains(&path));
+                    *this.mem_docs.get_mut(&path).unwrap() = params.text_document.version;
                     let vfs = &mut this.vfs.write().0;
                     let file_id = vfs.file_id(&path).unwrap();
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
                     apply_document_changes(&mut text, params.content_changes);
-                    vfs.set_file_contents(path, Some(text.into_bytes()))
+                    vfs.set_file_contents(path.clone(), Some(text.into_bytes()));
+
+                    this.mem_docs.insert(path, params.text_document.version);
                 }
                 Ok(())
             })?
             .on::<lsp_types::notification::DidCloseTextDocument>(|this, params| {
+                let mut version = None;
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if !this.mem_docs.remove(&path) {
-                        log::error!("orphan DidCloseTextDocument: {}", path)
+                    match this.mem_docs.remove(&path) {
+                        Some(entry) => version = entry,
+                        None => log::error!("orphan DidCloseTextDocument: {}", path),
                     }
+
                     if let Some(path) = path.as_path() {
                         this.loader.handle.invalidate(path.to_path_buf());
                     }
                 }
+
+                // Clear the diagnostics for the previously known version of the file.
+                // This prevents stale "cargo check" diagnostics if the file is
+                // closed, "cargo check" is run and then the file is reopened.
                 this.send_notification::<lsp_types::notification::PublishDiagnostics>(
                     lsp_types::PublishDiagnosticsParams {
                         uri: params.text_document.uri,
                         diagnostics: Vec::new(),
-                        version: None,
+                        version,
                     },
                 );
                 Ok(())
