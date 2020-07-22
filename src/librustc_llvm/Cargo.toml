@@ -14,8 +14,8 @@ static-libstdcpp = []
 emscripten = []
 
 [dependencies]
-libc = "0.2"
+libc = "0.2.73"
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-cc = "1.0.1"
+cc = "1.0.58"
