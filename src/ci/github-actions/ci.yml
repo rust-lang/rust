@@ -293,7 +293,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
+          - name: x86_64-gnu-aux
             <<: *job-linux-xl
 
   auto:
