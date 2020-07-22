@@ -154,8 +154,19 @@ fn ssr_function_to_method() {
 fn ssr_nested_function() {
     assert_ssr_transform(
         "foo($a, $b, $c) ==>> bar($c, baz($a, $b))",
-        "fn foo() {} fn main { foo  (x + value.method(b), x+y-z, true && false) }",
-        expect![["fn foo() {} fn main { bar(true && false, baz(x + value.method(b), x+y-z)) }"]],
+        r#"
+            //- /lib.rs crate:foo
+            fn foo() {}
+            fn bar() {}
+            fn baz() {}
+            fn main { foo  (x + value.method(b), x+y-z, true && false) }
+            "#,
+        expect![[r#"
+            fn foo() {}
+            fn bar() {}
+            fn baz() {}
+            fn main { bar(true && false, baz(x + value.method(b), x+y-z)) }
+        "#]],
     )
 }
 
@@ -181,8 +192,8 @@ fn ssr_with_extra_space() {
 fn ssr_keeps_nested_comment() {
     assert_ssr_transform(
         "foo($x) ==>> bar($x)",
-        "fn foo() {} fn main() { foo(other(5 /* using 5 */)) }",
-        expect![["fn foo() {} fn main() { bar(other(5 /* using 5 */)) }"]],
+        "fn foo() {} fn bar() {} fn main() { foo(other(5 /* using 5 */)) }",
+        expect![["fn foo() {} fn bar() {} fn main() { bar(other(5 /* using 5 */)) }"]],
     )
 }
 
@@ -190,17 +201,25 @@ fn ssr_keeps_nested_comment() {
 fn ssr_keeps_comment() {
     assert_ssr_transform(
         "foo($x) ==>> bar($x)",
-        "fn foo() {} fn main() { foo(5 /* using 5 */) }",
-        expect![["fn foo() {} fn main() { bar(5)/* using 5 */ }"]],
+        "fn foo() {} fn bar() {} fn main() { foo(5 /* using 5 */) }",
+        expect![["fn foo() {} fn bar() {} fn main() { bar(5)/* using 5 */ }"]],
     )
 }
 
 #[test]
 fn ssr_struct_lit() {
     assert_ssr_transform(
-        "foo{a: $a, b: $b} ==>> foo::new($a, $b)",
-        "fn foo() {} fn main() { foo{b:2, a:1} }",
-        expect![["fn foo() {} fn main() { foo::new(1, 2) }"]],
+        "Foo{a: $a, b: $b} ==>> Foo::new($a, $b)",
+        r#"
+            struct Foo() {}
+            impl Foo { fn new() {} }
+            fn main() { Foo{b:2, a:1} }
+            "#,
+        expect![[r#"
+            struct Foo() {}
+            impl Foo { fn new() {} }
+            fn main() { Foo::new(1, 2) }
+        "#]],
     )
 }
 
@@ -312,7 +331,7 @@ fn match_struct_instantiation() {
 fn match_path() {
     let code = r#"
         mod foo {
-            fn bar() {}
+            pub fn bar() {}
         }
         fn f() {foo::bar(42)}"#;
     assert_matches("foo::bar", code, &["foo::bar"]);
@@ -413,8 +432,8 @@ fn no_match_split_expression() {
 fn replace_function_call() {
     assert_ssr_transform(
         "foo() ==>> bar()",
-        "fn foo() {} fn f1() {foo(); foo();}",
-        expect![["fn foo() {} fn f1() {bar(); bar();}"]],
+        "fn foo() {} fn bar() {} fn f1() {foo(); foo();}",
+        expect![["fn foo() {} fn bar() {} fn f1() {bar(); bar();}"]],
     );
 }
 
@@ -422,8 +441,8 @@ fn replace_function_call() {
 fn replace_function_call_with_placeholders() {
     assert_ssr_transform(
         "foo($a, $b) ==>> bar($b, $a)",
-        "fn foo() {} fn f1() {foo(5, 42)}",
-        expect![["fn foo() {} fn f1() {bar(42, 5)}"]],
+        "fn foo() {} fn bar() {} fn f1() {foo(5, 42)}",
+        expect![["fn foo() {} fn bar() {} fn f1() {bar(42, 5)}"]],
     );
 }
 
@@ -431,8 +450,29 @@ fn replace_function_call_with_placeholders() {
 fn replace_nested_function_calls() {
     assert_ssr_transform(
         "foo($a) ==>> bar($a)",
-        "fn foo() {} fn f1() {foo(foo(42))}",
-        expect![["fn foo() {} fn f1() {bar(bar(42))}"]],
+        "fn foo() {} fn bar() {} fn f1() {foo(foo(42))}",
+        expect![["fn foo() {} fn bar() {} fn f1() {bar(bar(42))}"]],
+    );
+}
+
+#[test]
+fn replace_associated_function_call() {
+    assert_ssr_transform(
+        "Foo::new() ==>> Bar::new()",
+        r#"
+            struct Foo {}
+            impl Foo { fn new() {} }
+            struct Bar {}
+            impl Bar { fn new() {} }
+            fn f1() {Foo::new();}
+            "#,
+        expect![[r#"
+            struct Foo {}
+            impl Foo { fn new() {} }
+            struct Bar {}
+            impl Bar { fn new() {} }
+            fn f1() {Bar::new();}
+        "#]],
     );
 }
 
@@ -440,17 +480,10 @@ fn replace_nested_function_calls() {
 fn replace_type() {
     assert_ssr_transform(
         "Result<(), $a> ==>> Option<$a>",
-        "struct Result<T, E> {} fn f1() -> Result<(), Vec<Error>> {foo()}",
-        expect![["struct Result<T, E> {} fn f1() -> Option<Vec<Error>> {foo()}"]],
-    );
-}
-
-#[test]
-fn replace_struct_init() {
-    assert_ssr_transform(
-        "Foo {a: $a, b: $b} ==>> Foo::new($a, $b)",
-        "struct Foo {} fn f1() {Foo{b: 1, a: 2}}",
-        expect![["struct Foo {} fn f1() {Foo::new(2, 1)}"]],
+        "struct Result<T, E> {} struct Option<T> {} fn f1() -> Result<(), Vec<Error>> {foo()}",
+        expect![[
+            "struct Result<T, E> {} struct Option<T> {} fn f1() -> Option<Vec<Error>> {foo()}"
+        ]],
     );
 }
 
@@ -491,8 +524,23 @@ fn match_binary_op() {
 fn multiple_rules() {
     assert_ssr_transforms(
         &["$a + 1 ==>> add_one($a)", "$a + $b ==>> add($a, $b)"],
-        "fn f() -> i32 {3 + 2 + 1}",
-        expect![["fn f() -> i32 {add_one(add(3, 2))}"]],
+        "fn add() {} fn add_one() {} fn f() -> i32 {3 + 2 + 1}",
+        expect![["fn add() {} fn add_one() {} fn f() -> i32 {add_one(add(3, 2))}"]],
+    )
+}
+
+#[test]
+fn multiple_rules_with_nested_matches() {
+    assert_ssr_transforms(
+        &["foo1($a) ==>> bar1($a)", "foo2($a) ==>> bar2($a)"],
+        r#"
+            fn foo1() {} fn foo2() {} fn bar1() {} fn bar2() {}
+            fn f() {foo1(foo2(foo1(foo2(foo1(42)))))}
+            "#,
+        expect![[r#"
+            fn foo1() {} fn foo2() {} fn bar1() {} fn bar2() {}
+            fn f() {bar1(bar2(bar1(bar2(bar1(42)))))}
+        "#]],
     )
 }
 
@@ -524,12 +572,14 @@ fn replace_within_macro_expansion() {
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
+            fn bar() {}
             fn f() {macro1!(5.x().foo().o2())}
             "#,
         expect![[r#"
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
+            fn bar() {}
             fn f() {macro1!(bar(5.x()).o2())}
             "#]],
     )
