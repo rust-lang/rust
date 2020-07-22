@@ -623,6 +623,7 @@ impl<'a> Linker for GccLinker<'a> {
             && !self.sess.target.target.options.is_like_windows
             && !self.sess.target.target.options.is_like_solaris
             && self.sess.target.target.target_os != "uefi"
+            && self.sess.target.target.arch != "avr"
         {
             self.linker_arg("--eh-frame-hdr");
         }
