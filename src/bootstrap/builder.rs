@@ -1239,7 +1239,7 @@ impl<'a> Builder<'a> {
             && self.config.control_flow_guard
             && compiler.stage >= 1
         {
-            rustflags.arg("-Zcontrol-flow-guard");
+            rustflags.arg("-Ccontrol-flow-guard");
         }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
