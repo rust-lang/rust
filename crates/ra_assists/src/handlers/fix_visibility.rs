@@ -3,6 +3,7 @@ use ra_db::FileId;
 use ra_syntax::{ast, AstNode, TextRange, TextSize};
 
 use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
+use ast::VisibilityOwner;
 
 // FIXME: this really should be a fix for diagnostic, rather than an assist.
 
@@ -48,7 +49,8 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
         return None;
     };
 
-    let (offset, target, target_file, target_name) = target_data_for_def(ctx.db(), def)?;
+    let (offset, current_visibility, target, target_file, target_name) =
+        target_data_for_def(ctx.db(), def)?;
 
     let missing_visibility =
         if current_module.krate() == target_module.krate() { "pub(crate)" } else { "pub" };
@@ -61,8 +63,20 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
     acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |builder| {
         builder.edit_file(target_file);
         match ctx.config.snippet_cap {
-            Some(cap) => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
-            None => builder.insert(offset, format!("{} ", missing_visibility)),
+            Some(cap) => match current_visibility {
+                Some(current_visibility) => builder.replace_snippet(
+                    cap,
+                    current_visibility.syntax().text_range(),
+                    format!("$0{}", missing_visibility),
+                ),
+                None => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
+            },
+            None => match current_visibility {
+                Some(current_visibility) => {
+                    builder.replace(current_visibility.syntax().text_range(), missing_visibility)
+                }
+                None => builder.insert(offset, format!("{} ", missing_visibility)),
+            },
         }
     })
 }
@@ -82,14 +96,14 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
     let target_module = parent.module(ctx.db());
 
     let in_file_source = record_field_def.source(ctx.db());
-    let (offset, target) = match in_file_source.value {
+    let (offset, current_visibility, target) = match in_file_source.value {
         hir::FieldSource::Named(it) => {
             let s = it.syntax();
-            (vis_offset(s), s.text_range())
+            (vis_offset(s), it.visibility(), s.text_range())
         }
         hir::FieldSource::Pos(it) => {
             let s = it.syntax();
-            (vis_offset(s), s.text_range())
+            (vis_offset(s), it.visibility(), s.text_range())
         }
     };
 
@@ -104,8 +118,20 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
     acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |builder| {
         builder.edit_file(target_file);
         match ctx.config.snippet_cap {
-            Some(cap) => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
-            None => builder.insert(offset, format!("{} ", missing_visibility)),
+            Some(cap) => match current_visibility {
+                Some(current_visibility) => builder.replace_snippet(
+                    cap,
+                    dbg!(current_visibility.syntax()).text_range(),
+                    format!("$0{}", missing_visibility),
+                ),
+                None => builder.insert_snippet(cap, offset, format!("$0{} ", missing_visibility)),
+            },
+            None => match current_visibility {
+                Some(current_visibility) => {
+                    builder.replace(current_visibility.syntax().text_range(), missing_visibility)
+                }
+                None => builder.insert(offset, format!("{} ", missing_visibility)),
+            },
         }
     })
 }
@@ -113,24 +139,30 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
 fn target_data_for_def(
     db: &dyn HirDatabase,
     def: hir::ModuleDef,
-) -> Option<(TextSize, TextRange, FileId, Option<hir::Name>)> {
+) -> Option<(TextSize, Option<ast::Visibility>, TextRange, FileId, Option<hir::Name>)> {
     fn offset_target_and_file_id<S, Ast>(
         db: &dyn HirDatabase,
         x: S,
-    ) -> (TextSize, TextRange, FileId)
+    ) -> (TextSize, Option<ast::Visibility>, TextRange, FileId)
     where
         S: HasSource<Ast = Ast>,
-        Ast: AstNode,
+        Ast: AstNode + ast::VisibilityOwner,
     {
         let source = x.source(db);
         let in_file_syntax = source.syntax();
         let file_id = in_file_syntax.file_id;
         let syntax = in_file_syntax.value;
-        (vis_offset(syntax), syntax.text_range(), file_id.original_file(db.upcast()))
+        let current_visibility = source.value.visibility();
+        (
+            vis_offset(syntax),
+            current_visibility,
+            syntax.text_range(),
+            file_id.original_file(db.upcast()),
+        )
     }
 
     let target_name;
-    let (offset, target, target_file) = match def {
+    let (offset, current_visibility, target, target_file) = match def {
         hir::ModuleDef::Function(f) => {
             target_name = Some(f.name(db));
             offset_target_and_file_id(db, f)
@@ -164,13 +196,13 @@ fn target_data_for_def(
             let in_file_source = m.declaration_source(db)?;
             let file_id = in_file_source.file_id.original_file(db.upcast());
             let syntax = in_file_source.value.syntax();
-            (vis_offset(syntax), syntax.text_range(), file_id)
+            (vis_offset(syntax), in_file_source.value.visibility(), syntax.text_range(), file_id)
         }
         // Enum variants can't be private, we can't modify builtin types
         hir::ModuleDef::EnumVariant(_) | hir::ModuleDef::BuiltinType(_) => return None,
     };
 
-    Some((offset, target, target_file, target_name))
+    Some((offset, current_visibility, target, target_file, target_name))
 }
 
 #[cfg(test)]
@@ -520,6 +552,34 @@ struct Bar;
             r"$0pub struct Bar;
 ",
         )
+    }
+
+    #[test]
+    fn replaces_pub_crate_with_pub() {
+        check_assist(
+            fix_visibility,
+            r"
+//- /main.rs crate:a deps:foo
+foo::Bar<|>
+//- /lib.rs crate:foo
+pub(crate) struct Bar;
+",
+            r"$0pub struct Bar;
+",
+        );
+        check_assist(
+            fix_visibility,
+            r"
+//- /main.rs crate:a deps:foo
+fn main() {
+    foo::Foo { <|>bar: () };
+}
+//- /lib.rs crate:foo
+pub struct Foo { pub(crate) bar: () }
+",
+            r"pub struct Foo { $0pub bar: () }
+",
+        );
     }
 
     #[test]
