@@ -7,20 +7,18 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, DefIdTree, Region, Ty};
 use rustc_span::Span;
 
-// The struct contains the information about the anonymous region
-// we are searching for.
+/// Information about the anonymous region we are searching for.
 #[derive(Debug)]
 pub(super) struct AnonymousParamInfo<'tcx> {
-    // the parameter corresponding to the anonymous region
+    /// The parameter corresponding to the anonymous region.
     pub param: &'tcx hir::Param<'tcx>,
-    // the type corresponding to the anonymopus region parameter
+    /// The type corresponding to the anonymous region parameter.
     pub param_ty: Ty<'tcx>,
-    // the ty::BoundRegion corresponding to the anonymous region
+    /// The ty::BoundRegion corresponding to the anonymous region.
     pub bound_region: ty::BoundRegion,
-    // param_ty_span contains span of parameter type
+    /// The `Span` of the parameter type.
     pub param_ty_span: Span,
-    // corresponds to id the argument is the first parameter
-    // in the declaration
+    /// Signals that the argument is the first parameter in the declaration.
     pub is_first: bool,
 }
 

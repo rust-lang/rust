@@ -35,7 +35,7 @@ fn baz<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
 
 #[cfg(transmute)] // one instantiations: BAD
 fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
-   bar(foo, x) //[transmute]~ ERROR E0495
+   bar(foo, x) //[transmute]~ ERROR E0759
 }
 
 #[cfg(krisskross)] // two instantiations, mixing and matching: BAD

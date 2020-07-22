@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/regions-proc-bound-capture.rs:9:14
    |
 LL | fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + 'static> {

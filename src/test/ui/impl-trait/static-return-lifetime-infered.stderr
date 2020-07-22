@@ -1,4 +1,4 @@
-error[E0759]: cannot infer an appropriate lifetime
+error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/static-return-lifetime-infered.rs:7:16
    |
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
@@ -18,8 +18,8 @@ help: to declare that the `impl Trait` captures data from argument `self`, you c
 LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
    |                                                           ^^^^
 
-error[E0759]: cannot infer an appropriate lifetime
-  --> $DIR/static-return-lifetime-infered.rs:11:16
+error[E0759]: `self` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/static-return-lifetime-infered.rs:10:16
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
    |                        -------- this data with lifetime `'a`...
@@ -29,7 +29,7 @@ LL |         self.x.iter().map(|a| a.0)
    |         ...is captured here...
    |
 note: ...and is required to live as long as `'static` here
-  --> $DIR/static-return-lifetime-infered.rs:10:37
+  --> $DIR/static-return-lifetime-infered.rs:9:37
    |
 LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^

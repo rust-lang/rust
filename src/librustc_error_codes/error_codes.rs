@@ -633,4 +633,5 @@ E0771: include_str!("./error_codes/E0771.md"),
     E0755, // `#[ffi_pure]` is only allowed on foreign functions
     E0756, // `#[ffi_const]` is only allowed on foreign functions
     E0757, // `#[ffi_const]` functions cannot be `#[ffi_pure]`
+    E0772, // `'static' obligation coming from `impl dyn Trait {}` or `impl Foo for dyn Bar {}`.
 }

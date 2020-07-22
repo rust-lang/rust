@@ -1,30 +1,12 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/project-fn-ret-invariant.rs:49:9
    |
-LL |     bar(foo, x)
-   |         ^^^
-   |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 45:8...
-  --> $DIR/project-fn-ret-invariant.rs:45:8
-   |
 LL | fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
-   |        ^^
-note: ...so that the expression is assignable
-  --> $DIR/project-fn-ret-invariant.rs:49:14
-   |
+   |                   -------- this data with lifetime `'a`...
+...
 LL |     bar(foo, x)
-   |              ^
-   = note: expected `Type<'_>`
-              found `Type<'a>`
-   = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that the expression is assignable
-  --> $DIR/project-fn-ret-invariant.rs:49:5
-   |
-LL |     bar(foo, x)
-   |     ^^^^^^^^^^^
-   = note: expected `Type<'static>`
-              found `Type<'_>`
+   |     ----^^^---- ...is captured and required to live as long as `'static` here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0759`.

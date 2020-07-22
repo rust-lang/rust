@@ -136,7 +136,7 @@ pub struct ResolverOutputs {
     pub extern_prelude: FxHashMap<Symbol, bool>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash)]
 pub enum AssocItemContainer {
     TraitContainer(DefId),
     ImplContainer(DefId),
@@ -184,7 +184,7 @@ pub enum ImplPolarity {
     Reservation,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable, Eq, Hash)]
 pub struct AssocItem {
     pub def_id: DefId,
     #[stable_hasher(project(name))]
@@ -199,7 +199,7 @@ pub struct AssocItem {
     pub fn_has_self_parameter: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash)]
 pub enum AssocKind {
     Const,
     Fn,
@@ -316,7 +316,7 @@ impl<'tcx> AssociatedItems<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, RustcEncodable, RustcDecodable, HashStable, Hash)]
 pub enum Visibility {
     /// Visible everywhere (including in other crates).
     Public,

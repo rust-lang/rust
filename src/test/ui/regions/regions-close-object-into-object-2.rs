@@ -7,7 +7,7 @@ trait X { }
 impl<'a, T> X for B<'a, T> {}
 
 fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
-    box B(&*v) as Box<dyn X> //~ ERROR cannot infer
+    box B(&*v) as Box<dyn X> //~ ERROR E0759
 }
 
 fn main() { }

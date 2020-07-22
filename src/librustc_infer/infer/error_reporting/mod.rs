@@ -2010,7 +2010,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::MiscVariable(_) => String::new(),
             infer::PatternRegion(_) => " for pattern".to_string(),
             infer::AddrOfRegion(_) => " for borrow expression".to_string(),
-            infer::Autoref(_) => " for autoref".to_string(),
+            infer::Autoref(_, _) => " for autoref".to_string(),
             infer::Coercion(_) => " for automatic coercion".to_string(),
             infer::LateBoundRegion(_, br, infer::FnCall) => {
                 format!(" for lifetime parameter {}in function call", br_string(br))

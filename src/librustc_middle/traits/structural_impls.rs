@@ -213,9 +213,23 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::StartFunctionType => Some(super::StartFunctionType),
             super::IntrinsicType => Some(super::IntrinsicType),
             super::MethodReceiver => Some(super::MethodReceiver),
+            super::UnifyReceiver(ref ctxt) => tcx.lift(ctxt).map(|ctxt| super::UnifyReceiver(ctxt)),
             super::BlockTailExpression(id) => Some(super::BlockTailExpression(id)),
             super::TrivialBound => Some(super::TrivialBound),
         }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for traits::UnifyReceiverContext<'a> {
+    type Lifted = traits::UnifyReceiverContext<'tcx>;
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.param_env).and_then(|param_env| {
+            tcx.lift(&self.substs).map(|substs| traits::UnifyReceiverContext {
+                assoc_item: self.assoc_item,
+                param_env,
+                substs,
+            })
+        })
     }
 }
 
