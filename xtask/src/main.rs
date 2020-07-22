@@ -45,7 +45,6 @@ USAGE:
 FLAGS:
         --client-code    Install only VS Code plugin
         --server         Install only the language server
-        --jemalloc       Use jemalloc for server
         --mimalloc       Use mimalloc for server
     -h, --help           Prints help information
         "
@@ -62,15 +61,8 @@ FLAGS:
                 return Ok(());
             }
 
-            let malloc = match (args.contains("--jemalloc"), args.contains("--mimalloc")) {
-                (false, false) => Malloc::System,
-                (true, false) => Malloc::Jemalloc,
-                (false, true) => Malloc::Mimalloc,
-                (true, true) => {
-                    eprintln!("error: Cannot use both `--jemalloc` and `--mimalloc`");
-                    return Ok(());
-                }
-            };
+            let malloc =
+                if args.contains("--mimalloc") { Malloc::Mimalloc } else { Malloc::System };
 
             args.finish()?;
 

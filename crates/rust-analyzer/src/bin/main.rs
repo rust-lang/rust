@@ -16,6 +16,10 @@ use vfs::AbsPathBuf;
 
 use crate::args::HelpPrinted;
 
+#[cfg(all(feature = "mimalloc"))]
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 fn main() -> Result<()> {
     setup_logging()?;
     let args = match args::Args::parse()? {

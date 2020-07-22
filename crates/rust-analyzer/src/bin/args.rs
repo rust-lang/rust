@@ -166,7 +166,7 @@ USAGE:
 FLAGS:
     -o, --only              Only analyze items matching this path
     -h, --help              Prints help information
-        --memory-usage      Collect memory usage statistics (requires `--features jemalloc`)
+        --memory-usage      Collect memory usage statistics
         --randomize         Randomize order in which crates, modules, and items are processed
         --parallel          Run type inference in parallel
         --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
@@ -221,7 +221,7 @@ USAGE:
 
 FLAGS:
     -h, --help          Prints help information
-    --memory-usage      Collect memory usage statistics (requires `--features jemalloc`)
+    --memory-usage      Collect memory usage statistics
     --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
     --with-proc-macro   Use ra-proc-macro-srv for proc-macro expanding
     -v, --verbose
