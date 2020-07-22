@@ -1274,11 +1274,12 @@ impl<T> Vec<T> {
     /// Creates a draining iterator that removes the specified range in the vector
     /// and yields the removed items.
     ///
-    /// Note 1: The element range is removed even if the iterator is only
-    /// partially consumed or not consumed at all.
+    /// The element range is removed even if the iterator is only partially
+    /// consumed or not consumed at all.
     ///
-    /// Note 2: It is unspecified how many elements are removed from the vector
-    /// if the `Drain` value is leaked.
+    /// Note: Be aware that if the iterator is leaked (eg: [`mem::forget`]), it
+    /// cancels this property so it is unspecified how many elements are removed
+    /// from the vector in this case.
     ///
     /// # Panics
     ///
@@ -1297,6 +1298,8 @@ impl<T> Vec<T> {
     /// v.drain(..);
     /// assert_eq!(v, &[]);
     /// ```
+    ///
+    /// [`mem::forget`]: mem::forget
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain<'_, T>
     where
