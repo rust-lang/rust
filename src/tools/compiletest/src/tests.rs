@@ -1,8 +1,9 @@
+use super::header::extract_llvm_version;
 use super::*;
 
 #[test]
 fn test_extract_gdb_version() {
-    macro_rules! test { ($($expectation:tt: $input:tt,)*) => {{$(
+    macro_rules! test { ($($expectation:literal: $input:literal,)*) => {{$(
         assert_eq!(extract_gdb_version($input), Some($expectation));
     )*}}}
 
@@ -42,10 +43,29 @@ fn test_extract_gdb_version() {
 }
 
 #[test]
+fn test_extract_lldb_version() {
+    // Apple variants
+    assert_eq!(extract_lldb_version("LLDB-179.5"), Some((179, false)));
+    assert_eq!(extract_lldb_version("lldb-300.2.51"), Some((300, false)));
+
+    // Upstream versions
+    assert_eq!(extract_lldb_version("lldb version 6.0.1"), Some((600, false)));
+    assert_eq!(extract_lldb_version("lldb version 9.0.0"), Some((900, false)));
+}
+
+#[test]
 fn is_test_test() {
     assert_eq!(true, is_test(&OsString::from("a_test.rs")));
     assert_eq!(false, is_test(&OsString::from(".a_test.rs")));
     assert_eq!(false, is_test(&OsString::from("a_cat.gif")));
     assert_eq!(false, is_test(&OsString::from("#a_dog_gif")));
     assert_eq!(false, is_test(&OsString::from("~a_temp_file")));
+}
+
+#[test]
+fn test_extract_llvm_version() {
+    assert_eq!(extract_llvm_version("8.1.2-rust"), Some(80102));
+    assert_eq!(extract_llvm_version("9.0.1-rust-1.43.0-dev"), Some(90001));
+    assert_eq!(extract_llvm_version("9.3.1-rust-1.43.0-dev"), Some(90301));
+    assert_eq!(extract_llvm_version("10.0.0-rust"), Some(100000));
 }
