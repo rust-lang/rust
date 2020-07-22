@@ -54,13 +54,25 @@
 +                                          // mir::Constant
 +                                          // + span: $DIR/slice_len.rs:5:5: 5:33
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-+         assert(const true, "index out of bounds: the len is {} but the index is {}", move _7, _6) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
++         assert(const true, "index out of bounds: the len is {} but the index is {}", const 3_usize, const 1_usize) -> bb1; // scope 0 at $DIR/slice_len.rs:5:5: 5:33
 +                                          // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x01))
 +                                          // mir::Constant
 +                                          // + span: $DIR/slice_len.rs:5:5: 5:33
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
++                                          // ty::Const
++                                          // + ty: usize
++                                          // + val: Value(Scalar(0x0000000000000003))
++                                          // mir::Constant
++                                          // + span: $DIR/slice_len.rs:5:5: 5:33
++                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000003)) }
++                                          // ty::Const
++                                          // + ty: usize
++                                          // + val: Value(Scalar(0x0000000000000001))
++                                          // mir::Constant
++                                          // + span: $DIR/slice_len.rs:5:5: 5:33
++                                          // + literal: Const { ty: usize, val: Value(Scalar(0x0000000000000001)) }
       }
   
       bb1: {
