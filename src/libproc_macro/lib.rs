@@ -24,6 +24,7 @@
 #![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
+#![feature(inner_deref)]
 #![feature(negative_impls)]
 #![feature(optin_builtin_traits)]
 #![feature(restricted_std)]
@@ -1158,5 +1159,25 @@ impl fmt::Display for Literal {
 impl fmt::Debug for Literal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+/// Tracked access to environment variables.
+#[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
+pub mod tracked_env {
+    use std::env::{self, VarError};
+    use std::ffi::OsStr;
+
+    /// Retrieve an environment variable and add it to build dependency info.
+    /// Build system executing the compiler will know that the variable was accessed during
+    /// compilation, and will be able to rerun the build when the value of that variable changes.
+    /// Besides the dependency tracking this function should be equivalent to `env::var` from the
+    /// standard library, except that the argument must be UTF-8.
+    #[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
+    pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
+        let key: &str = key.as_ref();
+        let value = env::var(key);
+        crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
+        value
     }
 }
