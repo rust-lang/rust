@@ -718,8 +718,8 @@ impl Step for RustdocUi {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocGUI {
-    pub host: Interned<String>,
-    pub target: Interned<String>,
+    pub host: TargetSelection,
+    pub target: TargetSelection,
     pub compiler: Compiler,
 }
 
