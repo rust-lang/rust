@@ -37,7 +37,7 @@ fn parser_repeated_name() {
 fn parser_invalid_pattern() {
     assert_eq!(
         parse_error_text(" ==>> ()"),
-        "Parse error: Pattern is not a valid Rust expression, type, item, path or pattern"
+        "Parse error: Not a valid Rust expression, type, item, path or pattern"
     );
 }
 
@@ -45,7 +45,7 @@ fn parser_invalid_pattern() {
 fn parser_invalid_template() {
     assert_eq!(
         parse_error_text("() ==>> )"),
-        "Parse error: Replacement is not a valid Rust expression, type, item, path or pattern"
+        "Parse error: Not a valid Rust expression, type, item, path or pattern"
     );
 }
 

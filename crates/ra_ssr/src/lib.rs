@@ -15,7 +15,6 @@ pub use crate::errors::SsrError;
 pub use crate::matching::Match;
 use crate::matching::MatchFailureReason;
 use hir::Semantics;
-use parsing::SsrTemplate;
 use ra_db::{FileId, FileRange};
 use ra_syntax::{ast, AstNode, SyntaxNode, TextRange};
 use ra_text_edit::TextEdit;
@@ -26,7 +25,7 @@ pub struct SsrRule {
     /// A structured pattern that we're searching for.
     pattern: parsing::RawPattern,
     /// What we'll replace it with.
-    template: SsrTemplate,
+    template: parsing::RawPattern,
     parsed_rules: Vec<parsing::ParsedRule>,
 }
 
@@ -72,7 +71,11 @@ impl<'db> MatchFinder<'db> {
             None
         } else {
             use ra_db::SourceDatabaseExt;
-            Some(replacing::matches_to_edit(&matches, &self.sema.db.file_text(file_id)))
+            Some(replacing::matches_to_edit(
+                &matches,
+                &self.sema.db.file_text(file_id),
+                &self.rules,
+            ))
         }
     }
 
@@ -111,9 +114,8 @@ impl<'db> MatchFinder<'db> {
     }
 
     fn add_parsed_rules(&mut self, parsed_rules: Vec<parsing::ParsedRule>) {
-        // FIXME: This doesn't need to be a for loop, but does in a subsequent commit. Justify it
-        // being a for-loop.
-        for parsed_rule in parsed_rules {
+        for mut parsed_rule in parsed_rules {
+            parsed_rule.index = self.rules.len();
             self.rules.push(parsed_rule);
         }
     }

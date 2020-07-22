@@ -2,7 +2,7 @@
 //! process of matching, placeholder values are recorded.
 
 use crate::{
-    parsing::{Constraint, NodeKind, ParsedRule, Placeholder, SsrTemplate},
+    parsing::{Constraint, NodeKind, ParsedRule, Placeholder},
     SsrMatches,
 };
 use hir::Semantics;
@@ -48,9 +48,7 @@ pub struct Match {
     pub(crate) matched_node: SyntaxNode,
     pub(crate) placeholder_values: FxHashMap<Var, PlaceholderMatch>,
     pub(crate) ignored_comments: Vec<ast::Comment>,
-    // A copy of the template for the rule that produced this match. We store this on the match for
-    // if/when we do replacement.
-    pub(crate) template: Option<SsrTemplate>,
+    pub(crate) rule_index: usize,
 }
 
 /// Represents a `$var` in an SSR query.
@@ -131,7 +129,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             matched_node: code.clone(),
             placeholder_values: FxHashMap::default(),
             ignored_comments: Vec::new(),
-            template: rule.template.clone(),
+            rule_index: rule.index,
         };
         // Second matching pass, where we record placeholder matches, ignored comments and maybe do
         // any other more expensive checks that we didn't want to do on the first pass.
@@ -591,7 +589,7 @@ mod tests {
             "1+2"
         );
 
-        let edit = crate::replacing::matches_to_edit(&matches, input);
+        let edit = crate::replacing::matches_to_edit(&matches, input, &match_finder.rules);
         let mut after = input.to_string();
         edit.apply(&mut after);
         assert_eq!(after, "fn foo() {} fn main() { bar(1+2); }");

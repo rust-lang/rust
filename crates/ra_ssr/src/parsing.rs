@@ -15,12 +15,8 @@ use std::str::FromStr;
 pub(crate) struct ParsedRule {
     pub(crate) placeholders_by_stand_in: FxHashMap<SmolStr, Placeholder>,
     pub(crate) pattern: SyntaxNode,
-    pub(crate) template: Option<SsrTemplate>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct SsrTemplate {
-    pub(crate) tokens: Vec<PatternElement>,
+    pub(crate) template: Option<SyntaxNode>,
+    pub(crate) index: usize,
 }
 
 #[derive(Debug)]
@@ -64,18 +60,23 @@ pub(crate) struct Token {
 impl ParsedRule {
     fn new(
         pattern: &RawPattern,
-        template: Option<&SsrTemplate>,
+        template: Option<&RawPattern>,
     ) -> Result<Vec<ParsedRule>, SsrError> {
         let raw_pattern = pattern.as_rust_code();
+        let raw_template = template.map(|t| t.as_rust_code());
+        let raw_template = raw_template.as_ref().map(|s| s.as_str());
         let mut builder = RuleBuilder {
             placeholders_by_stand_in: pattern.placeholders_by_stand_in(),
             rules: Vec::new(),
         };
-        builder.try_add(ast::Expr::parse(&raw_pattern), template);
-        builder.try_add(ast::TypeRef::parse(&raw_pattern), template);
-        builder.try_add(ast::ModuleItem::parse(&raw_pattern), template);
-        builder.try_add(ast::Path::parse(&raw_pattern), template);
-        builder.try_add(ast::Pat::parse(&raw_pattern), template);
+        builder.try_add(ast::Expr::parse(&raw_pattern), raw_template.map(ast::Expr::parse));
+        builder.try_add(ast::TypeRef::parse(&raw_pattern), raw_template.map(ast::TypeRef::parse));
+        builder.try_add(
+            ast::ModuleItem::parse(&raw_pattern),
+            raw_template.map(ast::ModuleItem::parse),
+        );
+        builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
+        builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
         builder.build()
     }
 }
@@ -86,12 +87,22 @@ struct RuleBuilder {
 }
 
 impl RuleBuilder {
-    fn try_add<T: AstNode>(&mut self, pattern: Result<T, ()>, template: Option<&SsrTemplate>) {
-        match pattern {
-            Ok(pattern) => self.rules.push(ParsedRule {
+    fn try_add<T: AstNode>(&mut self, pattern: Result<T, ()>, template: Option<Result<T, ()>>) {
+        match (pattern, template) {
+            (Ok(pattern), Some(Ok(template))) => self.rules.push(ParsedRule {
                 placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
                 pattern: pattern.syntax().clone(),
-                template: template.cloned(),
+                template: Some(template.syntax().clone()),
+                // For now we give the rule an index of 0. It's given a proper index when the rule
+                // is added to the SsrMatcher. Using an Option<usize>, instead would be slightly
+                // more correct, but we delete this field from ParsedRule in a subsequent commit.
+                index: 0,
+            }),
+            (Ok(pattern), None) => self.rules.push(ParsedRule {
+                placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
+                pattern: pattern.syntax().clone(),
+                template: None,
+                index: 0,
             }),
             _ => {}
         }
@@ -99,7 +110,7 @@ impl RuleBuilder {
 
     fn build(self) -> Result<Vec<ParsedRule>, SsrError> {
         if self.rules.is_empty() {
-            bail!("Pattern is not a valid Rust expression, type, item, path or pattern");
+            bail!("Not a valid Rust expression, type, item, path or pattern");
         }
         Ok(self.rules)
     }
@@ -176,21 +187,6 @@ impl FromStr for SsrPattern {
         let raw_pattern = pattern_str.parse()?;
         let parsed_rules = ParsedRule::new(&raw_pattern, None)?;
         Ok(SsrPattern { raw: raw_pattern, parsed_rules })
-    }
-}
-
-impl FromStr for SsrTemplate {
-    type Err = SsrError;
-
-    fn from_str(pattern_str: &str) -> Result<SsrTemplate, SsrError> {
-        let tokens = parse_pattern(pattern_str)?;
-        // Validate that the template is a valid fragment of Rust code. We reuse the validation
-        // logic for search patterns since the only thing that differs is the error message.
-        if SsrPattern::from_str(pattern_str).is_err() {
-            bail!("Replacement is not a valid Rust expression, type, item, path or pattern");
-        }
-        // Our actual template needs to preserve whitespace, so we can't reuse `tokens`.
-        Ok(SsrTemplate { tokens })
     }
 }
 
