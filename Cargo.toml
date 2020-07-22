@@ -80,11 +80,5 @@ rustc-std-workspace-core = { path = 'src/tools/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'src/tools/rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'src/tools/rustc-std-workspace-std' }
 
-# This crate's integration with libstd is a bit wonky, so we use a submodule
-# instead of a crates.io dependency. Make sure everything else in the repo is
-# also using the submodule, however, so we can avoid duplicate copies of the
-# source code for this crate.
-backtrace = { path = "src/backtrace" }
-
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
