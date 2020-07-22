@@ -43,7 +43,7 @@
 +                                          // mir::Constant
 +                                          // + span: $DIR/indirect.rs:5:13: 5:29
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
-+         assert(!const false, "attempt to compute `{} + {}` which would overflow", move _2, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:5:13: 5:29
++         assert(!const false, "attempt to compute `{} + {}` which would overflow", const 2_u8, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:5:13: 5:29
 +                                          // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x00))
@@ -52,6 +52,12 @@
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
 +                                          // ty::Const
                                            // + ty: u8
++                                          // + val: Value(Scalar(0x02))
++                                          // mir::Constant
++                                          // + span: $DIR/indirect.rs:5:13: 5:29
++                                          // + literal: Const { ty: u8, val: Value(Scalar(0x02)) }
++                                          // ty::Const
++                                          // + ty: u8
                                            // + val: Value(Scalar(0x01))
                                            // mir::Constant
                                            // + span: $DIR/indirect.rs:5:28: 5:29
