@@ -2,7 +2,7 @@
 // only-cdb // "Temporarily" ignored on GDB/LLDB due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#10381)
 // compile-flags:-g
-// min-gdb-version 7.7
+// min-gdb-version: 7.7
 // min-lldb-version: 310
 
 // === GDB TESTS ===================================================================================

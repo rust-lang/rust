@@ -271,13 +271,13 @@ pub struct Config {
     pub gdb_native_rust: bool,
 
     /// Version of LLDB
-    pub lldb_version: Option<String>,
+    pub lldb_version: Option<u32>,
 
     /// Whether LLDB has native rust support
     pub lldb_native_rust: bool,
 
     /// Version of LLVM
-    pub llvm_version: Option<String>,
+    pub llvm_version: Option<u32>,
 
     /// Is LLVM a system LLVM
     pub system_llvm: bool,
