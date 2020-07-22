@@ -151,8 +151,9 @@ impl<'db> MatchFinder<'db> {
     /// Returns matches for all added rules.
     pub fn matches(&self) -> SsrMatches {
         let mut matches = Vec::new();
+        let mut usage_cache = search::UsageCache::default();
         for rule in &self.rules {
-            self.find_matches_for_rule(rule, &mut matches);
+            self.find_matches_for_rule(rule, &mut usage_cache, &mut matches);
         }
         nester::nest_and_remove_collisions(matches, &self.sema)
     }

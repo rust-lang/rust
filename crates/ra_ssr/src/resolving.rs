@@ -22,6 +22,7 @@ pub(crate) struct ResolvedPattern {
 
 pub(crate) struct ResolvedPath {
     pub(crate) resolution: hir::PathResolution,
+    pub(crate) depth: u32,
 }
 
 impl ResolvedRule {
@@ -62,7 +63,7 @@ struct Resolver<'a, 'db> {
 impl Resolver<'_, '_> {
     fn resolve_pattern_tree(&self, pattern: SyntaxNode) -> Result<ResolvedPattern, SsrError> {
         let mut resolved_paths = FxHashMap::default();
-        self.resolve(pattern.clone(), &mut resolved_paths)?;
+        self.resolve(pattern.clone(), 0, &mut resolved_paths)?;
         Ok(ResolvedPattern {
             node: pattern,
             resolved_paths,
@@ -73,6 +74,7 @@ impl Resolver<'_, '_> {
     fn resolve(
         &self,
         node: SyntaxNode,
+        depth: u32,
         resolved_paths: &mut FxHashMap<SyntaxNode, ResolvedPath>,
     ) -> Result<(), SsrError> {
         use ra_syntax::ast::AstNode;
@@ -86,12 +88,12 @@ impl Resolver<'_, '_> {
                 let resolution = self
                     .resolve_path(&path)
                     .ok_or_else(|| error!("Failed to resolve path `{}`", node.text()))?;
-                resolved_paths.insert(node, ResolvedPath { resolution });
+                resolved_paths.insert(node, ResolvedPath { resolution, depth });
                 return Ok(());
             }
         }
         for node in node.children() {
-            self.resolve(node, resolved_paths)?;
+            self.resolve(node, depth + 1, resolved_paths)?;
         }
         Ok(())
     }

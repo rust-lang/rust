@@ -60,6 +60,10 @@ impl SearchScope {
         SearchScope::new(std::iter::once((file, None)).collect())
     }
 
+    pub fn files(files: &[FileId]) -> SearchScope {
+        SearchScope::new(files.iter().map(|f| (*f, None)).collect())
+    }
+
     pub fn intersection(&self, other: &SearchScope) -> SearchScope {
         let (mut small, mut large) = (&self.entries, &other.entries);
         if small.len() > large.len() {
