@@ -13,10 +13,6 @@ pub use crate::{
     memory_usage::{Bytes, MemoryUsage},
 };
 
-#[cfg(all(feature = "mimalloc"))]
-#[global_allocator]
-static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 /// Prints backtrace to stderr, useful for debugging.
 #[cfg(feature = "backtrace")]
 pub fn print_backtrace() {

@@ -1137,7 +1137,6 @@ dependencies = [
  "backtrace",
  "cfg-if",
  "libc",
- "mimalloc",
  "once_cell",
  "ra_arena",
 ]
@@ -1362,6 +1361,7 @@ dependencies = [
  "log",
  "lsp-server",
  "lsp-types",
+ "mimalloc",
  "parking_lot",
  "pico-args",
  "ra_cfg",
