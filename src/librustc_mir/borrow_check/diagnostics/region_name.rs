@@ -34,13 +34,8 @@ crate enum RegionNameSource {
     Static,
     /// The free region corresponding to the environment of a closure.
     SynthesizedFreeEnvRegion(Span, String),
-    /// The region name corresponds to a region where the type annotation is completely missing
-    /// from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a reference.
-    CannotMatchHirTy(Span, String),
-    /// The region name corresponds a reference that was found by traversing the type in the HIR.
-    MatchedHirTy(Span),
-    /// A region name from the generics list of a struct/enum/union.
-    MatchedAdtAndSegment(Span),
+    /// The region corresponding to an argument.
+    AnonRegionFromArgument(RegionNameHighlight),
     /// The region corresponding to a closure upvar.
     AnonRegionFromUpvar(Span, String),
     /// The region corresponding to the return type of a closure.
@@ -51,6 +46,19 @@ crate enum RegionNameSource {
     AnonRegionFromAsyncFn(Span),
 }
 
+/// Describes what to highlight to explain to the user that we're giving an anonymous region a
+/// synthesized name, and how to highlight it.
+#[derive(Debug, Clone)]
+crate enum RegionNameHighlight {
+    /// The anonymous region corresponds to a reference that was found by traversing the type in the HIR.
+    MatchedHirTy(Span),
+    /// The anonymous region corresponds to a `'_` in the generics list of a struct/enum/union.
+    MatchedAdtAndSegment(Span),
+    /// The anonymous region corresponds to a region where the type annotation is completely missing
+    /// from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a reference.
+    CannotMatchHirTy(Span, String),
+}
+
 impl RegionName {
     crate fn was_named(&self) -> bool {
         match self.source {
@@ -58,9 +66,7 @@ impl RegionName {
             | RegionNameSource::NamedFreeRegion(..)
             | RegionNameSource::Static => true,
             RegionNameSource::SynthesizedFreeEnvRegion(..)
-            | RegionNameSource::CannotMatchHirTy(..)
-            | RegionNameSource::MatchedHirTy(..)
-            | RegionNameSource::MatchedAdtAndSegment(..)
+            | RegionNameSource::AnonRegionFromArgument(..)
             | RegionNameSource::AnonRegionFromUpvar(..)
             | RegionNameSource::AnonRegionFromOutput(..)
             | RegionNameSource::AnonRegionFromYieldTy(..)
@@ -74,13 +80,15 @@ impl RegionName {
             RegionNameSource::NamedEarlyBoundRegion(span)
             | RegionNameSource::NamedFreeRegion(span)
             | RegionNameSource::SynthesizedFreeEnvRegion(span, _)
-            | RegionNameSource::CannotMatchHirTy(span, _)
-            | RegionNameSource::MatchedHirTy(span)
-            | RegionNameSource::MatchedAdtAndSegment(span)
             | RegionNameSource::AnonRegionFromUpvar(span, _)
             | RegionNameSource::AnonRegionFromOutput(span, _, _)
             | RegionNameSource::AnonRegionFromYieldTy(span, _)
             | RegionNameSource::AnonRegionFromAsyncFn(span) => Some(span),
+            RegionNameSource::AnonRegionFromArgument(ref highlight) => match *highlight {
+                RegionNameHighlight::MatchedHirTy(span)
+                | RegionNameHighlight::MatchedAdtAndSegment(span)
+                | RegionNameHighlight::CannotMatchHirTy(span, _) => Some(span),
+            },
         }
     }
 
@@ -97,17 +105,22 @@ impl RegionName {
                 );
                 diag.note(&note);
             }
-            RegionNameSource::CannotMatchHirTy(span, type_name) => {
+            RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
+                span,
+                type_name,
+            )) => {
                 diag.span_label(*span, format!("has type `{}`", type_name));
             }
-            RegionNameSource::MatchedHirTy(span)
+            RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::MatchedHirTy(span))
             | RegionNameSource::AnonRegionFromAsyncFn(span) => {
                 diag.span_label(
                     *span,
                     format!("let's call the lifetime of this reference `{}`", self),
                 );
             }
-            RegionNameSource::MatchedAdtAndSegment(span) => {
+            RegionNameSource::AnonRegionFromArgument(
+                RegionNameHighlight::MatchedAdtAndSegment(span),
+            ) => {
                 diag.span_label(*span, format!("let's call this `{}`", self));
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
@@ -393,7 +406,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 // it so the next value will be used next and return the region name that would
                 // have been used.
                 name: self.synthesize_region_name(),
-                source: RegionNameSource::CannotMatchHirTy(span, type_name),
+                source: RegionNameSource::AnonRegionFromArgument(
+                    RegionNameHighlight::CannotMatchHirTy(span, type_name),
+                ),
             })
         } else {
             None
@@ -453,7 +468,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
                         return Some(RegionName {
                             name: region_name,
-                            source: RegionNameSource::MatchedHirTy(ampersand_span),
+                            source: RegionNameSource::AnonRegionFromArgument(
+                                RegionNameHighlight::MatchedHirTy(ampersand_span),
+                            ),
                         });
                     }
 
@@ -534,10 +551,12 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             | hir::LifetimeName::Static
             | hir::LifetimeName::Underscore => {
                 let region_name = self.synthesize_region_name();
-                let ampersand_span = lifetime.span;
+                let lifetime_span = lifetime.span;
                 Some(RegionName {
                     name: region_name,
-                    source: RegionNameSource::MatchedAdtAndSegment(ampersand_span),
+                    source: RegionNameSource::AnonRegionFromArgument(
+                        RegionNameHighlight::MatchedAdtAndSegment(lifetime_span),
+                    ),
                 })
             }
 
