@@ -2,8 +2,6 @@
 //! Protocol. The majority of requests are fulfilled by calling into the
 //! `ra_ide` crate.
 
-#![allow(deprecated)]
-
 use std::{
     io::Write as _,
     process::{self, Stdio},
@@ -260,6 +258,7 @@ pub(crate) fn handle_document_symbol(
             tags.push(SymbolTag::Deprecated)
         };
 
+        #[allow(deprecated)]
         let doc_symbol = DocumentSymbol {
             name: symbol.label,
             detail: symbol.detail,
@@ -305,11 +304,14 @@ pub(crate) fn handle_document_symbol(
         res: &mut Vec<SymbolInformation>,
     ) {
         let mut tags = Vec::new();
+
+        #[allow(deprecated)]
         match symbol.deprecated {
             Some(true) => tags.push(SymbolTag::Deprecated),
             _ => {}
         }
 
+        #[allow(deprecated)]
         res.push(SymbolInformation {
             name: symbol.name.clone(),
             kind: symbol.kind,
@@ -357,6 +359,8 @@ pub(crate) fn handle_workspace_symbol(
         let mut res = Vec::new();
         for nav in snap.analysis.symbol_search(query)? {
             let container_name = nav.container_name.as_ref().map(|v| v.to_string());
+
+            #[allow(deprecated)]
             let info = SymbolInformation {
                 name: nav.name.to_string(),
                 kind: to_proto::symbol_kind(nav.kind),
