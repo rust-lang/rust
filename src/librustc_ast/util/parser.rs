@@ -222,7 +222,6 @@ impl AssocOp {
             Greater | // `{ 42 } > 3`
             GreaterEqual | // `{ 42 } >= 3`
             AssignOp(_) | // `{ 42 } +=`
-            LAnd | // `{ 42 } &&foo`
             As | // `{ 42 } as usize`
             // Equal | // `{ 42 } == { 42 }`    Accepting these here would regress incorrect
             // NotEqual | // `{ 42 } != { 42 }  struct literals parser recovery.

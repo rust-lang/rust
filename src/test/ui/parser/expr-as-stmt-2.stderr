@@ -1,0 +1,33 @@
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:3:26
+   |
+LL |     if let Some(x) = a { true } else { false }
+   |     ---------------------^^^^------------------ help: consider using a semicolon here
+   |     |                    |
+   |     |                    expected `()`, found `bool`
+   |     expected this to be `()`
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:3:40
+   |
+LL |     if let Some(x) = a { true } else { false }
+   |     -----------------------------------^^^^^--- help: consider using a semicolon here
+   |     |                                  |
+   |     |                                  expected `()`, found `bool`
+   |     expected this to be `()`
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt-2.rs:6:5
+   |
+LL |   fn foo(a: Option<u32>, b: Option<u32>) -> bool {
+   |                                             ---- expected `bool` because of return type
+LL |       if let Some(x) = a { true } else { false }
+   |       ------------------------------------------ help: parentheses are required to parse this as an expression: `(if let Some(x) = a { true } else { false })`
+...
+LL | /     &&
+LL | |     if let Some(y) = a { true } else { false }
+   | |______________________________________________^ expected `bool`, found `&&bool`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
