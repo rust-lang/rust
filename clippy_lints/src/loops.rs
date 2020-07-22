@@ -1052,42 +1052,6 @@ fn detect_manual_memcpy<'tcx>(
     }
 }
 
-// Delegate that traverses expression and detects mutable variables being used
-struct UsesMutableDelegate {
-    found_mutable: bool,
-}
-
-impl<'tcx> Delegate<'tcx> for UsesMutableDelegate {
-    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
-
-    fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
-        // Mutable variable is found
-        if let ty::BorrowKind::MutBorrow = bk {
-            self.found_mutable = true;
-        }
-    }
-
-    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>) {}
-}
-
-// Uses UsesMutableDelegate to find mutable variables in an expression expr
-fn has_mutable_variables<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    let mut delegate = UsesMutableDelegate { found_mutable: false };
-    let def_id = expr.hir_id.owner.to_def_id();
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        ExprUseVisitor::new(
-            &mut delegate,
-            &infcx,
-            def_id.expect_local(),
-            cx.param_env,
-            cx.typeck_results(),
-        )
-        .walk_expr(expr);
-    });
-
-    delegate.found_mutable
-}
-
 // Scans for the usage of the for loop pattern
 struct ForPatternVisitor<'a, 'tcx> {
     found_pattern: bool,
@@ -1253,7 +1217,7 @@ fn detect_same_item_push<'tcx>(
     if same_item_push_visitor.should_lint {
         if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push {
             // Make sure that the push does not involve possibly mutating values
-            if !has_mutable_variables(cx, pushed_item) {
+            if mutated_variables(pushed_item, cx).map_or(false, |mutvars| mutvars.is_empty()) {
                 // Walk through the expression being pushed and make sure that it
                 // does not contain the for loop pattern
                 let mut for_pat_visitor = ForPatternVisitor {
