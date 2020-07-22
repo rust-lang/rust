@@ -1723,6 +1723,7 @@ Released 2018-09-13
 [`temporary_assignment`]: https://rust-lang.github.io/rust-clippy/master/index.html#temporary_assignment
 [`temporary_cstring_as_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#temporary_cstring_as_ptr
 [`to_digit_is_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_digit_is_some
+[`to_string_in_display`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_in_display
 [`todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
 [`too_many_arguments`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
 [`too_many_lines`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines

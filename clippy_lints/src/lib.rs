@@ -296,6 +296,7 @@ mod swap;
 mod tabs_in_doc_comments;
 mod temporary_assignment;
 mod to_digit_is_some;
+mod to_string_in_display;
 mod trait_bounds;
 mod transmute;
 mod transmuting_null;
@@ -788,6 +789,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &tabs_in_doc_comments::TABS_IN_DOC_COMMENTS,
         &temporary_assignment::TEMPORARY_ASSIGNMENT,
         &to_digit_is_some::TO_DIGIT_IS_SOME,
+        &to_string_in_display::TO_STRING_IN_DISPLAY,
         &trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS,
         &trait_bounds::TYPE_REPETITION_IN_BOUNDS,
         &transmute::CROSSPOINTER_TRANSMUTE,
@@ -1017,6 +1019,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box reference::DerefAddrOf);
     store.register_early_pass(|| box reference::RefInDeref);
     store.register_early_pass(|| box double_parens::DoubleParens);
+    store.register_late_pass(|| box to_string_in_display::ToStringInDisplay::new());
     store.register_early_pass(|| box unsafe_removed_from_name::UnsafeNameRemoval);
     store.register_early_pass(|| box if_not_else::IfNotElse);
     store.register_early_pass(|| box else_if_without_else::ElseIfWithoutElse);
@@ -1427,6 +1430,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(&temporary_assignment::TEMPORARY_ASSIGNMENT),
         LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
+        LintId::of(&to_string_in_display::TO_STRING_IN_DISPLAY),
         LintId::of(&transmute::CROSSPOINTER_TRANSMUTE),
         LintId::of(&transmute::TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS),
         LintId::of(&transmute::TRANSMUTE_BYTES_TO_STR),
@@ -1708,6 +1712,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(&swap::ALMOST_SWAPPED),
+        LintId::of(&to_string_in_display::TO_STRING_IN_DISPLAY),
         LintId::of(&transmute::UNSOUND_COLLECTION_TRANSMUTE),
         LintId::of(&transmute::WRONG_TRANSMUTE),
         LintId::of(&transmuting_null::TRANSMUTING_NULL),

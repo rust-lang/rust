@@ -2167,6 +2167,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "to_digit_is_some",
     },
     Lint {
+        name: "to_string_in_display",
+        group: "correctness",
+        desc: "to_string method used while implementing Display trait",
+        deprecation: None,
+        module: "to_string_in_display",
+    },
+    Lint {
         name: "todo",
         group: "restriction",
         desc: "`todo!` should not be present in production code",
