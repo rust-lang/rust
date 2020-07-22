@@ -1,6 +1,6 @@
 use crate::cmp::Ordering;
 use crate::time::Duration;
-use ::core::hash::{Hash, Hasher};
+use core::hash::{Hash, Hasher};
 
 pub use self::inner::{Instant, SystemTime, UNIX_EPOCH};
 use crate::convert::TryInto;
