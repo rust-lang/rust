@@ -1052,82 +1052,6 @@ fn detect_manual_memcpy<'tcx>(
     }
 }
 
-// Scans for the usage of the for loop pattern
-struct ForPatternVisitor<'a, 'tcx> {
-    found_pattern: bool,
-    // Pattern that we are searching for
-    for_pattern: &'a Pat<'tcx>,
-    cx: &'a LateContext<'tcx>,
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for ForPatternVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        // Recursively explore an expression until a ExprKind::Path is found
-        match &expr.kind {
-            ExprKind::Array(expr_list) | ExprKind::MethodCall(_, _, expr_list, _) | ExprKind::Tup(expr_list) => {
-                for expr in *expr_list {
-                    self.visit_expr(expr)
-                }
-            },
-            ExprKind::Binary(_, lhs_expr, rhs_expr) => {
-                self.visit_expr(lhs_expr);
-                self.visit_expr(rhs_expr);
-            },
-            ExprKind::Box(expr)
-            | ExprKind::Unary(_, expr)
-            | ExprKind::Cast(expr, _)
-            | ExprKind::Type(expr, _)
-            | ExprKind::AddrOf(_, _, expr)
-            | ExprKind::Field(expr, _)
-            | ExprKind::Struct(_, _, Some(expr)) => self.visit_expr(expr),
-            _ => {
-                // Exploration cannot continue ... calculate the hir_id of the current
-                // expr assuming it is a Path
-                if let Some(hir_id) = var_def_id(self.cx, &expr) {
-                    // Pattern is found
-                    if hir_id == self.for_pattern.hir_id {
-                        self.found_pattern = true;
-                    }
-                    // If the for loop pattern is a tuple, determine whether the current
-                    // expr is inside that tuple pattern
-                    if let PatKind::Tuple(pat_list, _) = &self.for_pattern.kind {
-                        let hir_id_list: Vec<HirId> = pat_list.iter().map(|p| p.hir_id).collect();
-                        if hir_id_list.contains(&hir_id) {
-                            self.found_pattern = true;
-                        }
-                    }
-                }
-            },
-        }
-    }
-
-    // This is triggered by walk_expr() for the case of vec.push(pat)
-    fn visit_qpath(&mut self, qpath: &'tcx QPath<'_>, _: HirId, _: Span) {
-        if_chain! {
-            if let QPath::Resolved(_, path) = qpath;
-            if let Res::Local(hir_id) = &path.res;
-            then {
-                if *hir_id == self.for_pattern.hir_id{
-                    self.found_pattern = true;
-                }
-
-                if let PatKind::Tuple(pat_list, _) = &self.for_pattern.kind {
-                    let hir_id_list: Vec<HirId> = pat_list.iter().map(|p| p.hir_id).collect();
-                    if hir_id_list.contains(&hir_id) {
-                        self.found_pattern = true;
-                    }
-                }
-            }
-        }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-}
-
 // Scans the body of the for loop and determines whether lint should be given
 struct SameItemPushVisitor<'a, 'tcx> {
     should_lint: bool,
@@ -1218,16 +1142,7 @@ fn detect_same_item_push<'tcx>(
         if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push {
             // Make sure that the push does not involve possibly mutating values
             if mutated_variables(pushed_item, cx).map_or(false, |mutvars| mutvars.is_empty()) {
-                // Walk through the expression being pushed and make sure that it
-                // does not contain the for loop pattern
-                let mut for_pat_visitor = ForPatternVisitor {
-                    found_pattern: false,
-                    for_pattern: pat,
-                    cx,
-                };
-                walk_expr(&mut for_pat_visitor, pushed_item);
-
-                if !for_pat_visitor.found_pattern {
+                if let PatKind::Wild = pat.kind {
                     let vec_str = snippet_with_macro_callsite(cx, vec.span, "");
                     let item_str = snippet_with_macro_callsite(cx, pushed_item.span, "");
 
