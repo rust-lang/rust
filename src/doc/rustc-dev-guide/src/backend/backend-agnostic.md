@@ -4,7 +4,7 @@ In the future, it would be nice to allow other codegen backends (e.g.
 [Cranelift]). To this end, `librustc_codegen_ssa` provides an
 abstract interface for all backends to implement.
 
-[Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/master/cranelift
+[Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/HEAD/cranelift
 
 > The following is a copy/paste of a README from the rust-lang/rust repo.
 > Please submit a PR if it needs updating.

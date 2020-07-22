@@ -7,7 +7,7 @@ codegen itself. It's worth noting, though, that in the rust source code, many
 parts of the backend have `codegen` in their names (there are no hard
 boundaries).
 
-[Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/master/cranelift
+[Cranelift]: https://github.com/bytecodealliance/wasmtime/tree/HEAD/cranelift
 
 > NOTE: If you are looking for hints on how to debug code generation bugs,
 > please see [this section of the debugging chapter][debugging].
