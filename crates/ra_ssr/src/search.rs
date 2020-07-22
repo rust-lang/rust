@@ -1,6 +1,6 @@
 //! Searching for matches.
 
-use crate::{matching, parsing::ParsedRule, Match, MatchFinder};
+use crate::{matching, resolving::ResolvedRule, Match, MatchFinder};
 use ra_db::FileRange;
 use ra_syntax::{ast, AstNode, SyntaxNode};
 
@@ -8,13 +8,13 @@ impl<'db> MatchFinder<'db> {
     /// Adds all matches for `rule` to `matches_out`. Matches may overlap in ways that make
     /// replacement impossible, so further processing is required in order to properly nest matches
     /// and remove overlapping matches. This is done in the `nesting` module.
-    pub(crate) fn find_matches_for_rule(&self, rule: &ParsedRule, matches_out: &mut Vec<Match>) {
+    pub(crate) fn find_matches_for_rule(&self, rule: &ResolvedRule, matches_out: &mut Vec<Match>) {
         // FIXME: Use resolved paths in the pattern to find places to search instead of always
         // scanning every node.
         self.slow_scan(rule, matches_out);
     }
 
-    fn slow_scan(&self, rule: &ParsedRule, matches_out: &mut Vec<Match>) {
+    fn slow_scan(&self, rule: &ResolvedRule, matches_out: &mut Vec<Match>) {
         use ra_db::SourceDatabaseExt;
         use ra_ide_db::symbol_index::SymbolsDatabase;
         for &root in self.sema.db.local_roots().iter() {
@@ -30,7 +30,7 @@ impl<'db> MatchFinder<'db> {
     fn slow_scan_node(
         &self,
         code: &SyntaxNode,
-        rule: &ParsedRule,
+        rule: &ResolvedRule,
         restrict_range: &Option<FileRange>,
         matches_out: &mut Vec<Match>,
     ) {

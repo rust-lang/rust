@@ -9,7 +9,7 @@ pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;
     for rule in rules {
-        match_finder.add_rule(rule);
+        match_finder.add_rule(rule)?;
     }
     let edits = match_finder.edits();
     for edit in edits {
@@ -32,7 +32,7 @@ pub fn search_for_patterns(patterns: Vec<SsrPattern>, debug_snippet: Option<Stri
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;
     for pattern in patterns {
-        match_finder.add_search_pattern(pattern);
+        match_finder.add_search_pattern(pattern)?;
     }
     if let Some(debug_snippet) = &debug_snippet {
         for &root in db.local_roots().iter() {

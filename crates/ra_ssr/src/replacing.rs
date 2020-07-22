@@ -1,9 +1,9 @@
 //! Code for applying replacement templates for matches that have previously been found.
 
 use crate::matching::Var;
-use crate::{parsing::ParsedRule, Match, SsrMatches};
-use ra_syntax::ast::AstToken;
-use ra_syntax::{SyntaxElement, SyntaxNode, SyntaxToken, TextSize};
+use crate::{resolving::ResolvedRule, Match, SsrMatches};
+use ra_syntax::ast::{self, AstToken};
+use ra_syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextSize};
 use ra_text_edit::TextEdit;
 
 /// Returns a text edit that will replace each match in `matches` with its corresponding replacement
@@ -12,7 +12,7 @@ use ra_text_edit::TextEdit;
 pub(crate) fn matches_to_edit(
     matches: &SsrMatches,
     file_src: &str,
-    rules: &[ParsedRule],
+    rules: &[ResolvedRule],
 ) -> TextEdit {
     matches_to_edit_at_offset(matches, file_src, 0.into(), rules)
 }
@@ -21,7 +21,7 @@ fn matches_to_edit_at_offset(
     matches: &SsrMatches,
     file_src: &str,
     relative_start: TextSize,
-    rules: &[ParsedRule],
+    rules: &[ResolvedRule],
 ) -> TextEdit {
     let mut edit_builder = ra_text_edit::TextEditBuilder::default();
     for m in &matches.matches {
@@ -36,11 +36,11 @@ fn matches_to_edit_at_offset(
 struct ReplacementRenderer<'a> {
     match_info: &'a Match,
     file_src: &'a str,
-    rules: &'a [ParsedRule],
-    rule: &'a ParsedRule,
+    rules: &'a [ResolvedRule],
+    rule: &'a ResolvedRule,
 }
 
-fn render_replace(match_info: &Match, file_src: &str, rules: &[ParsedRule]) -> String {
+fn render_replace(match_info: &Match, file_src: &str, rules: &[ResolvedRule]) -> String {
     let mut out = String::new();
     let rule = &rules[match_info.rule_index];
     let template = rule
@@ -48,7 +48,7 @@ fn render_replace(match_info: &Match, file_src: &str, rules: &[ParsedRule]) -> S
         .as_ref()
         .expect("You called MatchFinder::edits after calling MatchFinder::add_search_pattern");
     let renderer = ReplacementRenderer { match_info, file_src, rules, rule };
-    renderer.render_node_children(&template, &mut out);
+    renderer.render_node(&template.node, &mut out);
     for comment in &match_info.ignored_comments {
         out.push_str(&comment.syntax().to_string());
     }
@@ -68,8 +68,28 @@ impl ReplacementRenderer<'_> {
                 self.render_token(&token, out);
             }
             SyntaxElement::Node(child_node) => {
-                self.render_node_children(&child_node, out);
+                self.render_node(&child_node, out);
             }
+        }
+    }
+
+    fn render_node(&self, node: &SyntaxNode, out: &mut String) {
+        use ra_syntax::ast::AstNode;
+        if let Some(mod_path) = self.match_info.rendered_template_paths.get(&node) {
+            out.push_str(&mod_path.to_string());
+            // Emit everything except for the segment's name-ref, since we already effectively
+            // emitted that as part of `mod_path`.
+            if let Some(path) = ast::Path::cast(node.clone()) {
+                if let Some(segment) = path.segment() {
+                    for node_or_token in segment.syntax().children_with_tokens() {
+                        if node_or_token.kind() != SyntaxKind::NAME_REF {
+                            self.render_node_or_token(&node_or_token, out);
+                        }
+                    }
+                }
+            }
+        } else {
+            self.render_node_children(&node, out);
         }
     }
 

@@ -7,7 +7,7 @@
 
 use crate::errors::bail;
 use crate::{SsrError, SsrPattern, SsrRule};
-use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken, T};
+use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::str::FromStr;
 
@@ -16,7 +16,6 @@ pub(crate) struct ParsedRule {
     pub(crate) placeholders_by_stand_in: FxHashMap<SmolStr, Placeholder>,
     pub(crate) pattern: SyntaxNode,
     pub(crate) template: Option<SyntaxNode>,
-    pub(crate) index: usize,
 }
 
 #[derive(Debug)]
@@ -93,16 +92,11 @@ impl RuleBuilder {
                 placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
                 pattern: pattern.syntax().clone(),
                 template: Some(template.syntax().clone()),
-                // For now we give the rule an index of 0. It's given a proper index when the rule
-                // is added to the SsrMatcher. Using an Option<usize>, instead would be slightly
-                // more correct, but we delete this field from ParsedRule in a subsequent commit.
-                index: 0,
             }),
             (Ok(pattern), None) => self.rules.push(ParsedRule {
                 placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
                 pattern: pattern.syntax().clone(),
                 template: None,
-                index: 0,
             }),
             _ => {}
         }
@@ -168,15 +162,6 @@ impl RawPattern {
             }
         }
         res
-    }
-}
-
-impl ParsedRule {
-    pub(crate) fn get_placeholder(&self, token: &SyntaxToken) -> Option<&Placeholder> {
-        if token.kind() != SyntaxKind::IDENT {
-            return None;
-        }
-        self.placeholders_by_stand_in.get(token.text())
     }
 }
 

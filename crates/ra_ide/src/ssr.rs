@@ -11,6 +11,16 @@ use ra_ssr::{MatchFinder, SsrError, SsrRule};
 // A `$<name>` placeholder in the search pattern will match any AST node and `$<name>` will reference it in the replacement.
 // Within a macro call, a placeholder will match up until whatever token follows the placeholder.
 //
+// All paths in both the search pattern and the replacement template must resolve in the context
+// in which this command is invoked. Paths in the search pattern will then match the code if they
+// resolve to the same item, even if they're written differently. For example if we invoke the
+// command in the module `foo` with a pattern of `Bar`, then code in the parent module that refers
+// to `foo::Bar` will match.
+//
+// Paths in the replacement template will be rendered appropriately for the context in which the
+// replacement occurs. For example if our replacement template is `foo::Bar` and we match some
+// code in the `foo` module, we'll insert just `Bar`.
+//
 // Placeholders may be given constraints by writing them as `${<name>:<constraint1>:<constraint2>...}`.
 //
 // Supported constraints:
@@ -47,7 +57,7 @@ pub fn parse_search_replace(
 ) -> Result<Vec<SourceFileEdit>, SsrError> {
     let rule: SsrRule = rule.parse()?;
     let mut match_finder = MatchFinder::in_context(db, position);
-    match_finder.add_rule(rule);
+    match_finder.add_rule(rule)?;
     if parse_only {
         return Ok(Vec::new());
     }

@@ -85,7 +85,7 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     let mut match_finder = MatchFinder::in_context(&db, position);
     for rule in rules {
         let rule: SsrRule = rule.parse().unwrap();
-        match_finder.add_rule(rule);
+        match_finder.add_rule(rule).unwrap();
     }
     let edits = match_finder.edits();
     if edits.is_empty() {
@@ -114,7 +114,7 @@ fn print_match_debug_info(match_finder: &MatchFinder, file_id: FileId, snippet: 
 fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let (db, position) = single_file(code);
     let mut match_finder = MatchFinder::in_context(&db, position);
-    match_finder.add_search_pattern(pattern.parse().unwrap());
+    match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let matched_strings: Vec<String> =
         match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
     if matched_strings != expected && !expected.is_empty() {
@@ -126,7 +126,7 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
 fn assert_no_match(pattern: &str, code: &str) {
     let (db, position) = single_file(code);
     let mut match_finder = MatchFinder::in_context(&db, position);
-    match_finder.add_search_pattern(pattern.parse().unwrap());
+    match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let matches = match_finder.matches().flattened().matches;
     if !matches.is_empty() {
         print_match_debug_info(&match_finder, position.file_id, &matches[0].matched_text());
@@ -137,7 +137,7 @@ fn assert_no_match(pattern: &str, code: &str) {
 fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expected_reason: &str) {
     let (db, position) = single_file(code);
     let mut match_finder = MatchFinder::in_context(&db, position);
-    match_finder.add_search_pattern(pattern.parse().unwrap());
+    match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let mut reasons = Vec::new();
     for d in match_finder.debug_where_text_equal(position.file_id, snippet) {
         if let Some(reason) = d.match_failure_reason() {
@@ -350,6 +350,60 @@ fn match_pattern() {
     assert_matches("Some($a)", "struct Some(); fn f() {if let Some(x) = foo() {}}", &["Some(x)"]);
 }
 
+// If our pattern has a full path, e.g. a::b::c() and the code has c(), but c resolves to
+// a::b::c, then we should match.
+#[test]
+fn match_fully_qualified_fn_path() {
+    let code = r#"
+        mod a {
+            pub mod b {
+                pub fn c(_: i32) {}
+            }
+        }
+        use a::b::c;
+        fn f1() {
+            c(42);
+        }
+        "#;
+    assert_matches("a::b::c($a)", code, &["c(42)"]);
+}
+
+#[test]
+fn match_resolved_type_name() {
+    let code = r#"
+        mod m1 {
+            pub mod m2 {
+                pub trait Foo<T> {}
+            }
+        }
+        mod m3 {
+            trait Foo<T> {}
+            fn f1(f: Option<&dyn Foo<bool>>) {}
+        }
+        mod m4 {
+            use crate::m1::m2::Foo;
+            fn f1(f: Option<&dyn Foo<i32>>) {}
+        }
+        "#;
+    assert_matches("m1::m2::Foo<$t>", code, &["Foo<i32>"]);
+}
+
+#[test]
+fn type_arguments_within_path() {
+    mark::check!(type_arguments_within_path);
+    let code = r#"
+        mod foo {
+            pub struct Bar<T> {t: T}
+            impl<T> Bar<T> {
+                pub fn baz() {}
+            }
+        }
+        fn f1() {foo::Bar::<i32>::baz();}
+        "#;
+    assert_no_match("foo::Bar::<i64>::baz()", code);
+    assert_matches("foo::Bar::<i32>::baz()", code, &["foo::Bar::<i32>::baz()"]);
+}
+
 #[test]
 fn literal_constraint() {
     mark::check!(literal_constraint);
@@ -479,6 +533,86 @@ fn replace_associated_function_call() {
             impl Bar { fn new() {} }
             fn f1() {Bar::new();}
         "#]],
+    );
+}
+
+#[test]
+fn replace_path_in_different_contexts() {
+    // Note the <|> inside module a::b which marks the point where the rule is interpreted. We
+    // replace foo with bar, but both need different path qualifiers in different contexts. In f4,
+    // foo is unqualified because of a use statement, however the replacement needs to be fully
+    // qualified.
+    assert_ssr_transform(
+        "c::foo() ==>> c::bar()",
+        r#"
+            mod a {
+                pub mod b {<|>
+                    pub mod c {
+                        pub fn foo() {}
+                        pub fn bar() {}
+                        fn f1() { foo() }
+                    }
+                    fn f2() { c::foo() }
+                }
+                fn f3() { b::c::foo() }
+            }
+            use a::b::c::foo;
+            fn f4() { foo() }
+            "#,
+        expect![[r#"
+            mod a {
+                pub mod b {
+                    pub mod c {
+                        pub fn foo() {}
+                        pub fn bar() {}
+                        fn f1() { bar() }
+                    }
+                    fn f2() { c::bar() }
+                }
+                fn f3() { b::c::bar() }
+            }
+            use a::b::c::foo;
+            fn f4() { a::b::c::bar() }
+            "#]],
+    );
+}
+
+#[test]
+fn replace_associated_function_with_generics() {
+    assert_ssr_transform(
+        "c::Foo::<$a>::new() ==>> d::Bar::<$a>::default()",
+        r#"
+            mod c {
+                pub struct Foo<T> {v: T}
+                impl<T> Foo<T> { pub fn new() {} }
+                fn f1() {
+                    Foo::<i32>::new();
+                }
+            }
+            mod d {
+                pub struct Bar<T> {v: T}
+                impl<T> Bar<T> { pub fn default() {} }
+                fn f1() {
+                    super::c::Foo::<i32>::new();
+                }
+            }
+            "#,
+        expect![[r#"
+            mod c {
+                pub struct Foo<T> {v: T}
+                impl<T> Foo<T> { pub fn new() {} }
+                fn f1() {
+                    crate::d::Bar::<i32>::default();
+                }
+            }
+            mod d {
+                pub struct Bar<T> {v: T}
+                impl<T> Bar<T> { pub fn default() {} }
+                fn f1() {
+                    Bar::<i32>::default();
+                }
+            }
+            "#]],
     );
 }
 

@@ -7,6 +7,7 @@ mod matching;
 mod nester;
 mod parsing;
 mod replacing;
+mod resolving;
 mod search;
 #[macro_use]
 mod errors;
@@ -21,6 +22,7 @@ use hir::Semantics;
 use ra_db::{FileId, FilePosition, FileRange};
 use ra_ide_db::source_change::SourceFileEdit;
 use ra_syntax::{ast, AstNode, SyntaxNode, TextRange};
+use resolving::ResolvedRule;
 use rustc_hash::FxHashMap;
 
 // A structured search replace rule. Create by calling `parse` on a str.
@@ -48,7 +50,9 @@ pub struct SsrMatches {
 pub struct MatchFinder<'db> {
     /// Our source of information about the user's code.
     sema: Semantics<'db, ra_ide_db::RootDatabase>,
-    rules: Vec<parsing::ParsedRule>,
+    rules: Vec<ResolvedRule>,
+    scope: hir::SemanticsScope<'db>,
+    hygiene: hir::Hygiene,
 }
 
 impl<'db> MatchFinder<'db> {
@@ -56,10 +60,24 @@ impl<'db> MatchFinder<'db> {
     /// `lookup_context`.
     pub fn in_context(
         db: &'db ra_ide_db::RootDatabase,
-        _lookup_context: FilePosition,
+        lookup_context: FilePosition,
     ) -> MatchFinder<'db> {
-        // FIXME: Use lookup_context
-        MatchFinder { sema: Semantics::new(db), rules: Vec::new() }
+        let sema = Semantics::new(db);
+        let file = sema.parse(lookup_context.file_id);
+        // Find a node at the requested position, falling back to the whole file.
+        let node = file
+            .syntax()
+            .token_at_offset(lookup_context.offset)
+            .left_biased()
+            .map(|token| token.parent())
+            .unwrap_or_else(|| file.syntax().clone());
+        let scope = sema.scope(&node);
+        MatchFinder {
+            sema: Semantics::new(db),
+            rules: Vec::new(),
+            scope,
+            hygiene: hir::Hygiene::new(db, lookup_context.file_id.into()),
+        }
     }
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
@@ -84,8 +102,16 @@ impl<'db> MatchFinder<'db> {
     /// Adds a rule to be applied. The order in which rules are added matters. Earlier rules take
     /// precedence. If a node is matched by an earlier rule, then later rules won't be permitted to
     /// match to it.
-    pub fn add_rule(&mut self, rule: SsrRule) {
-        self.add_parsed_rules(rule.parsed_rules);
+    pub fn add_rule(&mut self, rule: SsrRule) -> Result<(), SsrError> {
+        for parsed_rule in rule.parsed_rules {
+            self.rules.push(ResolvedRule::new(
+                parsed_rule,
+                &self.scope,
+                &self.hygiene,
+                self.rules.len(),
+            )?);
+        }
+        Ok(())
     }
 
     /// Finds matches for all added rules and returns edits for all found matches.
@@ -110,8 +136,16 @@ impl<'db> MatchFinder<'db> {
 
     /// Adds a search pattern. For use if you intend to only call `find_matches_in_file`. If you
     /// intend to do replacement, use `add_rule` instead.
-    pub fn add_search_pattern(&mut self, pattern: SsrPattern) {
-        self.add_parsed_rules(pattern.parsed_rules);
+    pub fn add_search_pattern(&mut self, pattern: SsrPattern) -> Result<(), SsrError> {
+        for parsed_rule in pattern.parsed_rules {
+            self.rules.push(ResolvedRule::new(
+                parsed_rule,
+                &self.scope,
+                &self.hygiene,
+                self.rules.len(),
+            )?);
+        }
+        Ok(())
     }
 
     /// Returns matches for all added rules.
@@ -149,13 +183,6 @@ impl<'db> MatchFinder<'db> {
         res
     }
 
-    fn add_parsed_rules(&mut self, parsed_rules: Vec<parsing::ParsedRule>) {
-        for mut parsed_rule in parsed_rules {
-            parsed_rule.index = self.rules.len();
-            self.rules.push(parsed_rule);
-        }
-    }
-
     fn output_debug_for_nodes_at_range(
         &self,
         node: &SyntaxNode,
@@ -175,7 +202,7 @@ impl<'db> MatchFinder<'db> {
                     // we get lots of noise. If at some point we add support for restricting rules
                     // to a particular kind of thing (e.g. only match type references), then we can
                     // relax this.
-                    if rule.pattern.kind() != node.kind() {
+                    if rule.pattern.node.kind() != node.kind() {
                         continue;
                     }
                     out.push(MatchDebugInfo {
@@ -185,7 +212,7 @@ impl<'db> MatchFinder<'db> {
                                     "Match failed, but no reason was given".to_owned()
                                 }),
                             }),
-                        pattern: rule.pattern.clone(),
+                        pattern: rule.pattern.node.clone(),
                         node: node.clone(),
                     });
                 }

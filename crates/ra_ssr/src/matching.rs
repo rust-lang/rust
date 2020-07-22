@@ -2,7 +2,8 @@
 //! process of matching, placeholder values are recorded.
 
 use crate::{
-    parsing::{Constraint, NodeKind, ParsedRule, Placeholder},
+    parsing::{Constraint, NodeKind, Placeholder},
+    resolving::{ResolvedPattern, ResolvedRule},
     SsrMatches,
 };
 use hir::Semantics;
@@ -51,6 +52,8 @@ pub struct Match {
     pub(crate) rule_index: usize,
     /// The depth of matched_node.
     pub(crate) depth: usize,
+    // Each path in the template rendered for the module in which the match was found.
+    pub(crate) rendered_template_paths: FxHashMap<SyntaxNode, hir::ModPath>,
 }
 
 /// Represents a `$var` in an SSR query.
@@ -86,7 +89,7 @@ pub(crate) struct MatchFailed {
 /// parent module, we don't populate nested matches.
 pub(crate) fn get_match(
     debug_active: bool,
-    rule: &ParsedRule,
+    rule: &ResolvedRule,
     code: &SyntaxNode,
     restrict_range: &Option<FileRange>,
     sema: &Semantics<ra_ide_db::RootDatabase>,
@@ -102,7 +105,7 @@ struct Matcher<'db, 'sema> {
     /// If any placeholders come from anywhere outside of this range, then the match will be
     /// rejected.
     restrict_range: Option<FileRange>,
-    rule: &'sema ParsedRule,
+    rule: &'sema ResolvedRule,
 }
 
 /// Which phase of matching we're currently performing. We do two phases because most attempted
@@ -117,14 +120,14 @@ enum Phase<'a> {
 
 impl<'db, 'sema> Matcher<'db, 'sema> {
     fn try_match(
-        rule: &ParsedRule,
+        rule: &ResolvedRule,
         code: &SyntaxNode,
         restrict_range: &Option<FileRange>,
         sema: &'sema Semantics<'db, ra_ide_db::RootDatabase>,
     ) -> Result<Match, MatchFailed> {
         let match_state = Matcher { sema, restrict_range: restrict_range.clone(), rule };
         // First pass at matching, where we check that node types and idents match.
-        match_state.attempt_match_node(&mut Phase::First, &rule.pattern, code)?;
+        match_state.attempt_match_node(&mut Phase::First, &rule.pattern.node, code)?;
         match_state.validate_range(&sema.original_range(code))?;
         let mut the_match = Match {
             range: sema.original_range(code),
@@ -133,11 +136,19 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             ignored_comments: Vec::new(),
             rule_index: rule.index,
             depth: 0,
+            rendered_template_paths: FxHashMap::default(),
         };
         // Second matching pass, where we record placeholder matches, ignored comments and maybe do
         // any other more expensive checks that we didn't want to do on the first pass.
-        match_state.attempt_match_node(&mut Phase::Second(&mut the_match), &rule.pattern, code)?;
+        match_state.attempt_match_node(
+            &mut Phase::Second(&mut the_match),
+            &rule.pattern.node,
+            code,
+        )?;
         the_match.depth = sema.ancestors_with_macros(the_match.matched_node.clone()).count();
+        if let Some(template) = &rule.template {
+            the_match.render_template_paths(template, sema)?;
+        }
         Ok(the_match)
     }
 
@@ -195,6 +206,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 self.attempt_match_record_field_list(phase, pattern, code)
             }
             SyntaxKind::TOKEN_TREE => self.attempt_match_token_tree(phase, pattern, code),
+            SyntaxKind::PATH => self.attempt_match_path(phase, pattern, code),
             _ => self.attempt_match_node_children(phase, pattern, code),
         }
     }
@@ -309,6 +321,64 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             }
         }
         Ok(())
+    }
+
+    /// Paths are matched based on whether they refer to the same thing, even if they're written
+    /// differently.
+    fn attempt_match_path(
+        &self,
+        phase: &mut Phase,
+        pattern: &SyntaxNode,
+        code: &SyntaxNode,
+    ) -> Result<(), MatchFailed> {
+        if let Some(pattern_resolved) = self.rule.pattern.resolved_paths.get(pattern) {
+            let pattern_path = ast::Path::cast(pattern.clone()).unwrap();
+            let code_path = ast::Path::cast(code.clone()).unwrap();
+            if let (Some(pattern_segment), Some(code_segment)) =
+                (pattern_path.segment(), code_path.segment())
+            {
+                // Match everything within the segment except for the name-ref, which is handled
+                // separately via comparing what the path resolves to below.
+                self.attempt_match_opt(
+                    phase,
+                    pattern_segment.type_arg_list(),
+                    code_segment.type_arg_list(),
+                )?;
+                self.attempt_match_opt(
+                    phase,
+                    pattern_segment.param_list(),
+                    code_segment.param_list(),
+                )?;
+            }
+            if matches!(phase, Phase::Second(_)) {
+                let resolution = self
+                    .sema
+                    .resolve_path(&code_path)
+                    .ok_or_else(|| match_error!("Failed to resolve path `{}`", code.text()))?;
+                if pattern_resolved.resolution != resolution {
+                    fail_match!("Pattern had path `{}` code had `{}`", pattern.text(), code.text());
+                }
+            }
+        } else {
+            return self.attempt_match_node_children(phase, pattern, code);
+        }
+        Ok(())
+    }
+
+    fn attempt_match_opt<T: AstNode>(
+        &self,
+        phase: &mut Phase,
+        pattern: Option<T>,
+        code: Option<T>,
+    ) -> Result<(), MatchFailed> {
+        match (pattern, code) {
+            (Some(p), Some(c)) => self.attempt_match_node(phase, &p.syntax(), &c.syntax()),
+            (None, None) => Ok(()),
+            (Some(p), None) => fail_match!("Pattern `{}` had nothing to match", p.syntax().text()),
+            (None, Some(c)) => {
+                fail_match!("Nothing in pattern to match code `{}`", c.syntax().text())
+            }
+        }
     }
 
     /// We want to allow the records to match in any order, so we have special matching logic for
@@ -449,6 +519,28 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     }
 }
 
+impl Match {
+    fn render_template_paths(
+        &mut self,
+        template: &ResolvedPattern,
+        sema: &Semantics<ra_ide_db::RootDatabase>,
+    ) -> Result<(), MatchFailed> {
+        let module = sema
+            .scope(&self.matched_node)
+            .module()
+            .ok_or_else(|| match_error!("Matched node isn't in a module"))?;
+        for (path, resolved_path) in &template.resolved_paths {
+            if let hir::PathResolution::Def(module_def) = resolved_path.resolution {
+                let mod_path = module.find_use_path(sema.db, module_def).ok_or_else(|| {
+                    match_error!("Failed to render template path `{}` at match location")
+                })?;
+                self.rendered_template_paths.insert(path.clone(), mod_path);
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Phase<'_> {
     fn next_non_trivial(&mut self, code_it: &mut SyntaxElementChildren) -> Option<SyntaxElement> {
         loop {
@@ -578,7 +670,7 @@ mod tests {
 
         let (db, position) = crate::tests::single_file(input);
         let mut match_finder = MatchFinder::in_context(&db, position);
-        match_finder.add_rule(rule);
+        match_finder.add_rule(rule).unwrap();
         let matches = match_finder.matches();
         assert_eq!(matches.matches.len(), 1);
         assert_eq!(matches.matches[0].matched_node.text(), "foo(1+2)");
