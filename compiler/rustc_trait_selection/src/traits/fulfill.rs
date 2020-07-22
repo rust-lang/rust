@@ -449,6 +449,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         self.selcx.infcx(),
                         obligation.param_env,
                         obligation.cause.body_id,
+                        obligation.recursion_depth + 1,
                         arg,
                         obligation.cause.span,
                     ) {

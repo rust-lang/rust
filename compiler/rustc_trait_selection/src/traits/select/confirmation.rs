@@ -139,9 +139,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     );
                 });
             // Require that the projection is well-formed.
-            let self_ty = obligation.predicate.skip_binder().self_ty();
-            obligations.push(Obligation::new(
+            let self_ty = self.infcx.replace_bound_vars_with_placeholders(&obligation.self_ty());
+            let self_ty = normalize_with_depth_to(
+                self,
+                obligation.param_env,
                 obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                &self_ty,
+                &mut obligations,
+            );
+            obligations.push(Obligation::with_depth(
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
                 obligation.param_env,
                 ty::PredicateKind::WellFormed(self_ty.into()).to_predicate(self.tcx()),
             ));
@@ -333,9 +342,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // relying on projections in the impl-trait-ref.
         //
         // e.g., `impl<U: Tr, V: Iterator<Item=U>> Foo<<U as Tr>::T> for V`
-        impl_obligations.append(&mut substs.obligations);
+        substs.obligations.append(&mut impl_obligations);
 
-        ImplSourceUserDefinedData { impl_def_id, substs: substs.value, nested: impl_obligations }
+        ImplSourceUserDefinedData { impl_def_id, substs: substs.value, nested: substs.obligations }
     }
 
     fn confirm_object_candidate(

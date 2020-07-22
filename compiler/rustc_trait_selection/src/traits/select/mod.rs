@@ -343,7 +343,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(SelectionError::Overflow)
             }
             Err(e) => Err(e),
-            Ok(candidate) => Ok(Some(candidate)),
+            Ok(candidate) => {
+                debug!("select: candidate = {:?}", candidate);
+                Ok(Some(candidate))
+            }
         }
     }
 
@@ -413,9 +416,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         predicates: I,
     ) -> Result<EvaluationResult, OverflowError>
     where
-        I: IntoIterator<Item = PredicateObligation<'tcx>>,
+        I: IntoIterator<Item = PredicateObligation<'tcx>> + std::fmt::Debug,
     {
         let mut result = EvaluatedToOk;
+        debug!("evaluate_predicates_recursively({:?})", predicates);
         for obligation in predicates {
             let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
             debug!("evaluate_predicate_recursively({:?}) = {:?}", obligation, eval);
@@ -436,7 +440,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         debug!(
-            "evaluate_predicate_recursively(previous_stack={:?}, obligation={:?})",
+            "evaluate_predicate_recursively(obligation={:?}, previous_stack={:?})",
             previous_stack.head(),
             obligation
         );
@@ -479,15 +483,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.infcx,
                     obligation.param_env,
                     obligation.cause.body_id,
+                    obligation.recursion_depth + 1,
                     arg,
                     obligation.cause.span,
                 ) {
                     Some(mut obligations) => {
                         self.add_depth(obligations.iter_mut(), obligation.recursion_depth);
-                        self.evaluate_predicates_recursively(
-                            previous_stack,
-                            obligations.into_iter(),
-                        )
+                        self.evaluate_predicates_recursively(previous_stack, obligations)
                     }
                     None => Ok(EvaluatedToAmbig),
                 },
@@ -511,10 +513,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match project::poly_project_and_unify_type(self, &project_obligation) {
                         Ok(Ok(Some(mut subobligations))) => {
                             self.add_depth(subobligations.iter_mut(), obligation.recursion_depth);
-                            let result = self.evaluate_predicates_recursively(
-                                previous_stack,
-                                subobligations.into_iter(),
-                            );
+                            let result = self
+                                .evaluate_predicates_recursively(previous_stack, subobligations);
                             if let Some(key) =
                                 ProjectionCacheKey::from_poly_projection_predicate(self, data)
                             {
@@ -879,10 +879,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let result = self.evaluation_probe(|this| {
             let candidate = (*candidate).clone();
             match this.confirm_candidate(stack.obligation, candidate) {
-                Ok(selection) => this.evaluate_predicates_recursively(
-                    stack.list(),
-                    selection.nested_obligations().into_iter(),
-                ),
+                Ok(selection) => {
+                    debug!("evaluate_candidate: selection = {:?}", selection);
+                    this.evaluate_predicates_recursively(
+                        stack.list(),
+                        selection.nested_obligations().into_iter(),
+                    )
+                }
                 Err(..) => Ok(EvaluatedToErr),
             }
         })?;
@@ -1231,9 +1234,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         self.evaluation_probe(|this| {
             match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
-                Ok(obligations) => {
-                    this.evaluate_predicates_recursively(stack.list(), obligations.into_iter())
-                }
+                Ok(obligations) => this.evaluate_predicates_recursively(stack.list(), obligations),
                 Err(()) => Ok(EvaluatedToErr),
             }
         })
