@@ -1,8 +1,8 @@
-error: `[Foo::f#hola]` has an issue with the link anchor.
+error: `Foo::f#hola` contains an anchor, but links to struct fields are already anchored
   --> $DIR/intra-links-anchors.rs:25:15
    |
 LL | /// Or maybe [Foo::f#hola].
-   |               ^^^^^^^^^^^ struct fields cannot be followed by anchors
+   |               ^^^^^^^^^^^ contains invalid anchor
    |
 note: the lint level is defined here
   --> $DIR/intra-links-anchors.rs:1:9
@@ -10,23 +10,23 @@ note: the lint level is defined here
 LL | #![deny(intra_doc_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `[hello#people#!]` has an issue with the link anchor.
+error: `hello#people#!` contains multiple anchors
   --> $DIR/intra-links-anchors.rs:31:28
    |
 LL | /// Another anchor error: [hello#people#!].
-   |                            ^^^^^^^^^^^^^^ only one `#` is allowed in a link
+   |                            ^^^^^^^^^^^^^^ contains invalid anchor
 
-error: `[Enum::A#whatever]` has an issue with the link anchor.
+error: `Enum::A#whatever` contains an anchor, but links to enum variants are already anchored
   --> $DIR/intra-links-anchors.rs:37:28
    |
 LL | /// Damn enum's variants: [Enum::A#whatever].
-   |                            ^^^^^^^^^^^^^^^^ variants cannot be followed by anchors
+   |                            ^^^^^^^^^^^^^^^^ contains invalid anchor
 
-error: `[u32#hello]` has an issue with the link anchor.
+error: `u32#hello` contains an anchor, but links to primitive types are already anchored
   --> $DIR/intra-links-anchors.rs:43:6
    |
 LL | /// [u32#hello]
-   |      ^^^^^^^^^ primitive types cannot be followed by anchors
+   |      ^^^^^^^^^ contains invalid anchor
 
 error: aborting due to 4 previous errors
 

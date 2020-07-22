@@ -42,6 +42,18 @@ generated code, but may be slower to compile.
 The default value, if not specified, is 16 for non-incremental builds. For
 incremental builds the default is 256 which allows caching to be more granular.
 
+## control-flow-guard
+
+This flag controls whether LLVM enables the Windows [Control Flow 
+Guard](https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard) 
+platform security feature. This flag is currently ignored for non-Windows targets. 
+It takes one of the following values:
+
+* `y`, `yes`, `on`, `checks`, or no value: enable Control Flow Guard.
+* `nochecks`: emit Control Flow Guard metadata without runtime enforcement checks (this 
+should only be used for testing purposes as it does not provide security enforcement).
+* `n`, `no`, `off`: do not enable Control Flow Guard (the default).
+
 ## debug-assertions
 
 This flag lets you turn `cfg(debug_assertions)` [conditional

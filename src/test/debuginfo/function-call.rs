@@ -1,5 +1,5 @@
 // This test does not passed with gdb < 8.0. See #53497.
-// min-gdb-version 8.0
+// min-gdb-version: 8.0
 
 // compile-flags:-g
 
