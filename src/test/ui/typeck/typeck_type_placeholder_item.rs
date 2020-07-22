@@ -194,6 +194,8 @@ trait Qux {
     const D: _ = 42;
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
     // type E: _; // FIXME: make the parser propagate the existence of `B`
+    type F: std::ops::Fn(_);
+    //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }
 impl Qux for Struct {
     type A = _;
