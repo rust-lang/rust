@@ -1822,7 +1822,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// All opaque types in the caller_bounds of the `ParamEnv`
     /// will be normalized to their underlying types.
     /// See PR #65989 and issue #65918 for more details
-    pub fn with_reveal_all_normalized(mut self) -> Self {
+    pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> Self {
         if self.packed_data & 1 == 1 {
             return self;
         }

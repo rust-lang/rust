@@ -1163,6 +1163,6 @@ pub fn normalize_opaque_types(
     val.fold_with(&mut visitor)
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { normalize_opaque_types, ..*providers }
 }
