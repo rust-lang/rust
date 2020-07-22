@@ -586,6 +586,27 @@ fn replace_within_macro_expansion() {
 }
 
 #[test]
+fn replace_outside_and_within_macro_expansion() {
+    assert_ssr_transform(
+        "foo($a) ==>> bar($a)",
+        r#"
+            fn foo() {} fn bar() {}
+            macro_rules! macro1 {
+                ($a:expr) => {$a}
+            }
+            fn f() {foo(foo(macro1!(foo(foo(42)))))}
+            "#,
+        expect![[r#"
+            fn foo() {} fn bar() {}
+            macro_rules! macro1 {
+                ($a:expr) => {$a}
+            }
+            fn f() {bar(bar(macro1!(bar(bar(42)))))}
+        "#]],
+    )
+}
+
+#[test]
 fn preserves_whitespace_within_macro_expansion() {
     assert_ssr_transform(
         "$a + $b ==>> $b - $a",
@@ -629,5 +650,17 @@ fn match_failure_reasons() {
         code,
         "43.to_string()",
         r#"Pattern wanted token '42' (INT_NUMBER), but code had token '43' (INT_NUMBER)"#,
+    );
+}
+
+#[test]
+fn overlapping_possible_matches() {
+    // There are three possible matches here, however the middle one, `foo(foo(foo(42)))` shouldn't
+    // match because it overlaps with the outer match. The inner match is permitted since it's is
+    // contained entirely within the placeholder of the outer match.
+    assert_matches(
+        "foo(foo($a))",
+        "fn foo() {} fn main() {foo(foo(foo(foo(42))))}",
+        &["foo(foo(42))", "foo(foo(foo(foo(42))))"],
     );
 }
