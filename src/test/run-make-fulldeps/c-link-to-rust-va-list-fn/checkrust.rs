@@ -91,3 +91,58 @@ pub unsafe extern "C" fn check_varargs_1(_: c_int, mut ap: ...) -> usize {
 pub unsafe extern "C" fn check_varargs_2(_: c_int, _ap: ...) -> usize {
     0
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn check_varargs_3(_: c_int, mut ap: ...) -> usize {
+    continue_if!(ap.arg::<c_int>() == 1);
+    continue_if!(ap.arg::<c_int>() == 2);
+    continue_if!(ap.arg::<c_int>() == 3);
+    continue_if!(ap.arg::<c_int>() == 4);
+    continue_if!(ap.arg::<c_int>() == 5);
+    continue_if!(ap.arg::<c_int>() == 6);
+    continue_if!(ap.arg::<c_int>() == 7);
+    continue_if!(ap.arg::<c_int>() == 8);
+    continue_if!(ap.arg::<c_int>() == 9);
+    continue_if!(ap.arg::<c_int>() == 10);
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn check_varargs_4(_: c_double, mut ap: ...) -> usize {
+    continue_if!(ap.arg::<c_double>() == 1.0);
+    continue_if!(ap.arg::<c_double>() == 2.0);
+    continue_if!(ap.arg::<c_double>() == 3.0);
+    continue_if!(ap.arg::<c_double>() == 4.0);
+    continue_if!(ap.arg::<c_double>() == 5.0);
+    continue_if!(ap.arg::<c_double>() == 6.0);
+    continue_if!(ap.arg::<c_double>() == 7.0);
+    continue_if!(ap.arg::<c_double>() == 8.0);
+    continue_if!(ap.arg::<c_double>() == 9.0);
+    continue_if!(ap.arg::<c_double>() == 10.0);
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn check_varargs_5(_: c_int, mut ap: ...) -> usize {
+    continue_if!(ap.arg::<c_double>() == 1.0);
+    continue_if!(ap.arg::<c_int>() == 1);
+    continue_if!(ap.arg::<c_double>() == 2.0);
+    continue_if!(ap.arg::<c_int>() == 2);
+    continue_if!(ap.arg::<c_double>() == 3.0);
+    continue_if!(ap.arg::<c_int>() == 3);
+    continue_if!(ap.arg::<c_double>() == 4.0);
+    continue_if!(ap.arg::<c_int>() == 4);
+    continue_if!(ap.arg::<c_int>() == 5);
+    continue_if!(ap.arg::<c_double>() == 5.0);
+    continue_if!(ap.arg::<c_int>() == 6);
+    continue_if!(ap.arg::<c_double>() == 6.0);
+    continue_if!(ap.arg::<c_int>() == 7);
+    continue_if!(ap.arg::<c_double>() == 7.0);
+    continue_if!(ap.arg::<c_int>() == 8);
+    continue_if!(ap.arg::<c_double>() == 8.0);
+    continue_if!(ap.arg::<c_int>() == 9);
+    continue_if!(ap.arg::<c_double>() == 9.0);
+    continue_if!(ap.arg::<c_int>() == 10);
+    continue_if!(ap.arg::<c_double>() == 10.0);
+    0
+}

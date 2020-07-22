@@ -3,8 +3,9 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use rustc_codegen_ssa::mir::operand::OperandRef;
-use rustc_codegen_ssa::traits::{
-    BaseTypeMethods, BuilderMethods, ConstMethods, DerivedTypeMethods,
+use rustc_codegen_ssa::{
+    common::IntPredicate,
+    traits::{BaseTypeMethods, BuilderMethods, ConstMethods, DerivedTypeMethods},
 };
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::Ty;
@@ -89,6 +90,81 @@ fn emit_ptr_va_arg(
     }
 }
 
+fn emit_aapcs_va_arg(
+    bx: &mut Builder<'a, 'll, 'tcx>,
+    list: OperandRef<'tcx, &'ll Value>,
+    target_ty: Ty<'tcx>,
+) -> &'ll Value {
+    // Implementation of the AAPCS64 calling convention for va_args see
+    // https://github.com/ARM-software/abi-aa/blob/master/aapcs64/aapcs64.rst
+    let va_list_addr = list.immediate();
+    let layout = bx.cx.layout_of(target_ty);
+
+    let mut maybe_reg = bx.build_sibling_block("va_arg.maybe_reg");
+    let mut in_reg = bx.build_sibling_block("va_arg.in_reg");
+    let mut on_stack = bx.build_sibling_block("va_arg.on_stack");
+    let mut end = bx.build_sibling_block("va_arg.end");
+    let zero = bx.const_i32(0);
+    let offset_align = Align::from_bytes(4).unwrap();
+    assert!(&*bx.tcx().sess.target.target.target_endian == "little");
+
+    let gr_type = target_ty.is_any_ptr() || target_ty.is_integral();
+    let (reg_off, reg_top_index, slot_size) = if gr_type {
+        let gr_offs = bx.struct_gep(va_list_addr, 7);
+        let nreg = (layout.size.bytes() + 7) / 8;
+        (gr_offs, 3, nreg * 8)
+    } else {
+        let vr_off = bx.struct_gep(va_list_addr, 9);
+        let nreg = (layout.size.bytes() + 15) / 16;
+        (vr_off, 5, nreg * 16)
+    };
+
+    // if the offset >= 0 then the value will be on the stack
+    let mut reg_off_v = bx.load(reg_off, offset_align);
+    let use_stack = bx.icmp(IntPredicate::IntSGE, reg_off_v, zero);
+    bx.cond_br(use_stack, &on_stack.llbb(), &maybe_reg.llbb());
+
+    // The value at this point might be in a register, but there is a chance that
+    // it could be on the stack so we have to update the offset and then check
+    // the offset again.
+
+    if gr_type && layout.align.abi.bytes() > 8 {
+        reg_off_v = maybe_reg.add(reg_off_v, bx.const_i32(15));
+        reg_off_v = maybe_reg.and(reg_off_v, bx.const_i32(-16));
+    }
+    let new_reg_off_v = maybe_reg.add(reg_off_v, bx.const_i32(slot_size as i32));
+
+    maybe_reg.store(new_reg_off_v, reg_off, offset_align);
+
+    // Check to see if we have overflowed the registers as a result of this.
+    // If we have then we need to use the stack for this value
+    let use_stack = maybe_reg.icmp(IntPredicate::IntSGT, new_reg_off_v, zero);
+    maybe_reg.cond_br(use_stack, &on_stack.llbb(), &in_reg.llbb());
+
+    let top = in_reg.struct_gep(va_list_addr, reg_top_index);
+    let top = in_reg.load(top, bx.tcx().data_layout.pointer_align.abi);
+
+    // reg_value = *(@top + reg_off_v);
+    let top = in_reg.gep(top, &[reg_off_v]);
+    let top = in_reg.bitcast(top, bx.cx.type_ptr_to(layout.llvm_type(bx)));
+    let reg_value = in_reg.load(top, layout.align.abi);
+    in_reg.br(&end.llbb());
+
+    // On Stack block
+    let stack_value =
+        emit_ptr_va_arg(&mut on_stack, list, target_ty, false, Align::from_bytes(8).unwrap(), true);
+    on_stack.br(&end.llbb());
+
+    let val = end.phi(
+        layout.immediate_llvm_type(bx),
+        &[reg_value, stack_value],
+        &[&in_reg.llbb(), &on_stack.llbb()],
+    );
+
+    *bx = end;
+    val
+}
+
 pub(super) fn emit_va_arg(
     bx: &mut Builder<'a, 'll, 'tcx>,
     addr: OperandRef<'tcx, &'ll Value>,
@@ -115,6 +191,7 @@ pub(super) fn emit_va_arg(
         ("aarch64", _) if target.target_os == "ios" => {
             emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), true)
         }
+        ("aarch64", _) => emit_aapcs_va_arg(bx, addr, target_ty),
         // Windows x86_64
         ("x86_64", true) => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
