@@ -559,6 +559,7 @@ impl<T, U> Into<U> for T
 where
     U: From<T>,
 {
+    #[inline(always)]
     fn into(self) -> U {
         U::from(self)
     }
@@ -567,6 +568,7 @@ where
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<T> for T {
+    #[inline(always)]
     fn from(t: T) -> T {
         t
     }
