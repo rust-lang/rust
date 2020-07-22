@@ -151,7 +151,7 @@ impl RootDatabase {
 
         // Macros do take significant space, but less then the syntax trees
         // self.query(hir::db::MacroDefQuery).sweep(sweep);
-        // self.query(hir::db::MacroArgQuery).sweep(sweep);
+        // self.query(hir::db::MacroArgTextQuery).sweep(sweep);
         // self.query(hir::db::MacroExpandQuery).sweep(sweep);
 
         hir::db::AstIdMapQuery.in_db(self).sweep(sweep);
@@ -199,7 +199,7 @@ impl RootDatabase {
 
             // AstDatabase
             hir::db::AstIdMapQuery
-            hir::db::MacroArgQuery
+            hir::db::MacroArgTextQuery
             hir::db::MacroDefQuery
             hir::db::ParseMacroQuery
             hir::db::MacroExpandQuery
