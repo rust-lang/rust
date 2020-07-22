@@ -5,6 +5,7 @@ use ra_syntax::ast;
 
 use crate::{
     db::DefDatabase,
+    nameres::CrateDefMap,
     path::{ModPath, PathKind},
     ModuleId,
 };
@@ -115,7 +116,7 @@ impl Visibility {
 
     pub(crate) fn is_visible_from_def_map(
         self,
-        def_map: &crate::nameres::CrateDefMap,
+        def_map: &CrateDefMap,
         from_module: crate::LocalModuleId,
     ) -> bool {
         let to_module = match self {
@@ -128,5 +129,43 @@ impl Visibility {
             Some(parent_id)
         });
         ancestors.any(|m| m == to_module.local_id)
+    }
+
+    /// Returns the most permissive visibility of `self` and `other`.
+    ///
+    /// If there is no subset relation between `self` and `other`, returns `None` (ie. they're only
+    /// visible in unrelated modules).
+    pub(crate) fn max(self, other: Visibility, def_map: &CrateDefMap) -> Option<Visibility> {
+        match (self, other) {
+            (Visibility::Module(_), Visibility::Public)
+            | (Visibility::Public, Visibility::Module(_))
+            | (Visibility::Public, Visibility::Public) => Some(Visibility::Public),
+            (Visibility::Module(mod_a), Visibility::Module(mod_b)) => {
+                if mod_a.krate != mod_b.krate {
+                    return None;
+                }
+
+                let mut a_ancestors = std::iter::successors(Some(mod_a.local_id), |m| {
+                    let parent_id = def_map[*m].parent?;
+                    Some(parent_id)
+                });
+                let mut b_ancestors = std::iter::successors(Some(mod_b.local_id), |m| {
+                    let parent_id = def_map[*m].parent?;
+                    Some(parent_id)
+                });
+
+                if a_ancestors.any(|m| m == mod_b.local_id) {
+                    // B is above A
+                    return Some(Visibility::Module(mod_b));
+                }
+
+                if b_ancestors.any(|m| m == mod_a.local_id) {
+                    // A is above B
+                    return Some(Visibility::Module(mod_a));
+                }
+
+                None
+            }
+        }
     }
 }

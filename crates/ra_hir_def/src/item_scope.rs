@@ -36,6 +36,8 @@ pub struct ItemScope {
 
     defs: Vec<ModuleDefId>,
     impls: Vec<ImplId>,
+    /// Traits imported via `use Trait as _;`.
+    unnamed_trait_imports: FxHashMap<TraitId, Visibility>,
     /// Macros visible in current module in legacy textual scope
     ///
     /// For macros invoked by an unqualified identifier like `bar!()`, `legacy_macros` will be searched in first.
@@ -126,10 +128,13 @@ impl ItemScope {
     }
 
     pub(crate) fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {
-        self.types.values().filter_map(|(def, _)| match def {
-            ModuleDefId::TraitId(t) => Some(*t),
-            _ => None,
-        })
+        self.types
+            .values()
+            .filter_map(|(def, _)| match def {
+                ModuleDefId::TraitId(t) => Some(*t),
+                _ => None,
+            })
+            .chain(self.unnamed_trait_imports.keys().copied())
     }
 
     pub(crate) fn define_def(&mut self, def: ModuleDefId) {
@@ -146,6 +151,14 @@ impl ItemScope {
 
     pub(crate) fn define_legacy_macro(&mut self, name: Name, mac: MacroDefId) {
         self.legacy_macros.insert(name, mac);
+    }
+
+    pub(crate) fn unnamed_trait_vis(&self, tr: TraitId) -> Option<Visibility> {
+        self.unnamed_trait_imports.get(&tr).copied()
+    }
+
+    pub(crate) fn push_unnamed_trait(&mut self, tr: TraitId, vis: Visibility) {
+        self.unnamed_trait_imports.insert(tr, vis);
     }
 
     pub(crate) fn push_res(&mut self, name: Name, def: PerNs) -> bool {
@@ -241,8 +254,12 @@ impl ItemScope {
         changed
     }
 
-    pub(crate) fn resolutions<'a>(&'a self) -> impl Iterator<Item = (Name, PerNs)> + 'a {
-        self.entries().map(|(name, res)| (name.clone(), res))
+    pub(crate) fn resolutions<'a>(&'a self) -> impl Iterator<Item = (Option<Name>, PerNs)> + 'a {
+        self.entries().map(|(name, res)| (Some(name.clone()), res)).chain(
+            self.unnamed_trait_imports
+                .iter()
+                .map(|(tr, vis)| (None, PerNs::types(ModuleDefId::TraitId(*tr), *vis))),
+        )
     }
 
     pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroDefId> {

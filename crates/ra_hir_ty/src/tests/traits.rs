@@ -3089,3 +3089,25 @@ fn test() {
         "#,
     );
 }
+
+#[test]
+fn underscore_import() {
+    check_types(
+        r#"
+mod tr {
+    pub trait Tr {
+        fn method(&self) -> u8 { 0 }
+    }
+}
+
+struct Tr;
+impl crate::tr::Tr for Tr {}
+
+use crate::tr::Tr as _;
+fn test() {
+    Tr.method();
+  //^^^^^^^^^^^ u8
+}
+    "#,
+    );
+}

@@ -239,7 +239,7 @@ impl CrateDefMap {
             entries.sort_by_key(|(name, _)| name.clone());
 
             for (name, def) in entries {
-                format_to!(buf, "{}:", name);
+                format_to!(buf, "{}:", name.map_or("_".to_string(), |name| name.to_string()));
 
                 if def.types.is_some() {
                     buf.push_str(" t");
