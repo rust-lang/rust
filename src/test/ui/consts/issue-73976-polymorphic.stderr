@@ -1,0 +1,26 @@
+error: could not evaluate constant pattern
+  --> $DIR/issue-73976-polymorphic.rs:20:37
+   |
+LL |     matches!(GetTypeId::<T>::VALUE, GetTypeId::<T>::VALUE)
+   |                                     ^^^^^^^^^^^^^^^^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/issue-73976-polymorphic.rs:32:42
+   |
+LL |     matches!(GetTypeNameLen::<T>::VALUE, GetTypeNameLen::<T>::VALUE)
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/issue-73976-polymorphic.rs:20:37
+   |
+LL |     matches!(GetTypeId::<T>::VALUE, GetTypeId::<T>::VALUE)
+   |                                     ^^^^^^^^^^^^^^^^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/issue-73976-polymorphic.rs:32:42
+   |
+LL |     matches!(GetTypeNameLen::<T>::VALUE, GetTypeNameLen::<T>::VALUE)
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
