@@ -420,7 +420,7 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    assert!(this.mem_docs.contains_key(&path));
+                    *this.mem_docs.get_mut(&path).unwrap() = params.text_document.version;
                     let vfs = &mut this.vfs.write().0;
                     let file_id = vfs.file_id(&path).unwrap();
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
