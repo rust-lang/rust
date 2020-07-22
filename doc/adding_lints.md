@@ -27,10 +27,7 @@ because that's clearly a non-descriptive name.
 
 ## Setup
 
-When working on Clippy, you will need the current git master version of rustc,
-which can change rapidly. Make sure you're working near rust-clippy's master,
-and use the `setup-toolchain.sh` script to configure the appropriate toolchain
-for the Clippy directory.
+See the [Basics](basics.md#get-the-code) documentation.
 
 ## Getting Started
 
@@ -113,7 +110,7 @@ For cargo lints, the process of testing differs in that we are interested in
 the `Cargo.toml` manifest file. We also need a minimal crate associated
 with that manifest.
 
-If our new lint is named e.g. `foo_categories`, after running `cargo dev new_lint` 
+If our new lint is named e.g. `foo_categories`, after running `cargo dev new_lint`
 we will find by default two new crates, each with its manifest file:
 
 * `tests/ui-cargo/foo_categories/fail/Cargo.toml`: this file should cause the new lint to raise an error.
