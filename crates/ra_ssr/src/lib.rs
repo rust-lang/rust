@@ -13,11 +13,12 @@ mod errors;
 #[cfg(test)]
 mod tests;
 
+use crate::errors::bail;
 pub use crate::errors::SsrError;
 pub use crate::matching::Match;
 use crate::matching::MatchFailureReason;
 use hir::Semantics;
-use ra_db::{FileId, FileRange};
+use ra_db::{FileId, FilePosition, FileRange};
 use ra_ide_db::source_change::SourceFileEdit;
 use ra_syntax::{ast, AstNode, SyntaxNode, TextRange};
 use rustc_hash::FxHashMap;
@@ -51,8 +52,33 @@ pub struct MatchFinder<'db> {
 }
 
 impl<'db> MatchFinder<'db> {
-    pub fn new(db: &'db ra_ide_db::RootDatabase) -> MatchFinder<'db> {
+    /// Constructs a new instance where names will be looked up as if they appeared at
+    /// `lookup_context`.
+    pub fn in_context(
+        db: &'db ra_ide_db::RootDatabase,
+        _lookup_context: FilePosition,
+    ) -> MatchFinder<'db> {
+        // FIXME: Use lookup_context
         MatchFinder { sema: Semantics::new(db), rules: Vec::new() }
+    }
+
+    /// Constructs an instance using the start of the first file in `db` as the lookup context.
+    pub fn at_first_file(db: &'db ra_ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
+        use ra_db::SourceDatabaseExt;
+        use ra_ide_db::symbol_index::SymbolsDatabase;
+        if let Some(first_file_id) = db
+            .local_roots()
+            .iter()
+            .next()
+            .and_then(|root| db.source_root(root.clone()).iter().next())
+        {
+            Ok(MatchFinder::in_context(
+                db,
+                FilePosition { file_id: first_file_id, offset: 0.into() },
+            ))
+        } else {
+            bail!("No files to search");
+        }
     }
 
     /// Adds a rule to be applied. The order in which rules are added matters. Earlier rules take

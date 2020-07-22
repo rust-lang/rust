@@ -185,15 +185,21 @@ export function parentModule(ctx: Ctx): Cmd {
 
 export function ssr(ctx: Ctx): Cmd {
     return async () => {
+        const editor = vscode.window.activeTextEditor;
         const client = ctx.client;
-        if (!client) return;
+        if (!editor || !client) return;
+
+        const position = editor.selection.active;
+        let textDocument = { uri: editor.document.uri.toString() };
 
         const options: vscode.InputBoxOptions = {
             value: "() ==>> ()",
             prompt: "Enter request, for example 'Foo($a) ==> Foo::new($a)' ",
             validateInput: async (x: string) => {
                 try {
-                    await client.sendRequest(ra.ssr, { query: x, parseOnly: true });
+                    await client.sendRequest(ra.ssr, {
+                        query: x, parseOnly: true, textDocument, position,
+                    });
                 } catch (e) {
                     return e.toString();
                 }
@@ -208,7 +214,9 @@ export function ssr(ctx: Ctx): Cmd {
             title: "Structured search replace in progress...",
             cancellable: false,
         }, async (_progress, _token) => {
-            const edit = await client.sendRequest(ra.ssr, { query: request, parseOnly: false });
+            const edit = await client.sendRequest(ra.ssr, {
+                query: request, parseOnly: false, textDocument, position
+            });
 
             await vscode.workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));
         });

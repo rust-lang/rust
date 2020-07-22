@@ -1,6 +1,6 @@
 use crate::{MatchFinder, SsrRule};
 use expect::{expect, Expect};
-use ra_db::{salsa::Durability, FileId, SourceDatabaseExt};
+use ra_db::{salsa::Durability, FileId, FilePosition, SourceDatabaseExt};
 use rustc_hash::FxHashSet;
 use std::sync::Arc;
 use test_utils::mark;
@@ -59,15 +59,21 @@ fn parser_undefined_placeholder_in_replacement() {
     );
 }
 
-pub(crate) fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FileId) {
+/// `code` may optionally contain a cursor marker `<|>`. If it doesn't, then the position will be
+/// the start of the file.
+pub(crate) fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FilePosition) {
     use ra_db::fixture::WithFixture;
     use ra_ide_db::symbol_index::SymbolsDatabase;
-    let (db, file_id) = ra_ide_db::RootDatabase::with_single_file(code);
-    let mut db = db;
+    let (mut db, position) = if code.contains(test_utils::CURSOR_MARKER) {
+        ra_ide_db::RootDatabase::with_position(code)
+    } else {
+        let (db, file_id) = ra_ide_db::RootDatabase::with_single_file(code);
+        (db, FilePosition { file_id, offset: 0.into() })
+    };
     let mut local_roots = FxHashSet::default();
     local_roots.insert(ra_db::fixture::WORKSPACE);
     db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
-    (db, file_id)
+    (db, position)
 }
 
 fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
@@ -75,8 +81,8 @@ fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
 }
 
 fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
-    let (db, file_id) = single_file(input);
-    let mut match_finder = MatchFinder::new(&db);
+    let (db, position) = single_file(input);
+    let mut match_finder = MatchFinder::in_context(&db, position);
     for rule in rules {
         let rule: SsrRule = rule.parse().unwrap();
         match_finder.add_rule(rule);
@@ -85,10 +91,10 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     if edits.is_empty() {
         panic!("No edits were made");
     }
-    assert_eq!(edits[0].file_id, file_id);
+    assert_eq!(edits[0].file_id, position.file_id);
     // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
     // stuff.
-    let mut actual = db.file_text(file_id).to_string();
+    let mut actual = db.file_text(position.file_id).to_string();
     edits[0].edit.apply(&mut actual);
     expected.assert_eq(&actual);
 }
@@ -106,34 +112,34 @@ fn print_match_debug_info(match_finder: &MatchFinder, file_id: FileId, snippet: 
 }
 
 fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
-    let (db, file_id) = single_file(code);
-    let mut match_finder = MatchFinder::new(&db);
+    let (db, position) = single_file(code);
+    let mut match_finder = MatchFinder::in_context(&db, position);
     match_finder.add_search_pattern(pattern.parse().unwrap());
     let matched_strings: Vec<String> =
         match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
     if matched_strings != expected && !expected.is_empty() {
-        print_match_debug_info(&match_finder, file_id, &expected[0]);
+        print_match_debug_info(&match_finder, position.file_id, &expected[0]);
     }
     assert_eq!(matched_strings, expected);
 }
 
 fn assert_no_match(pattern: &str, code: &str) {
-    let (db, file_id) = single_file(code);
-    let mut match_finder = MatchFinder::new(&db);
+    let (db, position) = single_file(code);
+    let mut match_finder = MatchFinder::in_context(&db, position);
     match_finder.add_search_pattern(pattern.parse().unwrap());
     let matches = match_finder.matches().flattened().matches;
     if !matches.is_empty() {
-        print_match_debug_info(&match_finder, file_id, &matches[0].matched_text());
+        print_match_debug_info(&match_finder, position.file_id, &matches[0].matched_text());
         panic!("Got {} matches when we expected none: {:#?}", matches.len(), matches);
     }
 }
 
 fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expected_reason: &str) {
-    let (db, file_id) = single_file(code);
-    let mut match_finder = MatchFinder::new(&db);
+    let (db, position) = single_file(code);
+    let mut match_finder = MatchFinder::in_context(&db, position);
     match_finder.add_search_pattern(pattern.parse().unwrap());
     let mut reasons = Vec::new();
-    for d in match_finder.debug_where_text_equal(file_id, snippet) {
+    for d in match_finder.debug_where_text_equal(position.file_id, snippet) {
         if let Some(reason) = d.match_failure_reason() {
             reasons.push(reason.to_owned());
         }

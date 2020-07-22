@@ -1,3 +1,4 @@
+use ra_db::FilePosition;
 use ra_ide_db::RootDatabase;
 
 use crate::SourceFileEdit;
@@ -42,12 +43,13 @@ pub fn parse_search_replace(
     rule: &str,
     parse_only: bool,
     db: &RootDatabase,
+    position: FilePosition,
 ) -> Result<Vec<SourceFileEdit>, SsrError> {
     let rule: SsrRule = rule.parse()?;
+    let mut match_finder = MatchFinder::in_context(db, position);
+    match_finder.add_rule(rule);
     if parse_only {
         return Ok(Vec::new());
     }
-    let mut match_finder = MatchFinder::new(db);
-    match_finder.add_rule(rule);
     Ok(match_finder.edits())
 }

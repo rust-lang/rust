@@ -216,6 +216,11 @@ impl Request for Ssr {
 pub struct SsrParams {
     pub query: String,
     pub parse_only: bool,
+
+    /// File position where SSR was invoked. Paths in `query` will be resolved relative to this
+    /// position.
+    #[serde(flatten)]
+    pub position: lsp_types::TextDocumentPositionParams,
 }
 
 pub enum StatusNotification {}
