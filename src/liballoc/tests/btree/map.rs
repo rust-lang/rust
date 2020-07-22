@@ -835,10 +835,8 @@ mod test_drain_filter {
             }
         }
 
-        let mut map = BTreeMap::new();
-        map.insert(0, D);
-        map.insert(4, D);
-        map.insert(8, D);
+        // Keys are multiples of 4, so that each key is counted by a hexadecimal digit.
+        let mut map = (0..3).map(|i| (i * 4, D)).collect::<BTreeMap<_, _>>();
 
         catch_unwind(move || {
             drop(map.drain_filter(|i, _| {
@@ -846,7 +844,7 @@ mod test_drain_filter {
                 true
             }))
         })
-        .ok();
+        .unwrap_err();
 
         assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
         assert_eq!(DROPS.load(Ordering::SeqCst), 3);
@@ -864,10 +862,8 @@ mod test_drain_filter {
             }
         }
 
-        let mut map = BTreeMap::new();
-        map.insert(0, D);
-        map.insert(4, D);
-        map.insert(8, D);
+        // Keys are multiples of 4, so that each key is counted by a hexadecimal digit.
+        let mut map = (0..3).map(|i| (i * 4, D)).collect::<BTreeMap<_, _>>();
 
         catch_unwind(AssertUnwindSafe(|| {
             drop(map.drain_filter(|i, _| {
@@ -878,7 +874,45 @@ mod test_drain_filter {
                 }
             }))
         }))
-        .ok();
+        .unwrap_err();
+
+        assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
+        assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.first_entry().unwrap().key(), &4);
+        assert_eq!(map.last_entry().unwrap().key(), &8);
+    }
+
+    // Same as above, but attempt to use the iterator again after the panic in the predicate
+    #[test]
+    fn pred_panic_reuse() {
+        static PREDS: AtomicUsize = AtomicUsize::new(0);
+        static DROPS: AtomicUsize = AtomicUsize::new(0);
+
+        struct D;
+        impl Drop for D {
+            fn drop(&mut self) {
+                DROPS.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        // Keys are multiples of 4, so that each key is counted by a hexadecimal digit.
+        let mut map = (0..3).map(|i| (i * 4, D)).collect::<BTreeMap<_, _>>();
+
+        {
+            let mut it = map.drain_filter(|i, _| {
+                PREDS.fetch_add(1usize << i, Ordering::SeqCst);
+                match i {
+                    0 => true,
+                    _ => panic!(),
+                }
+            });
+            catch_unwind(AssertUnwindSafe(|| while it.next().is_some() {})).unwrap_err();
+            // Iterator behaviour after a panic is explicitly unspecified,
+            // so this is just the current implementation:
+            let result = catch_unwind(AssertUnwindSafe(|| it.next()));
+            assert!(matches!(result, Ok(None)));
+        }
 
         assert_eq!(PREDS.load(Ordering::SeqCst), 0x011);
         assert_eq!(DROPS.load(Ordering::SeqCst), 1);
@@ -1319,7 +1353,7 @@ fn test_into_iter_drop_leak_height_0() {
     map.insert("d", D);
     map.insert("e", D);
 
-    catch_unwind(move || drop(map.into_iter())).ok();
+    catch_unwind(move || drop(map.into_iter())).unwrap_err();
 
     assert_eq!(DROPS.load(Ordering::SeqCst), 5);
 }
@@ -1343,7 +1377,7 @@ fn test_into_iter_drop_leak_height_1() {
         DROPS.store(0, Ordering::SeqCst);
         PANIC_POINT.store(panic_point, Ordering::SeqCst);
         let map: BTreeMap<_, _> = (0..size).map(|i| (i, D)).collect();
-        catch_unwind(move || drop(map.into_iter())).ok();
+        catch_unwind(move || drop(map.into_iter())).unwrap_err();
         assert_eq!(DROPS.load(Ordering::SeqCst), size);
     }
 }
