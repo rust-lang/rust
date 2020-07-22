@@ -619,6 +619,7 @@ use crate::reex::*;
 
 #[test]
 fn underscore_pub_crate_reexport() {
+    mark::check!(upgrade_underscore_visibility);
     check(
         r#"
 //- /main.rs crate:main deps:lib
@@ -629,9 +630,7 @@ use tr::Tr as _;
 pub use tr::Tr as _;
 
 mod tr {
-    pub trait Tr {
-        fn method(&self) {}
-    }
+    pub trait Tr {}
 }
     "#,
         expect![[r#"

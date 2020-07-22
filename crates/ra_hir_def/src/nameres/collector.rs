@@ -625,7 +625,12 @@ impl DefCollector<'_> {
                                 panic!("`Tr as _` imports with unrelated visibilities {:?} and {:?} (trait {:?})", old_vis, vis, tr);
                             });
 
-                            max_vis != old_vis
+                            if max_vis == old_vis {
+                                false
+                            } else {
+                                mark::hit!(upgrade_underscore_visibility);
+                                true
+                            }
                         }
                     };
 
