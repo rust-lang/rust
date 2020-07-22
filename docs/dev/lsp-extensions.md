@@ -11,11 +11,13 @@ If you want to be notified about the changes to this document, subscribe to [#46
 
 ## `initializationOptions`
 
-As `initializationOptions`, `rust-analyzer` expects `"rust-analyzer"` section of the configuration.
+For `initializationOptions`, `rust-analyzer` expects `"rust-analyzer"` section of the configuration.
 That is, `rust-analyzer` usually sends `"workspace/configuration"` request with `{ "items": ["rust-analyzer"] }` payload.
 `initializationOptions` should contain the same data that would be in the first item of the result.
-It's OK to not send anything, then all the settings would take their default values.
-However, some settings can not be changed after startup at the moment.
+If a language client does not know about `rust-analyzer`'s configuration options it can get sensible defaults by doing any of the following:
+ * Not sending `initializationOptions`
+ * Send `"initializationOptions": null`
+ * Send `"initializationOptions": {}`
 
 ## Snippet `TextEdit`
 
