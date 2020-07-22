@@ -270,6 +270,7 @@ a.test-arrow:hover{
 
 :target > code, :target > .in-band {
 	background-color: #494a3d;
+	border-right: 3px solid #bb7410;
 }
 
 pre.compile_fail {
