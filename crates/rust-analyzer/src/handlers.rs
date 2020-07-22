@@ -2,6 +2,8 @@
 //! Protocol. The majority of requests are fulfilled by calling into the
 //! `ra_ide` crate.
 
+#![allow(deprecated)]
+
 use std::{
     io::Write as _,
     process::{self, Stdio},
@@ -15,7 +17,7 @@ use lsp_types::{
     DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location,
     Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensParams,
     SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    TextDocumentIdentifier, Url, WorkspaceEdit,
+    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
@@ -253,10 +255,16 @@ pub(crate) fn handle_document_symbol(
     let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
 
     for symbol in snap.analysis.file_structure(file_id)? {
+        let mut tags = Vec::new();
+        if symbol.deprecated {
+            tags.push(SymbolTag::Deprecated)
+        };
+
         let doc_symbol = DocumentSymbol {
             name: symbol.label,
             detail: symbol.detail,
             kind: to_proto::symbol_kind(symbol.kind),
+            tags: Some(tags),
             deprecated: Some(symbol.deprecated),
             range: to_proto::range(&line_index, symbol.node_range),
             selection_range: to_proto::range(&line_index, symbol.navigation_range),
@@ -296,9 +304,16 @@ pub(crate) fn handle_document_symbol(
         url: &Url,
         res: &mut Vec<SymbolInformation>,
     ) {
+        let mut tags = Vec::new();
+        match symbol.deprecated {
+            Some(true) => tags.push(SymbolTag::Deprecated),
+            _ => {}
+        }
+
         res.push(SymbolInformation {
             name: symbol.name.clone(),
             kind: symbol.kind,
+            tags: Some(tags),
             deprecated: symbol.deprecated,
             location: Location::new(url.clone(), symbol.range),
             container_name,
@@ -345,6 +360,7 @@ pub(crate) fn handle_workspace_symbol(
             let info = SymbolInformation {
                 name: nav.name.to_string(),
                 kind: to_proto::symbol_kind(nav.kind),
+                tags: None,
                 location: to_proto::location_from_nav(snap, nav)?,
                 container_name,
                 deprecated: None,
