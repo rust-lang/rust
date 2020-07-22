@@ -1005,7 +1005,6 @@ impl Step for Src {
         // (essentially libstd and all of its path dependencies)
         let std_src_dirs = [
             "src/build_helper",
-            "src/backtrace/src",
             "src/liballoc",
             "src/libcore",
             "src/libpanic_abort",
