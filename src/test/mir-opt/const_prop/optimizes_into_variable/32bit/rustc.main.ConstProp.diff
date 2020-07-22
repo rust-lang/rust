@@ -139,13 +139,25 @@
 +                                          // mir::Constant
 +                                          // + span: $DIR/optimizes_into_variable.rs:13:13: 13:34
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-+         assert(const true, "index out of bounds: the len is {} but the index is {}", move _6, _5) -> bb2; // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
++         assert(const true, "index out of bounds: the len is {} but the index is {}", const 6_usize, const 3_usize) -> bb2; // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
 +                                          // ty::Const
 +                                          // + ty: bool
 +                                          // + val: Value(Scalar(0x01))
 +                                          // mir::Constant
 +                                          // + span: $DIR/optimizes_into_variable.rs:13:13: 13:34
 +                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
++                                          // ty::Const
++                                          // + ty: usize
++                                          // + val: Value(Scalar(0x00000006))
++                                          // mir::Constant
++                                          // + span: $DIR/optimizes_into_variable.rs:13:13: 13:34
++                                          // + literal: Const { ty: usize, val: Value(Scalar(0x00000006)) }
++                                          // ty::Const
++                                          // + ty: usize
++                                          // + val: Value(Scalar(0x00000003))
++                                          // mir::Constant
++                                          // + span: $DIR/optimizes_into_variable.rs:13:13: 13:34
++                                          // + literal: Const { ty: usize, val: Value(Scalar(0x00000003)) }
       }
   
       bb2: {

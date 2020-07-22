@@ -56,7 +56,14 @@
       }
   
       bb2: {
-          switchInt(((_3 as Some).0: bool)) -> [false: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:26: 11:30
+-         switchInt(((_3 as Some).0: bool)) -> [false: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:26: 11:30
++         switchInt(const true) -> [false: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:26: 11:30
++                                          // ty::Const
++                                          // + ty: bool
++                                          // + val: Value(Scalar(0x01))
++                                          // mir::Constant
++                                          // + span: $DIR/discriminant.rs:11:26: 11:30
++                                          // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
       }
   
       bb3: {
