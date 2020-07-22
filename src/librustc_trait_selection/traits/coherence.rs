@@ -289,11 +289,11 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///     - but (knowing that `Vec<T>` is non-fundamental, and assuming it's
 ///       not local), `Vec<LocalType>` is bad, because `Vec<->` is between
 ///       the local type and the type parameter.
-/// 3. Every type parameter before the local key parameter is fully known in C.
-///     - e.g., `impl<T> T: Trait<LocalType>` is bad, because `T` might be
-///       an unknown type.
-///     - but `impl<T> LocalType: Trait<T>` is OK, because `LocalType`
-///       occurs before `T`.
+/// 3. Before this local type, no generic type parameter of the impl must
+///    be reachable through fundamental types.
+///     - e.g. `impl<T> Trait<LocalType> for Vec<T>` is fine, as `Vec` is not fundamental.
+///     - while `impl<T> Trait<LocalType for Box<T>` results in an error, as `T` is
+///       reachable through the fundamental type `Box`.
 /// 4. Every type in the local key parameter not known in C, going
 ///    through the parameter's type tree, must appear only as a subtree of
 ///    a type local to C, with only fundamental types between the type
@@ -387,9 +387,9 @@ fn orphan_check_trait_ref<'tcx>(
         ty: Ty<'tcx>,
         in_crate: InCrate,
     ) -> Vec<Ty<'tcx>> {
-        // FIXME(eddyb) figure out if this is redundant with `ty_is_non_local`,
-        // or maybe if this should be calling `ty_is_non_local_constructor`.
-        if ty_is_non_local(tcx, ty, in_crate).is_some() {
+        // FIXME: this is currently somewhat overly complicated,
+        // but fixing this requires a more complicated refactor.
+        if !contained_non_local_types(tcx, ty, in_crate).is_empty() {
             if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
                 return inner_tys
                     .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
@@ -408,8 +408,8 @@ fn orphan_check_trait_ref<'tcx>(
         .enumerate()
     {
         debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
-        let non_local_tys = ty_is_non_local(tcx, input_ty, in_crate);
-        if non_local_tys.is_none() {
+        let non_local_tys = contained_non_local_types(tcx, input_ty, in_crate);
+        if non_local_tys.is_empty() {
             debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
             return Ok(());
         } else if let ty::Param(_) = input_ty.kind {
@@ -418,16 +418,15 @@ fn orphan_check_trait_ref<'tcx>(
                 .substs
                 .types()
                 .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-                .find(|ty| ty_is_non_local_constructor(ty, in_crate).is_none());
+                .find(|ty| ty_is_local_constructor(ty, in_crate));
 
             debug!("orphan_check_trait_ref: uncovered ty local_type: `{:?}`", local_type);
 
             return Err(OrphanCheckErr::UncoveredTy(input_ty, local_type));
         }
-        if let Some(non_local_tys) = non_local_tys {
-            for input_ty in non_local_tys {
-                non_local_spans.push((input_ty, i == 0));
-            }
+
+        for input_ty in non_local_tys {
+            non_local_spans.push((input_ty, i == 0));
         }
     }
     // If we exit above loop, never found a local type.
@@ -435,20 +434,29 @@ fn orphan_check_trait_ref<'tcx>(
     Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
 }
 
-fn ty_is_non_local(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Option<Vec<Ty<'tcx>>> {
-    match ty_is_non_local_constructor(ty, in_crate) {
-        Some(ty) => {
-            if let Some(inner_tys) = fundamental_ty_inner_tys(tcx, ty) {
-                let tys: Vec<_> = inner_tys
-                    .filter_map(|ty| ty_is_non_local(tcx, ty, in_crate))
-                    .flatten()
-                    .collect();
-                if tys.is_empty() { None } else { Some(tys) }
-            } else {
-                Some(vec![ty])
+/// Returns a list of relevant non-local types for `ty`.
+///
+/// This is just `ty` itself unless `ty` is `#[fundamental]`,
+/// in which case we recursively look into this type.
+///
+/// If `ty` is local itself, this method returns an empty `Vec`.
+///
+/// # Examples
+///
+/// - `u32` is not local, so this returns `[u32]`.
+/// - for `Foo<u32>`, where `Foo` is a local type, this returns `[]`.
+/// - `&mut u32` returns `[u32]`, as `&mut` is a fundamental type, similar to `Box`.
+/// - `Box<Foo<u32>>` returns `[]`, as `Box` is a fundamental type and `Foo` is local.
+fn contained_non_local_types(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
+    if ty_is_local_constructor(ty, in_crate) {
+        Vec::new()
+    } else {
+        match fundamental_ty_inner_tys(tcx, ty) {
+            Some(inner_tys) => {
+                inner_tys.flat_map(|ty| contained_non_local_types(tcx, ty, in_crate)).collect()
             }
+            None => vec![ty],
         }
-        None => None,
     }
 }
 
@@ -493,9 +501,8 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     }
 }
 
-// FIXME(eddyb) this can just return `bool` as it always returns `Some(ty)` or `None`.
-fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> {
-    debug!("ty_is_non_local_constructor({:?})", ty);
+fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
+    debug!("ty_is_local_constructor({:?})", ty);
 
     match ty.kind {
         ty::Bool
@@ -513,29 +520,17 @@ fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> 
         | ty::Never
         | ty::Tuple(..)
         | ty::Param(..)
-        | ty::Projection(..) => Some(ty),
+        | ty::Projection(..) => false,
 
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => match in_crate {
-            InCrate::Local => Some(ty),
+            InCrate::Local => false,
             // The inference variable might be unified with a local
             // type in that remote crate.
-            InCrate::Remote => None,
+            InCrate::Remote => true,
         },
 
-        ty::Adt(def, _) => {
-            if def_id_is_local(def.did, in_crate) {
-                None
-            } else {
-                Some(ty)
-            }
-        }
-        ty::Foreign(did) => {
-            if def_id_is_local(did, in_crate) {
-                None
-            } else {
-                Some(ty)
-            }
-        }
+        ty::Adt(def, _) => def_id_is_local(def.did, in_crate),
+        ty::Foreign(did) => def_id_is_local(did, in_crate),
         ty::Opaque(..) => {
             // This merits some explanation.
             // Normally, opaque types are not involed when performing
@@ -553,7 +548,7 @@ fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> 
             // the underlying type *within the same crate*. When an
             // opaque type is used from outside the module
             // where it is declared, it should be impossible to observe
-            // anyything about it other than the traits that it implements.
+            // anything about it other than the traits that it implements.
             //
             // The alternative would be to look at the underlying type
             // to determine whether or not the opaque type itself should
@@ -562,18 +557,18 @@ fn ty_is_non_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> Option<Ty<'_>> 
             // to a remote type. This would violate the rule that opaque
             // types should be completely opaque apart from the traits
             // that they implement, so we don't use this behavior.
-            Some(ty)
+            false
         }
 
         ty::Dynamic(ref tt, ..) => {
             if let Some(principal) = tt.principal() {
-                if def_id_is_local(principal.def_id(), in_crate) { None } else { Some(ty) }
+                def_id_is_local(principal.def_id(), in_crate)
             } else {
-                Some(ty)
+                false
             }
         }
 
-        ty::Error(_) => None,
+        ty::Error(_) => true,
 
         ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
