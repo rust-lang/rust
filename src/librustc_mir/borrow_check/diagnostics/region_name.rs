@@ -342,7 +342,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             argument_index,
         );
 
-        self.highlight_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index)
+        self.get_argument_hir_ty_for_highlighting(argument_index)
+            .and_then(|arg_hir_ty| self.highlight_if_we_can_match_hir_ty(fr, arg_ty, arg_hir_ty))
             .or_else(|| {
                 // `highlight_if_we_cannot_match_hir_ty` needs to know the number we will give to
                 // the anonymous region. If it succeeds, the `synthesize_region_name` call below
@@ -356,12 +357,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             })
     }
 
-    fn highlight_if_we_can_match_hir_ty_from_argument(
+    fn get_argument_hir_ty_for_highlighting(
         &self,
-        needle_fr: RegionVid,
-        argument_ty: Ty<'tcx>,
         argument_index: usize,
-    ) -> Option<RegionNameHighlight> {
+    ) -> Option<&hir::Ty<'tcx>> {
         let mir_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id);
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
         let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
@@ -373,7 +372,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             // (`give_name_if_anonymous_region_appears_in_arguments`).
             hir::TyKind::Infer => None,
 
-            _ => self.highlight_if_we_can_match_hir_ty(needle_fr, argument_ty, argument_hir_ty),
+            _ => Some(argument_hir_ty),
         }
     }
 
