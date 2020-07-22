@@ -163,7 +163,7 @@ fn main() {
         cfg.define(&flag, None);
     }
 
-    println!("cargo:rerun-if-changed-env=LLVM_RUSTLLVM");
+    println!("cargo:rerun-if-env-changed=LLVM_RUSTLLVM");
     if env::var_os("LLVM_RUSTLLVM").is_some() {
         cfg.define("LLVM_RUSTLLVM", None);
     }
