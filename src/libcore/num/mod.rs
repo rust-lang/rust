@@ -79,8 +79,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
 
                 /// Creates a non-zero if the given value is not zero.
                 #[$stability]
-                #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.46.0")]
-                #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+                #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
                 #[inline]
                 pub const fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
@@ -740,10 +739,9 @@ assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
@@ -783,10 +781,9 @@ assert_eq!((", stringify!($SelfT), "::MIN + 2).checked_sub(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
@@ -826,10 +823,9 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
@@ -983,8 +979,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_neg(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
@@ -1006,10 +1001,9 @@ assert_eq!(0x1", stringify!($SelfT), ".checked_shl(129), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
@@ -1031,10 +1025,9 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(128), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
@@ -1057,8 +1050,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_abs(), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[inline]
             pub const fn checked_abs(self) -> Option<Self> {
                 if self.is_negative() {
@@ -1129,7 +1121,7 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1155,7 +1147,7 @@ assert_eq!(", stringify!($SelfT), "::MAX.saturating_sub(-1), ", stringify!($Self
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1183,7 +1175,7 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "saturating_neg", since = "1.45.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[inline]
             pub const fn saturating_neg(self) -> Self {
                 intrinsics::saturating_sub(0, self)
@@ -1209,8 +1201,7 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "saturating_neg", since = "1.45.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[inline]
             pub const fn saturating_abs(self) -> Self {
                 if self.is_negative() {
@@ -1237,10 +1228,9 @@ assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($Self
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 match self.checked_mul(rhs) {
@@ -2203,8 +2193,7 @@ assert_eq!((-10", stringify!($SelfT), ").signum(), -1);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_int_sign", since = "1.46.0")]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+            #[rustc_const_stable(feature = "const_int_sign", since = "1.47.0")]
             #[inline]
             pub const fn signum(self) -> Self {
                 match self {
@@ -2986,10 +2975,9 @@ Basic usage:
 assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
@@ -3027,10 +3015,9 @@ Basic usage:
 assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
@@ -3068,10 +3055,9 @@ Basic usage:
 assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
@@ -3219,8 +3205,7 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
@@ -3241,10 +3226,9 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
@@ -3265,10 +3249,9 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
@@ -3333,7 +3316,7 @@ $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[inline]
             pub const fn saturating_add(self, rhs: Self) -> Self {
                 intrinsics::saturating_add(self, rhs)
@@ -3355,7 +3338,7 @@ assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[inline]
             pub const fn saturating_sub(self, rhs: Self) -> Self {
                 intrinsics::saturating_sub(self, rhs)
@@ -3377,10 +3360,9 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
 "::MAX);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
-            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.46.0")]
+            #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
             #[inline]
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 match self.checked_mul(rhs) {
@@ -4671,8 +4653,7 @@ impl u8 {
     /// assert!(!esc.is_ascii_alphabetic());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphabetic(&self) -> bool {
         matches!(*self, b'A'..=b'Z' | b'a'..=b'z')
@@ -4705,8 +4686,7 @@ impl u8 {
     /// assert!(!esc.is_ascii_uppercase());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_uppercase(&self) -> bool {
         matches!(*self, b'A'..=b'Z')
@@ -4739,8 +4719,7 @@ impl u8 {
     /// assert!(!esc.is_ascii_lowercase());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_lowercase(&self) -> bool {
         matches!(*self, b'a'..=b'z')
@@ -4776,8 +4755,7 @@ impl u8 {
     /// assert!(!esc.is_ascii_alphanumeric());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
         matches!(*self, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z')
@@ -4810,8 +4788,7 @@ impl u8 {
     /// assert!(!esc.is_ascii_digit());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_digit(&self) -> bool {
         matches!(*self, b'0'..=b'9')
@@ -4847,8 +4824,7 @@ impl u8 {
     /// assert!(!esc.is_ascii_hexdigit());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
         matches!(*self, b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f')
@@ -4885,8 +4861,7 @@ impl u8 {
     /// assert!(!esc.is_ascii_punctuation());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_punctuation(&self) -> bool {
         matches!(*self, b'!'..=b'/' | b':'..=b'@' | b'['..=b'`' | b'{'..=b'~')
@@ -4919,8 +4894,7 @@ impl u8 {
     /// assert!(!esc.is_ascii_graphic());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_graphic(&self) -> bool {
         matches!(*self, b'!'..=b'~')
@@ -4970,8 +4944,7 @@ impl u8 {
     /// assert!(!esc.is_ascii_whitespace());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_whitespace(&self) -> bool {
         matches!(*self, b'\t' | b'\n' | b'\x0C' | b'\r' | b' ')
@@ -5006,8 +4979,7 @@ impl u8 {
     /// assert!(esc.is_ascii_control());
     /// ```
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
-    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.46.0")]
-    #[cfg_attr(bootstrap, allow_internal_unstable(const_if_match))]
+    #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_control(&self) -> bool {
         matches!(*self, b'\0'..=b'\x1F' | b'\x7F')
