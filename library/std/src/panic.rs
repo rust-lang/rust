@@ -23,6 +23,20 @@ pub use crate::panicking::{set_hook, take_hook};
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use core::panic::{Location, PanicInfo};
 
+/// Panic the current thread, with the given payload as the panic message.
+///
+/// This supports an arbitrary panic payload, instead of just (formatted) strings.
+///
+/// The message is attached as a `Box<'static + Any + Send>`, which can be
+/// accessed using [`PanicInfo::payload`].
+///
+/// See the [`panic!`] macro for more information about panicking.
+#[unstable(feature = "panic_box", issue = "none")]
+#[inline]
+pub fn panic_box<M: Any + Send>(msg: M) -> ! {
+    crate::panicking::begin_panic(msg);
+}
+
 /// A marker trait which represents "panic safe" types in Rust.
 ///
 /// This trait is implemented by default for many types and behaves similarly in
