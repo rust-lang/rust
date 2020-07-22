@@ -336,27 +336,18 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
             [implicit_inputs + argument_index];
-        if let Some(highlight) =
-            self.highlight_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index)
-        {
-            return Some(RegionName {
-                name: self.synthesize_region_name(),
-                source: RegionNameSource::AnonRegionFromArgument(highlight),
-            });
-        }
-
-        let counter = *self.next_region_name.try_borrow().unwrap();
-        if let Some(highlight) = self.highlight_if_we_cannot_match_hir_ty(fr, arg_ty, counter) {
-            Some(RegionName {
-                // This counter value will already have been used, so this function will increment
-                // it so the next value will be used next and return the region name that would
-                // have been used.
+        self.highlight_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index)
+            .or_else(|| {
+                // `highlight_if_we_cannot_match_hir_ty` needs to know the number we will give to
+                // the anonymous region. If it succeeds, the `synthesize_region_name` call below
+                // will increment the counter, "reserving" the number we just used.
+                let counter = *self.next_region_name.try_borrow().unwrap();
+                self.highlight_if_we_cannot_match_hir_ty(fr, arg_ty, counter)
+            })
+            .map(|highlight| RegionName {
                 name: self.synthesize_region_name(),
                 source: RegionNameSource::AnonRegionFromArgument(highlight),
             })
-        } else {
-            None
-        }
     }
 
     fn highlight_if_we_can_match_hir_ty_from_argument(
