@@ -336,13 +336,27 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
             [implicit_inputs + argument_index];
-        if let Some(region_name) =
+        if let Some(highlight) =
             self.give_name_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index)
         {
-            return Some(region_name);
+            return Some(RegionName {
+                name: self.synthesize_region_name(),
+                source: RegionNameSource::AnonRegionFromArgument(highlight),
+            });
         }
 
-        self.give_name_if_we_cannot_match_hir_ty(fr, arg_ty)
+        let counter = *self.next_region_name.try_borrow().unwrap();
+        if let Some(highlight) = self.give_name_if_we_cannot_match_hir_ty(fr, arg_ty, counter) {
+            Some(RegionName {
+                // This counter value will already have been used, so this function will increment
+                // it so the next value will be used next and return the region name that would
+                // have been used.
+                name: self.synthesize_region_name(),
+                source: RegionNameSource::AnonRegionFromArgument(highlight),
+            })
+        } else {
+            None
+        }
     }
 
     fn give_name_if_we_can_match_hir_ty_from_argument(
@@ -350,7 +364,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
         argument_index: usize,
-    ) -> Option<RegionName> {
+    ) -> Option<RegionNameHighlight> {
         let mir_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id);
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
         let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
@@ -381,8 +395,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         &self,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
-    ) -> Option<RegionName> {
-        let counter = *self.next_region_name.try_borrow().unwrap();
+        counter: usize,
+    ) -> Option<RegionNameHighlight> {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(needle_fr, counter);
         let type_name = self.infcx.extract_type_name(&argument_ty, Some(highlight)).0;
@@ -391,7 +405,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             "give_name_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
             type_name, needle_fr
         );
-        let assigned_region_name = if type_name.find(&format!("'{}", counter)).is_some() {
+        if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
             let argument_index =
                 self.regioncx.get_argument_index_for_region(self.infcx.tcx, needle_fr)?;
@@ -401,20 +415,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 argument_index,
             );
 
-            Some(RegionName {
-                // This counter value will already have been used, so this function will increment
-                // it so the next value will be used next and return the region name that would
-                // have been used.
-                name: self.synthesize_region_name(),
-                source: RegionNameSource::AnonRegionFromArgument(
-                    RegionNameHighlight::CannotMatchHirTy(span, type_name),
-                ),
-            })
+            Some(RegionNameHighlight::CannotMatchHirTy(span, type_name))
         } else {
             None
-        };
-
-        assigned_region_name
+        }
     }
 
     /// Attempts to highlight the specific part of a type annotation
@@ -443,7 +447,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
         argument_hir_ty: &hir::Ty<'_>,
-    ) -> Option<RegionName> {
+    ) -> Option<RegionNameHighlight> {
         let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> =
             &mut vec![(argument_ty, argument_hir_ty)];
 
@@ -460,18 +464,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::TyKind::Rptr(_lifetime, referent_hir_ty),
                 ) => {
                     if region.to_region_vid() == needle_fr {
-                        let region_name = self.synthesize_region_name();
-
                         // Just grab the first character, the `&`.
                         let source_map = self.infcx.tcx.sess.source_map();
                         let ampersand_span = source_map.start_point(hir_ty.span);
 
-                        return Some(RegionName {
-                            name: region_name,
-                            source: RegionNameSource::AnonRegionFromArgument(
-                                RegionNameHighlight::MatchedHirTy(ampersand_span),
-                            ),
-                        });
+                        return Some(RegionNameHighlight::MatchedHirTy(ampersand_span));
                     }
 
                     // Otherwise, let's descend into the referent types.
@@ -491,13 +488,13 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         Res::Def(DefKind::TyAlias, _) => (),
                         _ => {
                             if let Some(last_segment) = path.segments.last() {
-                                if let Some(name) = self.match_adt_and_segment(
+                                if let Some(highlight) = self.match_adt_and_segment(
                                     substs,
                                     needle_fr,
                                     last_segment,
                                     search_stack,
                                 ) {
-                                    return Some(name);
+                                    return Some(highlight);
                                 }
                             }
                         }
@@ -540,7 +537,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         needle_fr: RegionVid,
         last_segment: &'hir hir::PathSegment<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
-    ) -> Option<RegionName> {
+    ) -> Option<RegionNameHighlight> {
         // Did the user give explicit arguments? (e.g., `Foo<..>`)
         let args = last_segment.args.as_ref()?;
         let lifetime =
@@ -550,14 +547,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             | hir::LifetimeName::Error
             | hir::LifetimeName::Static
             | hir::LifetimeName::Underscore => {
-                let region_name = self.synthesize_region_name();
                 let lifetime_span = lifetime.span;
-                Some(RegionName {
-                    name: region_name,
-                    source: RegionNameSource::AnonRegionFromArgument(
-                        RegionNameHighlight::MatchedAdtAndSegment(lifetime_span),
-                    ),
-                })
+                Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime_span))
             }
 
             hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Implicit => {
