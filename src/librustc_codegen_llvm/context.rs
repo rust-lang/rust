@@ -190,7 +190,7 @@ pub unsafe fn create_module(
 
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
     if sess.target.target.options.is_like_msvc {
-        match sess.opts.debugging_opts.control_flow_guard {
+        match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}
             CFGuard::NoChecks => {
                 // Set `cfguard=1` module flag to emit metadata only.

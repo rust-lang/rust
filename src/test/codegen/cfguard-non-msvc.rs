@@ -1,4 +1,4 @@
-// compile-flags: -Z control-flow-guard
+// compile-flags: -C control-flow-guard
 // ignore-msvc
 
 #![crate_type = "lib"]
