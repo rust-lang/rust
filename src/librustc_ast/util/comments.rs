@@ -1,5 +1,4 @@
 use crate::ast::AttrStyle;
-use crate::token::CommentKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos, Symbol};
 
@@ -64,7 +63,9 @@ pub fn block_doc_comment_style(block_comment: &str, terminated: bool) -> Option<
     }
 }
 
-pub fn strip_doc_comment_decoration(data: Symbol, comment_kind: CommentKind) -> String {
+/// Makes a doc string more presentable to users.
+/// Used by rustdoc and perhaps other tools, but not by rustc.
+pub fn beautify_doc_string(data: Symbol) -> String {
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: Vec<String>) -> Vec<String> {
         let mut i = 0;
@@ -126,18 +127,14 @@ pub fn strip_doc_comment_decoration(data: Symbol, comment_kind: CommentKind) -> 
         }
     }
 
-    match comment_kind {
-        CommentKind::Line => {
-            let data = data.as_str();
-            let prefix_len = if data.starts_with('!') { 1 } else { 0 };
-            data[prefix_len..].to_string()
-        }
-        CommentKind::Block => {
-            let lines = data.as_str().lines().map(|s| s.to_string()).collect::<Vec<String>>();
-            let lines = vertical_trim(lines);
-            let lines = horizontal_trim(lines);
-            lines.join("\n")
-        }
+    let data = data.as_str();
+    if data.contains('\n') {
+        let lines = data.lines().map(|s| s.to_string()).collect::<Vec<String>>();
+        let lines = vertical_trim(lines);
+        let lines = horizontal_trim(lines);
+        lines.join("\n")
+    } else {
+        data.to_string()
     }
 }
 

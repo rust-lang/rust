@@ -12,7 +12,7 @@ fn line_doc_comments() {
 fn test_block_doc_comment_1() {
     with_default_session_globals(|| {
         let comment = "\n * Test \n **  Test\n *   Test\n";
-        let stripped = strip_doc_comment_decoration(Symbol::intern(comment), CommentKind::Block);
+        let stripped = beautify_doc_string(Symbol::intern(comment));
         assert_eq!(stripped, " Test \n*  Test\n   Test");
     })
 }
@@ -21,7 +21,7 @@ fn test_block_doc_comment_1() {
 fn test_block_doc_comment_2() {
     with_default_session_globals(|| {
         let comment = "\n * Test\n *  Test\n";
-        let stripped = strip_doc_comment_decoration(Symbol::intern(comment), CommentKind::Block);
+        let stripped = beautify_doc_string(Symbol::intern(comment));
         assert_eq!(stripped, " Test\n  Test");
     })
 }
@@ -30,7 +30,7 @@ fn test_block_doc_comment_2() {
 fn test_block_doc_comment_3() {
     with_default_session_globals(|| {
         let comment = "\n let a: *i32;\n *a = 5;\n";
-        let stripped = strip_doc_comment_decoration(Symbol::intern(comment), CommentKind::Block);
+        let stripped = beautify_doc_string(Symbol::intern(comment));
         assert_eq!(stripped, " let a: *i32;\n *a = 5;");
     })
 }
@@ -38,13 +38,13 @@ fn test_block_doc_comment_3() {
 #[test]
 fn test_line_doc_comment() {
     with_default_session_globals(|| {
-        let stripped = strip_doc_comment_decoration(Symbol::intern(" test"), CommentKind::Line);
+        let stripped = beautify_doc_string(Symbol::intern(" test"));
         assert_eq!(stripped, " test");
-        let stripped = strip_doc_comment_decoration(Symbol::intern("! test"), CommentKind::Line);
-        assert_eq!(stripped, " test");
-        let stripped = strip_doc_comment_decoration(Symbol::intern("test"), CommentKind::Line);
+        let stripped = beautify_doc_string(Symbol::intern("! test"));
+        assert_eq!(stripped, "! test");
+        let stripped = beautify_doc_string(Symbol::intern("test"));
         assert_eq!(stripped, "test");
-        let stripped = strip_doc_comment_decoration(Symbol::intern("!test"), CommentKind::Line);
-        assert_eq!(stripped, "test");
+        let stripped = beautify_doc_string(Symbol::intern("!test"));
+        assert_eq!(stripped, "!test");
     })
 }
