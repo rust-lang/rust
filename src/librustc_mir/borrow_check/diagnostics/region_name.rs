@@ -337,7 +337,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
             [implicit_inputs + argument_index];
         if let Some(highlight) =
-            self.give_name_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index)
+            self.highlight_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index)
         {
             return Some(RegionName {
                 name: self.synthesize_region_name(),
@@ -346,7 +346,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }
 
         let counter = *self.next_region_name.try_borrow().unwrap();
-        if let Some(highlight) = self.give_name_if_we_cannot_match_hir_ty(fr, arg_ty, counter) {
+        if let Some(highlight) = self.highlight_if_we_cannot_match_hir_ty(fr, arg_ty, counter) {
             Some(RegionName {
                 // This counter value will already have been used, so this function will increment
                 // it so the next value will be used next and return the region name that would
@@ -359,7 +359,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         }
     }
 
-    fn give_name_if_we_can_match_hir_ty_from_argument(
+    fn highlight_if_we_can_match_hir_ty_from_argument(
         &self,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -376,7 +376,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             // (`give_name_if_anonymous_region_appears_in_arguments`).
             hir::TyKind::Infer => None,
 
-            _ => self.give_name_if_we_can_match_hir_ty(needle_fr, argument_ty, argument_hir_ty),
+            _ => self.highlight_if_we_can_match_hir_ty(needle_fr, argument_ty, argument_hir_ty),
         }
     }
 
@@ -391,7 +391,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///  |          |  has type `&'1 u32`
     ///  |          has type `&'2 u32`
     /// ```
-    fn give_name_if_we_cannot_match_hir_ty(
+    fn highlight_if_we_cannot_match_hir_ty(
         &self,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -402,7 +402,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let type_name = self.infcx.extract_type_name(&argument_ty, Some(highlight)).0;
 
         debug!(
-            "give_name_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
+            "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
             type_name, needle_fr
         );
         if type_name.find(&format!("'{}", counter)).is_some() {
@@ -442,7 +442,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// keep track of the **closest** type we've found. If we fail to
     /// find the exact `&` or `'_` to highlight, then we may fall back
     /// to highlighting that closest type instead.
-    fn give_name_if_we_can_match_hir_ty(
+    fn highlight_if_we_can_match_hir_ty(
         &self,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
