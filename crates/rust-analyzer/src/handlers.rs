@@ -15,7 +15,7 @@ use lsp_types::{
     DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location,
     Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensParams,
     SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    TextDocumentIdentifier, Url, WorkspaceEdit,
+    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
@@ -253,10 +253,17 @@ pub(crate) fn handle_document_symbol(
     let mut parents: Vec<(DocumentSymbol, Option<usize>)> = Vec::new();
 
     for symbol in snap.analysis.file_structure(file_id)? {
+        let mut tags = Vec::new();
+        if symbol.deprecated {
+            tags.push(SymbolTag::Deprecated)
+        };
+
+        #[allow(deprecated)]
         let doc_symbol = DocumentSymbol {
             name: symbol.label,
             detail: symbol.detail,
             kind: to_proto::symbol_kind(symbol.kind),
+            tags: Some(tags),
             deprecated: Some(symbol.deprecated),
             range: to_proto::range(&line_index, symbol.node_range),
             selection_range: to_proto::range(&line_index, symbol.navigation_range),
@@ -296,9 +303,19 @@ pub(crate) fn handle_document_symbol(
         url: &Url,
         res: &mut Vec<SymbolInformation>,
     ) {
+        let mut tags = Vec::new();
+
+        #[allow(deprecated)]
+        match symbol.deprecated {
+            Some(true) => tags.push(SymbolTag::Deprecated),
+            _ => {}
+        }
+
+        #[allow(deprecated)]
         res.push(SymbolInformation {
             name: symbol.name.clone(),
             kind: symbol.kind,
+            tags: Some(tags),
             deprecated: symbol.deprecated,
             location: Location::new(url.clone(), symbol.range),
             container_name,
@@ -342,9 +359,12 @@ pub(crate) fn handle_workspace_symbol(
         let mut res = Vec::new();
         for nav in snap.analysis.symbol_search(query)? {
             let container_name = nav.container_name.as_ref().map(|v| v.to_string());
+
+            #[allow(deprecated)]
             let info = SymbolInformation {
                 name: nav.name.to_string(),
                 kind: to_proto::symbol_kind(nav.kind),
+                tags: None,
                 location: to_proto::location_from_nav(snap, nav)?,
                 container_name,
                 deprecated: None,
