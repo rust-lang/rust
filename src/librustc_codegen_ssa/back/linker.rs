@@ -28,7 +28,9 @@ use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor};
 pub fn disable_localization(linker: &mut Command) {
     // No harm in setting both env vars simultaneously.
     // Unix-style linkers.
-    linker.env("LC_ALL", "C");
+    // We use an UTF-8 locale, as the generic C locale disables support for non-ASCII
+    // bytes in filenames on some platforms.
+    linker.env("LC_ALL", "en_US.UTF-8");
     // MSVC's `link.exe`.
     linker.env("VSLANG", "1033");
 }

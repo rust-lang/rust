@@ -6,16 +6,16 @@
 
 /// [error]
 pub struct A;
-//~^^ WARNING `error`
+//~^^ WARNING `[error]` cannot be resolved
 
 ///
 /// docs [error1]
-//~^ WARNING `error1`
+//~^ WARNING `[error1]` cannot be resolved
 
 /// docs [error2]
 ///
 pub struct B;
-//~^^^ WARNING `error2`
+//~^^^ WARNING `[error2]` cannot be resolved
 
 /**
  * This is a multi-line comment.
@@ -23,4 +23,4 @@ pub struct B;
  * It also has an [error].
  */
 pub struct C;
-//~^^^ WARNING `error`
+//~^^^ WARNING `[error]` cannot be resolved

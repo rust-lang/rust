@@ -107,7 +107,7 @@ fn install_sh(
 
     t!(fs::create_dir_all(&empty_dir));
     let package_name = if let Some(host) = host {
-        format!("{}-{}", pkgname(builder, name), host.triple)
+        format!("{}-{}", pkgname(builder, name), host)
     } else {
         pkgname(builder, name)
     };

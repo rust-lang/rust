@@ -4,6 +4,8 @@
 //! [`ToString`]s, and several error types that may result from working with
 //! [`String`]s.
 //!
+//! [`ToString`]: trait.ToString.html
+//!
 //! # Examples
 //!
 //! There are multiple ways to create a new [`String`] from a string literal:
@@ -17,6 +19,8 @@
 //!
 //! You can create a new [`String`] from an existing one by concatenating with
 //! `+`:
+//!
+//! [`String`]: struct.String.html
 //!
 //! ```
 //! let s = "Hello".to_string();
@@ -63,11 +67,11 @@ use crate::vec::Vec;
 /// contents of the string. It has a close relationship with its borrowed
 /// counterpart, the primitive [`str`].
 ///
+/// [`str`]: ../../std/primitive.str.html
+///
 /// # Examples
 ///
-/// You can create a `String` from [a literal string][str] with [`String::from`]:
-///
-/// [`String::from`]: From::from
+/// You can create a `String` from a literal string with [`String::from`]:
 ///
 /// ```
 /// let hello = String::from("Hello, world!");
@@ -83,8 +87,10 @@ use crate::vec::Vec;
 /// hello.push_str("orld!");
 /// ```
 ///
-/// [`push`]: String::push
-/// [`push_str`]: String::push_str
+/// [`String::from`]: #method.from
+/// [`char`]: ../../std/primitive.char.html
+/// [`push`]: #method.push
+/// [`push_str`]: #method.push_str
 ///
 /// If you have a vector of UTF-8 bytes, you can create a `String` from it with
 /// the [`from_utf8`] method:
@@ -99,7 +105,7 @@ use crate::vec::Vec;
 /// assert_eq!("💖", sparkle_heart);
 /// ```
 ///
-/// [`from_utf8`]: String::from_utf8
+/// [`from_utf8`]: #method.from_utf8
 ///
 /// # UTF-8
 ///
@@ -122,8 +128,8 @@ use crate::vec::Vec;
 /// The [`bytes`] and [`chars`] methods return iterators over the first
 /// two, respectively.
 ///
-/// [`bytes`]: str::bytes
-/// [`chars`]: str::chars
+/// [`bytes`]: #method.bytes
+/// [`chars`]: #method.chars
 ///
 /// # Deref
 ///
@@ -209,9 +215,9 @@ use crate::vec::Vec;
 /// assert_eq!(String::from("Once upon a time..."), s);
 /// ```
 ///
-/// [`as_ptr`]: str::as_ptr
-/// [`len`]: String::len
-/// [`capacity`]: String::capacity
+/// [`as_ptr`]: #method.as_ptr
+/// [`len`]: #method.len
+/// [`capacity`]: #method.capacity
 ///
 /// If a `String` has enough capacity, adding elements to it will not
 /// re-allocate. For example, consider this program:
@@ -253,7 +259,7 @@ use crate::vec::Vec;
 /// }
 /// ```
 ///
-/// [`with_capacity`]: String::with_capacity
+/// [`with_capacity`]: #method.with_capacity
 ///
 /// We end up with a different output:
 ///
@@ -268,9 +274,9 @@ use crate::vec::Vec;
 ///
 /// Here, there's no need to allocate more memory inside the loop.
 ///
-/// [`&str`]: str
-/// [`Deref`]: core::ops::Deref
-/// [`as_str()`]: String::as_str
+/// [`&str`]: ../../std/primitive.str.html
+/// [`Deref`]: ../../std/ops/trait.Deref.html
+/// [`as_str()`]: struct.String.html#method.as_str
 #[derive(PartialOrd, Eq, Ord)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "string_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -285,18 +291,20 @@ pub struct String {
 /// [`into_bytes`] method will give back the byte vector that was used in the
 /// conversion attempt.
 ///
-/// [`from_utf8`]: String::from_utf8
-/// [`into_bytes`]: FromUtf8Error::into_bytes
+/// [`from_utf8`]: struct.String.html#method.from_utf8
+/// [`String`]: struct.String.html
+/// [`into_bytes`]: struct.FromUtf8Error.html#method.into_bytes
 ///
 /// The [`Utf8Error`] type provided by [`std::str`] represents an error that may
 /// occur when converting a slice of [`u8`]s to a [`&str`]. In this sense, it's
 /// an analogue to `FromUtf8Error`, and you can get one from a `FromUtf8Error`
 /// through the [`utf8_error`] method.
 ///
-/// [`Utf8Error`]: core::str::Utf8Error
-/// [`std::str`]: core::str
-/// [`&str`]: str
-/// [`utf8_error`]: Self::utf8_error
+/// [`Utf8Error`]: ../../std/str/struct.Utf8Error.html
+/// [`std::str`]: ../../std/str/index.html
+/// [`u8`]: ../../std/primitive.u8.html
+/// [`&str`]: ../../std/primitive.str.html
+/// [`utf8_error`]: #method.utf8_error
 ///
 /// # Examples
 ///
@@ -322,7 +330,9 @@ pub struct FromUtf8Error {
 ///
 /// This type is the error type for the [`from_utf16`] method on [`String`].
 ///
-/// [`from_utf16`]: String::from_utf16
+/// [`from_utf16`]: struct.String.html#method.from_utf16
+/// [`String`]: struct.String.html
+///
 /// # Examples
 ///
 /// Basic usage:
@@ -348,7 +358,7 @@ impl String {
     /// consider the [`with_capacity`] method to prevent excessive
     /// re-allocation.
     ///
-    /// [`with_capacity`]: String::with_capacity
+    /// [`with_capacity`]: #method.with_capacity
     ///
     /// # Examples
     ///
@@ -373,12 +383,12 @@ impl String {
     /// appending a bunch of data to the `String`, reducing the number of
     /// reallocations it needs to do.
     ///
-    /// [`capacity`]: String::capacity
+    /// [`capacity`]: #method.capacity
     ///
     /// If the given capacity is `0`, no allocation will occur, and this method
     /// is identical to the [`new`] method.
     ///
-    /// [`new`]: String::new
+    /// [`new`]: #method.new
     ///
     /// # Examples
     ///
@@ -469,10 +479,15 @@ impl String {
     /// See the docs for [`FromUtf8Error`] for more details on what you can do
     /// with this error.
     ///
-    /// [`from_utf8_unchecked`]: String::from_utf8_unchecked
-    /// [`Vec<u8>`]: crate::vec::Vec
-    /// [`&str`]: str
-    /// [`into_bytes`]: String::into_bytes
+    /// [`from_utf8_unchecked`]: struct.String.html#method.from_utf8_unchecked
+    /// [`String`]: struct.String.html
+    /// [`u8`]: ../../std/primitive.u8.html
+    /// [`Vec<u8>`]: ../../std/vec/struct.Vec.html
+    /// [`&str`]: ../../std/primitive.str.html
+    /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
+    /// [`into_bytes`]: struct.String.html#method.into_bytes
+    /// [`FromUtf8Error`]: struct.FromUtf8Error.html
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
@@ -491,15 +506,16 @@ impl String {
     /// `from_utf8_lossy()` will replace any invalid UTF-8 sequences with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD], which looks like this: �
     ///
+    /// [`u8`]: ../../std/primitive.u8.html
     /// [byteslice]: ../../std/primitive.slice.html
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the conversion, there is an unsafe version
     /// of this function, [`from_utf8_unchecked`], which has the same behavior
     /// but skips the checks.
     ///
-    /// [`from_utf8_unchecked`]: String::from_utf8_unchecked
+    /// [`from_utf8_unchecked`]: struct.String.html#method.from_utf8_unchecked
     ///
     /// This function returns a [`Cow<'a, str>`]. If our byte slice is invalid
     /// UTF-8, then we need to insert the replacement characters, which will
@@ -507,7 +523,7 @@ impl String {
     /// it's already valid UTF-8, we don't need a new allocation. This return
     /// type allows us to handle both cases.
     ///
-    /// [`Cow<'a, str>`]: crate::borrow::Cow
+    /// [`Cow<'a, str>`]: ../../std/borrow/enum.Cow.html
     ///
     /// # Examples
     ///
@@ -567,6 +583,8 @@ impl String {
     /// Decode a UTF-16 encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
     ///
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -605,9 +623,9 @@ impl String {
     /// `from_utf16_lossy` returns a `String` since the UTF-16 to UTF-8
     /// conversion requires a memory allocation.
     ///
-    /// [`from_utf8_lossy`]: String::from_utf8_lossy
-    /// [`Cow<'a, str>`]: crate::borrow::Cow
-    /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
+    /// [`from_utf8_lossy`]: #method.from_utf8_lossy
+    /// [`Cow<'a, str>`]: ../borrow/enum.Cow.html
+    /// [U+FFFD]: ../char/constant.REPLACEMENT_CHARACTER.html
     ///
     /// # Examples
     ///
@@ -641,7 +659,7 @@ impl String {
     /// into a `String` with the [`from_raw_parts`] function, allowing
     /// the destructor to perform the cleanup.
     ///
-    /// [`from_raw_parts`]: String::from_raw_parts
+    /// [`from_raw_parts`]: #method.from_raw_parts
     ///
     /// # Examples
     ///
@@ -714,7 +732,7 @@ impl String {
     ///
     /// See the safe version, [`from_utf8`], for more details.
     ///
-    /// [`from_utf8`]: String::from_utf8
+    /// [`from_utf8`]: struct.String.html#method.from_utf8
     ///
     /// # Safety
     ///
@@ -849,7 +867,8 @@ impl String {
     ///
     /// Panics if the new capacity overflows [`usize`].
     ///
-    /// [`reserve_exact`]: String::reserve_exact
+    /// [`reserve_exact`]: struct.String.html#method.reserve_exact
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// # Examples
     ///
@@ -892,7 +911,7 @@ impl String {
     /// Consider using the [`reserve`] method unless you absolutely know
     /// better than the allocator.
     ///
-    /// [`reserve`]: String::reserve
+    /// [`reserve`]: #method.reserve
     ///
     /// # Panics
     ///
@@ -1057,6 +1076,8 @@ impl String {
 
     /// Appends the given [`char`] to the end of this `String`.
     ///
+    /// [`char`]: ../../std/primitive.char.html
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1083,7 +1104,7 @@ impl String {
     ///
     /// The inverse of this method is [`from_utf8`].
     ///
-    /// [`from_utf8`]: String::from_utf8
+    /// [`from_utf8`]: #method.from_utf8
     ///
     /// # Examples
     ///
@@ -1112,6 +1133,8 @@ impl String {
     ///
     /// Panics if `new_len` does not lie on a [`char`] boundary.
     ///
+    /// [`char`]: ../../std/primitive.char.html
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1135,6 +1158,8 @@ impl String {
     /// Removes the last character from the string buffer and returns it.
     ///
     /// Returns [`None`] if this `String` is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1162,13 +1187,15 @@ impl String {
 
     /// Removes a [`char`] from this `String` at a byte position and returns it.
     ///
-    /// This is an *O*(*n*) operation, as it requires copying every element in the
+    /// This is an `O(n)` operation, as it requires copying every element in the
     /// buffer.
     ///
     /// # Panics
     ///
     /// Panics if `idx` is larger than or equal to the `String`'s length,
     /// or if it does not lie on a [`char`] boundary.
+    ///
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -1262,13 +1289,15 @@ impl String {
 
     /// Inserts a character into this `String` at a byte position.
     ///
-    /// This is an *O*(*n*) operation as it requires copying every element in the
+    /// This is an `O(n)` operation as it requires copying every element in the
     /// buffer.
     ///
     /// # Panics
     ///
     /// Panics if `idx` is larger than the `String`'s length, or if it does not
     /// lie on a [`char`] boundary.
+    ///
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -1309,13 +1338,15 @@ impl String {
 
     /// Inserts a string slice into this `String` at a byte position.
     ///
-    /// This is an *O*(*n*) operation as it requires copying every element in the
+    /// This is an `O(n)` operation as it requires copying every element in the
     /// buffer.
     ///
     /// # Panics
     ///
     /// Panics if `idx` is larger than the `String`'s length, or if it does not
     /// lie on a [`char`] boundary.
+    ///
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -1476,6 +1507,8 @@ impl String {
     /// Panics if the starting point or end point do not lie on a [`char`]
     /// boundary, or if they're out of bounds.
     ///
+    /// [`char`]: ../../std/primitive.char.html
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1534,6 +1567,9 @@ impl String {
     /// Panics if the starting point or end point do not lie on a [`char`]
     /// boundary, or if they're out of bounds.
     ///
+    /// [`char`]: ../../std/primitive.char.html
+    /// [`Vec::splice`]: ../../std/vec/struct.Vec.html#method.splice
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1573,6 +1609,9 @@ impl String {
     /// Converts this `String` into a [`Box`]`<`[`str`]`>`.
     ///
     /// This will drop any excess capacity.
+    ///
+    /// [`Box`]: ../../std/boxed/struct.Box.html
+    /// [`str`]: ../../std/primitive.str.html
     ///
     /// # Examples
     ///
@@ -1641,8 +1680,10 @@ impl FromUtf8Error {
     /// an analogue to `FromUtf8Error`. See its documentation for more details
     /// on using it.
     ///
-    /// [`std::str`]: core::str
-    /// [`&str`]: str
+    /// [`Utf8Error`]: ../../std/str/struct.Utf8Error.html
+    /// [`std::str`]: ../../std/str/index.html
+    /// [`u8`]: ../../std/primitive.u8.html
+    /// [`&str`]: ../../std/primitive.str.html
     ///
     /// # Examples
     ///
@@ -1971,7 +2012,7 @@ impl hash::Hash for String {
 ///
 /// This consumes the `String` on the left-hand side and re-uses its buffer (growing it if
 /// necessary). This is done to avoid allocating a new `String` and copying the entire contents on
-/// every operation, which would lead to *O*(*n*^2) running time when building an *n*-byte string by
+/// every operation, which would lead to `O(n^2)` running time when building an `n`-byte string by
 /// repeated concatenation.
 ///
 /// The string on the right-hand side is only borrowed; its contents are copied into the returned
@@ -2146,7 +2187,7 @@ impl ops::DerefMut for String {
 ///
 /// This alias exists for backwards compatibility, and may be eventually deprecated.
 ///
-/// [`Infallible`]: core::convert::Infallible
+/// [`Infallible`]: ../../core/convert/enum.Infallible.html
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 pub type ParseError = core::convert::Infallible;
 
@@ -2166,7 +2207,7 @@ impl FromStr for String {
 /// [`Display`] should be implemented instead, and you get the `ToString`
 /// implementation for free.
 ///
-/// [`Display`]: fmt::Display
+/// [`Display`]: ../../std/fmt/trait.Display.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToString {
     /// Converts the given value to a `String`.
@@ -2424,7 +2465,8 @@ impl fmt::Write for String {
 /// This struct is created by the [`drain`] method on [`String`]. See its
 /// documentation for more.
 ///
-/// [`drain`]: String::drain
+/// [`drain`]: struct.String.html#method.drain
+/// [`String`]: struct.String.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a> {
     /// Will be used as &'a mut String in the destructor

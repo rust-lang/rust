@@ -75,7 +75,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     }
 
     // Not in the cache; build it.
-    let nullptr = cx.const_null(cx.type_i8p_ext(cx.data_layout().instruction_address_space));
+    let nullptr = cx.const_null(cx.type_i8p());
 
     let methods_root;
     let methods = if let Some(trait_ref) = trait_ref {
@@ -94,8 +94,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
                     def_id,
                     substs,
                 )
-                .unwrap()
-                .polymorphize(cx.tcx()),
+                .unwrap(),
             )
         })
     });

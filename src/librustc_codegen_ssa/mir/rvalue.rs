@@ -190,15 +190,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 if bx.cx().tcx().has_attr(def_id, sym::rustc_args_required_const) {
                                     bug!("reifying a fn ptr that requires const arguments");
                                 }
-                                let instance = ty::Instance::resolve_for_fn_ptr(
-                                    bx.tcx(),
-                                    ty::ParamEnv::reveal_all(),
-                                    def_id,
-                                    substs,
+                                OperandValue::Immediate(
+                                    bx.get_fn_addr(
+                                        ty::Instance::resolve_for_fn_ptr(
+                                            bx.tcx(),
+                                            ty::ParamEnv::reveal_all(),
+                                            def_id,
+                                            substs,
+                                        )
+                                        .unwrap(),
+                                    ),
                                 )
-                                .unwrap()
-                                .polymorphize(bx.cx().tcx());
-                                OperandValue::Immediate(bx.get_fn_addr(instance))
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
@@ -211,8 +213,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     def_id,
                                     substs,
                                     ty::ClosureKind::FnOnce,
-                                )
-                                .polymorphize(bx.cx().tcx());
+                                );
                                 OperandValue::Immediate(bx.cx().get_fn_addr(instance))
                             }
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
