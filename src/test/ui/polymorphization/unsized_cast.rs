@@ -1,4 +1,5 @@
 // build-fail
+// compile-flags:-Zpolymorphize=on
 #![feature(fn_traits, rustc_attrs, unboxed_closures)]
 
 // This test checks that the polymorphization analysis considers a closure

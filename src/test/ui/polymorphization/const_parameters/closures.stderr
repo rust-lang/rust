@@ -1,5 +1,5 @@
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/closures.rs:2:12
+  --> $DIR/closures.rs:3:12
    |
 LL | #![feature(const_generics, rustc_attrs)]
    |            ^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(const_generics, rustc_attrs)]
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:18:19
+  --> $DIR/closures.rs:19:19
    |
 LL | pub fn unused<const T: usize>() -> usize {
    |                     - generic parameter `T` is unused
@@ -17,13 +17,13 @@ LL |     let add_one = |x: usize| x + 1;
    |                   ^^^^^^^^^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:16:8
+  --> $DIR/closures.rs:17:8
    |
 LL | pub fn unused<const T: usize>() -> usize {
    |        ^^^^^^       - generic parameter `T` is unused
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:27:19
+  --> $DIR/closures.rs:28:19
    |
 LL | pub fn used_parent<const T: usize>() -> usize {
    |                          - generic parameter `T` is unused
@@ -32,7 +32,7 @@ LL |     let add_one = |x: usize| x + 1;
    |                   ^^^^^^^^^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:47:13
+  --> $DIR/closures.rs:48:13
    |
 LL | pub fn unused_upvar<const T: usize>() -> usize {
    |                           - generic parameter `T` is unused
