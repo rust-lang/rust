@@ -2465,40 +2465,17 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     pub fn insert(self, value: V) -> &'a mut V {
         *self.length += 1;
 
-        let out_ptr;
-
-        let mut ins_k;
-        let mut ins_v;
-        let mut ins_edge;
-
-        let mut cur_parent = match self.handle.insert(self.key, value) {
-            (Fit(handle), _) => return handle.into_kv_mut().1,
-            (Split(left, k, v, right), ptr) => {
-                ins_k = k;
-                ins_v = v;
-                ins_edge = right;
-                out_ptr = ptr;
-                left.ascend().map_err(|n| n.into_root_mut())
+        let out_ptr = match self.handle.insert_recursing(self.key, value) {
+            (Fit(_), val_ptr) => val_ptr,
+            (Split(ins), val_ptr) => {
+                let root = ins.left.into_root_mut();
+                root.push_internal_level().push(ins.k, ins.v, ins.right);
+                val_ptr
             }
         };
-
-        loop {
-            match cur_parent {
-                Ok(parent) => match parent.insert(ins_k, ins_v, ins_edge) {
-                    Fit(_) => return unsafe { &mut *out_ptr },
-                    Split(left, k, v, right) => {
-                        ins_k = k;
-                        ins_v = v;
-                        ins_edge = right;
-                        cur_parent = left.ascend().map_err(|n| n.into_root_mut());
-                    }
-                },
-                Err(root) => {
-                    root.push_internal_level().push(ins_k, ins_v, ins_edge);
-                    return unsafe { &mut *out_ptr };
-                }
-            }
-        }
+        // Now that we have finished growing the tree using borrowed references,
+        // dereference the pointer to a part of it, that we picked up along the way.
+        unsafe { &mut *out_ptr }
     }
 }
 
