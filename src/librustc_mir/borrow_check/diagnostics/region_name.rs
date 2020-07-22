@@ -420,9 +420,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///  |                - let's call the lifetime of this reference `'1`
     /// ```
     ///
-    /// the way this works is that we match up `argument_ty`, which is
+    /// the way this works is that we match up `ty`, which is
     /// a `Ty<'tcx>` (the internal form of the type) with
-    /// `argument_hir_ty`, a `hir::Ty` (the syntax of the type
+    /// `hir_ty`, a `hir::Ty` (the syntax of the type
     /// annotation). We are descending through the types stepwise,
     /// looking in to find the region `needle_fr` in the internal
     /// type. Once we find that, we can use the span of the `hir::Ty`
@@ -435,15 +435,14 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     fn highlight_if_we_can_match_hir_ty(
         &self,
         needle_fr: RegionVid,
-        argument_ty: Ty<'tcx>,
-        argument_hir_ty: &hir::Ty<'_>,
+        ty: Ty<'tcx>,
+        hir_ty: &hir::Ty<'_>,
     ) -> Option<RegionNameHighlight> {
-        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> =
-            &mut vec![(argument_ty, argument_hir_ty)];
+        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> = &mut vec![(ty, hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
             match (&ty.kind, &hir_ty.kind) {
-                // Check if the `argument_ty` is `&'X ..` where `'X`
+                // Check if the `ty` is `&'X ..` where `'X`
                 // is the region we are looking for -- if so, and we have a `&T`
                 // on the RHS, then we want to highlight the `&` like so:
                 //
