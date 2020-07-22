@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags: -Z control-flow-guard
+// compile-flags: -C control-flow-guard
 
 pub fn main() {
     println!("hello, world");
