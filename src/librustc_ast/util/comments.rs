@@ -1,5 +1,3 @@
-pub use CommentStyle::*;
-
 use crate::ast::AttrStyle;
 use crate::token::CommentKind;
 use rustc_span::source_map::SourceMap;
@@ -198,7 +196,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
 
     if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
         comments.push(Comment {
-            style: Isolated,
+            style: CommentStyle::Isolated,
             lines: vec![text[..shebang_len].to_string()],
             pos: start_bpos,
         });
@@ -214,7 +212,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                     while let Some(next_newline) = &token_text[idx + 1..].find('\n') {
                         idx = idx + 1 + next_newline;
                         comments.push(Comment {
-                            style: BlankLine,
+                            style: CommentStyle::BlankLine,
                             lines: vec![],
                             pos: start_bpos + BytePos((pos + idx) as u32),
                         });
@@ -228,9 +226,9 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                         _ => true,
                     };
                     let style = match (code_to_the_left, code_to_the_right) {
-                        (_, true) => Mixed,
-                        (false, false) => Isolated,
-                        (true, false) => Trailing,
+                        (_, true) => CommentStyle::Mixed,
+                        (false, false) => CommentStyle::Isolated,
+                        (true, false) => CommentStyle::Trailing,
                     };
 
                     // Count the number of chars since the start of the line by rescanning.
@@ -246,7 +244,11 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
             rustc_lexer::TokenKind::LineComment => {
                 if line_doc_comment_style(token_text).is_none() {
                     comments.push(Comment {
-                        style: if code_to_the_left { Trailing } else { Isolated },
+                        style: if code_to_the_left {
+                            CommentStyle::Trailing
+                        } else {
+                            CommentStyle::Isolated
+                        },
                         lines: vec![token_text.to_string()],
                         pos: start_bpos + BytePos(pos as u32),
                     })
