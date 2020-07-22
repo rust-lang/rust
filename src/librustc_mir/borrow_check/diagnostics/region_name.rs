@@ -336,13 +336,19 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
             [implicit_inputs + argument_index];
+        let (_, span) = self.regioncx.get_argument_name_and_span_for_region(
+            &self.body,
+            &self.local_names,
+            argument_index,
+        );
+
         self.highlight_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index)
             .or_else(|| {
                 // `highlight_if_we_cannot_match_hir_ty` needs to know the number we will give to
                 // the anonymous region. If it succeeds, the `synthesize_region_name` call below
                 // will increment the counter, "reserving" the number we just used.
                 let counter = *self.next_region_name.try_borrow().unwrap();
-                self.highlight_if_we_cannot_match_hir_ty(fr, arg_ty, counter)
+                self.highlight_if_we_cannot_match_hir_ty(fr, arg_ty, span, counter)
             })
             .map(|highlight| RegionName {
                 name: self.synthesize_region_name(),
@@ -385,12 +391,13 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     fn highlight_if_we_cannot_match_hir_ty(
         &self,
         needle_fr: RegionVid,
-        argument_ty: Ty<'tcx>,
+        ty: Ty<'tcx>,
+        span: Span,
         counter: usize,
     ) -> Option<RegionNameHighlight> {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(needle_fr, counter);
-        let type_name = self.infcx.extract_type_name(&argument_ty, Some(highlight)).0;
+        let type_name = self.infcx.extract_type_name(&ty, Some(highlight)).0;
 
         debug!(
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
@@ -398,13 +405,6 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         );
         if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
-            let argument_index =
-                self.regioncx.get_argument_index_for_region(self.infcx.tcx, needle_fr)?;
-            let (_, span) = self.regioncx.get_argument_name_and_span_for_region(
-                &self.body,
-                &self.local_names,
-                argument_index,
-            );
 
             Some(RegionNameHighlight::CannotMatchHirTy(span, type_name))
         } else {
