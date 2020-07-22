@@ -510,6 +510,14 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.wasm.trunc.saturate.signed.i32.f64", fn(t_f64) -> t_i32);
         ifn!("llvm.wasm.trunc.saturate.signed.i64.f32", fn(t_f32) -> t_i64);
         ifn!("llvm.wasm.trunc.saturate.signed.i64.f64", fn(t_f64) -> t_i64);
+        ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.wasm.trunc.unsigned.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.wasm.trunc.unsigned.i64.f64", fn(t_f64) -> t_i64);
+        ifn!("llvm.wasm.trunc.signed.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.wasm.trunc.signed.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.wasm.trunc.signed.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.wasm.trunc.signed.i64.f64", fn(t_f64) -> t_i64);
 
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);

@@ -2,6 +2,7 @@
 // unchecked intrinsics.
 
 // compile-flags: -C opt-level=3
+// ignore-wasm32 the wasm target is tested in `wasm_casts_*`
 
 #![crate_type = "lib"]
 
