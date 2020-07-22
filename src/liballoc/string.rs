@@ -268,7 +268,8 @@ use crate::vec::Vec;
 ///
 /// Here, there's no need to allocate more memory inside the loop.
 ///
-/// [`&str`]: str
+/// [`str`]: ../../std/primitive.str.html
+/// [`&str`]: ../../std/primitive.str.html
 /// [`Deref`]: core::ops::Deref
 /// [`as_str()`]: String::as_str
 #[derive(PartialOrd, Eq, Ord)]
