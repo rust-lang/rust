@@ -619,13 +619,7 @@ impl<'a> Linker for GccLinker<'a> {
     // Some versions of `gcc` add it implicitly, some (e.g. `musl-gcc`) don't,
     // so we just always add it.
     fn add_eh_frame_header(&mut self) {
-        if !self.sess.target.target.options.is_like_osx
-            && !self.sess.target.target.options.is_like_windows
-            && !self.sess.target.target.options.is_like_solaris
-            && self.sess.target.target.target_os != "uefi"
-        {
-            self.linker_arg("--eh-frame-hdr");
-        }
+        self.linker_arg("--eh-frame-hdr");
     }
 }
 
