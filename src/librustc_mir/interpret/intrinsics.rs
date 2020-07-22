@@ -12,7 +12,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Abi, LayoutOf as _, Primitive, Size};
 
@@ -54,6 +54,9 @@ crate fn eval_nullary_intrinsic<'tcx>(
     let name = tcx.item_name(def_id);
     Ok(match name {
         sym::type_name => {
+            if tp_ty.needs_subst() {
+                throw_inval!(TooGeneric);
+            }
             let alloc = type_name::alloc_type_name(tcx, tp_ty);
             ConstValue::Slice { data: alloc, start: 0, end: alloc.len() }
         }
@@ -68,7 +71,12 @@ crate fn eval_nullary_intrinsic<'tcx>(
             };
             ConstValue::from_machine_usize(n, &tcx)
         }
-        sym::type_id => ConstValue::from_u64(tcx.type_id_hash(tp_ty)),
+        sym::type_id => {
+            if tp_ty.needs_subst() {
+                throw_inval!(TooGeneric);
+            }
+            ConstValue::from_u64(tcx.type_id_hash(tp_ty))
+        }
         sym::variant_count => {
             if let ty::Adt(ref adt, _) = tp_ty.kind {
                 ConstValue::from_machine_usize(adt.variants.len() as u64, &tcx)
