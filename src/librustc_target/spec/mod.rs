@@ -574,6 +574,7 @@ supported_targets! {
     ("i686-unknown-haiku", i686_unknown_haiku),
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
 
+    ("aarch64-apple-darwin", aarch64_apple_darwin),
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
 
