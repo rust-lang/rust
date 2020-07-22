@@ -1076,6 +1076,13 @@ fn privacy_error(
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }
+
+        let note_msg = if cx.render_options.document_private {
+            "this link resolves only because you passed `--document-private-items`, but will break without"
+        } else {
+            "this link will resolve properly if you pass `--document-private-items`"
+        };
+        diag.note(note_msg);
     });
 }
 
