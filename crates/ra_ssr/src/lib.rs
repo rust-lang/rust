@@ -6,6 +6,7 @@
 mod matching;
 mod parsing;
 mod replacing;
+mod search;
 #[macro_use]
 mod errors;
 #[cfg(test)]
@@ -83,7 +84,7 @@ impl<'db> MatchFinder<'db> {
         let file = self.sema.parse(file_id);
         let code = file.syntax();
         let mut matches = SsrMatches::default();
-        self.find_matches(code, &None, &mut matches);
+        self.slow_scan_node(code, &None, &mut matches.matches);
         matches
     }
 
@@ -117,53 +118,6 @@ impl<'db> MatchFinder<'db> {
         for mut parsed_rule in parsed_rules {
             parsed_rule.index = self.rules.len();
             self.rules.push(parsed_rule);
-        }
-    }
-
-    fn find_matches(
-        &self,
-        code: &SyntaxNode,
-        restrict_range: &Option<FileRange>,
-        matches_out: &mut SsrMatches,
-    ) {
-        for rule in &self.rules {
-            if let Ok(mut m) = matching::get_match(false, rule, &code, restrict_range, &self.sema) {
-                // Continue searching in each of our placeholders.
-                for placeholder_value in m.placeholder_values.values_mut() {
-                    if let Some(placeholder_node) = &placeholder_value.node {
-                        // Don't search our placeholder if it's the entire matched node, otherwise we'd
-                        // find the same match over and over until we got a stack overflow.
-                        if placeholder_node != code {
-                            self.find_matches(
-                                placeholder_node,
-                                restrict_range,
-                                &mut placeholder_value.inner_matches,
-                            );
-                        }
-                    }
-                }
-                matches_out.matches.push(m);
-                return;
-            }
-        }
-        // If we've got a macro call, we already tried matching it pre-expansion, which is the only
-        // way to match the whole macro, now try expanding it and matching the expansion.
-        if let Some(macro_call) = ast::MacroCall::cast(code.clone()) {
-            if let Some(expanded) = self.sema.expand(&macro_call) {
-                if let Some(tt) = macro_call.token_tree() {
-                    // When matching within a macro expansion, we only want to allow matches of
-                    // nodes that originated entirely from within the token tree of the macro call.
-                    // i.e. we don't want to match something that came from the macro itself.
-                    self.find_matches(
-                        &expanded,
-                        &Some(self.sema.original_range(tt.syntax())),
-                        matches_out,
-                    );
-                }
-            }
-        }
-        for child in code.children() {
-            self.find_matches(&child, restrict_range, matches_out);
         }
     }
 
