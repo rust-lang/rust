@@ -5,7 +5,26 @@ use ra_db::FileRange;
 use ra_syntax::{ast, AstNode, SyntaxNode};
 
 impl<'db> MatchFinder<'db> {
-    pub(crate) fn slow_scan_node(
+    pub(crate) fn find_all_matches(&self, matches_out: &mut Vec<Match>) {
+        // FIXME: Use resolved paths in the pattern to find places to search instead of always
+        // scanning every node.
+        self.slow_scan(matches_out);
+    }
+
+    fn slow_scan(&self, matches_out: &mut Vec<Match>) {
+        use ra_db::SourceDatabaseExt;
+        use ra_ide_db::symbol_index::SymbolsDatabase;
+        for &root in self.sema.db.local_roots().iter() {
+            let sr = self.sema.db.source_root(root);
+            for file_id in sr.iter() {
+                let file = self.sema.parse(file_id);
+                let code = file.syntax();
+                self.slow_scan_node(code, &None, matches_out);
+            }
+        }
+    }
+
+    fn slow_scan_node(
         &self,
         code: &SyntaxNode,
         restrict_range: &Option<FileRange>,

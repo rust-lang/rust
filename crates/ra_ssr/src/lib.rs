@@ -17,8 +17,9 @@ pub use crate::matching::Match;
 use crate::matching::MatchFailureReason;
 use hir::Semantics;
 use ra_db::{FileId, FileRange};
+use ra_ide_db::source_change::SourceFileEdit;
 use ra_syntax::{ast, AstNode, SyntaxNode, TextRange};
-use ra_text_edit::TextEdit;
+use rustc_hash::FxHashMap;
 
 // A structured search replace rule. Create by calling `parse` on a str.
 #[derive(Debug)]
@@ -60,32 +61,37 @@ impl<'db> MatchFinder<'db> {
         self.add_parsed_rules(rule.parsed_rules);
     }
 
+    /// Finds matches for all added rules and returns edits for all found matches.
+    pub fn edits(&self) -> Vec<SourceFileEdit> {
+        use ra_db::SourceDatabaseExt;
+        let mut matches_by_file = FxHashMap::default();
+        for m in self.matches().matches {
+            matches_by_file
+                .entry(m.range.file_id)
+                .or_insert_with(|| SsrMatches::default())
+                .matches
+                .push(m);
+        }
+        let mut edits = vec![];
+        for (file_id, matches) in matches_by_file {
+            let edit =
+                replacing::matches_to_edit(&matches, &self.sema.db.file_text(file_id), &self.rules);
+            edits.push(SourceFileEdit { file_id, edit });
+        }
+        edits
+    }
+
     /// Adds a search pattern. For use if you intend to only call `find_matches_in_file`. If you
     /// intend to do replacement, use `add_rule` instead.
     pub fn add_search_pattern(&mut self, pattern: SsrPattern) {
         self.add_parsed_rules(pattern.parsed_rules);
     }
 
-    pub fn edits_for_file(&self, file_id: FileId) -> Option<TextEdit> {
-        let matches = self.find_matches_in_file(file_id);
-        if matches.matches.is_empty() {
-            None
-        } else {
-            use ra_db::SourceDatabaseExt;
-            Some(replacing::matches_to_edit(
-                &matches,
-                &self.sema.db.file_text(file_id),
-                &self.rules,
-            ))
-        }
-    }
-
-    pub fn find_matches_in_file(&self, file_id: FileId) -> SsrMatches {
-        let file = self.sema.parse(file_id);
-        let code = file.syntax();
-        let mut matches = SsrMatches::default();
-        self.slow_scan_node(code, &None, &mut matches.matches);
-        matches
+    /// Returns matches for all added rules.
+    pub fn matches(&self) -> SsrMatches {
+        let mut matches = Vec::new();
+        self.find_all_matches(&mut matches);
+        SsrMatches { matches }
     }
 
     /// Finds all nodes in `file_id` whose text is exactly equal to `snippet` and attempts to match

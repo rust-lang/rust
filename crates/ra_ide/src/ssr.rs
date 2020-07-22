@@ -1,5 +1,4 @@
-use ra_db::SourceDatabaseExt;
-use ra_ide_db::{symbol_index::SymbolsDatabase, RootDatabase};
+use ra_ide_db::RootDatabase;
 
 use crate::SourceFileEdit;
 use ra_ssr::{MatchFinder, SsrError, SsrRule};
@@ -44,20 +43,11 @@ pub fn parse_search_replace(
     parse_only: bool,
     db: &RootDatabase,
 ) -> Result<Vec<SourceFileEdit>, SsrError> {
-    let mut edits = vec![];
     let rule: SsrRule = rule.parse()?;
     if parse_only {
-        return Ok(edits);
+        return Ok(Vec::new());
     }
     let mut match_finder = MatchFinder::new(db);
     match_finder.add_rule(rule);
-    for &root in db.local_roots().iter() {
-        let sr = db.source_root(root);
-        for file_id in sr.iter() {
-            if let Some(edit) = match_finder.edits_for_file(file_id) {
-                edits.push(SourceFileEdit { file_id, edit });
-            }
-        }
-    }
-    Ok(edits)
+    Ok(match_finder.edits())
 }

@@ -1,6 +1,8 @@
 use crate::{MatchFinder, SsrRule};
 use expect::{expect, Expect};
-use ra_db::{FileId, SourceDatabaseExt};
+use ra_db::{salsa::Durability, FileId, SourceDatabaseExt};
+use rustc_hash::FxHashSet;
+use std::sync::Arc;
 use test_utils::mark;
 
 fn parse_error_text(query: &str) -> String {
@@ -57,9 +59,15 @@ fn parser_undefined_placeholder_in_replacement() {
     );
 }
 
-fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FileId) {
+pub(crate) fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FileId) {
     use ra_db::fixture::WithFixture;
-    ra_ide_db::RootDatabase::with_single_file(code)
+    use ra_ide_db::symbol_index::SymbolsDatabase;
+    let (db, file_id) = ra_ide_db::RootDatabase::with_single_file(code);
+    let mut db = db;
+    let mut local_roots = FxHashSet::default();
+    local_roots.insert(ra_db::fixture::WORKSPACE);
+    db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
+    (db, file_id)
 }
 
 fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
@@ -73,15 +81,16 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
         let rule: SsrRule = rule.parse().unwrap();
         match_finder.add_rule(rule);
     }
-    if let Some(edits) = match_finder.edits_for_file(file_id) {
-        // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
-        // stuff.
-        let mut actual = db.file_text(file_id).to_string();
-        edits.apply(&mut actual);
-        expected.assert_eq(&actual);
-    } else {
+    let edits = match_finder.edits();
+    if edits.is_empty() {
         panic!("No edits were made");
     }
+    assert_eq!(edits[0].file_id, file_id);
+    // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
+    // stuff.
+    let mut actual = db.file_text(file_id).to_string();
+    edits[0].edit.apply(&mut actual);
+    expected.assert_eq(&actual);
 }
 
 fn print_match_debug_info(match_finder: &MatchFinder, file_id: FileId, snippet: &str) {
@@ -100,13 +109,8 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let (db, file_id) = single_file(code);
     let mut match_finder = MatchFinder::new(&db);
     match_finder.add_search_pattern(pattern.parse().unwrap());
-    let matched_strings: Vec<String> = match_finder
-        .find_matches_in_file(file_id)
-        .flattened()
-        .matches
-        .iter()
-        .map(|m| m.matched_text())
-        .collect();
+    let matched_strings: Vec<String> =
+        match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
     if matched_strings != expected && !expected.is_empty() {
         print_match_debug_info(&match_finder, file_id, &expected[0]);
     }
@@ -117,7 +121,7 @@ fn assert_no_match(pattern: &str, code: &str) {
     let (db, file_id) = single_file(code);
     let mut match_finder = MatchFinder::new(&db);
     match_finder.add_search_pattern(pattern.parse().unwrap());
-    let matches = match_finder.find_matches_in_file(file_id).flattened().matches;
+    let matches = match_finder.matches().flattened().matches;
     if !matches.is_empty() {
         print_match_debug_info(&match_finder, file_id, &matches[0].matched_text());
         panic!("Got {} matches when we expected none: {:#?}", matches.len(), matches);

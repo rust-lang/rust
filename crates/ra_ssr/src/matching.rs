@@ -570,13 +570,12 @@ mod tests {
     #[test]
     fn parse_match_replace() {
         let rule: SsrRule = "foo($x) ==>> bar($x)".parse().unwrap();
-        let input = "fn foo() {} fn main() { foo(1+2); }";
+        let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
-        use ra_db::fixture::WithFixture;
-        let (db, file_id) = ra_ide_db::RootDatabase::with_single_file(input);
+        let (db, _) = crate::tests::single_file(input);
         let mut match_finder = MatchFinder::new(&db);
         match_finder.add_rule(rule);
-        let matches = match_finder.find_matches_in_file(file_id);
+        let matches = match_finder.matches();
         assert_eq!(matches.matches.len(), 1);
         assert_eq!(matches.matches[0].matched_node.text(), "foo(1+2)");
         assert_eq!(matches.matches[0].placeholder_values.len(), 1);
@@ -589,9 +588,11 @@ mod tests {
             "1+2"
         );
 
-        let edit = crate::replacing::matches_to_edit(&matches, input, &match_finder.rules);
+        let edits = match_finder.edits();
+        assert_eq!(edits.len(), 1);
+        let edit = &edits[0];
         let mut after = input.to_string();
-        edit.apply(&mut after);
-        assert_eq!(after, "fn foo() {} fn main() { bar(1+2); }");
+        edit.edit.apply(&mut after);
+        assert_eq!(after, "fn foo() {} fn bar() {} fn main() { bar(1+2); }");
     }
 }
