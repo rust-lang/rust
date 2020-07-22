@@ -1,4 +1,4 @@
-warning: `[DontDocMe]` public documentation for `DocMe` links to a private item
+warning: public documentation for `DocMe` links to private item `DontDocMe`
   --> $DIR/intra-links-private.rs:6:11
    |
 LL | /// docs [DontDocMe]

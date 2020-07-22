@@ -1,4 +1,4 @@
-warning: `[PrivateType]` public documentation for `public_item` links to a private item
+warning: public documentation for `public_item` links to private item `PrivateType`
   --> $DIR/issue-74134.rs:19:10
    |
 LL |     /// [`PrivateType`]
