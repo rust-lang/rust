@@ -711,8 +711,15 @@ pub struct ExpnData {
     /// The raw that this `ExpnData` had in its original crate.
     /// An `ExpnData` can be created before being assigned an `ExpnId`,
     /// so this might be `None` until `set_expn_data` is called
+    // This is used only for serialization/deserialization purposes:
+    // two `ExpnData`s that differ only in their `orig_id` should
+    // be considered equivalent.
+    #[stable_hasher(ignore)]
     pub orig_id: Option<u32>,
 }
+
+// This would require special handling of `orig_id` and `parent`
+impl !PartialEq for ExpnData {}
 
 impl ExpnData {
     /// Constructs expansion data with default properties.
