@@ -36,7 +36,7 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
 
     acc.add(
         AssistId("change_return_type_to_result", AssistKind::RefactorRewrite),
-        "Change return type to Result",
+        "Wrap return type in Result",
         type_ref.syntax().text_range(),
         |builder| {
             let mut tail_return_expr_collector = TailReturnCollector::new();
