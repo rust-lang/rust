@@ -1197,6 +1197,7 @@ fn collect_miri<'tcx>(
             }
         }
         GlobalAlloc::Function(fn_instance) => {
+            let fn_instance = fn_instance.polymorphize(tcx);
             if should_codegen_locally(tcx, &fn_instance) {
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push(create_fn_mono_item(tcx, fn_instance, DUMMY_SP));
