@@ -1,11 +1,11 @@
 error: item has unused generic parameters
-  --> $DIR/lifetimes.rs:9:8
+  --> $DIR/lifetimes.rs:10:8
    |
 LL | pub fn unused<'a, T>(_: &'a u32) {
    |        ^^^^^^     - generic parameter `T` is unused
 
 error: item has unused generic parameters
-  --> $DIR/lifetimes.rs:16:19
+  --> $DIR/lifetimes.rs:17:19
    |
 LL | pub fn used<'a, T: Default>(_: &'a u32) -> u32 {
    |                 - generic parameter `T` is unused

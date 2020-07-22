@@ -1,5 +1,5 @@
 error: item has unused generic parameters
-  --> $DIR/unsized_cast.rs:10:18
+  --> $DIR/unsized_cast.rs:11:18
    |
 LL | fn foo<T: Default>() {
    |        - generic parameter `T` is unused
@@ -8,7 +8,7 @@ LL |     (|| Box::new(|| {}) as Box<dyn Fn()>)();
    |                  ^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/unsized_cast.rs:10:5
+  --> $DIR/unsized_cast.rs:11:5
    |
 LL | fn foo<T: Default>() {
    |        - generic parameter `T` is unused
@@ -17,7 +17,7 @@ LL |     (|| Box::new(|| {}) as Box<dyn Fn()>)();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/unsized_cast.rs:20:15
+  --> $DIR/unsized_cast.rs:21:15
    |
 LL | fn foo2<T: Default>() {
    |         - generic parameter `T` is unused

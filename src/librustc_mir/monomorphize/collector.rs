@@ -627,8 +627,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     Ok(val) => collect_const_value(self.tcx, val, self.output),
                     Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => {}
                     Err(ErrorHandled::TooGeneric) => span_bug!(
-                        self.tcx.def_span(def.did),
-                        "collection encountered polymorphic constant",
+                        self.body.source_info(location).span,
+                        "collection encountered polymorphic constant: {}",
+                        substituted_constant
                     ),
                 }
             }

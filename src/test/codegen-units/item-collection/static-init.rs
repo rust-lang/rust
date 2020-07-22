@@ -1,4 +1,4 @@
-// compile-flags:-Zprint-mono-items=eager
+// compile-flags:-Zprint-mono-items=eager -Zpolymorphize=on
 
 #![feature(start)]
 

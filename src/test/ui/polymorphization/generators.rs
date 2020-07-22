@@ -1,4 +1,5 @@
 // build-fail
+// compile-flags:-Zpolymorphize=on
 #![feature(const_generics, generators, generator_trait, rustc_attrs)]
 //~^ WARN the feature `const_generics` is incomplete
 

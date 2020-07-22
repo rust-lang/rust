@@ -1,4 +1,5 @@
 // check-pass
+// compile-flags:-Zpolymorphize=on
 
 pub struct OnDrop<F: Fn()>(pub F);
 

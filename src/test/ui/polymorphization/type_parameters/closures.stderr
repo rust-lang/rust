@@ -1,5 +1,5 @@
 error: item has unused generic parameters
-  --> $DIR/closures.rs:18:19
+  --> $DIR/closures.rs:19:19
    |
 LL | pub fn unused<T>() -> u32 {
    |               - generic parameter `T` is unused
@@ -8,13 +8,13 @@ LL |     let add_one = |x: u32| x + 1;
    |                   ^^^^^^^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:15:8
+  --> $DIR/closures.rs:16:8
    |
 LL | pub fn unused<T>() -> u32 {
    |        ^^^^^^ - generic parameter `T` is unused
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:27:19
+  --> $DIR/closures.rs:28:19
    |
 LL | pub fn used_parent<T: Default>() -> u32 {
    |                    - generic parameter `T` is unused
@@ -23,7 +23,7 @@ LL |     let add_one = |x: u32| x + 1;
    |                   ^^^^^^^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:93:23
+  --> $DIR/closures.rs:94:23
    |
 LL | impl<F: Default> Foo<F> {
    |      - generic parameter `F` is unused
@@ -35,7 +35,7 @@ LL |         let add_one = |x: u32| x + 1;
    |                       ^^^^^^^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:91:12
+  --> $DIR/closures.rs:92:12
    |
 LL | impl<F: Default> Foo<F> {
    |      - generic parameter `F` is unused
@@ -44,7 +44,7 @@ LL |     pub fn unused_all<G: Default>() -> u32 {
    |            ^^^^^^^^^^ - generic parameter `G` is unused
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:127:23
+  --> $DIR/closures.rs:128:23
    |
 LL |       pub fn used_impl<G: Default>() -> u32 {
    |                        - generic parameter `G` is unused
@@ -58,13 +58,13 @@ LL | |         };
    | |_________^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:125:12
+  --> $DIR/closures.rs:126:12
    |
 LL |     pub fn used_impl<G: Default>() -> u32 {
    |            ^^^^^^^^^ - generic parameter `G` is unused
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:114:23
+  --> $DIR/closures.rs:115:23
    |
 LL |   impl<F: Default> Foo<F> {
    |        - generic parameter `F` is unused
@@ -78,7 +78,7 @@ LL | |         };
    | |_________^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:112:12
+  --> $DIR/closures.rs:113:12
    |
 LL | impl<F: Default> Foo<F> {
    |      - generic parameter `F` is unused

@@ -1,4 +1,5 @@
 // build-fail
+// compile-flags:-Zpolymorphize=on
 #![feature(rustc_attrs)]
 
 // This test checks that the polymorphization analysis correctly detects unused type
