@@ -4,6 +4,7 @@
 //! based on a template.
 
 mod matching;
+mod nester;
 mod parsing;
 mod replacing;
 mod search;
@@ -90,8 +91,10 @@ impl<'db> MatchFinder<'db> {
     /// Returns matches for all added rules.
     pub fn matches(&self) -> SsrMatches {
         let mut matches = Vec::new();
-        self.find_all_matches(&mut matches);
-        SsrMatches { matches }
+        for rule in &self.rules {
+            self.find_matches_for_rule(rule, &mut matches);
+        }
+        nester::nest_and_remove_collisions(matches, &self.sema)
     }
 
     /// Finds all nodes in `file_id` whose text is exactly equal to `snippet` and attempts to match

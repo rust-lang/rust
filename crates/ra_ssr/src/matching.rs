@@ -49,6 +49,8 @@ pub struct Match {
     pub(crate) placeholder_values: FxHashMap<Var, PlaceholderMatch>,
     pub(crate) ignored_comments: Vec<ast::Comment>,
     pub(crate) rule_index: usize,
+    /// The depth of matched_node.
+    pub(crate) depth: usize,
 }
 
 /// Represents a `$var` in an SSR query.
@@ -130,10 +132,12 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             placeholder_values: FxHashMap::default(),
             ignored_comments: Vec::new(),
             rule_index: rule.index,
+            depth: 0,
         };
         // Second matching pass, where we record placeholder matches, ignored comments and maybe do
         // any other more expensive checks that we didn't want to do on the first pass.
         match_state.attempt_match_node(&mut Phase::Second(&mut the_match), &rule.pattern, code)?;
+        the_match.depth = sema.ancestors_with_macros(the_match.matched_node.clone()).count();
         Ok(the_match)
     }
 
