@@ -132,72 +132,46 @@ impl EarlyProps {
 
         fn ignore_gdb(config: &Config, line: &str) -> bool {
             if let Some(actual_version) = config.gdb_version {
-                if line.starts_with("min-gdb-version") {
-                    let (start_ver, end_ver) = extract_gdb_version_range(line);
+                if let Some(rest) = line.strip_prefix("min-gdb-version:").map(str::trim) {
+                    let (start_ver, end_ver) = extract_version_range(rest, extract_gdb_version)
+                        .unwrap_or_else(|| {
+                            panic!("couldn't parse version range: {:?}", rest);
+                        });
 
                     if start_ver != end_ver {
                         panic!("Expected single GDB version")
                     }
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    actual_version < start_ver
-                } else if line.starts_with("ignore-gdb-version") {
-                    let (min_version, max_version) = extract_gdb_version_range(line);
+                    return actual_version < start_ver;
+                } else if let Some(rest) = line.strip_prefix("ignore-gdb-version:").map(str::trim) {
+                    let (min_version, max_version) =
+                        extract_version_range(rest, extract_gdb_version).unwrap_or_else(|| {
+                            panic!("couldn't parse version range: {:?}", rest);
+                        });
 
                     if max_version < min_version {
                         panic!("Malformed GDB version range: max < min")
                     }
 
-                    actual_version >= min_version && actual_version <= max_version
-                } else {
-                    false
+                    return actual_version >= min_version && actual_version <= max_version;
                 }
-            } else {
-                false
             }
-        }
-
-        // Takes a directive of the form "ignore-gdb-version <version1> [- <version2>]",
-        // returns the numeric representation of <version1> and <version2> as
-        // tuple: (<version1> as u32, <version2> as u32)
-        // If the <version2> part is omitted, the second component of the tuple
-        // is the same as <version1>.
-        fn extract_gdb_version_range(line: &str) -> (u32, u32) {
-            const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
-
-            let range_components = line
-                .split(&[' ', '-'][..])
-                .filter(|word| !word.is_empty())
-                .map(extract_gdb_version)
-                .skip_while(Option::is_none)
-                .take(3) // 3 or more = invalid, so take at most 3.
-                .collect::<Vec<Option<u32>>>();
-
-            match range_components.len() {
-                1 => {
-                    let v = range_components[0].unwrap();
-                    (v, v)
-                }
-                2 => {
-                    let v_min = range_components[0].unwrap();
-                    let v_max = range_components[1].expect(ERROR_MESSAGE);
-                    (v_min, v_max)
-                }
-                _ => panic!(ERROR_MESSAGE),
-            }
+            false
         }
 
         fn ignore_lldb(config: &Config, line: &str) -> bool {
-            if let Some(ref actual_version) = config.lldb_version {
-                if line.starts_with("min-lldb-version") {
-                    let min_version = line
-                        .trim_end()
-                        .rsplit(' ')
-                        .next()
-                        .expect("Malformed lldb version directive");
+            if let Some(actual_version) = config.lldb_version {
+                if let Some(min_version) = line.strip_prefix("min-lldb-version:").map(str::trim) {
+                    let min_version = min_version.parse().unwrap_or_else(|e| {
+                        panic!(
+                            "Unexpected format of LLDB version string: {}\n{:?}",
+                            min_version, e
+                        );
+                    });
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    lldb_version_to_int(actual_version) < lldb_version_to_int(min_version)
+                    actual_version < min_version
                 } else if line.starts_with("rust-lldb") && !config.lldb_native_rust {
                     true
                 } else {
@@ -212,67 +186,36 @@ impl EarlyProps {
             if config.system_llvm && line.starts_with("no-system-llvm") {
                 return true;
             }
-            if let Some(ref actual_version) = config.llvm_version {
-                let actual_version = version_to_int(actual_version);
-                if line.starts_with("min-llvm-version") {
-                    let min_version = line
-                        .trim_end()
-                        .rsplit(' ')
-                        .next()
-                        .expect("Malformed llvm version directive");
+            if let Some(actual_version) = config.llvm_version {
+                if let Some(rest) = line.strip_prefix("min-llvm-version:").map(str::trim) {
+                    let min_version = extract_llvm_version(rest).unwrap();
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    actual_version < version_to_int(min_version)
-                } else if line.starts_with("min-system-llvm-version") {
-                    let min_version = line
-                        .trim_end()
-                        .rsplit(' ')
-                        .next()
-                        .expect("Malformed llvm version directive");
+                    actual_version < min_version
+                } else if let Some(rest) =
+                    line.strip_prefix("min-system-llvm-version:").map(str::trim)
+                {
+                    let min_version = extract_llvm_version(rest).unwrap();
                     // Ignore if using system LLVM and actual version
                     // is smaller the minimum required version
-                    config.system_llvm && actual_version < version_to_int(min_version)
-                } else if line.starts_with("ignore-llvm-version") {
-                    // Syntax is: "ignore-llvm-version <version1> [- <version2>]"
-                    let range_components = line
-                        .split(' ')
-                        .skip(1) // Skip the directive.
-                        .map(|s| s.trim())
-                        .filter(|word| !word.is_empty() && word != &"-")
-                        .take(3) // 3 or more = invalid, so take at most 3.
-                        .collect::<Vec<&str>>();
-                    match range_components.len() {
-                        1 => actual_version == version_to_int(range_components[0]),
-                        2 => {
-                            let v_min = version_to_int(range_components[0]);
-                            let v_max = version_to_int(range_components[1]);
-                            if v_max < v_min {
-                                panic!("Malformed LLVM version range: max < min")
-                            }
-                            // Ignore if version lies inside of range.
-                            actual_version >= v_min && actual_version <= v_max
-                        }
-                        _ => panic!("Malformed LLVM version directive"),
+                    config.system_llvm && actual_version < min_version
+                } else if let Some(rest) = line.strip_prefix("ignore-llvm-version:").map(str::trim)
+                {
+                    // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
+                    let (v_min, v_max) = extract_version_range(rest, extract_llvm_version)
+                        .unwrap_or_else(|| {
+                            panic!("couldn't parse version range: {:?}", rest);
+                        });
+                    if v_max < v_min {
+                        panic!("Malformed LLVM version range: max < min")
                     }
+                    // Ignore if version lies inside of range.
+                    actual_version >= v_min && actual_version <= v_max
                 } else {
                     false
                 }
             } else {
                 false
-            }
-        }
-
-        fn version_to_int(version: &str) -> u32 {
-            let version_without_suffix = version.trim_end_matches("git").split('-').next().unwrap();
-            let components: Vec<u32> = version_without_suffix
-                .split('.')
-                .map(|s| s.parse().expect("Malformed version component"))
-                .collect();
-            match components.len() {
-                1 => components[0] * 10000,
-                2 => components[0] * 10000 + components[1] * 100,
-                3 => components[0] * 10000 + components[1] * 100 + components[2],
-                _ => panic!("Malformed version"),
             }
         }
     }
@@ -944,12 +887,6 @@ impl Config {
     }
 }
 
-pub fn lldb_version_to_int(version_string: &str) -> isize {
-    let error_string =
-        format!("Encountered LLDB version string with unexpected format: {}", version_string);
-    version_string.parse().expect(&error_string)
-}
-
 fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &'static str = "{{cwd}}";
     const SRC_BASE: &'static str = "{{src-base}}";
@@ -989,4 +926,50 @@ fn parse_normalization_string(line: &mut &str) -> Option<String> {
     let result = line[begin..end].to_owned();
     *line = &line[end + 1..];
     Some(result)
+}
+
+pub fn extract_llvm_version(version: &str) -> Option<u32> {
+    let version_without_suffix = version.trim_end_matches("git").split('-').next().unwrap();
+    let components: Vec<u32> = version_without_suffix
+        .split('.')
+        .map(|s| s.parse().expect("Malformed version component"))
+        .collect();
+    let version = match *components {
+        [a] => a * 10_000,
+        [a, b] => a * 10_000 + b * 100,
+        [a, b, c] => a * 10_000 + b * 100 + c,
+        _ => panic!("Malformed version"),
+    };
+    Some(version)
+}
+
+// Takes a directive of the form "<version1> [- <version2>]",
+// returns the numeric representation of <version1> and <version2> as
+// tuple: (<version1> as u32, <version2> as u32)
+// If the <version2> part is omitted, the second component of the tuple
+// is the same as <version1>.
+fn extract_version_range<F>(line: &str, parse: F) -> Option<(u32, u32)>
+where
+    F: Fn(&str) -> Option<u32>,
+{
+    let mut splits = line.splitn(2, "- ").map(str::trim);
+    let min = splits.next().unwrap();
+    if min.ends_with('-') {
+        return None;
+    }
+
+    let max = splits.next();
+
+    if min.is_empty() {
+        return None;
+    }
+
+    let min = parse(min)?;
+    let max = match max {
+        Some(max) if max.is_empty() => return None,
+        Some(max) => parse(max)?,
+        _ => min,
+    };
+
+    Some((min, max))
 }
