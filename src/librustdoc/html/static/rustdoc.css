@@ -1291,6 +1291,16 @@ h4 > .important-traits {
 
 /* Media Queries */
 
+@media (min-width: 701px) {
+	/* In case there is no documentation before a code block, we need to add some margin at the top
+	to prevent an overlay between the "collapse toggle" and the information tooltip.
+	However, it's needed needed with smaller screen width because the doc/code block is always put
+	"one line" below. */
+	.information:first-child > .tooltip {
+		margin-top: 16px;
+	}
+}
+
 @media (max-width: 700px) {
 	body {
 		padding-top: 0px;
