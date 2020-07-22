@@ -366,7 +366,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         unsafe {
             llvm::LLVMPointerType(
                 self.llvm_type(cx),
-                cx.data_layout().instruction_address_space as c_uint,
+                cx.data_layout().instruction_address_space.0 as c_uint,
             )
         }
     }

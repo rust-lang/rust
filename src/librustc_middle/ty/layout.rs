@@ -2166,16 +2166,31 @@ where
     }
 
     fn pointee_info_at(this: TyAndLayout<'tcx>, cx: &C, offset: Size) -> Option<PointeeInfo> {
-        match this.ty.kind {
+        let addr_space_of_ty = |ty: Ty<'tcx>| {
+            if ty.is_fn() { cx.data_layout().instruction_address_space } else { AddressSpace::DATA }
+        };
+
+        let pointee_info = match this.ty.kind {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
                 cx.layout_of(mt.ty).to_result().ok().map(|layout| PointeeInfo {
                     size: layout.size,
                     align: layout.align.abi,
                     safe: None,
+                    address_space: addr_space_of_ty(mt.ty),
                 })
             }
-
+            ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
+                cx.layout_of(cx.tcx().mk_fn_ptr(fn_sig)).to_result().ok().map(|layout| {
+                    PointeeInfo {
+                        size: layout.size,
+                        align: layout.align.abi,
+                        safe: None,
+                        address_space: cx.data_layout().instruction_address_space,
+                    }
+                })
+            }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
+                let address_space = addr_space_of_ty(ty);
                 let tcx = cx.tcx();
                 let is_freeze = ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env());
                 let kind = match mt {
@@ -2210,6 +2225,7 @@ where
                     size: layout.size,
                     align: layout.align.abi,
                     safe: Some(kind),
+                    address_space,
                 })
             }
 
@@ -2254,7 +2270,9 @@ where
                             result = field.to_result().ok().and_then(|field| {
                                 if ptr_end <= field_start + field.size {
                                     // We found the right field, look inside it.
-                                    field.pointee_info_at(cx, offset - field_start)
+                                    let field_info =
+                                        field.pointee_info_at(cx, offset - field_start);
+                                    field_info
                                 } else {
                                     None
                                 }
@@ -2277,7 +2295,14 @@ where
 
                 result
             }
-        }
+        };
+
+        debug!(
+            "pointee_info_at (offset={:?}, type kind: {:?}) => {:?}",
+            offset, this.ty.kind, pointee_info
+        );
+
+        pointee_info
     }
 }
 

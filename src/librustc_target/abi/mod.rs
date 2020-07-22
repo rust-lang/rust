@@ -32,7 +32,7 @@ pub struct TargetDataLayout {
     /// Alignments for vector types.
     pub vector_align: Vec<(Size, AbiAndPrefAlign)>,
 
-    pub instruction_address_space: u32,
+    pub instruction_address_space: AddressSpace,
 }
 
 impl Default for TargetDataLayout {
@@ -56,7 +56,7 @@ impl Default for TargetDataLayout {
                 (Size::from_bits(64), AbiAndPrefAlign::new(align(64))),
                 (Size::from_bits(128), AbiAndPrefAlign::new(align(128))),
             ],
-            instruction_address_space: 0,
+            instruction_address_space: AddressSpace::DATA,
         }
     }
 }
@@ -65,7 +65,7 @@ impl TargetDataLayout {
     pub fn parse(target: &Target) -> Result<TargetDataLayout, String> {
         // Parse an address space index from a string.
         let parse_address_space = |s: &str, cause: &str| {
-            s.parse::<u32>().map_err(|err| {
+            s.parse::<u32>().map(AddressSpace).map_err(|err| {
                 format!("invalid address space `{}` for `{}` in \"data-layout\": {}", s, cause, err)
             })
         };
@@ -744,6 +744,17 @@ impl FieldsShape {
     }
 }
 
+/// An identifier that specifies the address space that some operation
+/// should operate on. Special address spaces have an effect on code generation,
+/// depending on the target and the address spaces it implements.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct AddressSpace(pub u32);
+
+impl AddressSpace {
+    /// The default address space, corresponding to data space.
+    pub const DATA: Self = AddressSpace(0);
+}
+
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
@@ -1013,7 +1024,7 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PointerKind {
     /// Most general case, we know no restrictions to tell LLVM.
     Shared,
@@ -1028,11 +1039,12 @@ pub enum PointerKind {
     UniqueOwned,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PointeeInfo {
     pub size: Size,
     pub align: Align,
     pub safe: Option<PointerKind>,
+    pub address_space: AddressSpace,
 }
 
 pub trait TyAndLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {

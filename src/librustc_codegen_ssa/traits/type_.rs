@@ -7,7 +7,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
-use rustc_target::abi::Integer;
+use rustc_target::abi::{AddressSpace, Integer};
 
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
 // `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
@@ -27,6 +27,7 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_struct(&self, els: &[Self::Type], packed: bool) -> Self::Type;
     fn type_kind(&self, ty: Self::Type) -> TypeKind;
     fn type_ptr_to(&self, ty: Self::Type) -> Self::Type;
+    fn type_ptr_to_ext(&self, ty: Self::Type, address_space: AddressSpace) -> Self::Type;
     fn element_type(&self, ty: Self::Type) -> Self::Type;
 
     /// Returns the number of elements in `self` if it is a LLVM vector type.
@@ -42,7 +43,11 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
 
 pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     fn type_i8p(&self) -> Self::Type {
-        self.type_ptr_to(self.type_i8())
+        self.type_i8p_ext(AddressSpace::DATA)
+    }
+
+    fn type_i8p_ext(&self, address_space: AddressSpace) -> Self::Type {
+        self.type_ptr_to_ext(self.type_i8(), address_space)
     }
 
     fn type_int(&self) -> Self::Type {

@@ -13,14 +13,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ConstValue, ErrorHandled, Pointer,
+    read_target_uint, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer,
 };
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size};
+use rustc_target::abi::{AddressSpace, Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size};
 
 use std::ffi::CStr;
 
@@ -53,10 +53,16 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
         )
         .expect("const_alloc_to_llvm: could not read relocation pointer")
             as u64;
+
+        let address_space = match cx.tcx.global_alloc(alloc_id) {
+            GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
+            GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) => AddressSpace::DATA,
+        };
+
         llvals.push(cx.scalar_to_backend(
             Pointer::new(alloc_id, Size::from_bytes(ptr_offset)).into(),
             &Scalar { value: Primitive::Pointer, valid_range: 0..=!0 },
-            cx.type_i8p(),
+            cx.type_i8p_ext(address_space),
         ));
         next_offset = offset + pointer_size;
     }
