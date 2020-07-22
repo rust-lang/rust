@@ -1,0 +1,15 @@
+error[E0366]: `private::NotNil` impls cannot be specialized
+  --> $DIR/issue-74629.rs:27:5
+   |
+LL |     impl !NotNil for Is<Nil> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+  --> $DIR/issue-74629.rs:25:5
+   |
+LL |     pub struct Is<T>(T);
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0366`.

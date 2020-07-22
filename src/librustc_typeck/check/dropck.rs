@@ -1,6 +1,5 @@
 use crate::check::regionck::RegionCtxt;
 use crate::hir;
-use crate::hir::def_id::{DefId, LocalDefId};
 use rustc_errors::{struct_span_err, ErrorReported};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferOk, RegionckMode, TyCtxtInferExt};
@@ -9,6 +8,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, Predicate, Ty, TyCtxt};
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::query::dropck_outlives::AtExt;
@@ -32,6 +32,9 @@ use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
 pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorReported> {
+    check_restricted_impl(tcx, drop_impl_did)
+}
+pub fn check_restricted_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.kind {
@@ -45,21 +48,25 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
 
             ensure_drop_predicates_are_implied_by_item_defn(
                 tcx,
+                drop_impl_did.expect_local(),
                 dtor_predicates,
-                adt_def.did.expect_local(),
+                adt_def.did,
                 self_to_impl_substs,
             )
         }
         _ => {
-            // Destructors only work on nominal types.  This was
-            // already checked by coherence, but compilation may
-            // not have been terminated.
-            let span = tcx.def_span(drop_impl_did);
-            tcx.sess.delay_span_bug(
-                span,
-                &format!("should have been rejected by coherence check: {}", dtor_self_type),
-            );
-            Err(ErrorReported)
+            // Destructors only work on nominal types. This was
+            // already checked by coherence, for auto impls we
+            // simply check that there are no bounds here.
+            if dtor_predicates.predicates.is_empty() {
+                Ok(())
+            } else {
+                tcx.sess.span_err(
+                    tcx.def_span(drop_impl_did),
+                    "auto traits must not contain where bounds",
+                );
+                Err(ErrorReported)
+            }
         }
     }
 }
@@ -94,11 +101,13 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             Err(_) => {
                 let item_span = tcx.def_span(self_type_did);
                 let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
+                let trait_ref = tcx.impl_trait_ref(drop_impl_did).unwrap();
                 struct_span_err!(
                     tcx.sess,
                     drop_impl_span,
                     E0366,
-                    "`Drop` impls cannot be specialized"
+                    "`{}` impls cannot be specialized",
+                    trait_ref.print_only_trait_path()
                 )
                 .span_note(
                     item_span,
@@ -142,8 +151,9 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 /// implied by assuming the predicates attached to self_type_did.
 fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
+    drop_impl_did: LocalDefId,
     dtor_predicates: ty::GenericPredicates<'tcx>,
-    self_type_did: LocalDefId,
+    self_type_did: DefId,
     self_to_impl_substs: SubstsRef<'tcx>,
 ) -> Result<(), ErrorReported> {
     let mut result = Ok(());
@@ -182,8 +192,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // assumptions. Here, `'y:'z` is present, but `'x:'y` is
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
-
-    let self_type_hir_id = tcx.hir().as_local_hir_id(self_type_did);
 
     // We can assume the predicates attached to struct/enum definition
     // hold.
@@ -238,13 +246,15 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         };
 
         if !assumptions_in_impl_context.iter().copied().any(predicate_matches_closure) {
-            let item_span = tcx.hir().span(self_type_hir_id);
-            let self_descr = tcx.def_kind(self_type_did).descr(self_type_did.to_def_id());
+            let item_span = tcx.def_span(self_type_did);
+            let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
+            let trait_ref = tcx.impl_trait_ref(drop_impl_did).unwrap();
             struct_span_err!(
                 tcx.sess,
                 predicate_sp,
                 E0367,
-                "`Drop` impl requires `{}` but the {} it is implemented for does not",
+                "`{}` impl requires `{}` but the {} it is implemented for does not",
+                trait_ref.print_only_trait_path(),
                 predicate,
                 self_descr,
             )

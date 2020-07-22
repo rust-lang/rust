@@ -1,0 +1,8 @@
+error: auto traits must not contain where bounds
+  --> $DIR/negative-impl-sized.rs:7:1
+   |
+LL | impl<T> !MyTrait for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -3,7 +3,7 @@
 
 auto trait MyTrait {}
 
-impl<T> !MyTrait for *mut T {}
+impl<T: ?Sized> !MyTrait for *mut T {}
 
 struct MyS;
 

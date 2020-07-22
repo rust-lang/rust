@@ -7,7 +7,7 @@
 
 trait MyTrait {}
 
-impl<T> !MyTrait for T {}
+impl<T: ?Sized> !MyTrait for T {}
 impl !MyTrait for u32 {}
 
 fn main() {}

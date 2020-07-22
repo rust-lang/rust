@@ -1,4 +1,4 @@
-error[E0366]: `Drop` impls cannot be specialized
+error[E0366]: `std::ops::Drop` impls cannot be specialized
   --> $DIR/issue-38868.rs:5:1
    |
 LL | / impl Drop for List<i32> {

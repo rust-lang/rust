@@ -6,6 +6,6 @@ trait MyTrait {
     type Foo;
 }
 
-default impl !MyTrait for u32 {} //~ ERROR negative impls cannot be default impls
+default impl !MyTrait for u32 {} //~ ERROR auto traits must not contain where bounds
 
 fn main() {}

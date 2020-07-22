@@ -21,11 +21,11 @@ struct TupleStruct<T>(T);
 union Union<T: Copy> { f: T }
 
 impl<'al,'adds_bnd:'al> Drop for K<'al,'adds_bnd> {                        // REJECT
-    //~^ ERROR `Drop` impl requires `'adds_bnd: 'al`
+    //~^ ERROR `std::ops::Drop` impl requires `'adds_bnd: 'al`
     fn drop(&mut self) { } }
 
 impl<'al,'adds_bnd>     Drop for L<'al,'adds_bnd> where 'adds_bnd:'al {    // REJECT
-    //~^ ERROR `Drop` impl requires `'adds_bnd: 'al`
+    //~^ ERROR `std::ops::Drop` impl requires `'adds_bnd: 'al`
     fn drop(&mut self) { } }
 
 impl<'ml>               Drop for M<'ml>         { fn drop(&mut self) { } } // ACCEPT
@@ -38,13 +38,13 @@ impl                    Drop for N<'static>     { fn drop(&mut self) { } } // RE
 impl<COkNoBound> Drop for O<COkNoBound> { fn drop(&mut self) { } } // ACCEPT
 
 impl              Drop for P<i8>          { fn drop(&mut self) { } } // REJECT
-//~^ ERROR `Drop` impls cannot be specialized
+//~^ ERROR `std::ops::Drop` impls cannot be specialized
 
 impl<AddsBnd:Bound> Drop for Q<AddsBnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR `Drop` impl requires `AddsBnd: Bound`
+//~^ ERROR `std::ops::Drop` impl requires `AddsBnd: Bound`
 
 impl<'rbnd,AddsRBnd:'rbnd> Drop for R<AddsRBnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR `Drop` impl requires `AddsRBnd: 'rbnd`
+//~^ ERROR `std::ops::Drop` impl requires `AddsRBnd: 'rbnd`
 
 impl<Bs:Bound>    Drop for S<Bs>          { fn drop(&mut self) { } } // ACCEPT
 
@@ -53,18 +53,18 @@ impl<'t,Bt:'t>    Drop for T<'t,Bt>       { fn drop(&mut self) { } } // ACCEPT
 impl              Drop for U              { fn drop(&mut self) { } } // ACCEPT
 
 impl<One>         Drop for V<One,One>     { fn drop(&mut self) { } } // REJECT
-//~^ ERROR `Drop` impls cannot be specialized
+//~^ ERROR `std::ops::Drop` impls cannot be specialized
 
 impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
 //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter `'lw`
 
 impl<AddsBnd:Bound> Drop for Enum<AddsBnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR `Drop` impl requires `AddsBnd: Bound`
+//~^ ERROR `std::ops::Drop` impl requires `AddsBnd: Bound`
 
 impl<AddsBnd:Bound> Drop for TupleStruct<AddsBnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR `Drop` impl requires `AddsBnd: Bound`
+//~^ ERROR `std::ops::Drop` impl requires `AddsBnd: Bound`
 
 impl<AddsBnd:Copy + Bound> Drop for Union<AddsBnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR `Drop` impl requires `AddsBnd: Bound`
+//~^ ERROR `std::ops::Drop` impl requires `AddsBnd: Bound`
 
 pub fn main() { }

@@ -33,18 +33,30 @@ LL | default impl !Send for Z {}
    | |
    | default because of this
 
-error[E0750]: negative impls cannot be default impls
+error[E0367]: `std::marker::Send` impl requires `Z: std::marker::Send` but the struct it is implemented for does not
   --> $DIR/validation.rs:10:1
    |
 LL | default impl !Send for Z {}
-   | ^^^^^^^      ^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/validation.rs:5:1
+   |
+LL | struct Z;
+   | ^^^^^^^^^
 
-error[E0750]: negative impls cannot be default impls
+error[E0367]: `Tr` impl requires `S: Tr` but the struct it is implemented for does not
   --> $DIR/validation.rs:14:1
    |
 LL | default impl !Tr for S {}
-   | ^^^^^^^      ^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the implementor must specify the same requirement
+  --> $DIR/validation.rs:4:1
+   |
+LL | struct S;
+   | ^^^^^^^^^
 
 error: aborting due to 5 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0750`.
+For more information about this error, try `rustc --explain E0367`.

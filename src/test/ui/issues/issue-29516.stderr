@@ -1,0 +1,8 @@
+error: auto traits must not contain where bounds
+  --> $DIR/issue-29516.rs:6:1
+   |
+LL | impl<A> !NotSame for (A, A) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,10 +1,10 @@
-// check-pass
 #![feature(optin_builtin_traits)]
 #![feature(negative_impls)]
 
 auto trait NotSame {}
 
-impl<A> !NotSame for (A, A) {}
+impl<A> !NotSame for (A, A) {} //~ ERROR auto traits must not contain where bounds
+// FIXME: Consider allowing (A, B) with `A: Sized`.
 
 trait OneOfEach {}
 

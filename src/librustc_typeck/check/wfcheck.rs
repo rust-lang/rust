@@ -1,9 +1,9 @@
-use crate::check::{FnCtxt, Inherited};
+use crate::check::{dropck::check_restricted_impl, FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ParItemLikeVisitor;
@@ -123,7 +123,10 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     check_impl(tcx, item, self_ty, of_trait);
                 }
                 (ty::ImplPolarity::Negative, ast::ImplPolarity::Negative(span)) => {
-                    // FIXME(#27579): what amount of WF checking do we need for neg impls?
+                    if let Err(ErrorReported) = check_restricted_impl(tcx, def_id.to_def_id()) {
+                        return;
+                    }
+
                     if let hir::Defaultness::Default { .. } = defaultness {
                         let mut spans = vec![span];
                         spans.extend(defaultness_span);
