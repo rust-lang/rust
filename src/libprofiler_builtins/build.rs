@@ -9,6 +9,8 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
     let cfg = &mut cc::Build::new();
 
+    // FIXME: `rerun-if-changed` directives are not currently emitted and the build script
+    // will not rerun on changes in these source files or headers included into them.
     let mut profile_sources = vec![
         "GCDAProfiling.c",
         "InstrProfiling.c",
