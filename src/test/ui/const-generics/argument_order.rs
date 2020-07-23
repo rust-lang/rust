@@ -6,4 +6,11 @@ struct Bad<const N: usize, T> { //~ ERROR type parameters must be declared prior
     another: T,
 }
 
+struct AlsoBad<const N: usize, 'a, T, 'b, const M: usize, U> {
+    //~^ ERROR type parameters must be declared prior
+    //~| ERROR lifetime parameters must be declared prior
+    a: &'a T,
+    b: &'b U,
+}
+
 fn main() { }
