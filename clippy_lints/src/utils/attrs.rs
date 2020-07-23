@@ -75,7 +75,7 @@ pub fn get_attr<'a>(
                 })
                 .map_or_else(
                     || {
-                        sess.span_err(attr_segments[1].ident.span, "Usage of unknown attribute");
+                        sess.span_err(attr_segments[1].ident.span, "usage of unknown attribute");
                         false
                     },
                     |deprecation_status| {
