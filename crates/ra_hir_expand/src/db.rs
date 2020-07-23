@@ -6,7 +6,7 @@ use mbe::{ExpandResult, MacroRules};
 use ra_db::{salsa, SourceDatabase};
 use ra_parser::FragmentKind;
 use ra_prof::profile;
-use ra_syntax::{algo::diff, AstNode, Parse, SyntaxKind::*, SyntaxNode};
+use ra_syntax::{algo::diff, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
     ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId,
@@ -72,6 +72,8 @@ pub trait AstDatabase: SourceDatabase {
 
     #[salsa::interned]
     fn intern_macro(&self, macro_call: MacroCallLoc) -> LazyMacroId;
+    fn macro_arg_text(&self, id: MacroCallId) -> Option<GreenNode>;
+    #[salsa::transparent]
     fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
     fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
     fn parse_macro(&self, macro_file: MacroFile)
@@ -148,10 +150,7 @@ pub(crate) fn macro_def(
     }
 }
 
-pub(crate) fn macro_arg(
-    db: &dyn AstDatabase,
-    id: MacroCallId,
-) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
+pub(crate) fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     let id = match id {
         MacroCallId::LazyMacro(id) => id,
         MacroCallId::EagerMacro(_id) => {
@@ -161,7 +160,15 @@ pub(crate) fn macro_arg(
     };
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
-    let (tt, tmap) = mbe::syntax_node_to_token_tree(&arg)?;
+    Some(arg.green().clone())
+}
+
+pub(crate) fn macro_arg(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
+    let arg = db.macro_arg_text(id)?;
+    let (tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg))?;
     Some(Arc::new((tt, tmap)))
 }
 

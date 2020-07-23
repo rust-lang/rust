@@ -42,8 +42,6 @@ use std::{marker::PhantomData, sync::Arc};
 use ra_text_edit::Indel;
 use stdx::format_to;
 
-use crate::syntax_node::GreenNode;
-
 pub use crate::{
     algo::InsertPosition,
     ast::{AstNode, AstToken},
@@ -51,7 +49,7 @@ pub use crate::{
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::SyntaxError,
     syntax_node::{
-        Direction, NodeOrToken, SyntaxElement, SyntaxElementChildren, SyntaxNode,
+        Direction, GreenNode, NodeOrToken, SyntaxElement, SyntaxElementChildren, SyntaxNode,
         SyntaxNodeChildren, SyntaxToken, SyntaxTreeBuilder,
     },
 };

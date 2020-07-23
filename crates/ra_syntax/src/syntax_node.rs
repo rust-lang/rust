@@ -10,7 +10,9 @@ use rowan::{GreenNodeBuilder, Language};
 
 use crate::{Parse, SmolStr, SyntaxError, SyntaxKind, TextSize};
 
-pub(crate) use rowan::{GreenNode, GreenToken};
+pub use rowan::GreenNode;
+
+pub(crate) use rowan::GreenToken;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RustLanguage {}
