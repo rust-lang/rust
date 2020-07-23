@@ -1298,7 +1298,10 @@ fn object_lifetime_defaults_for_item(
             }
             GenericParamKind::Const { .. } => {
                 // Generic consts don't impose any constraints.
-                None
+                //
+                // We still store a dummy value here to allow generic paramters
+                // in arbitrary order.
+                Some(Set1::Empty)
             }
         })
         .collect()

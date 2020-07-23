@@ -1888,14 +1888,24 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`).
     for param in ast_generics.params {
-        if let GenericParamKind::Type { .. } = param.kind {
-            let name = param.name.ident().name;
-            let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
-            index += 1;
+        match param.kind {
+            // We already dealt with early bound lifetimes above.
+            GenericParamKind::Lifetime { .. } => (),
+            GenericParamKind::Type { .. } => {
+                let name = param.name.ident().name;
+                let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
+                index += 1;
 
-            let sized = SizedByDefault::Yes;
-            let bounds = AstConv::compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
-            predicates.extend(bounds.predicates(tcx, param_ty));
+                let sized = SizedByDefault::Yes;
+                let bounds =
+                    AstConv::compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
+                predicates.extend(bounds.predicates(tcx, param_ty));
+            }
+            GenericParamKind::Const { .. } => {
+                // Bounds on const parameters are currently not possible.
+                debug_assert!(param.bounds.is_empty());
+                index += 1;
+            }
         }
     }
 
