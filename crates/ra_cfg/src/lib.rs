@@ -39,10 +39,6 @@ impl CfgOptions {
         self.atoms.insert(key);
     }
 
-    pub fn remove_atom(&mut self, name: &str) {
-        self.atoms.remove(name);
-    }
-
     pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
         self.key_values.insert((key, value));
     }
