@@ -4,10 +4,6 @@ name = "rustc-main"
 version = "0.0.0"
 edition = '2018'
 
-[[bin]]
-name = "rustc_binary"
-path = "src/main.rs"
-
 [dependencies]
 rustc_driver = { path = "../rustc_driver" }
 

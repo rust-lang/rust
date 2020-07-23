@@ -14,7 +14,6 @@ Rust lexer used by rustc. No stability guarantees are provided.
 # This will be used when publishing this crate as `rustc-ap-rustc_lexer`.
 [lib]
 doctest = false
-name = "rustc_lexer"
 
 # Note that this crate purposefully does not depend on other rustc crates
 [dependencies]
