@@ -271,7 +271,7 @@ impl EarlyLintPass for MiscEarlyLints {
                         cx,
                         BUILTIN_TYPE_SHADOW,
                         param.ident.span,
-                        &format!("This generic shadows the built-in type `{}`", name),
+                        &format!("this generic shadows the built-in type `{}`", name),
                     );
                 }
             }
