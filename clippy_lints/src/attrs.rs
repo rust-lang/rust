@@ -605,7 +605,7 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::as
                         cx,
                         EMPTY_LINE_AFTER_OUTER_ATTR,
                         begin_of_attr_to_item,
-                        "Found an empty line after an outer attribute. \
+                        "found an empty line after an outer attribute. \
                         Perhaps you forgot to add a `!` to make it an inner attribute?",
                     );
                 }
