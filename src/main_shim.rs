@@ -21,7 +21,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         None => return,
     };
 
-    let instance = Instance::mono(tcx, main_def_id);
+    let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
     if module.get_name(&*tcx.symbol_name(instance).name).is_none() {
         return;
     }
@@ -58,7 +58,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             .declare_function("main", Linkage::Export, &cmain_sig)
             .unwrap();
 
-        let instance = Instance::mono(tcx, rust_main_def_id);
+        let instance = Instance::mono(tcx, rust_main_def_id).polymorphize(tcx);
 
         let (main_name, main_sig) =
             get_function_name_and_sig(tcx, m.isa().triple(), instance, false);
@@ -90,7 +90,8 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx.intern_substs(&[main_ret_ty.into()]),
                 )
                 .unwrap()
-                .unwrap();
+                .unwrap()
+                .polymorphize(tcx);
                 let start_func_id = import_function(tcx, m, start_instance);
 
                 let main_val = bcx

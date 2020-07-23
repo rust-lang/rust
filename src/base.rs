@@ -267,7 +267,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                     fx.tcx.sess.span_fatal(bb_data.terminator().source_info.span, &s)
                 });
 
-                let instance = Instance::mono(fx.tcx, def_id);
+                let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
                 let symbol_name = fx.tcx.symbol_name(instance).name;
 
                 fx.lib_call(&*symbol_name, vec![fx.pointer_type, fx.pointer_type, fx.pointer_type], vec![], &args);
@@ -469,7 +469,8 @@ fn trans_stmt<'tcx>(
                         ty::FnDef(def_id, substs) => {
                             let func_ref = fx.get_function_ref(
                                 Instance::resolve_for_fn_ptr(fx.tcx, ParamEnv::reveal_all(), def_id, substs)
-                                    .unwrap(),
+                                    .unwrap()
+                                    .polymorphize(fx.tcx),
                             );
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, to_layout));
@@ -580,7 +581,7 @@ fn trans_stmt<'tcx>(
                                 def_id,
                                 substs,
                                 ty::ClosureKind::FnOnce,
-                            );
+                            ).polymorphize(fx.tcx);
                             let func_ref = fx.get_function_ref(instance);
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, lval.layout()));
@@ -641,7 +642,7 @@ fn trans_stmt<'tcx>(
                                 .fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
                         }
                     };
-                    let instance = ty::Instance::mono(fx.tcx, def_id);
+                    let instance = ty::Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
                     let func_ref = fx.get_function_ref(instance);
                     let call = fx.bcx.ins().call(func_ref, &[llsize, llalign]);
                     let ptr = fx.bcx.inst_results(call)[0];

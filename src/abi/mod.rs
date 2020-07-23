@@ -13,14 +13,26 @@ use crate::prelude::*;
 
 pub(crate) use self::returning::{can_return_to_ssa_var, codegen_return};
 
-// Copied from https://github.com/rust-lang/rust/blob/b2c1a606feb1fbdb0ac0acba76f881ef172ed474/src/librustc_middle/ty/layout.rs#L2287
+// Copied from https://github.com/rust-lang/rust/blob/f52c72948aa1dd718cc1f168d21c91c584c0a662/src/librustc_middle/ty/layout.rs#L2301
 pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
-    let ty = instance.ty(tcx, ParamEnv::reveal_all());
+    use rustc_middle::ty::subst::Subst;
+
+    // FIXME(davidtwco,eddyb): A `ParamEnv` should be passed through to this function.
+    let ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
     match ty.kind {
-        ty::FnDef(..) |
-        // Shims currently have type FnPtr. Not sure this should remain.
-        ty::FnPtr(_) => {
-            let mut sig = ty.fn_sig(tcx);
+        ty::FnDef(..) => {
+            // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
+            // parameters unused if they show up in the signature, but not in the `mir::Body`
+            // (i.e. due to being inside a projection that got normalized, see
+            // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
+            // track of a polymorphization `ParamEnv` to allow normalizing later.
+            let mut sig = match ty.kind {
+                ty::FnDef(def_id, substs) => tcx
+                    .normalize_erasing_regions(tcx.param_env(def_id), tcx.fn_sig(def_id))
+                    .subst(tcx, substs),
+                _ => unreachable!(),
+            };
+
             if let ty::InstanceDef::VtableShim(..) = instance.def {
                 // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
                 sig = sig.map_bound(|mut sig| {
@@ -36,13 +48,15 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
             let sig = substs.as_closure().sig();
 
             let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-            sig.map_bound(|sig| tcx.mk_fn_sig(
-                std::iter::once(env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
-                sig.output(),
-                sig.c_variadic,
-                sig.unsafety,
-                sig.abi
-            ))
+            sig.map_bound(|sig| {
+                tcx.mk_fn_sig(
+                    std::iter::once(env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                    sig.output(),
+                    sig.c_variadic,
+                    sig.unsafety,
+                    sig.abi,
+                )
+            })
         }
         ty::Generator(_, substs, _) => {
             let sig = substs.as_generator().poly_sig();
@@ -50,18 +64,16 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
             let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
-            let pin_did = tcx.lang_items().pin_type().unwrap();
+            let pin_did = tcx.require_lang_item(rustc_hir::LangItem::PinTypeLangItem, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
             let pin_substs = tcx.intern_substs(&[env_ty.into()]);
             let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
             sig.map_bound(|sig| {
-                let state_did = tcx.lang_items().gen_state().unwrap();
+                let state_did = tcx.require_lang_item(rustc_hir::LangItem::GeneratorStateLangItem, None);
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.intern_substs(&[
-                    sig.yield_ty.into(),
-                    sig.return_ty.into(),
-                ]);
+                let state_substs =
+                    tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
                 let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
                 tcx.mk_fn_sig(
@@ -69,11 +81,11 @@ pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx
                     &ret_ty,
                     false,
                     rustc_hir::Unsafety::Normal,
-                    rustc_target::spec::abi::Abi::Rust
+                    rustc_target::spec::abi::Abi::Rust,
                 )
             })
         }
-        _ => bug!("unexpected type {:?} in Instance::fn_sig", ty)
+        _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
     }
 }
 
@@ -464,7 +476,8 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let instance = if let ty::FnDef(def_id, substs) = fn_ty.kind {
         let instance = ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
             .unwrap()
-            .unwrap();
+            .unwrap()
+            .polymorphize(fx.tcx);
 
         if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
@@ -655,7 +668,7 @@ pub(crate) fn codegen_drop<'tcx>(
     drop_place: CPlace<'tcx>,
 ) {
     let ty = drop_place.layout().ty;
-    let drop_fn = Instance::resolve_drop_in_place(fx.tcx, ty);
+    let drop_fn = Instance::resolve_drop_in_place(fx.tcx, ty).polymorphize(fx.tcx);
 
     if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
         // we don't actually need to drop anything
@@ -685,16 +698,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
             }
             _ => {
-                let instance = match drop_fn_ty.kind {
-                    ty::FnDef(def_id, substs) => {
-                        Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs)
-                            .unwrap()
-                            .unwrap()
-                    }
-                    _ => unreachable!("{:?}", drop_fn_ty),
-                };
-
-                assert!(!matches!(instance.def, InstanceDef::Virtual(_, _)));
+                assert!(!matches!(drop_fn.def, InstanceDef::Virtual(_, _)));
 
                 let arg_place = CPlace::new_stack_slot(
                     fx,
@@ -712,13 +716,13 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let mut call_args: Vec<Value> = arg_value.into_iter().collect::<Vec<_>>();
 
-                if instance.def.requires_caller_location(fx.tcx) {
+                if drop_fn.def.requires_caller_location(fx.tcx) {
                     // Pass the caller location for `#[track_caller]`.
                     let caller_location = fx.get_caller_location(span);
                     call_args.extend(adjust_arg_for_abi(fx, caller_location).into_iter());
                 }
 
-                let func_ref = fx.get_function_ref(instance);
+                let func_ref = fx.get_function_ref(drop_fn);
                 fx.bcx.ins().call(func_ref, &call_args);
             }
         }
