@@ -7,7 +7,6 @@ mod sysroot;
 use std::{
     fs::{self, read_dir, ReadDir},
     io,
-    path::Path,
     process::{Command, Output},
 };
 
@@ -35,30 +34,12 @@ pub enum ProjectWorkspace {
 /// `PackageRoot` describes a package root folder.
 /// Which may be an external dependency, or a member of
 /// the current workspace.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PackageRoot {
-    /// Path to the root folder
-    path: AbsPathBuf,
     /// Is a member of the current workspace
-    is_member: bool,
-    out_dir: Option<AbsPathBuf>,
-}
-impl PackageRoot {
-    pub fn new_member(path: AbsPathBuf) -> PackageRoot {
-        Self { path, is_member: true, out_dir: None }
-    }
-    pub fn new_non_member(path: AbsPathBuf) -> PackageRoot {
-        Self { path, is_member: false, out_dir: None }
-    }
-    pub fn path(&self) -> &AbsPath {
-        &self.path
-    }
-    pub fn out_dir(&self) -> Option<&AbsPath> {
-        self.out_dir.as_deref()
-    }
-    pub fn is_member(&self) -> bool {
-        self.is_member
-    }
+    pub is_member: bool,
+    pub include: Vec<AbsPathBuf>,
+    pub exclude: Vec<AbsPathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
@@ -195,18 +176,40 @@ impl ProjectWorkspace {
     /// the root is a member of the current workspace
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
-            ProjectWorkspace::Json { project } => {
-                project.roots.iter().map(|r| PackageRoot::new_member(r.path.clone())).collect()
-            }
+            ProjectWorkspace::Json { project } => project
+                .crates
+                .iter()
+                .map(|krate| PackageRoot {
+                    is_member: krate.is_workspace_member,
+                    include: krate.include.clone(),
+                    exclude: krate.exclude.clone(),
+                })
+                .collect::<FxHashSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>(),
             ProjectWorkspace::Cargo { cargo, sysroot } => cargo
                 .packages()
-                .map(|pkg| PackageRoot {
-                    path: cargo[pkg].root().to_path_buf(),
-                    is_member: cargo[pkg].is_member,
-                    out_dir: cargo[pkg].out_dir.clone(),
+                .map(|pkg| {
+                    let is_member = cargo[pkg].is_member;
+                    let pkg_root = cargo[pkg].root().to_path_buf();
+
+                    let mut include = vec![pkg_root.clone()];
+                    include.extend(cargo[pkg].out_dir.clone());
+
+                    let mut exclude = vec![pkg_root.join(".git")];
+                    if is_member {
+                        exclude.push(pkg_root.join("target"));
+                    } else {
+                        exclude.push(pkg_root.join("tests"));
+                        exclude.push(pkg_root.join("examples"));
+                        exclude.push(pkg_root.join("benches"));
+                    }
+                    PackageRoot { is_member, include, exclude }
                 })
-                .chain(sysroot.crates().map(|krate| {
-                    PackageRoot::new_non_member(sysroot[krate].root_dir().to_path_buf())
+                .chain(sysroot.crates().map(|krate| PackageRoot {
+                    is_member: false,
+                    include: vec![sysroot[krate].root_dir().to_path_buf()],
+                    exclude: Vec::new(),
                 }))
                 .collect(),
         }
@@ -255,13 +258,7 @@ impl ProjectWorkspace {
                         let file_path = &krate.root_module;
                         let file_id = load(&file_path)?;
 
-                        let mut env = Env::default();
-                        if let Some(out_dir) = &krate.out_dir {
-                            // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
-                            if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
-                                env.set("OUT_DIR", out_dir);
-                            }
-                        }
+                        let env = krate.env.clone().into_iter().collect();
                         let proc_macro = krate
                             .proc_macro_dylib_path
                             .clone()
@@ -502,18 +499,6 @@ impl ProjectWorkspace {
             }
         }
         crate_graph
-    }
-
-    pub fn workspace_root_for(&self, path: &Path) -> Option<&AbsPath> {
-        match self {
-            ProjectWorkspace::Cargo { cargo, .. } => {
-                Some(cargo.workspace_root()).filter(|root| path.starts_with(root))
-            }
-            ProjectWorkspace::Json { project: ProjectJson { roots, .. }, .. } => roots
-                .iter()
-                .find(|root| path.starts_with(&root.path))
-                .map(|root| root.path.as_path()),
-        }
     }
 }
 

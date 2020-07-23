@@ -5,7 +5,7 @@ use flycheck::FlycheckHandle;
 use ra_db::{CrateGraph, SourceRoot, VfsPath};
 use ra_ide::AnalysisChange;
 use ra_prof::profile;
-use ra_project_model::{PackageRoot, ProcMacroClient, ProjectWorkspace};
+use ra_project_model::{ProcMacroClient, ProjectWorkspace};
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
@@ -149,8 +149,10 @@ impl GlobalState {
                 watchers: workspaces
                     .iter()
                     .flat_map(ProjectWorkspace::to_roots)
-                    .filter(PackageRoot::is_member)
-                    .map(|root| format!("{}/**/*.rs", root.path().display()))
+                    .filter(|it| it.is_member)
+                    .flat_map(|root| {
+                        root.include.into_iter().map(|it| format!("{}/**/*.rs", it.display()))
+                    })
                     .map(|glob_pattern| lsp_types::FileSystemWatcher { glob_pattern, kind: None })
                     .collect(),
             };
@@ -261,31 +263,23 @@ impl ProjectFolders {
         let mut local_filesets = vec![];
 
         for root in workspaces.iter().flat_map(|it| it.to_roots()) {
-            let path = root.path().to_owned();
+            let file_set_roots: Vec<VfsPath> =
+                root.include.iter().cloned().map(VfsPath::from).collect();
 
-            let mut file_set_roots: Vec<VfsPath> = vec![];
-
-            let entry = if root.is_member() {
-                vfs::loader::Entry::local_cargo_package(path.to_path_buf())
-            } else {
-                vfs::loader::Entry::cargo_package_dependency(path.to_path_buf())
+            let entry = {
+                let mut dirs = vfs::loader::Directories::default();
+                dirs.extensions.push("rs".into());
+                dirs.include.extend(root.include);
+                dirs.exclude.extend(root.exclude);
+                vfs::loader::Entry::Directories(dirs)
             };
+
+            if root.is_member {
+                res.watch.push(res.load.len());
+            }
             res.load.push(entry);
-            if root.is_member() {
-                res.watch.push(res.load.len() - 1);
-            }
 
-            if let Some(out_dir) = root.out_dir() {
-                let out_dir = out_dir.to_path_buf();
-                res.load.push(vfs::loader::Entry::rs_files_recursively(out_dir.clone()));
-                if root.is_member() {
-                    res.watch.push(res.load.len() - 1);
-                }
-                file_set_roots.push(out_dir.into());
-            }
-            file_set_roots.push(path.to_path_buf().into());
-
-            if root.is_member() {
+            if root.is_member {
                 local_filesets.push(fsc.len());
             }
             fsc.add_file_set(file_set_roots)

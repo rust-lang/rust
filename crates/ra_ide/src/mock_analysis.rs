@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
-use ra_db::{CrateName, Env, FileSet, SourceRoot, VfsPath};
+use ra_db::{CrateName, FileSet, SourceRoot, VfsPath};
 use test_utils::{
     extract_annotations, extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER,
 };
@@ -110,7 +110,7 @@ impl MockAnalysis {
                 data.edition.and_then(|it| it.parse().ok()).unwrap_or(Edition::Edition2018);
 
             let file_id = FileId(i as u32 + 1);
-            let env = Env::from(data.env.iter());
+            let env = data.env.into_iter().collect();
             if path == "/lib.rs" || path == "/main.rs" {
                 root_crate = Some(crate_graph.add_crate_root(
                     file_id,
