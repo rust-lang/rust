@@ -262,6 +262,9 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Precomputed `TyLayout`s for primitive data types that are commonly used inside Miri.
     pub(crate) layouts: PrimitiveLayouts<'tcx>,
+
+    /// Allocations that are considered roots of static memory (that may leak).
+    pub(crate) static_roots: Vec<AllocId>,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -289,6 +292,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             time_anchor: Instant::now(),
             layouts,
             threads: ThreadManager::default(),
+            static_roots: Vec::new(),
         }
     }
 }

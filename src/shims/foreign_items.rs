@@ -197,6 +197,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Here we dispatch all the shims for foreign functions. If you have a platform specific
         // shim, add it to the corresponding submodule.
         match link_name {
+            // Miri-specific extern functions
+            "miri_static_root" => {
+                let &[ptr] = check_arg_count(args)?;
+                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.force_ptr(ptr)?;
+                if ptr.offset != Size::ZERO {
+                    throw_unsup_format!("Pointer passed to miri_static_root must point to beginning of an allocated block");
+                }
+                this.machine.static_roots.push(ptr.alloc_id);
+            }
+
             // Standard C allocation
             "malloc" => {
                 let &[size] = check_arg_count(args)?;
