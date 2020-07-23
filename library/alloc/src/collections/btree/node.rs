@@ -466,12 +466,6 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     fn into_val_slice(self) -> &'a [V] {
         unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len()) }
     }
-
-    fn into_slices(self) -> (&'a [K], &'a [V]) {
-        // SAFETY: equivalent to reborrow() except not requiring Type: 'a
-        let k = unsafe { ptr::read(&self) };
-        (k.into_key_slice(), self.into_val_slice())
-    }
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
@@ -980,10 +974,9 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeType>, marker::KV> {
     pub fn into_kv(self) -> (&'a K, &'a V) {
-        unsafe {
-            let (keys, vals) = self.node.into_slices();
-            (keys.get_unchecked(self.idx), vals.get_unchecked(self.idx))
-        }
+        let keys = self.node.into_key_slice();
+        let vals = self.node.into_val_slice();
+        unsafe { (keys.get_unchecked(self.idx), vals.get_unchecked(self.idx)) }
     }
 }
 
