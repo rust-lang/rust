@@ -157,7 +157,7 @@ rustc_queries! {
         }
 
         /// Returns the list of bounds that can be used for
-        /// `SelectionCandidate::ProjectionCandidate` and
+        /// `SelectionCandidate::ProjectionCandidate(_)` and
         /// `ProjectionTyCandidate::TraitDef`.
         /// Specifically this is the bounds written on the trait's type
         /// definition, or those after the `impl` keyword

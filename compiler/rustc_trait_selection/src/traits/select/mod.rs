@@ -1163,11 +1163,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///
     /// Given an obligation like `<T as Foo>::Bar: Baz` where the self type is
     /// a projection, look at the bounds of `T::Bar`, see if we can find a
-    /// `Baz` bound and it there is one it returns it.
+    /// `Baz` bound. We return indexes into the list returned by
+    /// `tcx.item_bounds` for any applicable bounds.
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> Option<ty::PolyTraitRef<'tcx>> {
+    ) -> smallvec::SmallVec<[usize; 2]> {
         let poly_trait_predicate = self.infcx().resolve_vars_if_possible(&obligation.predicate);
         let placeholder_trait_predicate =
             self.infcx().replace_bound_vars_with_placeholders(&poly_trait_predicate);
@@ -1192,25 +1193,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
         let bounds = tcx.item_bounds(def_id).subst(tcx, substs);
 
-        let matching_bound = bounds.iter().find_map(|bound| {
-            if let ty::PredicateAtom::Trait(pred, _) = bound.skip_binders() {
-                let bound = ty::Binder::bind(pred.trait_ref);
-                if self.infcx.probe(|_| {
-                    self.match_projection(obligation, bound, placeholder_trait_predicate.trait_ref)
+        let matching_bounds = bounds
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, bound)| {
+                if let ty::PredicateAtom::Trait(pred, _) = bound.skip_binders() {
+                    let bound = ty::Binder::bind(pred.trait_ref);
+                    if self.infcx.probe(|_| {
+                        self.match_projection(
+                            obligation,
+                            bound,
+                            placeholder_trait_predicate.trait_ref,
+                        )
                         .is_ok()
-                }) {
-                    return Some(bound);
+                    }) {
+                        return Some(idx);
+                    }
                 }
-            }
-            None
-        });
+                None
+            })
+            .collect();
 
         debug!(
             "match_projection_obligation_against_definition_bounds: \
-             matching_bound={:?}",
-            matching_bound
+             matching_bounds={:?}",
+            matching_bounds
         );
-        matching_bound
+        matching_bounds
     }
 
     fn match_projection(
@@ -1299,14 +1308,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // clause so don't go around looking for impls.
                     !is_global(cand)
                 }
-                ObjectCandidate | ProjectionCandidate => {
+                ObjectCandidate | ProjectionCandidate(_) => {
                     // Arbitrarily give param candidates priority
                     // over projection and object candidates.
                     !is_global(cand)
                 }
                 ParamCandidate(..) => false,
             },
-            ObjectCandidate | ProjectionCandidate => match victim.candidate {
+            ObjectCandidate | ProjectionCandidate(_) => match victim.candidate {
                 AutoImplCandidate(..) => {
                     bug!(
                         "default implementations shouldn't be recorded \
@@ -1323,10 +1332,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..) => true,
-                ObjectCandidate | ProjectionCandidate => {
-                    // Arbitrarily give param candidates priority
-                    // over projection and object candidates.
-                    true
+                ObjectCandidate | ProjectionCandidate(_) => {
+                    // Shouldn't have both an object and projection candidate,
+                    // nor multiple object candidates. Multiple projection
+                    // candidates are ambiguous.
+                    false
                 }
                 ParamCandidate(ref cand) => is_global(cand),
             },

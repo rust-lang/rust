@@ -70,8 +70,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(ImplSource::AutoImpl(data))
             }
 
-            ProjectionCandidate => {
-                let obligations = self.confirm_projection_candidate(obligation);
+            ProjectionCandidate(idx) => {
+                let obligations = self.confirm_projection_candidate(obligation, idx);
                 Ok(ImplSource::Param(obligations))
             }
 
@@ -121,11 +121,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_projection_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
+        idx: usize,
     ) -> Vec<PredicateObligation<'tcx>> {
         self.infcx.commit_unconditionally(|_| {
-            let candidate = self
-                .match_projection_obligation_against_definition_bounds(obligation)
-                .unwrap_or_else(|| bug!("Can't find selected projection candidate"));
+            let tcx = self.tcx();
+
+            let bound_self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+            let (def_id, substs) = match bound_self_ty.skip_binder().kind {
+                ty::Projection(proj) => (proj.item_def_id, proj.substs),
+                ty::Opaque(def_id, substs) => (def_id, substs),
+                _ => bug!("projection candidate for unexpected type: {:?}", bound_self_ty),
+            };
+
+            let candidate_predicate = tcx.item_bounds(def_id)[idx].subst(tcx, substs);
+            let candidate = candidate_predicate
+                .to_opt_poly_trait_ref()
+                .expect("projection candidate is not a trait predicate");
             let mut obligations = self
                 .infcx
                 .at(&obligation.cause, obligation.param_env)
@@ -139,7 +150,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     );
                 });
             // Require that the projection is well-formed.
-            let self_ty = self.infcx.replace_bound_vars_with_placeholders(&obligation.self_ty());
+            let self_ty = self.infcx.replace_bound_vars_with_placeholders(&bound_self_ty);
             let self_ty = normalize_with_depth_to(
                 self,
                 obligation.param_env,
@@ -152,7 +163,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
                 obligation.param_env,
-                ty::PredicateKind::WellFormed(self_ty.into()).to_predicate(self.tcx()),
+                ty::PredicateKind::WellFormed(self_ty.into()).to_predicate(tcx),
             ));
             obligations
         })
