@@ -392,7 +392,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // `binary_op` will bail if either of them is not a scalar.
                 let eq = this.overflowing_binary_op(mir::BinOp::Eq, old, expect_old)?.0;
-                let res = Immediate::ScalarPair(old.to_scalar_or_undef(), eq.into());
+                let res = Immediate::ScalarPair(old.to_scalar_or_uninit(), eq.into());
                 // Return old value.
                 this.write_immediate(res, dest)?;
                 // Update ptr depending on comparison.
