@@ -947,10 +947,20 @@ pub fn decode_expn_id<
 
     // Don't decode the data inside `HygieneData::with`, since we need to recursively decode
     // other ExpnIds
-    let expn_data = decode_data(d, index)?;
+    let mut expn_data = decode_data(d, index)?;
 
     let expn_id = HygieneData::with(|hygiene_data| {
         let expn_id = ExpnId(hygiene_data.expn_data.len() as u32);
+
+        // If we just deserialized an `ExpnData` owned by
+        // the local crate, its `orig_id` will be stale,
+        // so we need to update it to its own value.
+        // This only happens when we deserialize the incremental cache,
+        // since a crate will never decode its own metadata.
+        if expn_data.krate == LOCAL_CRATE {
+            expn_data.orig_id = Some(expn_id.0);
+        }
+
         hygiene_data.expn_data.push(Some(expn_data));
 
         // Drop lock() temporary early
