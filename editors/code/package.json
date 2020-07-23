@@ -655,24 +655,30 @@
         "problemMatchers": [
             {
                 "name": "rustc",
+                "owner": "rustc",
+                "source": "rustc",
                 "fileLocation": [
-                    "relative",
+                    "autoDetect",
                     "${workspaceRoot}"
                 ],
                 "pattern": "$rustc"
             },
             {
                 "name": "rustc-json",
+                "owner": "rustc",
+                "source": "rustc",
                 "fileLocation": [
-                    "relative",
+                    "autoDetect",
                     "${workspaceRoot}"
                 ],
                 "pattern": "$rustc-json"
             },
             {
                 "name": "rustc-watch",
+                "owner": "rustc",
+                "source": "rustc",
                 "fileLocation": [
-                    "relative",
+                    "autoDetect",
                     "${workspaceRoot}"
                 ],
                 "background": {
