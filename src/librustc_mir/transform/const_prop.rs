@@ -582,7 +582,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
-    fn propagate_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
+    fn propagate_operand(&mut self, operand: &mut Operand<'tcx>) {
         match *operand {
             Operand::Copy(l) | Operand::Move(l) => {
                 if let Some(value) = self.get_const(l) {
@@ -606,7 +606,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     }
                 }
             }
-            Operand::Constant(ref mut ct) => self.visit_constant(ct, location),
+            Operand::Constant(_) => (),
         }
     }
 
@@ -934,12 +934,12 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
+        self.super_operand(operand, location);
+
         // Only const prop copies and moves on `mir_opt_level=3` as doing so
         // currently increases compile time.
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level < 3 {
-            self.super_operand(operand, location)
-        } else {
-            self.propagate_operand(operand, location)
+        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 3 {
+            self.propagate_operand(operand)
         }
     }
 
@@ -1114,7 +1114,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 // FIXME: This is currently redundant with `visit_operand`, but sadly
                 // always visiting operands currently causes a perf regression in LLVM codegen, so
                 // `visit_operand` currently only runs for propagates places for `mir_opt_level=3`.
-                self.propagate_operand(discr, location)
+                self.propagate_operand(discr)
             }
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
