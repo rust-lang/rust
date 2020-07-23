@@ -7,24 +7,25 @@ use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::cvt;
 use crate::sys_common::AsInner;
 
-use libc::{c_int, c_void, ssize_t};
+use libc::{c_int, c_void};
 
 #[derive(Debug)]
 pub struct FileDesc {
     fd: c_int,
 }
 
-fn max_len() -> usize {
-    // The maximum read limit on most posix-like systems is `SSIZE_MAX`,
-    // with the man page quoting that if the count of bytes to read is
-    // greater than `SSIZE_MAX` the result is "unspecified".
-    //
-    // On macOS, however, apparently the 64-bit libc is either buggy or
-    // intentionally showing odd behavior by rejecting any read with a size
-    // larger than or equal to INT_MAX. To handle both of these the read
-    // size is capped on both platforms.
-    if cfg!(target_os = "macos") { <c_int>::MAX as usize - 1 } else { <ssize_t>::MAX as usize }
-}
+// The maximum read limit on most POSIX-like systems is `SSIZE_MAX`,
+// with the man page quoting that if the count of bytes to read is
+// greater than `SSIZE_MAX` the result is "unspecified".
+//
+// On macOS, however, apparently the 64-bit libc is either buggy or
+// intentionally showing odd behavior by rejecting any read with a size
+// larger than or equal to INT_MAX. To handle both of these the read
+// size is capped on both platforms.
+#[cfg(target_os = "macos")]
+const READ_LIMIT: usize = c_int::MAX as usize - 1;
+#[cfg(not(target_os = "macos"))]
+const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
 impl FileDesc {
     pub fn new(fd: c_int) -> FileDesc {
@@ -44,7 +45,7 @@ impl FileDesc {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
-            libc::read(self.fd, buf.as_mut_ptr() as *mut c_void, cmp::min(buf.len(), max_len()))
+            libc::read(self.fd, buf.as_mut_ptr() as *mut c_void, cmp::min(buf.len(), READ_LIMIT))
         })?;
         Ok(ret as usize)
     }
@@ -92,7 +93,7 @@ impl FileDesc {
             cvt_pread64(
                 self.fd,
                 buf.as_mut_ptr() as *mut c_void,
-                cmp::min(buf.len(), max_len()),
+                cmp::min(buf.len(), READ_LIMIT),
                 offset as i64,
             )
             .map(|n| n as usize)
@@ -101,7 +102,7 @@ impl FileDesc {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
-            libc::write(self.fd, buf.as_ptr() as *const c_void, cmp::min(buf.len(), max_len()))
+            libc::write(self.fd, buf.as_ptr() as *const c_void, cmp::min(buf.len(), READ_LIMIT))
         })?;
         Ok(ret as usize)
     }
@@ -144,7 +145,7 @@ impl FileDesc {
             cvt_pwrite64(
                 self.fd,
                 buf.as_ptr() as *const c_void,
-                cmp::min(buf.len(), max_len()),
+                cmp::min(buf.len(), READ_LIMIT),
                 offset as i64,
             )
             .map(|n| n as usize)
