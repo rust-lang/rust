@@ -203,7 +203,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ptr = this.read_scalar(ptr)?.not_undef()?;
                 let ptr = this.force_ptr(ptr)?;
                 if ptr.offset != Size::ZERO {
-                    throw_unsup_format!("Pointer passed to miri_static_root must point to beginning of an allocated block");
+                    throw_unsup_format!("pointer passed to miri_static_root must point to beginning of an allocated block");
                 }
                 this.machine.static_roots.push(ptr.alloc_id);
             }
