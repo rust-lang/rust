@@ -6,7 +6,7 @@ use anyhow::{bail, format_err, Result};
 use paths::{AbsPath, AbsPathBuf};
 use ra_arena::{Arena, Idx};
 
-use crate::output;
+use crate::utf8_stdout;
 
 #[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct Sysroot {
@@ -92,15 +92,14 @@ fn get_or_install_rust_src(cargo_toml: &AbsPath) -> Result<AbsPathBuf> {
     let current_dir = cargo_toml.parent().unwrap();
     let mut rustc = Command::new(ra_toolchain::rustc());
     rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
-    let rustc_output = output(rustc)?;
-    let stdout = String::from_utf8(rustc_output.stdout)?;
+    let stdout = utf8_stdout(rustc)?;
     let sysroot_path = AbsPath::assert(Path::new(stdout.trim()));
     let src_path = sysroot_path.join("lib/rustlib/src/rust/src");
 
     if !src_path.exists() {
         let mut rustup = Command::new(ra_toolchain::rustup());
         rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
-        let _output = output(rustup)?;
+        utf8_stdout(rustup)?;
     }
     if !src_path.exists() {
         bail!(

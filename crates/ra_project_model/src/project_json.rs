@@ -3,11 +3,11 @@
 use std::path::PathBuf;
 
 use paths::{AbsPath, AbsPathBuf};
-use ra_cfg::CfgOptions;
 use ra_db::{CrateId, CrateName, Dependency, Edition};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use serde::{de, Deserialize};
-use stdx::split_delim;
+
+use crate::cfg_flag::CfgFlag;
 
 /// Roots and crates that compose this Rust project.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -22,7 +22,7 @@ pub struct Crate {
     pub(crate) root_module: AbsPathBuf,
     pub(crate) edition: Edition,
     pub(crate) deps: Vec<Dependency>,
-    pub(crate) cfg: CfgOptions,
+    pub(crate) cfg: Vec<CfgFlag>,
     pub(crate) target: Option<String>,
     pub(crate) env: FxHashMap<String, String>,
     pub(crate) proc_macro_dylib_path: Option<AbsPathBuf>,
@@ -65,18 +65,7 @@ impl ProjectJson {
                                 name: dep_data.name,
                             })
                             .collect::<Vec<_>>(),
-                        cfg: {
-                            let mut cfg = CfgOptions::default();
-                            for entry in &crate_data.cfg {
-                                match split_delim(entry, '=') {
-                                    Some((key, value)) => {
-                                        cfg.insert_key_value(key.into(), value.into());
-                                    }
-                                    None => cfg.insert_atom(entry.into()),
-                                }
-                            }
-                            cfg
-                        },
+                        cfg: crate_data.cfg,
                         target: crate_data.target,
                         env: crate_data.env,
                         proc_macro_dylib_path: crate_data
@@ -103,7 +92,7 @@ struct CrateData {
     edition: EditionData,
     deps: Vec<DepData>,
     #[serde(default)]
-    cfg: FxHashSet<String>,
+    cfg: Vec<CfgFlag>,
     target: Option<String>,
     #[serde(default)]
     env: FxHashMap<String, String>,
