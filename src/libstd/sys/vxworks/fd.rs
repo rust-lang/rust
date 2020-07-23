@@ -13,10 +13,12 @@ pub struct FileDesc {
     fd: c_int,
 }
 
-// The maximum read limit on most POSIX-like systems is `SSIZE_MAX`,
-// with the man page quoting that if the count of bytes to read is
-// greater than `SSIZE_MAX` the result is "unspecified".
-const READ_LIMIT: usize = ssize_t::MAX as usize;
+fn max_len() -> usize {
+    // The maximum read limit on most posix-like systems is `SSIZE_MAX`,
+    // with the man page quoting that if the count of bytes to read is
+    // greater than `SSIZE_MAX` the result is "unspecified".
+    <ssize_t>::MAX as usize
+}
 
 impl FileDesc {
     pub fn new(fd: c_int) -> FileDesc {
@@ -27,7 +29,7 @@ impl FileDesc {
         self.fd
     }
 
-    /// Extracts the actual file descriptor without closing it.
+    /// Extracts the actual filedescriptor without closing it.
     pub fn into_raw(self) -> c_int {
         let fd = self.fd;
         mem::forget(self);
@@ -36,7 +38,7 @@ impl FileDesc {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
-            libc::read(self.fd, buf.as_mut_ptr() as *mut c_void, cmp::min(buf.len(), READ_LIMIT))
+            libc::read(self.fd, buf.as_mut_ptr() as *mut c_void, cmp::min(buf.len(), max_len()))
         })?;
         Ok(ret as usize)
     }
@@ -77,7 +79,7 @@ impl FileDesc {
             cvt_pread(
                 self.fd,
                 buf.as_mut_ptr() as *mut c_void,
-                cmp::min(buf.len(), READ_LIMIT),
+                cmp::min(buf.len(), max_len()),
                 offset as i64,
             )
             .map(|n| n as usize)
@@ -86,7 +88,7 @@ impl FileDesc {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
-            libc::write(self.fd, buf.as_ptr() as *const c_void, cmp::min(buf.len(), READ_LIMIT))
+            libc::write(self.fd, buf.as_ptr() as *const c_void, cmp::min(buf.len(), max_len()))
         })?;
         Ok(ret as usize)
     }
@@ -122,7 +124,7 @@ impl FileDesc {
             cvt_pwrite(
                 self.fd,
                 buf.as_ptr() as *const c_void,
-                cmp::min(buf.len(), READ_LIMIT),
+                cmp::min(buf.len(), max_len()),
                 offset as i64,
             )
             .map(|n| n as usize)

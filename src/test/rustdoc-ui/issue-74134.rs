@@ -4,7 +4,7 @@
 
 // There are 4 cases here:
 // 1. public item  -> public type:  no warning
-// 2. public item  -> private type: warning
+// 2. public item  -> private type: warning, if --document-private-items is not passed
 // 3. private item -> public type:  no warning
 // 4. private item -> private type: no warning
 // All 4 cases are tested with and without --document-private-items.
@@ -17,7 +17,7 @@ pub struct PublicType;
 pub struct Public {
     /// [`PublicType`]
     /// [`PrivateType`]
-    //~^ WARNING public documentation for `public_item` links to private item `PrivateType`
+    //[public]~^ WARNING public documentation for `public_item` links to a private
     pub public_item: u32,
 
     /// [`PublicType`]

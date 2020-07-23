@@ -90,64 +90,45 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         args: &Vec<Operand<'tcx>>,
         caller_instance: ty::Instance<'tcx>,
     ) -> bool {
-        if self.tcx.sess.opts.debugging_opts.instrument_coverage {
-            // Add the coverage information from the MIR to the Codegen context. Some coverage
-            // intrinsics are used only to pass along the coverage information (returns `false`
-            // for `is_codegen_intrinsic()`), but `count_code_region` is also converted into an
-            // LLVM intrinsic to increment a coverage counter.
-            match intrinsic {
-                sym::count_code_region => {
-                    use coverage::count_code_region_args::*;
-                    self.add_counter_region(
-                        caller_instance,
-                        op_to_u64(&args[FUNCTION_SOURCE_HASH]),
-                        op_to_u32(&args[COUNTER_INDEX]),
-                        op_to_u32(&args[START_BYTE_POS]),
-                        op_to_u32(&args[END_BYTE_POS]),
-                    );
-                    return true; // Also inject the counter increment in the backend
-                }
-                sym::coverage_counter_add | sym::coverage_counter_subtract => {
-                    use coverage::coverage_counter_expression_args::*;
-                    self.add_counter_expression_region(
-                        caller_instance,
-                        op_to_u32(&args[COUNTER_EXPRESSION_INDEX]),
-                        op_to_u32(&args[LEFT_INDEX]),
-                        if intrinsic == sym::coverage_counter_add {
-                            CounterOp::Add
-                        } else {
-                            CounterOp::Subtract
-                        },
-                        op_to_u32(&args[RIGHT_INDEX]),
-                        op_to_u32(&args[START_BYTE_POS]),
-                        op_to_u32(&args[END_BYTE_POS]),
-                    );
-                    return false; // Does not inject backend code
-                }
-                sym::coverage_unreachable => {
-                    use coverage::coverage_unreachable_args::*;
-                    self.add_unreachable_region(
-                        caller_instance,
-                        op_to_u32(&args[START_BYTE_POS]),
-                        op_to_u32(&args[END_BYTE_POS]),
-                    );
-                    return false; // Does not inject backend code
-                }
-                _ => {}
+        match intrinsic {
+            sym::count_code_region => {
+                use coverage::count_code_region_args::*;
+                self.add_counter_region(
+                    caller_instance,
+                    op_to_u32(&args[COUNTER_INDEX]),
+                    op_to_u32(&args[START_BYTE_POS]),
+                    op_to_u32(&args[END_BYTE_POS]),
+                );
+                true // Also inject the counter increment in the backend
             }
-        } else {
-            // NOT self.tcx.sess.opts.debugging_opts.instrument_coverage
-            if intrinsic == sym::count_code_region {
-                // An external crate may have been pre-compiled with coverage instrumentation, and
-                // some references from the current crate to the external crate might carry along
-                // the call terminators to coverage intrinsics, like `count_code_region` (for
-                // example, when instantiating a generic function). If the current crate has
-                // `instrument_coverage` disabled, the `count_code_region` call terminators should
-                // be ignored.
-                return false; // Do not inject coverage counters inlined from external crates
+            sym::coverage_counter_add | sym::coverage_counter_subtract => {
+                use coverage::coverage_counter_expression_args::*;
+                self.add_counter_expression_region(
+                    caller_instance,
+                    op_to_u32(&args[COUNTER_EXPRESSION_INDEX]),
+                    op_to_u32(&args[LEFT_INDEX]),
+                    if intrinsic == sym::coverage_counter_add {
+                        CounterOp::Add
+                    } else {
+                        CounterOp::Subtract
+                    },
+                    op_to_u32(&args[RIGHT_INDEX]),
+                    op_to_u32(&args[START_BYTE_POS]),
+                    op_to_u32(&args[END_BYTE_POS]),
+                );
+                false // Does not inject backend code
             }
+            sym::coverage_unreachable => {
+                use coverage::coverage_unreachable_args::*;
+                self.add_unreachable_region(
+                    caller_instance,
+                    op_to_u32(&args[START_BYTE_POS]),
+                    op_to_u32(&args[END_BYTE_POS]),
+                );
+                false // Does not inject backend code
+            }
+            _ => true, // Unhandled intrinsics should be passed to `codegen_intrinsic_call()`
         }
-        true // Unhandled intrinsics should be passed to `codegen_intrinsic_call()`
     }
 
     fn codegen_intrinsic_call(
@@ -160,7 +141,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         caller_instance: ty::Instance<'tcx>,
     ) {
         let tcx = self.tcx;
-        let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+        let callee_ty = instance.monomorphic_ty(tcx);
 
         let (def_id, substs) = match callee_ty.kind {
             ty::FnDef(def_id, substs) => (def_id, substs),
@@ -216,13 +197,12 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let coverageinfo = tcx.coverageinfo(caller_instance.def_id());
                 let mangled_fn = tcx.symbol_name(caller_instance);
                 let (mangled_fn_name, _len_val) = self.const_str(Symbol::intern(mangled_fn.name));
+                let hash = self.const_u64(coverageinfo.hash);
                 let num_counters = self.const_u32(coverageinfo.num_counters);
                 use coverage::count_code_region_args::*;
-                let hash = args[FUNCTION_SOURCE_HASH].immediate();
                 let index = args[COUNTER_INDEX].immediate();
                 debug!(
-                    "translating Rust intrinsic `count_code_region()` to LLVM intrinsic: \
-                    instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
+                    "count_code_region to LLVM intrinsic instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
                     mangled_fn.name, hash, num_counters, index,
                 );
                 self.instrprof_increment(mangled_fn_name, hash, num_counters, index)
@@ -629,24 +609,27 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
 
             sym::float_to_int_unchecked => {
-                let float_width = match float_type_width(arg_tys[0]) {
-                    Some(width) => width,
-                    None => {
-                        span_invalid_monomorphization_error(
-                            tcx.sess,
-                            span,
-                            &format!(
-                                "invalid monomorphization of `float_to_int_unchecked` \
+                if float_type_width(arg_tys[0]).is_none() {
+                    span_invalid_monomorphization_error(
+                        tcx.sess,
+                        span,
+                        &format!(
+                            "invalid monomorphization of `float_to_int_unchecked` \
                                   intrinsic: expected basic float type, \
                                   found `{}`",
-                                arg_tys[0]
-                            ),
-                        );
-                        return;
+                            arg_tys[0]
+                        ),
+                    );
+                    return;
+                }
+                match int_type_width_signed(ret_ty, self.cx) {
+                    Some((width, signed)) => {
+                        if signed {
+                            self.fptosi(args[0].immediate(), self.cx.type_ix(width))
+                        } else {
+                            self.fptoui(args[0].immediate(), self.cx.type_ix(width))
+                        }
                     }
-                };
-                let (width, signed) = match int_type_width_signed(ret_ty, self.cx) {
-                    Some(pair) => pair,
                     None => {
                         span_invalid_monomorphization_error(
                             tcx.sess,
@@ -660,49 +643,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         );
                         return;
                     }
-                };
-
-                // The LLVM backend can reorder and speculate `fptosi` and
-                // `fptoui`, so on WebAssembly the codegen for this instruction
-                // is quite heavyweight. To avoid this heavyweight codegen we
-                // instead use the raw wasm intrinsics which will lower to one
-                // instruction in WebAssembly (`iNN.trunc_fMM_{s,u}`). This one
-                // instruction will trap if the operand is out of bounds, but
-                // that's ok since this intrinsic is UB if the operands are out
-                // of bounds, so the behavior can be different on WebAssembly
-                // than other targets.
-                //
-                // Note, however, that when the `nontrapping-fptoint` feature is
-                // enabled in LLVM then LLVM will lower `fptosi` to
-                // `iNN.trunc_sat_fMM_{s,u}`, so if that's the case we don't
-                // bother with intrinsics.
-                let mut result = None;
-                if self.sess().target.target.arch == "wasm32"
-                    && !self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
-                {
-                    let name = match (width, float_width, signed) {
-                        (32, 32, true) => Some("llvm.wasm.trunc.signed.i32.f32"),
-                        (32, 64, true) => Some("llvm.wasm.trunc.signed.i32.f64"),
-                        (64, 32, true) => Some("llvm.wasm.trunc.signed.i64.f32"),
-                        (64, 64, true) => Some("llvm.wasm.trunc.signed.i64.f64"),
-                        (32, 32, false) => Some("llvm.wasm.trunc.unsigned.i32.f32"),
-                        (32, 64, false) => Some("llvm.wasm.trunc.unsigned.i32.f64"),
-                        (64, 32, false) => Some("llvm.wasm.trunc.unsigned.i64.f32"),
-                        (64, 64, false) => Some("llvm.wasm.trunc.unsigned.i64.f64"),
-                        _ => None,
-                    };
-                    if let Some(name) = name {
-                        let intrinsic = self.get_intrinsic(name);
-                        result = Some(self.call(intrinsic, &[args[0].immediate()], None));
-                    }
                 }
-                result.unwrap_or_else(|| {
-                    if signed {
-                        self.fptosi(args[0].immediate(), self.cx.type_ix(width))
-                    } else {
-                        self.fptoui(args[0].immediate(), self.cx.type_ix(width))
-                    }
-                })
             }
 
             sym::discriminant_value => {
@@ -2280,8 +2221,4 @@ fn float_type_width(ty: Ty<'_>) -> Option<u64> {
 
 fn op_to_u32<'tcx>(op: &Operand<'tcx>) -> u32 {
     Operand::scalar_from_const(op).to_u32().expect("Scalar is u32")
-}
-
-fn op_to_u64<'tcx>(op: &Operand<'tcx>) -> u64 {
-    Operand::scalar_from_const(op).to_u64().expect("Scalar is u64")
 }

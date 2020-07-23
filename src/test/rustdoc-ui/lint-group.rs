@@ -11,7 +11,7 @@
 /// ```
 /// println!("sup");
 /// ```
-pub fn link_error() {} //~^^^^^ ERROR unresolved link to `error`
+pub fn link_error() {} //~^^^^^ ERROR cannot be resolved, ignoring it
 
 /// wait, this doesn't have a doctest?
 pub fn no_doctest() {} //~^ ERROR missing code example in this documentation

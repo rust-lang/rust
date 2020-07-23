@@ -463,7 +463,7 @@ pub enum RegionVariableOrigin {
     AddrOfRegion(Span),
 
     /// Regions created as part of an autoref of a method receiver
-    Autoref(Span, ty::AssocItem),
+    Autoref(Span),
 
     /// Regions created as part of an automatic coercion
     Coercion(Span),
@@ -1800,15 +1800,15 @@ impl<'tcx> SubregionOrigin<'tcx> {
 impl RegionVariableOrigin {
     pub fn span(&self) -> Span {
         match *self {
-            MiscVariable(a)
-            | PatternRegion(a)
-            | AddrOfRegion(a)
-            | Autoref(a, _)
-            | Coercion(a)
-            | EarlyBoundRegion(a, ..)
-            | LateBoundRegion(a, ..)
-            | UpvarRegion(_, a) => a,
+            MiscVariable(a) => a,
+            PatternRegion(a) => a,
+            AddrOfRegion(a) => a,
+            Autoref(a) => a,
+            Coercion(a) => a,
+            EarlyBoundRegion(a, ..) => a,
+            LateBoundRegion(a, ..) => a,
             BoundRegionInCoherence(_) => rustc_span::DUMMY_SP,
+            UpvarRegion(_, a) => a,
             NLL(..) => bug!("NLL variable used with `span`"),
         }
     }

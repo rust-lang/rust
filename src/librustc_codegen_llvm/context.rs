@@ -190,7 +190,7 @@ pub unsafe fn create_module(
 
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
     if sess.target.target.options.is_like_msvc {
-        match sess.opts.cg.control_flow_guard {
+        match sess.opts.debugging_opts.control_flow_guard {
             CFGuard::Disabled => {}
             CFGuard::NoChecks => {
                 // Set `cfguard=1` module flag to emit metadata only.
@@ -510,14 +510,6 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.wasm.trunc.saturate.signed.i32.f64", fn(t_f64) -> t_i32);
         ifn!("llvm.wasm.trunc.saturate.signed.i64.f32", fn(t_f32) -> t_i64);
         ifn!("llvm.wasm.trunc.saturate.signed.i64.f64", fn(t_f64) -> t_i64);
-        ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
-        ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);
-        ifn!("llvm.wasm.trunc.unsigned.i64.f32", fn(t_f32) -> t_i64);
-        ifn!("llvm.wasm.trunc.unsigned.i64.f64", fn(t_f64) -> t_i64);
-        ifn!("llvm.wasm.trunc.signed.i32.f32", fn(t_f32) -> t_i32);
-        ifn!("llvm.wasm.trunc.signed.i32.f64", fn(t_f64) -> t_i32);
-        ifn!("llvm.wasm.trunc.signed.i64.f32", fn(t_f32) -> t_i64);
-        ifn!("llvm.wasm.trunc.signed.i64.f64", fn(t_f64) -> t_i64);
 
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);

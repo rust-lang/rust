@@ -136,7 +136,7 @@ pub struct ResolverOutputs {
     pub extern_prelude: FxHashMap<Symbol, bool>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
 pub enum AssocItemContainer {
     TraitContainer(DefId),
     ImplContainer(DefId),
@@ -184,7 +184,7 @@ pub enum ImplPolarity {
     Reservation,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, HashStable, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct AssocItem {
     pub def_id: DefId,
     #[stable_hasher(project(name))]
@@ -199,7 +199,7 @@ pub struct AssocItem {
     pub fn_has_self_parameter: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, HashStable, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum AssocKind {
     Const,
     Fn,
@@ -316,7 +316,7 @@ impl<'tcx> AssociatedItems<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy, RustcEncodable, RustcDecodable, HashStable, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, RustcEncodable, RustcDecodable, HashStable)]
 pub enum Visibility {
     /// Visible everywhere (including in other crates).
     Public,
@@ -890,7 +890,6 @@ impl<'tcx> Generics {
         false
     }
 
-    /// Returns the `GenericParamDef` with the given index.
     pub fn param_at(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
             &self.params[index]
@@ -900,7 +899,6 @@ impl<'tcx> Generics {
         }
     }
 
-    /// Returns the `GenericParamDef` associated with this `EarlyBoundRegion`.
     pub fn region_param(
         &'tcx self,
         param: &EarlyBoundRegion,
@@ -922,7 +920,7 @@ impl<'tcx> Generics {
         }
     }
 
-    /// Returns the `GenericParamDef` associated with this `ParamConst`.
+    /// Returns the `ConstParameterDef` associated with this `ParamConst`.
     pub fn const_param(&'tcx self, param: &ParamConst, tcx: TyCtxt<'tcx>) -> &GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
         match param.kind {
@@ -1617,33 +1615,12 @@ pub struct WithOptConstParam<T> {
 
 impl<T> WithOptConstParam<T> {
     /// Creates a new `WithOptConstParam` setting `const_param_did` to `None`.
-    #[inline(always)]
     pub fn unknown(did: T) -> WithOptConstParam<T> {
         WithOptConstParam { did, const_param_did: None }
     }
 }
 
 impl WithOptConstParam<LocalDefId> {
-    /// Returns `Some((did, param_did))` if `def_id` is a const argument,
-    /// `None` otherwise.
-    #[inline(always)]
-    pub fn try_lookup(did: LocalDefId, tcx: TyCtxt<'_>) -> Option<(LocalDefId, DefId)> {
-        tcx.opt_const_param_of(did).map(|param_did| (did, param_did))
-    }
-
-    /// In case `self` is unknown but `self.did` is a const argument, this returns
-    /// a `WithOptConstParam` with the correct `const_param_did`.
-    #[inline(always)]
-    pub fn try_upgrade(self, tcx: TyCtxt<'_>) -> Option<WithOptConstParam<LocalDefId>> {
-        if self.const_param_did.is_none() {
-            if let const_param_did @ Some(_) = tcx.opt_const_param_of(self.did) {
-                return Some(WithOptConstParam { did: self.did, const_param_did });
-            }
-        }
-
-        None
-    }
-
     pub fn to_global(self) -> WithOptConstParam<DefId> {
         WithOptConstParam { did: self.did.to_def_id(), const_param_did: self.const_param_did }
     }

@@ -730,13 +730,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
             placeholder_type_error(tcx, None, &[], visitor.0, false);
         }
 
-        hir::TraitItemKind::Type(_, None) => {
-            // #74612: Visit and try to find bad placeholders
-            // even if there is no concrete type.
-            let mut visitor = PlaceholderHirTyCollector::default();
-            visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, None, &[], visitor.0, false);
-        }
+        hir::TraitItemKind::Type(_, None) => {}
     };
 
     tcx.ensure().predicates_of(def_id);
@@ -1933,7 +1927,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                         let re_root_empty = tcx.lifetimes.re_root_empty;
                         let predicate = ty::OutlivesPredicate(ty, re_root_empty);
                         predicates.push((
-                            ty::PredicateKind::TypeOutlives(ty::Binder::bind(predicate))
+                            ty::PredicateKind::TypeOutlives(ty::Binder::dummy(predicate))
                                 .to_predicate(tcx),
                             span,
                         ));

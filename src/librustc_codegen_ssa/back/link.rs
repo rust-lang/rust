@@ -1598,9 +1598,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    if sess.target.target.options.eh_frame_header {
-        cmd.add_eh_frame_header();
-    }
+    cmd.add_eh_frame_header();
 
     // NO-OPT-OUT, OBJECT-FILES-NO
     if crt_objects_fallback {
@@ -1661,7 +1659,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // FIXME: Order dependent, applies to the following objects. Where should it be placed?
     // Try to strip as much out of the generated object by removing unused
     // sections if possible. See more comments in linker.rs
-    if sess.opts.cg.link_dead_code != Some(true) {
+    if !sess.opts.cg.link_dead_code {
         let keep_metadata = crate_type == CrateType::Dylib;
         cmd.gc_sections(keep_metadata);
     }
@@ -1697,12 +1695,12 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     );
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    if sess.opts.cg.profile_generate.enabled() || sess.opts.debugging_opts.instrument_coverage {
+    if sess.opts.cg.profile_generate.enabled() {
         cmd.pgo_gen();
     }
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    if sess.opts.cg.control_flow_guard != CFGuard::Disabled {
+    if sess.opts.debugging_opts.control_flow_guard != CFGuard::Disabled {
         cmd.control_flow_guard();
     }
 

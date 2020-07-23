@@ -25,8 +25,10 @@ crate fn mir_built<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> &'tcx ty::steal::Steal<Body<'tcx>> {
-    if let Some(def) = def.try_upgrade(tcx) {
-        return tcx.mir_built(def);
+    if def.const_param_did.is_none() {
+        if let const_param_did @ Some(_) = tcx.opt_const_param_of(def.did) {
+            return tcx.mir_built(ty::WithOptConstParam { const_param_did, ..def });
+        }
     }
 
     tcx.alloc_steal_mir(mir_build(tcx, def))

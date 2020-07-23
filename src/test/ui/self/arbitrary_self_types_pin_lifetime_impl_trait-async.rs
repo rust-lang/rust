@@ -6,7 +6,7 @@ struct Foo;
 
 impl Foo {
     async fn f(self: Pin<&Self>) -> impl Clone { self }
-    //~^ ERROR E0759
+    //~^ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {

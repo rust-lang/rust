@@ -9,7 +9,7 @@ where
 struct Struct;
 
 impl Struct {
-    pub async fn run_dummy_fn(&self) { //~ ERROR E0759
+    pub async fn run_dummy_fn(&self) { //~ ERROR cannot infer
         foo(|| self.bar()).await;
     }
 

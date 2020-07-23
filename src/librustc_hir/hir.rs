@@ -2198,17 +2198,7 @@ pub enum IsAsync {
     NotAsync,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    RustcEncodable,
-    RustcDecodable,
-    Debug,
-    HashStable_Generic,
-    Eq,
-    Hash
-)]
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum Defaultness {
     Default { has_value: bool },
     Final,

@@ -1,5 +1,3 @@
-use std::ffi::{OsStr, OsString};
-use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -30,14 +28,6 @@ macro_rules! t {
     };
 }
 
-/// Reads an environment variable and adds it to dependencies.
-/// Supposed to be used for all variables except those set for build scripts by cargo
-/// https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts
-pub fn tracked_env_var_os<K: AsRef<OsStr> + Display>(key: K) -> Option<OsString> {
-    println!("cargo:rerun-if-env-changed={}", key);
-    env::var_os(key)
-}
-
 // Because Cargo adds the compiler's dylib path to our library search path, llvm-config may
 // break: the dylib path for the compiler, as of this writing, contains a copy of the LLVM
 // shared library, which means that when our freshly built llvm-config goes to load it's
@@ -47,8 +37,10 @@ pub fn tracked_env_var_os<K: AsRef<OsStr> + Display>(key: K) -> Option<OsString>
 // perfect -- we might actually want to see something from Cargo's added library paths -- but
 // for now it works.
 pub fn restore_library_path() {
-    let key = tracked_env_var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
-    if let Some(env) = tracked_env_var_os("REAL_LIBRARY_PATH") {
+    println!("cargo:rerun-if-env-changed=REAL_LIBRARY_PATH_VAR");
+    println!("cargo:rerun-if-env-changed=REAL_LIBRARY_PATH");
+    let key = env::var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
+    if let Some(env) = env::var_os("REAL_LIBRARY_PATH") {
         env::set_var(&key, &env);
     } else {
         env::remove_var(&key);

@@ -1,35 +1,35 @@
-warning: unresolved link to `error`
+warning: `[error]` cannot be resolved, ignoring it.
   --> $DIR/intra-links-warning-crlf.rs:7:6
    |
 LL | /// [error]
-   |      ^^^^^ unresolved link
+   |      ^^^^^ cannot be resolved, ignoring
    |
    = note: `#[warn(intra_doc_link_resolution_failure)]` on by default
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
-warning: unresolved link to `error1`
+warning: `[error1]` cannot be resolved, ignoring it.
   --> $DIR/intra-links-warning-crlf.rs:12:11
    |
 LL | /// docs [error1]
-   |           ^^^^^^ unresolved link
+   |           ^^^^^^ cannot be resolved, ignoring
    |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
-warning: unresolved link to `error2`
+warning: `[error2]` cannot be resolved, ignoring it.
   --> $DIR/intra-links-warning-crlf.rs:15:11
    |
 LL | /// docs [error2]
-   |           ^^^^^^ unresolved link
+   |           ^^^^^^ cannot be resolved, ignoring
    |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
-warning: unresolved link to `error`
+warning: `[error]` cannot be resolved, ignoring it.
   --> $DIR/intra-links-warning-crlf.rs:23:20
    |
 LL |  * It also has an [error].
-   |                    ^^^^^ unresolved link
+   |                    ^^^^^ cannot be resolved, ignoring
    |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 warning: 4 warnings emitted
 

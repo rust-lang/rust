@@ -574,7 +574,6 @@ supported_targets! {
     ("i686-unknown-haiku", i686_unknown_haiku),
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
 
-    ("aarch64-apple-darwin", aarch64_apple_darwin),
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
 
@@ -677,7 +676,6 @@ supported_targets! {
     ("powerpc64-wrs-vxworks", powerpc64_wrs_vxworks),
 
     ("mipsel-sony-psp", mipsel_sony_psp),
-    ("thumbv4t-none-eabi", thumbv4t_none_eabi),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -988,11 +986,6 @@ pub struct TargetOptions {
     /// Whether to use legacy .ctors initialization hooks rather than .init_array. Defaults
     /// to false (uses .init_array).
     pub use_ctors_section: bool,
-
-    /// Whether the linker is instructed to add a `GNU_EH_FRAME` ELF header
-    /// used to locate unwinding information is passed
-    /// (only has effect if the linker is `ld`-like).
-    pub eh_frame_header: bool,
 }
 
 impl Default for TargetOptions {
@@ -1084,7 +1077,6 @@ impl Default for TargetOptions {
             relax_elf_relocations: false,
             llvm_args: vec![],
             use_ctors_section: false,
-            eh_frame_header: true,
         }
     }
 }
@@ -1477,7 +1469,6 @@ impl Target {
         key!(relax_elf_relocations, bool);
         key!(llvm_args, list);
         key!(use_ctors_section, bool);
-        key!(eh_frame_header, bool);
 
         // NB: The old name is deprecated, but support for it is retained for
         // compatibility.
@@ -1715,7 +1706,6 @@ impl ToJson for Target {
         target_option_val!(relax_elf_relocations);
         target_option_val!(llvm_args);
         target_option_val!(use_ctors_section);
-        target_option_val!(eh_frame_header);
 
         if default.unsupported_abis != self.options.unsupported_abis {
             d.insert(

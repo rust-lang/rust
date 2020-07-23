@@ -1060,7 +1060,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             fn_name, hash, num_counters, index
         );
 
-        let llfn = unsafe { llvm::LLVMRustGetInstrProfIncrementIntrinsic(self.cx().llmod) };
+        let llfn = unsafe { llvm::LLVMRustGetInstrprofIncrementIntrinsic(self.cx().llmod) };
         let args = &[fn_name, hash, num_counters, index];
         let args = self.check_call("call", llfn, args);
 
@@ -1330,12 +1330,7 @@ impl Builder<'a, 'll, 'tcx> {
         self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
     }
 
-    pub(crate) fn phi(
-        &mut self,
-        ty: &'ll Type,
-        vals: &[&'ll Value],
-        bbs: &[&'ll BasicBlock],
-    ) -> &'ll Value {
+    fn phi(&mut self, ty: &'ll Type, vals: &[&'ll Value], bbs: &[&'ll BasicBlock]) -> &'ll Value {
         assert_eq!(vals.len(), bbs.len());
         let phi = unsafe { llvm::LLVMBuildPhi(self.llbuilder, ty, UNNAMED) };
         unsafe {

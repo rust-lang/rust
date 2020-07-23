@@ -2,12 +2,12 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use build_helper::{output, tracked_env_var_os};
+use build_helper::output;
 
 fn detect_llvm_link() -> (&'static str, &'static str) {
     // Force the link mode we want, preferring static by default, but
     // possibly overridden by `configure --enable-llvm-link-shared`.
-    if tracked_env_var_os("LLVM_LINK_SHARED").is_some() {
+    if env::var_os("LLVM_LINK_SHARED").is_some() {
         ("dylib", "--link-shared")
     } else {
         ("static", "--link-static")
@@ -15,7 +15,8 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
 }
 
 fn main() {
-    if tracked_env_var_os("RUST_CHECK").is_some() {
+    println!("cargo:rerun-if-env-changed=RUST_CHECK");
+    if env::var_os("RUST_CHECK").is_some() {
         // If we're just running `check`, there's no need for LLVM to be built.
         return;
     }
@@ -24,8 +25,8 @@ fn main() {
 
     let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config =
-        tracked_env_var_os("LLVM_CONFIG").map(|x| Some(PathBuf::from(x))).unwrap_or_else(|| {
-            if let Some(dir) = tracked_env_var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
+        env::var_os("LLVM_CONFIG").map(|x| Some(PathBuf::from(x))).unwrap_or_else(|| {
+            if let Some(dir) = env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
                 let to_test = dir
                     .parent()
                     .unwrap()
@@ -44,6 +45,8 @@ fn main() {
         println!("cargo:rerun-if-changed={}", llvm_config.display());
     }
     let llvm_config = llvm_config.unwrap_or_else(|| PathBuf::from("llvm-config"));
+
+    println!("cargo:rerun-if-env-changed=LLVM_CONFIG");
 
     // Test whether we're cross-compiling LLVM. This is a pretty rare case
     // currently where we're producing an LLVM for a different platform than
@@ -101,16 +104,8 @@ fn main() {
         optional_components.push("riscv");
     }
 
-    let required_components = &[
-        "ipo",
-        "bitreader",
-        "bitwriter",
-        "linker",
-        "asmparser",
-        "lto",
-        "coverage",
-        "instrumentation",
-    ];
+    let required_components =
+        &["ipo", "bitreader", "bitwriter", "linker", "asmparser", "lto", "instrumentation"];
 
     let components = output(Command::new(&llvm_config).arg("--components"));
     let mut components = components.split_whitespace().collect::<Vec<_>>();
@@ -160,11 +155,12 @@ fn main() {
         cfg.define(&flag, None);
     }
 
-    if tracked_env_var_os("LLVM_RUSTLLVM").is_some() {
+    println!("cargo:rerun-if-changed-env=LLVM_RUSTLLVM");
+    if env::var_os("LLVM_RUSTLLVM").is_some() {
         cfg.define("LLVM_RUSTLLVM", None);
     }
 
-    if tracked_env_var_os("LLVM_NDEBUG").is_some() {
+    if env::var_os("LLVM_NDEBUG").is_some() {
         cfg.define("NDEBUG", None);
         cfg.debug(false);
     }
@@ -173,7 +169,6 @@ fn main() {
     cfg.file("../rustllvm/PassWrapper.cpp")
         .file("../rustllvm/RustWrapper.cpp")
         .file("../rustllvm/ArchiveWrapper.cpp")
-        .file("../rustllvm/CoverageMappingWrapper.cpp")
         .file("../rustllvm/Linker.cpp")
         .cpp(true)
         .cpp_link_stdlib(None) // we handle this below
@@ -251,7 +246,7 @@ fn main() {
     // librustc_llvm, for example when using static libc++, we may need to
     // manually specify the library search path and -ldl -lpthread as link
     // dependencies.
-    let llvm_linker_flags = tracked_env_var_os("LLVM_LINKER_FLAGS");
+    let llvm_linker_flags = env::var_os("LLVM_LINKER_FLAGS");
     if let Some(s) = llvm_linker_flags {
         for lib in s.into_string().unwrap().split_whitespace() {
             if lib.starts_with("-l") {
@@ -262,8 +257,8 @@ fn main() {
         }
     }
 
-    let llvm_static_stdcpp = tracked_env_var_os("LLVM_STATIC_STDCPP");
-    let llvm_use_libcxx = tracked_env_var_os("LLVM_USE_LIBCXX");
+    let llvm_static_stdcpp = env::var_os("LLVM_STATIC_STDCPP");
+    let llvm_use_libcxx = env::var_os("LLVM_USE_LIBCXX");
 
     let stdcppname = if target.contains("openbsd") {
         if target.contains("sparc64") { "estdc++" } else { "c++" }

@@ -47,22 +47,17 @@ impl<T: ?Sized> *mut T {
     /// operation because the returned value could be pointing to invalid
     /// memory.
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
-    /// all of the following is true:
-    /// - it is properly aligned
-    /// - it must point to an initialized instance of T; in particular, the pointer must be
-    ///   "dereferencable" in the sense defined [here].
-    ///
-    /// This applies even if the result of this method is unused!
+    /// When calling this method, you have to ensure that if the pointer is
+    /// non-NULL, then it is properly aligned, dereferenceable (for the whole
+    /// size of `T`) and points to an initialized instance of `T`. This applies
+    /// even if the result of this method is unused!
     /// (The part about being initialized is not yet fully decided, but until
     /// it is, the only safe approach is to ensure that they are indeed initialized.)
     ///
     /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
-    /// not necessarily reflect the actual lifetime of the data. *You* must enforce
-    /// Rust's aliasing rules. In particular, for the duration of this lifetime,
-    /// the memory the pointer points to must not get mutated (except inside `UnsafeCell`).
-    ///
-    /// [here]: crate::ptr#safety
+    /// not necessarily reflect the actual lifetime of the data. It is up to the
+    /// caller to ensure that for the duration of this lifetime, the memory this
+    /// pointer points to does not get written to outside of `UnsafeCell<U>`.
     ///
     /// # Examples
     ///
@@ -317,13 +312,13 @@ impl<T: ?Sized> *mut T {
         intrinsics::ptr_guaranteed_eq(self as *const _, other as *const _)
     }
 
-    /// Returns whether two pointers are guaranteed to be unequal.
+    /// Returns whether two pointers are guaranteed to be inequal.
     ///
     /// At runtime this function behaves like `self != other`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine the inequality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be unequal.
-    /// But when it returns `true`, the pointers are guaranteed to be unequal.
+    /// spuriously return `false` for pointers that later actually turn out to be inequal.
+    /// But when it returns `true`, the pointers are guaranteed to be inequal.
     ///
     /// This function is the mirror of [`guaranteed_eq`], but not its inverse. There are pointer
     /// comparisons for which both functions return `false`.

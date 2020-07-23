@@ -98,8 +98,12 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// // use the values stored in the set
 /// ```
 ///
-/// [`RefCell`]: crate::cell::RefCell
-/// [`Cell`]: crate::cell::Cell
+/// [`Cell`]: ../../std/cell/struct.Cell.html
+/// [`Eq`]: ../../std/cmp/trait.Eq.html
+/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`HashMap`]: struct.HashMap.html
+/// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
+/// [`RefCell`]: ../../std/cell/struct.RefCell.html
 #[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashset_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -282,6 +286,8 @@ impl<T, S> HashSet<T, S> {
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hasher: S) -> HashSet<T, S> {
@@ -312,6 +318,8 @@ impl<T, S> HashSet<T, S> {
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashSet<T, S> {
@@ -319,6 +327,8 @@ impl<T, S> HashSet<T, S> {
     }
 
     /// Returns a reference to the set's [`BuildHasher`].
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     ///
     /// # Examples
     ///
@@ -567,6 +577,9 @@ where
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
@@ -592,6 +605,9 @@ where
     /// assert_eq!(set.get(&2), Some(&2));
     /// assert_eq!(set.get(&4), None);
     /// ```
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[inline]
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
@@ -833,6 +849,9 @@ where
     /// assert_eq!(set.remove(&2), true);
     /// assert_eq!(set.remove(&2), false);
     /// ```
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
@@ -858,6 +877,9 @@ where
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
     /// ```
+    ///
+    /// [`Eq`]: ../../std/cmp/trait.Eq.html
+    /// [`Hash`]: ../../std/hash/trait.Hash.html
     #[inline]
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
@@ -1131,7 +1153,8 @@ where
 /// This `struct` is created by the [`iter`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`iter`]: HashSet::iter
+/// [`HashSet`]: struct.HashSet.html
+/// [`iter`]: struct.HashSet.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a> {
     iter: Keys<'a, K, ()>,
@@ -1142,7 +1165,8 @@ pub struct Iter<'a, K: 'a> {
 /// This `struct` is created by the [`into_iter`] method on [`HashSet`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`into_iter`]: IntoIterator::into_iter
+/// [`HashSet`]: struct.HashSet.html
+/// [`into_iter`]: struct.HashSet.html#method.into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
     iter: map::IntoIter<K, ()>,
@@ -1153,7 +1177,8 @@ pub struct IntoIter<K> {
 /// This `struct` is created by the [`drain`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`drain`]: HashSet::drain
+/// [`HashSet`]: struct.HashSet.html
+/// [`drain`]: struct.HashSet.html#method.drain
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Drain<'a, K: 'a> {
     iter: map::Drain<'a, K, ()>,
@@ -1164,7 +1189,8 @@ pub struct Drain<'a, K: 'a> {
 /// This `struct` is created by the [`intersection`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`intersection`]: HashSet::intersection
+/// [`HashSet`]: struct.HashSet.html
+/// [`intersection`]: struct.HashSet.html#method.intersection
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -1178,7 +1204,8 @@ pub struct Intersection<'a, T: 'a, S: 'a> {
 /// This `struct` is created by the [`difference`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`difference`]: HashSet::difference
+/// [`HashSet`]: struct.HashSet.html
+/// [`difference`]: struct.HashSet.html#method.difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -1192,7 +1219,8 @@ pub struct Difference<'a, T: 'a, S: 'a> {
 /// This `struct` is created by the [`symmetric_difference`] method on
 /// [`HashSet`]. See its documentation for more.
 ///
-/// [`symmetric_difference`]: HashSet::symmetric_difference
+/// [`HashSet`]: struct.HashSet.html
+/// [`symmetric_difference`]: struct.HashSet.html#method.symmetric_difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
     iter: Chain<Difference<'a, T, S>, Difference<'a, T, S>>,
@@ -1203,7 +1231,8 @@ pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
 /// This `struct` is created by the [`union`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`union`]: HashSet::union
+/// [`HashSet`]: struct.HashSet.html
+/// [`union`]: struct.HashSet.html#method.union
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>,

@@ -36,13 +36,12 @@ use crate::traits::{Obligation, PredicateObligations};
 
 use rustc_ast::ast;
 use rustc_hir::def_id::DefId;
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::ty::{IntType, UintType};
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'tcx> {
@@ -368,11 +367,10 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         };
 
         debug!("generalize: for_universe = {:?}", for_universe);
-        debug!("generalize: trace = {:?}", self.trace);
 
         let mut generalize = Generalizer {
             infcx: self.infcx,
-            cause: &self.trace.cause,
+            span: self.trace.cause.span,
             for_vid_sub_root: self.infcx.inner.borrow_mut().type_variables().sub_root_var(for_vid),
             for_universe,
             ambient_variance,
@@ -416,7 +414,7 @@ struct Generalizer<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
 
     /// The span, used when creating new type variables and things.
-    cause: &'cx ObligationCause<'tcx>,
+    span: Span,
 
     /// The vid of the type variable that is in the process of being
     /// instantiated; if we find this within the type we are folding,
@@ -641,7 +639,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
         // FIXME: This is non-ideal because we don't give a
         // very descriptive origin for this region variable.
-        Ok(self.infcx.next_region_var_in_universe(MiscVariable(self.cause.span), self.for_universe))
+        Ok(self.infcx.next_region_var_in_universe(MiscVariable(self.span), self.for_universe))
     }
 
     fn consts(

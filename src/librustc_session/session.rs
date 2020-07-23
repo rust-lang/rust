@@ -548,7 +548,7 @@ impl Session {
         self.opts.debugging_opts.asm_comments
     }
     pub fn verify_llvm_ir(&self) -> bool {
-        self.opts.debugging_opts.verify_llvm_ir || option_env!("RUSTC_VERIFY_LLVM_IR").is_some()
+        self.opts.debugging_opts.verify_llvm_ir || cfg!(always_verify_llvm_ir)
     }
     pub fn borrowck_stats(&self) -> bool {
         self.opts.debugging_opts.borrowck_stats
@@ -1354,20 +1354,6 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                   with `-Cpanic=unwind` on Windows when targeting MSVC. \
                   See issue #61002 <https://github.com/rust-lang/rust/issues/61002> \
                   for more information.",
-        );
-    }
-
-    // FIXME(richkadel): See `src/test/run-make-fulldeps/instrument-coverage/Makefile`. After
-    // compiling with `-Zinstrument-coverage`, the resulting binary generates a segfault during
-    // the program's exit process (likely while attempting to generate the coverage stats in
-    // the "*.profraw" file). An investigation to resolve the problem on Windows is ongoing,
-    // but until this is resolved, the option is disabled on Windows, and the test is skipped
-    // when targeting `MSVC`.
-    if sess.opts.debugging_opts.instrument_coverage && sess.target.target.options.is_like_msvc {
-        sess.warn(
-            "Rust source-based code coverage instrumentation (with `-Z instrument-coverage`) \
-            is not yet supported on Windows when targeting MSVC. The resulting binaries will \
-            still be instrumented for experimentation purposes, but may not execute correctly.",
         );
     }
 
