@@ -1362,13 +1362,9 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
     let type_start = own_start - has_self as u32 + params.len() as u32;
     let mut i = 0;
 
-    // FIXME(const_generics): a few places in the compiler expect generic params
-    // to be in the order lifetimes, then type params, then const params.
-    //
-    // To prevent internal errors in case const parameters are supplied before
-    // type parameters we first add all type params, then all const params.
-    params.extend(ast_generics.params.iter().filter_map(|param| {
-        if let GenericParamKind::Type { ref default, synthetic, .. } = param.kind {
+    params.extend(ast_generics.params.iter().filter_map(|param| match param.kind {
+        GenericParamKind::Lifetime { .. } => None,
+        GenericParamKind::Type { ref default, synthetic, .. } => {
             if !allow_defaults && default.is_some() {
                 if !tcx.features().default_type_parameter_fallback {
                     tcx.struct_span_lint_hir(
@@ -1378,7 +1374,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         |lint| {
                             lint.build(
                                 "defaults for type parameters are only allowed in \
-                                        `struct`, `enum`, `type`, or `trait` definitions.",
+                                            `struct`, `enum`, `type`, or `trait` definitions.",
                             )
                             .emit();
                         },
@@ -1403,13 +1399,8 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             };
             i += 1;
             Some(param_def)
-        } else {
-            None
         }
-    }));
-
-    params.extend(ast_generics.params.iter().filter_map(|param| {
-        if let GenericParamKind::Const { .. } = param.kind {
+        GenericParamKind::Const { .. } => {
             let param_def = ty::GenericParamDef {
                 index: type_start + i as u32,
                 name: param.name.ident().name,
@@ -1419,8 +1410,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             };
             i += 1;
             Some(param_def)
-        } else {
-            None
         }
     }));
 
