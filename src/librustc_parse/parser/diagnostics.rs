@@ -1,9 +1,9 @@
 use super::ty::AllowPlus;
 use super::{BlockMode, Parser, PathStyle, SemiColonMode, SeqSep, TokenExpectType, TokenType};
 
-use rustc_ast::ast::{self, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Item, Param};
 use rustc_ast::ast::{
-    AngleBracketedArgs, AttrVec, ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
+    self, AngleBracketedArgs, AttrVec, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind,
+    Item, ItemKind, Mutability, Param, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
 };
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Lit, LitKind, TokenKind};
@@ -498,29 +498,42 @@ impl<'a> Parser<'a> {
             self.bump();
             let lo = self.token.span;
             match self.parse_angle_args() {
-                Ok(args) if self.token.kind == token::OpenDelim(token::Paren) => {
-                    // Recover from bad turbofish: `foo.collect::Vec<_>()`.
+                Ok(args) => {
                     let span = lo.to(self.prev_token.span);
-                    let args = AngleBracketedArgs { args, span }.into();
-                    segment.args = args;
-                    self.struct_span_err(
-                        span,
-                        "generic parameters without surrounding angle brackets",
-                    )
-                    .multipart_suggestion(
-                        "surround the type parameters with angle brackets",
-                        vec![
-                            (span.shrink_to_lo(), "<".to_string()),
-                            (span.shrink_to_hi(), ">".to_string()),
-                        ],
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-                }
-                Ok(_) => {
-                    *self = snapshot;
+                    // Detect trailing `>` like in `x.collect::Vec<_>>()`.
+                    let mut trailing_span = self.prev_token.span.shrink_to_hi();
+                    while self.token.kind == token::BinOp(token::Shr)
+                        || self.token.kind == token::Gt
+                    {
+                        trailing_span = trailing_span.to(self.token.span);
+                        self.bump();
+                    }
+                    if self.token.kind == token::OpenDelim(token::Paren) {
+                        // Recover from bad turbofish: `foo.collect::Vec<_>()`.
+                        let args = AngleBracketedArgs { args, span }.into();
+                        segment.args = args;
+
+                        self.struct_span_err(
+                            span,
+                            "generic parameters without surrounding angle brackets",
+                        )
+                        .multipart_suggestion(
+                            "surround the type parameters with angle brackets",
+                            vec![
+                                (span.shrink_to_lo(), "<".to_string()),
+                                (trailing_span, ">".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        )
+                        .emit();
+                    } else {
+                        // This doesn't look like an invalid turbofish, can't recover parse state.
+                        *self = snapshot;
+                    }
                 }
                 Err(mut err) => {
+                    // We could't parse generic parameters, unlikely to be a turbofish. Rely on
+                    // generic parse error instead.
                     err.cancel();
                     *self = snapshot;
                 }
