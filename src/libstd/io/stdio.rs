@@ -889,12 +889,10 @@ impl fmt::Debug for StderrLock<'_> {
 /// #![feature(input)]
 /// use std::io;
 ///
-/// fn main() -> Result<()> {
-///     let name = io::input("Enter name: ")?;
+/// fn main() {
+///     let name = io::input("Enter name: ").expect("input failed!");
 ///
 ///     println!("Your name is {}!", name);
-///
-///     Ok(())
 /// }
 /// ```
 #[unstable(
