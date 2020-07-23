@@ -8,7 +8,7 @@ LL |     is_fn(f);
    |           ^ expected an `Fn<()>` closure, found `extern "C" fn() {f}`
    |
    = help: the trait `std::ops::Fn<()>` is not implemented for `extern "C" fn() {f}`
-   = note: wrap the `extern "C" fn() {f}` in a closure with no arguments: `|| { /* code */ }
+   = note: wrap the `extern "C" fn() {f}` in a closure with no arguments: `|| { /* code */ }`
 
 error: aborting due to previous error
 
