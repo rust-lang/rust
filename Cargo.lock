@@ -1077,7 +1077,7 @@ dependencies = [
  "ra_text_edit",
  "rayon",
  "rustc-hash",
- "superslice",
+ "stdx",
  "test_utils",
 ]
 
@@ -1582,12 +1582,6 @@ dependencies = [
 [[package]]
 name = "stdx"
 version = "0.1.0"
-
-[[package]]
-name = "superslice"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab16ced94dbd8a46c82fd81e3ed9a8727dac2977ea869d217bcc4ea1f122e81f"
 
 [[package]]
 name = "syn"
