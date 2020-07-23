@@ -12,9 +12,6 @@ if isWindows; then
     mkdir -p "${msys2Path}/home/${USERNAME}"
     ciCommandAddPath "${msys2Path}/usr/bin"
 
-    echo "switching shell to use our own bash"
-    ciCommandSetEnv CI_OVERRIDE_SHELL "${msys2Path}/usr/bin/bash.exe"
-
     # Detect the native Python version installed on the agent. On GitHub
     # Actions, the C:\hostedtoolcache\windows\Python directory contains a
     # subdirectory for each installed Python version.
