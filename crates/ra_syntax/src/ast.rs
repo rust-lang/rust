@@ -2,9 +2,9 @@
 
 mod generated;
 mod traits;
-mod tokens;
-mod extensions;
-mod expr_extensions;
+mod token_ext;
+mod node_ext;
+mod expr_ext;
 pub mod edit;
 pub mod make;
 
@@ -16,13 +16,13 @@ use crate::{
 };
 
 pub use self::{
-    expr_extensions::{ArrayExprKind, BinOp, Effect, ElseBranch, LiteralKind, PrefixOp, RangeOp},
-    extensions::{
+    expr_ext::{ArrayExprKind, BinOp, Effect, ElseBranch, LiteralKind, PrefixOp, RangeOp},
+    generated::{nodes::*, tokens::*},
+    node_ext::{
         AttrKind, FieldKind, NameOrNameRef, PathSegmentKind, SelfParamKind, SlicePatComponents,
         StructKind, TypeBoundKind, VisibilityKind,
     },
-    generated::{nodes::*, tokens::*},
-    tokens::*,
+    token_ext::*,
     traits::*,
 };
 

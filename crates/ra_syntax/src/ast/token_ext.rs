@@ -5,11 +5,12 @@ use std::{
     convert::{TryFrom, TryInto},
 };
 
+use rustc_lexer::unescape::{unescape_literal, Mode};
+
 use crate::{
     ast::{AstToken, Comment, RawString, String, Whitespace},
     TextRange, TextSize,
 };
-use rustc_lexer::unescape::{unescape_literal, Mode};
 
 impl Comment {
     pub fn kind(&self) -> CommentKind {
