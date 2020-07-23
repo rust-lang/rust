@@ -2429,7 +2429,6 @@ fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     if let ExprKind::Block(ref block, _) = expr.kind {
         for ref stmt in block.stmts {
             if_chain! {
-                // TODO also work for assignments to an existing variable
                 if let StmtKind::Local(
                     Local { pat: Pat { kind: PatKind::Binding(_, _, ident, .. ), .. },
                     init: Some(ref init_expr), .. }
@@ -2446,21 +2445,22 @@ fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
                 if iter_calls.len() == 1;
                 then {
                     // Suggest replacing iter_call with iter_replacement, and removing stmt
+                    let iter_call = &iter_calls[0];
                     span_lint_and_then(
                         cx,
                         NEEDLESS_COLLECT,
-                        stmt.span,
+                        stmt.span.until(iter_call.span),
                         NEEDLESS_COLLECT_MSG,
                         |diag| {
-                            let iter_replacement = Sugg::hir(cx, iter_source, "..").to_string();
+                            let iter_replacement = format!("{}{}", Sugg::hir(cx, iter_source, ".."), iter_call.get_iter_method(cx));
                             diag.multipart_suggestion(
-                                "Use the original Iterator instead of collecting it and then producing a new one",
+                                iter_call.get_suggestion_text(),
                                 vec![
                                     (stmt.span, String::new()),
-                                    (iter_calls[0].span, iter_replacement)
+                                    (iter_call.span, iter_replacement)
                                 ],
-                                Applicability::MaybeIncorrect,
-                            );
+                                Applicability::MachineApplicable,// MaybeIncorrect,
+                            ).emit();
                         },
                     );
                 }
@@ -2469,32 +2469,62 @@ fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     }
 }
 
-struct IntoIterVisitor<'tcx> {
-    iters: Vec<&'tcx Expr<'tcx>>,
+struct IterFunction {
+    func: IterFunctionKind,
+    span: Span,
+}
+impl IterFunction {
+    fn get_iter_method(&self, cx: &LateContext<'_>) -> String {
+        match &self.func {
+            IterFunctionKind::IntoIter => String::new(),
+            IterFunctionKind::Len => String::from(".count()"),
+            IterFunctionKind::IsEmpty => String::from(".next().is_none()"),
+            IterFunctionKind::Contains(span) => format!(".any(|x| x == {})", snippet(cx, *span, "..")),
+        }
+    }
+    fn get_suggestion_text(&self) -> &'static str {
+        match &self.func {
+            IterFunctionKind::IntoIter => "Use the original Iterator instead of collecting it and then producing a new one",
+            IterFunctionKind::Len => "Take the original Iterator's count instead of collecting it and finding the length",
+            IterFunctionKind::IsEmpty => "Check if the original Iterator has anything instead of collecting it and seeing if it's empty",
+            IterFunctionKind::Contains(_) => "Check if the original Iterator contains an element instead of collecting then checking",
+        }
+    }
+}
+enum IterFunctionKind {
+    IntoIter,
+    Len,
+    IsEmpty,
+    Contains(Span),
+}
+
+struct IterFunctionVisitor {
+    uses: Vec<IterFunction>,
     seen_other: bool,
     target: String,
 }
-impl<'tcx> Visitor<'tcx> for IntoIterVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        match &expr.kind {
-            ExprKind::MethodCall(
-                method_name,
-                _,
-                &[Expr {
-                    kind: ExprKind::Path(QPath::Resolved(_, ref path)),
-                    ..
-                }],
-                _,
-            ) if match_path(path, &[&self.target]) => {
-                // TODO Check what method is being called, if it's called on target, and act
-                // accordingly
-                if method_name.ident.name == sym!(into_iter) {
-                    self.iters.push(expr);
-                } else {
-                    self.seen_other = true;
+        if_chain! {
+            if let ExprKind::MethodCall(method_name, _, ref args, _) = &expr.kind;
+            if let Some(Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. }) = args.get(0);
+            if match_path(path, &[&self.target]);
+            then {
+                let into_iter = sym!(into_iter);
+                let len = sym!(len);
+                let is_empty = sym!(is_empty);
+                let contains = sym!(contains);
+                match method_name.ident.name {
+                    name if name == into_iter => self.uses.push(IterFunction { func: IterFunctionKind::IntoIter, span: expr.span }),
+                    name if name == len => self.uses.push(IterFunction { func: IterFunctionKind::Len, span: expr.span }),
+                    name if name == is_empty => self.uses.push(IterFunction { func: IterFunctionKind::IsEmpty, span: expr.span }),
+                    name if name == contains => self.uses.push(IterFunction { func: IterFunctionKind::Contains(args[1].span), span: expr.span }),
+                    _ => self.seen_other = true,
                 }
-            },
-            _ => walk_expr(self, expr),
+            }
+            else {
+                walk_expr(self, expr);
+            }
         }
     }
 
@@ -2506,9 +2536,9 @@ impl<'tcx> Visitor<'tcx> for IntoIterVisitor<'tcx> {
 
 /// Detect the occurences of calls to `iter` or `into_iter` for the
 /// given identifier
-fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<&'tcx Expr<'tcx>>> {
-    let mut visitor = IntoIterVisitor {
-        iters: Vec::new(),
+fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<IterFunction>> {
+    let mut visitor = IterFunctionVisitor {
+        uses: Vec::new(),
         target: identifier.name.to_ident_string(),
         seen_other: false,
     };
@@ -2516,7 +2546,7 @@ fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident)
     if visitor.seen_other {
         None
     } else {
-        Some(visitor.iters)
+        Some(visitor.uses)
     }
 }
 
