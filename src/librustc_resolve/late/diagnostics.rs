@@ -760,10 +760,8 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                         if !module.no_implicit_prelude {
                             let extern_prelude = self.r.extern_prelude.clone();
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
-                                self.r
-                                    .crate_loader
-                                    .maybe_process_path_extern(ident.name, ident.span)
-                                    .and_then(|crate_id| {
+                                self.r.crate_loader.maybe_process_path_extern(ident.name).and_then(
+                                    |crate_id| {
                                         let crate_mod = Res::Def(
                                             DefKind::Mod,
                                             DefId { krate: crate_id, index: CRATE_DEF_INDEX },
@@ -774,7 +772,8 @@ impl<'a> LateResolutionVisitor<'a, '_, '_> {
                                         } else {
                                             None
                                         }
-                                    })
+                                    },
+                                )
                             }));
 
                             if let Some(prelude) = self.r.prelude {
