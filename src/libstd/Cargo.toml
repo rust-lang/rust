@@ -24,15 +24,11 @@ profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 hashbrown = { version = "0.6.2", default-features = false, features = ['rustc-dep-of-std'] }
 
-# Dependencies of the `backtrace` crate
-addr2line = { version = "0.13.0", optional = true, default-features = false }
-rustc-demangle = { version = "0.1.4", features = ['rustc-dep-of-std'] }
-miniz_oxide = { version = "0.4.0", optional = true, default-features = false }
-[dependencies.object]
-version = "0.20"
-optional = true
-default-features = false
-features = ['read_core', 'elf', 'macho', 'pe']
+[dependencies.backtrace_rs]
+package = "backtrace"
+version = "0.3.46"
+default-features = false # without the libstd `backtrace` feature, stub out everything
+features = [ "rustc-dep-of-std" ] # enable build support for integrating into libstd
 
 [dev-dependencies]
 rand = "0.7"
@@ -51,12 +47,11 @@ wasi = { version = "0.9.0", features = ['rustc-dep-of-std'], default-features = 
 
 [features]
 backtrace = [
-  "gimli-symbolize",
-  'addr2line/rustc-dep-of-std',
-  'object/rustc-dep-of-std',
-  'miniz_oxide/rustc-dep-of-std',
+  "backtrace_rs/dbghelp",          # backtrace/symbolize on MSVC
+  "backtrace_rs/libbacktrace",     # symbolize on most platforms
+  "backtrace_rs/libunwind",        # backtrace on most platforms
+  "backtrace_rs/dladdr",           # symbolize on platforms w/o libbacktrace
 ]
-gimli-symbolize = []
 
 panic-unwind = ["panic_unwind"]
 profiler = ["profiler_builtins"]
