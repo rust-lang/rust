@@ -420,14 +420,17 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    *this.mem_docs.get_mut(&path).unwrap() = params.text_document.version;
+                    let doc = this.mem_docs.get_mut(&path).unwrap();
                     let vfs = &mut this.vfs.write().0;
                     let file_id = vfs.file_id(&path).unwrap();
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
                     apply_document_changes(&mut text, params.content_changes);
-                    vfs.set_file_contents(path.clone(), Some(text.into_bytes()));
 
-                    this.mem_docs.insert(path, params.text_document.version);
+                    // The version passed in DidChangeTextDocument is the version after all edits are applied
+                    // so we should apply it before the vfs is notified.
+                    *doc = params.text_document.version;
+
+                    vfs.set_file_contents(path.clone(), Some(text.into_bytes()));
                 }
                 Ok(())
             })?
