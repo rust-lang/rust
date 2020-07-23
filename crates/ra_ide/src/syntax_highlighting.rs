@@ -565,29 +565,21 @@ fn highlight_element(
                 _ => h,
             }
         }
-        T![&] => {
-            let ref_expr = element.parent().and_then(ast::RefExpr::cast)?;
-            let expr = ref_expr.expr()?;
-            let field_expr = match expr {
-                ast::Expr::FieldExpr(fe) => fe,
-                _ => return None,
-            };
-
-            let expr = field_expr.expr()?;
-            let ty = sema.type_of_expr(&expr)?;
-            if !ty.is_packed(db) {
-                return None;
-            }
-
-            // FIXME This needs layout computation to be correct. It will highlight
-            // more than it should with the current implementation.
-
-            HighlightTag::Operator | HighlightModifier::Unsafe
-        }
         p if p.is_punct() => match p {
-            T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] | T![@] => {
-                HighlightTag::Operator.into()
+            T![&] => {
+                let h = HighlightTag::Operator.into();
+                let is_unsafe = element
+                    .parent()
+                    .and_then(ast::RefExpr::cast)
+                    .map(|ref_expr| sema.is_unsafe_ref_expr(&ref_expr))
+                    .unwrap_or(false);
+                if is_unsafe {
+                    h | HighlightModifier::Unsafe
+                } else {
+                    h
+                }
             }
+            T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] => HighlightTag::Operator.into(),
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
                 HighlightTag::Macro.into()
             }
@@ -668,22 +660,18 @@ fn highlight_element(
                         HighlightTag::SelfKeyword.into()
                     }
                 }
-                T![ref] => {
-                    let modifier: Option<HighlightModifier> = (|| {
-                        let bind_pat = element.parent().and_then(ast::BindPat::cast)?;
-                        if sema.is_unsafe_pat(&ast::Pat::BindPat(bind_pat)) {
+                T![ref] => element
+                    .parent()
+                    .and_then(ast::BindPat::cast)
+                    .and_then(|bind_pat| {
+                        if sema.is_unsafe_bind_pat(&bind_pat) {
                             Some(HighlightModifier::Unsafe)
                         } else {
                             None
                         }
-                    })();
-
-                    if let Some(modifier) = modifier {
-                        h | modifier
-                    } else {
-                        h
-                    }
-                }
+                    })
+                    .map(|modifier| h | modifier)
+                    .unwrap_or(h),
                 _ => h,
             }
         }
@@ -710,31 +698,6 @@ fn is_child_of_impl(element: &SyntaxElement) -> bool {
     match element.parent() {
         Some(e) => e.kind() == IMPL,
         _ => false,
-    }
-}
-
-fn is_method_call_unsafe(
-    sema: &Semantics<RootDatabase>,
-    method_call_expr: ast::MethodCallExpr,
-) -> Option<()> {
-    let expr = method_call_expr.expr()?;
-    let field_expr =
-        if let ast::Expr::FieldExpr(field_expr) = expr { field_expr } else { return None };
-    let ty = sema.type_of_expr(&field_expr.expr()?)?;
-    if !ty.is_packed(sema.db) {
-        return None;
-    }
-
-    let func = sema.resolve_method_call(&method_call_expr)?;
-    if func.has_self_param(sema.db) {
-        let params = func.params(sema.db);
-        if matches!(params.into_iter().next(), Some(TypeRef::Reference(..))) {
-            Some(())
-        } else {
-            None
-        }
-    } else {
-        None
     }
 }
 
@@ -767,7 +730,7 @@ fn highlight_name(
                     let is_unsafe = name_ref
                         .and_then(|name_ref| name_ref.syntax().parent())
                         .and_then(ast::MethodCallExpr::cast)
-                        .and_then(|method_call_expr| is_method_call_unsafe(sema, method_call_expr));
+                        .and_then(|method_call_expr| sema.is_unsafe_method_call(method_call_expr));
                     if is_unsafe.is_some() {
                         h |= HighlightModifier::Unsafe;
                     }
@@ -846,7 +809,7 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
         METHOD_CALL_EXPR => {
             let mut h = Highlight::new(HighlightTag::Function);
             let is_unsafe = ast::MethodCallExpr::cast(parent)
-                .and_then(|method_call_expr| is_method_call_unsafe(sema, method_call_expr));
+                .and_then(|method_call_expr| sema.is_unsafe_method_call(method_call_expr));
 
             if is_unsafe.is_some() {
                 h |= HighlightModifier::Unsafe;
@@ -866,7 +829,11 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
                     })
                 })
                 .unwrap_or(false);
-            if is_union { h | HighlightModifier::Unsafe } else { h.into() }
+            if is_union {
+                h | HighlightModifier::Unsafe
+            } else {
+                h.into()
+            }
         }
         PATH_SEGMENT => {
             let path = match parent.parent().and_then(ast::Path::cast) {

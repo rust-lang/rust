@@ -25,7 +25,8 @@ use crate::{
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, resolve_hir_path_qualifier, SourceAnalyzer},
     AssocItem, Callable, Crate, Field, Function, HirFileId, ImplDef, InFile, Local, MacroDef,
-    Module, ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    Module, ModuleDef, Name, Origin, Path, ScopeDef, Trait, Type, TypeAlias, TypeParam, TypeRef,
+    VariantDef,
 };
 use resolver::TypeNs;
 
@@ -280,45 +281,84 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.assert_contains_node(node)
     }
 
-    pub fn is_unsafe_pat(&self, pat: &ast::Pat) -> bool {
-        let ty = (|| {
-            let parent = match pat {
-                ast::Pat::BindPat(bind_pat) => bind_pat.syntax().parent()?,
-                _ => return None,
-            };
+    pub fn is_unsafe_method_call(&self, method_call_expr: ast::MethodCallExpr) -> Option<()> {
+        let expr = method_call_expr.expr()?;
+        let field_expr =
+            if let ast::Expr::FieldExpr(field_expr) = expr { field_expr } else { return None };
+        let ty = self.type_of_expr(&field_expr.expr()?)?;
+        if !ty.is_packed(self.db) {
+            return None;
+        }
 
-            // `BindPat` can live under `RecordPat` directly under `RecordFieldPat` or
-            // `RecordFieldPatList`. `RecordFieldPat` also lives under `RecordFieldPatList`,
-            // so this tries to lookup the `BindPat` anywhere along that structure to the
-            // `RecordPat` so we can get the containing type.
-            let record_pat = ast::RecordFieldPat::cast(parent.clone())
-                .and_then(|record_pat| record_pat.syntax().parent())
-                .or_else(|| Some(parent.clone()))
-                .and_then(|parent| {
-                    ast::RecordFieldPatList::cast(parent)?
-                        .syntax()
-                        .parent()
-                        .and_then(ast::RecordPat::cast)
-                });
-
-            // If this doesn't match a `RecordPat`, fallback to a `LetStmt` to see if
-            // this is initialized from a `FieldExpr`.
-            if let Some(record_pat) = record_pat {
-                self.type_of_pat(&ast::Pat::RecordPat(record_pat))
-            } else if let Some(let_stmt) = ast::LetStmt::cast(parent) {
-                let field_expr = match let_stmt.initializer()? {
-                    ast::Expr::FieldExpr(field_expr) => field_expr,
-                    _ => return None,
-                };
-
-                self.type_of_expr(&field_expr.expr()?)
+        let func = self.resolve_method_call(&method_call_expr)?;
+        if func.has_self_param(self.db) {
+            let params = func.params(self.db);
+            if matches!(params.into_iter().next(), Some(TypeRef::Reference(..))) {
+                Some(())
             } else {
                 None
             }
-        })();
+        } else {
+            None
+        }
+    }
 
-        // Binding a reference to a packed type is possibly unsafe.
-        ty.map(|ty| ty.is_packed(self.db)).unwrap_or(false)
+    pub fn is_unsafe_ref_expr(&self, ref_expr: &ast::RefExpr) -> bool {
+        ref_expr
+            .expr()
+            .and_then(|expr| {
+                let field_expr = match expr {
+                    ast::Expr::FieldExpr(field_expr) => field_expr,
+                    _ => return None,
+                };
+                let expr = field_expr.expr()?;
+                self.type_of_expr(&expr)
+            })
+            // Binding a reference to a packed type is possibly unsafe.
+            .map(|ty| ty.is_packed(self.db))
+            .unwrap_or(false)
+
+        // FIXME This needs layout computation to be correct. It will highlight
+        // more than it should with the current implementation.
+    }
+
+    pub fn is_unsafe_bind_pat(&self, bind_pat: &ast::BindPat) -> bool {
+        bind_pat
+            .syntax()
+            .parent()
+            .and_then(|parent| {
+                // `BindPat` can live under `RecordPat` directly under `RecordFieldPat` or
+                // `RecordFieldPatList`. `RecordFieldPat` also lives under `RecordFieldPatList`,
+                // so this tries to lookup the `BindPat` anywhere along that structure to the
+                // `RecordPat` so we can get the containing type.
+                let record_pat = ast::RecordFieldPat::cast(parent.clone())
+                    .and_then(|record_pat| record_pat.syntax().parent())
+                    .or_else(|| Some(parent.clone()))
+                    .and_then(|parent| {
+                        ast::RecordFieldPatList::cast(parent)?
+                            .syntax()
+                            .parent()
+                            .and_then(ast::RecordPat::cast)
+                    });
+
+                // If this doesn't match a `RecordPat`, fallback to a `LetStmt` to see if
+                // this is initialized from a `FieldExpr`.
+                if let Some(record_pat) = record_pat {
+                    self.type_of_pat(&ast::Pat::RecordPat(record_pat))
+                } else if let Some(let_stmt) = ast::LetStmt::cast(parent) {
+                    let field_expr = match let_stmt.initializer()? {
+                        ast::Expr::FieldExpr(field_expr) => field_expr,
+                        _ => return None,
+                    };
+
+                    self.type_of_expr(&field_expr.expr()?)
+                } else {
+                    None
+                }
+            })
+            // Binding a reference to a packed type is possibly unsafe.
+            .map(|ty| ty.is_packed(self.db))
+            .unwrap_or(false)
     }
 }
 
