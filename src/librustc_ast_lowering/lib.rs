@@ -936,7 +936,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 })
             });
 
-        lowered_generics.params = lowered_generics.params.into_iter().chain(in_band_defs).collect();
+        lowered_generics.params.extend(in_band_defs);
 
         let lowered_generics = lowered_generics.into_generics(self.arena);
         (lowered_generics, res)
