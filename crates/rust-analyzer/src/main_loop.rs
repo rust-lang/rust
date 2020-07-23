@@ -97,22 +97,6 @@ impl fmt::Debug for Event {
 }
 
 impl GlobalState {
-    fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
-        select! {
-            recv(inbox) -> msg =>
-                msg.ok().map(Event::Lsp),
-
-            recv(self.task_pool.receiver) -> task =>
-                Some(Event::Task(task.unwrap())),
-
-            recv(self.loader.receiver) -> task =>
-                Some(Event::Vfs(task.unwrap())),
-
-            recv(self.flycheck_receiver) -> task =>
-                Some(Event::Flycheck(task.unwrap())),
-        }
-    }
-
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
         if self.config.linked_projects.is_empty() && self.config.notifications.cargo_toml_not_found
         {
@@ -167,6 +151,22 @@ impl GlobalState {
         }
 
         Err("client exited without proper shutdown sequence")?
+    }
+
+    fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
+        select! {
+            recv(inbox) -> msg =>
+                msg.ok().map(Event::Lsp),
+
+            recv(self.task_pool.receiver) -> task =>
+                Some(Event::Task(task.unwrap())),
+
+            recv(self.loader.receiver) -> task =>
+                Some(Event::Vfs(task.unwrap())),
+
+            recv(self.flycheck_receiver) -> task =>
+                Some(Event::Flycheck(task.unwrap())),
+        }
     }
 
     fn handle_event(&mut self, event: Event) -> Result<()> {
