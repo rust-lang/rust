@@ -2359,7 +2359,10 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
 fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
-    // Check for direct, immediate usage
+    check_needless_collect_direct_usage(expr, cx);
+    check_needless_collect_indirect_usage(expr, cx);
+}
+fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
         if let ExprKind::MethodCall(ref chain_method, _, _, _) = args[0].kind;
@@ -2425,7 +2428,9 @@ fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
             }
         }
     }
-    // Check for collecting it and then turning it back into an iterator later
+}
+
+fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     if let ExprKind::Block(ref block, _) = expr.kind {
         for ref stmt in block.stmts {
             if_chain! {
@@ -2484,10 +2489,18 @@ impl IterFunction {
     }
     fn get_suggestion_text(&self) -> &'static str {
         match &self.func {
-            IterFunctionKind::IntoIter => "Use the original Iterator instead of collecting it and then producing a new one",
-            IterFunctionKind::Len => "Take the original Iterator's count instead of collecting it and finding the length",
-            IterFunctionKind::IsEmpty => "Check if the original Iterator has anything instead of collecting it and seeing if it's empty",
-            IterFunctionKind::Contains(_) => "Check if the original Iterator contains an element instead of collecting then checking",
+            IterFunctionKind::IntoIter => {
+                "Use the original Iterator instead of collecting it and then producing a new one"
+            },
+            IterFunctionKind::Len => {
+                "Take the original Iterator's count instead of collecting it and finding the length"
+            },
+            IterFunctionKind::IsEmpty => {
+                "Check if the original Iterator has anything instead of collecting it and seeing if it's empty"
+            },
+            IterFunctionKind::Contains(_) => {
+                "Check if the original Iterator contains an element instead of collecting then checking"
+            },
         }
     }
 }
@@ -2505,6 +2518,8 @@ struct IterFunctionVisitor {
 }
 impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        // TODO Check if the target identifier is being used in something other
+        // than a function call
         if_chain! {
             if let ExprKind::MethodCall(method_name, _, ref args, _) = &expr.kind;
             if let Some(Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. }) = args.get(0);
@@ -2515,10 +2530,18 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
                 let is_empty = sym!(is_empty);
                 let contains = sym!(contains);
                 match method_name.ident.name {
-                    name if name == into_iter => self.uses.push(IterFunction { func: IterFunctionKind::IntoIter, span: expr.span }),
-                    name if name == len => self.uses.push(IterFunction { func: IterFunctionKind::Len, span: expr.span }),
-                    name if name == is_empty => self.uses.push(IterFunction { func: IterFunctionKind::IsEmpty, span: expr.span }),
-                    name if name == contains => self.uses.push(IterFunction { func: IterFunctionKind::Contains(args[1].span), span: expr.span }),
+                    name if name == into_iter => self.uses.push(
+                        IterFunction { func: IterFunctionKind::IntoIter, span: expr.span }
+                    ),
+                    name if name == len => self.uses.push(
+                        IterFunction { func: IterFunctionKind::Len, span: expr.span }
+                    ),
+                    name if name == is_empty => self.uses.push(
+                        IterFunction { func: IterFunctionKind::IsEmpty, span: expr.span }
+                    ),
+                    name if name == contains => self.uses.push(
+                        IterFunction { func: IterFunctionKind::Contains(args[1].span), span: expr.span }
+                    ),
                     _ => self.seen_other = true,
                 }
             }

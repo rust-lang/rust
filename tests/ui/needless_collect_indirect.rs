@@ -1,16 +1,12 @@
 // run-rustfix
 
 #[allow(unused)]
-
 use std::collections::{HashMap, VecDeque};
 
 fn main() {
     let sample = [1; 5];
     let indirect_iter = sample.iter().collect::<Vec<_>>();
-    indirect_iter
-        .into_iter()
-        .map(|x| (x, x + 1))
-        .collect::<HashMap<_, _>>();
+    indirect_iter.into_iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
     let indirect_len = sample.iter().collect::<VecDeque<_>>();
     indirect_len.len();
     let indirect_empty = sample.iter().collect::<VecDeque<_>>();
