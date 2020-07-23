@@ -145,23 +145,16 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             .map(|(wc, _)| wc.subst(self.tcx, bound_vars))
             .filter_map(|wc| LowerInto::<Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>>::lower_into(wc, &self.interner))
             .collect();
-        let fields = match adt_def.adt_kind() {
-            ty::AdtKind::Struct | ty::AdtKind::Union => {
-                let variant = adt_def.non_enum_variant();
-                variant
-                    .fields
-                    .iter()
-                    .map(|field| {
-                        self.tcx
-                            .type_of(field.did)
-                            .subst(self.tcx, bound_vars)
-                            .lower_into(&self.interner)
-                    })
-                    .collect()
-            }
-            // FIXME(chalk): handle enums; force_impl_for requires this
-            ty::AdtKind::Enum => vec![],
-        };
+
+        let fields = adt_def
+            .variants
+            .iter()
+            .flat_map(|variant| variant.fields.iter())
+            .map(|field| {
+                self.tcx.type_of(field.did).subst(self.tcx, bound_vars).lower_into(&self.interner)
+            })
+            .collect();
+
         let struct_datum = Arc::new(chalk_solve::rust_ir::AdtDatum {
             id: adt_id,
             binders: chalk_ir::Binders::new(
