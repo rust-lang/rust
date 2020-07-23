@@ -1,3 +1,4 @@
+mod testdir;
 mod support;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
@@ -12,10 +13,12 @@ use lsp_types::{
 };
 use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
-use tempfile::TempDir;
 use test_utils::skip_slow_tests;
 
-use crate::support::{project, Project};
+use crate::{
+    support::{project, Project},
+    testdir::TestDir,
+};
 
 const PROFILE: &str = "";
 // const PROFILE: &'static str = "*@3>100";
@@ -308,7 +311,7 @@ fn test_missing_module_code_action_in_json_project() {
         return;
     }
 
-    let tmp_dir = TempDir::new().unwrap();
+    let tmp_dir = TestDir::new();
 
     let path = tmp_dir.path();
 

@@ -58,7 +58,6 @@ ra_proc_macro_srv = { path = "../ra_proc_macro_srv" }
 winapi = "0.3.8"
 
 [dev-dependencies]
-tempfile = "3.1.0"
 expect = { path = "../expect" }
 test_utils = { path = "../test_utils" }
 mbe = { path = "../ra_mbe", package = "ra_mbe" }
