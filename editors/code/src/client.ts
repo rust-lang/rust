@@ -41,6 +41,7 @@ export function createClient(serverPath: string, cwd: string): lc.LanguageClient
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'rust' }],
         initializationOptions: vscode.workspace.getConfiguration("rust-analyzer"),
+        diagnosticCollectionName: "rustc",
         traceOutputChannel,
         middleware: {
             // Workaround for https://github.com/microsoft/vscode-languageserver-node/issues/576
