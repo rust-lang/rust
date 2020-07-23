@@ -131,7 +131,8 @@ unsafe fn register_dtor(key: Key, dtor: Dtor) {
                 #[cfg(miri)]
                 miri_static_root(&*node as *const _ as *const u8);
 
-                return mem::forget(node);
+                mem::forget(node);
+                return;
             }
             Err(cur) => head = cur,
         }
