@@ -1132,7 +1132,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         if matches!(param.kind, GenericParamKind::Const { .. }) {
                             err.note(
                                 "using type defaults and const parameters \
-                                 in the same parameter listing is currently not possible",
+                                 in the same parameter list is currently not permitted",
                             );
                         }
                         err.emit();

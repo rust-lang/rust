@@ -4,7 +4,7 @@ error: type parameters with a default must be trailing
 LL | struct A<T = u32, const N: usize> {
    |          ^
    |
-   = note: using type defaults and const parameters in the same parameter listing is currently not possible
+   = note: using type defaults and const parameters in the same parameter list is currently not permitted
 
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/wrong-order.rs:1:12
