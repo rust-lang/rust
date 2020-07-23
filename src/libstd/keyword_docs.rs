@@ -1684,14 +1684,6 @@ mod use_keyword {}
 /// of `shorter`, thus the constraint is respected:
 ///
 /// ```rust
-/// fn select<'a, 'b: 'a>(s1: &'a str, s2: &'b str, second: bool) -> &'a str {
-///     if second {
-///         s2
-///     } else {
-///         s1
-///     }
-/// }
-///
 /// fn select_where<'a, 'b>(s1: &'a str, s2: &'b str, second: bool) -> &'a str
 /// where
 ///     'b: 'a,
@@ -1706,11 +1698,8 @@ mod use_keyword {}
 /// let outer = String::from("Long living ref");
 /// let longer = &outer;
 /// {
-///     let inner = String::from("Long living ref");
+///     let inner = String::from("Short living ref");
 ///     let shorter = &inner;
-///
-///     assert_eq!(select(shorter, longer, false), shorter);
-///     assert_eq!(select(shorter, longer, true), longer);
 ///
 ///     assert_eq!(select_where(shorter, longer, false), shorter);
 ///     assert_eq!(select_where(shorter, longer, true), longer);
@@ -1718,18 +1707,9 @@ mod use_keyword {}
 /// ```
 ///
 /// On the other hand, this will not compile: `shorter` does not have a lifetime
-/// that respects the constraint imposed by the `select` and `select_where`
-/// functions.
+/// that respects the constraint imposed by the `select_where` functions.
 ///
 /// ```rust,compile_fail,E0597
-/// # fn select<'a, 'b: 'a>(s1: &'a str, s2: &'b str, second: bool) -> &'a str {
-/// #     if second {
-/// #         s2
-/// #     } else {
-/// #         s1
-/// #     }
-/// # }
-/// #
 /// # fn select_where<'a, 'b>(s1: &'a str, s2: &'b str, second: bool) -> &'a str
 /// # where
 /// #     'b: 'a,
@@ -1742,17 +1722,14 @@ mod use_keyword {}
 /// # }
 /// let outer = String::from("Long living ref");
 /// let longer = &outer;
-/// let res1;
-/// let res2;
+/// let res;
 /// {
-///     let inner = String::from("Long living ref");
+///     let inner = String::from("Short living ref");
 ///     let shorter = &inner;
 ///
-///     res1 = select(longer, shorter, false);
-///     res2 = select_where(longer, shorter, false);
+///     res = select_where(longer, shorter, false);
 /// }
-/// assert_eq!(res1, &outer);
-/// assert_eq!(res2, &outer);
+/// assert_eq!(res, &outer);
 /// ```
 ///
 /// `where` can also be used to express more complicated constraints that cannot
@@ -1771,12 +1748,11 @@ mod use_keyword {}
 /// assert_eq!(first_or_default(Vec::<i32>::new().into_iter()), 0);
 /// ```
 ///
-/// `where` is available anywhere generic and lifetime parameters are available:
+/// `where` is available anywhere generic and lifetime parameters are available,
+/// as can be seen in the [`Cow`](crate::borrow::Cow) from the standard library:
 ///
 /// ```rust
 /// # #![allow(dead_code)]
-/// // The Cow type from the standard library uses where to impose constraints
-/// // on its parameters.
 /// pub enum Cow<'a, B>
 /// where
 ///     B: 'a + ToOwned + ?Sized,
