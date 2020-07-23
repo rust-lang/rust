@@ -1196,8 +1196,6 @@ fn compare_projection_bounds<'tcx>(
         return Ok(());
     }
 
-    let param_env = tcx.param_env(impl_ty.def_id);
-
     // Given
     //
     // impl<A, B> Foo<u32> for (A, B) {
@@ -1211,6 +1209,36 @@ fn compare_projection_bounds<'tcx>(
     let rebased_substs =
         impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
     let impl_ty_value = tcx.type_of(impl_ty.def_id);
+
+    let param_env = tcx.param_env(impl_ty.def_id);
+
+    // When checking something like
+    //
+    // trait X { type Y: PartialEq<<Self as X>::Y> }
+    // impl X for T { default type Y = S; }
+    //
+    // We will have to prove the bound S: PartialEq<<T as X>::Y>. In this case
+    // we want <T as X>::Y to normalize to S. This is valid because we are
+    // checking the default value specifically here. Add this equality to the
+    // ParamEnv for normalization specifically.
+    let normalize_param_env = if impl_ty.defaultness.is_final() {
+        // If the associated type is final then normalization can already
+        // do this without the explicit predicate.
+        param_env
+    } else {
+        let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
+        predicates.push(
+            ty::Binder::dummy(ty::ProjectionPredicate {
+                projection_ty: ty::ProjectionTy {
+                    item_def_id: trait_ty.def_id,
+                    substs: rebased_substs,
+                },
+                ty: impl_ty_value,
+            })
+            .to_predicate(tcx),
+        );
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), Reveal::UserFacing, None)
+    };
 
     // Map the predicate from the trait to the corresponding one for the impl.
     // For example:
@@ -1275,9 +1303,11 @@ fn compare_projection_bounds<'tcx>(
                 _ => bug!("unexepected projection predicate kind: `{:?}`", predicate),
             };
 
+            debug!("compare_projection_bounds: concrete predicate = {:?}", concrete_ty_predicate);
+
             let traits::Normalized { value: normalized_predicate, obligations } = traits::normalize(
                 &mut selcx,
-                param_env,
+                normalize_param_env,
                 normalize_cause.clone(),
                 &concrete_ty_predicate,
             );
