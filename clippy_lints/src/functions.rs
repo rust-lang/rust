@@ -374,7 +374,7 @@ impl<'tcx> Functions {
         }
 
         if line_count > self.max_lines {
-            span_lint(cx, TOO_MANY_LINES, span, "This function has a large number of lines.")
+            span_lint(cx, TOO_MANY_LINES, span, "this function has a large number of lines")
         }
     }
 
