@@ -823,17 +823,19 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             }
         };
 
-        volatile_load, (c ptr) {
+        volatile_load | unaligned_volatile_load, (c ptr) {
             // Cranelift treats loads as volatile by default
             // FIXME ignore during stack2reg optimization
+            // FIXME correctly handle unaligned_volatile_load
             let inner_layout =
                 fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
             let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
             ret.write_cvalue(fx, val);
         };
-        volatile_store, (v ptr, c val) {
+        volatile_store | unaligned_volatile_store, (v ptr, c val) {
             // Cranelift treats stores as volatile by default
             // FIXME ignore during stack2reg optimization
+            // FIXME correctly handle unaligned_volatile_store
             let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
             dest.write_cvalue(fx, val);
         };
