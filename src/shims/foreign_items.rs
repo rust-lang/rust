@@ -111,7 +111,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         def_id: DefId,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
-        _unwind: Option<mir::BasicBlock>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
@@ -126,6 +126,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // First: functions that diverge.
         let (dest, ret) = match ret {
             None => match link_name {
+                "miri_start_panic" => {
+                    this.handle_miri_start_panic(args, unwind)?;
+                    return Ok(None);
+                }
                 // This matches calls to the foreign item `panic_impl`.
                 // The implementation is provided by the function with the `#[panic_handler]` attribute.
                 "panic_impl" => {
