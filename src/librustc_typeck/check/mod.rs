@@ -256,14 +256,6 @@ pub struct Inherited<'a, 'tcx> {
     /// opaque type.
     opaque_types_vars: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 
-    /// Each type parameter has an implicit region bound that
-    /// indicates it must outlive at least the function body (the user
-    /// may specify stronger requirements). This field indicates the
-    /// region of the callee. If it is `None`, then the parameter
-    /// environment is for an item or something where the "callee" is
-    /// not clear.
-    implicit_region_bound: Option<ty::Region<'tcx>>,
-
     body_id: Option<hir::BodyId>,
 }
 
@@ -684,7 +676,6 @@ impl Inherited<'a, 'tcx> {
             deferred_generator_interiors: RefCell::new(Vec::new()),
             opaque_types: RefCell::new(Default::default()),
             opaque_types_vars: RefCell::new(Default::default()),
-            implicit_region_bound: None,
             body_id,
         }
     }

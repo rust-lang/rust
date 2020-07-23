@@ -309,7 +309,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn resolve_regions_and_report_errors(&self, mode: RegionckMode) {
         self.infcx.process_registered_region_obligations(
             self.outlives_environment.region_bound_pairs_map(),
-            self.implicit_region_bound,
+            Some(self.tcx.lifetimes.re_root_empty),
             self.param_env,
         );
 
