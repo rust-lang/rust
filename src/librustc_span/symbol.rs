@@ -677,7 +677,6 @@ symbols! {
         minnumf32,
         minnumf64,
         mips_target_feature,
-        miri_start_panic,
         mmx_target_feature,
         module,
         module_path,
