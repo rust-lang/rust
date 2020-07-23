@@ -730,8 +730,9 @@ fn highlight_name(
                     let is_unsafe = name_ref
                         .and_then(|name_ref| name_ref.syntax().parent())
                         .and_then(ast::MethodCallExpr::cast)
-                        .and_then(|method_call_expr| sema.is_unsafe_method_call(method_call_expr));
-                    if is_unsafe.is_some() {
+                        .map(|method_call_expr| sema.is_unsafe_method_call(method_call_expr))
+                        .unwrap_or(false);
+                    if is_unsafe {
                         h |= HighlightModifier::Unsafe;
                     }
                 }
@@ -809,9 +810,9 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
         METHOD_CALL_EXPR => {
             let mut h = Highlight::new(HighlightTag::Function);
             let is_unsafe = ast::MethodCallExpr::cast(parent)
-                .and_then(|method_call_expr| sema.is_unsafe_method_call(method_call_expr));
-
-            if is_unsafe.is_some() {
+                .map(|method_call_expr| sema.is_unsafe_method_call(method_call_expr))
+                .unwrap_or(false);
+            if is_unsafe {
                 h |= HighlightModifier::Unsafe;
             }
 

@@ -281,26 +281,26 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.assert_contains_node(node)
     }
 
-    pub fn is_unsafe_method_call(&self, method_call_expr: ast::MethodCallExpr) -> Option<()> {
-        let expr = method_call_expr.expr()?;
-        let field_expr =
-            if let ast::Expr::FieldExpr(field_expr) = expr { field_expr } else { return None };
-        let ty = self.type_of_expr(&field_expr.expr()?)?;
-        if !ty.is_packed(self.db) {
-            return None;
-        }
+    pub fn is_unsafe_method_call(&self, method_call_expr: ast::MethodCallExpr) -> bool {
+        method_call_expr
+            .expr()
+            .and_then(|expr| {
+                let field_expr = if let ast::Expr::FieldExpr(field_expr) = expr {
+                    field_expr
+                } else {
+                    return None;
+                };
+                let ty = self.type_of_expr(&field_expr.expr()?)?;
+                if !ty.is_packed(self.db) {
+                    return None;
+                }
 
-        let func = self.resolve_method_call(&method_call_expr)?;
-        if func.has_self_param(self.db) {
-            let params = func.params(self.db);
-            if matches!(params.into_iter().next(), Some(TypeRef::Reference(..))) {
-                Some(())
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+                let func = self.resolve_method_call(&method_call_expr)?;
+                let is_unsafe = func.has_self_param(self.db)
+                    && matches!(func.params(self.db).first(), Some(TypeRef::Reference(..)));
+                Some(is_unsafe)
+            })
+            .unwrap_or(false)
     }
 
     pub fn is_unsafe_ref_expr(&self, ref_expr: &ast::RefExpr) -> bool {
