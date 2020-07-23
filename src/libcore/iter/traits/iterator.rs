@@ -1069,7 +1069,7 @@ pub trait Iterator {
     /// let vec = iter.collect::<Vec<_>>();
     ///
     /// // We have more elements which could fit in u32 (4, 5), but `map_while` returned `None` for `-3`
-    /// // (as the `predicate` returned `None`) and `collect` stops at the first `None` entcountered.
+    /// // (as the `predicate` returned `None`) and `collect` stops at the first `None` encountered.
     /// assert_eq!(vec, vec![0, 1, 2]);
     /// ```
     ///

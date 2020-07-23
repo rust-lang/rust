@@ -317,13 +317,13 @@ impl<T: ?Sized> *mut T {
         intrinsics::ptr_guaranteed_eq(self as *const _, other as *const _)
     }
 
-    /// Returns whether two pointers are guaranteed to be inequal.
+    /// Returns whether two pointers are guaranteed to be unequal.
     ///
     /// At runtime this function behaves like `self != other`.
     /// However, in some contexts (e.g., compile-time evaluation),
     /// it is not always possible to determine the inequality of two pointers, so this function may
-    /// spuriously return `false` for pointers that later actually turn out to be inequal.
-    /// But when it returns `true`, the pointers are guaranteed to be inequal.
+    /// spuriously return `false` for pointers that later actually turn out to be unequal.
+    /// But when it returns `true`, the pointers are guaranteed to be unequal.
     ///
     /// This function is the mirror of [`guaranteed_eq`], but not its inverse. There are pointer
     /// comparisons for which both functions return `false`.

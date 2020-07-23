@@ -128,7 +128,7 @@
 //!
 //! Crucially, we have to be able to rely on [`drop`] being called. If an element
 //! could be deallocated or otherwise invalidated without calling [`drop`], the pointers into it
-//! from its neighbouring elements would become invalid, which would break the data structure.
+//! from its neighboring elements would become invalid, which would break the data structure.
 //!
 //! Therefore, pinning also comes with a [`drop`]-related guarantee.
 //!
