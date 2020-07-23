@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
                     cx,
                     SUSPICIOUS_ARITHMETIC_IMPL,
                     binop.span,
-                    &format!(r#"Suspicious use of binary operator in `{}` impl"#, impl_trait),
+                    &format!("suspicious use of binary operator in `{}` impl", impl_trait),
                 );
             }
 
@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
                     cx,
                     SUSPICIOUS_OP_ASSIGN_IMPL,
                     binop.span,
-                    &format!(r#"Suspicious use of binary operator in `{}` impl"#, impl_trait),
+                    &format!("suspicious use of binary operator in `{}` impl", impl_trait),
                 );
             }
         }
