@@ -14,6 +14,8 @@ use ra_arena::{Arena, Idx};
 use ra_db::Edition;
 use rustc_hash::FxHashMap;
 
+use crate::cfg_flag::CfgFlag;
+
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
 ///
@@ -78,7 +80,7 @@ pub struct PackageData {
     pub dependencies: Vec<PackageDependency>,
     pub edition: Edition,
     pub features: Vec<String>,
-    pub cfgs: Vec<String>,
+    pub cfgs: Vec<CfgFlag>,
     pub out_dir: Option<AbsPathBuf>,
     pub proc_macro_dylib_path: Option<AbsPathBuf>,
 }
@@ -276,7 +278,7 @@ impl CargoWorkspace {
 pub struct ExternResources {
     out_dirs: FxHashMap<PackageId, AbsPathBuf>,
     proc_dylib_paths: FxHashMap<PackageId, AbsPathBuf>,
-    cfgs: FxHashMap<PackageId, Vec<String>>,
+    cfgs: FxHashMap<PackageId, Vec<CfgFlag>>,
 }
 
 pub fn load_extern_resources(
@@ -303,6 +305,18 @@ pub fn load_extern_resources(
         if let Ok(message) = message {
             match message {
                 Message::BuildScriptExecuted(BuildScript { package_id, out_dir, cfgs, .. }) => {
+                    let cfgs = {
+                        let mut acc = Vec::new();
+                        for cfg in cfgs {
+                            match cfg.parse::<CfgFlag>() {
+                                Ok(it) => acc.push(it),
+                                Err(err) => {
+                                    anyhow::bail!("invalid cfg from cargo-metadata: {}", err)
+                                }
+                            };
+                        }
+                        acc
+                    };
                     // cargo_metadata crate returns default (empty) path for
                     // older cargos, which is not absolute, so work around that.
                     if out_dir != PathBuf::default() {

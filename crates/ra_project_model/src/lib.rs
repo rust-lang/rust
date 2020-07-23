@@ -3,11 +3,12 @@
 mod cargo_workspace;
 mod project_json;
 mod sysroot;
+mod cfg_flag;
 
 use std::{
     fs::{self, read_dir, ReadDir},
     io,
-    process::{Command, Output},
+    process::Command,
 };
 
 use anyhow::{bail, Context, Result};
@@ -15,13 +16,15 @@ use paths::{AbsPath, AbsPathBuf};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use rustc_hash::{FxHashMap, FxHashSet};
-use stdx::split_delim;
+
+use crate::cfg_flag::CfgFlag;
 
 pub use crate::{
     cargo_workspace::{CargoConfig, CargoWorkspace, Package, Target, TargetKind},
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
 };
+
 pub use ra_proc_macro::ProcMacroClient;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -250,7 +253,7 @@ impl ProjectWorkspace {
         let mut crate_graph = CrateGraph::default();
         match self {
             ProjectWorkspace::Json { project } => {
-                let mut target_cfg_map = FxHashMap::<Option<&str>, CfgOptions>::default();
+                let mut cfg_cache: FxHashMap<Option<&str>, Vec<CfgFlag>> = FxHashMap::default();
                 let crates: FxHashMap<_, _> = project
                     .crates
                     .iter()
@@ -266,11 +269,12 @@ impl ProjectWorkspace {
                             .map(|it| proc_macro_client.by_dylib_path(&it));
 
                         let target = krate.target.as_deref().or(target);
-                        let target_cfgs = target_cfg_map
-                            .entry(target.clone())
-                            .or_insert_with(|| get_rustc_cfg_options(target.as_deref()));
-                        let mut cfg_options = krate.cfg.clone();
-                        cfg_options.append(target_cfgs);
+                        let target_cfgs = cfg_cache
+                            .entry(target)
+                            .or_insert_with(|| get_rustc_cfg_options(target));
+
+                        let mut cfg_options = CfgOptions::default();
+                        cfg_options.extend(target_cfgs.iter().chain(krate.cfg.iter()).cloned());
 
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         Some((
@@ -307,7 +311,8 @@ impl ProjectWorkspace {
                 }
             }
             ProjectWorkspace::Cargo { cargo, sysroot } => {
-                let mut cfg_options = get_rustc_cfg_options(target);
+                let mut cfg_options = CfgOptions::default();
+                cfg_options.extend(get_rustc_cfg_options(target));
 
                 let sysroot_crates: FxHashMap<_, _> = sysroot
                     .crates()
@@ -354,6 +359,7 @@ impl ProjectWorkspace {
 
                 // Add test cfg for non-sysroot crates
                 cfg_options.insert_atom("test".into());
+                cfg_options.insert_atom("debug_assertions".into());
 
                 // Next, create crates for each package, target pair
                 for pkg in cargo.packages() {
@@ -367,15 +373,7 @@ impl ProjectWorkspace {
                                 for feature in cargo[pkg].features.iter() {
                                     opts.insert_key_value("feature".into(), feature.into());
                                 }
-                                for cfg in cargo[pkg].cfgs.iter() {
-                                    match cfg.find('=') {
-                                        Some(split) => opts.insert_key_value(
-                                            cfg[..split].into(),
-                                            cfg[split + 1..].trim_matches('"').into(),
-                                        ),
-                                        None => opts.insert_atom(cfg.into()),
-                                    };
-                                }
+                                opts.extend(cargo[pkg].cfgs.iter().cloned());
                                 opts
                             };
                             let mut env = Env::default();
@@ -503,51 +501,35 @@ impl ProjectWorkspace {
     }
 }
 
-fn get_rustc_cfg_options(target: Option<&str>) -> CfgOptions {
-    let mut cfg_options = CfgOptions::default();
+fn get_rustc_cfg_options(target: Option<&str>) -> Vec<CfgFlag> {
+    let mut res = Vec::new();
 
     // Some nightly-only cfgs, which are required for stdlib
-    {
-        cfg_options.insert_atom("target_thread_local".into());
-        for &target_has_atomic in ["8", "16", "32", "64", "cas", "ptr"].iter() {
-            cfg_options.insert_key_value("target_has_atomic".into(), target_has_atomic.into());
-            cfg_options
-                .insert_key_value("target_has_atomic_load_store".into(), target_has_atomic.into());
+    res.push(CfgFlag::Atom("target_thread_local".into()));
+    for &ty in ["8", "16", "32", "64", "cas", "ptr"].iter() {
+        for &key in ["target_has_atomic", "target_has_atomic_load_store"].iter() {
+            res.push(CfgFlag::KeyValue { key: key.to_string(), value: ty.into() });
         }
     }
 
-    let rustc_cfgs = || -> Result<String> {
-        // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
+    let rustc_cfgs = {
         let mut cmd = Command::new(ra_toolchain::rustc());
         cmd.args(&["--print", "cfg", "-O"]);
         if let Some(target) = target {
             cmd.args(&["--target", target]);
         }
-        let output = output(cmd)?;
-        Ok(String::from_utf8(output.stdout)?)
-    }();
+        utf8_stdout(cmd)
+    };
 
     match rustc_cfgs {
-        Ok(rustc_cfgs) => {
-            for line in rustc_cfgs.lines() {
-                match split_delim(line, '=') {
-                    None => cfg_options.insert_atom(line.into()),
-                    Some((key, value)) => {
-                        let value = value.trim_matches('"');
-                        cfg_options.insert_key_value(key.into(), value.into());
-                    }
-                }
-            }
-        }
+        Ok(rustc_cfgs) => res.extend(rustc_cfgs.lines().map(|it| it.parse().unwrap())),
         Err(e) => log::error!("failed to get rustc cfgs: {:#}", e),
     }
 
-    cfg_options.insert_atom("debug_assertions".into());
-
-    cfg_options
+    res
 }
 
-fn output(mut cmd: Command) -> Result<Output> {
+fn utf8_stdout(mut cmd: Command) -> Result<String> {
     let output = cmd.output().with_context(|| format!("{:?} failed", cmd))?;
     if !output.status.success() {
         match String::from_utf8(output.stderr) {
@@ -557,5 +539,6 @@ fn output(mut cmd: Command) -> Result<Output> {
             _ => bail!("{:?} failed, {}", cmd, output.status),
         }
     }
-    Ok(output)
+    let stdout = String::from_utf8(output.stdout)?;
+    Ok(stdout)
 }
