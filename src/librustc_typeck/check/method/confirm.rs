@@ -6,6 +6,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
 use rustc_hir as hir;
 use rustc_infer::infer::{self, InferOk};
+use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -91,7 +92,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // signature (which is also done during probing).
         let method_sig_rcvr =
             self.normalize_associated_types_in(self.span, &method_sig.inputs()[0]);
-        self.unify_receivers(self_ty, method_sig_rcvr);
+        debug!(
+            "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
+            self_ty, method_sig_rcvr, method_sig, method_predicates
+        );
+        self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_substs);
 
         let (method_sig, method_predicates) =
             self.normalize_associated_types_in(self.span, &(method_sig, method_predicates));
@@ -150,7 +155,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
 
         if let Some(mutbl) = pick.autoref {
-            let region = self.next_region_var(infer::Autoref(self.span));
+            let region = self.next_region_var(infer::Autoref(self.span, pick.item));
             target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
             let mutbl = match mutbl {
                 hir::Mutability::Not => AutoBorrowMutability::Not,
@@ -334,8 +339,26 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         )
     }
 
-    fn unify_receivers(&mut self, self_ty: Ty<'tcx>, method_self_ty: Ty<'tcx>) {
-        match self.at(&self.misc(self.span), self.param_env).sup(method_self_ty, self_ty) {
+    fn unify_receivers(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        method_self_ty: Ty<'tcx>,
+        pick: &probe::Pick<'tcx>,
+        substs: SubstsRef<'tcx>,
+    ) {
+        debug!(
+            "unify_receivers: self_ty={:?} method_self_ty={:?} span={:?} pick={:?}",
+            self_ty, method_self_ty, self.span, pick
+        );
+        let cause = self.cause(
+            self.span,
+            ObligationCauseCode::UnifyReceiver(Box::new(UnifyReceiverContext {
+                assoc_item: pick.item,
+                param_env: self.param_env,
+                substs,
+            })),
+        );
+        match self.at(&cause, self.param_env).sup(method_self_ty, self_ty) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }

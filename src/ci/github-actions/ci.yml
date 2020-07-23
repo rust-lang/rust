@@ -247,6 +247,7 @@ on:
     branches:
       - auto
       - try
+      - try-perf
       - master
   pull_request:
     branches:
@@ -285,7 +286,7 @@ jobs:
     name: try
     env:
       <<: [*shared-ci-variables, *prod-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'
     strategy:
       matrix:
         include:
@@ -645,11 +646,11 @@ jobs:
   # successful listening to webhooks only.
   try-success:
     needs: [try]
-    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
+    if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
     <<: *base-success-job
   try-failure:
     needs: [try]
-    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/try' && github.repository == 'rust-lang-ci/rust'"
+    if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
     <<: *base-failure-job
   auto-success:
     needs: [auto]

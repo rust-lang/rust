@@ -1,28 +1,11 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error[E0759]: `fn` parameter has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/constant-in-expr-inherent-1.rs:8:5
-   |
-LL |     <Foo<'a>>::C
-   |     ^^^^^^^^^^^^
-   |
-note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 7:8...
-  --> $DIR/constant-in-expr-inherent-1.rs:7:8
    |
 LL | fn foo<'a>(_: &'a u32) -> &'static u32 {
-   |        ^^
-note: ...so that the types are compatible
-  --> $DIR/constant-in-expr-inherent-1.rs:8:5
-   |
+   |               ------- this data with lifetime `'a`...
 LL |     <Foo<'a>>::C
-   |     ^^^^^^^^^^^^
-   = note: expected `Foo<'_>`
-              found `Foo<'a>`
-   = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that reference does not outlive borrowed content
-  --> $DIR/constant-in-expr-inherent-1.rs:8:5
-   |
-LL |     <Foo<'a>>::C
-   |     ^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^ ...is captured and required to live as long as `'static` here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0759`.

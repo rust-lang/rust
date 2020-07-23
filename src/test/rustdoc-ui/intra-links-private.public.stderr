@@ -1,10 +1,11 @@
 warning: public documentation for `DocMe` links to private item `DontDocMe`
-  --> $DIR/intra-links-private.rs:6:11
+  --> $DIR/intra-links-private.rs:5:11
    |
 LL | /// docs [DontDocMe]
    |           ^^^^^^^^^ this item is private
    |
    = note: `#[warn(intra_doc_link_resolution_failure)]` on by default
+   = note: this link will resolve properly if you pass `--document-private-items`
 
 warning: 1 warning emitted
 

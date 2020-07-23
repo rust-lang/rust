@@ -4,7 +4,7 @@ struct Dog {
 
 impl Dog {
     pub fn chase_cat(&mut self) {
-        let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
+        let p: &'static mut usize = &mut self.cats_chased; //~ ERROR E0759
         *p += 1;
     }
 

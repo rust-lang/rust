@@ -790,13 +790,20 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 item.attrs.links.push((ori_link, None, fragment));
             } else {
                 debug!("intra-doc link to {} resolved to {:?}", path_str, res);
-                if let Some(local) = res.opt_def_id().and_then(|def_id| def_id.as_local()) {
+
+                // item can be non-local e.g. when using #[doc(primitive = "pointer")]
+                if let Some((src_id, dst_id)) = res
+                    .opt_def_id()
+                    .and_then(|def_id| def_id.as_local())
+                    .and_then(|dst_id| item.def_id.as_local().map(|src_id| (src_id, dst_id)))
+                {
                     use rustc_hir::def_id::LOCAL_CRATE;
 
-                    let hir_id = self.cx.tcx.hir().as_local_hir_id(local);
-                    if !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_id)
-                        && (item.visibility == Visibility::Public)
-                        && !self.cx.render_options.document_private
+                    let hir_src = self.cx.tcx.hir().as_local_hir_id(src_id);
+                    let hir_dst = self.cx.tcx.hir().as_local_hir_id(dst_id);
+
+                    if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
+                        && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
                     {
                         privacy_error(cx, &item, &path_str, &dox, link_range);
                         continue;
@@ -1069,6 +1076,13 @@ fn privacy_error(
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }
+
+        let note_msg = if cx.render_options.document_private {
+            "this link resolves only because you passed `--document-private-items`, but will break without"
+        } else {
+            "this link will resolve properly if you pass `--document-private-items`"
+        };
+        diag.note(note_msg);
     });
 }
 
