@@ -172,7 +172,7 @@ impl<T> NonNull<[T]> {
     /// assert_eq!(unsafe { slice.as_ref()[2] }, 7);
     /// ```
     ///
-    /// (Note that this example artifically demonstrates a use of this method,
+    /// (Note that this example artificially demonstrates a use of this method,
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
     #[unstable(feature = "nonnull_slice_from_raw_parts", issue = "71941")]
     #[rustc_const_unstable(feature = "const_nonnull_slice_from_raw_parts", issue = "71941")]

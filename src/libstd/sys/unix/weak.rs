@@ -16,6 +16,11 @@
 //! symbol, but that caused Debian to detect an unnecessarily strict versioned
 //! dependency on libc6 (#23628).
 
+// There are a variety of `#[cfg]`s controlling which targets are involved in
+// each instance of `weak!` and `syscall!`. Rather than trying to unify all of
+// that, we'll just allow that some unix targets don't use this module at all.
+#![allow(dead_code, unused_macros)]
+
 use crate::ffi::CStr;
 use crate::marker;
 use crate::mem;

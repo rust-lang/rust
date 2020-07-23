@@ -348,11 +348,11 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an intialized
+///     - a [slice], then the length of the slice tail must be an initialized
 ///       integer, and the size of the *entire value*
 ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
 ///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coersion, and the size
+///       to a valid vtable acquired by an unsizing coercion, and the size
 ///       of the *entire value* (dynamic tail length + statically sized prefix)
 ///       must fit in `isize`.
 ///     - an (unstable) [extern type], then this function is always safe to
@@ -483,11 +483,11 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
-///     - a [slice], then the length of the slice tail must be an intialized
+///     - a [slice], then the length of the slice tail must be an initialized
 ///       integer, and the size of the *entire value*
 ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
 ///     - a [trait object], then the vtable part of the pointer must point
-///       to a valid vtable acquired by an unsizing coersion, and the size
+///       to a valid vtable acquired by an unsizing coercion, and the size
 ///       of the *entire value* (dynamic tail length + statically sized prefix)
 ///       must fit in `isize`.
 ///     - an (unstable) [extern type], then this function is always safe to

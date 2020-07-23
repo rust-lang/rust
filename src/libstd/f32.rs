@@ -1500,7 +1500,7 @@ mod tests {
         assert_approx_eq!(f32::from_bits(0x44a72000), 1337.0);
         assert_approx_eq!(f32::from_bits(0xc1640000), -14.25);
 
-        // Check that NaNs roundtrip their bits regardless of signalingness
+        // Check that NaNs roundtrip their bits regardless of signaling-ness
         // 0xA is 0b1010; 0x5 is 0b0101 -- so these two together clobbers all the mantissa bits
         let masked_nan1 = f32::NAN.to_bits() ^ 0x002A_AAAA;
         let masked_nan2 = f32::NAN.to_bits() ^ 0x0055_5555;

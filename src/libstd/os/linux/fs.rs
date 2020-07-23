@@ -285,7 +285,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_ctime_nsec(&self) -> i64;
-    /// Returns the "preferred" blocksize for efficient filesystem I/O.
+    /// Returns the "preferred" block size for efficient filesystem I/O.
     ///
     /// # Examples
     ///

@@ -54,31 +54,26 @@ impl Socket {
 
     pub fn new_raw(fam: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
-            // On linux we first attempt to pass the SOCK_CLOEXEC flag to
-            // atomically create the socket and set it as CLOEXEC. Support for
-            // this option, however, was added in 2.6.27, and we still support
-            // 2.6.18 as a kernel, so if the returned error is EINVAL we
-            // fallthrough to the fallback.
-            #[cfg(target_os = "linux")]
-            {
-                match cvt(libc::socket(fam, ty | libc::SOCK_CLOEXEC, 0)) {
-                    Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
-                    Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {}
-                    Err(e) => return Err(e),
+            cfg_if::cfg_if! {
+                if #[cfg(target_os = "linux")] {
+                    // On Linux we pass the SOCK_CLOEXEC flag to atomically create
+                    // the socket and set it as CLOEXEC, added in 2.6.27.
+                    let fd = cvt(libc::socket(fam, ty | libc::SOCK_CLOEXEC, 0))?;
+                    Ok(Socket(FileDesc::new(fd)))
+                } else {
+                    let fd = cvt(libc::socket(fam, ty, 0))?;
+                    let fd = FileDesc::new(fd);
+                    fd.set_cloexec()?;
+                    let socket = Socket(fd);
+
+                    // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
+                    // flag to disable `SIGPIPE` emission on socket.
+                    #[cfg(target_vendor = "apple")]
+                    setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
+
+                    Ok(socket)
                 }
             }
-
-            let fd = cvt(libc::socket(fam, ty, 0))?;
-            let fd = FileDesc::new(fd);
-            fd.set_cloexec()?;
-            let socket = Socket(fd);
-
-            // macOS and iOS use `SO_NOSIGPIPE` as a `setsockopt`
-            // flag to disable `SIGPIPE` emission on socket.
-            #[cfg(target_vendor = "apple")]
-            setsockopt(&socket, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1)?;
-
-            Ok(socket)
         }
     }
 
@@ -86,24 +81,20 @@ impl Socket {
         unsafe {
             let mut fds = [0, 0];
 
-            // Like above, see if we can set cloexec atomically
-            #[cfg(target_os = "linux")]
-            {
-                match cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr())) {
-                    Ok(_) => {
-                        return Ok((Socket(FileDesc::new(fds[0])), Socket(FileDesc::new(fds[1]))));
-                    }
-                    Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {}
-                    Err(e) => return Err(e),
+            cfg_if::cfg_if! {
+                if #[cfg(target_os = "linux")] {
+                    // Like above, set cloexec atomically
+                    cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
+                    Ok((Socket(FileDesc::new(fds[0])), Socket(FileDesc::new(fds[1]))))
+                } else {
+                    cvt(libc::socketpair(fam, ty, 0, fds.as_mut_ptr()))?;
+                    let a = FileDesc::new(fds[0]);
+                    let b = FileDesc::new(fds[1]);
+                    a.set_cloexec()?;
+                    b.set_cloexec()?;
+                    Ok((Socket(a), Socket(b)))
                 }
             }
-
-            cvt(libc::socketpair(fam, ty, 0, fds.as_mut_ptr()))?;
-            let a = FileDesc::new(fds[0]);
-            let b = FileDesc::new(fds[1]);
-            a.set_cloexec()?;
-            b.set_cloexec()?;
-            Ok((Socket(a), Socket(b)))
         }
     }
 
@@ -177,30 +168,20 @@ impl Socket {
     pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t) -> io::Result<Socket> {
         // Unfortunately the only known way right now to accept a socket and
         // atomically set the CLOEXEC flag is to use the `accept4` syscall on
-        // Linux. This was added in 2.6.28, however, and because we support
-        // 2.6.18 we must detect this support dynamically.
-        #[cfg(target_os = "linux")]
-        {
-            syscall! {
-                fn accept4(
-                    fd: c_int,
-                    addr: *mut sockaddr,
-                    addr_len: *mut socklen_t,
-                    flags: c_int
-                ) -> c_int
-            }
-            let res = cvt_r(|| unsafe { accept4(self.0.raw(), storage, len, libc::SOCK_CLOEXEC) });
-            match res {
-                Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
-                Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
-                Err(e) => return Err(e),
+        // Linux. This was added in 2.6.28, glibc 2.10 and musl 0.9.5.
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "linux")] {
+                let fd = cvt_r(|| unsafe {
+                    libc::accept4(self.0.raw(), storage, len, libc::SOCK_CLOEXEC)
+                })?;
+                Ok(Socket(FileDesc::new(fd)))
+            } else {
+                let fd = cvt_r(|| unsafe { libc::accept(self.0.raw(), storage, len) })?;
+                let fd = FileDesc::new(fd);
+                fd.set_cloexec()?;
+                Ok(Socket(fd))
             }
         }
-
-        let fd = cvt_r(|| unsafe { libc::accept(self.0.raw(), storage, len) })?;
-        let fd = FileDesc::new(fd);
-        fd.set_cloexec()?;
-        Ok(Socket(fd))
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {

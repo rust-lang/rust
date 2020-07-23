@@ -677,7 +677,7 @@ impl AsRef<str> for str {
 ///
 ///
 /// However there is one case where `!` syntax can be used
-/// before `!` is stabilized as a full-fleged type: in the position of a function’s return type.
+/// before `!` is stabilized as a full-fledged type: in the position of a function’s return type.
 /// Specifically, it is possible implementations for two different function pointer types:
 ///
 /// ```
