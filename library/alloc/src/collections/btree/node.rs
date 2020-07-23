@@ -186,6 +186,15 @@ impl<K, V> Root<K, V> {
         }
     }
 
+    pub fn node_as_valmut(&mut self) -> NodeRef<marker::ValMut<'_>, K, V, marker::LeafOrInternal> {
+        NodeRef {
+            height: self.height,
+            node: self.node.as_ptr(),
+            root: ptr::null(),
+            _marker: PhantomData,
+        }
+    }
+
     pub fn into_ref(self) -> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         NodeRef {
             height: self.height,
@@ -253,9 +262,12 @@ impl<K, V> Root<K, V> {
 /// A reference to a node.
 ///
 /// This type has a number of parameters that controls how it acts:
-/// - `BorrowType`: This can be `Immut<'a>` or `Mut<'a>` for some `'a` or `Owned`.
+/// - `BorrowType`: This can be `Immut<'a>`, `Mut<'a>` or `ValMut<'a>' for some `'a`
+///    or `Owned`.
 ///    When this is `Immut<'a>`, the `NodeRef` acts roughly like `&'a Node`,
 ///    when this is `Mut<'a>`, the `NodeRef` acts roughly like `&'a mut Node`,
+///    when this is `ValMut<'a>`, the `NodeRef` acts as immutable with respect
+///    to keys and tree structure, but allows mutable references to values,
 ///    and when this is `Owned`, the `NodeRef` acts roughly like `Box<Node>`.
 /// - `K` and `V`: These control what types of things are stored in the nodes.
 /// - `Type`: This can be `Leaf`, `Internal`, or `LeafOrInternal`. When this is
@@ -282,6 +294,7 @@ unsafe impl<BorrowType, K: Sync, V: Sync, Type> Sync for NodeRef<BorrowType, K, 
 
 unsafe impl<'a, K: Sync + 'a, V: Sync + 'a, Type> Send for NodeRef<marker::Immut<'a>, K, V, Type> {}
 unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::Mut<'a>, K, V, Type> {}
+unsafe impl<'a, K: Send + 'a, V: Send + 'a, Type> Send for NodeRef<marker::ValMut<'a>, K, V, Type> {}
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> {}
 
 impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
@@ -508,6 +521,22 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         let keys = unsafe {
             slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).keys), len)
         };
+        let vals = unsafe {
+            slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).vals), len)
+        };
+        (keys, vals)
+    }
+}
+
+impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
+    /// Same as the marker::Mut method, but far more dangerous because ValMut-based iterators:
+    /// - have front and back handles often refering to the same node, so `self` is not unique;
+    /// - hand out mutable references to parts of these slices to the public.
+    fn into_slices_mut(self) -> (&'a [K], &'a mut [V]) {
+        let len = self.len();
+        let leaf = self.node.as_ptr();
+        // SAFETY: The keys and values of a node must always be initialized up to length.
+        let keys = unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&(*leaf).keys), len) };
         let vals = unsafe {
             slice::from_raw_parts_mut(MaybeUninit::first_ptr_mut(&mut (*leaf).vals), len)
         };
@@ -1053,11 +1082,13 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
         let vals = self.node.into_val_slice_mut();
         unsafe { vals.get_unchecked_mut(self.idx) }
     }
+}
 
-    pub fn into_kv_mut(self) -> (&'a mut K, &'a mut V) {
+impl<'a, K, V, NodeType> Handle<NodeRef<marker::ValMut<'a>, K, V, NodeType>, marker::KV> {
+    pub fn into_kv_valmut(self) -> (&'a K, &'a mut V) {
         unsafe {
             let (keys, vals) = self.node.into_slices_mut();
-            (keys.get_unchecked_mut(self.idx), vals.get_unchecked_mut(self.idx))
+            (keys.get_unchecked(self.idx), vals.get_unchecked_mut(self.idx))
         }
     }
 }
@@ -1558,6 +1589,7 @@ pub mod marker {
     pub enum Owned {}
     pub struct Immut<'a>(PhantomData<&'a ()>);
     pub struct Mut<'a>(PhantomData<&'a mut ()>);
+    pub struct ValMut<'a>(PhantomData<&'a mut ()>);
 
     pub enum KV {}
     pub enum Edge {}
