@@ -293,7 +293,7 @@ impl Backtrace {
 
     /// Forcibly captures a disabled backtrace, regardless of environment
     /// variable configuration.
-    pub fn disabled() -> Backtrace {
+    pub const fn disabled() -> Backtrace {
         Backtrace { inner: Inner::Disabled }
     }
 
