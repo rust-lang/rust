@@ -43,6 +43,9 @@ else
     PYTHON="python2"
 fi
 
+# This is a temporary workaround for a cargo issue.
+export CARGO_NET_GIT_FETCH_WITH_CLI=true
+
 if ! isCI || isCiBranch auto || isCiBranch beta; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 fi
