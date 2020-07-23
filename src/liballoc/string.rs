@@ -65,7 +65,7 @@ use crate::vec::Vec;
 ///
 /// # Examples
 ///
-/// You can create a `String` from [a literal string][str] with [`String::from`]:
+/// You can create a `String` from [a literal string][`str`] with [`String::from`]:
 ///
 /// [`String::from`]: From::from
 ///
@@ -268,7 +268,8 @@ use crate::vec::Vec;
 ///
 /// Here, there's no need to allocate more memory inside the loop.
 ///
-/// [`&str`]: str
+/// [`str`]: type@str
+/// [`&str`]: type@str
 /// [`Deref`]: core::ops::Deref
 /// [`as_str()`]: String::as_str
 #[derive(PartialOrd, Eq, Ord)]
