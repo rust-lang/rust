@@ -291,6 +291,12 @@ impl Backtrace {
         Backtrace::create(Backtrace::force_capture as usize)
     }
 
+    /// Forcibly captures a disabled backtrace, regardless of environment
+    /// variable configuration.
+    pub const fn disabled() -> Backtrace {
+        Backtrace { inner: Inner::Disabled }
+    }
+
     // Capture a backtrace which start just before the function addressed by
     // `ip`
     fn create(ip: usize) -> Backtrace {
