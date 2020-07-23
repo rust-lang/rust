@@ -15,7 +15,7 @@ pub(crate) use self::returning::{can_return_to_ssa_var, codegen_return};
 
 // Copied from https://github.com/rust-lang/rust/blob/b2c1a606feb1fbdb0ac0acba76f881ef172ed474/src/librustc_middle/ty/layout.rs#L2287
 pub(crate) fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
-    let ty = instance.monomorphic_ty(tcx);
+    let ty = instance.ty(tcx, ParamEnv::reveal_all());
     match ty.kind {
         ty::FnDef(..) |
         // Shims currently have type FnPtr. Not sure this should remain.
@@ -660,7 +660,7 @@ pub(crate) fn codegen_drop<'tcx>(
     if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
         // we don't actually need to drop anything
     } else {
-        let drop_fn_ty = drop_fn.monomorphic_ty(fx.tcx);
+        let drop_fn_ty = drop_fn.ty(fx.tcx, ParamEnv::reveal_all());
         let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(
             ParamEnv::reveal_all(),
             &drop_fn_ty.fn_sig(fx.tcx),

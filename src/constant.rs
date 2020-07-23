@@ -230,7 +230,7 @@ fn data_id_for_static(
 ) -> DataId {
     let instance = Instance::mono(tcx, def_id);
     let symbol_name = tcx.symbol_name(instance).name;
-    let ty = instance.monomorphic_ty(tcx);
+    let ty = instance.ty(tcx, ParamEnv::reveal_all());
     let is_mutable = if tcx.is_mutable_static(def_id) {
         true
     } else {
