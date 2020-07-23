@@ -992,7 +992,8 @@ mod pub_keyword {}
 /// Bind by reference during pattern matching.
 ///
 /// `ref` annotates pattern bindings to make them borrow rather than move.
-/// It is **not** a part of the pattern as far as matching is concerned.
+/// It is **not** a part of the pattern as far as matching is concerned: it does
+/// not affect *whether* a value is matched, only *how* it is matched.
 ///
 /// By default, [`match`] statements consume all they can, which can sometimes
 /// be a problem, when you don't really need the value to be moved and owned:
