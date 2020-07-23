@@ -5,10 +5,9 @@ use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_path,
-    match_trait_method, match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt,
-    snippet_with_applicability, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
-    SpanlessEq,
+    is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
+    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt, snippet_with_applicability, span_lint,
+    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -2514,16 +2513,16 @@ enum IterFunctionKind {
 struct IterFunctionVisitor {
     uses: Vec<IterFunction>,
     seen_other: bool,
-    target: String,
+    target: Ident,
 }
 impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        // TODO Check if the target identifier is being used in something other
-        // than a function call
+        // Check function calls on our collection
         if_chain! {
             if let ExprKind::MethodCall(method_name, _, ref args, _) = &expr.kind;
             if let Some(Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. }) = args.get(0);
-            if match_path(path, &[&self.target]);
+            if let &[name] = &path.segments;
+            if name.ident == self.target;
             then {
                 let into_iter = sym!(into_iter);
                 let len = sym!(len);
@@ -2544,8 +2543,17 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
                     ),
                     _ => self.seen_other = true,
                 }
+                return
             }
-            else {
+        }
+        // Check if the collection is used for anything else
+        if_chain! {
+            if let Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. } = expr;
+            if let &[name] = &path.segments;
+            if name.ident == self.target;
+            then {
+                self.seen_other = true;
+            } else {
                 walk_expr(self, expr);
             }
         }
@@ -2562,7 +2570,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
 fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {
         uses: Vec::new(),
-        target: identifier.name.to_ident_string(),
+        target: identifier,
         seen_other: false,
     };
     visitor.visit_block(block);
