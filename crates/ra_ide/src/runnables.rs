@@ -168,8 +168,7 @@ fn runnable_fn(
     };
 
     let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &fn_def));
-    let cfg_exprs =
-        attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
+    let cfg_exprs = attrs.cfg().collect();
 
     let nav = if let RunnableKind::DocTest { .. } = kind {
         NavigationTarget::from_doc_commented(
@@ -242,9 +241,7 @@ fn runnable_mod(
         .join("::");
 
     let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &module));
-    let cfg_exprs =
-        attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
-
+    let cfg_exprs = attrs.cfg().collect();
     let nav = module_def.to_nav(sema.db);
     Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg_exprs })
 }

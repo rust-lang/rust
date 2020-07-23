@@ -16,6 +16,7 @@ use paths::{AbsPath, AbsPathBuf};
 use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::split_delim;
 
 pub use crate::{
     cargo_workspace::{CargoConfig, CargoWorkspace, Package, Target, TargetKind},
@@ -544,11 +545,10 @@ fn get_rustc_cfg_options(target: Option<&str>) -> CfgOptions {
     match rustc_cfgs {
         Ok(rustc_cfgs) => {
             for line in rustc_cfgs.lines() {
-                match line.find('=') {
+                match split_delim(line, '=') {
                     None => cfg_options.insert_atom(line.into()),
-                    Some(pos) => {
-                        let key = &line[..pos];
-                        let value = line[pos + 1..].trim_matches('"');
+                    Some((key, value)) => {
+                        let value = value.trim_matches('"');
                         cfg_options.insert_key_value(key.into(), value.into());
                     }
                 }
