@@ -1,4 +1,4 @@
-error: Calling `push` with '/' or '/' (file system root) will overwrite the previous path definition
+error: calling `push` with '/' or '/' (file system root) will overwrite the previous path definition
   --> $DIR/path_buf_push_overwrite.rs:7:12
    |
 LL |     x.push("/bar");
