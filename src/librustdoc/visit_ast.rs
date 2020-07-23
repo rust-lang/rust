@@ -591,8 +591,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
                 if !self.inlining && of_trait.is_none() {
-                    let items =
-                        items.iter().map(|item| self.cx.tcx.hir().impl_item(item.id)).collect();
+                    let items = items
+                        .iter()
+                        .map(|item| {
+                            let item = self.cx.tcx.hir().impl_item(item.id);
+                            self.check_impl_doc_alias_attr(item);
+                            item
+                        })
+                        .collect();
                     let i = Impl {
                         unsafety,
                         polarity,
@@ -608,8 +614,28 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         vis: &item.vis,
                     };
                     om.impls.push(i);
+                } else if of_trait.is_some() {
+                    for item in items.iter() {
+                        self.check_impl_doc_alias_attr(self.cx.tcx.hir().impl_item(item.id));
+                    }
                 }
             }
+        }
+    }
+
+    fn check_impl_doc_alias_attr(&self, item: &hir::ImplItem<'_>) {
+        match item.kind {
+            hir::ImplItemKind::Const(_, _) => check_doc_alias_attrs(
+                &item.attrs,
+                "const in implementation block",
+                self.cx.sess().diagnostic(),
+            ),
+            hir::ImplItemKind::TyAlias(_) => check_doc_alias_attrs(
+                &item.attrs,
+                "type alias in implementation block",
+                self.cx.sess().diagnostic(),
+            ),
+            hir::ImplItemKind::Fn(_, _) => {}
         }
     }
 
