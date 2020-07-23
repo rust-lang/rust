@@ -1,10 +1,21 @@
 error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:21:5
+   |
+LL |     let indirect_positive = sample.iter().collect::<Vec<_>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::needless-collect` implied by `-D warnings`
+help: Use the original Iterator instead of collecting it and then producing a new one
+   |
+LL |     
+LL |     sample.iter()
+   |
+
+error: avoid using `collect()` when not needed
   --> $DIR/needless_collect.rs:11:29
    |
 LL |     let len = sample.iter().collect::<Vec<_>>().len();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
-   |
-   = note: `-D clippy::needless-collect` implied by `-D warnings`
 
 error: avoid using `collect()` when not needed
   --> $DIR/needless_collect.rs:12:15
@@ -24,5 +35,5 @@ error: avoid using `collect()` when not needed
 LL |     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().len();
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

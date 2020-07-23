@@ -18,4 +18,15 @@ fn main() {
     sample.iter().collect::<HashSet<_>>().len();
     // Neither should this
     sample.iter().collect::<BTreeSet<_>>().len();
+    let indirect_positive = sample.iter().collect::<Vec<_>>();
+    indirect_positive
+        .into_iter()
+        .map(|x| (x, x + 1))
+        .collect::<HashMap<_, _>>();
+    let indirect_negative = sample.iter().collect::<Vec<_>>();
+    indirect_negative.len();
+    indirect_negative
+        .iter()
+        .map(|x| (*x, *x + 1))
+        .collect::<HashMap<_, _>>();
 }

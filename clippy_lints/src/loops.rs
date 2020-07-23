@@ -1,14 +1,15 @@
 use crate::consts::constant;
 use crate::reexport::Name;
 use crate::utils::paths;
+use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    is_integer_const, is_no_std_crate, is_refutable, last_path_segment, match_trait_method, match_type, match_var,
-    multispan_sugg, snippet, snippet_opt, snippet_with_applicability, span_lint, span_lint_and_help,
-    span_lint_and_sugg, span_lint_and_then, SpanlessEq,
+    is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_path,
+    match_trait_method, match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt,
+    snippet_with_applicability, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
+    SpanlessEq,
 };
-use crate::utils::{is_type_diagnostic_item, qpath_res, sugg};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -17,7 +18,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc_hir::{
     def_id, BinOpKind, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, GenericArg, HirId, InlineAsmOperand,
-    LoopSource, MatchSource, Mutability, Node, Pat, PatKind, QPath, Stmt, StmtKind,
+    Local, LoopSource, MatchSource, Mutability, Node, Pat, PatKind, QPath, Stmt, StmtKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -27,7 +28,7 @@ use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::iter::{once, Iterator};
 use std::mem;
@@ -2358,6 +2359,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
 fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
+    // Check for direct, immediate usage
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
         if let ExprKind::MethodCall(ref chain_method, _, _, _) = args[0].kind;
@@ -2422,6 +2424,99 @@ fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
                 }
             }
         }
+    }
+    // Check for collecting it and then turning it back into an iterator later
+    if let ExprKind::Block(ref block, _) = expr.kind {
+        for ref stmt in block.stmts {
+            if_chain! {
+                // TODO also work for assignments to an existing variable
+                if let StmtKind::Local(
+                    Local { pat: Pat { kind: PatKind::Binding(_, _, ident, .. ), .. },
+                    init: Some(ref init_expr), .. }
+                ) = stmt.kind;
+                if let ExprKind::MethodCall(ref method_name, _, &[ref iter_source], ..) = init_expr.kind;
+                if method_name.ident.name == sym!(collect) && match_trait_method(cx, &init_expr, &paths::ITERATOR);
+                if let Some(ref generic_args) = method_name.args;
+                if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
+                if let ty = cx.typeck_results().node_type(ty.hir_id);
+                if is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
+                    is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
+                    match_type(cx, ty, &paths::LINKED_LIST);
+                if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
+                if iter_calls.len() == 1;
+                then {
+                    // Suggest replacing iter_call with iter_replacement, and removing stmt
+                    span_lint_and_then(
+                        cx,
+                        NEEDLESS_COLLECT,
+                        stmt.span,
+                        NEEDLESS_COLLECT_MSG,
+                        |diag| {
+                            let iter_replacement = Sugg::hir(cx, iter_source, "..").to_string();
+                            diag.multipart_suggestion(
+                                "Use the original Iterator instead of collecting it and then producing a new one",
+                                vec![
+                                    (stmt.span, String::new()),
+                                    (iter_calls[0].span, iter_replacement)
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        },
+                    );
+                }
+            }
+        }
+    }
+}
+
+struct IntoIterVisitor<'tcx> {
+    iters: Vec<&'tcx Expr<'tcx>>,
+    seen_other: bool,
+    target: String,
+}
+impl<'tcx> Visitor<'tcx> for IntoIterVisitor<'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        match &expr.kind {
+            ExprKind::MethodCall(
+                method_name,
+                _,
+                &[Expr {
+                    kind: ExprKind::Path(QPath::Resolved(_, ref path)),
+                    ..
+                }],
+                _,
+            ) if match_path(path, &[&self.target]) => {
+                // TODO Check what method is being called, if it's called on target, and act
+                // accordingly
+                if method_name.ident.name == sym!(into_iter) {
+                    self.iters.push(expr);
+                } else {
+                    self.seen_other = true;
+                }
+            },
+            _ => walk_expr(self, expr),
+        }
+    }
+
+    type Map = Map<'tcx>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
+/// Detect the occurences of calls to `iter` or `into_iter` for the
+/// given identifier
+fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<&'tcx Expr<'tcx>>> {
+    let mut visitor = IntoIterVisitor {
+        iters: Vec::new(),
+        target: identifier.name.to_ident_string(),
+        seen_other: false,
+    };
+    visitor.visit_block(block);
+    if visitor.seen_other {
+        None
+    } else {
+        Some(visitor.iters)
     }
 }
 
