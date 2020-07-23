@@ -804,3 +804,26 @@ fn overlapping_possible_matches() {
         &["foo(foo(42))", "foo(foo(foo(foo(42))))"],
     );
 }
+
+#[test]
+fn use_declaration_with_braces() {
+    // It would be OK for a path rule to match and alter a use declaration. We shouldn't mess it up
+    // though. In particular, we must not change `use foo::{baz, bar}` to `use foo::{baz,
+    // foo2::bar2}`.
+    mark::check!(use_declaration_with_braces);
+    assert_ssr_transform(
+        "foo::bar ==>> foo2::bar2",
+        r#"
+        mod foo { pub fn bar() {} pub fn baz() {} }
+        mod foo2 { pub fn bar2() {} }
+        use foo::{baz, bar};
+        fn main() { bar() }
+        "#,
+        expect![["
+        mod foo { pub fn bar() {} pub fn baz() {} }
+        mod foo2 { pub fn bar2() {} }
+        use foo::{baz, bar};
+        fn main() { foo2::bar2() }
+        "]],
+    )
+}

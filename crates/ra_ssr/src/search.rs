@@ -10,7 +10,8 @@ use ra_ide_db::{
     defs::Definition,
     search::{Reference, SearchScope},
 };
-use ra_syntax::{ast, AstNode, SyntaxNode};
+use ra_syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
+use test_utils::mark;
 
 /// A cache for the results of find_usages. This is for when we have multiple patterns that have the
 /// same path. e.g. if the pattern was `foo::Bar` that can parse as a path, an expression, a type
@@ -59,6 +60,10 @@ impl<'db> MatchFinder<'db> {
                         .skip(first_path.depth as usize)
                         .next()
                     {
+                        if !is_search_permitted_ancestors(&node_to_match) {
+                            mark::hit!(use_declaration_with_braces);
+                            continue;
+                        }
                         if let Ok(m) =
                             matching::get_match(false, rule, &node_to_match, &None, &self.sema)
                         {
@@ -123,6 +128,9 @@ impl<'db> MatchFinder<'db> {
         restrict_range: &Option<FileRange>,
         matches_out: &mut Vec<Match>,
     ) {
+        if !is_search_permitted(code) {
+            return;
+        }
         if let Ok(m) = matching::get_match(false, rule, &code, restrict_range, &self.sema) {
             matches_out.push(m);
         }
@@ -147,6 +155,25 @@ impl<'db> MatchFinder<'db> {
             self.slow_scan_node(&child, rule, restrict_range, matches_out);
         }
     }
+}
+
+/// Returns whether we support matching within `node` and all of its ancestors.
+fn is_search_permitted_ancestors(node: &SyntaxNode) -> bool {
+    if let Some(parent) = node.parent() {
+        if !is_search_permitted_ancestors(&parent) {
+            return false;
+        }
+    }
+    is_search_permitted(node)
+}
+
+/// Returns whether we support matching within this kind of node.
+fn is_search_permitted(node: &SyntaxNode) -> bool {
+    // FIXME: Properly handle use declarations. At the moment, if our search pattern is `foo::bar`
+    // and the code is `use foo::{baz, bar}`, we'll match `bar`, since it resolves to `foo::bar`.
+    // However we'll then replace just the part we matched `bar`. We probably need to instead remove
+    // `bar` and insert a new use declaration.
+    node.kind() != SyntaxKind::USE_ITEM
 }
 
 impl UsageCache {
