@@ -1298,8 +1298,6 @@ impl<T> Vec<T> {
     /// v.drain(..);
     /// assert_eq!(v, &[]);
     /// ```
-    ///
-    /// [`mem::forget`]: mem::forget
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain<R>(&mut self, range: R) -> Drain<'_, T>
     where
