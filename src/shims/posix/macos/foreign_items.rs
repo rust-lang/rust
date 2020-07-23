@@ -98,9 +98,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Thread-local storage
             "_tlv_atexit" => {
                 let &[dtor, data] = check_arg_count(args)?;
-                let dtor = this.read_scalar(dtor)?.not_undef()?;
+                let dtor = this.read_scalar(dtor)?.check_init()?;
                 let dtor = this.memory.get_fn(dtor)?.as_instance()?;
-                let data = this.read_scalar(data)?.not_undef()?;
+                let data = this.read_scalar(data)?.check_init()?;
                 let active_thread = this.get_active_thread();
                 this.machine.tls.set_macos_thread_dtor(active_thread, dtor, data)?;
             }
@@ -122,7 +122,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Threading
             "pthread_setname_np" => {
                 let &[name] = check_arg_count(args)?;
-                let name = this.read_scalar(name)?.not_undef()?;
+                let name = this.read_scalar(name)?.check_init()?;
                 this.pthread_setname_np(name)?;
             }
 
@@ -131,7 +131,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "mmap" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
                 // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
                 let &[addr, _, _, _, _, _] = check_arg_count(args)?;
-                let addr = this.read_scalar(addr)?.not_undef()?;
+                let addr = this.read_scalar(addr)?.check_init()?;
                 this.write_scalar(addr, dest)?;
             }
 

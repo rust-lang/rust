@@ -288,7 +288,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let kind = this.read_scalar(kind_op)?.not_undef()?;
+        let kind = this.read_scalar(kind_op)?.check_init()?;
         if kind == this.eval_libc("PTHREAD_MUTEX_NORMAL")? {
             // In `glibc` implementation, the numeric values of
             // `PTHREAD_MUTEX_NORMAL` and `PTHREAD_MUTEX_DEFAULT` are equal.
@@ -337,11 +337,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let attr = this.read_scalar(attr_op)?.not_undef()?;
+        let attr = this.read_scalar(attr_op)?.check_init()?;
         let kind = if this.is_null(attr)? {
             this.eval_libc("PTHREAD_MUTEX_DEFAULT")?
         } else {
-            mutexattr_get_kind(this, attr_op)?.not_undef()?
+            mutexattr_get_kind(this, attr_op)?.check_init()?
         };
 
         // Write 0 to use the same code path as the static initializers.
@@ -355,7 +355,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_lock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
+        let kind = mutex_get_kind(this, mutex_op)?.check_init()?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
         let active_thread = this.get_active_thread();
 
@@ -392,7 +392,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_trylock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
+        let kind = mutex_get_kind(this, mutex_op)?.check_init()?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
         let active_thread = this.get_active_thread();
 
@@ -425,7 +425,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutex_unlock(&mut self, mutex_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let kind = mutex_get_kind(this, mutex_op)?.not_undef()?;
+        let kind = mutex_get_kind(this, mutex_op)?.check_init()?;
         let id = mutex_get_or_create_id(this, mutex_op)?;
         let active_thread = this.get_active_thread();
 
@@ -589,7 +589,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let clock_id = this.read_scalar(clock_id_op)?.not_undef()?;
+        let clock_id = this.read_scalar(clock_id_op)?.check_init()?;
         if clock_id == this.eval_libc("CLOCK_REALTIME")?
             || clock_id == this.eval_libc("CLOCK_MONOTONIC")?
         {
@@ -630,11 +630,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let attr = this.read_scalar(attr_op)?.not_undef()?;
+        let attr = this.read_scalar(attr_op)?.check_init()?;
         let clock_id = if this.is_null(attr)? {
             this.eval_libc("CLOCK_REALTIME")?
         } else {
-            condattr_get_clock_id(this, attr_op)?.not_undef()?
+            condattr_get_clock_id(this, attr_op)?.check_init()?
         };
 
         // Write 0 to use the same code path as the static initializers.

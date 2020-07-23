@@ -226,12 +226,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "free" => {
                 let &[ptr] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 this.free(ptr, MiriMemoryKind::C)?;
             }
             "realloc" => {
                 let &[old_ptr, new_size] = check_arg_count(args)?;
-                let old_ptr = this.read_scalar(old_ptr)?.not_undef()?;
+                let old_ptr = this.read_scalar(old_ptr)?.check_init()?;
                 let new_size = this.read_scalar(new_size)?.to_machine_usize(this)?;
                 let res = this.realloc(old_ptr, new_size, MiriMemoryKind::C)?;
                 this.write_scalar(res, dest)?;
@@ -268,7 +268,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "__rust_dealloc" => {
                 let &[ptr, old_size, align] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
                 // No need to check old_size/align; we anyway check that they match the allocation.
@@ -281,7 +281,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "__rust_realloc" => {
                 let &[ptr, old_size, align, new_size] = check_arg_count(args)?;
-                let ptr = this.force_ptr(this.read_scalar(ptr)?.not_undef()?)?;
+                let ptr = this.force_ptr(this.read_scalar(ptr)?.check_init()?)?;
                 let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
                 let new_size = this.read_scalar(new_size)?.to_machine_usize(this)?;
@@ -301,8 +301,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // C memory handling functions
             "memcmp" => {
                 let &[left, right, n] = check_arg_count(args)?;
-                let left = this.read_scalar(left)?.not_undef()?;
-                let right = this.read_scalar(right)?.not_undef()?;
+                let left = this.read_scalar(left)?.check_init()?;
+                let right = this.read_scalar(right)?.check_init()?;
                 let n = Size::from_bytes(this.read_scalar(n)?.to_machine_usize(this)?);
 
                 let result = {
@@ -321,7 +321,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "memrchr" => {
                 let &[ptr, val, num] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 let val = this.read_scalar(val)?.to_i32()? as u8;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
                 if let Some(idx) = this
@@ -339,7 +339,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "memchr" => {
                 let &[ptr, val, num] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 let val = this.read_scalar(val)?.to_i32()? as u8;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
                 let idx = this
@@ -356,7 +356,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "strlen" => {
                 let &[ptr] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 let n = this.memory.read_c_str(ptr)?.len();
                 this.write_scalar(Scalar::from_machine_usize(u64::try_from(n).unwrap(), this), dest)?;
             }

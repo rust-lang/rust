@@ -67,7 +67,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn eval_libc(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
         self.eval_context_mut()
             .eval_path_scalar(&["libc", name])?
-            .not_undef()
+            .check_init()
     }
 
     /// Helper function to get a `libc` constant as an `i32`.
@@ -80,7 +80,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn eval_windows(&mut self, module: &str, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
         self.eval_context_mut()
             .eval_path_scalar(&["std", "sys", "windows", module, name])?
-            .not_undef()
+            .check_init()
     }
 
     /// Helper function to get a `windows` constant as an `u64`.
@@ -407,7 +407,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn get_last_error(&self) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_ref();
         let errno_place = this.machine.last_error.unwrap();
-        this.read_scalar(errno_place.into())?.not_undef()
+        this.read_scalar(errno_place.into())?.check_init()
     }
 
     /// Sets the last OS error using a `std::io::Error`. This function tries to produce the most
@@ -467,7 +467,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
     }
-    
+
     fn read_scalar_at_offset(
         &self,
         op: OpTy<'tcx, Tag>,

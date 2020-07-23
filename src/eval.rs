@@ -234,7 +234,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                 }
             }
         }
-        let return_code = ecx.read_scalar(ret_place.into())?.not_undef()?.to_machine_isize(&ecx)?;
+        let return_code = ecx.read_scalar(ret_place.into())?.check_init()?.to_machine_isize(&ecx)?;
         Ok(return_code)
     })();
 

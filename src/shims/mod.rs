@@ -67,14 +67,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (dest, ret) = ret.unwrap();
 
         let req_align = this
-            .force_bits(this.read_scalar(align_op)?.not_undef()?, this.pointer_size())?;
+            .force_bits(this.read_scalar(align_op)?.check_init()?, this.pointer_size())?;
 
         // Stop if the alignment is not a power of two.
         if !req_align.is_power_of_two() {
             return this.start_panic("align_offset: align is not a power-of-two", unwind);
         }
 
-        let ptr_scalar = this.read_scalar(ptr_op)?.not_undef()?;
+        let ptr_scalar = this.read_scalar(ptr_op)?.check_init()?;
 
         // Default: no result.
         let mut result = this.machine_usize_max();

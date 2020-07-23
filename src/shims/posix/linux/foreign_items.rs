@@ -181,7 +181,7 @@ fn getrandom<'tcx>(
     flags: OpTy<'tcx, Tag>,
     dest: PlaceTy<'tcx, Tag>,
 ) -> InterpResult<'tcx> {
-    let ptr = this.read_scalar(ptr)?.not_undef()?;
+    let ptr = this.read_scalar(ptr)?.check_init()?;
     let len = this.read_scalar(len)?.to_machine_usize(this)?;
 
     // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,

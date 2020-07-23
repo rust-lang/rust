@@ -68,9 +68,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let size = elem_layout.size.checked_mul(count, this)
                     .ok_or_else(|| err_ub_format!("overflow computing total size of `{}`", intrinsic_name))?;
-                let src = this.read_scalar(src)?.not_undef()?;
+                let src = this.read_scalar(src)?.check_init()?;
                 let src = this.memory.check_ptr_access(src, size, elem_align)?;
-                let dest = this.read_scalar(dest)?.not_undef()?;
+                let dest = this.read_scalar(dest)?.check_init()?;
                 let dest = this.memory.check_ptr_access(dest, size, elem_align)?;
 
                 if let (Some(src), Some(dest)) = (src, dest) {
@@ -105,7 +105,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let ty = instance.substs.type_at(0);
                 let ty_layout = this.layout_of(ty)?;
                 let val_byte = this.read_scalar(val_byte)?.to_u8()?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 let count = this.read_scalar(count)?.to_machine_usize(this)?;
                 let byte_count = ty_layout.size.checked_mul(count, this)
                     .ok_or_else(|| err_ub_format!("overflow computing total size of `write_bytes`"))?;
@@ -503,7 +503,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Other
             "assume" => {
                 let &[cond] = check_arg_count(args)?;
-                let cond = this.read_scalar(cond)?.not_undef()?.to_bool()?;
+                let cond = this.read_scalar(cond)?.check_init()?.to_bool()?;
                 if !cond {
                     throw_ub_format!("`assume` intrinsic called with `false`");
                 }

@@ -65,7 +65,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "read" => {
                 let &[fd, buf, count] = check_arg_count(args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_scalar(buf)?.not_undef()?;
+                let buf = this.read_scalar(buf)?.check_init()?;
                 let count = this.read_scalar(count)?.to_machine_usize(this)?;
                 let result = if fd == 0 {
 
@@ -109,7 +109,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "write" => {
                 let &[fd, buf, n] = check_arg_count(args)?;
                 let fd = this.read_scalar(fd)?.to_i32()?;
-                let buf = this.read_scalar(buf)?.not_undef()?;
+                let buf = this.read_scalar(buf)?.check_init()?;
                 let count = this.read_scalar(n)?.to_machine_usize(this)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
                 let result = if fd == 0 {
@@ -225,7 +225,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "dlsym" => {
                 let &[handle, symbol] = check_arg_count(args)?;
                 this.read_scalar(handle)?.to_machine_usize(this)?;
-                let symbol = this.read_scalar(symbol)?.not_undef()?;
+                let symbol = this.read_scalar(symbol)?.check_init()?;
                 let symbol_name = this.memory.read_c_str(symbol)?;
                 if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.target.target_os)? {
                     let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
@@ -263,7 +263,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "pthread_key_create" => {
                 let &[key, dtor] = check_arg_count(args)?;
                 let key_place = this.deref_operand(key)?;
-                let dtor = this.read_scalar(dtor)?.not_undef()?;
+                let dtor = this.read_scalar(dtor)?.check_init()?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
                 let dtor = match this.test_null(dtor)? {
@@ -290,23 +290,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_key_delete" => {
                 let &[key] = check_arg_count(args)?;
-                let key = this.force_bits(this.read_scalar(key)?.not_undef()?, key.layout.size)?;
+                let key = this.force_bits(this.read_scalar(key)?.check_init()?, key.layout.size)?;
                 this.machine.tls.delete_tls_key(key)?;
                 // Return success (0)
                 this.write_null(dest)?;
             }
             "pthread_getspecific" => {
                 let &[key] = check_arg_count(args)?;
-                let key = this.force_bits(this.read_scalar(key)?.not_undef()?, key.layout.size)?;
+                let key = this.force_bits(this.read_scalar(key)?.check_init()?, key.layout.size)?;
                 let active_thread = this.get_active_thread();
                 let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
                 this.write_scalar(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let &[key, new_ptr] = check_arg_count(args)?;
-                let key = this.force_bits(this.read_scalar(key)?.not_undef()?, key.layout.size)?;
+                let key = this.force_bits(this.read_scalar(key)?.check_init()?, key.layout.size)?;
                 let active_thread = this.get_active_thread();
-                let new_ptr = this.read_scalar(new_ptr)?.not_undef()?;
+                let new_ptr = this.read_scalar(new_ptr)?.check_init()?;
                 this.machine.tls.store_tls(key, active_thread, this.test_null(new_ptr)?)?;
 
                 // Return success (`0`).
@@ -462,9 +462,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             "pthread_atfork" => {
                 let &[prepare, parent, child] = check_arg_count(args)?;
-                this.force_bits(this.read_scalar(prepare)?.not_undef()?, this.memory.pointer_size())?;
-                this.force_bits(this.read_scalar(parent)?.not_undef()?, this.memory.pointer_size())?;
-                this.force_bits(this.read_scalar(child)?.not_undef()?, this.memory.pointer_size())?;
+                this.force_bits(this.read_scalar(prepare)?.check_init()?, this.memory.pointer_size())?;
+                this.force_bits(this.read_scalar(parent)?.check_init()?, this.memory.pointer_size())?;
+                this.force_bits(this.read_scalar(child)?.check_init()?, this.memory.pointer_size())?;
                 // We do not support forking, so there is nothing to do here.
                 this.write_null(dest)?;
             }
