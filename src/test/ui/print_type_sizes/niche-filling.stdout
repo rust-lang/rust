@@ -8,12 +8,12 @@ print-type-size     variant `Some`: 12 bytes
 print-type-size         field `.0`: 12 bytes
 print-type-size     variant `None`: 0 bytes
 print-type-size type: `EmbeddedDiscr`: 8 bytes, alignment: 4 bytes
-print-type-size     discriminant: 1 bytes
 print-type-size     variant `Record`: 7 bytes
-print-type-size         field `.pre`: 1 bytes
-print-type-size         field `.post`: 2 bytes
 print-type-size         field `.val`: 4 bytes
+print-type-size         field `.post`: 2 bytes
+print-type-size         field `.pre`: 1 bytes
 print-type-size     variant `None`: 0 bytes
+print-type-size     end padding: 1 bytes
 print-type-size type: `MyOption<Union1<std::num::NonZeroU32>>`: 8 bytes, alignment: 4 bytes
 print-type-size     discriminant: 4 bytes
 print-type-size     variant `Some`: 4 bytes
