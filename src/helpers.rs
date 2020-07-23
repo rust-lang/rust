@@ -92,14 +92,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function to get the `TyAndLayout` of a `libc` type
     fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let this = self.eval_context_mut();
-        let ty = this.resolve_path(&["libc", name]).monomorphic_ty(*this.tcx);
+        let ty = this.resolve_path(&["libc", name]).ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty)
     }
 
     /// Helper function to get the `TyAndLayout` of a `windows` type
     fn windows_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let this = self.eval_context_mut();
-        let ty = this.resolve_path(&["std", "sys", "windows", "c", name]).monomorphic_ty(*this.tcx);
+        let ty = this.resolve_path(&["std", "sys", "windows", "c", name]).ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty)
     }
 

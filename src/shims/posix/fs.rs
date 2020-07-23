@@ -9,6 +9,7 @@ use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::abi::{Align, LayoutOf, Size};
+use rustc_middle::ty;
 
 use crate::*;
 use stacked_borrows::Tag;
@@ -670,7 +671,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // function and `resolve_path` is returning the latter.
             let statx_ty = this
                 .resolve_path(&["libc", "unix", "linux_like", "linux", "gnu", "statx"])
-                .monomorphic_ty(*this.tcx);
+                .ty(*this.tcx, ty::ParamEnv::reveal_all());
             let statxbuf_ty = this.tcx.mk_mut_ptr(statx_ty);
             let statxbuf_layout = this.layout_of(statxbuf_ty)?;
             let statxbuf_imm = ImmTy::from_scalar(statxbuf_scalar, statxbuf_layout);
