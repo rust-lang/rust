@@ -1,4 +1,4 @@
-error: Creating a reference that is immediately dereferenced.
+error: creating a reference that is immediately dereferenced
   --> $DIR/unnecessary_ref.rs:13:17
    |
 LL |     let inner = (&outer).inner;
