@@ -5,7 +5,6 @@
 use std::slice::Iter as SliceIter;
 
 use ra_syntax::SmolStr;
-use tt::{Leaf, Subtree, TokenTree};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CfgExpr {
@@ -18,6 +17,9 @@ pub enum CfgExpr {
 }
 
 impl CfgExpr {
+    pub fn parse(tt: &tt::Subtree) -> CfgExpr {
+        next_cfg_expr(&mut tt.token_trees.iter()).unwrap_or(CfgExpr::Invalid)
+    }
     /// Fold the cfg by querying all basic `Atom` and `KeyValue` predicates.
     pub fn fold(&self, query: &dyn Fn(&SmolStr, Option<&SmolStr>) -> bool) -> Option<bool> {
         match self {
@@ -35,22 +37,18 @@ impl CfgExpr {
     }
 }
 
-pub fn parse_cfg(tt: &Subtree) -> CfgExpr {
-    next_cfg_expr(&mut tt.token_trees.iter()).unwrap_or(CfgExpr::Invalid)
-}
-
 fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
     let name = match it.next() {
         None => return None,
-        Some(TokenTree::Leaf(Leaf::Ident(ident))) => ident.text.clone(),
+        Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => ident.text.clone(),
         Some(_) => return Some(CfgExpr::Invalid),
     };
 
     // Peek
     let ret = match it.as_slice().first() {
-        Some(TokenTree::Leaf(Leaf::Punct(punct))) if punct.char == '=' => {
+        Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) if punct.char == '=' => {
             match it.as_slice().get(1) {
-                Some(TokenTree::Leaf(Leaf::Literal(literal))) => {
+                Some(tt::TokenTree::Leaf(tt::Leaf::Literal(literal))) => {
                     it.next();
                     it.next();
                     // FIXME: escape? raw string?
@@ -61,7 +59,7 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
                 _ => return Some(CfgExpr::Invalid),
             }
         }
-        Some(TokenTree::Subtree(subtree)) => {
+        Some(tt::TokenTree::Subtree(subtree)) => {
             it.next();
             let mut sub_it = subtree.token_trees.iter();
             let mut subs = std::iter::from_fn(|| next_cfg_expr(&mut sub_it)).collect();
@@ -76,7 +74,7 @@ fn next_cfg_expr(it: &mut SliceIter<tt::TokenTree>) -> Option<CfgExpr> {
     };
 
     // Eat comma separator
-    if let Some(TokenTree::Leaf(Leaf::Punct(punct))) = it.as_slice().first() {
+    if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) = it.as_slice().first() {
         if punct.char == ',' {
             it.next();
         }
@@ -99,7 +97,8 @@ mod tests {
 
     fn assert_parse_result(input: &str, expected: CfgExpr) {
         let (tt, _) = get_token_tree_generated(input);
-        assert_eq!(parse_cfg(&tt), expected);
+        let cfg = CfgExpr::parse(&tt);
+        assert_eq!(cfg, expected);
     }
 
     #[test]
