@@ -629,27 +629,24 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
 
             sym::float_to_int_unchecked => {
-                if float_type_width(arg_tys[0]).is_none() {
-                    span_invalid_monomorphization_error(
-                        tcx.sess,
-                        span,
-                        &format!(
-                            "invalid monomorphization of `float_to_int_unchecked` \
+                let float_width = match float_type_width(arg_tys[0]) {
+                    Some(width) => width,
+                    None => {
+                        span_invalid_monomorphization_error(
+                            tcx.sess,
+                            span,
+                            &format!(
+                                "invalid monomorphization of `float_to_int_unchecked` \
                                   intrinsic: expected basic float type, \
                                   found `{}`",
-                            arg_tys[0]
-                        ),
-                    );
-                    return;
-                }
-                match int_type_width_signed(ret_ty, self.cx) {
-                    Some((width, signed)) => {
-                        if signed {
-                            self.fptosi(args[0].immediate(), self.cx.type_ix(width))
-                        } else {
-                            self.fptoui(args[0].immediate(), self.cx.type_ix(width))
-                        }
+                                arg_tys[0]
+                            ),
+                        );
+                        return;
                     }
+                };
+                let (width, signed) = match int_type_width_signed(ret_ty, self.cx) {
+                    Some(pair) => pair,
                     None => {
                         span_invalid_monomorphization_error(
                             tcx.sess,
@@ -663,7 +660,49 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         );
                         return;
                     }
+                };
+
+                // The LLVM backend can reorder and speculate `fptosi` and
+                // `fptoui`, so on WebAssembly the codegen for this instruction
+                // is quite heavyweight. To avoid this heavyweight codegen we
+                // instead use the raw wasm intrinsics which will lower to one
+                // instruction in WebAssembly (`iNN.trunc_fMM_{s,u}`). This one
+                // instruction will trap if the operand is out of bounds, but
+                // that's ok since this intrinsic is UB if the operands are out
+                // of bounds, so the behavior can be different on WebAssembly
+                // than other targets.
+                //
+                // Note, however, that when the `nontrapping-fptoint` feature is
+                // enabled in LLVM then LLVM will lower `fptosi` to
+                // `iNN.trunc_sat_fMM_{s,u}`, so if that's the case we don't
+                // bother with intrinsics.
+                let mut result = None;
+                if self.sess().target.target.arch == "wasm32"
+                    && !self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
+                {
+                    let name = match (width, float_width, signed) {
+                        (32, 32, true) => Some("llvm.wasm.trunc.signed.i32.f32"),
+                        (32, 64, true) => Some("llvm.wasm.trunc.signed.i32.f64"),
+                        (64, 32, true) => Some("llvm.wasm.trunc.signed.i64.f32"),
+                        (64, 64, true) => Some("llvm.wasm.trunc.signed.i64.f64"),
+                        (32, 32, false) => Some("llvm.wasm.trunc.unsigned.i32.f32"),
+                        (32, 64, false) => Some("llvm.wasm.trunc.unsigned.i32.f64"),
+                        (64, 32, false) => Some("llvm.wasm.trunc.unsigned.i64.f32"),
+                        (64, 64, false) => Some("llvm.wasm.trunc.unsigned.i64.f64"),
+                        _ => None,
+                    };
+                    if let Some(name) = name {
+                        let intrinsic = self.get_intrinsic(name);
+                        result = Some(self.call(intrinsic, &[args[0].immediate()], None));
+                    }
                 }
+                result.unwrap_or_else(|| {
+                    if signed {
+                        self.fptosi(args[0].immediate(), self.cx.type_ix(width))
+                    } else {
+                        self.fptoui(args[0].immediate(), self.cx.type_ix(width))
+                    }
+                })
             }
 
             sym::discriminant_value => {
