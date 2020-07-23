@@ -13,15 +13,16 @@ trait Recover<Q: ?Sized> {
     fn replace(&mut self, key: Self::Key) -> Option<Self::Key>;
 }
 
+/// Same purpose as `Option::unwrap` but doesn't always guarantee a panic
+/// if the option contains no value.
+/// SAFETY: the caller must ensure that the option contains a value.
 #[inline(always)]
 pub unsafe fn unwrap_unchecked<T>(val: Option<T>) -> T {
-    val.unwrap_or_else(|| {
-        if cfg!(debug_assertions) {
-            panic!("'unchecked' unwrap on None in BTreeMap");
-        } else {
-            unsafe {
-                core::intrinsics::unreachable();
-            }
-        }
-    })
+    if cfg!(debug_assertions) {
+        val.expect("'unchecked' unwrap on None in BTreeMap")
+    } else {
+        val.unwrap()
+        // val.unwrap_or_else(|| unsafe { core::hint::unreachable_unchecked() })
+        // ...is considerably slower
+    }
 }
