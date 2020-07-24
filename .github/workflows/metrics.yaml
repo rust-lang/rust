@@ -1,4 +1,4 @@
-name: rustdoc
+name: metrics
 on:
   push:
    branches:
