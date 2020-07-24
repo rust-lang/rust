@@ -13,7 +13,7 @@ doctest = false
 rustc_arena = { path = "../librustc_arena" }
 bitflags = "1.2.1"
 scoped-tls = "1.0"
-log = { version = "0.4", features = ["release_max_level_info", "std"] }
+log = { package = "tracing", version = "0.1" }
 rustc-rayon-core = "0.3.0"
 polonius-engine = "0.12.0"
 rustc_apfloat = { path = "../librustc_apfloat" }
