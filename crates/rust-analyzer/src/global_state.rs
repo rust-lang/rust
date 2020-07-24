@@ -17,6 +17,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     config::Config,
     diagnostics::{CheckFixes, DiagnosticCollection},
+    document::DocumentData,
     from_proto,
     line_endings::LineEndings,
     main_loop::Task,
@@ -69,7 +70,7 @@ pub(crate) struct GlobalState {
     pub(crate) config: Config,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
-    pub(crate) mem_docs: FxHashMap<VfsPath, Option<i64>>,
+    pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) status: Status,
     pub(crate) source_root_config: SourceRootConfig,
@@ -84,7 +85,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) analysis: Analysis,
     pub(crate) check_fixes: CheckFixes,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
-    mem_docs: FxHashMap<VfsPath, Option<i64>>,
+    mem_docs: FxHashMap<VfsPath, DocumentData>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
 }
@@ -259,7 +260,7 @@ impl GlobalStateSnapshot {
 
     pub(crate) fn url_file_version(&self, url: &Url) -> Option<i64> {
         let path = from_proto::vfs_path(&url).ok()?;
-        self.mem_docs.get(&path).copied()?
+        self.mem_docs.get(&path)?.version
     }
 
     pub(crate) fn anchored_path(&self, file_id: FileId, path: &str) -> Url {

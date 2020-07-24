@@ -33,6 +33,7 @@ mod line_endings;
 mod request_metrics;
 mod lsp_utils;
 mod thread_pool;
+mod document;
 pub mod lsp_ext;
 pub mod config;
 
