@@ -24,6 +24,9 @@ pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn message(&self) -> String;
     fn source(&self) -> InFile<SyntaxNodePtr>;
     fn as_any(&self) -> &(dyn Any + Send + 'static);
+    fn is_experimental(&self) -> bool {
+        false
+    }
 }
 
 pub trait AstDiagnostic {
@@ -44,6 +47,7 @@ impl dyn Diagnostic {
 
 pub struct DiagnosticSink<'a> {
     callbacks: Vec<Box<dyn FnMut(&dyn Diagnostic) -> Result<(), ()> + 'a>>,
+    filters: Vec<Box<dyn FnMut(&dyn Diagnostic) -> bool + 'a>>,
     default_callback: Box<dyn FnMut(&dyn Diagnostic) + 'a>,
 }
 
@@ -54,7 +58,12 @@ impl<'a> DiagnosticSink<'a> {
     }
 
     fn _push(&mut self, d: &dyn Diagnostic) {
-        for cb in self.callbacks.iter_mut() {
+        for filter in &mut self.filters {
+            if !filter(d) {
+                return;
+            }
+        }
+        for cb in &mut self.callbacks {
             match cb(d) {
                 Ok(()) => return,
                 Err(()) => (),
@@ -66,11 +75,17 @@ impl<'a> DiagnosticSink<'a> {
 
 pub struct DiagnosticSinkBuilder<'a> {
     callbacks: Vec<Box<dyn FnMut(&dyn Diagnostic) -> Result<(), ()> + 'a>>,
+    filters: Vec<Box<dyn FnMut(&dyn Diagnostic) -> bool + 'a>>,
 }
 
 impl<'a> DiagnosticSinkBuilder<'a> {
     pub fn new() -> Self {
-        Self { callbacks: Vec::new() }
+        Self { callbacks: Vec::new(), filters: Vec::new() }
+    }
+
+    pub fn filter<F: FnMut(&dyn Diagnostic) -> bool + 'a>(mut self, cb: F) -> Self {
+        self.filters.push(Box::new(cb));
+        self
     }
 
     pub fn on<D: Diagnostic, F: FnMut(&D) + 'a>(mut self, mut cb: F) -> Self {
@@ -86,6 +101,10 @@ impl<'a> DiagnosticSinkBuilder<'a> {
     }
 
     pub fn build<F: FnMut(&dyn Diagnostic) + 'a>(self, default_callback: F) -> DiagnosticSink<'a> {
-        DiagnosticSink { callbacks: self.callbacks, default_callback: Box::new(default_callback) }
+        DiagnosticSink {
+            callbacks: self.callbacks,
+            filters: self.filters,
+            default_callback: Box::new(default_callback),
+        }
     }
 }
