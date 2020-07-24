@@ -1274,12 +1274,10 @@ impl<T> Vec<T> {
     /// Creates a draining iterator that removes the specified range in the vector
     /// and yields the removed items.
     ///
-    /// The element range is removed even if the iterator is only partially
-    /// consumed or not consumed at all.
-    ///
-    /// Note: Be aware that if the iterator is leaked (eg: [`mem::forget`]), it
-    /// cancels this property so it is unspecified how many elements are removed
-    /// from the vector in this case.
+    /// When the iterator **is** dropped, all elements in the range are removed
+    /// from the vector, even if the iterator was not fully consumed. If the
+    /// iterator **is not** dropped (with [`mem::forget`] for example), it is
+    /// unspecified how many elements are removed.
     ///
     /// # Panics
     ///
