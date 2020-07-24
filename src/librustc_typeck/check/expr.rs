@@ -19,6 +19,7 @@ use crate::type_error_struct;
 use rustc_ast::ast;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
@@ -177,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_diverges = self.diverges.replace(Diverges::Maybe);
         let old_has_errors = self.has_errors.replace(false);
 
-        let ty = self.check_expr_kind(expr, expected);
+        let ty = ensure_sufficient_stack(|| self.check_expr_kind(expr, expected));
 
         // Warn for non-block expressions with diverging children.
         match expr.kind {
