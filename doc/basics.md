@@ -48,6 +48,7 @@ this toolchain, you can just use the `setup-toolchain.sh` script or use
 sh setup-toolchain.sh
 # OR
 cargo install rustup-toolchain-install-master
+# For better IDE integration also add `-c rustfmt -c rust-src` (optional)
 rustup-toolchain-install-master -f -n master -c rustc-dev -c llvm-tools
 rustup override set master
 ```
@@ -62,8 +63,8 @@ cargo build  # builds Clippy
 cargo test   # tests Clippy
 ```
 
-Since Clippys test suite is pretty big, there are some commands that only run a
-subset of Clippys tests:
+Since Clippy's test suite is pretty big, there are some commands that only run a
+subset of Clippy's tests:
 
 ```bash
 # only run UI tests
@@ -74,7 +75,7 @@ TESTNAME="test_" cargo uitest
 cargo test --test dogfood
 ```
 
-If the output of a UI test differs from the expected output, you can update the
+If the output of a [UI test] differs from the expected output, you can update the
 reference file with:
 
 ```bash
@@ -86,6 +87,8 @@ or if you modify a test file to add a test case.
 
 _Note:_ This command may update more files than you intended. In that case only
 commit the files you wanted to update.
+
+[UI test]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#guide-to-the-ui-tests
 
 ## `cargo dev`
 
