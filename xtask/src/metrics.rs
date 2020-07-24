@@ -12,36 +12,53 @@ use crate::not_bash::{fs2, pushd, rm_rf, run};
 
 type Unit = &'static str;
 
-pub fn run_metrics() -> Result<()> {
-    let mut metrics = Metrics::new()?;
-    metrics.measure_build()?;
+pub struct MetricsCmd {
+    pub dry_run: bool,
+}
 
-    {
-        let _d = pushd("target");
-        let metrics_token = env::var("METRICS_TOKEN").unwrap();
-        let repo = format!("https://{}@github.com/rust-analyzer/metrics.git", metrics_token);
-        run!("git clone --depth 1 {}", repo)?;
-        let _d = pushd("metrics");
+impl MetricsCmd {
+    pub fn run(self) -> Result<()> {
+        let mut metrics = Metrics::new()?;
+        if !self.dry_run {
+            rm_rf("./target/release")?;
+        }
 
-        let mut file = std::fs::OpenOptions::new().append(true).open("metrics.json")?;
-        writeln!(file, "{}", metrics.json())?;
-        run!("git add .")?;
-        run!("git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈")?;
-        run!("git push origin master")?;
+        metrics.measure_build()?;
+        metrics.measure_analysis_stats_self()?;
+
+        if !self.dry_run {
+            let _d = pushd("target");
+            let metrics_token = env::var("METRICS_TOKEN").unwrap();
+            let repo = format!("https://{}@github.com/rust-analyzer/metrics.git", metrics_token);
+            run!("git clone --depth 1 {}", repo)?;
+            let _d = pushd("metrics");
+
+            let mut file = std::fs::OpenOptions::new().append(true).open("metrics.json")?;
+            writeln!(file, "{}", metrics.json())?;
+            run!("git add .")?;
+            run!("git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈")?;
+            run!("git push origin master")?;
+        }
+        eprintln!("{:#?}", metrics);
+        Ok(())
     }
-    eprintln!("{:#?}", metrics);
-    Ok(())
 }
 
 impl Metrics {
     fn measure_build(&mut self) -> Result<()> {
         run!("cargo fetch")?;
-        rm_rf("./target/release")?;
 
-        let build = Instant::now();
+        let time = Instant::now();
         run!("cargo build --release --package rust-analyzer --bin rust-analyzer")?;
-        let build = build.elapsed();
-        self.report("build", build.as_millis() as u64, "ms");
+        let time = time.elapsed();
+        self.report("build", time.as_millis() as u64, "ms");
+        Ok(())
+    }
+    fn measure_analysis_stats_self(&mut self) -> Result<()> {
+        let time = Instant::now();
+        run!("./target/release/rust-analyzer analysis-stats .")?;
+        let time = time.elapsed();
+        self.report("analysis-stats/self", time.as_millis() as u64, "ms");
         Ok(())
     }
 }

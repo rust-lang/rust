@@ -15,7 +15,7 @@ use xtask::{
     codegen::{self, Mode},
     dist::DistCmd,
     install::{ClientOpt, InstallCmd, Malloc, ServerOpt},
-    metrics::run_metrics,
+    metrics::MetricsCmd,
     not_bash::pushd,
     pre_commit, project_root,
     release::{PromoteCmd, ReleaseCmd},
@@ -118,7 +118,11 @@ FLAGS:
             args.finish()?;
             DistCmd { nightly, client_version }.run()
         }
-        "metrics" => run_metrics(),
+        "metrics" => {
+            let dry_run = args.contains("--dry-run");
+            args.finish()?;
+            MetricsCmd { dry_run }.run()
+        }
         _ => {
             eprintln!(
                 "\
