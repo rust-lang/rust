@@ -3610,6 +3610,47 @@ impl str {
         RSplitN(self.splitn(n, pat).0)
     }
 
+    /// Splits the string on the first occurrence of the specified delimiter and
+    /// returns prefix before delimiter and suffix after delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_once)]
+    ///
+    /// assert_eq!("cfg".split_once('='), None);
+    /// assert_eq!("cfg=foo".split_once('='), Some(("cfg", "foo")));
+    /// assert_eq!("cfg=foo=bar".split_once('='), Some(("cfg", "foo=bar")));
+    /// ```
+    #[unstable(feature = "str_split_once", reason = "newly added", issue = "74773")]
+    #[inline]
+    pub fn split_once<'a, P: Pattern<'a>>(&'a self, delimiter: P) -> Option<(&'a str, &'a str)> {
+        let (start, end) = delimiter.into_searcher(self).next_match()?;
+        Some((&self[..start], &self[end..]))
+    }
+
+    /// Splits the string on the last occurrence of the specified delimiter and
+    /// returns prefix before delimiter and suffix after delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_once)]
+    ///
+    /// assert_eq!("cfg".rsplit_once('='), None);
+    /// assert_eq!("cfg=foo".rsplit_once('='), Some(("cfg", "foo")));
+    /// assert_eq!("cfg=foo=bar".rsplit_once('='), Some(("cfg=foo", "bar")));
+    /// ```
+    #[unstable(feature = "str_split_once", reason = "newly added", issue = "74773")]
+    #[inline]
+    pub fn rsplit_once<'a, P>(&'a self, delimiter: P) -> Option<(&'a str, &'a str)>
+    where
+        P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+    {
+        let (start, end) = delimiter.into_searcher(self).next_match_back()?;
+        Some((&self[..start], &self[end..]))
+    }
+
     /// An iterator over the disjoint matches of a pattern within the given string
     /// slice.
     ///
