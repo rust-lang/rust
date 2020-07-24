@@ -234,6 +234,9 @@ impl Diagnostic for MismatchedArgCount {
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }
+    fn is_experimental(&self) -> bool {
+        true
+    }
 }
 
 impl AstDiagnostic for MismatchedArgCount {
