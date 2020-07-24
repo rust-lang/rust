@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::FromIterator;
+use std::mem;
 use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -24,6 +25,20 @@ const MIN_INSERTS_HEIGHT_1: usize = NODE_CAPACITY + 1;
 // i.e. a tree who's root is an internal node at height 2, with edges to more internal nodes.
 // It's not the minimum size: removing an element from such a tree does not always reduce height.
 const MIN_INSERTS_HEIGHT_2: usize = NODE_CAPACITY + (NODE_CAPACITY + 1) * NODE_CAPACITY + 1;
+
+// Gather all references from a mutable iterator and make sure Miri notices if
+// using them is dangerous.
+fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {
+    // Gather all those references.
+    let mut refs: Vec<&mut T> = iter.collect();
+    // Use them all. Twice, to be sure we got all interleavings.
+    for r in refs.iter_mut() {
+        mem::swap(dummy, r);
+    }
+    for r in refs {
+        mem::swap(dummy, r);
+    }
+}
 
 #[test]
 fn test_basic_large() {
@@ -268,7 +283,14 @@ fn test_iter_mut_mutation() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)] // FIXME: fails in Miri <https://github.com/rust-lang/rust/issues/73915>
 fn test_values_mut() {
+    let mut a: BTreeMap<_, _> = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i)).collect();
+    test_all_refs(&mut 13, a.values_mut());
+}
+
+#[test]
+fn test_values_mut_mutation() {
     let mut a = BTreeMap::new();
     a.insert(1, String::from("hello"));
     a.insert(2, String::from("goodbye"));
@@ -279,6 +301,36 @@ fn test_values_mut() {
 
     let values: Vec<String> = a.values().cloned().collect();
     assert_eq!(values, [String::from("hello!"), String::from("goodbye!")]);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // FIXME: fails in Miri <https://github.com/rust-lang/rust/issues/73915>
+fn test_iter_entering_root_twice() {
+    let mut map: BTreeMap<_, _> = (0..2).map(|i| (i, i)).collect();
+    let mut it = map.iter_mut();
+    let front = it.next().unwrap();
+    let back = it.next_back().unwrap();
+    assert_eq!(front, (&0, &mut 0));
+    assert_eq!(back, (&1, &mut 1));
+    *front.1 = 24;
+    *back.1 = 42;
+    assert_eq!(front, (&0, &mut 24));
+    assert_eq!(back, (&1, &mut 42));
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // FIXME: fails in Miri <https://github.com/rust-lang/rust/issues/73915>
+fn test_iter_descending_to_same_node_twice() {
+    let mut map: BTreeMap<_, _> = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i)).collect();
+    let mut it = map.iter_mut();
+    // Descend into first child.
+    let front = it.next().unwrap();
+    // Descend into first child again, after running through second child.
+    while it.next_back().is_some() {}
+    // Check immutable access.
+    assert_eq!(front, (&0, &mut 0));
+    // Perform mutable access.
+    *front.1 = 42;
 }
 
 #[test]
@@ -1281,6 +1333,34 @@ fn test_split_off_empty_left() {
     data.sort();
     assert!(map.into_iter().eq(None));
     assert!(right.into_iter().eq(data));
+}
+
+// In a tree with 3 levels, if all but a part of the first leaf node is split off,
+// make sure fix_top eliminates both top levels.
+#[test]
+fn test_split_off_tiny_left_height_2() {
+    let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
+    let mut left: BTreeMap<_, _> = pairs.clone().collect();
+    let right = left.split_off(&1);
+    assert_eq!(left.len(), 1);
+    assert_eq!(right.len(), MIN_INSERTS_HEIGHT_2 - 1);
+    assert_eq!(*left.first_key_value().unwrap().0, 0);
+    assert_eq!(*right.first_key_value().unwrap().0, 1);
+}
+
+// In a tree with 3 levels, if only part of the last leaf node is split off,
+// make sure fix_top eliminates both top levels.
+#[test]
+fn test_split_off_tiny_right_height_2() {
+    let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
+    let last = MIN_INSERTS_HEIGHT_2 - 1;
+    let mut left: BTreeMap<_, _> = pairs.clone().collect();
+    assert_eq!(*left.last_key_value().unwrap().0, last);
+    let right = left.split_off(&last);
+    assert_eq!(left.len(), MIN_INSERTS_HEIGHT_2 - 1);
+    assert_eq!(right.len(), 1);
+    assert_eq!(*left.last_key_value().unwrap().0, last - 1);
+    assert_eq!(*right.last_key_value().unwrap().0, last);
 }
 
 #[test]
