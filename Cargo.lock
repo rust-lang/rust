@@ -284,7 +284,7 @@ checksum = "716960a18f978640f25101b5cbf1c6f6b0d3192fab36a2d98ca96f0ecbe41010"
 
 [[package]]
 name = "cargo"
-version = "0.46.0"
+version = "0.46.1"
 dependencies = [
  "anyhow",
  "atty",
@@ -4467,7 +4467,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.15"
+version = "1.4.17"
 dependencies = [
  "annotate-snippets",
  "bytecount",

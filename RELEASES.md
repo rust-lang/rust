@@ -1,3 +1,14 @@
+Version 1.45.1 (2020-07-30)
+==========================
+
+* [rustfmt accepts rustfmt_skip in cfg_attr again.][73078]
+* [Avoid spurious implicit region bound.][74509]
+* [Install clippy on x.py install][74457]
+
+[73078]: https://github.com/rust-lang/rust/issues/73078
+[74509]: https://github.com/rust-lang/rust/pull/74509
+[74457]: https://github.com/rust-lang/rust/pull/74457
+
 Version 1.45.0 (2020-07-16)
 ==========================
 

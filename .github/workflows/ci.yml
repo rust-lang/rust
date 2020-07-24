@@ -26,7 +26,7 @@ name: CI
       - "**"
 defaults:
   run:
-    shell: "python src/ci/exec-with-shell.py {0}"
+    shell: bash
 jobs:
   pr:
     name: PR
@@ -54,7 +54,6 @@ jobs:
     steps:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
-        shell: bash
       - name: checkout the source code
         uses: actions/checkout@v1
         with:
@@ -164,7 +163,6 @@ jobs:
     steps:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
-        shell: bash
       - name: checkout the source code
         uses: actions/checkout@v1
         with:
@@ -516,7 +514,6 @@ jobs:
     steps:
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
-        shell: bash
       - name: checkout the source code
         uses: actions/checkout@v1
         with:
@@ -618,6 +615,7 @@ jobs:
           fetch-depth: 2
       - name: publish toolstate
         run: src/ci/publish_toolstate.sh
+        shell: bash
         env:
           TOOLSTATE_REPO_ACCESS_TOKEN: "${{ secrets.TOOLSTATE_REPO_ACCESS_TOKEN }}"
         if: success() && !env.SKIP_JOB
