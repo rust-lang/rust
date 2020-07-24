@@ -24,12 +24,12 @@ Assuming `$cg_clif_dir` is the directory you cloned this repo into and you follo
 In the directory with your project (where you can do the usual `cargo build`), run:
 
 ```bash
-$ CHANNEL="release" $cg_clif_dir/cargo.sh run
+$ $cg_clif_dir/cargo.sh run
 ```
 
 This should build and run your project with rustc_codegen_cranelift instead of the usual LLVM backend.
 
-If you compiled cg_clif in debug mode (aka you didn't pass `--release` to `./test.sh`) you should use `CHANNEL="debug"` instead or omit `CHANNEL="release"` completely.
+If you compiled cg_clif in debug mode (aka you didn't pass `--release` to `./test.sh`) you should set `CHANNEL="debug"`.
 
 ### Rustc
 

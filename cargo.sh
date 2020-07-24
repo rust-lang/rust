@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -z $CHANNEL ]; then
-export CHANNEL='debug'
+export CHANNEL='release'
 fi
 
 pushd $(dirname "$0") >/dev/null
