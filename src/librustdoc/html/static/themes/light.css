@@ -45,6 +45,10 @@ pre {
 	scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
 }
 
+.logo-container > img {
+	filter: drop-shadow(0 0 5px #aaa);
+}
+
 /* Improve the scrollbar display on webkit-based browsers */
 ::-webkit-scrollbar-track {
 	background-color: #ecebeb;
@@ -265,6 +269,7 @@ a.test-arrow:hover{
 
 :target > code, :target > .in-band {
 	background: #FDFFD3;
+	border-right: 3px solid #ffb44c;
 }
 
 pre.compile_fail {

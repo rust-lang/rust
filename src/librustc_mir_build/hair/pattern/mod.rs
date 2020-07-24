@@ -509,11 +509,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
         let mut ty = self.typeck_results.node_type(pat.hir_id);
 
-        if let ty::Error(_) = ty.kind {
-            // Avoid ICEs (e.g., #50577 and #50585).
-            return Pat { span: pat.span, ty, kind: Box::new(PatKind::Wild) };
-        }
-
         let kind = match pat.kind {
             hir::PatKind::Wild => PatKind::Wild,
 

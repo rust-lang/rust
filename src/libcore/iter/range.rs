@@ -32,7 +32,7 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
     /// * `steps_between(&a, &b) == Some(n)` only if `a <= b`
     ///   * Corollary: `steps_between(&a, &b) == Some(0)` if and only if `a == b`
     ///   * Note that `a <= b` does _not_ imply `steps_between(&a, &b) != None`;
-    ///     this is the case wheen it would require more than `usize::MAX` steps to get to `b`
+    ///     this is the case when it would require more than `usize::MAX` steps to get to `b`
     /// * `steps_between(&a, &b) == None` if `a > b`
     fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 

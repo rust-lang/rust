@@ -1672,19 +1672,12 @@ impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
         edge.reborrow().next_kv().ok().map(|kv| kv.into_kv())
     }
 
-    unsafe fn next_kv(
-        &mut self,
-    ) -> Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>> {
-        let edge = self.cur_leaf_edge.as_ref()?;
-        unsafe { ptr::read(edge).next_kv().ok() }
-    }
-
     /// Implementation of a typical `DrainFilter::next` method, given the predicate.
     pub(super) fn next<F>(&mut self, pred: &mut F) -> Option<(K, V)>
     where
         F: FnMut(&K, &mut V) -> bool,
     {
-        while let Some(mut kv) = unsafe { self.next_kv() } {
+        while let Ok(mut kv) = self.cur_leaf_edge.take()?.next_kv() {
             let (k, v) = kv.kv_mut();
             if pred(k, v) {
                 *self.length -= 1;

@@ -34,6 +34,10 @@ pre {
 	background-color: #505050;
 }
 
+.logo-container > img {
+	filter: drop-shadow(0 0 5px #fff);
+}
+
 /* Improve the scrollbar display on firefox */
 * {
 	scrollbar-color: rgb(64, 65, 67) #717171;
@@ -270,6 +274,7 @@ a.test-arrow:hover{
 
 :target > code, :target > .in-band {
 	background-color: #494a3d;
+	border-right: 3px solid #bb7410;
 }
 
 pre.compile_fail {

@@ -2216,16 +2216,10 @@ fn stability_tags(item: &clean::Item) -> String {
     }
 
     // The trailing space after each tag is to space it properly against the rest of the docs.
-    if item.deprecation().is_some() {
+    if let Some(depr) = &item.deprecation {
         let mut message = "Deprecated";
-        if let Some(ref stab) = item.stability {
-            if let Some(ref depr) = stab.deprecation {
-                if let Some(ref since) = depr.since {
-                    if !stability::deprecation_in_effect(&since) {
-                        message = "Deprecation planned";
-                    }
-                }
-            }
+        if !stability::deprecation_in_effect(depr.is_since_rustc_version, depr.since.as_deref()) {
+            message = "Deprecation planned";
         }
         tags += &tag_html("deprecated", message);
     }
@@ -2254,23 +2248,18 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
     let mut stability = vec![];
     let error_codes = cx.shared.codes;
 
-    if let Some(Deprecation { note, since }) = &item.deprecation() {
+    if let Some(Deprecation { ref note, ref since, is_since_rustc_version }) = item.deprecation {
         // We display deprecation messages for #[deprecated] and #[rustc_deprecated]
         // but only display the future-deprecation messages for #[rustc_deprecated].
         let mut message = if let Some(since) = since {
-            format!("Deprecated since {}", Escape(since))
+            if !stability::deprecation_in_effect(is_since_rustc_version, Some(since)) {
+                format!("Deprecating in {}", Escape(&since))
+            } else {
+                format!("Deprecated since {}", Escape(&since))
+            }
         } else {
             String::from("Deprecated")
         };
-        if let Some(ref stab) = item.stability {
-            if let Some(ref depr) = stab.deprecation {
-                if let Some(ref since) = depr.since {
-                    if !stability::deprecation_in_effect(&since) {
-                        message = format!("Deprecating in {}", Escape(&since));
-                    }
-                }
-            }
-        }
 
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();

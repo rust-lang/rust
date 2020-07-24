@@ -82,7 +82,7 @@ error[E0544]: multiple stability levels
 LL | #[stable(feature = "a", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0540]: multiple rustc_deprecated attributes
+error[E0550]: multiple deprecated attributes
   --> $DIR/stability-attribute-sanity.rs:65:1
    |
 LL | pub const fn multiple4() { }
@@ -108,5 +108,5 @@ LL | fn deprecated_without_unstable_or_stable() { }
 
 error: aborting due to 18 previous errors
 
-Some errors have detailed explanations: E0539, E0541.
+Some errors have detailed explanations: E0539, E0541, E0550.
 For more information about an error, try `rustc --explain E0539`.

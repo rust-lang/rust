@@ -1017,22 +1017,17 @@ impl<'a> Resolver<'a> {
                     );
                 }
             }
-            if let Some(depr) = &stability.rustc_depr {
-                let path = pprust::path_to_string(path);
-                let (message, lint) = stability::rustc_deprecation_message(depr, &path);
-                stability::early_report_deprecation(
-                    &mut self.lint_buffer,
-                    &message,
-                    depr.suggestion,
-                    lint,
-                    span,
-                );
-            }
         }
         if let Some(depr) = &ext.deprecation {
             let path = pprust::path_to_string(&path);
             let (message, lint) = stability::deprecation_message(depr, &path);
-            stability::early_report_deprecation(&mut self.lint_buffer, &message, None, lint, span);
+            stability::early_report_deprecation(
+                &mut self.lint_buffer,
+                &message,
+                depr.suggestion,
+                lint,
+                span,
+            );
         }
     }
 
