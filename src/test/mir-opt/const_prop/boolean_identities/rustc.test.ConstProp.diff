@@ -1,0 +1,53 @@
+- // MIR for `test` before ConstProp
++ // MIR for `test` after ConstProp
+  
+  fn test(_1: bool, _2: bool) -> bool {
+      debug x => _1;                       // in scope 0 at $DIR/boolean_identities.rs:4:13: 4:14
+      debug y => _2;                       // in scope 0 at $DIR/boolean_identities.rs:4:22: 4:23
+      let mut _0: bool;                    // return place in scope 0 at $DIR/boolean_identities.rs:4:34: 4:38
+      let mut _3: bool;                    // in scope 0 at $DIR/boolean_identities.rs:5:5: 5:15
+      let mut _4: bool;                    // in scope 0 at $DIR/boolean_identities.rs:5:6: 5:7
+      let mut _5: bool;                    // in scope 0 at $DIR/boolean_identities.rs:5:18: 5:29
+      let mut _6: bool;                    // in scope 0 at $DIR/boolean_identities.rs:5:19: 5:20
+  
+      bb0: {
+          StorageLive(_3);                 // scope 0 at $DIR/boolean_identities.rs:5:5: 5:15
+          StorageLive(_4);                 // scope 0 at $DIR/boolean_identities.rs:5:6: 5:7
+          _4 = _2;                         // scope 0 at $DIR/boolean_identities.rs:5:6: 5:7
+-         _3 = BitOr(move _4, const true); // scope 0 at $DIR/boolean_identities.rs:5:5: 5:15
++         _3 = const true;                 // scope 0 at $DIR/boolean_identities.rs:5:5: 5:15
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x01))
+                                           // mir::Constant
+-                                          // + span: $DIR/boolean_identities.rs:5:10: 5:14
++                                          // + span: $DIR/boolean_identities.rs:5:5: 5:15
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
+          StorageDead(_4);                 // scope 0 at $DIR/boolean_identities.rs:5:14: 5:15
+          StorageLive(_5);                 // scope 0 at $DIR/boolean_identities.rs:5:18: 5:29
+          StorageLive(_6);                 // scope 0 at $DIR/boolean_identities.rs:5:19: 5:20
+          _6 = _1;                         // scope 0 at $DIR/boolean_identities.rs:5:19: 5:20
+-         _5 = BitAnd(move _6, const false); // scope 0 at $DIR/boolean_identities.rs:5:18: 5:29
++         _5 = const false;                // scope 0 at $DIR/boolean_identities.rs:5:18: 5:29
+                                           // ty::Const
+                                           // + ty: bool
+                                           // + val: Value(Scalar(0x00))
+                                           // mir::Constant
+-                                          // + span: $DIR/boolean_identities.rs:5:23: 5:28
++                                          // + span: $DIR/boolean_identities.rs:5:18: 5:29
+                                           // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+          StorageDead(_6);                 // scope 0 at $DIR/boolean_identities.rs:5:28: 5:29
+-         _0 = BitAnd(move _3, move _5);   // scope 0 at $DIR/boolean_identities.rs:5:5: 5:29
++         _0 = const false;                // scope 0 at $DIR/boolean_identities.rs:5:5: 5:29
++                                          // ty::Const
++                                          // + ty: bool
++                                          // + val: Value(Scalar(0x00))
++                                          // mir::Constant
++                                          // + span: $DIR/boolean_identities.rs:5:5: 5:29
++                                          // + literal: Const { ty: bool, val: Value(Scalar(0x00)) }
+          StorageDead(_5);                 // scope 0 at $DIR/boolean_identities.rs:5:28: 5:29
+          StorageDead(_3);                 // scope 0 at $DIR/boolean_identities.rs:5:28: 5:29
+          return;                          // scope 0 at $DIR/boolean_identities.rs:6:2: 6:2
+      }
+  }
+  
