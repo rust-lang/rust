@@ -179,6 +179,10 @@ pub fn run_compiler(
             registry: diagnostics_registry(),
         };
         callbacks.config(&mut config);
+        // lol no lints at all
+        config.override_queries = Some(|_, providers, _| {
+            providers.lint_mod = |_, _| {};
+        });
         config
     };
 
@@ -256,6 +260,10 @@ pub fn run_compiler(
     };
 
     callbacks.config(&mut config);
+    // lol no lints at all
+    config.override_queries = Some(|_, providers, _| {
+        providers.lint_mod = |_, _| {};
+    });
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
