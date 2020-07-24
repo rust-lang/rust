@@ -716,7 +716,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
-    pub fn leak_report(&self) -> usize {
+    /// Print leaked memory. Allocations reachable from `static_roots` or a `Global` allocation
+    /// are not considered leaked. Leaks whose kind `may_leak()` returns true are not reported.
+    pub fn leak_report(&self, static_roots: &[AllocId]) -> usize {
         // Collect the set of allocations that are *reachable* from `Global` allocations.
         let reachable = {
             let mut reachable = FxHashSet::default();
@@ -724,6 +726,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             let mut todo: Vec<_> = self.alloc_map.filter_map_collect(move |&id, &(kind, _)| {
                 if Some(kind) == global_kind { Some(id) } else { None }
             });
+            todo.extend(static_roots);
             while let Some(id) = todo.pop() {
                 if reachable.insert(id) {
                     // This is a new allocation, add its relocations to `todo`.

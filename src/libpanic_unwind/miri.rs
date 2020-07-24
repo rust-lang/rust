@@ -6,11 +6,16 @@ use core::any::Any;
 // Must be pointer-sized.
 type Payload = Box<Box<dyn Any + Send>>;
 
+extern "Rust" {
+    /// Miri-provided extern function to begin unwinding.
+    fn miri_start_panic(payload: *mut u8) -> !;
+}
+
 pub unsafe fn panic(payload: Box<dyn Any + Send>) -> u32 {
     // The payload we pass to `miri_start_panic` will be exactly the argument we get
     // in `cleanup` below. So we just box it up once, to get something pointer-sized.
     let payload_box: Payload = Box::new(payload);
-    core::intrinsics::miri_start_panic(Box::into_raw(payload_box) as *mut u8)
+    miri_start_panic(Box::into_raw(payload_box) as *mut u8)
 }
 
 pub unsafe fn cleanup(payload_box: *mut u8) -> Box<dyn Any + Send> {

@@ -1947,14 +1947,6 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
-    /// Internal hook used by Miri to implement unwinding.
-    /// ICEs when encountered during non-Miri codegen.
-    ///
-    /// The `payload` ptr here will be exactly the one `do_catch` gets passed by `try`.
-    ///
-    /// Perma-unstable: do not use.
-    pub fn miri_start_panic(payload: *mut u8) -> !;
-
     /// Internal placeholder for injecting code coverage counters when the "instrument-coverage"
     /// option is enabled. The placeholder is replaced with `llvm.instrprof.increment` during code
     /// generation.
