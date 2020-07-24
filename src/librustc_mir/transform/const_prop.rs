@@ -581,6 +581,34 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
+    fn propagate_operand(&mut self, operand: &mut Operand<'tcx>) {
+        match *operand {
+            Operand::Copy(l) | Operand::Move(l) => {
+                if let Some(value) = self.get_const(l) {
+                    if self.should_const_prop(value) {
+                        // FIXME(felix91gr): this code only handles `Scalar` cases.
+                        // For now, we're not handling `ScalarPair` cases because
+                        // doing so here would require a lot of code duplication.
+                        // We should hopefully generalize `Operand` handling into a fn,
+                        // and use it to do const-prop here and everywhere else
+                        // where it makes sense.
+                        if let interpret::Operand::Immediate(interpret::Immediate::Scalar(
+                            ScalarMaybeUninit::Scalar(scalar),
+                        )) = *value
+                        {
+                            *operand = self.operand_from_scalar(
+                                scalar,
+                                value.layout.ty,
+                                self.source_info.unwrap().span,
+                            );
+                        }
+                    }
+                }
+            }
+            Operand::Constant(_) => (),
+        }
+    }
+
     fn const_prop(
         &mut self,
         rvalue: &Rvalue<'tcx>,
@@ -969,6 +997,16 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         }
     }
 
+    fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
+        self.super_operand(operand, location);
+
+        // Only const prop copies and moves on `mir_opt_level=3` as doing so
+        // currently increases compile time.
+        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 3 {
+            self.propagate_operand(operand)
+        }
+    }
+
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
@@ -1136,18 +1174,13 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::SwitchInt { ref mut discr, switch_ty, .. } => {
-                if let Some(value) = self.eval_operand(&discr, source_info) {
-                    if self.should_const_prop(value) {
-                        if let ScalarMaybeUninit::Scalar(scalar) =
-                            self.ecx.read_scalar(value).unwrap()
-                        {
-                            *discr = self.operand_from_scalar(scalar, switch_ty, source_info.span);
-                        }
-                    }
-                }
+            TerminatorKind::SwitchInt { ref mut discr, .. } => {
+                // FIXME: This is currently redundant with `visit_operand`, but sadly
+                // always visiting operands currently causes a perf regression in LLVM codegen, so
+                // `visit_operand` currently only runs for propagates places for `mir_opt_level=3`.
+                self.propagate_operand(discr)
             }
-            // None of these have Operands to const-propagate
+            // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Abort
@@ -1160,61 +1193,16 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::InlineAsm { .. } => {}
-            // Every argument in our function calls can be const propagated.
-            TerminatorKind::Call { ref mut args, .. } => {
-                let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
-                // Constant Propagation into function call arguments is gated
-                // under mir-opt-level 2, because LLVM codegen gives performance
-                // regressions with it.
-                if mir_opt_level >= 2 {
-                    for opr in args {
-                        /*
-                          The following code would appear to be incomplete, because
-                          the function `Operand::place()` returns `None` if the
-                          `Operand` is of the variant `Operand::Constant`. In this
-                          context however, that variant will never appear. This is why:
-
-                          When constructing the MIR, all function call arguments are
-                          copied into `Locals` of `LocalKind::Temp`. At least, all arguments
-                          that are not unsized (Less than 0.1% are unsized. See #71170
-                          to learn more about those).
-
-                          This means that, conversely, all `Operands` found as function call
-                          arguments are of the variant `Operand::Copy`. This allows us to
-                          simplify our handling of `Operands` in this case.
-                        */
-                        if let Some(l) = opr.place() {
-                            if let Some(value) = self.get_const(l) {
-                                if self.should_const_prop(value) {
-                                    // FIXME(felix91gr): this code only handles `Scalar` cases.
-                                    // For now, we're not handling `ScalarPair` cases because
-                                    // doing so here would require a lot of code duplication.
-                                    // We should hopefully generalize `Operand` handling into a fn,
-                                    // and use it to do const-prop here and everywhere else
-                                    // where it makes sense.
-                                    if let interpret::Operand::Immediate(
-                                        interpret::Immediate::Scalar(ScalarMaybeUninit::Scalar(
-                                            scalar,
-                                        )),
-                                    ) = *value
-                                    {
-                                        *opr = self.operand_from_scalar(
-                                            scalar,
-                                            value.layout.ty,
-                                            source_info.span,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            // Every argument in our function calls have already been propagated in `visit_operand`.
+            //
+            // NOTE: because LLVM codegen gives performance regressions with it, so this is gated
+            // on `mir_opt_level=3`.
+            TerminatorKind::Call { .. } => {}
         }
 
         // We remove all Locals which are restricted in propagation to their containing blocks and
         // which were modified in the current block.
-        // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`
+        // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`.
         let mut locals = std::mem::take(&mut self.ecx.machine.written_only_inside_own_block_locals);
         for &local in locals.iter() {
             Self::remove_const(&mut self.ecx, local);
