@@ -1823,7 +1823,7 @@ impl<'a> Parser<'a> {
         let pat = self.parse_top_pat(GateOr::No)?;
         let guard = if self.eat_keyword(kw::If) {
             let if_span = self.prev_token.span;
-            let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+            let cond = self.parse_expr()?;
             if let ExprKind::Let(..) = cond.kind {
                 // Remove the last feature gating of a `let` expression since it's stable.
                 self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
