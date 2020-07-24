@@ -7,6 +7,7 @@ pub mod install;
 pub mod release;
 pub mod dist;
 pub mod pre_commit;
+pub mod metrics;
 
 pub mod codegen;
 mod ast_src;
