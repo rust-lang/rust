@@ -70,7 +70,7 @@ pub fn analysis_bench(
     match &what {
         BenchWhat::Highlight { .. } => {
             let res = do_work(&mut host, file_id, |analysis| {
-                analysis.diagnostics(file_id).unwrap();
+                analysis.diagnostics(file_id, true).unwrap();
                 analysis.highlight_as_html(file_id, false).unwrap()
             });
             if verbosity.is_verbose() {

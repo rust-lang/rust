@@ -487,8 +487,12 @@ impl Analysis {
     }
 
     /// Computes the set of diagnostics for the given file.
-    pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::diagnostics(db, file_id))
+    pub fn diagnostics(
+        &self,
+        file_id: FileId,
+        enable_experimental: bool,
+    ) -> Cancelable<Vec<Diagnostic>> {
+        self.with_db(|db| diagnostics::diagnostics(db, file_id, enable_experimental))
     }
 
     /// Returns the edit required to rename reference at the position to the new
