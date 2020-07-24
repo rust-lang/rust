@@ -315,6 +315,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
+        let _p = profile("descend_into_macros");
         let parent = token.parent();
         let parent = self.find_file(parent);
         let sa = self.analyze2(parent.as_ref(), None);
