@@ -35,12 +35,14 @@ There is a bit of boilerplate code that needs to be set up when creating a new
 lint. Fortunately, you can use the clippy dev tools to handle this for you. We
 are naming our new lint `foo_functions` (lints are generally written in snake
 case), and we don't need type information so it will have an early pass type
-(more on this later on). To get started on this lint you can run
-`cargo dev new_lint --name=foo_functions --pass=early --category=pedantic`
-(category will default to nursery if not provided). This command will create
-two files: `tests/ui/foo_functions.rs` and `clippy_lints/src/foo_functions.rs`,
-as well as run `cargo dev update_lints` to register the new lint. For cargo lints,
-two project hierarchies (fail/pass) will be created by default under `tests/ui-cargo`.
+(more on this later on). If you're not sure if the name you chose fits the lint,
+take a look at our [lint naming guidelines][lint_naming]. To get started on this
+lint you can run `cargo dev new_lint --name=foo_functions --pass=early
+--category=pedantic` (category will default to nursery if not provided). This
+command will create two files: `tests/ui/foo_functions.rs` and
+`clippy_lints/src/foo_functions.rs`, as well as run `cargo dev update_lints` to
+register the new lint. For cargo lints, two project hierarchies (fail/pass) will
+be created by default under `tests/ui-cargo`.
 
 Next, we'll open up these files and add our lint!
 
