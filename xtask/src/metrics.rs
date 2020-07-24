@@ -18,8 +18,8 @@ pub fn run_metrics() -> Result<()> {
 
     {
         let _d = pushd("target");
-        let api_token = env::var("METRICS_TOKEN").unwrap();
-        let repo = format!("https://{}@github.com/rust-analyzer/metrics.git", api_token);
+        let metrics_token = env::var("METRICS_TOKEN").unwrap();
+        let repo = format!("https://{}@github.com/rust-analyzer/metrics.git", metrics_token);
         run!("git clone --depth 1 {}", repo)?;
         let _d = pushd("metrics");
 
@@ -39,7 +39,7 @@ impl Metrics {
         rm_rf("./target/release")?;
 
         let build = Instant::now();
-        // run!("cargo build --release --package rust-analyzer --bin rust-analyzer")?;
+        run!("cargo build --release --package rust-analyzer --bin rust-analyzer")?;
         let build = build.elapsed();
         self.report("build", build.as_millis() as u64, "ms");
         Ok(())
