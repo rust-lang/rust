@@ -126,4 +126,25 @@ fn foo(n: usize) {
             "dbg!(n.checked_sub(4))",
         );
     }
+
+    #[test]
+    fn remove_dbg_leave_semicolon() {
+        // https://github.com/rust-analyzer/rust-analyzer/issues/5129#issuecomment-651399779
+        // not quite though
+        let code = "
+let res = <|>dbg!(1 * 20); // needless comment
+";
+        let expected = "
+let res = 1 * 20; // needless comment
+";
+        check_assist(remove_dbg, code, expected);
+    }
+
+    #[test]
+    fn remove_dbg_keep_expression() {
+        let code = "
+let res = <|>dbg!(a + b).foo();";
+        let expected = "let res = (a + b).foo();";
+        check_assist(remove_dbg, code, expected);
+    }
 }
