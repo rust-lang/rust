@@ -124,13 +124,11 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
 ///
 /// - `#[stable]`
 /// - `#[unstable]`
-/// - `#[rustc_deprecated]`
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
-    pub rustc_depr: Option<RustcDeprecation>,
 }
 
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
@@ -161,15 +159,6 @@ impl StabilityLevel {
     pub fn is_stable(&self) -> bool {
         if let StabilityLevel::Stable { .. } = *self { true } else { false }
     }
-}
-
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
-#[derive(HashStable_Generic)]
-pub struct RustcDeprecation {
-    pub since: Symbol,
-    pub reason: Symbol,
-    /// A text snippet used to completely replace any use of the deprecated item in an expression.
-    pub suggestion: Option<Symbol>,
 }
 
 /// Checks if `attrs` contains an attribute like `#![feature(feature_name)]`.
@@ -205,7 +194,6 @@ where
     use StabilityLevel::*;
 
     let mut stab: Option<Stability> = None;
-    let mut rustc_depr: Option<RustcDeprecation> = None;
     let mut const_stab: Option<ConstStability> = None;
     let mut promotable = false;
     let mut allow_const_fn_ptr = false;
@@ -213,7 +201,6 @@ where
 
     'outer: for attr in attrs_iter {
         if ![
-            sym::rustc_deprecated,
             sym::rustc_const_unstable,
             sym::rustc_const_stable,
             sym::unstable,
@@ -258,76 +245,8 @@ where
                 }
             };
 
-            macro_rules! get_meta {
-                ($($name:ident),+) => {
-                    $(
-                        let mut $name = None;
-                    )+
-                    for meta in metas {
-                        if let Some(mi) = meta.meta_item() {
-                            match mi.name_or_empty() {
-                                $(
-                                    sym::$name => if !get(mi, &mut $name) { continue 'outer },
-                                )+
-                                _ => {
-                                    let expected = &[ $( stringify!($name) ),+ ];
-                                    handle_errors(
-                                        sess,
-                                        mi.span,
-                                        AttrError::UnknownMetaItem(
-                                            pprust::path_to_string(&mi.path),
-                                            expected,
-                                        ),
-                                    );
-                                    continue 'outer
-                                }
-                            }
-                        } else {
-                            handle_errors(
-                                sess,
-                                meta.span(),
-                                AttrError::UnsupportedLiteral(
-                                    "unsupported literal",
-                                    false,
-                                ),
-                            );
-                            continue 'outer
-                        }
-                    }
-                }
-            }
-
             let meta_name = meta.name_or_empty();
             match meta_name {
-                sym::rustc_deprecated => {
-                    if rustc_depr.is_some() {
-                        struct_span_err!(
-                            diagnostic,
-                            item_sp,
-                            E0540,
-                            "multiple rustc_deprecated attributes"
-                        )
-                        .emit();
-                        continue 'outer;
-                    }
-
-                    get_meta!(since, reason, suggestion);
-
-                    match (since, reason) {
-                        (Some(since), Some(reason)) => {
-                            rustc_depr = Some(RustcDeprecation { since, reason, suggestion })
-                        }
-                        (None, _) => {
-                            handle_errors(sess, attr.span, AttrError::MissingSince);
-                            continue;
-                        }
-                        _ => {
-                            struct_span_err!(diagnostic, attr.span, E0543, "missing 'reason'")
-                                .emit();
-                            continue;
-                        }
-                    }
-                }
                 sym::rustc_const_unstable | sym::unstable => {
                     if meta_name == sym::unstable && stab.is_some() {
                         handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
@@ -429,7 +348,7 @@ where
                         (Some(feature), reason, Some(_)) => {
                             let level = Unstable { reason, issue: issue_num, is_soft };
                             if sym::unstable == meta_name {
-                                stab = Some(Stability { level, feature, rustc_depr: None });
+                                stab = Some(Stability { level, feature });
                             } else {
                                 const_stab = Some(ConstStability {
                                     level,
@@ -501,7 +420,7 @@ where
                         (Some(feature), Some(since)) => {
                             let level = Stable { since };
                             if sym::stable == meta_name {
-                                stab = Some(Stability { level, feature, rustc_depr: None });
+                                stab = Some(Stability { level, feature });
                             } else {
                                 const_stab = Some(ConstStability {
                                     level,
@@ -523,22 +442,6 @@ where
                 }
                 _ => unreachable!(),
             }
-        }
-    }
-
-    // Merge the deprecation info into the stability info
-    if let Some(rustc_depr) = rustc_depr {
-        if let Some(ref mut stab) = stab {
-            stab.rustc_depr = Some(rustc_depr);
-        } else {
-            struct_span_err!(
-                diagnostic,
-                item_sp,
-                E0549,
-                "rustc_deprecated attribute must be paired with \
-                       either stable or unstable attribute"
-            )
-            .emit();
         }
     }
 
@@ -714,7 +617,16 @@ pub fn eval_condition(
 #[derive(RustcEncodable, RustcDecodable, Clone, HashStable_Generic)]
 pub struct Deprecation {
     pub since: Option<Symbol>,
+    /// The note to issue a reason.
     pub note: Option<Symbol>,
+    /// A text snippet used to completely replace any use of the deprecated item in an expression.
+    ///
+    /// This is currently unstable.
+    pub suggestion: Option<Symbol>,
+
+    /// Whether to treat the since attribute as being a Rust version identifier
+    /// (rather than an opaque string).
+    pub is_since_rustc_version: bool,
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
@@ -738,7 +650,7 @@ where
     let diagnostic = &sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
-        if !attr.check_name(sym::deprecated) {
+        if !(attr.check_name(sym::deprecated) || attr.check_name(sym::rustc_deprecated)) {
             continue;
         }
 
@@ -751,11 +663,12 @@ where
             Some(meta) => meta,
             None => continue,
         };
-        depr = match &meta.kind {
-            MetaItemKind::Word => Some(Deprecation { since: None, note: None }),
-            MetaItemKind::NameValue(..) => {
-                meta.value_str().map(|note| Deprecation { since: None, note: Some(note) })
-            }
+        let mut since = None;
+        let mut note = None;
+        let mut suggestion = None;
+        match &meta.kind {
+            MetaItemKind::Word => {}
+            MetaItemKind::NameValue(..) => note = meta.value_str(),
             MetaItemKind::List(list) => {
                 let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                     if item.is_some() {
@@ -789,8 +702,6 @@ where
                     }
                 };
 
-                let mut since = None;
-                let mut note = None;
                 for meta in list {
                     match meta {
                         NestedMetaItem::MetaItem(mi) => match mi.name_or_empty() {
@@ -799,8 +710,18 @@ where
                                     continue 'outer;
                                 }
                             }
-                            sym::note => {
+                            sym::note if attr.check_name(sym::deprecated) => {
                                 if !get(mi, &mut note) {
+                                    continue 'outer;
+                                }
+                            }
+                            sym::reason if attr.check_name(sym::rustc_deprecated) => {
+                                if !get(mi, &mut note) {
+                                    continue 'outer;
+                                }
+                            }
+                            sym::suggestion if attr.check_name(sym::rustc_deprecated) => {
+                                if !get(mi, &mut suggestion) {
                                     continue 'outer;
                                 }
                             }
@@ -810,7 +731,11 @@ where
                                     meta.span(),
                                     AttrError::UnknownMetaItem(
                                         pprust::path_to_string(&mi.path),
-                                        &["since", "note"],
+                                        if attr.check_name(sym::deprecated) {
+                                            &["since", "note"]
+                                        } else {
+                                            &["since", "reason", "suggestion"]
+                                        },
                                     ),
                                 );
                                 continue 'outer;
@@ -829,10 +754,29 @@ where
                         }
                     }
                 }
-
-                Some(Deprecation { since, note })
             }
-        };
+        }
+
+        if suggestion.is_some() && attr.check_name(sym::deprecated) {
+            unreachable!("only allowed on rustc_deprecated")
+        }
+
+        if attr.check_name(sym::rustc_deprecated) {
+            if since.is_none() {
+                handle_errors(sess, attr.span, AttrError::MissingSince);
+                continue;
+            }
+
+            if note.is_none() {
+                struct_span_err!(diagnostic, attr.span, E0543, "missing 'reason'").emit();
+                continue;
+            }
+        }
+
+        mark_used(&attr);
+
+        let is_since_rustc_version = attr.check_name(sym::rustc_deprecated);
+        depr = Some(Deprecation { since, note, suggestion, is_since_rustc_version });
     }
 
     depr

@@ -2353,10 +2353,6 @@ impl Clean<Stability> for attr::Stability {
                 attr::Stable { ref since } => since.to_string(),
                 _ => String::new(),
             },
-            deprecation: self.rustc_depr.as_ref().map(|d| Deprecation {
-                note: Some(d.reason.to_string()).filter(|r| !r.is_empty()),
-                since: Some(d.since.to_string()).filter(|d| !d.is_empty()),
-            }),
             unstable_reason: match self.level {
                 attr::Unstable { reason: Some(ref reason), .. } => Some(reason.to_string()),
                 _ => None,
@@ -2374,6 +2370,7 @@ impl Clean<Deprecation> for attr::Deprecation {
         Deprecation {
             since: self.since.map(|s| s.to_string()).filter(|s| !s.is_empty()),
             note: self.note.map(|n| n.to_string()).filter(|n| !n.is_empty()),
+            is_since_rustc_version: self.is_since_rustc_version,
         }
     }
 }
