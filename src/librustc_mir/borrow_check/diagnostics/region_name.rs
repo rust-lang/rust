@@ -34,13 +34,8 @@ crate enum RegionNameSource {
     Static,
     /// The free region corresponding to the environment of a closure.
     SynthesizedFreeEnvRegion(Span, String),
-    /// The region name corresponds to a region where the type annotation is completely missing
-    /// from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a reference.
-    CannotMatchHirTy(Span, String),
-    /// The region name corresponds a reference that was found by traversing the type in the HIR.
-    MatchedHirTy(Span),
-    /// A region name from the generics list of a struct/enum/union.
-    MatchedAdtAndSegment(Span),
+    /// The region corresponding to an argument.
+    AnonRegionFromArgument(RegionNameHighlight),
     /// The region corresponding to a closure upvar.
     AnonRegionFromUpvar(Span, String),
     /// The region corresponding to the return type of a closure.
@@ -51,6 +46,19 @@ crate enum RegionNameSource {
     AnonRegionFromAsyncFn(Span),
 }
 
+/// Describes what to highlight to explain to the user that we're giving an anonymous region a
+/// synthesized name, and how to highlight it.
+#[derive(Debug, Clone)]
+crate enum RegionNameHighlight {
+    /// The anonymous region corresponds to a reference that was found by traversing the type in the HIR.
+    MatchedHirTy(Span),
+    /// The anonymous region corresponds to a `'_` in the generics list of a struct/enum/union.
+    MatchedAdtAndSegment(Span),
+    /// The anonymous region corresponds to a region where the type annotation is completely missing
+    /// from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a reference.
+    CannotMatchHirTy(Span, String),
+}
+
 impl RegionName {
     crate fn was_named(&self) -> bool {
         match self.source {
@@ -58,13 +66,29 @@ impl RegionName {
             | RegionNameSource::NamedFreeRegion(..)
             | RegionNameSource::Static => true,
             RegionNameSource::SynthesizedFreeEnvRegion(..)
-            | RegionNameSource::CannotMatchHirTy(..)
-            | RegionNameSource::MatchedHirTy(..)
-            | RegionNameSource::MatchedAdtAndSegment(..)
+            | RegionNameSource::AnonRegionFromArgument(..)
             | RegionNameSource::AnonRegionFromUpvar(..)
             | RegionNameSource::AnonRegionFromOutput(..)
             | RegionNameSource::AnonRegionFromYieldTy(..)
             | RegionNameSource::AnonRegionFromAsyncFn(..) => false,
+        }
+    }
+
+    crate fn span(&self) -> Option<Span> {
+        match self.source {
+            RegionNameSource::Static => None,
+            RegionNameSource::NamedEarlyBoundRegion(span)
+            | RegionNameSource::NamedFreeRegion(span)
+            | RegionNameSource::SynthesizedFreeEnvRegion(span, _)
+            | RegionNameSource::AnonRegionFromUpvar(span, _)
+            | RegionNameSource::AnonRegionFromOutput(span, _, _)
+            | RegionNameSource::AnonRegionFromYieldTy(span, _)
+            | RegionNameSource::AnonRegionFromAsyncFn(span) => Some(span),
+            RegionNameSource::AnonRegionFromArgument(ref highlight) => match *highlight {
+                RegionNameHighlight::MatchedHirTy(span)
+                | RegionNameHighlight::MatchedAdtAndSegment(span)
+                | RegionNameHighlight::CannotMatchHirTy(span, _) => Some(span),
+            },
         }
     }
 
@@ -81,17 +105,22 @@ impl RegionName {
                 );
                 diag.note(&note);
             }
-            RegionNameSource::CannotMatchHirTy(span, type_name) => {
+            RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
+                span,
+                type_name,
+            )) => {
                 diag.span_label(*span, format!("has type `{}`", type_name));
             }
-            RegionNameSource::MatchedHirTy(span)
+            RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::MatchedHirTy(span))
             | RegionNameSource::AnonRegionFromAsyncFn(span) => {
                 diag.span_label(
                     *span,
                     format!("let's call the lifetime of this reference `{}`", self),
                 );
             }
-            RegionNameSource::MatchedAdtAndSegment(span) => {
+            RegionNameSource::AnonRegionFromArgument(
+                RegionNameHighlight::MatchedAdtAndSegment(span),
+            ) => {
                 diag.span_label(*span, format!("let's call this `{}`", self));
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
@@ -307,21 +336,31 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
             [implicit_inputs + argument_index];
-        if let Some(region_name) =
-            self.give_name_if_we_can_match_hir_ty_from_argument(fr, arg_ty, argument_index)
-        {
-            return Some(region_name);
-        }
+        let (_, span) = self.regioncx.get_argument_name_and_span_for_region(
+            &self.body,
+            &self.local_names,
+            argument_index,
+        );
 
-        self.give_name_if_we_cannot_match_hir_ty(fr, arg_ty)
+        self.get_argument_hir_ty_for_highlighting(argument_index)
+            .and_then(|arg_hir_ty| self.highlight_if_we_can_match_hir_ty(fr, arg_ty, arg_hir_ty))
+            .or_else(|| {
+                // `highlight_if_we_cannot_match_hir_ty` needs to know the number we will give to
+                // the anonymous region. If it succeeds, the `synthesize_region_name` call below
+                // will increment the counter, "reserving" the number we just used.
+                let counter = *self.next_region_name.try_borrow().unwrap();
+                self.highlight_if_we_cannot_match_hir_ty(fr, arg_ty, span, counter)
+            })
+            .map(|highlight| RegionName {
+                name: self.synthesize_region_name(),
+                source: RegionNameSource::AnonRegionFromArgument(highlight),
+            })
     }
 
-    fn give_name_if_we_can_match_hir_ty_from_argument(
+    fn get_argument_hir_ty_for_highlighting(
         &self,
-        needle_fr: RegionVid,
-        argument_ty: Ty<'tcx>,
         argument_index: usize,
-    ) -> Option<RegionName> {
+    ) -> Option<&hir::Ty<'tcx>> {
         let mir_hir_id = self.infcx.tcx.hir().as_local_hir_id(self.mir_def_id);
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(mir_hir_id)?;
         let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
@@ -333,7 +372,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             // (`give_name_if_anonymous_region_appears_in_arguments`).
             hir::TyKind::Infer => None,
 
-            _ => self.give_name_if_we_can_match_hir_ty(needle_fr, argument_ty, argument_hir_ty),
+            _ => Some(argument_hir_ty),
         }
     }
 
@@ -348,42 +387,28 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///  |          |  has type `&'1 u32`
     ///  |          has type `&'2 u32`
     /// ```
-    fn give_name_if_we_cannot_match_hir_ty(
+    fn highlight_if_we_cannot_match_hir_ty(
         &self,
         needle_fr: RegionVid,
-        argument_ty: Ty<'tcx>,
-    ) -> Option<RegionName> {
-        let counter = *self.next_region_name.try_borrow().unwrap();
+        ty: Ty<'tcx>,
+        span: Span,
+        counter: usize,
+    ) -> Option<RegionNameHighlight> {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(needle_fr, counter);
-        let type_name = self.infcx.extract_type_name(&argument_ty, Some(highlight)).0;
+        let type_name = self.infcx.extract_type_name(&ty, Some(highlight)).0;
 
         debug!(
-            "give_name_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
+            "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
             type_name, needle_fr
         );
-        let assigned_region_name = if type_name.find(&format!("'{}", counter)).is_some() {
+        if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
-            let argument_index =
-                self.regioncx.get_argument_index_for_region(self.infcx.tcx, needle_fr)?;
-            let (_, span) = self.regioncx.get_argument_name_and_span_for_region(
-                &self.body,
-                &self.local_names,
-                argument_index,
-            );
 
-            Some(RegionName {
-                // This counter value will already have been used, so this function will increment
-                // it so the next value will be used next and return the region name that would
-                // have been used.
-                name: self.synthesize_region_name(),
-                source: RegionNameSource::CannotMatchHirTy(span, type_name),
-            })
+            Some(RegionNameHighlight::CannotMatchHirTy(span, type_name))
         } else {
             None
-        };
-
-        assigned_region_name
+        }
     }
 
     /// Attempts to highlight the specific part of a type annotation
@@ -395,9 +420,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     ///  |                - let's call the lifetime of this reference `'1`
     /// ```
     ///
-    /// the way this works is that we match up `argument_ty`, which is
+    /// the way this works is that we match up `ty`, which is
     /// a `Ty<'tcx>` (the internal form of the type) with
-    /// `argument_hir_ty`, a `hir::Ty` (the syntax of the type
+    /// `hir_ty`, a `hir::Ty` (the syntax of the type
     /// annotation). We are descending through the types stepwise,
     /// looking in to find the region `needle_fr` in the internal
     /// type. Once we find that, we can use the span of the `hir::Ty`
@@ -407,18 +432,17 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// keep track of the **closest** type we've found. If we fail to
     /// find the exact `&` or `'_` to highlight, then we may fall back
     /// to highlighting that closest type instead.
-    fn give_name_if_we_can_match_hir_ty(
+    fn highlight_if_we_can_match_hir_ty(
         &self,
         needle_fr: RegionVid,
-        argument_ty: Ty<'tcx>,
-        argument_hir_ty: &hir::Ty<'_>,
-    ) -> Option<RegionName> {
-        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> =
-            &mut vec![(argument_ty, argument_hir_ty)];
+        ty: Ty<'tcx>,
+        hir_ty: &hir::Ty<'_>,
+    ) -> Option<RegionNameHighlight> {
+        let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> = &mut vec![(ty, hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
             match (&ty.kind, &hir_ty.kind) {
-                // Check if the `argument_ty` is `&'X ..` where `'X`
+                // Check if the `ty` is `&'X ..` where `'X`
                 // is the region we are looking for -- if so, and we have a `&T`
                 // on the RHS, then we want to highlight the `&` like so:
                 //
@@ -429,16 +453,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::TyKind::Rptr(_lifetime, referent_hir_ty),
                 ) => {
                     if region.to_region_vid() == needle_fr {
-                        let region_name = self.synthesize_region_name();
-
                         // Just grab the first character, the `&`.
                         let source_map = self.infcx.tcx.sess.source_map();
                         let ampersand_span = source_map.start_point(hir_ty.span);
 
-                        return Some(RegionName {
-                            name: region_name,
-                            source: RegionNameSource::MatchedHirTy(ampersand_span),
-                        });
+                        return Some(RegionNameHighlight::MatchedHirTy(ampersand_span));
                     }
 
                     // Otherwise, let's descend into the referent types.
@@ -458,13 +477,13 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         Res::Def(DefKind::TyAlias, _) => (),
                         _ => {
                             if let Some(last_segment) = path.segments.last() {
-                                if let Some(name) = self.match_adt_and_segment(
+                                if let Some(highlight) = self.match_adt_and_segment(
                                     substs,
                                     needle_fr,
                                     last_segment,
                                     search_stack,
                                 ) {
-                                    return Some(name);
+                                    return Some(highlight);
                                 }
                             }
                         }
@@ -507,7 +526,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         needle_fr: RegionVid,
         last_segment: &'hir hir::PathSegment<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
-    ) -> Option<RegionName> {
+    ) -> Option<RegionNameHighlight> {
         // Did the user give explicit arguments? (e.g., `Foo<..>`)
         let args = last_segment.args.as_ref()?;
         let lifetime =
@@ -517,12 +536,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             | hir::LifetimeName::Error
             | hir::LifetimeName::Static
             | hir::LifetimeName::Underscore => {
-                let region_name = self.synthesize_region_name();
-                let ampersand_span = lifetime.span;
-                Some(RegionName {
-                    name: region_name,
-                    source: RegionNameSource::MatchedAdtAndSegment(ampersand_span),
-                })
+                let lifetime_span = lifetime.span;
+                Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime_span))
             }
 
             hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Implicit => {
