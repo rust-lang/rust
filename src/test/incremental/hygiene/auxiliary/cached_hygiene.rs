@@ -34,4 +34,3 @@ macro_rules! print_loc {
 pub fn unchanged_fn() {
     print_loc!();
 }
-

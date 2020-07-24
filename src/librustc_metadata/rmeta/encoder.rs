@@ -30,7 +30,7 @@ use rustc_middle::ty::codec::{self as ty_codec, TyEncoder};
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder, UseSpecializedEncodable};
 use rustc_session::config::CrateType;
-use rustc_span::hygiene::ExpnDataEncodeMode;
+use rustc_span::hygiene::{ExpnDataEncodeMode, HygieneEncodeContext};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
@@ -39,7 +39,7 @@ use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
-struct EncodeContext<'tcx> {
+struct EncodeContext<'a, 'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
 
@@ -67,15 +67,7 @@ struct EncodeContext<'tcx> {
     // with a result containing a foreign `Span`.
     required_source_files: Option<GrowableBitSet<usize>>,
     is_proc_macro: bool,
-    /// All `SyntaxContexts` for which we have writen `SyntaxContextData` into crate metadata.
-    /// This is `None` after we finish encoding `SyntaxContexts`, to ensure
-    /// that we don't accidentally try to encode any more `SyntaxContexts`
-    serialized_ctxts: Option<FxHashSet<SyntaxContext>>,
-    /// The `SyntaxContexts` that we have serialized (e.g. as a result of encoding `Spans`)
-    /// in the most recent 'round' of serializnig. Serializing `SyntaxContextData`
-    /// may cause us to serialize more `SyntaxContext`s, so serialize in a loop
-    /// until we reach a fixed point.
-    latest_ctxts: Option<FxHashSet<SyntaxContext>>,
+    hygiene_ctxt: &'a HygieneEncodeContext,
 }
 
 macro_rules! encoder_methods {
@@ -86,7 +78,7 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'tcx> Encoder for EncodeContext<'tcx> {
+impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     type Error = <opaque::Encoder as Encoder>::Error;
 
     #[inline]
@@ -117,13 +109,13 @@ impl<'tcx> Encoder for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<T, ()>> for EncodeContext<'tcx> {
+impl<'a, 'tcx, T> SpecializedEncoder<Lazy<T, ()>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
         self.emit_lazy_distance(*lazy)
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<[T], usize>> for EncodeContext<'tcx> {
+impl<'a, 'tcx, T> SpecializedEncoder<Lazy<[T], usize>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<[T]>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         if lazy.meta == 0 {
@@ -133,7 +125,7 @@ impl<'tcx, T> SpecializedEncoder<Lazy<[T], usize>> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>, usize>> for EncodeContext<'tcx>
+impl<'a, 'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>, usize>> for EncodeContext<'a, 'tcx>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -143,14 +135,14 @@ where
     }
 }
 
-impl<'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, cnum: &CrateNum) -> Result<(), Self::Error> {
         self.emit_u32(cnum.as_u32())
     }
 }
 
-impl<'tcx> SpecializedEncoder<DefId> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<DefId> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_id: &DefId) -> Result<(), Self::Error> {
         let DefId { krate, index } = *def_id;
@@ -160,29 +152,31 @@ impl<'tcx> SpecializedEncoder<DefId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<SyntaxContext> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<SyntaxContext> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ctxt: &SyntaxContext) -> Result<(), Self::Error> {
-        if !self.serialized_ctxts.as_ref().unwrap().contains(ctxt) {
-            self.latest_ctxts.as_mut().unwrap().insert(*ctxt);
-        }
-        rustc_span::hygiene::raw_encode_syntax_context(*ctxt, self)
+        rustc_span::hygiene::raw_encode_syntax_context(*ctxt, &self.hygiene_ctxt, self)
     }
 }
 
-impl<'tcx> SpecializedEncoder<ExpnId> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<ExpnId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, expn: &ExpnId) -> Result<(), Self::Error> {
-        rustc_span::hygiene::raw_encode_expn_id(*expn, ExpnDataEncodeMode::Metadata, self)
+        rustc_span::hygiene::raw_encode_expn_id(
+            *expn,
+            &mut self.hygiene_ctxt,
+            ExpnDataEncodeMode::Metadata,
+            self,
+        )
     }
 }
 
-impl<'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_index: &DefIndex) -> Result<(), Self::Error> {
         self.emit_u32(def_index.as_u32())
     }
 }
 
-impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
         if span.is_dummy() {
             return TAG_INVALID_SPAN.encode(self);
@@ -303,14 +297,14 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_id: &LocalDefId) -> Result<(), Self::Error> {
         self.specialized_encode(&def_id.to_def_id())
     }
 }
 
-impl<'a, 'b, 'tcx> SpecializedEncoder<&'a ty::TyS<'b>> for EncodeContext<'tcx>
+impl<'a, 'b, 'c, 'tcx> SpecializedEncoder<&'a ty::TyS<'b>> for EncodeContext<'c, 'tcx>
 where
     &'a ty::TyS<'b>: UseSpecializedEncodable,
 {
@@ -321,7 +315,7 @@ where
     }
 }
 
-impl<'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'tcx> {
+impl<'a, 'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, predicate: &ty::Predicate<'b>) -> Result<(), Self::Error> {
         debug_assert!(self.tcx.lift(predicate).is_some());
         let predicate =
@@ -332,7 +326,7 @@ impl<'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
         use std::collections::hash_map::Entry;
         let index = match self.interpret_allocs.entry(*alloc_id) {
@@ -349,13 +343,13 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.opaque)
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'tcx>
+impl<'a, 'tcx, T> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'a, 'tcx>
 where
     mir::ClearCrossCrate<T>: UseSpecializedEncodable,
 {
@@ -364,7 +358,7 @@ where
     }
 }
 
-impl<'tcx> TyEncoder for EncodeContext<'tcx> {
+impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     fn position(&self) -> usize {
         self.opaque.position()
     }
@@ -372,17 +366,17 @@ impl<'tcx> TyEncoder for EncodeContext<'tcx> {
 
 /// Helper trait to allow overloading `EncodeContext::lazy` for iterators.
 trait EncodeContentsForLazy<T: ?Sized + LazyMeta> {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) -> T::Meta;
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> T::Meta;
 }
 
 impl<T: Encodable> EncodeContentsForLazy<T> for &T {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) {
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
         self.encode(ecx).unwrap()
     }
 }
 
 impl<T: Encodable> EncodeContentsForLazy<T> for T {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) {
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
         self.encode(ecx).unwrap()
     }
 }
@@ -392,7 +386,7 @@ where
     I: IntoIterator,
     I::Item: EncodeContentsForLazy<T>,
 {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) -> usize {
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> usize {
         self.into_iter().map(|value| value.encode_contents_for_lazy(ecx)).count()
     }
 }
@@ -409,7 +403,7 @@ macro_rules! record {
     }};
 }
 
-impl<'tcx> EncodeContext<'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn emit_lazy_distance<T: ?Sized + LazyMeta>(
         &mut self,
         lazy: Lazy<T>,
@@ -628,7 +622,7 @@ impl<'tcx> EncodeContext<'tcx> {
         // Therefore, we need to encode the hygiene data last to ensure that we encode
         // any `SyntaxContext`s that might be used.
         i = self.position();
-        let (syntax_contexts, syntax_bytes, expn_data, expn_bytes) = self.encode_hygiene();
+        let (syntax_contexts, expn_data) = self.encode_hygiene();
         let hygiene_bytes = self.position() - i;
 
         // Encode source_map. This needs to be done last,
@@ -715,8 +709,6 @@ impl<'tcx> EncodeContext<'tcx> {
             println!("            item bytes: {}", item_bytes);
             println!("           table bytes: {}", tables_bytes);
             println!("         hygiene bytes: {}", hygiene_bytes);
-            println!("   SyntaxContext bytes: {}", syntax_bytes);
-            println!("          ExpnId bytes: {}", expn_bytes);
             println!("            zero bytes: {}", zero_bytes);
             println!("           total bytes: {}", total_bytes);
         }
@@ -725,7 +717,7 @@ impl<'tcx> EncodeContext<'tcx> {
     }
 }
 
-impl EncodeContext<'tcx> {
+impl EncodeContext<'a, 'tcx> {
     fn encode_variances_of(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_variances_of({:?})", def_id);
         record!(self.tables.variances[def_id] <- &self.tcx.variances_of(def_id)[..]);
@@ -1499,75 +1491,23 @@ impl EncodeContext<'tcx> {
         self.lazy(foreign_modules.iter().cloned())
     }
 
-    fn encode_hygiene(&mut self) -> (SyntaxContextTable, usize, ExpnDataTable, usize) {
+    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable) {
         let mut syntax_contexts: TableBuilder<_, _> = Default::default();
         let mut expn_data_table: TableBuilder<_, _> = Default::default();
 
-        let mut i = self.position();
-        // We need to encode the `ExpnData` *before* we encode
-        // the `SyntaxContextData`, since encoding `ExpnData` may cause
-        // us to use more `SyntaxContexts` when we encode the spans stored
-        // inside `ExpnData`
-        rustc_span::hygiene::for_all_expn_data(|index, expn_data| {
-            // Don't encode the ExpnData for ExpnIds from foreign crates.
-            // The crate that defines the ExpnId will store the ExpnData,
-            // and the metadata decoder will look it from from that crate via the CStore
-            if expn_data.krate == LOCAL_CRATE {
-                expn_data_table.set(index, self.lazy(expn_data));
-            }
-            Ok::<(), !>(())
-        })
-        .unwrap();
-
-        let expn_bytes = self.position() - i;
-
-        i = self.position();
-        let mut num_serialized = 0;
-
-        // When we serialize a `SyntaxContextData`, we may end up serializing
-        // a `SyntaxContext` that we haven't seen before. Therefore,
-        while !self.latest_ctxts.as_ref().unwrap().is_empty() {
-            debug!(
-                "encode_hygiene: Serializing a round of {:?} SyntaxContextDatas: {:?}",
-                self.latest_ctxts.as_ref().unwrap().len(),
-                self.latest_ctxts.as_ref().unwrap()
-            );
-
-            // Consume the current round of SyntaxContexts.
-            let latest = self.latest_ctxts.replace(FxHashSet::default()).unwrap();
-
-            // It's fine to iterate over a HashMap, because thw serialization
-            // of the table that we insert data into doesn't depend on insertion
-            // order
-            rustc_span::hygiene::for_all_data_in(latest.into_iter(), |(index, ctxt, data)| {
-                if self.serialized_ctxts.as_mut().unwrap().insert(ctxt) {
-                    syntax_contexts.set(index, self.lazy(data));
-                    num_serialized += 1;
-                }
-                Ok::<_, !>(())
-            })
-            .unwrap();
-        }
-        debug!("encode_hygiene: Done serializing SyntaxContextData");
-        let syntax_bytes = self.position() - i;
-
-        let total = rustc_span::hygiene::num_syntax_ctxts();
-        debug!(
-            "encode_hygiene: stored {}/{} ({})",
-            num_serialized,
-            total,
-            (num_serialized as f32) / (total as f32)
+        let _: Result<(), !> = self.hygiene_ctxt.encode(
+            &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table),
+            |(this, syntax_contexts, _), index, ctxt_data| {
+                syntax_contexts.set(index, this.lazy(ctxt_data));
+                Ok(())
+            },
+            |(this, _, expn_data_table), index, expn_data| {
+                expn_data_table.set(index, this.lazy(expn_data));
+                Ok(())
+            },
         );
 
-        self.serialized_ctxts.take();
-        self.latest_ctxts.take();
-
-        (
-            syntax_contexts.encode(&mut self.opaque),
-            syntax_bytes,
-            expn_data_table.encode(&mut self.opaque),
-            expn_bytes,
-        )
+        (syntax_contexts.encode(&mut self.opaque), expn_data_table.encode(&mut self.opaque))
     }
 
     fn encode_proc_macros(&mut self) -> Option<Lazy<[DefIndex]>> {
@@ -1759,7 +1699,7 @@ impl EncodeContext<'tcx> {
 }
 
 // FIXME(eddyb) make metadata encoding walk over all definitions, instead of HIR.
-impl Visitor<'tcx> for EncodeContext<'tcx> {
+impl Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -1797,7 +1737,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
     }
 }
 
-impl EncodeContext<'tcx> {
+impl EncodeContext<'a, 'tcx> {
     fn encode_fields(&mut self, adt_def: &ty::AdtDef) {
         for (variant_index, variant) in adt_def.variants.iter_enumerated() {
             for (field_index, _field) in variant.fields.iter().enumerate() {
@@ -2051,6 +1991,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     encoder.emit_raw_bytes(&[0, 0, 0, 0]);
 
     let source_map_files = tcx.sess.source_map().files();
+    let hygiene_ctxt = HygieneEncodeContext::default();
 
     let mut ecx = EncodeContext {
         opaque: encoder,
@@ -2064,8 +2005,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         interpret_allocs_inverse: Default::default(),
         required_source_files: Some(GrowableBitSet::with_capacity(source_map_files.len())),
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
-        serialized_ctxts: Some(Default::default()),
-        latest_ctxts: Some(Default::default()),
+        hygiene_ctxt: &hygiene_ctxt,
     };
     drop(source_map_files);
 

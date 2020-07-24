@@ -18,8 +18,8 @@ use rustc_serialize::{
 };
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::hygiene::{
-    ExpnDataDecodeMode, ExpnDataEncodeMode, ExpnId, HygieneContext, SyntaxContext,
-    SyntaxContextData,
+    ExpnDataDecodeMode, ExpnDataEncodeMode, ExpnId, HygieneDecodeContext, HygieneEncodeContext,
+    SyntaxContext, SyntaxContextData,
 };
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::symbol::Ident;
@@ -83,7 +83,7 @@ pub struct OnDiskCache<'sess> {
     // but it seemed easier to have `OnDiskCache` be independent of the `CStore`.
     expn_data: FxHashMap<u32, AbsoluteBytePos>,
     // Additional information used when decoding hygiene data.
-    hygiene_context: HygieneContext,
+    hygiene_context: HygieneDecodeContext,
 }
 
 // This type is used only for serialization and deserialization.
@@ -158,7 +158,7 @@ impl<'sess> OnDiskCache<'sess> {
             alloc_decoding_state: AllocDecodingState::new(footer.interpret_alloc_index),
             syntax_contexts: footer.syntax_contexts,
             expn_data: footer.expn_data,
-            hygiene_context: HygieneContext::new(),
+            hygiene_context: Default::default(),
         }
     }
 
@@ -176,7 +176,7 @@ impl<'sess> OnDiskCache<'sess> {
             alloc_decoding_state: AllocDecodingState::new(Vec::new()),
             syntax_contexts: FxHashMap::default(),
             expn_data: FxHashMap::default(),
-            hygiene_context: HygieneContext::new(),
+            hygiene_context: Default::default(),
         }
     }
 
@@ -204,6 +204,8 @@ impl<'sess> OnDiskCache<'sess> {
                 (file_to_file_index, file_index_to_stable_id)
             };
 
+            let hygiene_encode_context = HygieneEncodeContext::default();
+
             let mut encoder = CacheEncoder {
                 tcx,
                 encoder,
@@ -213,6 +215,7 @@ impl<'sess> OnDiskCache<'sess> {
                 interpret_allocs_inverse: Vec::new(),
                 source_map: CachingSourceMapView::new(tcx.sess.source_map()),
                 file_to_file_index,
+                hygiene_context: &hygiene_encode_context,
             };
 
             // Load everything into memory so we can write it out to the on-disk
@@ -293,29 +296,26 @@ impl<'sess> OnDiskCache<'sess> {
                 .collect();
 
             let mut syntax_contexts = FxHashMap::default();
-            let mut expn_data = FxHashMap::default();
+            let mut expn_ids = FxHashMap::default();
 
             // Encode all hygiene data (`SyntaxContextData` and `ExpnData`) from the current
             // session.
-            // FIXME: Investigate tracking which `SyntaxContext`s and `ExpnId`s we actually
-            // need, to avoid serializing data that will never be used. This will require
-            // tracking which `SyntaxContext`s/`ExpnId`s are actually (transitively) referenced
-            // from any of the `Span`s that we serialize.
 
-            rustc_span::hygiene::for_all_data(|(index, _ctxt, data)| {
-                let pos = AbsoluteBytePos::new(encoder.position());
-                encoder.encode_tagged(TAG_SYNTAX_CONTEXT, data)?;
-                syntax_contexts.insert(index, pos);
-                Ok(())
-            })?;
-
-            rustc_span::hygiene::for_all_expn_data(|index, data| {
-                let pos = AbsoluteBytePos::new(encoder.position());
-                encoder.encode_tagged(TAG_EXPN_DATA, data)?;
-                //let hash = tcx.def_path_hash(data.def_id.unwrap());
-                expn_data.insert(index, pos);
-                Ok(())
-            })?;
+            hygiene_encode_context.encode(
+                &mut encoder,
+                |encoder, index, ctxt_data| {
+                    let pos = AbsoluteBytePos::new(encoder.position());
+                    encoder.encode_tagged(TAG_SYNTAX_CONTEXT, ctxt_data)?;
+                    syntax_contexts.insert(index, pos);
+                    Ok(())
+                },
+                |encoder, index, expn_data| {
+                    let pos = AbsoluteBytePos::new(encoder.position());
+                    encoder.encode_tagged(TAG_EXPN_DATA, expn_data)?;
+                    expn_ids.insert(index, pos);
+                    Ok(())
+                },
+            )?;
 
             // `Encode the file footer.
             let footer_pos = encoder.position() as u64;
@@ -328,7 +328,7 @@ impl<'sess> OnDiskCache<'sess> {
                     diagnostics_index,
                     interpret_alloc_index,
                     syntax_contexts,
-                    expn_data,
+                    expn_data: expn_ids,
                 },
             )?;
 
@@ -503,7 +503,7 @@ struct CacheDecoder<'a, 'tcx> {
     alloc_decoding_session: AllocDecodingSession<'a>,
     syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
     expn_data: &'a FxHashMap<u32, AbsoluteBytePos>,
-    hygiene_context: &'a HygieneContext,
+    hygiene_context: &'a HygieneDecodeContext,
 }
 
 impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
@@ -771,6 +771,7 @@ struct CacheEncoder<'a, 'tcx, E: ty_codec::TyEncoder> {
     interpret_allocs_inverse: Vec<interpret::AllocId>,
     source_map: CachingSourceMapView<'tcx>,
     file_to_file_index: FxHashMap<*const SourceFile, SourceFileIndex>,
+    hygiene_context: &'a HygieneEncodeContext,
 }
 
 impl<'a, 'tcx, E> CacheEncoder<'a, 'tcx, E>
@@ -826,7 +827,7 @@ where
     E: 'a + TyEncoder,
 {
     fn specialized_encode(&mut self, ctxt: &SyntaxContext) -> Result<(), Self::Error> {
-        rustc_span::hygiene::raw_encode_syntax_context(*ctxt, self)
+        rustc_span::hygiene::raw_encode_syntax_context(*ctxt, self.hygiene_context, self)
     }
 }
 
@@ -835,7 +836,12 @@ where
     E: 'a + TyEncoder,
 {
     fn specialized_encode(&mut self, expn: &ExpnId) -> Result<(), Self::Error> {
-        rustc_span::hygiene::raw_encode_expn_id(*expn, ExpnDataEncodeMode::IncrComp, self)
+        rustc_span::hygiene::raw_encode_expn_id(
+            *expn,
+            self.hygiene_context,
+            ExpnDataEncodeMode::IncrComp,
+            self,
+        )
     }
 }
 

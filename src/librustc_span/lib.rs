@@ -13,6 +13,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(min_specialization)]
 #![feature(option_expect_none)]
+#![feature(refcell_take)]
 
 // FIXME(#56935): Work around ICEs during cross-compilation.
 #[allow(unused)]

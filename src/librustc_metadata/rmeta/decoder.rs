@@ -46,7 +46,7 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 
 pub use cstore_impl::{provide, provide_extern};
-use rustc_span::hygiene::HygieneContext;
+use rustc_span::hygiene::HygieneDecodeContext;
 
 mod cstore_impl;
 
@@ -111,10 +111,10 @@ crate struct CrateMetadata {
 
     /// Additional data used for decoding `HygieneData` (e.g. `SyntaxContext`
     /// and `ExpnId`).
-    /// Note that we store a `HygieneContext` for each `CrateMetadat`. This is
+    /// Note that we store a `HygieneDecodeContext` for each `CrateMetadat`. This is
     /// because `SyntaxContext` ids are not globally unique, so we need
     /// to track which ids we've decoded on a per-crate basis.
-    hygiene_context: HygieneContext,
+    hygiene_context: HygieneDecodeContext,
 
     // --- Data used only for improving diagnostics ---
     /// Information about the `extern crate` item or path that caused this crate to be loaded.
@@ -1671,7 +1671,7 @@ impl CrateMetadata {
             private_dep,
             host_hash,
             extern_crate: Lock::new(None),
-            hygiene_context: HygieneContext::new(),
+            hygiene_context: Default::default(),
         }
     }
 
