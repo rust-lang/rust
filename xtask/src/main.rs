@@ -13,7 +13,7 @@ use std::env;
 use pico_args::Arguments;
 use xtask::{
     codegen::{self, Mode},
-    dist::run_dist,
+    dist::DistCmd,
     install::{ClientOpt, InstallCmd, Malloc, ServerOpt},
     not_bash::pushd,
     pre_commit, project_root,
@@ -115,7 +115,7 @@ FLAGS:
             let nightly = args.contains("--nightly");
             let client_version: Option<String> = args.opt_value_from_str("--client")?;
             args.finish()?;
-            run_dist(nightly, client_version)
+            DistCmd { nightly, client_version }.run()
         }
         _ => {
             eprintln!(
@@ -133,7 +133,8 @@ SUBCOMMANDS:
     codegen
     install
     lint
-    dist"
+    dist
+    promote"
             );
             Ok(())
         }
