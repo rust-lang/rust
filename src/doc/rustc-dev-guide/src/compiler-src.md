@@ -106,7 +106,7 @@ parallel compilation.
 However, since the query system is defined in [`rustc_middle`], nearly all
 subsequent parts of the compiler depend on this crate. It is a really large
 crate, leading to long compile times. Some efforts have been made to move stuff
-out of it with limited success. Another unfortunate sideffect is that sometimes
+out of it with limited success. Another unfortunate side effect is that sometimes
 related functionality gets scattered across different crates. For example,
 linting functionality is scattered across earlier parts of the crate,
 [`rustc_lint`], [`rustc_middle`], and other places.
