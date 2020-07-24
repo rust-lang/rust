@@ -1,60 +1,64 @@
-use crate::cmp;
+use crate::ffi::c_void;
+use crate::ptr;
+use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sys::hermit::abi;
 use crate::sys::mutex::Mutex;
 use crate::time::Duration;
 
+// The implementation is inspired by Andrew D. Birrell's paper
+// "Implementing Condition Variables with Semaphores"
+
 pub struct Condvar {
-    identifier: usize,
+    counter: AtomicUsize,
+    sem1: *const c_void,
+    sem2: *const c_void,
 }
+
+unsafe impl Send for Condvar {}
+unsafe impl Sync for Condvar {}
 
 impl Condvar {
     pub const fn new() -> Condvar {
-        Condvar { identifier: 0 }
+        Condvar { counter: AtomicUsize::new(0), sem1: ptr::null(), sem2: ptr::null() }
     }
 
     pub unsafe fn init(&mut self) {
-        let _ = abi::init_queue(self.id());
+        let _ = abi::sem_init(&mut self.sem1 as *mut *const c_void, 0);
+        let _ = abi::sem_init(&mut self.sem2 as *mut *const c_void, 0);
     }
 
     pub unsafe fn notify_one(&self) {
-        let _ = abi::notify(self.id(), 1);
+        if self.counter.load(SeqCst) > 0 {
+            self.counter.fetch_sub(1, SeqCst);
+            abi::sem_post(self.sem1);
+            abi::sem_timedwait(self.sem2, 0);
+        }
     }
 
-    #[inline]
     pub unsafe fn notify_all(&self) {
-        let _ = abi::notify(self.id(), -1 /* =all */);
+        let counter = self.counter.swap(0, SeqCst);
+        for _ in 0..counter {
+            abi::sem_post(self.sem1);
+        }
+        for _ in 0..counter {
+            abi::sem_timedwait(self.sem2, 0);
+        }
     }
 
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        // add current task to the wait queue
-        let _ = abi::add_queue(self.id(), -1 /* no timeout */);
+        self.counter.fetch_add(1, SeqCst);
         mutex.unlock();
-        let _ = abi::wait(self.id());
+        abi::sem_timedwait(self.sem1, 0);
+        abi::sem_post(self.sem2);
         mutex.lock();
     }
 
-    pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
-        let nanos = dur.as_nanos();
-        let nanos = cmp::min(i64::MAX as u128, nanos);
-
-        // add current task to the wait queue
-        let _ = abi::add_queue(self.id(), nanos as i64);
-
-        mutex.unlock();
-        // If the return value is !0 then a timeout happened, so we return
-        // `false` as we weren't actually notified.
-        let ret = abi::wait(self.id()) == 0;
-        mutex.lock();
-
-        ret
+    pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
+        panic!("wait_timeout not supported on hermit");
     }
 
     pub unsafe fn destroy(&self) {
-        let _ = abi::destroy_queue(self.id());
-    }
-
-    #[inline]
-    fn id(&self) -> usize {
-        &self.identifier as *const usize as usize
+        let _ = abi::sem_destroy(self.sem1);
+        let _ = abi::sem_destroy(self.sem2);
     }
 }
