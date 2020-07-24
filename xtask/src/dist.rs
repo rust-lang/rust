@@ -13,17 +13,24 @@ use crate::{
     project_root,
 };
 
-pub fn run_dist(nightly: bool, client_version: Option<String>) -> Result<()> {
-    let dist = project_root().join("dist");
-    rm_rf(&dist)?;
-    fs2::create_dir_all(&dist)?;
+pub struct DistCmd {
+    pub nightly: bool,
+    pub client_version: Option<String>,
+}
 
-    if let Some(version) = client_version {
-        let release_tag = if nightly { "nightly".to_string() } else { date_iso()? };
-        dist_client(&version, &release_tag)?;
+impl DistCmd {
+    pub fn run(self) -> Result<()> {
+        let dist = project_root().join("dist");
+        rm_rf(&dist)?;
+        fs2::create_dir_all(&dist)?;
+
+        if let Some(version) = self.client_version {
+            let release_tag = if self.nightly { "nightly".to_string() } else { date_iso()? };
+            dist_client(&version, &release_tag)?;
+        }
+        dist_server()?;
+        Ok(())
     }
-    dist_server()?;
-    Ok(())
 }
 
 fn dist_client(version: &str, release_tag: &str) -> Result<()> {
