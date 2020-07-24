@@ -477,7 +477,7 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-#[unstable(feature = "once_cell", issue = "74465")]
+#[unstable(feature = "once_cell", issue = "68198")]
 pub mod lazy;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
