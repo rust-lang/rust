@@ -60,9 +60,7 @@ impl OutlivesSuggestionBuilder {
             // Don't give suggestions for upvars, closure return types, or other unnamable
             // regions.
             RegionNameSource::SynthesizedFreeEnvRegion(..)
-            | RegionNameSource::CannotMatchHirTy(..)
-            | RegionNameSource::MatchedHirTy(..)
-            | RegionNameSource::MatchedAdtAndSegment(..)
+            | RegionNameSource::AnonRegionFromArgument(..)
             | RegionNameSource::AnonRegionFromUpvar(..)
             | RegionNameSource::AnonRegionFromOutput(..)
             | RegionNameSource::AnonRegionFromYieldTy(..)
