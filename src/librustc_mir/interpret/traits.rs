@@ -1,9 +1,10 @@
 use std::convert::TryFrom;
 
 use rustc_middle::mir::interpret::{InterpResult, Pointer, PointerArithmetic, Scalar};
-use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
+use rustc_middle::ty::{self, Instance, Ty};
 use rustc_target::abi::{Align, LayoutOf, Size};
 
+use super::util::ensure_monomorphic_enough;
 use super::{FnVal, InterpCx, Machine, MemoryKind};
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -23,9 +24,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let (ty, poly_trait_ref) = self.tcx.erase_regions(&(ty, poly_trait_ref));
 
         // All vtables must be monomorphic, bail out otherwise.
-        if ty.needs_subst() || poly_trait_ref.needs_subst() {
-            throw_inval!(TooGeneric);
-        }
+        ensure_monomorphic_enough(*self.tcx, ty)?;
+        ensure_monomorphic_enough(*self.tcx, poly_trait_ref)?;
 
         if let Some(&vtable) = self.vtables.get(&(ty, poly_trait_ref)) {
             // This means we guarantee that there are no duplicate vtables, we will

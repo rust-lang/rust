@@ -1,3 +1,4 @@
+// compile-flags:-Zpolymorphize=on
 // build-pass
 
 fn test<T>() {
