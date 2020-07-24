@@ -21,7 +21,7 @@ pub fn run_metrics() -> Result<()> {
         let mut file = std::fs::OpenOptions::new().append(true).open("metrics.json")?;
         writeln!(file, "{}", metrics.json())?;
         run!("git add .")?;
-        run!("git commit --author 'GitHub Action <>' --message '📈' ")?;
+        run!("git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈")?;
 
         if let Ok(actor) = env::var("GITHUB_ACTOR") {
             let token = env::var("GITHUB_TOKEN").unwrap();
