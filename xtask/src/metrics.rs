@@ -29,8 +29,7 @@ pub fn run_metrics() -> Result<()> {
         run!("git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈")?;
         run!("git push origin master")?;
     }
-    eprintln!("{:#?}\n", metrics);
-    eprintln!("{}", metrics.json());
+    eprintln!("{:#?}", metrics);
     Ok(())
 }
 
@@ -152,26 +151,32 @@ impl Host {
     }
 }
 
+struct State {
+    obj: bool,
+    first: bool,
+}
+
 #[derive(Default)]
 struct Json {
-    object_comma: bool,
-    array_comma: bool,
+    stack: Vec<State>,
     buf: String,
 }
 
 impl Json {
     fn begin_object(&mut self) {
-        self.object_comma = false;
+        self.stack.push(State { obj: true, first: true });
         self.buf.push('{');
     }
     fn end_object(&mut self) {
+        self.stack.pop();
         self.buf.push('}')
     }
     fn begin_array(&mut self) {
-        self.array_comma = false;
+        self.stack.push(State { obj: false, first: true });
         self.buf.push('[');
     }
     fn end_array(&mut self) {
+        self.stack.pop();
         self.buf.push(']')
     }
     fn field(&mut self, name: &str) {
@@ -194,17 +199,22 @@ impl Json {
     }
 
     fn array_comma(&mut self) {
-        if self.array_comma {
+        let state = self.stack.last_mut().unwrap();
+        if state.obj {
+            return;
+        }
+        if !state.first {
             self.buf.push(',');
         }
-        self.array_comma = true;
+        state.first = false;
     }
 
     fn object_comma(&mut self) {
-        if self.object_comma {
+        let state = self.stack.last_mut().unwrap();
+        if !state.first {
             self.buf.push(',');
         }
-        self.object_comma = true;
+        state.first = false;
     }
 }
 
