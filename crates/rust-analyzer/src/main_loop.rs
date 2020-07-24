@@ -15,6 +15,7 @@ use ra_prof::profile;
 use crate::{
     config::Config,
     dispatch::{NotificationDispatcher, RequestDispatcher},
+    document::DocumentData,
     from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState, Status},
     handlers, lsp_ext,
@@ -311,7 +312,7 @@ impl GlobalState {
                 let url = file_id_to_url(&self.vfs.read().0, file_id);
                 let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
                 let version = from_proto::vfs_path(&url)
-                    .map(|path| self.mem_docs.get(&path).copied().flatten())
+                    .map(|path| self.mem_docs.get(&path)?.version)
                     .unwrap_or_default();
 
                 self.send_notification::<lsp_types::notification::PublishDiagnostics>(
@@ -406,7 +407,7 @@ impl GlobalState {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
                     if this
                         .mem_docs
-                        .insert(path.clone(), Some(params.text_document.version))
+                        .insert(path.clone(), DocumentData::new(params.text_document.version))
                         .is_some()
                     {
                         log::error!("duplicate DidOpenTextDocument: {}", path)
@@ -428,7 +429,7 @@ impl GlobalState {
 
                     // The version passed in DidChangeTextDocument is the version after all edits are applied
                     // so we should apply it before the vfs is notified.
-                    *doc = params.text_document.version;
+                    doc.version = params.text_document.version;
 
                     vfs.set_file_contents(path.clone(), Some(text.into_bytes()));
                 }
@@ -438,7 +439,7 @@ impl GlobalState {
                 let mut version = None;
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
                     match this.mem_docs.remove(&path) {
-                        Some(entry) => version = entry,
+                        Some(doc) => version = doc.version,
                         None => log::error!("orphan DidCloseTextDocument: {}", path),
                     }
 
