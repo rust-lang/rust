@@ -21,6 +21,9 @@ use ra_ssr::{MatchFinder, SsrError, SsrRule};
 // replacement occurs. For example if our replacement template is `foo::Bar` and we match some
 // code in the `foo` module, we'll insert just `Bar`.
 //
+// Method calls should generally be written in UFCS form. e.g. `foo::Bar::baz($s, $a)` will match
+// `$s.baz($a)`, provided the method call `baz` resolves to the method `foo::Bar::baz`.
+//
 // Placeholders may be given constraints by writing them as `${<name>:<constraint1>:<constraint2>...}`.
 //
 // Supported constraints:

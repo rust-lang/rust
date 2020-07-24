@@ -18,10 +18,12 @@ pub(crate) struct ResolvedPattern {
     pub(crate) node: SyntaxNode,
     // Paths in `node` that we've resolved.
     pub(crate) resolved_paths: FxHashMap<SyntaxNode, ResolvedPath>,
+    pub(crate) ufcs_function_calls: FxHashMap<SyntaxNode, hir::Function>,
 }
 
 pub(crate) struct ResolvedPath {
     pub(crate) resolution: hir::PathResolution,
+    /// The depth of the ast::Path that was resolved within the pattern.
     pub(crate) depth: u32,
 }
 
@@ -64,10 +66,26 @@ impl Resolver<'_, '_> {
     fn resolve_pattern_tree(&self, pattern: SyntaxNode) -> Result<ResolvedPattern, SsrError> {
         let mut resolved_paths = FxHashMap::default();
         self.resolve(pattern.clone(), 0, &mut resolved_paths)?;
+        let ufcs_function_calls = resolved_paths
+            .iter()
+            .filter_map(|(path_node, resolved)| {
+                if let Some(grandparent) = path_node.parent().and_then(|parent| parent.parent()) {
+                    if grandparent.kind() == SyntaxKind::CALL_EXPR {
+                        if let hir::PathResolution::AssocItem(hir::AssocItem::Function(function)) =
+                            &resolved.resolution
+                        {
+                            return Some((grandparent, *function));
+                        }
+                    }
+                }
+                None
+            })
+            .collect();
         Ok(ResolvedPattern {
             node: pattern,
             resolved_paths,
             placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
+            ufcs_function_calls,
         })
     }
 

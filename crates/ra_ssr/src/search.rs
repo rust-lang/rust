@@ -46,32 +46,55 @@ impl<'db> MatchFinder<'db> {
         usage_cache: &mut UsageCache,
         matches_out: &mut Vec<Match>,
     ) {
-        if let Some(first_path) = pick_path_for_usages(pattern) {
-            let definition: Definition = first_path.resolution.clone().into();
+        if let Some(resolved_path) = pick_path_for_usages(pattern) {
+            let definition: Definition = resolved_path.resolution.clone().into();
             for reference in self.find_usages(usage_cache, definition) {
-                let file = self.sema.parse(reference.file_range.file_id);
-                if let Some(path) = self.sema.find_node_at_offset_with_descend::<ast::Path>(
-                    file.syntax(),
-                    reference.file_range.range.start(),
-                ) {
-                    if let Some(node_to_match) = self
-                        .sema
-                        .ancestors_with_macros(path.syntax().clone())
-                        .skip(first_path.depth as usize)
-                        .next()
+                if let Some(node_to_match) = self.find_node_to_match(resolved_path, reference) {
+                    if !is_search_permitted_ancestors(&node_to_match) {
+                        mark::hit!(use_declaration_with_braces);
+                        continue;
+                    }
+                    if let Ok(m) =
+                        matching::get_match(false, rule, &node_to_match, &None, &self.sema)
                     {
-                        if !is_search_permitted_ancestors(&node_to_match) {
-                            mark::hit!(use_declaration_with_braces);
-                            continue;
-                        }
-                        if let Ok(m) =
-                            matching::get_match(false, rule, &node_to_match, &None, &self.sema)
-                        {
-                            matches_out.push(m);
-                        }
+                        matches_out.push(m);
                     }
                 }
             }
+        }
+    }
+
+    fn find_node_to_match(
+        &self,
+        resolved_path: &ResolvedPath,
+        reference: &Reference,
+    ) -> Option<SyntaxNode> {
+        let file = self.sema.parse(reference.file_range.file_id);
+        let depth = resolved_path.depth as usize;
+        let offset = reference.file_range.range.start();
+        if let Some(path) =
+            self.sema.find_node_at_offset_with_descend::<ast::Path>(file.syntax(), offset)
+        {
+            self.sema.ancestors_with_macros(path.syntax().clone()).skip(depth).next()
+        } else if let Some(path) =
+            self.sema.find_node_at_offset_with_descend::<ast::MethodCallExpr>(file.syntax(), offset)
+        {
+            // If the pattern contained a path and we found a reference to that path that wasn't
+            // itself a path, but was a method call, then we need to adjust how far up to try
+            // matching by how deep the path was within a CallExpr. The structure would have been
+            // CallExpr, PathExpr, Path - i.e. a depth offset of 2. We don't need to check if the
+            // path was part of a CallExpr because if it wasn't then all that will happen is we'll
+            // fail to match, which is the desired behavior.
+            const PATH_DEPTH_IN_CALL_EXPR: usize = 2;
+            if depth < PATH_DEPTH_IN_CALL_EXPR {
+                return None;
+            }
+            self.sema
+                .ancestors_with_macros(path.syntax().clone())
+                .skip(depth - PATH_DEPTH_IN_CALL_EXPR)
+                .next()
+        } else {
+            None
         }
     }
 

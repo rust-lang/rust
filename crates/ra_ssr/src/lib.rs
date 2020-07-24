@@ -202,8 +202,12 @@ impl<'db> MatchFinder<'db> {
                     // For now we ignore rules that have a different kind than our node, otherwise
                     // we get lots of noise. If at some point we add support for restricting rules
                     // to a particular kind of thing (e.g. only match type references), then we can
-                    // relax this.
-                    if rule.pattern.node.kind() != node.kind() {
+                    // relax this. We special-case expressions, since function calls can match
+                    // method calls.
+                    if rule.pattern.node.kind() != node.kind()
+                        && !(ast::Expr::can_cast(rule.pattern.node.kind())
+                            && ast::Expr::can_cast(node.kind()))
+                    {
                         continue;
                     }
                     out.push(MatchDebugInfo {

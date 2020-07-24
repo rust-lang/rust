@@ -189,10 +189,17 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             }
             return Ok(());
         }
-        // Non-placeholders.
+        // We allow a UFCS call to match a method call, provided they resolve to the same function.
+        if let Some(pattern_function) = self.rule.pattern.ufcs_function_calls.get(pattern) {
+            if let (Some(pattern), Some(code)) =
+                (ast::CallExpr::cast(pattern.clone()), ast::MethodCallExpr::cast(code.clone()))
+            {
+                return self.attempt_match_ufcs(phase, &pattern, &code, *pattern_function);
+            }
+        }
         if pattern.kind() != code.kind() {
             fail_match!(
-                "Pattern had a `{}` ({:?}), code had `{}` ({:?})",
+                "Pattern had `{}` ({:?}), code had `{}` ({:?})",
                 pattern.text(),
                 pattern.kind(),
                 code.text(),
@@ -512,6 +519,37 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             fail_match!("Reached end of token tree in code, but pattern still has {:?}", p);
         }
         Ok(())
+    }
+
+    fn attempt_match_ufcs(
+        &self,
+        phase: &mut Phase,
+        pattern: &ast::CallExpr,
+        code: &ast::MethodCallExpr,
+        pattern_function: hir::Function,
+    ) -> Result<(), MatchFailed> {
+        use ast::ArgListOwner;
+        let code_resolved_function = self
+            .sema
+            .resolve_method_call(code)
+            .ok_or_else(|| match_error!("Failed to resolve method call"))?;
+        if pattern_function != code_resolved_function {
+            fail_match!("Method call resolved to a different function");
+        }
+        // Check arguments.
+        let mut pattern_args = pattern
+            .arg_list()
+            .ok_or_else(|| match_error!("Pattern function call has no args"))?
+            .args();
+        self.attempt_match_opt(phase, pattern_args.next(), code.expr())?;
+        let mut code_args =
+            code.arg_list().ok_or_else(|| match_error!("Code method call has no args"))?.args();
+        loop {
+            match (pattern_args.next(), code_args.next()) {
+                (None, None) => return Ok(()),
+                (p, c) => self.attempt_match_opt(phase, p, c)?,
+            }
+        }
     }
 
     fn get_placeholder(&self, element: &SyntaxElement) -> Option<&Placeholder> {
