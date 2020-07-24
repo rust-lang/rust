@@ -369,6 +369,16 @@ env UPDATE_EXPECT=1 cargo qt
 
 After adding a new inline test you need to run `cargo xtest codegen` and also update the test data as described above.
 
+## TypeScript Tests
+
+If you change files under `editors/code` and would like to run the tests and linter, install npm and run:
+
+```bash
+cd editors/code
+npm ci
+npm run lint
+```
+
 # Logging
 
 Logging is done by both rust-analyzer and VS Code, so it might be tricky to
