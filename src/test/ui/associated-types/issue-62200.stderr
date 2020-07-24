@@ -1,0 +1,11 @@
+error[E0582]: binding for associated type `Output` references an anonymous lifetime, which does not appear in the trait input types
+  --> $DIR/issue-62200.rs:11:39
+   |
+LL | fn foo(x: impl Fn(<S as T<'_>>::A) -> <S as T<'_>>::A) {}
+   |                                       ^^^^^^^^^^^^^^^
+   |
+   = note: lifetimes appearing in an associated type are not considered constrained
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0582`.

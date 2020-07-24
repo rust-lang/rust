@@ -1485,28 +1485,33 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
                 for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
                     let br_name = match *br {
-                        ty::BrNamed(_, name) => name,
-                        _ => {
-                            span_bug!(
-                                binding.span,
-                                "anonymous bound region {:?} in binding but not trait ref",
-                                br
-                            );
-                        }
+                        ty::BrNamed(_, name) => format!("lifetime `{}`", name),
+                        _ => "an anonymous lifetime".to_string(),
                     };
                     // FIXME: point at the type params that don't have appropriate lifetimes:
                     // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
                     //                         ----  ----     ^^^^^^^
-                    struct_span_err!(
+                    let mut err = struct_span_err!(
                         tcx.sess,
                         binding.span,
                         E0582,
-                        "binding for associated type `{}` references lifetime `{}`, \
+                        "binding for associated type `{}` references {}, \
                          which does not appear in the trait input types",
                         binding.item_name,
                         br_name
-                    )
-                    .emit();
+                    );
+
+                    if let ty::BrAnon(_) = *br {
+                        // The only way for an anonymous lifetime to wind up
+                        // in the return type but **also** be unconstrained is
+                        // if it only appears in "associated types" in the
+                        // input. See #62200 for an example. In this case,
+                        // though we can easily give a hint that ought to be
+                        // relevant.
+                        err.note("lifetimes appearing in an associated type are not considered constrained");
+                    }
+
+                    err.emit();
                 }
             }
         }
