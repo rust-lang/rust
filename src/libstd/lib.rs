@@ -284,7 +284,6 @@
 #![feature(linkage)]
 #![feature(llvm_asm)]
 #![feature(log_syntax)]
-#![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(min_specialization)]
@@ -292,7 +291,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(once_cell)]
 #![feature(optin_builtin_traits)]
 #![feature(or_patterns)]
 #![feature(panic_info_message)]
@@ -477,7 +475,10 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-#[unstable(feature = "once_cell", issue = "68198")]
+#[unstable(
+    feature = "std_lazy",
+    issue = "99",
+)]
 pub mod lazy;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
