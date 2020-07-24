@@ -1,5 +1,6 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
 use std::path::{self, Path};
+use std::time::SystemTime;
 
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
@@ -308,7 +309,12 @@ pub(crate) fn semantic_tokens(
     line_index: &LineIndex,
     highlights: Vec<HighlightedRange>,
 ) -> lsp_types::SemanticTokens {
-    let mut builder = semantic_tokens::SemanticTokensBuilder::default();
+    let id = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(d) => d.as_millis().to_string(),
+        Err(_) => String::new(),
+    };
+
+    let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);
 
     for highlight_range in highlights {
         let (type_, mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
@@ -326,6 +332,15 @@ pub(crate) fn semantic_tokens(
     }
 
     builder.build()
+}
+
+pub(crate) fn semantic_token_edits(
+    previous: &lsp_types::SemanticTokens,
+    current: &lsp_types::SemanticTokens,
+) -> lsp_types::SemanticTokensEdits {
+    let result_id = current.result_id.clone();
+    let edits = semantic_tokens::diff_tokens(&previous.data, &current.data);
+    lsp_types::SemanticTokensEdits { result_id, edits }
 }
 
 fn semantic_token_type_and_modifiers(

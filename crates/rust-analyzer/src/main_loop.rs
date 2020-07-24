@@ -387,6 +387,9 @@ impl GlobalState {
                 handlers::handle_call_hierarchy_outgoing,
             )?
             .on::<lsp_types::request::SemanticTokensRequest>(handlers::handle_semantic_tokens)?
+            .on::<lsp_types::request::SemanticTokensEditsRequest>(
+                handlers::handle_semantic_tokens_edits,
+            )?
             .on::<lsp_types::request::SemanticTokensRangeRequest>(
                 handlers::handle_semantic_tokens_range,
             )?
@@ -448,6 +451,8 @@ impl GlobalState {
                         Some(doc) => version = doc.version,
                         None => log::error!("orphan DidCloseTextDocument: {}", path),
                     }
+
+                    this.semantic_tokens_cache.lock().unwrap().remove(&params.text_document.uri);
 
                     if let Some(path) = path.as_path() {
                         this.loader.handle.invalidate(path.to_path_buf());

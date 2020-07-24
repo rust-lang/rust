@@ -13,9 +13,10 @@ use lsp_types::{
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeActionKind, CodeLens, Command, CompletionItem, Diagnostic, DocumentFormattingParams,
     DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeParams, HoverContents, Location,
-    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensParams,
-    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
-    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
+    Position, PrepareRenameResponse, Range, RenameParams, SemanticTokensEditResult,
+    SemanticTokensEditsParams, SemanticTokensParams, SemanticTokensRangeParams,
+    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
+    TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use ra_ide::{
     FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, NavigationTarget, Query,
@@ -1184,6 +1185,43 @@ pub(crate) fn handle_semantic_tokens(
 
     let highlights = snap.analysis.highlight(file_id)?;
     let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
+
+    // Unconditionally cache the tokens
+    snap.semantic_tokens_cache
+        .lock()
+        .unwrap()
+        .insert(params.text_document.uri, semantic_tokens.clone());
+
+    Ok(Some(semantic_tokens.into()))
+}
+
+pub(crate) fn handle_semantic_tokens_edits(
+    snap: GlobalStateSnapshot,
+    params: SemanticTokensEditsParams,
+) -> Result<Option<SemanticTokensEditResult>> {
+    let _p = profile("handle_semantic_tokens_edits");
+
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let text = snap.analysis.file_text(file_id)?;
+    let line_index = snap.analysis.file_line_index(file_id)?;
+
+    let highlights = snap.analysis.highlight(file_id)?;
+
+    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights);
+
+    let mut cache = snap.semantic_tokens_cache.lock().unwrap();
+    let cached_tokens = cache.entry(params.text_document.uri).or_default();
+
+    if let Some(prev_id) = &cached_tokens.result_id {
+        if *prev_id == params.previous_result_id {
+            let edits = to_proto::semantic_token_edits(&cached_tokens, &semantic_tokens);
+            *cached_tokens = semantic_tokens;
+            return Ok(Some(edits.into()));
+        }
+    }
+
+    *cached_tokens = semantic_tokens.clone();
+
     Ok(Some(semantic_tokens.into()))
 }
 
