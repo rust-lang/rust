@@ -62,6 +62,10 @@ pre {
 	background-color: #14191f;
 }
 
+.logo-container > img {
+	filter: drop-shadow(0 0 5px #fff);
+}
+
 /* Improve the scrollbar display on firefox */
 * {
 	scrollbar-color: #5c6773 transparent;

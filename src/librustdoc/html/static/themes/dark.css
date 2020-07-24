@@ -34,6 +34,10 @@ pre {
 	background-color: #505050;
 }
 
+.logo-container > img {
+	filter: drop-shadow(0 0 5px #fff);
+}
+
 /* Improve the scrollbar display on firefox */
 * {
 	scrollbar-color: rgb(64, 65, 67) #717171;
