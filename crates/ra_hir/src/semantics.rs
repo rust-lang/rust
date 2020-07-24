@@ -89,6 +89,7 @@ pub struct Semantics<'db, DB> {
 pub struct SemanticsImpl<'db> {
     pub db: &'db dyn HirDatabase,
     s2d_cache: RefCell<SourceToDefCache>,
+    expansion_info_cache: RefCell<FxHashMap<HirFileId, Option<ExpansionInfo>>>,
     cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
 }
 
@@ -275,7 +276,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
 impl<'db> SemanticsImpl<'db> {
     fn new(db: &'db dyn HirDatabase) -> Self {
-        Self { db, s2d_cache: Default::default(), cache: Default::default() }
+        SemanticsImpl {
+            db,
+            s2d_cache: Default::default(),
+            cache: Default::default(),
+            expansion_info_cache: Default::default(),
+        }
     }
 
     fn parse(&self, file_id: FileId) -> ast::SourceFile {
@@ -328,7 +334,13 @@ impl<'db> SemanticsImpl<'db> {
                 return None;
             }
             let file_id = sa.expand(self.db, token.with_value(&macro_call))?;
-            let token = file_id.expansion_info(self.db.upcast())?.map_token_down(token.as_ref())?;
+            let token = self
+                .expansion_info_cache
+                .borrow_mut()
+                .entry(file_id)
+                .or_insert_with(|| file_id.expansion_info(self.db.upcast()))
+                .as_ref()?
+                .map_token_down(token.as_ref())?;
 
             self.cache(find_root(&token.value.parent()), token.file_id);
 
