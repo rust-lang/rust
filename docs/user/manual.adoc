@@ -300,7 +300,7 @@ interface Crate {
     /// `include_dirs` are included recursively, unless a subdirectory is in `exclude_dirs`.
     ///
     /// Different crates can share the same `source`.
-
+    ///
     /// If two crates share an `.rs` file in common, they *must* have the same `source`.
     /// rust-analyzer assumes that files from one source can't refer to files in another source.
     source?: {
