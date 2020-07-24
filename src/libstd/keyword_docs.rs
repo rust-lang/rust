@@ -1005,11 +1005,11 @@ mod pub_keyword {}
 ///     Some(n) => println!("Hello, {}", n),
 ///     _ => println!("Hello, world"),
 /// }
-/// // ... and now unavailable.
+/// // ... and is now unavailable.
 /// println!("Hello again, {}", maybe_name.unwrap_or("world".into()));
 /// ```
 ///
-/// Using the `ref` keyword, the value is only borrowed, not moved, making
+/// Using the `ref` keyword, the value is only borrowed, not moved, making it
 /// available for use after the [`match`] statement:
 ///
 /// ```
@@ -1019,7 +1019,7 @@ mod pub_keyword {}
 ///     Some(ref n) => println!("Hello, {}", n),
 ///     _ => println!("Hello, world"),
 /// }
-/// // ... and it's available here !
+/// // ... so it's available here!
 /// println!("Hello again, {}", maybe_name.unwrap_or("world".into()));
 /// ```
 ///
