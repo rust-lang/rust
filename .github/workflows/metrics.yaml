@@ -18,12 +18,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Checkout metrics repository
-      uses: actions/checkout@v2
-      with:
-        repository: "rust-analyzer/metrics"
-        path: "target/metrics"
-
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
@@ -35,4 +29,4 @@ jobs:
     - name: Collect metrics
       run: cargo xtask metrics
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}

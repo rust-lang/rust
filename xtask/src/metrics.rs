@@ -17,17 +17,17 @@ pub fn run_metrics() -> Result<()> {
     metrics.measure_build()?;
 
     {
-        let _d = pushd("target/metrics");
+        let _d = pushd("target");
+        let api_token = env::var("METRICS_TOKEN").unwrap();
+        let repo = format!("https://{}@github.com/rust-analyzer/metrics.git", api_token);
+        run!("git clone --depth 1 {}", repo)?;
+        let _d = pushd("metrics");
+
         let mut file = std::fs::OpenOptions::new().append(true).open("metrics.json")?;
         writeln!(file, "{}", metrics.json())?;
         run!("git add .")?;
         run!("git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈")?;
-
-        if let Ok(actor) = env::var("GITHUB_ACTOR") {
-            let token = env::var("GITHUB_TOKEN").unwrap();
-            let repo = format!("https://{}:{}@github.com/rust-analyzer/metrics.git", actor, token);
-            run!("git push {}", repo)?;
-        }
+        run!("git push origin master")?;
     }
     eprintln!("{:#?}\n", metrics);
     eprintln!("{}", metrics.json());
