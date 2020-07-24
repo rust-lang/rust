@@ -936,20 +936,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 })
             });
 
-        let mut lowered_params: Vec<_> =
-            lowered_generics.params.into_iter().chain(in_band_defs).collect();
-
-        // FIXME(const_generics): the compiler doesn't always cope with
-        // unsorted generic parameters at the moment, so we make sure
-        // that they're ordered correctly here for now. (When we chain
-        // the `in_band_defs`, we might make the order unsorted.)
-        lowered_params.sort_by_key(|param| match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => ParamKindOrd::Lifetime,
-            hir::GenericParamKind::Type { .. } => ParamKindOrd::Type,
-            hir::GenericParamKind::Const { .. } => ParamKindOrd::Const,
-        });
-
-        lowered_generics.params = lowered_params.into();
+        lowered_generics.params.extend(in_band_defs);
 
         let lowered_generics = lowered_generics.into_generics(self.arena);
         (lowered_generics, res)
