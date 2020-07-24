@@ -293,7 +293,8 @@ impl Config {
     pub fn update_caps(&mut self, caps: &ClientCapabilities) {
         if let Some(ws_caps) = caps.workspace.as_ref() {
             if let Some(did_change_watched_files) = ws_caps.did_change_watched_files.as_ref() {
-                self.client_caps.dynamic_watched_files = did_change_watched_files.dynamic_registration.unwrap_or(false);
+                self.client_caps.dynamic_watched_files =
+                    did_change_watched_files.dynamic_registration.unwrap_or(false);
             }
         }
 
