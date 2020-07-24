@@ -1680,19 +1680,15 @@ mod use_keyword {}
 ///
 /// `where` can also be used for lifetimes.
 ///
-/// This compiles because the lifetime of `longer` is superior to the lifetime
-/// of `shorter`, thus the constraint is respected:
+/// This compiles because `longer` outlives `shorter`, thus the constraint is
+/// respected:
 ///
 /// ```rust
-/// fn select_where<'a, 'b>(s1: &'a str, s2: &'b str, second: bool) -> &'a str
+/// fn select<'short, 'long>(s1: &'short str, s2: &'long str, second: bool) -> &'short str
 /// where
-///     'b: 'a,
+///     'long: 'short,
 /// {
-///     if second {
-///         s2
-///     } else {
-///         s1
-///     }
+///     if second { s2 } else { s1 }
 /// }
 ///
 /// let outer = String::from("Long living ref");
@@ -1701,35 +1697,20 @@ mod use_keyword {}
 ///     let inner = String::from("Short living ref");
 ///     let shorter = &inner;
 ///
-///     assert_eq!(select_where(shorter, longer, false), shorter);
-///     assert_eq!(select_where(shorter, longer, true), longer);
+///     assert_eq!(select(shorter, longer, false), shorter);
+///     assert_eq!(select(shorter, longer, true), longer);
 /// }
 /// ```
 ///
-/// On the other hand, this will not compile: `shorter` does not have a lifetime
-/// that respects the constraint imposed by the `select_where` functions.
+/// On the other hand, this will not compile because the `where 'b: 'a` clause
+/// is missing: the `'b` lifetime is not known to live at least as long as `'a`
+/// which means this function cannot ensure it always returns a valid reference:
 ///
-/// ```rust,compile_fail,E0597
-/// # fn select_where<'a, 'b>(s1: &'a str, s2: &'b str, second: bool) -> &'a str
-/// # where
-/// #     'b: 'a,
-/// # {
-/// #     if second {
-/// #         s2
-/// #     } else {
-/// #         s1
-/// #     }
-/// # }
-/// let outer = String::from("Long living ref");
-/// let longer = &outer;
-/// let res;
+/// ```rust,compile_fail,E0623
+/// fn select<'a, 'b>(s1: &'a str, s2: &'b str, second: bool) -> &'a str
 /// {
-///     let inner = String::from("Short living ref");
-///     let shorter = &inner;
-///
-///     res = select_where(longer, shorter, false);
+///     if second { s2 } else { s1 }
 /// }
-/// assert_eq!(res, &outer);
 /// ```
 ///
 /// `where` can also be used to express more complicated constraints that cannot
@@ -1749,7 +1730,8 @@ mod use_keyword {}
 /// ```
 ///
 /// `where` is available anywhere generic and lifetime parameters are available,
-/// as can be seen in the [`Cow`](crate::borrow::Cow) from the standard library:
+/// as can be seen with the [`Cow`](crate::borrow::Cow) type from the standard
+/// library:
 ///
 /// ```rust
 /// # #![allow(dead_code)]
