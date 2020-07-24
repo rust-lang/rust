@@ -24,7 +24,7 @@ struct Runtime<DB: Database> {
     _storage: Box<DB::Storage>,
 }
 struct SalsaStorage {
-    _parse: <ParseQuery as Query<RootDatabase>>::Data, //~ ERROR overflow
+    _parse: <ParseQuery as Query<RootDatabase>>::Data,
 }
 
 impl Database for RootDatabase {
@@ -67,6 +67,7 @@ pub(crate) fn goto_implementation(db: &RootDatabase) -> u32 {
     // we used to fail to report an error here because we got the
     // caching wrong.
     SourceDatabase::parse(db);
+    //~^ ERROR overflow
     22
 }
 

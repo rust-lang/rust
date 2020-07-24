@@ -441,8 +441,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         debug!(
             "evaluate_predicate_recursively(obligation={:?}, previous_stack={:?})",
-            previous_stack.head(),
-            obligation
+            obligation,
+            previous_stack.head()
         );
 
         // `previous_stack` stores a `TraitObligation`, while `obligation` is

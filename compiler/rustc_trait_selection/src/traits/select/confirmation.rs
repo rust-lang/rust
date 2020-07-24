@@ -9,11 +9,10 @@
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
+use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
-use rustc_infer::infer::{self, InferOk};
-use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty};
 use rustc_middle::ty::{ToPolyTraitRef, ToPredicate, WithConstness};
 use rustc_span::def_id::DefId;
 
@@ -434,100 +433,54 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             vtable_base = nonmatching.map(|t| super::util::count_own_vtable_entries(tcx, t)).sum();
         }
 
-        // Check supertraits hold
-        nested.extend(util::supertraits(tcx, obligation_trait_ref).skip(1).map(|super_trait| {
-            Obligation::new(
-                obligation.cause.clone(),
-                obligation.param_env,
-                super_trait.without_const().to_predicate(tcx),
-            )
-        }));
-
         let upcast_trait_ref = upcast_trait_ref.unwrap();
 
+        // Check supertraits hold
+        nested.extend(
+            tcx.super_predicates_of(trait_predicate.def_id())
+                .instantiate(tcx, trait_predicate.trait_ref.substs)
+                .predicates
+                .into_iter()
+                .map(|super_trait| {
+                    Obligation::new(obligation.cause.clone(), obligation.param_env, super_trait)
+                }),
+        );
+
         let assoc_types: Vec<_> = tcx
-            .associated_items(upcast_trait_ref.def_id())
+            .associated_items(trait_predicate.def_id())
             .in_definition_order()
             .filter_map(
                 |item| if item.kind == ty::AssocKind::Type { Some(item.def_id) } else { None },
             )
             .collect();
 
-        if !assoc_types.is_empty() {
-            let predicates: Vec<_> =
-                data.iter()
-                    .filter_map(|pred| match pred {
-                        ty::ExistentialPredicate::Projection(proj) => {
-                            if assoc_types.contains(&proj.item_def_id) {
-                                match self.infcx.commit_if_ok(|_| {
-                                    self.infcx
-                                        .at(&obligation.cause, obligation.param_env)
-                                        .sup(
-                                            ty::Binder::dummy(
-                                                proj.trait_ref(tcx).with_self_ty(tcx, self_ty),
-                                            ),
-                                            upcast_trait_ref,
-                                        )
-                                        .map(|InferOk { obligations, .. }| obligations)
-                                        .map_err(|_| ())
-                                }) {
-                                    Ok(obligations) => {
-                                        nested.extend(obligations);
-                                        Some(proj)
-                                    }
-                                    Err(_) => None,
-                                }
-                            } else {
-                                None
-                            }
-                        }
-                        ty::ExistentialPredicate::AutoTrait(_)
-                        | ty::ExistentialPredicate::Trait(_) => None,
-                    })
-                    .collect();
-
-            let upcast_trait_ref = upcast_trait_ref
-                .no_bound_vars()
-                .expect("sup shouldn't return binder with bound vars");
-            let mut normalizer = ObjectAssociatedTypeNormalizer {
-                infcx: self.infcx,
-                object_ty: self_ty,
-                object_bounds: &predicates,
-                param_env: obligation.param_env,
-                cause: &obligation.cause,
-                nested: &mut nested,
-            };
-            for assoc_type in assoc_types {
-                if !tcx.generics_of(assoc_type).params.is_empty() {
-                    // FIXME(generic_associated_types) generate placeholders to
-                    // extend the trait substs.
-                    tcx.sess.span_fatal(
-                        obligation.cause.span,
-                        "generic associated types in trait objects are not supported yet",
-                    );
-                }
-                // This maybe belongs in wf, but that can't (doesn't) handle
-                // higher-ranked things.
-                // Prevent, e.g., `dyn Iterator<Item = str>`.
-                for bound in self.tcx().item_bounds(assoc_type) {
-                    let subst_bound = bound.subst(tcx, upcast_trait_ref.substs);
-                    // Normalize projections the trait object manually to
-                    // avoid evaluation overflow.
-                    let object_normalized = subst_bound.fold_with(&mut normalizer);
-                    let normalized_bound = normalize_with_depth_to(
-                        self,
-                        obligation.param_env,
-                        obligation.cause.clone(),
-                        obligation.recursion_depth + 1,
-                        &object_normalized,
-                        normalizer.nested,
-                    );
-                    normalizer.nested.push(Obligation::new(
-                        obligation.cause.clone(),
-                        obligation.param_env.clone(),
-                        normalized_bound,
-                    ));
-                }
+        for assoc_type in assoc_types {
+            if !tcx.generics_of(assoc_type).params.is_empty() {
+                // FIXME(generic_associated_types) generate placeholders to
+                // extend the trait substs.
+                tcx.sess.span_fatal(
+                    obligation.cause.span,
+                    "generic associated types in trait objects are not supported yet",
+                );
+            }
+            // This maybe belongs in wf, but that can't (doesn't) handle
+            // higher-ranked things.
+            // Prevent, e.g., `dyn Iterator<Item = str>`.
+            for bound in self.tcx().item_bounds(assoc_type) {
+                let subst_bound = bound.subst(tcx, trait_predicate.trait_ref.substs);
+                let normalized_bound = normalize_with_depth_to(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    &subst_bound,
+                    &mut nested,
+                );
+                nested.push(Obligation::new(
+                    obligation.cause.clone(),
+                    obligation.param_env.clone(),
+                    normalized_bound,
+                ));
             }
         }
 
@@ -970,52 +923,5 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         Ok(ImplSourceBuiltinData { nested })
-    }
-}
-
-struct ObjectAssociatedTypeNormalizer<'a, 'tcx> {
-    infcx: &'a infer::InferCtxt<'a, 'tcx>,
-    object_ty: Ty<'tcx>,
-    object_bounds: &'a [ty::ExistentialProjection<'tcx>],
-    param_env: ty::ParamEnv<'tcx>,
-    cause: &'a ObligationCause<'tcx>,
-    nested: &'a mut Vec<PredicateObligation<'tcx>>,
-}
-
-impl<'tcx> TypeFolder<'tcx> for ObjectAssociatedTypeNormalizer<'_, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.has_projections() {
-            return t;
-        }
-        if let ty::Projection(proj) = t.kind {
-            if let ty::Dynamic(..) = proj.self_ty().kind {
-                for bound in self.object_bounds {
-                    if proj.item_def_id == bound.item_def_id {
-                        // FIXME(generic_associated_types): This isn't relating
-                        // the substs for the associated type.
-                        match self.infcx.commit_if_ok(|_| {
-                            self.infcx.at(self.cause, self.param_env).sub(
-                                bound
-                                    .with_self_ty(self.infcx.tcx, self.object_ty)
-                                    .projection_ty
-                                    .trait_ref(self.infcx.tcx),
-                                proj.trait_ref(self.infcx.tcx),
-                            )
-                        }) {
-                            Ok(InferOk { value: (), obligations }) => {
-                                self.nested.extend(obligations);
-                                return bound.ty;
-                            }
-                            Err(_) => {}
-                        }
-                    }
-                }
-            }
-        }
-        t.super_fold_with(self)
     }
 }
