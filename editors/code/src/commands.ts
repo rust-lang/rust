@@ -190,7 +190,7 @@ export function ssr(ctx: Ctx): Cmd {
         if (!editor || !client) return;
 
         const position = editor.selection.active;
-        let textDocument = { uri: editor.document.uri.toString() };
+        const textDocument = { uri: editor.document.uri.toString() };
 
         const options: vscode.InputBoxOptions = {
             value: "() ==>> ()",
