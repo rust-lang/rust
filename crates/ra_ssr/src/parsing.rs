@@ -7,17 +7,19 @@
 
 use crate::errors::bail;
 use crate::{SsrError, SsrPattern, SsrRule};
-use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, T};
+use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::str::FromStr;
 
-#[derive(Clone, Debug)]
-pub(crate) struct SsrTemplate {
-    pub(crate) tokens: Vec<PatternElement>,
+#[derive(Debug)]
+pub(crate) struct ParsedRule {
+    pub(crate) placeholders_by_stand_in: FxHashMap<SmolStr, Placeholder>,
+    pub(crate) pattern: SyntaxNode,
+    pub(crate) template: Option<SyntaxNode>,
 }
 
 #[derive(Debug)]
-pub(crate) struct RawSearchPattern {
+pub(crate) struct RawPattern {
     tokens: Vec<PatternElement>,
 }
 
@@ -54,6 +56,60 @@ pub(crate) struct Token {
     pub(crate) text: SmolStr,
 }
 
+impl ParsedRule {
+    fn new(
+        pattern: &RawPattern,
+        template: Option<&RawPattern>,
+    ) -> Result<Vec<ParsedRule>, SsrError> {
+        let raw_pattern = pattern.as_rust_code();
+        let raw_template = template.map(|t| t.as_rust_code());
+        let raw_template = raw_template.as_ref().map(|s| s.as_str());
+        let mut builder = RuleBuilder {
+            placeholders_by_stand_in: pattern.placeholders_by_stand_in(),
+            rules: Vec::new(),
+        };
+        builder.try_add(ast::Expr::parse(&raw_pattern), raw_template.map(ast::Expr::parse));
+        builder.try_add(ast::TypeRef::parse(&raw_pattern), raw_template.map(ast::TypeRef::parse));
+        builder.try_add(
+            ast::ModuleItem::parse(&raw_pattern),
+            raw_template.map(ast::ModuleItem::parse),
+        );
+        builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
+        builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
+        builder.build()
+    }
+}
+
+struct RuleBuilder {
+    placeholders_by_stand_in: FxHashMap<SmolStr, Placeholder>,
+    rules: Vec<ParsedRule>,
+}
+
+impl RuleBuilder {
+    fn try_add<T: AstNode>(&mut self, pattern: Result<T, ()>, template: Option<Result<T, ()>>) {
+        match (pattern, template) {
+            (Ok(pattern), Some(Ok(template))) => self.rules.push(ParsedRule {
+                placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
+                pattern: pattern.syntax().clone(),
+                template: Some(template.syntax().clone()),
+            }),
+            (Ok(pattern), None) => self.rules.push(ParsedRule {
+                placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
+                pattern: pattern.syntax().clone(),
+                template: None,
+            }),
+            _ => {}
+        }
+    }
+
+    fn build(self) -> Result<Vec<ParsedRule>, SsrError> {
+        if self.rules.is_empty() {
+            bail!("Not a valid Rust expression, type, item, path or pattern");
+        }
+        Ok(self.rules)
+    }
+}
+
 impl FromStr for SsrRule {
     type Err = SsrError;
 
@@ -68,21 +124,24 @@ impl FromStr for SsrRule {
         if it.next().is_some() {
             return Err(SsrError("More than one delimiter found".into()));
         }
-        let rule = SsrRule { pattern: pattern.parse()?, template: template.parse()? };
+        let raw_pattern = pattern.parse()?;
+        let raw_template = template.parse()?;
+        let parsed_rules = ParsedRule::new(&raw_pattern, Some(&raw_template))?;
+        let rule = SsrRule { pattern: raw_pattern, template: raw_template, parsed_rules };
         validate_rule(&rule)?;
         Ok(rule)
     }
 }
 
-impl FromStr for RawSearchPattern {
+impl FromStr for RawPattern {
     type Err = SsrError;
 
-    fn from_str(pattern_str: &str) -> Result<RawSearchPattern, SsrError> {
-        Ok(RawSearchPattern { tokens: parse_pattern(pattern_str)? })
+    fn from_str(pattern_str: &str) -> Result<RawPattern, SsrError> {
+        Ok(RawPattern { tokens: parse_pattern(pattern_str)? })
     }
 }
 
-impl RawSearchPattern {
+impl RawPattern {
     /// Returns this search pattern as Rust source code that we can feed to the Rust parser.
     fn as_rust_code(&self) -> String {
         let mut res = String::new();
@@ -95,7 +154,7 @@ impl RawSearchPattern {
         res
     }
 
-    fn placeholders_by_stand_in(&self) -> FxHashMap<SmolStr, Placeholder> {
+    pub(crate) fn placeholders_by_stand_in(&self) -> FxHashMap<SmolStr, Placeholder> {
         let mut res = FxHashMap::default();
         for t in &self.tokens {
             if let PatternElement::Placeholder(placeholder) = t {
@@ -110,41 +169,9 @@ impl FromStr for SsrPattern {
     type Err = SsrError;
 
     fn from_str(pattern_str: &str) -> Result<SsrPattern, SsrError> {
-        let raw: RawSearchPattern = pattern_str.parse()?;
-        let raw_str = raw.as_rust_code();
-        let res = SsrPattern {
-            expr: ast::Expr::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            type_ref: ast::TypeRef::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            item: ast::ModuleItem::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            path: ast::Path::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            pattern: ast::Pat::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            placeholders_by_stand_in: raw.placeholders_by_stand_in(),
-            raw,
-        };
-        if res.expr.is_none()
-            && res.type_ref.is_none()
-            && res.item.is_none()
-            && res.path.is_none()
-            && res.pattern.is_none()
-        {
-            bail!("Pattern is not a valid Rust expression, type, item, path or pattern");
-        }
-        Ok(res)
-    }
-}
-
-impl FromStr for SsrTemplate {
-    type Err = SsrError;
-
-    fn from_str(pattern_str: &str) -> Result<SsrTemplate, SsrError> {
-        let tokens = parse_pattern(pattern_str)?;
-        // Validate that the template is a valid fragment of Rust code. We reuse the validation
-        // logic for search patterns since the only thing that differs is the error message.
-        if SsrPattern::from_str(pattern_str).is_err() {
-            bail!("Replacement is not a valid Rust expression, type, item, path or pattern");
-        }
-        // Our actual template needs to preserve whitespace, so we can't reuse `tokens`.
-        Ok(SsrTemplate { tokens })
+        let raw_pattern = pattern_str.parse()?;
+        let parsed_rules = ParsedRule::new(&raw_pattern, None)?;
+        Ok(SsrPattern { raw: raw_pattern, parsed_rules })
     }
 }
 
@@ -173,7 +200,7 @@ fn parse_pattern(pattern_str: &str) -> Result<Vec<PatternElement>, SsrError> {
 /// pattern didn't define.
 fn validate_rule(rule: &SsrRule) -> Result<(), SsrError> {
     let mut defined_placeholders = FxHashSet::default();
-    for p in &rule.pattern.raw.tokens {
+    for p in &rule.pattern.tokens {
         if let PatternElement::Placeholder(placeholder) = p {
             defined_placeholders.insert(&placeholder.ident);
         }
@@ -316,7 +343,7 @@ mod tests {
         }
         let result: SsrRule = "foo($a, $b) ==>> bar($b, $a)".parse().unwrap();
         assert_eq!(
-            result.pattern.raw.tokens,
+            result.pattern.tokens,
             vec![
                 token(SyntaxKind::IDENT, "foo"),
                 token(T!['('], "("),

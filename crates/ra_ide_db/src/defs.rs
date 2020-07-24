@@ -290,20 +290,25 @@ pub fn classify_name_ref(
 
     let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
     let resolved = sema.resolve_path(&path)?;
-    let res = match resolved {
-        PathResolution::Def(def) => Definition::ModuleDef(def),
-        PathResolution::AssocItem(item) => {
-            let def = match item {
-                hir::AssocItem::Function(it) => it.into(),
-                hir::AssocItem::Const(it) => it.into(),
-                hir::AssocItem::TypeAlias(it) => it.into(),
-            };
-            Definition::ModuleDef(def)
+    Some(NameRefClass::Definition(resolved.into()))
+}
+
+impl From<PathResolution> for Definition {
+    fn from(path_resolution: PathResolution) -> Self {
+        match path_resolution {
+            PathResolution::Def(def) => Definition::ModuleDef(def),
+            PathResolution::AssocItem(item) => {
+                let def = match item {
+                    hir::AssocItem::Function(it) => it.into(),
+                    hir::AssocItem::Const(it) => it.into(),
+                    hir::AssocItem::TypeAlias(it) => it.into(),
+                };
+                Definition::ModuleDef(def)
+            }
+            PathResolution::Local(local) => Definition::Local(local),
+            PathResolution::TypeParam(par) => Definition::TypeParam(par),
+            PathResolution::Macro(def) => Definition::Macro(def),
+            PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
         }
-        PathResolution::Local(local) => Definition::Local(local),
-        PathResolution::TypeParam(par) => Definition::TypeParam(par),
-        PathResolution::Macro(def) => Definition::Macro(def),
-        PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
-    };
-    Some(NameRefClass::Definition(res))
+    }
 }

@@ -274,6 +274,11 @@ interface SsrParams {
     query: string,
     /// If true, only check the syntax of the query and don't compute the actual edit.
     parseOnly: bool,
+    /// The current text document. This and `position` will be used to determine in what scope
+    /// paths in `query` should be resolved.
+    textDocument: lc.TextDocumentIdentifier;
+    /// Position where SSR was invoked.
+    position: lc.Position;
 }
 ```
 
@@ -285,7 +290,7 @@ WorkspaceEdit
 
 ### Example
 
-SSR with query `foo($a:expr, $b:expr) ==>> ($a).foo($b)` will transform, eg `foo(y + 5, z)` into `(y + 5).foo(z)`.
+SSR with query `foo($a, $b) ==>> ($a).foo($b)` will transform, eg `foo(y + 5, z)` into `(y + 5).foo(z)`.
 
 ### Unresolved Question
 

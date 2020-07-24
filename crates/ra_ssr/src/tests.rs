@@ -1,5 +1,8 @@
 use crate::{MatchFinder, SsrRule};
-use ra_db::{FileId, SourceDatabaseExt};
+use expect::{expect, Expect};
+use ra_db::{salsa::Durability, FileId, FilePosition, SourceDatabaseExt};
+use rustc_hash::FxHashSet;
+use std::sync::Arc;
 use test_utils::mark;
 
 fn parse_error_text(query: &str) -> String {
@@ -36,7 +39,7 @@ fn parser_repeated_name() {
 fn parser_invalid_pattern() {
     assert_eq!(
         parse_error_text(" ==>> ()"),
-        "Parse error: Pattern is not a valid Rust expression, type, item, path or pattern"
+        "Parse error: Not a valid Rust expression, type, item, path or pattern"
     );
 }
 
@@ -44,7 +47,7 @@ fn parser_invalid_pattern() {
 fn parser_invalid_template() {
     assert_eq!(
         parse_error_text("() ==>> )"),
-        "Parse error: Replacement is not a valid Rust expression, type, item, path or pattern"
+        "Parse error: Not a valid Rust expression, type, item, path or pattern"
     );
 }
 
@@ -56,39 +59,44 @@ fn parser_undefined_placeholder_in_replacement() {
     );
 }
 
-fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FileId) {
+/// `code` may optionally contain a cursor marker `<|>`. If it doesn't, then the position will be
+/// the start of the file.
+pub(crate) fn single_file(code: &str) -> (ra_ide_db::RootDatabase, FilePosition) {
     use ra_db::fixture::WithFixture;
-    ra_ide_db::RootDatabase::with_single_file(code)
+    use ra_ide_db::symbol_index::SymbolsDatabase;
+    let (mut db, position) = if code.contains(test_utils::CURSOR_MARKER) {
+        ra_ide_db::RootDatabase::with_position(code)
+    } else {
+        let (db, file_id) = ra_ide_db::RootDatabase::with_single_file(code);
+        (db, FilePosition { file_id, offset: 0.into() })
+    };
+    let mut local_roots = FxHashSet::default();
+    local_roots.insert(ra_db::fixture::WORKSPACE);
+    db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
+    (db, position)
 }
 
-fn assert_ssr_transform(rule: &str, input: &str, result: &str) {
-    assert_ssr_transforms(&[rule], input, result);
+fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
+    assert_ssr_transforms(&[rule], input, expected);
 }
 
-fn normalize_code(code: &str) -> String {
-    let (db, file_id) = single_file(code);
-    db.file_text(file_id).to_string()
-}
-
-fn assert_ssr_transforms(rules: &[&str], input: &str, result: &str) {
-    let (db, file_id) = single_file(input);
-    let mut match_finder = MatchFinder::new(&db);
+fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
+    let (db, position) = single_file(input);
+    let mut match_finder = MatchFinder::in_context(&db, position);
     for rule in rules {
         let rule: SsrRule = rule.parse().unwrap();
-        match_finder.add_rule(rule);
+        match_finder.add_rule(rule).unwrap();
     }
-    if let Some(edits) = match_finder.edits_for_file(file_id) {
-        // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
-        // stuff.
-        let mut after = db.file_text(file_id).to_string();
-        edits.apply(&mut after);
-        // Likewise, we need to make sure that whatever transformations fixture parsing applies,
-        // also get applied to our expected result.
-        let result = normalize_code(result);
-        assert_eq!(after, result);
-    } else {
+    let edits = match_finder.edits();
+    if edits.is_empty() {
         panic!("No edits were made");
     }
+    assert_eq!(edits[0].file_id, position.file_id);
+    // Note, db.file_text is not necessarily the same as `input`, since fixture parsing alters
+    // stuff.
+    let mut actual = db.file_text(position.file_id).to_string();
+    edits[0].edit.apply(&mut actual);
+    expected.assert_eq(&actual);
 }
 
 fn print_match_debug_info(match_finder: &MatchFinder, file_id: FileId, snippet: &str) {
@@ -104,39 +112,34 @@ fn print_match_debug_info(match_finder: &MatchFinder, file_id: FileId, snippet: 
 }
 
 fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
-    let (db, file_id) = single_file(code);
-    let mut match_finder = MatchFinder::new(&db);
-    match_finder.add_search_pattern(pattern.parse().unwrap());
-    let matched_strings: Vec<String> = match_finder
-        .find_matches_in_file(file_id)
-        .flattened()
-        .matches
-        .iter()
-        .map(|m| m.matched_text())
-        .collect();
+    let (db, position) = single_file(code);
+    let mut match_finder = MatchFinder::in_context(&db, position);
+    match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
+    let matched_strings: Vec<String> =
+        match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
     if matched_strings != expected && !expected.is_empty() {
-        print_match_debug_info(&match_finder, file_id, &expected[0]);
+        print_match_debug_info(&match_finder, position.file_id, &expected[0]);
     }
     assert_eq!(matched_strings, expected);
 }
 
 fn assert_no_match(pattern: &str, code: &str) {
-    let (db, file_id) = single_file(code);
-    let mut match_finder = MatchFinder::new(&db);
-    match_finder.add_search_pattern(pattern.parse().unwrap());
-    let matches = match_finder.find_matches_in_file(file_id).flattened().matches;
+    let (db, position) = single_file(code);
+    let mut match_finder = MatchFinder::in_context(&db, position);
+    match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
+    let matches = match_finder.matches().flattened().matches;
     if !matches.is_empty() {
-        print_match_debug_info(&match_finder, file_id, &matches[0].matched_text());
+        print_match_debug_info(&match_finder, position.file_id, &matches[0].matched_text());
         panic!("Got {} matches when we expected none: {:#?}", matches.len(), matches);
     }
 }
 
 fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expected_reason: &str) {
-    let (db, file_id) = single_file(code);
-    let mut match_finder = MatchFinder::new(&db);
-    match_finder.add_search_pattern(pattern.parse().unwrap());
+    let (db, position) = single_file(code);
+    let mut match_finder = MatchFinder::in_context(&db, position);
+    match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let mut reasons = Vec::new();
-    for d in match_finder.debug_where_text_equal(file_id, snippet) {
+    for d in match_finder.debug_where_text_equal(position.file_id, snippet) {
         if let Some(reason) = d.match_failure_reason() {
             reasons.push(reason.to_owned());
         }
@@ -149,7 +152,7 @@ fn ssr_function_to_method() {
     assert_ssr_transform(
         "my_function($a, $b) ==>> ($a).my_method($b)",
         "fn my_function() {} fn main() { loop { my_function( other_func(x, y), z + w) } }",
-        "fn my_function() {} fn main() { loop { (other_func(x, y)).my_method(z + w) } }",
+        expect![["fn my_function() {} fn main() { loop { (other_func(x, y)).my_method(z + w) } }"]],
     )
 }
 
@@ -157,8 +160,19 @@ fn ssr_function_to_method() {
 fn ssr_nested_function() {
     assert_ssr_transform(
         "foo($a, $b, $c) ==>> bar($c, baz($a, $b))",
-        "fn foo() {} fn main { foo  (x + value.method(b), x+y-z, true && false) }",
-        "fn foo() {} fn main { bar(true && false, baz(x + value.method(b), x+y-z)) }",
+        r#"
+            //- /lib.rs crate:foo
+            fn foo() {}
+            fn bar() {}
+            fn baz() {}
+            fn main { foo  (x + value.method(b), x+y-z, true && false) }
+            "#,
+        expect![[r#"
+            fn foo() {}
+            fn bar() {}
+            fn baz() {}
+            fn main { bar(true && false, baz(x + value.method(b), x+y-z)) }
+        "#]],
     )
 }
 
@@ -167,7 +181,7 @@ fn ssr_expected_spacing() {
     assert_ssr_transform(
         "foo($x) + bar() ==>> bar($x)",
         "fn foo() {} fn bar() {} fn main() { foo(5) + bar() }",
-        "fn foo() {} fn bar() {} fn main() { bar(5) }",
+        expect![["fn foo() {} fn bar() {} fn main() { bar(5) }"]],
     );
 }
 
@@ -176,7 +190,7 @@ fn ssr_with_extra_space() {
     assert_ssr_transform(
         "foo($x  ) +    bar() ==>> bar($x)",
         "fn foo() {} fn bar() {} fn main() { foo(  5 )  +bar(   ) }",
-        "fn foo() {} fn bar() {} fn main() { bar(5) }",
+        expect![["fn foo() {} fn bar() {} fn main() { bar(5) }"]],
     );
 }
 
@@ -184,8 +198,8 @@ fn ssr_with_extra_space() {
 fn ssr_keeps_nested_comment() {
     assert_ssr_transform(
         "foo($x) ==>> bar($x)",
-        "fn foo() {} fn main() { foo(other(5 /* using 5 */)) }",
-        "fn foo() {} fn main() { bar(other(5 /* using 5 */)) }",
+        "fn foo() {} fn bar() {} fn main() { foo(other(5 /* using 5 */)) }",
+        expect![["fn foo() {} fn bar() {} fn main() { bar(other(5 /* using 5 */)) }"]],
     )
 }
 
@@ -193,17 +207,25 @@ fn ssr_keeps_nested_comment() {
 fn ssr_keeps_comment() {
     assert_ssr_transform(
         "foo($x) ==>> bar($x)",
-        "fn foo() {} fn main() { foo(5 /* using 5 */) }",
-        "fn foo() {} fn main() { bar(5)/* using 5 */ }",
+        "fn foo() {} fn bar() {} fn main() { foo(5 /* using 5 */) }",
+        expect![["fn foo() {} fn bar() {} fn main() { bar(5)/* using 5 */ }"]],
     )
 }
 
 #[test]
 fn ssr_struct_lit() {
     assert_ssr_transform(
-        "foo{a: $a, b: $b} ==>> foo::new($a, $b)",
-        "fn foo() {} fn main() { foo{b:2, a:1} }",
-        "fn foo() {} fn main() { foo::new(1, 2) }",
+        "Foo{a: $a, b: $b} ==>> Foo::new($a, $b)",
+        r#"
+            struct Foo() {}
+            impl Foo { fn new() {} }
+            fn main() { Foo{b:2, a:1} }
+            "#,
+        expect![[r#"
+            struct Foo() {}
+            impl Foo { fn new() {} }
+            fn main() { Foo::new(1, 2) }
+        "#]],
     )
 }
 
@@ -315,7 +337,7 @@ fn match_struct_instantiation() {
 fn match_path() {
     let code = r#"
         mod foo {
-            fn bar() {}
+            pub fn bar() {}
         }
         fn f() {foo::bar(42)}"#;
     assert_matches("foo::bar", code, &["foo::bar"]);
@@ -326,6 +348,60 @@ fn match_path() {
 #[test]
 fn match_pattern() {
     assert_matches("Some($a)", "struct Some(); fn f() {if let Some(x) = foo() {}}", &["Some(x)"]);
+}
+
+// If our pattern has a full path, e.g. a::b::c() and the code has c(), but c resolves to
+// a::b::c, then we should match.
+#[test]
+fn match_fully_qualified_fn_path() {
+    let code = r#"
+        mod a {
+            pub mod b {
+                pub fn c(_: i32) {}
+            }
+        }
+        use a::b::c;
+        fn f1() {
+            c(42);
+        }
+        "#;
+    assert_matches("a::b::c($a)", code, &["c(42)"]);
+}
+
+#[test]
+fn match_resolved_type_name() {
+    let code = r#"
+        mod m1 {
+            pub mod m2 {
+                pub trait Foo<T> {}
+            }
+        }
+        mod m3 {
+            trait Foo<T> {}
+            fn f1(f: Option<&dyn Foo<bool>>) {}
+        }
+        mod m4 {
+            use crate::m1::m2::Foo;
+            fn f1(f: Option<&dyn Foo<i32>>) {}
+        }
+        "#;
+    assert_matches("m1::m2::Foo<$t>", code, &["Foo<i32>"]);
+}
+
+#[test]
+fn type_arguments_within_path() {
+    mark::check!(type_arguments_within_path);
+    let code = r#"
+        mod foo {
+            pub struct Bar<T> {t: T}
+            impl<T> Bar<T> {
+                pub fn baz() {}
+            }
+        }
+        fn f1() {foo::Bar::<i32>::baz();}
+        "#;
+    assert_no_match("foo::Bar::<i64>::baz()", code);
+    assert_matches("foo::Bar::<i32>::baz()", code, &["foo::Bar::<i32>::baz()"]);
 }
 
 #[test]
@@ -416,8 +492,8 @@ fn no_match_split_expression() {
 fn replace_function_call() {
     assert_ssr_transform(
         "foo() ==>> bar()",
-        "fn foo() {} fn f1() {foo(); foo();}",
-        "fn foo() {} fn f1() {bar(); bar();}",
+        "fn foo() {} fn bar() {} fn f1() {foo(); foo();}",
+        expect![["fn foo() {} fn bar() {} fn f1() {bar(); bar();}"]],
     );
 }
 
@@ -425,8 +501,8 @@ fn replace_function_call() {
 fn replace_function_call_with_placeholders() {
     assert_ssr_transform(
         "foo($a, $b) ==>> bar($b, $a)",
-        "fn foo() {} fn f1() {foo(5, 42)}",
-        "fn foo() {} fn f1() {bar(42, 5)}",
+        "fn foo() {} fn bar() {} fn f1() {foo(5, 42)}",
+        expect![["fn foo() {} fn bar() {} fn f1() {bar(42, 5)}"]],
     );
 }
 
@@ -434,8 +510,109 @@ fn replace_function_call_with_placeholders() {
 fn replace_nested_function_calls() {
     assert_ssr_transform(
         "foo($a) ==>> bar($a)",
-        "fn foo() {} fn f1() {foo(foo(42))}",
-        "fn foo() {} fn f1() {bar(bar(42))}",
+        "fn foo() {} fn bar() {} fn f1() {foo(foo(42))}",
+        expect![["fn foo() {} fn bar() {} fn f1() {bar(bar(42))}"]],
+    );
+}
+
+#[test]
+fn replace_associated_function_call() {
+    assert_ssr_transform(
+        "Foo::new() ==>> Bar::new()",
+        r#"
+            struct Foo {}
+            impl Foo { fn new() {} }
+            struct Bar {}
+            impl Bar { fn new() {} }
+            fn f1() {Foo::new();}
+            "#,
+        expect![[r#"
+            struct Foo {}
+            impl Foo { fn new() {} }
+            struct Bar {}
+            impl Bar { fn new() {} }
+            fn f1() {Bar::new();}
+        "#]],
+    );
+}
+
+#[test]
+fn replace_path_in_different_contexts() {
+    // Note the <|> inside module a::b which marks the point where the rule is interpreted. We
+    // replace foo with bar, but both need different path qualifiers in different contexts. In f4,
+    // foo is unqualified because of a use statement, however the replacement needs to be fully
+    // qualified.
+    assert_ssr_transform(
+        "c::foo() ==>> c::bar()",
+        r#"
+            mod a {
+                pub mod b {<|>
+                    pub mod c {
+                        pub fn foo() {}
+                        pub fn bar() {}
+                        fn f1() { foo() }
+                    }
+                    fn f2() { c::foo() }
+                }
+                fn f3() { b::c::foo() }
+            }
+            use a::b::c::foo;
+            fn f4() { foo() }
+            "#,
+        expect![[r#"
+            mod a {
+                pub mod b {
+                    pub mod c {
+                        pub fn foo() {}
+                        pub fn bar() {}
+                        fn f1() { bar() }
+                    }
+                    fn f2() { c::bar() }
+                }
+                fn f3() { b::c::bar() }
+            }
+            use a::b::c::foo;
+            fn f4() { a::b::c::bar() }
+            "#]],
+    );
+}
+
+#[test]
+fn replace_associated_function_with_generics() {
+    assert_ssr_transform(
+        "c::Foo::<$a>::new() ==>> d::Bar::<$a>::default()",
+        r#"
+            mod c {
+                pub struct Foo<T> {v: T}
+                impl<T> Foo<T> { pub fn new() {} }
+                fn f1() {
+                    Foo::<i32>::new();
+                }
+            }
+            mod d {
+                pub struct Bar<T> {v: T}
+                impl<T> Bar<T> { pub fn default() {} }
+                fn f1() {
+                    super::c::Foo::<i32>::new();
+                }
+            }
+            "#,
+        expect![[r#"
+            mod c {
+                pub struct Foo<T> {v: T}
+                impl<T> Foo<T> { pub fn new() {} }
+                fn f1() {
+                    crate::d::Bar::<i32>::default();
+                }
+            }
+            mod d {
+                pub struct Bar<T> {v: T}
+                impl<T> Bar<T> { pub fn default() {} }
+                fn f1() {
+                    Bar::<i32>::default();
+                }
+            }
+            "#]],
     );
 }
 
@@ -443,17 +620,10 @@ fn replace_nested_function_calls() {
 fn replace_type() {
     assert_ssr_transform(
         "Result<(), $a> ==>> Option<$a>",
-        "struct Result<T, E> {} fn f1() -> Result<(), Vec<Error>> {foo()}",
-        "struct Result<T, E> {} fn f1() -> Option<Vec<Error>> {foo()}",
-    );
-}
-
-#[test]
-fn replace_struct_init() {
-    assert_ssr_transform(
-        "Foo {a: $a, b: $b} ==>> Foo::new($a, $b)",
-        "struct Foo {} fn f1() {Foo{b: 1, a: 2}}",
-        "struct Foo {} fn f1() {Foo::new(2, 1)}",
+        "struct Result<T, E> {} struct Option<T> {} fn f1() -> Result<(), Vec<Error>> {foo()}",
+        expect![[
+            "struct Result<T, E> {} struct Option<T> {} fn f1() -> Option<Vec<Error>> {foo()}"
+        ]],
     );
 }
 
@@ -462,12 +632,12 @@ fn replace_macro_invocations() {
     assert_ssr_transform(
         "try!($a) ==>> $a?",
         "macro_rules! try {() => {}} fn f1() -> Result<(), E> {bar(try!(foo()));}",
-        "macro_rules! try {() => {}} fn f1() -> Result<(), E> {bar(foo()?);}",
+        expect![["macro_rules! try {() => {}} fn f1() -> Result<(), E> {bar(foo()?);}"]],
     );
     assert_ssr_transform(
         "foo!($a($b)) ==>> foo($b, $a)",
         "macro_rules! foo {() => {}} fn f1() {foo!(abc(def() + 2));}",
-        "macro_rules! foo {() => {}} fn f1() {foo(def() + 2, abc);}",
+        expect![["macro_rules! foo {() => {}} fn f1() {foo(def() + 2, abc);}"]],
     );
 }
 
@@ -476,12 +646,12 @@ fn replace_binary_op() {
     assert_ssr_transform(
         "$a + $b ==>> $b + $a",
         "fn f() {2 * 3 + 4 * 5}",
-        "fn f() {4 * 5 + 2 * 3}",
+        expect![["fn f() {4 * 5 + 2 * 3}"]],
     );
     assert_ssr_transform(
         "$a + $b ==>> $b + $a",
         "fn f() {1 + 2 + 3 + 4}",
-        "fn f() {4 + 3 + 2 + 1}",
+        expect![["fn f() {4 + 3 + 2 + 1}"]],
     );
 }
 
@@ -494,8 +664,23 @@ fn match_binary_op() {
 fn multiple_rules() {
     assert_ssr_transforms(
         &["$a + 1 ==>> add_one($a)", "$a + $b ==>> add($a, $b)"],
-        "fn f() -> i32 {3 + 2 + 1}",
-        "fn f() -> i32 {add_one(add(3, 2))}",
+        "fn add() {} fn add_one() {} fn f() -> i32 {3 + 2 + 1}",
+        expect![["fn add() {} fn add_one() {} fn f() -> i32 {add_one(add(3, 2))}"]],
+    )
+}
+
+#[test]
+fn multiple_rules_with_nested_matches() {
+    assert_ssr_transforms(
+        &["foo1($a) ==>> bar1($a)", "foo2($a) ==>> bar2($a)"],
+        r#"
+            fn foo1() {} fn foo2() {} fn bar1() {} fn bar2() {}
+            fn f() {foo1(foo2(foo1(foo2(foo1(42)))))}
+            "#,
+        expect![[r#"
+            fn foo1() {} fn foo2() {} fn bar1() {} fn bar2() {}
+            fn f() {bar1(bar2(bar1(bar2(bar1(42)))))}
+        "#]],
     )
 }
 
@@ -527,12 +712,37 @@ fn replace_within_macro_expansion() {
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(5.x().foo().o2())}"#,
-        r#"
+            fn bar() {}
+            fn f() {macro1!(5.x().foo().o2())}
+            "#,
+        expect![[r#"
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(bar(5.x()).o2())}"#,
+            fn bar() {}
+            fn f() {macro1!(bar(5.x()).o2())}
+            "#]],
+    )
+}
+
+#[test]
+fn replace_outside_and_within_macro_expansion() {
+    assert_ssr_transform(
+        "foo($a) ==>> bar($a)",
+        r#"
+            fn foo() {} fn bar() {}
+            macro_rules! macro1 {
+                ($a:expr) => {$a}
+            }
+            fn f() {foo(foo(macro1!(foo(foo(42)))))}
+            "#,
+        expect![[r#"
+            fn foo() {} fn bar() {}
+            macro_rules! macro1 {
+                ($a:expr) => {$a}
+            }
+            fn f() {bar(bar(macro1!(bar(bar(42)))))}
+        "#]],
     )
 }
 
@@ -544,12 +754,14 @@ fn preserves_whitespace_within_macro_expansion() {
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(1   *   2 + 3 + 4}"#,
-        r#"
+            fn f() {macro1!(1   *   2 + 3 + 4}
+            "#,
+        expect![[r#"
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(4 - 3 - 1   *   2}"#,
+            fn f() {macro1!(4 - 3 - 1   *   2}
+            "#]],
     )
 }
 
@@ -578,5 +790,98 @@ fn match_failure_reasons() {
         code,
         "43.to_string()",
         r#"Pattern wanted token '42' (INT_NUMBER), but code had token '43' (INT_NUMBER)"#,
+    );
+}
+
+#[test]
+fn overlapping_possible_matches() {
+    // There are three possible matches here, however the middle one, `foo(foo(foo(42)))` shouldn't
+    // match because it overlaps with the outer match. The inner match is permitted since it's is
+    // contained entirely within the placeholder of the outer match.
+    assert_matches(
+        "foo(foo($a))",
+        "fn foo() {} fn main() {foo(foo(foo(foo(42))))}",
+        &["foo(foo(42))", "foo(foo(foo(foo(42))))"],
+    );
+}
+
+#[test]
+fn use_declaration_with_braces() {
+    // It would be OK for a path rule to match and alter a use declaration. We shouldn't mess it up
+    // though. In particular, we must not change `use foo::{baz, bar}` to `use foo::{baz,
+    // foo2::bar2}`.
+    mark::check!(use_declaration_with_braces);
+    assert_ssr_transform(
+        "foo::bar ==>> foo2::bar2",
+        r#"
+        mod foo { pub fn bar() {} pub fn baz() {} }
+        mod foo2 { pub fn bar2() {} }
+        use foo::{baz, bar};
+        fn main() { bar() }
+        "#,
+        expect![["
+        mod foo { pub fn bar() {} pub fn baz() {} }
+        mod foo2 { pub fn bar2() {} }
+        use foo::{baz, bar};
+        fn main() { foo2::bar2() }
+        "]],
+    )
+}
+
+#[test]
+fn ufcs_matches_method_call() {
+    let code = r#"
+    struct Foo {}
+    impl Foo {
+        fn new(_: i32) -> Foo { Foo {} }
+        fn do_stuff(&self, _: i32) {}
+    }
+    struct Bar {}
+    impl Bar {
+        fn new(_: i32) -> Bar { Bar {} }
+        fn do_stuff(&self, v: i32) {}
+    }
+    fn main() {
+        let b = Bar {};
+        let f = Foo {};
+        b.do_stuff(1);
+        f.do_stuff(2);
+        Foo::new(4).do_stuff(3);
+        // Too many / too few args - should never match
+        f.do_stuff(2, 10);
+        f.do_stuff();
+    }
+    "#;
+    assert_matches("Foo::do_stuff($a, $b)", code, &["f.do_stuff(2)", "Foo::new(4).do_stuff(3)"]);
+    // The arguments needs special handling in the case of a function call matching a method call
+    // and the first argument is different.
+    assert_matches("Foo::do_stuff($a, 2)", code, &["f.do_stuff(2)"]);
+    assert_matches("Foo::do_stuff(Foo::new(4), $b)", code, &["Foo::new(4).do_stuff(3)"]);
+
+    assert_ssr_transform(
+        "Foo::do_stuff(Foo::new($a), $b) ==>> Bar::new($b).do_stuff($a)",
+        code,
+        expect![[r#"
+            struct Foo {}
+            impl Foo {
+                fn new(_: i32) -> Foo { Foo {} }
+                fn do_stuff(&self, _: i32) {}
+            }
+            struct Bar {}
+            impl Bar {
+                fn new(_: i32) -> Bar { Bar {} }
+                fn do_stuff(&self, v: i32) {}
+            }
+            fn main() {
+                let b = Bar {};
+                let f = Foo {};
+                b.do_stuff(1);
+                f.do_stuff(2);
+                Bar::new(3).do_stuff(4);
+                // Too many / too few args - should never match
+                f.do_stuff(2, 10);
+                f.do_stuff();
+            }
+        "#]],
     );
 }

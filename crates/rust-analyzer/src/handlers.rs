@@ -1026,8 +1026,9 @@ pub(crate) fn handle_ssr(
     params: lsp_ext::SsrParams,
 ) -> Result<lsp_types::WorkspaceEdit> {
     let _p = profile("handle_ssr");
+    let position = from_proto::file_position(&snap, params.position)?;
     let source_change =
-        snap.analysis.structural_search_replace(&params.query, params.parse_only)??;
+        snap.analysis.structural_search_replace(&params.query, params.parse_only, position)??;
     to_proto::workspace_edit(&snap, source_change)
 }
 

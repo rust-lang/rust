@@ -93,6 +93,8 @@ export const inlayHints = new lc.RequestType<InlayHintsParams, InlayHint[], void
 export interface SsrParams {
     query: string;
     parseOnly: boolean;
+    textDocument: lc.TextDocumentIdentifier;
+    position: lc.Position;
 }
 export const ssr = new lc.RequestType<SsrParams, lc.WorkspaceEdit, void>('experimental/ssr');
 

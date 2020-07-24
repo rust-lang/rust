@@ -2,8 +2,9 @@
 //! process of matching, placeholder values are recorded.
 
 use crate::{
-    parsing::{Constraint, NodeKind, Placeholder, SsrTemplate},
-    SsrMatches, SsrPattern, SsrRule,
+    parsing::{Constraint, NodeKind, Placeholder},
+    resolving::{ResolvedPattern, ResolvedRule},
+    SsrMatches,
 };
 use hir::Semantics;
 use ra_db::FileRange;
@@ -48,9 +49,11 @@ pub struct Match {
     pub(crate) matched_node: SyntaxNode,
     pub(crate) placeholder_values: FxHashMap<Var, PlaceholderMatch>,
     pub(crate) ignored_comments: Vec<ast::Comment>,
-    // A copy of the template for the rule that produced this match. We store this on the match for
-    // if/when we do replacement.
-    pub(crate) template: SsrTemplate,
+    pub(crate) rule_index: usize,
+    /// The depth of matched_node.
+    pub(crate) depth: usize,
+    // Each path in the template rendered for the module in which the match was found.
+    pub(crate) rendered_template_paths: FxHashMap<SyntaxNode, hir::ModPath>,
 }
 
 /// Represents a `$var` in an SSR query.
@@ -86,7 +89,7 @@ pub(crate) struct MatchFailed {
 /// parent module, we don't populate nested matches.
 pub(crate) fn get_match(
     debug_active: bool,
-    rule: &SsrRule,
+    rule: &ResolvedRule,
     code: &SyntaxNode,
     restrict_range: &Option<FileRange>,
     sema: &Semantics<ra_ide_db::RootDatabase>,
@@ -102,7 +105,7 @@ struct Matcher<'db, 'sema> {
     /// If any placeholders come from anywhere outside of this range, then the match will be
     /// rejected.
     restrict_range: Option<FileRange>,
-    rule: &'sema SsrRule,
+    rule: &'sema ResolvedRule,
 }
 
 /// Which phase of matching we're currently performing. We do two phases because most attempted
@@ -117,26 +120,35 @@ enum Phase<'a> {
 
 impl<'db, 'sema> Matcher<'db, 'sema> {
     fn try_match(
-        rule: &'sema SsrRule,
+        rule: &ResolvedRule,
         code: &SyntaxNode,
         restrict_range: &Option<FileRange>,
         sema: &'sema Semantics<'db, ra_ide_db::RootDatabase>,
     ) -> Result<Match, MatchFailed> {
         let match_state = Matcher { sema, restrict_range: restrict_range.clone(), rule };
-        let pattern_tree = rule.pattern.tree_for_kind(code.kind())?;
         // First pass at matching, where we check that node types and idents match.
-        match_state.attempt_match_node(&mut Phase::First, &pattern_tree, code)?;
+        match_state.attempt_match_node(&mut Phase::First, &rule.pattern.node, code)?;
         match_state.validate_range(&sema.original_range(code))?;
         let mut the_match = Match {
             range: sema.original_range(code),
             matched_node: code.clone(),
             placeholder_values: FxHashMap::default(),
             ignored_comments: Vec::new(),
-            template: rule.template.clone(),
+            rule_index: rule.index,
+            depth: 0,
+            rendered_template_paths: FxHashMap::default(),
         };
         // Second matching pass, where we record placeholder matches, ignored comments and maybe do
         // any other more expensive checks that we didn't want to do on the first pass.
-        match_state.attempt_match_node(&mut Phase::Second(&mut the_match), &pattern_tree, code)?;
+        match_state.attempt_match_node(
+            &mut Phase::Second(&mut the_match),
+            &rule.pattern.node,
+            code,
+        )?;
+        the_match.depth = sema.ancestors_with_macros(the_match.matched_node.clone()).count();
+        if let Some(template) = &rule.template {
+            the_match.render_template_paths(template, sema)?;
+        }
         Ok(the_match)
     }
 
@@ -177,10 +189,17 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             }
             return Ok(());
         }
-        // Non-placeholders.
+        // We allow a UFCS call to match a method call, provided they resolve to the same function.
+        if let Some(pattern_function) = self.rule.pattern.ufcs_function_calls.get(pattern) {
+            if let (Some(pattern), Some(code)) =
+                (ast::CallExpr::cast(pattern.clone()), ast::MethodCallExpr::cast(code.clone()))
+            {
+                return self.attempt_match_ufcs(phase, &pattern, &code, *pattern_function);
+            }
+        }
         if pattern.kind() != code.kind() {
             fail_match!(
-                "Pattern had a `{}` ({:?}), code had `{}` ({:?})",
+                "Pattern had `{}` ({:?}), code had `{}` ({:?})",
                 pattern.text(),
                 pattern.kind(),
                 code.text(),
@@ -194,6 +213,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 self.attempt_match_record_field_list(phase, pattern, code)
             }
             SyntaxKind::TOKEN_TREE => self.attempt_match_token_tree(phase, pattern, code),
+            SyntaxKind::PATH => self.attempt_match_path(phase, pattern, code),
             _ => self.attempt_match_node_children(phase, pattern, code),
         }
     }
@@ -308,6 +328,64 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             }
         }
         Ok(())
+    }
+
+    /// Paths are matched based on whether they refer to the same thing, even if they're written
+    /// differently.
+    fn attempt_match_path(
+        &self,
+        phase: &mut Phase,
+        pattern: &SyntaxNode,
+        code: &SyntaxNode,
+    ) -> Result<(), MatchFailed> {
+        if let Some(pattern_resolved) = self.rule.pattern.resolved_paths.get(pattern) {
+            let pattern_path = ast::Path::cast(pattern.clone()).unwrap();
+            let code_path = ast::Path::cast(code.clone()).unwrap();
+            if let (Some(pattern_segment), Some(code_segment)) =
+                (pattern_path.segment(), code_path.segment())
+            {
+                // Match everything within the segment except for the name-ref, which is handled
+                // separately via comparing what the path resolves to below.
+                self.attempt_match_opt(
+                    phase,
+                    pattern_segment.type_arg_list(),
+                    code_segment.type_arg_list(),
+                )?;
+                self.attempt_match_opt(
+                    phase,
+                    pattern_segment.param_list(),
+                    code_segment.param_list(),
+                )?;
+            }
+            if matches!(phase, Phase::Second(_)) {
+                let resolution = self
+                    .sema
+                    .resolve_path(&code_path)
+                    .ok_or_else(|| match_error!("Failed to resolve path `{}`", code.text()))?;
+                if pattern_resolved.resolution != resolution {
+                    fail_match!("Pattern had path `{}` code had `{}`", pattern.text(), code.text());
+                }
+            }
+        } else {
+            return self.attempt_match_node_children(phase, pattern, code);
+        }
+        Ok(())
+    }
+
+    fn attempt_match_opt<T: AstNode>(
+        &self,
+        phase: &mut Phase,
+        pattern: Option<T>,
+        code: Option<T>,
+    ) -> Result<(), MatchFailed> {
+        match (pattern, code) {
+            (Some(p), Some(c)) => self.attempt_match_node(phase, &p.syntax(), &c.syntax()),
+            (None, None) => Ok(()),
+            (Some(p), None) => fail_match!("Pattern `{}` had nothing to match", p.syntax().text()),
+            (None, Some(c)) => {
+                fail_match!("Nothing in pattern to match code `{}`", c.syntax().text())
+            }
+        }
     }
 
     /// We want to allow the records to match in any order, so we have special matching logic for
@@ -443,9 +521,61 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         Ok(())
     }
 
+    fn attempt_match_ufcs(
+        &self,
+        phase: &mut Phase,
+        pattern: &ast::CallExpr,
+        code: &ast::MethodCallExpr,
+        pattern_function: hir::Function,
+    ) -> Result<(), MatchFailed> {
+        use ast::ArgListOwner;
+        let code_resolved_function = self
+            .sema
+            .resolve_method_call(code)
+            .ok_or_else(|| match_error!("Failed to resolve method call"))?;
+        if pattern_function != code_resolved_function {
+            fail_match!("Method call resolved to a different function");
+        }
+        // Check arguments.
+        let mut pattern_args = pattern
+            .arg_list()
+            .ok_or_else(|| match_error!("Pattern function call has no args"))?
+            .args();
+        self.attempt_match_opt(phase, pattern_args.next(), code.expr())?;
+        let mut code_args =
+            code.arg_list().ok_or_else(|| match_error!("Code method call has no args"))?.args();
+        loop {
+            match (pattern_args.next(), code_args.next()) {
+                (None, None) => return Ok(()),
+                (p, c) => self.attempt_match_opt(phase, p, c)?,
+            }
+        }
+    }
+
     fn get_placeholder(&self, element: &SyntaxElement) -> Option<&Placeholder> {
-        only_ident(element.clone())
-            .and_then(|ident| self.rule.pattern.placeholders_by_stand_in.get(ident.text()))
+        only_ident(element.clone()).and_then(|ident| self.rule.get_placeholder(&ident))
+    }
+}
+
+impl Match {
+    fn render_template_paths(
+        &mut self,
+        template: &ResolvedPattern,
+        sema: &Semantics<ra_ide_db::RootDatabase>,
+    ) -> Result<(), MatchFailed> {
+        let module = sema
+            .scope(&self.matched_node)
+            .module()
+            .ok_or_else(|| match_error!("Matched node isn't in a module"))?;
+        for (path, resolved_path) in &template.resolved_paths {
+            if let hir::PathResolution::Def(module_def) = resolved_path.resolution {
+                let mod_path = module.find_use_path(sema.db, module_def).ok_or_else(|| {
+                    match_error!("Failed to render template path `{}` at match location")
+                })?;
+                self.rendered_template_paths.insert(path.clone(), mod_path);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -507,28 +637,6 @@ impl PlaceholderMatch {
 
     fn from_range(range: FileRange) -> Self {
         Self { node: None, range, inner_matches: SsrMatches::default() }
-    }
-}
-
-impl SsrPattern {
-    pub(crate) fn tree_for_kind(&self, kind: SyntaxKind) -> Result<&SyntaxNode, MatchFailed> {
-        let (tree, kind_name) = if ast::Expr::can_cast(kind) {
-            (&self.expr, "expression")
-        } else if ast::TypeRef::can_cast(kind) {
-            (&self.type_ref, "type reference")
-        } else if ast::ModuleItem::can_cast(kind) {
-            (&self.item, "item")
-        } else if ast::Path::can_cast(kind) {
-            (&self.path, "path")
-        } else if ast::Pat::can_cast(kind) {
-            (&self.pattern, "pattern")
-        } else {
-            fail_match!("Matching nodes of kind {:?} is not supported", kind);
-        };
-        match tree {
-            Some(tree) => Ok(tree),
-            None => fail_match!("Pattern cannot be parsed as a {}", kind_name),
-        }
     }
 }
 
@@ -596,13 +704,12 @@ mod tests {
     #[test]
     fn parse_match_replace() {
         let rule: SsrRule = "foo($x) ==>> bar($x)".parse().unwrap();
-        let input = "fn foo() {} fn main() { foo(1+2); }";
+        let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
-        use ra_db::fixture::WithFixture;
-        let (db, file_id) = ra_ide_db::RootDatabase::with_single_file(input);
-        let mut match_finder = MatchFinder::new(&db);
-        match_finder.add_rule(rule);
-        let matches = match_finder.find_matches_in_file(file_id);
+        let (db, position) = crate::tests::single_file(input);
+        let mut match_finder = MatchFinder::in_context(&db, position);
+        match_finder.add_rule(rule).unwrap();
+        let matches = match_finder.matches();
         assert_eq!(matches.matches.len(), 1);
         assert_eq!(matches.matches[0].matched_node.text(), "foo(1+2)");
         assert_eq!(matches.matches[0].placeholder_values.len(), 1);
@@ -615,9 +722,11 @@ mod tests {
             "1+2"
         );
 
-        let edit = crate::replacing::matches_to_edit(&matches, input);
+        let edits = match_finder.edits();
+        assert_eq!(edits.len(), 1);
+        let edit = &edits[0];
         let mut after = input.to_string();
-        edit.apply(&mut after);
-        assert_eq!(after, "fn foo() {} fn main() { bar(1+2); }");
+        edit.edit.apply(&mut after);
+        assert_eq!(after, "fn foo() {} fn bar() {} fn main() { bar(1+2); }");
     }
 }
