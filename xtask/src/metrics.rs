@@ -20,7 +20,8 @@ pub fn run_metrics() -> Result<()> {
         let _d = pushd("target/metrics");
         let mut file = std::fs::OpenOptions::new().append(true).open("metrics.json")?;
         writeln!(file, "{}", metrics.json())?;
-        run!("git commit --author='GitHub Action <>' -am'📈' ")?;
+        run!("git add .")?;
+        run!("git commit --author='GitHub Action <>' --message='📈' ")?;
 
         if let Ok(actor) = env::var("GITHUB_ACTOR") {
             let token = env::var("GITHUB_TOKEN").unwrap();
@@ -39,7 +40,7 @@ impl Metrics {
         rm_rf("./target/release")?;
 
         let build = Instant::now();
-        run!("cargo build --release --package rust-analyzer --bin rust-analyzer")?;
+        // run!("cargo build --release --package rust-analyzer --bin rust-analyzer")?;
         let build = build.elapsed();
         self.report("build", build.as_millis() as u64, "ms");
         Ok(())

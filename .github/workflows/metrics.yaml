@@ -11,7 +11,7 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
-  rustdoc:
+  metrics:
     runs-on: ubuntu-latest
 
     steps:
