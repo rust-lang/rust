@@ -238,7 +238,7 @@ For targets: `powerpc-unknown-linux-gnu`
 - Target options > Emit assembly for CPU = powerpc -- pure 32-bit PowerPC
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 2.6.32.68 -- ~RHEL6 kernel
-- C-library > glibc version = 2.12.2 -- ~RHEL6 glibc
+- C-library > glibc version = 2.11.1 -- ~SLE11-SP4 glibc
 - C compiler > gcc version = 5.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
@@ -255,7 +255,7 @@ For targets: `powerpc64-unknown-linux-gnu`
 - Target options > Tune for CPU = power6 -- (+)
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 2.6.32.68 -- ~RHEL6 kernel
-- C-library > glibc version = 2.12.2 -- ~RHEL6 glibc
+- C-library > glibc version = 2.11.1 -- ~SLE11-SP4 glibc
 - C compiler > gcc version = 5.2.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
@@ -272,7 +272,7 @@ For targets: `s390x-unknown-linux-gnu`
 - Target options > Bitness = 64-bit
 - Operating System > Target OS = linux
 - Operating System > Linux kernel version = 2.6.32.68 -- ~RHEL6 kernel
-- C-library > glibc version = 2.12.2 -- ~RHEL6 glibc
+- C-library > glibc version = 2.11.1 -- ~SLE11-SP4 glibc
 - C compiler > gcc version = 5.2.0
 - C compiler > gcc extra config = --with-arch=z10 -- LLVM's minimum support
 - C compiler > C++ = ENABLE -- to cross compile LLVM

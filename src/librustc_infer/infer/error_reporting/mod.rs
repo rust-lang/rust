@@ -1402,8 +1402,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         debug!("note_type_err(diag={:?})", diag);
+        enum Mismatch<'a> {
+            Variable(ty::error::ExpectedFound<Ty<'a>>),
+            Fixed(&'static str),
+        }
         let (expected_found, exp_found, is_simple_error) = match values {
-            None => (None, None, false),
+            None => (None, Mismatch::Fixed("type"), false),
             Some(values) => {
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Types(exp_found) => {
@@ -1417,9 +1421,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         )
                         .report(diag);
 
-                        (is_simple_err, Some(exp_found))
+                        (is_simple_err, Mismatch::Variable(exp_found))
                     }
-                    _ => (false, None),
+                    ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
+                    _ => (false, Mismatch::Fixed("type")),
                 };
                 let vals = match self.values_str(&values) {
                     Some((expected, found)) => Some((expected, found)),
@@ -1445,8 +1450,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
         if let Some((expected, found)) = expected_found {
-            let expected_label = exp_found.map_or("type".into(), |ef| ef.expected.prefix_string());
-            let found_label = exp_found.map_or("type".into(), |ef| ef.found.prefix_string());
+            let expected_label = match exp_found {
+                Mismatch::Variable(ef) => ef.expected.prefix_string(),
+                Mismatch::Fixed(s) => s.into(),
+            };
+            let found_label = match exp_found {
+                Mismatch::Variable(ef) => ef.found.prefix_string(),
+                Mismatch::Fixed(s) => s.into(),
+            };
+            let exp_found = match exp_found {
+                Mismatch::Variable(exp_found) => Some(exp_found),
+                Mismatch::Fixed(_) => None,
+            };
             match (&terr, expected == found) {
                 (TypeError::Sorts(values), extra) => {
                     let sort_string = |ty: Ty<'tcx>| match (extra, &ty.kind) {
@@ -1499,6 +1514,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
         }
+        let exp_found = match exp_found {
+            Mismatch::Variable(exp_found) => Some(exp_found),
+            Mismatch::Fixed(_) => None,
+        };
         if let Some(exp_found) = exp_found {
             self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
         }

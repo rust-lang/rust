@@ -28,9 +28,9 @@ use rustc_trait_selection::traits;
 
 use crate::const_eval::error_to_const_error;
 use crate::interpret::{
-    self, compile_time_machine, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx, LocalState,
-    LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Pointer,
-    ScalarMaybeUninit, StackPopCleanup,
+    self, compile_time_machine, truncate, AllocId, Allocation, Frame, ImmTy, Immediate, InterpCx,
+    LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand as InterpOperand, PlaceTy,
+    Pointer, ScalarMaybeUninit, StackPopCleanup,
 };
 use crate::transform::{MirPass, MirSource};
 
@@ -527,11 +527,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         right: &Operand<'tcx>,
         source_info: SourceInfo,
     ) -> Option<()> {
-        let r =
-            self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?))?;
+        let r = self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?));
         let l = self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(left, None)?));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if op == BinOp::Shr || op == BinOp::Shl {
+            let r = r?;
             // We need the type of the LHS. We cannot use `place_layout` as that is the type
             // of the result, which for checked binops is not the same!
             let left_ty = left.ty(&self.local_decls, self.tcx);
@@ -564,21 +564,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
         }
 
-        let l = l?;
-
-        // The remaining operators are handled through `overflowing_binary_op`.
-        if self.use_ecx(|this| {
-            let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
-            Ok(overflow)
-        })? {
-            self.report_assert_as_lint(
-                lint::builtin::ARITHMETIC_OVERFLOW,
-                source_info,
-                "this arithmetic operation will overflow",
-                AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
-            )?;
+        if let (Some(l), Some(r)) = (l, r) {
+            // The remaining operators are handled through `overflowing_binary_op`.
+            if self.use_ecx(|this| {
+                let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
+                Ok(overflow)
+            })? {
+                self.report_assert_as_lint(
+                    lint::builtin::ARITHMETIC_OVERFLOW,
+                    source_info,
+                    "this arithmetic operation will overflow",
+                    AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
+                )?;
+            }
         }
-
         Some(())
     }
 
@@ -659,9 +658,74 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
+        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 3 {
+            self.eval_rvalue_with_identities(rvalue, place)
+        } else {
+            self.use_ecx(|this| this.ecx.eval_rvalue_into_place(rvalue, place))
+        }
+    }
+
+    // Attempt to use albegraic identities to eliminate constant expressions
+    fn eval_rvalue_with_identities(
+        &mut self,
+        rvalue: &Rvalue<'tcx>,
+        place: Place<'tcx>,
+    ) -> Option<()> {
         self.use_ecx(|this| {
-            trace!("calling eval_rvalue_into_place(rvalue = {:?}, place = {:?})", rvalue, place);
-            this.ecx.eval_rvalue_into_place(rvalue, place)?;
+            match rvalue {
+                Rvalue::BinaryOp(op, left, right) | Rvalue::CheckedBinaryOp(op, left, right) => {
+                    let l = this.ecx.eval_operand(left, None);
+                    let r = this.ecx.eval_operand(right, None);
+
+                    let const_arg = match (l, r) {
+                        (Ok(x), Err(_)) | (Err(_), Ok(x)) => this.ecx.read_immediate(x)?,
+                        (Err(e), Err(_)) => return Err(e),
+                        (Ok(_), Ok(_)) => {
+                            this.ecx.eval_rvalue_into_place(rvalue, place)?;
+                            return Ok(());
+                        }
+                    };
+
+                    let arg_value =
+                        this.ecx.force_bits(const_arg.to_scalar()?, const_arg.layout.size)?;
+                    let dest = this.ecx.eval_place(place)?;
+
+                    match op {
+                        BinOp::BitAnd => {
+                            if arg_value == 0 {
+                                this.ecx.write_immediate(*const_arg, dest)?;
+                            }
+                        }
+                        BinOp::BitOr => {
+                            if arg_value == truncate(u128::MAX, const_arg.layout.size)
+                                || (const_arg.layout.ty.is_bool() && arg_value == 1)
+                            {
+                                this.ecx.write_immediate(*const_arg, dest)?;
+                            }
+                        }
+                        BinOp::Mul => {
+                            if const_arg.layout.ty.is_integral() && arg_value == 0 {
+                                if let Rvalue::CheckedBinaryOp(_, _, _) = rvalue {
+                                    let val = Immediate::ScalarPair(
+                                        const_arg.to_scalar()?.into(),
+                                        Scalar::from_bool(false).into(),
+                                    );
+                                    this.ecx.write_immediate(val, dest)?;
+                                } else {
+                                    this.ecx.write_immediate(*const_arg, dest)?;
+                                }
+                            }
+                        }
+                        _ => {
+                            this.ecx.eval_rvalue_into_place(rvalue, place)?;
+                        }
+                    }
+                }
+                _ => {
+                    this.ecx.eval_rvalue_into_place(rvalue, place)?;
+                }
+            }
+
             Ok(())
         })
     }
