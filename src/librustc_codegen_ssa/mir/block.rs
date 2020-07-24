@@ -606,11 +606,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        // For normal codegen, this Miri-specific intrinsic should never occur.
-        if intrinsic == Some(sym::miri_start_panic) {
-            bug!("`miri_start_panic` should never end up in compiled code");
-        }
-
         if self.codegen_panic_intrinsic(
             &helper,
             &mut bx,

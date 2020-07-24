@@ -379,12 +379,6 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::nontemporal_store => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)], tcx.mk_unit()),
 
-            sym::miri_start_panic => {
-                // FIXME - the relevant types aren't lang items,
-                // so it's not trivial to check this
-                return;
-            }
-
             sym::count_code_region => {
                 (0, vec![tcx.types.u64, tcx.types.u32, tcx.types.u32, tcx.types.u32], tcx.mk_unit())
             }
