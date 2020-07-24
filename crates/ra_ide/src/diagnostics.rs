@@ -7,7 +7,7 @@
 use std::cell::RefCell;
 
 use hir::{
-    diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSink},
+    diagnostics::{AstDiagnostic, Diagnostic as _, DiagnosticSinkBuilder},
     HasSource, HirDisplay, Semantics, VariantDef,
 };
 use itertools::Itertools;
@@ -48,79 +48,82 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         check_struct_shorthand_initialization(&mut res, file_id, &node);
     }
     let res = RefCell::new(res);
-    let mut sink = DiagnosticSink::new(|d| {
-        res.borrow_mut().push(Diagnostic {
-            message: d.message(),
-            range: sema.diagnostics_range(d).range,
-            severity: Severity::Error,
-            fix: None,
+    let mut sink = DiagnosticSinkBuilder::new()
+        .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
+            let original_file = d.source().file_id.original_file(db);
+            let fix = Fix::new(
+                "Create module",
+                FileSystemEdit::CreateFile { anchor: original_file, dst: d.candidate.clone() }
+                    .into(),
+            );
+            res.borrow_mut().push(Diagnostic {
+                range: sema.diagnostics_range(d).range,
+                message: d.message(),
+                severity: Severity::Error,
+                fix: Some(fix),
+            })
         })
-    })
-    .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
-        let original_file = d.source().file_id.original_file(db);
-        let fix = Fix::new(
-            "Create module",
-            FileSystemEdit::CreateFile { anchor: original_file, dst: d.candidate.clone() }.into(),
-        );
-        res.borrow_mut().push(Diagnostic {
-            range: sema.diagnostics_range(d).range,
-            message: d.message(),
-            severity: Severity::Error,
-            fix: Some(fix),
-        })
-    })
-    .on::<hir::diagnostics::MissingFields, _>(|d| {
-        // Note that although we could add a diagnostics to
-        // fill the missing tuple field, e.g :
-        // `struct A(usize);`
-        // `let a = A { 0: () }`
-        // but it is uncommon usage and it should not be encouraged.
-        let fix = if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
-            None
-        } else {
-            let mut field_list = d.ast(db);
-            for f in d.missed_fields.iter() {
-                let field =
-                    make::record_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
-                field_list = field_list.append_field(&field);
-            }
+        .on::<hir::diagnostics::MissingFields, _>(|d| {
+            // Note that although we could add a diagnostics to
+            // fill the missing tuple field, e.g :
+            // `struct A(usize);`
+            // `let a = A { 0: () }`
+            // but it is uncommon usage and it should not be encouraged.
+            let fix = if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
+                None
+            } else {
+                let mut field_list = d.ast(db);
+                for f in d.missed_fields.iter() {
+                    let field =
+                        make::record_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
+                    field_list = field_list.append_field(&field);
+                }
 
-            let edit = {
-                let mut builder = TextEditBuilder::default();
-                algo::diff(&d.ast(db).syntax(), &field_list.syntax()).into_text_edit(&mut builder);
-                builder.finish()
+                let edit = {
+                    let mut builder = TextEditBuilder::default();
+                    algo::diff(&d.ast(db).syntax(), &field_list.syntax())
+                        .into_text_edit(&mut builder);
+                    builder.finish()
+                };
+                Some(Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()))
             };
-            Some(Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()))
-        };
 
-        res.borrow_mut().push(Diagnostic {
-            range: sema.diagnostics_range(d).range,
-            message: d.message(),
-            severity: Severity::Error,
-            fix,
+            res.borrow_mut().push(Diagnostic {
+                range: sema.diagnostics_range(d).range,
+                message: d.message(),
+                severity: Severity::Error,
+                fix,
+            })
         })
-    })
-    .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
-        let node = d.ast(db);
-        let replacement = format!("Ok({})", node.syntax());
-        let edit = TextEdit::replace(node.syntax().text_range(), replacement);
-        let source_change = SourceFileEdit { file_id, edit }.into();
-        let fix = Fix::new("Wrap with ok", source_change);
-        res.borrow_mut().push(Diagnostic {
-            range: sema.diagnostics_range(d).range,
-            message: d.message(),
-            severity: Severity::Error,
-            fix: Some(fix),
+        .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
+            let node = d.ast(db);
+            let replacement = format!("Ok({})", node.syntax());
+            let edit = TextEdit::replace(node.syntax().text_range(), replacement);
+            let source_change = SourceFileEdit { file_id, edit }.into();
+            let fix = Fix::new("Wrap with ok", source_change);
+            res.borrow_mut().push(Diagnostic {
+                range: sema.diagnostics_range(d).range,
+                message: d.message(),
+                severity: Severity::Error,
+                fix: Some(fix),
+            })
         })
-    })
-    .on::<hir::diagnostics::NoSuchField, _>(|d| {
-        res.borrow_mut().push(Diagnostic {
-            range: sema.diagnostics_range(d).range,
-            message: d.message(),
-            severity: Severity::Error,
-            fix: missing_struct_field_fix(&sema, file_id, d),
+        .on::<hir::diagnostics::NoSuchField, _>(|d| {
+            res.borrow_mut().push(Diagnostic {
+                range: sema.diagnostics_range(d).range,
+                message: d.message(),
+                severity: Severity::Error,
+                fix: missing_struct_field_fix(&sema, file_id, d),
+            })
         })
-    });
+        .build(|d| {
+            res.borrow_mut().push(Diagnostic {
+                message: d.message(),
+                range: sema.diagnostics_range(d).range,
+                severity: Severity::Error,
+                fix: None,
+            })
+        });
 
     if let Some(m) = sema.to_module_def(file_id) {
         m.diagnostics(db, &mut sink);

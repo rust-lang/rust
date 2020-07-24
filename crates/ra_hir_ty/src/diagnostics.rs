@@ -248,7 +248,7 @@ impl AstDiagnostic for MismatchedArgCount {
 #[cfg(test)]
 mod tests {
     use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId};
-    use hir_expand::diagnostics::{Diagnostic, DiagnosticSink};
+    use hir_expand::diagnostics::{Diagnostic, DiagnosticSinkBuilder};
     use ra_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
     use ra_syntax::{TextRange, TextSize};
     use rustc_hash::FxHashMap;
@@ -280,7 +280,7 @@ mod tests {
                 }
 
                 for f in fns {
-                    let mut sink = DiagnosticSink::new(&mut cb);
+                    let mut sink = DiagnosticSinkBuilder::new().build(&mut cb);
                     validate_body(self, f.into(), &mut sink);
                 }
             }

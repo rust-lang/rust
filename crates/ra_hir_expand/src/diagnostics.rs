@@ -48,23 +48,6 @@ pub struct DiagnosticSink<'a> {
 }
 
 impl<'a> DiagnosticSink<'a> {
-    /// FIXME: split `new` and `on` into a separate builder type
-    pub fn new(cb: impl FnMut(&dyn Diagnostic) + 'a) -> DiagnosticSink<'a> {
-        DiagnosticSink { callbacks: Vec::new(), default_callback: Box::new(cb) }
-    }
-
-    pub fn on<D: Diagnostic, F: FnMut(&D) + 'a>(mut self, mut cb: F) -> DiagnosticSink<'a> {
-        let cb = move |diag: &dyn Diagnostic| match diag.downcast_ref::<D>() {
-            Some(d) => {
-                cb(d);
-                Ok(())
-            }
-            None => Err(()),
-        };
-        self.callbacks.push(Box::new(cb));
-        self
-    }
-
     pub fn push(&mut self, d: impl Diagnostic) {
         let d: &dyn Diagnostic = &d;
         self._push(d);
@@ -78,5 +61,31 @@ impl<'a> DiagnosticSink<'a> {
             }
         }
         (self.default_callback)(d)
+    }
+}
+
+pub struct DiagnosticSinkBuilder<'a> {
+    callbacks: Vec<Box<dyn FnMut(&dyn Diagnostic) -> Result<(), ()> + 'a>>,
+}
+
+impl<'a> DiagnosticSinkBuilder<'a> {
+    pub fn new() -> Self {
+        Self { callbacks: Vec::new() }
+    }
+
+    pub fn on<D: Diagnostic, F: FnMut(&D) + 'a>(mut self, mut cb: F) -> Self {
+        let cb = move |diag: &dyn Diagnostic| match diag.downcast_ref::<D>() {
+            Some(d) => {
+                cb(d);
+                Ok(())
+            }
+            None => Err(()),
+        };
+        self.callbacks.push(Box::new(cb));
+        self
+    }
+
+    pub fn build<F: FnMut(&dyn Diagnostic) + 'a>(self, default_callback: F) -> DiagnosticSink<'a> {
+        DiagnosticSink { callbacks: self.callbacks, default_callback: Box::new(default_callback) }
     }
 }
