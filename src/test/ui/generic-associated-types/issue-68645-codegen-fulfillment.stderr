@@ -16,7 +16,7 @@ LL |     type F<'a>: Fn() -> u32;
 LL |     type F<'a> = Self;
    |     ^^^^^^^^^^^^^^^^^^ expected an `Fn<()>` closure, found `T`
    |
-   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }
+   = note: wrap the `T` in a closure with no arguments: `|| { /* code */ }`
 help: consider restricting type parameter `T`
    |
 LL | impl<T: std::ops::Fn<()>> Fun for T {

@@ -59,7 +59,7 @@
 #[rustc_on_unimplemented(
     on(
         Args = "()",
-        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"
+        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
     ),
     message = "expected a `{Fn}<{Args}>` closure, found `{Self}`",
     label = "expected an `Fn<{Args}>` closure, found `{Self}`"
@@ -141,7 +141,7 @@ pub trait Fn<Args>: FnMut<Args> {
 #[rustc_on_unimplemented(
     on(
         Args = "()",
-        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"
+        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
     ),
     message = "expected a `{FnMut}<{Args}>` closure, found `{Self}`",
     label = "expected an `FnMut<{Args}>` closure, found `{Self}`"
@@ -215,7 +215,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 #[rustc_on_unimplemented(
     on(
         Args = "()",
-        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"
+        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
     ),
     message = "expected a `{FnOnce}<{Args}>` closure, found `{Self}`",
     label = "expected an `FnOnce<{Args}>` closure, found `{Self}`"
