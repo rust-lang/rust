@@ -9,6 +9,7 @@ use super::coherence::{self, Conflict};
 use super::const_evaluatable;
 use super::project;
 use super::project::normalize_with_depth_to;
+use super::project::ProjectionTyObligation;
 use super::util;
 use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
 use super::wf;
@@ -36,9 +37,8 @@ use rustc_middle::ty::fast_reject;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
-use rustc_middle::ty::{
-    self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
-};
+use rustc_middle::ty::{self, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
+use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
 
 use std::cell::{Cell, RefCell};
@@ -946,10 +946,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// to have a *lower* recursion_depth than the obligation used to create it.
     /// Projection sub-obligations may be returned from the projection cache,
     /// which results in obligations with an 'old' `recursion_depth`.
-    /// Additionally, methods like `wf::obligations` and
-    /// `InferCtxt.subtype_predicate` produce subobligations without
-    /// taking in a 'parent' depth, causing the generated subobligations
-    /// to have a `recursion_depth` of `0`.
+    /// Additionally, methods like `InferCtxt.subtype_predicate` produce
+    /// subobligations without taking in a 'parent' depth, causing the
+    /// generated subobligations to have a `recursion_depth` of `0`.
     ///
     /// To ensure that obligation_depth never decreasees, we force all subobligations
     /// to have at least the depth of the original obligation.
@@ -1229,10 +1228,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         placeholder_trait_ref: ty::TraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
         debug_assert!(!placeholder_trait_ref.has_escaping_bound_vars());
+        if placeholder_trait_ref.def_id != trait_bound.def_id() {
+            // Avoid unnecessary normalization
+            return Err(());
+        }
+
+        let Normalized { value: trait_bound, obligations: mut nested_obligations } =
+            ensure_sufficient_stack(|| {
+                project::normalize_with_depth(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    &trait_bound,
+                )
+            });
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(ty::Binder::dummy(placeholder_trait_ref), trait_bound)
-            .map(|InferOk { obligations, .. }| obligations)
+            .map(|InferOk { obligations, .. }| {
+                nested_obligations.extend(obligations);
+                nested_obligations
+            })
             .map_err(|_| ())
     }
 
@@ -1247,6 +1264,44 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(()) => Ok(EvaluatedToErr),
             }
         })
+    }
+
+    pub(super) fn match_projection_projections(
+        &mut self,
+        obligation: &ProjectionTyObligation<'tcx>,
+        obligation_trait_ref: &ty::TraitRef<'tcx>,
+        data: &PolyProjectionPredicate<'tcx>,
+        potentially_unnormalized_candidates: bool,
+    ) -> bool {
+        let mut nested_obligations = Vec::new();
+        let projection_ty = if potentially_unnormalized_candidates {
+            ensure_sufficient_stack(|| {
+                project::normalize_with_depth_to(
+                    self,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    &data.map_bound_ref(|data| data.projection_ty),
+                    &mut nested_obligations,
+                )
+            })
+        } else {
+            data.map_bound_ref(|data| data.projection_ty)
+        };
+
+        // FIXME(generic_associated_types): Compare the whole projections
+        let data_poly_trait_ref = projection_ty.map_bound(|proj| proj.trait_ref(self.tcx()));
+        let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+        self.infcx
+            .at(&obligation.cause, obligation.param_env)
+            .sup(obligation_poly_trait_ref, data_poly_trait_ref)
+            .map_or(false, |InferOk { obligations, value: () }| {
+                self.evaluate_predicates_recursively(
+                    TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
+                    nested_obligations.into_iter().chain(obligations),
+                )
+                .map_or(false, |res| res.may_apply())
+            })
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1283,18 +1338,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
-        match other.candidate {
+        match (&other.candidate, &victim.candidate) {
+            (_, AutoImplCandidate(..)) | (AutoImplCandidate(..), _) => {
+                bug!(
+                    "default implementations shouldn't be recorded \
+                    when there are other valid candidates"
+                );
+            }
+
             // (*)
-            BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate => true,
-            ParamCandidate(ref cand) => match victim.candidate {
-                AutoImplCandidate(..) => {
-                    bug!(
-                        "default implementations shouldn't be recorded \
-                         when there are other valid candidates"
-                    );
-                }
-                // (*)
-                BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate => false,
+            (BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate, _) => true,
+            (_, BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate) => false,
+
+            (ParamCandidate(..), ParamCandidate(..)) => false,
+
+            // Global bounds from the where clause should be ignored
+            // here (see issue #50825). Otherwise, we have a where
+            // clause so don't go around looking for impls.
+            // Arbitrarily give param candidates priority
+            // over projection and object candidates.
+            (
+                ParamCandidate(ref cand),
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
@@ -1302,28 +1366,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | BuiltinCandidate { .. }
-                | TraitAliasCandidate(..) => {
-                    // Global bounds from the where clause should be ignored
-                    // here (see issue #50825). Otherwise, we have a where
-                    // clause so don't go around looking for impls.
-                    !is_global(cand)
-                }
-                ObjectCandidate | ProjectionCandidate(_) => {
-                    // Arbitrarily give param candidates priority
-                    // over projection and object candidates.
-                    !is_global(cand)
-                }
-                ParamCandidate(..) => false,
-            },
-            ObjectCandidate | ProjectionCandidate(_) => match victim.candidate {
-                AutoImplCandidate(..) => {
-                    bug!(
-                        "default implementations shouldn't be recorded \
-                         when there are other valid candidates"
-                    );
-                }
-                // (*)
-                BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate => false,
+                | TraitAliasCandidate(..)
+                | ObjectCandidate
+                | ProjectionCandidate(_),
+            ) => !is_global(cand),
+            (ObjectCandidate | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
+                // Prefer these to a global where-clause bound
+                // (see issue #50825).
+                is_global(cand)
+            }
+            (
+                ImplCandidate(_)
+                | ClosureCandidate
+                | GeneratorCandidate
+                | FnPointerCandidate
+                | BuiltinObjectCandidate
+                | BuiltinUnsizeCandidate
+                | BuiltinCandidate { has_nested: true }
+                | TraitAliasCandidate(..),
+                ParamCandidate(ref cand),
+            ) => {
+                // Prefer these to a global where-clause bound
+                // (see issue #50825).
+                is_global(cand) && other.evaluation.must_apply_modulo_regions()
+            }
+
+            (ProjectionCandidate(i), ProjectionCandidate(j)) => {
+                // Arbitrarily pick the first candidate for backwards
+                // compatibility reasons. Don't let this affect inference.
+                i > j && !needs_infer
+            }
+            (ObjectCandidate, ObjectCandidate) => bug!("Duplicate object candidate"),
+            (ObjectCandidate, ProjectionCandidate(_))
+            | (ProjectionCandidate(_), ObjectCandidate) => {
+                bug!("Have both object and projection candidate")
+            }
+
+            // Arbitrarily give projection and object candidates priority.
+            (
+                ObjectCandidate | ProjectionCandidate(_),
                 ImplCandidate(..)
                 | ClosureCandidate
                 | GeneratorCandidate
@@ -1331,99 +1412,100 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
                 | BuiltinCandidate { .. }
-                | TraitAliasCandidate(..) => true,
-                ObjectCandidate | ProjectionCandidate(_) => {
-                    // Shouldn't have both an object and projection candidate,
-                    // nor multiple object candidates. Multiple projection
-                    // candidates are ambiguous.
-                    false
-                }
-                ParamCandidate(ref cand) => is_global(cand),
-            },
-            ImplCandidate(other_def) => {
+                | TraitAliasCandidate(..),
+            ) => true,
+
+            (
+                ImplCandidate(..)
+                | ClosureCandidate
+                | GeneratorCandidate
+                | FnPointerCandidate
+                | BuiltinObjectCandidate
+                | BuiltinUnsizeCandidate
+                | BuiltinCandidate { .. }
+                | TraitAliasCandidate(..),
+                ObjectCandidate | ProjectionCandidate(_),
+            ) => false,
+
+            (&ImplCandidate(other_def), &ImplCandidate(victim_def)) => {
                 // See if we can toss out `victim` based on specialization.
                 // This requires us to know *for sure* that the `other` impl applies
                 // i.e., `EvaluatedToOk`.
                 if other.evaluation.must_apply_modulo_regions() {
-                    match victim.candidate {
-                        ImplCandidate(victim_def) => {
-                            let tcx = self.tcx();
-                            if tcx.specializes((other_def, victim_def)) {
-                                return true;
-                            }
-                            return match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
-                                Some(ty::ImplOverlapKind::Permitted { marker: true }) => {
-                                    // Subtle: If the predicate we are evaluating has inference
-                                    // variables, do *not* allow discarding candidates due to
-                                    // marker trait impls.
-                                    //
-                                    // Without this restriction, we could end up accidentally
-                                    // constrainting inference variables based on an arbitrarily
-                                    // chosen trait impl.
-                                    //
-                                    // Imagine we have the following code:
-                                    //
-                                    // ```rust
-                                    // #[marker] trait MyTrait {}
-                                    // impl MyTrait for u8 {}
-                                    // impl MyTrait for bool {}
-                                    // ```
-                                    //
-                                    // And we are evaluating the predicate `<_#0t as MyTrait>`.
-                                    //
-                                    // During selection, we will end up with one candidate for each
-                                    // impl of `MyTrait`. If we were to discard one impl in favor
-                                    // of the other, we would be left with one candidate, causing
-                                    // us to "successfully" select the predicate, unifying
-                                    // _#0t with (for example) `u8`.
-                                    //
-                                    // However, we have no reason to believe that this unification
-                                    // is correct - we've essentially just picked an arbitrary
-                                    // *possibility* for _#0t, and required that this be the *only*
-                                    // possibility.
-                                    //
-                                    // Eventually, we will either:
-                                    // 1) Unify all inference variables in the predicate through
-                                    // some other means (e.g. type-checking of a function). We will
-                                    // then be in a position to drop marker trait candidates
-                                    // without constraining inference variables (since there are
-                                    // none left to constrin)
-                                    // 2) Be left with some unconstrained inference variables. We
-                                    // will then correctly report an inference error, since the
-                                    // existence of multiple marker trait impls tells us nothing
-                                    // about which one should actually apply.
-                                    !needs_infer
-                                }
-                                Some(_) => true,
-                                None => false,
-                            };
-                        }
-                        ParamCandidate(ref cand) => {
-                            // Prefer the impl to a global where clause candidate.
-                            return is_global(cand);
-                        }
-                        _ => (),
+                    let tcx = self.tcx();
+                    if tcx.specializes((other_def, victim_def)) {
+                        return true;
                     }
+                    return match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
+                        Some(ty::ImplOverlapKind::Permitted { marker: true }) => {
+                            // Subtle: If the predicate we are evaluating has inference
+                            // variables, do *not* allow discarding candidates due to
+                            // marker trait impls.
+                            //
+                            // Without this restriction, we could end up accidentally
+                            // constrainting inference variables based on an arbitrarily
+                            // chosen trait impl.
+                            //
+                            // Imagine we have the following code:
+                            //
+                            // ```rust
+                            // #[marker] trait MyTrait {}
+                            // impl MyTrait for u8 {}
+                            // impl MyTrait for bool {}
+                            // ```
+                            //
+                            // And we are evaluating the predicate `<_#0t as MyTrait>`.
+                            //
+                            // During selection, we will end up with one candidate for each
+                            // impl of `MyTrait`. If we were to discard one impl in favor
+                            // of the other, we would be left with one candidate, causing
+                            // us to "successfully" select the predicate, unifying
+                            // _#0t with (for example) `u8`.
+                            //
+                            // However, we have no reason to believe that this unification
+                            // is correct - we've essentially just picked an arbitrary
+                            // *possibility* for _#0t, and required that this be the *only*
+                            // possibility.
+                            //
+                            // Eventually, we will either:
+                            // 1) Unify all inference variables in the predicate through
+                            // some other means (e.g. type-checking of a function). We will
+                            // then be in a position to drop marker trait candidates
+                            // without constraining inference variables (since there are
+                            // none left to constrin)
+                            // 2) Be left with some unconstrained inference variables. We
+                            // will then correctly report an inference error, since the
+                            // existence of multiple marker trait impls tells us nothing
+                            // about which one should actually apply.
+                            !needs_infer
+                        }
+                        Some(_) => true,
+                        None => false,
+                    };
+                } else {
+                    false
                 }
+            }
 
-                false
-            }
-            ClosureCandidate
-            | GeneratorCandidate
-            | FnPointerCandidate
-            | BuiltinObjectCandidate
-            | BuiltinUnsizeCandidate
-            | BuiltinCandidate { has_nested: true } => {
-                match victim.candidate {
-                    ParamCandidate(ref cand) => {
-                        // Prefer these to a global where-clause bound
-                        // (see issue #50825).
-                        is_global(cand) && other.evaluation.must_apply_modulo_regions()
-                    }
-                    _ => false,
-                }
-            }
-            _ => false,
+            // Everything else is ambiguous
+            (
+                ImplCandidate(_)
+                | ClosureCandidate
+                | GeneratorCandidate
+                | FnPointerCandidate
+                | BuiltinObjectCandidate
+                | BuiltinUnsizeCandidate
+                | BuiltinCandidate { has_nested: true }
+                | TraitAliasCandidate(..),
+                ImplCandidate(_)
+                | ClosureCandidate
+                | GeneratorCandidate
+                | FnPointerCandidate
+                | BuiltinObjectCandidate
+                | BuiltinUnsizeCandidate
+                | BuiltinCandidate { has_nested: true }
+                | TraitAliasCandidate(..),
+            ) => false,
         }
     }
 

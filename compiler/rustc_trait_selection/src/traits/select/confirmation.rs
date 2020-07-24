@@ -137,18 +137,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let candidate = candidate_predicate
                 .to_opt_poly_trait_ref()
                 .expect("projection candidate is not a trait predicate");
-            let mut obligations = self
-                .infcx
-                .at(&obligation.cause, obligation.param_env)
-                .sup(obligation.predicate.to_poly_trait_ref(), candidate)
-                .map(|InferOk { obligations, .. }| obligations)
-                .unwrap_or_else(|_| {
-                    bug!(
-                        "Projection bound `{:?}` was applicable to `{:?}` but now is not",
-                        candidate,
-                        obligation
-                    );
-                });
+            let Normalized { value: candidate, mut obligations } = normalize_with_depth(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                &candidate,
+            );
+
+            obligations.extend(
+                self.infcx
+                    .at(&obligation.cause, obligation.param_env)
+                    .sup(obligation.predicate.to_poly_trait_ref(), candidate)
+                    .map(|InferOk { obligations, .. }| obligations)
+                    .unwrap_or_else(|_| {
+                        bug!(
+                            "Projection bound `{:?}` was applicable to `{:?}` but now is not",
+                            candidate,
+                            obligation
+                        );
+                    }),
+            );
             // Require that the projection is well-formed.
             let self_ty = self.infcx.replace_bound_vars_with_placeholders(&bound_self_ty);
             let self_ty = normalize_with_depth_to(

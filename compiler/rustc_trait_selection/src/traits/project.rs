@@ -884,6 +884,7 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
         candidate_set,
         ProjectionTyCandidate::ParamEnv,
         obligation.param_env.caller_bounds().iter(),
+        false,
     );
 }
 
@@ -927,6 +928,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
         candidate_set,
         ProjectionTyCandidate::TraitDef,
         bounds.iter(),
+        true,
     )
 }
 
@@ -937,6 +939,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
     ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionTyCandidate<'tcx>,
     env_predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
+    potentially_unnormalized_candidates: bool,
 ) {
     debug!("assemble_candidates_from_predicates(obligation={:?})", obligation);
     let infcx = selcx.infcx();
@@ -948,16 +951,12 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
 
             let is_match = same_def_id
                 && infcx.probe(|_| {
-                    let data_poly_trait_ref = data.to_poly_trait_ref(infcx.tcx);
-                    let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
-                    infcx
-                        .at(&obligation.cause, obligation.param_env)
-                        .sup(obligation_poly_trait_ref, data_poly_trait_ref)
-                        .map(|InferOk { obligations: _, value: () }| {
-                            // FIXME(#32730) -- do we need to take obligations
-                            // into account in any way? At the moment, no.
-                        })
-                        .is_ok()
+                    selcx.match_projection_projections(
+                        obligation,
+                        obligation_trait_ref,
+                        &data,
+                        potentially_unnormalized_candidates,
+                    )
                 });
 
             debug!(
@@ -1157,9 +1156,12 @@ fn confirm_candidate<'cx, 'tcx>(
     debug!("confirm_candidate(candidate={:?}, obligation={:?})", candidate, obligation);
 
     let mut progress = match candidate {
-        ProjectionTyCandidate::ParamEnv(poly_projection)
-        | ProjectionTyCandidate::TraitDef(poly_projection) => {
-            confirm_param_env_candidate(selcx, obligation, poly_projection)
+        ProjectionTyCandidate::ParamEnv(poly_projection) => {
+            confirm_param_env_candidate(selcx, obligation, poly_projection, false)
+        }
+
+        ProjectionTyCandidate::TraitDef(poly_projection) => {
+            confirm_param_env_candidate(selcx, obligation, poly_projection, true)
         }
 
         ProjectionTyCandidate::Select(impl_source) => {
@@ -1272,7 +1274,7 @@ fn confirm_object_candidate<'cx, 'tcx>(
         }
     };
 
-    confirm_param_env_candidate(selcx, obligation, env_predicate)
+    confirm_param_env_candidate(selcx, obligation, env_predicate, false)
 }
 
 fn confirm_generator_candidate<'cx, 'tcx>(
@@ -1323,7 +1325,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         }
     });
 
-    confirm_param_env_candidate(selcx, obligation, predicate)
+    confirm_param_env_candidate(selcx, obligation, predicate, false)
         .with_addl_obligations(impl_source.nested)
         .with_addl_obligations(obligations)
 }
@@ -1345,7 +1347,7 @@ fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
         ty: self_ty.discriminant_ty(tcx),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::bind(predicate))
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::bind(predicate), false)
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(
@@ -1420,13 +1422,14 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         ty: ret_type,
     });
 
-    confirm_param_env_candidate(selcx, obligation, predicate)
+    confirm_param_env_candidate(selcx, obligation, predicate, false)
 }
 
 fn confirm_param_env_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     poly_cache_entry: ty::PolyProjectionPredicate<'tcx>,
+    potentially_unnormalized_candidate: bool,
 ) -> Progress<'tcx> {
     let infcx = selcx.infcx();
     let cause = &obligation.cause;
@@ -1440,8 +1443,27 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
 
     let cache_trait_ref = cache_entry.projection_ty.trait_ref(infcx.tcx);
     let obligation_trait_ref = obligation.predicate.trait_ref(infcx.tcx);
+    let mut nested_obligations = Vec::new();
+    let cache_trait_ref = if potentially_unnormalized_candidate {
+        ensure_sufficient_stack(|| {
+            normalize_with_depth_to(
+                selcx,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                &cache_trait_ref,
+                &mut nested_obligations,
+            )
+        })
+    } else {
+        cache_trait_ref
+    };
+
     match infcx.at(cause, param_env).eq(cache_trait_ref, obligation_trait_ref) {
-        Ok(InferOk { value: _, obligations }) => Progress { ty: cache_entry.ty, obligations },
+        Ok(InferOk { value: _, obligations }) => {
+            nested_obligations.extend(obligations);
+            Progress { ty: cache_entry.ty, obligations: nested_obligations }
+        }
         Err(e) => {
             let msg = format!(
                 "Failed to unify obligation `{:?}` with poly_projection `{:?}`: {:?}",
