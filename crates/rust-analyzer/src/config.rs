@@ -128,7 +128,6 @@ pub struct ClientCapsConfig {
     pub hover_actions: bool,
     pub status_notification: bool,
     pub signature_help_label_offsets: bool,
-    pub dynamic_watched_files: bool,
 }
 
 impl Config {
@@ -291,13 +290,6 @@ impl Config {
     }
 
     pub fn update_caps(&mut self, caps: &ClientCapabilities) {
-        if let Some(ws_caps) = caps.workspace.as_ref() {
-            if let Some(did_change_watched_files) = ws_caps.did_change_watched_files.as_ref() {
-                self.client_caps.dynamic_watched_files =
-                    did_change_watched_files.dynamic_registration.unwrap_or(false);
-            }
-        }
-
         if let Some(doc_caps) = caps.text_document.as_ref() {
             if let Some(value) = doc_caps.definition.as_ref().and_then(|it| it.link_support) {
                 self.client_caps.location_link = value;
