@@ -184,6 +184,31 @@ macro_rules! uint_module {
                 assert_eq!($T::from_str_radix("Z", 10).ok(), None::<$T>);
                 assert_eq!($T::from_str_radix("_", 2).ok(), None::<$T>);
             }
+
+            #[test]
+            fn test_pow() {
+                let mut r = 2 as $T;
+                assert_eq!(r.pow(2), 4 as $T);
+                assert_eq!(r.pow(0), 1 as $T);
+                assert_eq!(r.wrapping_pow(2), 4 as $T);
+                assert_eq!(r.wrapping_pow(0), 1 as $T);
+                assert_eq!(r.checked_pow(2), Some(4 as $T));
+                assert_eq!(r.checked_pow(0), Some(1 as $T));
+                assert_eq!(r.overflowing_pow(2), (4 as $T, false));
+                assert_eq!(r.overflowing_pow(0), (1 as $T, false));
+                assert_eq!(r.saturating_pow(2), 4 as $T);
+                assert_eq!(r.saturating_pow(0), 1 as $T);
+
+                r = MAX;
+                // use `^` to represent .pow() with no overflow.
+                // if itest::MAX == 2^j-1, then itest is a `j` bit int,
+                // so that `itest::MAX*itest::MAX == 2^(2*j)-2^(j+1)+1`,
+                // thussaturating_pow the overflowing result is exactly 1.
+                assert_eq!(r.wrapping_pow(2), 1 as $T);
+                assert_eq!(r.checked_pow(2), None);
+                assert_eq!(r.overflowing_pow(2), (1 as $T, true));
+                assert_eq!(r.saturating_pow(2), MAX);
+            }
         }
     };
 }
