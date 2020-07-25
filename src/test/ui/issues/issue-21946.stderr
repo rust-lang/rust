@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `<FooStruct as Foo>::A`
+error[E0275]: overflow evaluating the requirement `<FooStruct as Foo>::A == _`
   --> $DIR/issue-21946.rs:8:5
    |
 LL |     type A = <FooStruct as Foo>::A;
