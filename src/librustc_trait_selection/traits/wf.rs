@@ -300,13 +300,21 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             trait_ref
                 .substs
                 .iter()
-                .filter(|arg| {
+                .enumerate()
+                .filter(|(_, arg)| {
                     matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
                 })
-                .filter(|arg| !arg.has_escaping_bound_vars())
-                .map(|arg| {
+                .filter(|(_, arg)| !arg.has_escaping_bound_vars())
+                .map(|(i, arg)| {
+                    let mut new_cause = cause.clone();
+                    // The first subst is the self ty - use the correct span for it.
+                    if i == 0 {
+                        if let Some(hir::ItemKind::Impl { self_ty, .. }) = item.map(|i| &i.kind) {
+                            new_cause.make_mut().span = self_ty.span;
+                        }
+                    }
                     traits::Obligation::new(
-                        cause.clone(),
+                        new_cause,
                         param_env,
                         ty::PredicateKind::WellFormed(arg).to_predicate(tcx),
                     )
