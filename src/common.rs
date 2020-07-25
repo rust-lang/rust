@@ -83,10 +83,12 @@ fn clif_pair_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<(type
     Some(match ty.kind {
         ty::Tuple(substs) if substs.len() == 2 => {
             let mut types = substs.types();
-            (
-                clif_type_from_ty(tcx, types.next().unwrap())?,
-                clif_type_from_ty(tcx, types.next().unwrap())?,
-            )
+            let a = clif_type_from_ty(tcx, types.next().unwrap())?;
+            let b = clif_type_from_ty(tcx, types.next().unwrap())?;
+            if a.is_vector() || b.is_vector() {
+                return None;
+            }
+            (a, b)
         }
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, pointee_ty) {
