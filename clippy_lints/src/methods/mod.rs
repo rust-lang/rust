@@ -2569,17 +2569,35 @@ fn lint_ok_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ok_args: &[hir::Ex
 fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map_args: &'tcx [hir::Expr<'_>]) {
     // lint if caller of `.map().flatten()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `map(..).flatten()` on an `Iterator`. \
-                    This is more succinctly expressed by calling `.flat_map(..)`";
+        let map_closure_ty = cx.typeck_results().expr_ty(&map_args[1]);
+        let is_map_to_option = if let ty::Closure(_def_id, substs) = map_closure_ty.kind {
+            let map_closure_return_ty = cx.tcx.erase_late_bound_regions(&substs.as_closure().sig().output());
+            is_type_diagnostic_item(cx, map_closure_return_ty, sym!(option_type))
+        } else {
+            false
+        };
+
+        let method_to_use = if is_map_to_option {
+            // `(...).map(...)` has type `impl Iterator<Item=Option<...>>
+            "filter_map"
+        } else {
+            // `(...).map(...)` has type `impl Iterator<Item=impl Iterator<...>>
+            "flat_map"
+        };
+        let msg = &format!(
+            "called `map(..).flatten()` on an `Iterator`. \
+                   This is more succinctly expressed by calling `.{}(..)`",
+            method_to_use
+        );
         let self_snippet = snippet(cx, map_args[0].span, "..");
         let func_snippet = snippet(cx, map_args[1].span, "..");
-        let hint = format!("{0}.flat_map({1})", self_snippet, func_snippet);
+        let hint = format!("{0}.{1}({2})", self_snippet, method_to_use, func_snippet);
         span_lint_and_sugg(
             cx,
             MAP_FLATTEN,
             expr.span,
             msg,
-            "try using `flat_map` instead",
+            &format!("try using `{}` instead", method_to_use),
             hint,
             Applicability::MachineApplicable,
         );

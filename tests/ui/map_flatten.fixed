@@ -5,6 +5,7 @@
 #![allow(clippy::map_identity)]
 
 fn main() {
+    let _: Vec<_> = vec![5_i8; 6].into_iter().filter_map(|x| x.checked_add(1)).collect();
     let _: Vec<_> = vec![5_i8; 6].into_iter().flat_map(|x| 0..x).collect();
     let _: Option<_> = (Some(Some(1))).and_then(|x| x);
 }
