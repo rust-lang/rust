@@ -7,7 +7,7 @@ trait ATy {
 
 impl<'b> ATy for &'b () {
     type Item<'a> = &'b ();
-    //~^ ERROR does not fulfill the required lifetime
+    //~^ ERROR cannot infer an appropriate lifetime
 }
 
 trait StaticTy {
