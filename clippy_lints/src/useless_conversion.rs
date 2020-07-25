@@ -1,6 +1,6 @@
 use crate::utils::{
-    is_type_diagnostic_item, match_def_path, match_trait_method, paths, snippet, snippet_with_macro_callsite,
-    span_lint_and_help, span_lint_and_sugg,
+    get_parent_expr, is_type_diagnostic_item, match_def_path, match_trait_method, paths, snippet,
+    snippet_with_macro_callsite, span_lint_and_help, span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -79,6 +79,13 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     }
                 }
                 if match_trait_method(cx, e, &paths::INTO_ITERATOR) && &*name.ident.as_str() == "into_iter" {
+                    if let Some(parent_expr) = get_parent_expr(cx, e) {
+                        if let ExprKind::MethodCall(ref parent_name, ..) = parent_expr.kind {
+                            if &*parent_name.ident.as_str() != "into_iter" {
+                                return;
+                            }
+                        }
+                    }
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(&args[0]);
                     if TyS::same_type(a, b) {
