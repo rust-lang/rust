@@ -74,3 +74,10 @@ fn read_stdin() -> Result<String> {
     std::io::stdin().read_to_string(&mut buff)?;
     Ok(buff)
 }
+
+fn report_metric(metric: &str, value: u64, unit: &str) {
+    if std::env::var("RA_METRICS").is_err() {
+        return;
+    }
+    println!("METRIC:{}:{}:{}", metric, value, unit)
+}

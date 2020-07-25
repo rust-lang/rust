@@ -86,6 +86,6 @@ fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
     mem.push(("Remaining".into(), ra_prof::memory_usage().allocated));
 
     for (name, bytes) in mem {
-        println!("{:>8} {}", bytes, name);
+        eprintln!("{:>8} {}", bytes, name);
     }
 }

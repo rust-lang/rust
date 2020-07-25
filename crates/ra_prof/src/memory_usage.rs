@@ -31,6 +31,12 @@ impl fmt::Display for MemoryUsage {
 #[derive(Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct Bytes(usize);
 
+impl Bytes {
+    pub fn megabytes(self) -> usize {
+        self.0 / 1024 / 1024
+    }
+}
+
 impl fmt::Display for Bytes {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let bytes = self.0;
