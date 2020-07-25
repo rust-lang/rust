@@ -52,19 +52,19 @@ mod loud {
     #[deprecated]
     const DEPRECATED_CONST: u8 = 1;
 
-    struct Foo(DeprecatedType); //~ ERROR use of deprecated item
+    struct Foo(DeprecatedType); //~ ERROR use of deprecated type alias
 
-    impl DeprecatedTrait for Foo {} //~ ERROR use of deprecated item
+    impl DeprecatedTrait for Foo {} //~ ERROR use of deprecated trait
 
     impl Foo {
-        fn bar<T: DeprecatedTrait>() { //~ ERROR use of deprecated item
-            deprecated_fn(); //~ ERROR use of deprecated item
+        fn bar<T: DeprecatedTrait>() { //~ ERROR use of deprecated trait
+            deprecated_fn(); //~ ERROR use of deprecated function
         }
     }
 
     fn foo() -> u8 {
-        DEPRECATED_STATIC + //~ ERROR use of deprecated item
-        DEPRECATED_CONST //~ ERROR use of deprecated item
+        DEPRECATED_STATIC + //~ ERROR use of deprecated static
+        DEPRECATED_CONST //~ ERROR use of deprecated const
     }
 }
 
