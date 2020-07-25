@@ -3080,7 +3080,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 tcx.sess,
                 decl.output.span(),
                 E0581,
-                "return type references {} which is not constrained by the fn input types",
+                "return type references {}, which is not constrained by the fn input types",
                 br_name
             )
         });
