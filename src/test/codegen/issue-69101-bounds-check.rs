@@ -12,7 +12,7 @@
 // CHECK-LABEL: @already_sliced_no_bounds_check
 #[no_mangle]
 pub fn already_sliced_no_bounds_check(a: &[u8], b: &[u8], c: &mut [u8]) {
-    // CHECK: slice_index_len_fail
+    // CHECK: slice_end_index_len_fail
     // CHECK-NOT: panic_bounds_check
     let _ = (&a[..2048], &b[..2048], &mut c[..2048]);
     for i in 0..1024 {
@@ -23,7 +23,7 @@ pub fn already_sliced_no_bounds_check(a: &[u8], b: &[u8], c: &mut [u8]) {
 // CHECK-LABEL: @already_sliced_no_bounds_check_exact
 #[no_mangle]
 pub fn already_sliced_no_bounds_check_exact(a: &[u8], b: &[u8], c: &mut [u8]) {
-    // CHECK: slice_index_len_fail
+    // CHECK: slice_end_index_len_fail
     // CHECK-NOT: panic_bounds_check
     let _ = (&a[..1024], &b[..1024], &mut c[..1024]);
     for i in 0..1024 {
@@ -35,7 +35,7 @@ pub fn already_sliced_no_bounds_check_exact(a: &[u8], b: &[u8], c: &mut [u8]) {
 // CHECK-LABEL: @already_sliced_bounds_check
 #[no_mangle]
 pub fn already_sliced_bounds_check(a: &[u8], b: &[u8], c: &mut [u8]) {
-    // CHECK: slice_index_len_fail
+    // CHECK: slice_end_index_len_fail
     // CHECK: panic_bounds_check
     let _ = (&a[..1023], &b[..2048], &mut c[..2048]);
     for i in 0..1024 {
