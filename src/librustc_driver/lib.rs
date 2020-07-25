@@ -1224,11 +1224,18 @@ pub fn install_ice_hook() {
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
-/// log crate version
+/// log crate version.
 pub fn init_rustc_env_logger() {
+    init_env_logger("RUSTC_LOG")
+}
+
+/// This allows tools to enable rust logging without having to magically match rustc's
+/// log crate version. In contrast to `init_rustc_env_logger` it allows you to choose an env var
+/// other than `RUSTC_LOG`.
+pub fn init_env_logger(env: &str) {
     let builder = tracing_subscriber::FmtSubscriber::builder();
 
-    let builder = builder.with_env_filter(tracing_subscriber::EnvFilter::from_env("RUSTC_LOG"));
+    let builder = builder.with_env_filter(tracing_subscriber::EnvFilter::from_env(env));
 
     builder.init()
 }
