@@ -1,13 +1,14 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
 use std::{
+    borrow::Cow,
     env, fmt, panic,
     time::{Duration, Instant},
 };
 
 use crossbeam_channel::{select, Receiver};
 use lsp_server::{Connection, Notification, Request, Response};
-use lsp_types::notification::Notification as _;
+use lsp_types::{notification::Notification as _, DidChangeTextDocumentParams};
 use ra_db::VfsPath;
 use ra_ide::{Canceled, FileId};
 use ra_prof::profile;
@@ -421,15 +422,20 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    let doc = this.mem_docs.get_mut(&path).unwrap();
+                    let DidChangeTextDocumentParams { text_document, content_changes } = params;
                     let vfs = &mut this.vfs.write().0;
+                    let world = this.snapshot();
                     let file_id = vfs.file_id(&path).unwrap();
+
+                    // let file_id = vfs.file_id(&path).unwrap();
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
-                    apply_document_changes(&mut text, params.content_changes);
+                    let line_index = world.analysis.file_line_index(file_id)?;
+                    apply_document_changes(&mut text, content_changes, Cow::Borrowed(&line_index));
 
                     // The version passed in DidChangeTextDocument is the version after all edits are applied
                     // so we should apply it before the vfs is notified.
-                    doc.version = params.text_document.version;
+                    let doc = this.mem_docs.get_mut(&path).unwrap();
+                    doc.version = text_document.version;
 
                     vfs.set_file_contents(path.clone(), Some(text.into_bytes()));
                 }
