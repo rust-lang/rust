@@ -1220,11 +1220,7 @@ fn compare_projection_bounds<'tcx>(
     // we want <T as X>::Y to normalize to S. This is valid because we are
     // checking the default value specifically here. Add this equality to the
     // ParamEnv for normalization specifically.
-    let normalize_param_env = if impl_ty.defaultness.is_final() {
-        // If the associated type is final then normalization can already
-        // do this without the explicit predicate.
-        param_env
-    } else {
+    let normalize_param_env = {
         let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
         predicates.push(
             ty::Binder::dummy(ty::ProjectionPredicate {

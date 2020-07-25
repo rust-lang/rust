@@ -1,31 +1,14 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
+error[E0477]: the type `&'b ()` does not fulfill the required lifetime
   --> $DIR/unsatisfied-outlives-bound.rs:9:5
    |
 LL |     type Item<'a> = &'b ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the lifetime `'b` as defined on the impl at 8:6...
-  --> $DIR/unsatisfied-outlives-bound.rs:8:6
-   |
-LL | impl<'b> ATy for &'b () {
-   |      ^^
-note: ...so that the types are compatible
-  --> $DIR/unsatisfied-outlives-bound.rs:9:5
-   |
-LL |     type Item<'a> = &'b ();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected `ATy`
-              found `ATy`
-note: but, the lifetime must be valid for the lifetime `'a` as defined on the associated item at 9:15...
+note: type must outlive the lifetime `'a` as defined on the associated item at 9:15
   --> $DIR/unsatisfied-outlives-bound.rs:9:15
    |
 LL |     type Item<'a> = &'b ();
    |               ^^
-note: ...so that the type `&()` will meet its required lifetime bounds
-  --> $DIR/unsatisfied-outlives-bound.rs:9:5
-   |
-LL |     type Item<'a> = &'b ();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0477]: the type `&'a ()` does not fulfill the required lifetime
   --> $DIR/unsatisfied-outlives-bound.rs:18:5
@@ -37,5 +20,4 @@ LL |     type Item<'a> = &'a ();
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0477, E0495.
-For more information about an error, try `rustc --explain E0477`.
+For more information about this error, try `rustc --explain E0477`.
