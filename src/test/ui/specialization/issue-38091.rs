@@ -5,7 +5,10 @@ trait Iterate<'a> {
     type Ty: Valid;
     fn iterate(self);
 }
-impl<'a, T> Iterate<'a> for T where T: Check {
+impl<'a, T> Iterate<'a> for T
+where
+    T: Check,
+{
     default type Ty = ();
     //~^ ERROR the trait bound `(): Valid` is not satisfied
     default fn iterate(self) {}
@@ -18,5 +21,4 @@ trait Valid {}
 
 fn main() {
     Iterate::iterate(0);
-    //~^ ERROR overflow evaluating the requirement `{integer}: Check`
 }

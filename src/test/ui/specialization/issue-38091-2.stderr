@@ -1,5 +1,5 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-38091-2.rs:1:12
+  --> $DIR/issue-38091-2.rs:4:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
@@ -7,16 +7,9 @@ LL | #![feature(specialization)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
 
-error[E0275]: overflow evaluating the requirement `{integer}: Check`
-  --> $DIR/issue-38091-2.rs:21:5
+error[E0275]: overflow evaluating the requirement `i32: Check`
    |
-LL |     fn iterate(self);
-   |     ----------------- required by `Iterate::iterate`
-...
-LL |     Iterate::iterate(0);
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = note: required because of the requirements on the impl of `Iterate<'_>` for `{integer}`
+   = note: required because of the requirements on the impl of `Iterate` for `i32`
 
 error: aborting due to previous error; 1 warning emitted
 

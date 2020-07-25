@@ -28,7 +28,6 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
 use rustc_span::symbol::sym;
-use rustc_span::DUMMY_SP;
 
 pub use rustc_middle::traits::Reveal;
 
@@ -1409,6 +1408,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     match infcx.at(cause, param_env).eq(cache_trait_ref, obligation_trait_ref) {
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
+            assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
             Progress { ty: cache_entry.ty, obligations: nested_obligations }
         }
         Err(e) => {
@@ -1430,7 +1430,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
 
-    let ImplSourceUserDefinedData { impl_def_id, substs, nested } = impl_impl_source;
+    let ImplSourceUserDefinedData { impl_def_id, substs, mut nested } = impl_impl_source;
     let assoc_item_id = obligation.predicate.item_def_id;
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
 
@@ -1463,12 +1463,45 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let ty = tcx.type_of(assoc_ty.item.def_id);
     if substs.len() != tcx.generics_of(assoc_ty.item.def_id).count() {
         let err = tcx.ty_error_with_message(
-            DUMMY_SP,
+            obligation.cause.span,
             "impl item and trait item have different parameter counts",
         );
         Progress { ty: err, obligations: nested }
     } else {
+        assoc_ty_own_obligations(selcx, obligation, &mut nested);
         Progress { ty: ty.subst(tcx, substs), obligations: nested }
+    }
+}
+
+// Get obligations corresponding to the predicates from the where-clause of the
+// associated type itself.
+// Note: `feature(generic_associated_types)` is required to write such
+// predicates, even for non-generic associcated types.
+fn assoc_ty_own_obligations<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    nested: &mut Vec<PredicateObligation<'tcx>>,
+) {
+    let tcx = selcx.tcx();
+    for predicate in tcx
+        .predicates_of(obligation.predicate.item_def_id)
+        .instantiate_own(tcx, obligation.predicate.substs)
+        .predicates
+    {
+        let normalized = normalize_with_depth_to(
+            selcx,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            &predicate,
+            nested,
+        );
+        nested.push(Obligation::with_depth(
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            obligation.param_env,
+            normalized,
+        ));
     }
 }
 

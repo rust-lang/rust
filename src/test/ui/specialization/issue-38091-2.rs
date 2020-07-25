@@ -1,3 +1,6 @@
+// build-fail
+//~^ ERROR overflow evaluating the requirement `i32: Check`
+
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete
 
@@ -5,7 +8,10 @@ trait Iterate<'a> {
     type Ty: Valid;
     fn iterate(self);
 }
-impl<'a, T> Iterate<'a> for T where T: Check {
+impl<'a, T> Iterate<'a> for T
+where
+    T: Check,
+{
     default type Ty = ();
     default fn iterate(self) {}
 }
@@ -19,5 +25,4 @@ impl Valid for () {}
 
 fn main() {
     Iterate::iterate(0);
-    //~^ ERROR overflow evaluating the requirement `{integer}: Check`
 }

@@ -328,7 +328,7 @@ fn compare_predicate_entailment<'tcx>(
         // Finally, resolve all regions. This catches wily misuses of
         // lifetime parameters.
         let fcx = FnCtxt::new(&inh, param_env, impl_m_hir_id);
-        fcx.regionck_item(impl_m_hir_id, impl_m_span, &[]);
+        fcx.regionck_item(impl_m_hir_id, impl_m_span, trait_sig.inputs_and_output);
 
         Ok(())
     })

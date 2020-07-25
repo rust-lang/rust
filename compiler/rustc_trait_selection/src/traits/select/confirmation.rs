@@ -157,22 +157,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         );
                     }),
             );
-            // Require that the projection is well-formed.
-            let self_ty = self.infcx.replace_bound_vars_with_placeholders(&bound_self_ty);
-            let self_ty = normalize_with_depth_to(
-                self,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                &self_ty,
-                &mut obligations,
-            );
-            obligations.push(Obligation::with_depth(
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                ty::PredicateKind::WellFormed(self_ty.into()).to_predicate(tcx),
-            ));
+
+            if let ty::Projection(..) = bound_self_ty.skip_binder().kind {
+                for predicate in tcx.predicates_of(def_id).instantiate_own(tcx, substs).predicates {
+                    let normalized = normalize_with_depth_to(
+                        self,
+                        obligation.param_env,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        &predicate,
+                        &mut obligations,
+                    );
+                    obligations.push(Obligation::with_depth(
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        obligation.param_env,
+                        normalized,
+                    ));
+                }
+            }
+
             obligations
         })
     }
