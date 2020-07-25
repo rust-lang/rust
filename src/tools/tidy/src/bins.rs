@@ -20,7 +20,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     if let Ok(contents) = fs::read_to_string("/proc/version") {
         // Probably on Windows Linux Subsystem or Docker via VirtualBox,
         // all files will be marked as executable, so skip checking.
-        if contents.contains("Microsoft") || contents.contains("boot2docker") {
+        if contents.contains("Microsoft") || contents.contains("microsoft") || contents.contains("boot2docker") {
             return;
         }
     }
