@@ -671,6 +671,7 @@ impl String {
     ///   same allocator the standard library uses, with a required alignment of exactly 1.
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the correct value.
+    /// * The first `length` bytes at `buf` need to be valid UTF-8.
     ///
     /// Violating these may cause problems like corrupting the allocator's
     /// internal data structures.
