@@ -186,7 +186,8 @@ impl Env {
     fn pushd(&mut self, dir: PathBuf) {
         let dir = self.cwd().join(dir);
         self.pushd_stack.push(dir);
-        env::set_current_dir(self.cwd()).unwrap();
+        env::set_current_dir(self.cwd())
+            .unwrap_or_else(|err| panic!("Failed to set cwd to {}: {}", self.cwd().display(), err));
     }
     fn popd(&mut self) {
         self.pushd_stack.pop().unwrap();

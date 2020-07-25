@@ -3,14 +3,15 @@ use std::{
     env,
     fmt::{self, Write as _},
     io::Write as _,
+    path::Path,
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{bail, format_err, Result};
 
-use crate::not_bash::{fs2, pushd, rm_rf, run};
+use crate::not_bash::{fs2, pushd, pushenv, rm_rf, run};
 
-type Unit = &'static str;
+type Unit = String;
 
 pub struct MetricsCmd {
     pub dry_run: bool,
@@ -22,9 +23,21 @@ impl MetricsCmd {
         if !self.dry_run {
             rm_rf("./target/release")?;
         }
+        if !Path::new("./target/rustc-perf").exists() {
+            fs2::create_dir_all("./target/rustc-perf")?;
+            run!("git clone https://github.com/rust-lang/rustc-perf.git ./target/rustc-perf")?;
+        }
+        {
+            let _d = pushd("./target/rustc-perf");
+            run!("git reset --hard 1d9288b0da7febf2599917da1b57dc241a1af033")?;
+        }
+
+        let _env = pushenv("RA_METRICS", "1");
 
         metrics.measure_build()?;
         metrics.measure_analysis_stats_self()?;
+        metrics.measure_analysis_stats("ripgrep")?;
+        metrics.measure_analysis_stats("webrender")?;
 
         if !self.dry_run {
             let _d = pushd("target");
@@ -46,21 +59,45 @@ impl MetricsCmd {
 
 impl Metrics {
     fn measure_build(&mut self) -> Result<()> {
+        eprintln!("\nMeasuring build");
         run!("cargo fetch")?;
 
         let time = Instant::now();
         run!("cargo build --release --package rust-analyzer --bin rust-analyzer")?;
         let time = time.elapsed();
-        self.report("build", time.as_millis() as u64, "ms");
+        self.report("build", time.as_millis() as u64, "ms".into());
         Ok(())
     }
     fn measure_analysis_stats_self(&mut self) -> Result<()> {
-        let time = Instant::now();
-        run!("./target/release/rust-analyzer analysis-stats .")?;
-        let time = time.elapsed();
-        self.report("analysis-stats/self", time.as_millis() as u64, "ms");
+        self.measure_analysis_stats_path("self", &".")
+    }
+    fn measure_analysis_stats(&mut self, bench: &str) -> Result<()> {
+        self.measure_analysis_stats_path(
+            bench,
+            &format!("./target/rustc-perf/collector/benchmarks/{}", bench),
+        )
+    }
+    fn measure_analysis_stats_path(&mut self, name: &str, path: &str) -> Result<()> {
+        eprintln!("\nMeasuring analysis-stats/{}", name);
+        let output = run!("./target/release/rust-analyzer analysis-stats --quiet {}", path)?;
+        for (metric, value, unit) in parse_metrics(&output) {
+            self.report(&format!("analysis-stats/{}/{}", name, metric), value, unit.into());
+        }
         Ok(())
     }
+}
+
+fn parse_metrics(output: &str) -> Vec<(&str, u64, &str)> {
+    output
+        .lines()
+        .filter_map(|it| {
+            let entry = it.split(':').collect::<Vec<_>>();
+            match entry.as_slice() {
+                ["METRIC", name, value, unit] => Some((*name, value.parse().unwrap(), *unit)),
+                _ => None,
+            }
+        })
+        .collect()
 }
 
 #[derive(Debug)]
@@ -111,11 +148,11 @@ impl Metrics {
             json.field("metrics");
             json.begin_object();
             {
-                for (k, &(value, unit)) in &self.metrics {
+                for (k, (value, unit)) in &self.metrics {
                     json.field(k);
                     json.begin_array();
                     {
-                        json.number(value as f64);
+                        json.number(*value as f64);
                         json.string(unit);
                     }
                     json.end_array();

@@ -3,26 +3,27 @@
 
 use std::{path::Path, time::Instant};
 
-use itertools::Itertools;
-use rand::{seq::SliceRandom, thread_rng};
-use rayon::prelude::*;
-use rustc_hash::FxHashSet;
-
 use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     original_range, AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::FunctionId;
 use hir_ty::{Ty, TypeWalk};
+use itertools::Itertools;
 use ra_db::{
     salsa::{self, ParallelDatabase},
     SourceDatabaseExt,
 };
 use ra_syntax::AstNode;
+use rand::{seq::SliceRandom, thread_rng};
+use rayon::prelude::*;
+use rustc_hash::FxHashSet;
 use stdx::format_to;
 
 use crate::{
-    cli::{load_cargo::load_cargo, progress_report::ProgressReport, Result, Verbosity},
+    cli::{
+        load_cargo::load_cargo, progress_report::ProgressReport, report_metric, Result, Verbosity,
+    },
     print_memory_usage,
 };
 
@@ -48,7 +49,7 @@ pub fn analysis_stats(
     let db_load_time = Instant::now();
     let (host, vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
-    println!("Database loaded {:?}", db_load_time.elapsed());
+    eprintln!("Database loaded {:?}", db_load_time.elapsed());
     let analysis_time = Instant::now();
     let mut num_crates = 0;
     let mut visited_modules = FxHashSet::default();
@@ -74,7 +75,7 @@ pub fn analysis_stats(
         visit_queue.shuffle(&mut thread_rng());
     }
 
-    println!("Crates in this dir: {}", num_crates);
+    eprintln!("Crates in this dir: {}", num_crates);
     let mut num_decls = 0;
     let mut funcs = Vec::new();
     while let Some(module) = visit_queue.pop() {
@@ -98,10 +99,15 @@ pub fn analysis_stats(
             }
         }
     }
-    println!("Total modules found: {}", visited_modules.len());
-    println!("Total declarations: {}", num_decls);
-    println!("Total functions: {}", funcs.len());
-    println!("Item Collection: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
+    eprintln!("Total modules found: {}", visited_modules.len());
+    eprintln!("Total declarations: {}", num_decls);
+    eprintln!("Total functions: {}", funcs.len());
+    let item_collection_memory = ra_prof::memory_usage();
+    eprintln!(
+        "Item Collection: {:?}, {}",
+        analysis_time.elapsed(),
+        item_collection_memory.allocated
+    );
 
     if randomize {
         funcs.shuffle(&mut thread_rng());
@@ -123,7 +129,11 @@ pub fn analysis_stats(
                 snap.0.infer(f_id.into());
             })
             .count();
-        println!("Parallel Inference: {:?}, {}", inference_time.elapsed(), ra_prof::memory_usage());
+        eprintln!(
+            "Parallel Inference: {:?}, {}",
+            inference_time.elapsed(),
+            ra_prof::memory_usage().allocated
+        );
     }
 
     let inference_time = Instant::now();
@@ -260,20 +270,31 @@ pub fn analysis_stats(
         bar.inc(1);
     }
     bar.finish_and_clear();
-    println!("Total expressions: {}", num_exprs);
-    println!(
+    eprintln!("Total expressions: {}", num_exprs);
+    eprintln!(
         "Expressions of unknown type: {} ({}%)",
         num_exprs_unknown,
         if num_exprs > 0 { num_exprs_unknown * 100 / num_exprs } else { 100 }
     );
-    println!(
+    eprintln!(
         "Expressions of partially unknown type: {} ({}%)",
         num_exprs_partially_unknown,
         if num_exprs > 0 { num_exprs_partially_unknown * 100 / num_exprs } else { 100 }
     );
-    println!("Type mismatches: {}", num_type_mismatches);
-    println!("Inference: {:?}, {}", inference_time.elapsed(), ra_prof::memory_usage());
-    println!("Total: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
+    eprintln!("Type mismatches: {}", num_type_mismatches);
+
+    let inference_time = inference_time.elapsed();
+    let total_memory = ra_prof::memory_usage();
+    eprintln!(
+        "Inference: {:?}, {}",
+        inference_time,
+        total_memory.allocated - item_collection_memory.allocated
+    );
+
+    let analysis_time = analysis_time.elapsed();
+    eprintln!("Total: {:?}, {}", analysis_time, total_memory);
+    report_metric("total time", analysis_time.as_millis() as u64, "ms");
+    report_metric("total memory", total_memory.allocated.megabytes() as u64, "MB");
 
     if memory_usage {
         print_memory_usage(host, vfs);
