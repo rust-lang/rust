@@ -1,5 +1,5 @@
 use super::BackendTypes;
-use crate::coverageinfo::CounterOp;
+use crate::coverageinfo::ExprKind;
 use rustc_middle::ty::Instance;
 
 pub trait CoverageInfoMethods: BackendTypes {
@@ -21,7 +21,7 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
         instance: Instance<'tcx>,
         index: u32,
         lhs: u32,
-        op: CounterOp,
+        op: ExprKind,
         rhs: u32,
         start_byte_pos: u32,
         end_byte_pos: u32,

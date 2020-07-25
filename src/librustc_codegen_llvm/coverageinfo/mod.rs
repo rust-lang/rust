@@ -23,7 +23,7 @@ const COVMAP_VAR_ALIGN_BYTES: usize = 8;
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'tcx> {
     // Coverage region data for each instrumented function identified by DefId.
-    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage>>,
+    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
 }
 
 impl<'tcx> CrateCoverageContext<'tcx> {
@@ -31,7 +31,7 @@ impl<'tcx> CrateCoverageContext<'tcx> {
         Self { function_coverage_map: Default::default() }
     }
 
-    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage> {
+    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
         self.function_coverage_map.replace(FxHashMap::default())
     }
 }
@@ -47,44 +47,49 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         instance: Instance<'tcx>,
         function_source_hash: u64,
-        index: u32,
+        id: u32,
         start_byte_pos: u32,
         end_byte_pos: u32,
     ) {
         debug!(
-            "adding counter to coverage_regions: instance={:?}, function_source_hash={}, index={}, byte range {}..{}",
-            instance, function_source_hash, index, start_byte_pos, end_byte_pos,
+            "adding counter to coverage_regions: instance={:?}, function_source_hash={}, id={}, \
+             byte range {}..{}",
+            instance, function_source_hash, id, start_byte_pos, end_byte_pos,
         );
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
-            .or_insert_with(|| {
-                FunctionCoverage::with_coverageinfo(self.tcx.coverageinfo(instance.def_id()))
-            })
-            .add_counter(function_source_hash, index, start_byte_pos, end_byte_pos);
+            .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
+            .add_counter(function_source_hash, id, start_byte_pos, end_byte_pos);
     }
 
     fn add_counter_expression_region(
         &mut self,
         instance: Instance<'tcx>,
-        index: u32,
+        id_descending_from_max: u32,
         lhs: u32,
-        op: CounterOp,
+        op: ExprKind,
         rhs: u32,
         start_byte_pos: u32,
         end_byte_pos: u32,
     ) {
         debug!(
-            "adding counter expression to coverage_regions: instance={:?}, index={}, {} {:?} {}, byte range {}..{}",
-            instance, index, lhs, op, rhs, start_byte_pos, end_byte_pos,
+            "adding counter expression to coverage_regions: instance={:?}, id={}, {} {:?} {}, \
+             byte range {}..{}",
+            instance, id_descending_from_max, lhs, op, rhs, start_byte_pos, end_byte_pos,
         );
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
-            .or_insert_with(|| {
-                FunctionCoverage::with_coverageinfo(self.tcx.coverageinfo(instance.def_id()))
-            })
-            .add_counter_expression(index, lhs, op, rhs, start_byte_pos, end_byte_pos);
+            .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
+            .add_counter_expression(
+                id_descending_from_max,
+                lhs,
+                op,
+                rhs,
+                start_byte_pos,
+                end_byte_pos,
+            );
     }
 
     fn add_unreachable_region(
@@ -100,107 +105,150 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
-            .or_insert_with(|| {
-                FunctionCoverage::with_coverageinfo(self.tcx.coverageinfo(instance.def_id()))
-            })
-            .add_unreachable(start_byte_pos, end_byte_pos);
+            .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
+            .add_unreachable_region(start_byte_pos, end_byte_pos);
     }
 }
 
-/// This struct wraps an opaque reference to the C++ template instantiation of
-/// `llvm::SmallVector<coverage::CounterExpression>`. Each `coverage::CounterExpression` object is
-/// constructed from primative-typed arguments, and pushed to the `SmallVector`, in the C++
-/// implementation of `LLVMRustCoverageSmallVectorCounterExpressionAdd()` (see
-/// `src/rustllvm/CoverageMappingWrapper.cpp`).
-pub struct SmallVectorCounterExpression<'a> {
-    pub raw: &'a mut llvm::coverageinfo::SmallVectorCounterExpression<'a>,
+/// Aligns to C++ struct llvm::coverage::Counter::CounterKind.
+/// The order of discrimiators is important.
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+enum RegionKind {
+    /// A CodeRegion associates some code with a counter
+    CodeRegion,
+
+    /// An ExpansionRegion represents a file expansion region that associates
+    /// a source range with the expansion of a virtual source file, such as
+    /// for a macro instantiation or #include file.
+    ExpansionRegion,
+
+    /// A SkippedRegion represents a source range with code that was skipped
+    /// by a preprocessor or similar means.
+    SkippedRegion,
+
+    /// A GapRegion is like a CodeRegion, but its count is only set as the
+    /// line execution count when its the only region in the line.
+    GapRegion,
 }
 
-impl SmallVectorCounterExpression<'a> {
-    pub fn new() -> Self {
-        SmallVectorCounterExpression {
-            raw: unsafe { llvm::LLVMRustCoverageSmallVectorCounterExpressionCreate() },
-        }
-    }
+/// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the
+/// coverage map in accordance with LLVM's "Coverage Mapping Format". The struct composes fields
+/// representing the `Counter` type and value(s) (injected counter ID, or expression type and
+/// operands), the source file (an indirect index into a "filenames array", encoded separately),
+/// and source location (start and end positions of the represented code region).
+///
+/// Aligns to C++ struct llvm::coverage::CounterMappingRegion.
+/// The order of fields is important.
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct CounterMappingRegion {
+    /// The counter type and type-dependent counter data, if any.
+    counter: Counter,
 
-    pub fn as_ptr(&self) -> *const llvm::coverageinfo::SmallVectorCounterExpression<'a> {
-        self.raw
-    }
+    /// An indirect reference to the source filename. In the LLVM Coverage Mapping Format, the
+    /// file_id is an index into a function-specific `virtual_file_mapping` array of indexes that,
+    /// in turn, are used to look up the filename for this region.
+    file_id: u32,
 
-    pub fn push_from(
-        &mut self,
-        kind: rustc_codegen_ssa::coverageinfo::CounterOp,
-        left_index: u32,
-        right_index: u32,
-    ) {
-        unsafe {
-            llvm::LLVMRustCoverageSmallVectorCounterExpressionAdd(
-                &mut *(self.raw as *mut _),
-                kind,
-                left_index,
-                right_index,
-            )
-        }
-    }
+    /// If the `RegionKind` is an `ExpansionRegion`, the `expanded_file_id` can be used to find the
+    /// mapping regions created as a result of macro expansion, by checking if their file id matches
+    /// the expanded file id.
+    expanded_file_id: u32,
+
+    /// 1-based starting line of the mapping region.
+    start_line: u32,
+
+    /// 1-based starting column of the mapping region.
+    start_col: u32,
+
+    /// 1-based ending line of the mapping region.
+    end_line: u32,
+
+    /// 1-based ending column of the mapping region. If the high bit is set, the current mapping
+    /// region is a gap area.
+    end_col: u32,
+
+    kind: RegionKind,
 }
 
-impl Drop for SmallVectorCounterExpression<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustCoverageSmallVectorCounterExpressionDispose(&mut *(self.raw as *mut _));
-        }
-    }
-}
-
-/// This struct wraps an opaque reference to the C++ template instantiation of
-/// `llvm::SmallVector<coverage::CounterMappingRegion>`. Each `coverage::CounterMappingRegion`
-/// object is constructed from primative-typed arguments, and pushed to the `SmallVector`, in the
-/// C++ implementation of `LLVMRustCoverageSmallVectorCounterMappingRegionAdd()` (see
-/// `src/rustllvm/CoverageMappingWrapper.cpp`).
-pub struct SmallVectorCounterMappingRegion<'a> {
-    pub raw: &'a mut llvm::coverageinfo::SmallVectorCounterMappingRegion<'a>,
-}
-
-impl SmallVectorCounterMappingRegion<'a> {
-    pub fn new() -> Self {
-        SmallVectorCounterMappingRegion {
-            raw: unsafe { llvm::LLVMRustCoverageSmallVectorCounterMappingRegionCreate() },
-        }
-    }
-
-    pub fn as_ptr(&self) -> *const llvm::coverageinfo::SmallVectorCounterMappingRegion<'a> {
-        self.raw
-    }
-
-    pub fn push_from(
-        &mut self,
-        index: u32,
+impl CounterMappingRegion {
+    pub fn code_region(
+        counter: Counter,
         file_id: u32,
-        line_start: u32,
-        column_start: u32,
-        line_end: u32,
-        column_end: u32,
-    ) {
-        unsafe {
-            llvm::LLVMRustCoverageSmallVectorCounterMappingRegionAdd(
-                &mut *(self.raw as *mut _),
-                index,
-                file_id,
-                line_start,
-                column_start,
-                line_end,
-                column_end,
-            )
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
+    ) -> Self {
+        Self {
+            counter,
+            file_id,
+            expanded_file_id: 0,
+            start_line,
+            start_col,
+            end_line,
+            end_col,
+            kind: RegionKind::CodeRegion,
         }
     }
-}
 
-impl Drop for SmallVectorCounterMappingRegion<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustCoverageSmallVectorCounterMappingRegionDispose(
-                &mut *(self.raw as *mut _),
-            );
+    pub fn expansion_region(
+        file_id: u32,
+        expanded_file_id: u32,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
+    ) -> Self {
+        Self {
+            counter: Counter::zero(),
+            file_id,
+            expanded_file_id,
+            start_line,
+            start_col,
+            end_line,
+            end_col,
+            kind: RegionKind::ExpansionRegion,
+        }
+    }
+
+    pub fn skipped_region(
+        file_id: u32,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
+    ) -> Self {
+        Self {
+            counter: Counter::zero(),
+            file_id,
+            expanded_file_id: 0,
+            start_line,
+            start_col,
+            end_line,
+            end_col,
+            kind: RegionKind::SkippedRegion,
+        }
+    }
+
+    pub fn gap_region(
+        counter: Counter,
+        file_id: u32,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
+    ) -> Self {
+        Self {
+            counter,
+            file_id,
+            expanded_file_id: 0,
+            start_line,
+            start_col,
+            end_line,
+            end_col: ((1 as u32) << 31) | end_col,
+            kind: RegionKind::GapRegion,
         }
     }
 }
@@ -218,8 +266,8 @@ pub(crate) fn write_filenames_section_to_buffer(filenames: &Vec<CString>, buffer
 
 pub(crate) fn write_mapping_to_buffer(
     virtual_file_mapping: Vec<u32>,
-    expressions: SmallVectorCounterExpression<'_>,
-    mapping_regions: SmallVectorCounterMappingRegion<'_>,
+    expressions: Vec<CounterExpression>,
+    mut mapping_regions: Vec<CounterMappingRegion>,
     buffer: &RustString,
 ) {
     unsafe {
@@ -227,7 +275,9 @@ pub(crate) fn write_mapping_to_buffer(
             virtual_file_mapping.as_ptr(),
             virtual_file_mapping.len() as c_uint,
             expressions.as_ptr(),
-            mapping_regions.as_ptr(),
+            expressions.len() as c_uint,
+            mapping_regions.as_mut_ptr(),
+            mapping_regions.len() as c_uint,
             buffer,
         );
     }

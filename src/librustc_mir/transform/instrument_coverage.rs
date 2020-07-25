@@ -58,7 +58,7 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, mir_def_id: DefId) -> Coverage
             match func.literal.ty.kind {
                 FnDef(id, _) if id == count_code_region_fn => {
                     let index_arg =
-                        args.get(count_code_region_args::COUNTER_INDEX).expect("arg found");
+                        args.get(count_code_region_args::COUNTER_ID).expect("arg found");
                     let counter_index = mir::Operand::scalar_from_const(index_arg)
                         .to_u32()
                         .expect("index arg is u32");
@@ -68,7 +68,7 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, mir_def_id: DefId) -> Coverage
                     if id == coverage_counter_add_fn || id == coverage_counter_subtract_fn =>
                 {
                     let index_arg = args
-                        .get(coverage_counter_expression_args::COUNTER_EXPRESSION_INDEX)
+                        .get(coverage_counter_expression_args::EXPRESSION_ID)
                         .expect("arg found");
                     let translated_index = mir::Operand::scalar_from_const(index_arg)
                         .to_u32()
@@ -215,7 +215,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug_assert_eq!(FUNCTION_SOURCE_HASH, args.len());
         args.push(self.const_u64(function_source_hash, injection_point));
 
-        debug_assert_eq!(COUNTER_INDEX, args.len());
+        debug_assert_eq!(COUNTER_ID, args.len());
         args.push(self.const_u32(counter_id, injection_point));
 
         debug_assert_eq!(START_BYTE_POS, args.len());
@@ -255,13 +255,13 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mut args = Vec::new();
 
         use coverage_counter_expression_args::*;
-        debug_assert_eq!(COUNTER_EXPRESSION_INDEX, args.len());
+        debug_assert_eq!(EXPRESSION_ID, args.len());
         args.push(self.const_u32(expression_id, injection_point));
 
-        debug_assert_eq!(LEFT_INDEX, args.len());
+        debug_assert_eq!(LEFT_ID, args.len());
         args.push(self.const_u32(lhs, injection_point));
 
-        debug_assert_eq!(RIGHT_INDEX, args.len());
+        debug_assert_eq!(RIGHT_ID, args.len());
         args.push(self.const_u32(rhs, injection_point));
 
         debug_assert_eq!(START_BYTE_POS, args.len());

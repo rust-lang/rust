@@ -883,7 +883,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`, \
         and is mutually exclusive with `-C profile-generate`/`-C profile-use`); \
-        implies `-C link-dead-code` (unless explicitly disabled)` and
+        implies `-C link-dead-code` (unless explicitly disabled)` and \
         `-Z symbol-mangling-version=v0`; and disables/overrides some optimization \
         options (default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],

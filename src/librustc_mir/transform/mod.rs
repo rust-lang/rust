@@ -343,8 +343,8 @@ fn mir_validated(
             &promote_pass,
             &simplify::SimplifyCfg::new("qualify-consts"),
             // If the `instrument-coverage` option is enabled, analyze the CFG, identify each
-            // conditional branch, construct a coverage map to be passed to LLVM, and inject counters
-            // where needed.
+            // conditional branch, construct a coverage map to be passed to LLVM, and inject
+            // counters where needed.
             &instrument_coverage::InstrumentCoverage,
         ]],
     );

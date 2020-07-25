@@ -13,7 +13,7 @@ use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-use rustc_codegen_ssa::coverageinfo::CounterOp;
+use rustc_codegen_ssa::coverageinfo::ExprKind;
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -101,7 +101,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     self.add_counter_region(
                         caller_instance,
                         op_to_u64(&args[FUNCTION_SOURCE_HASH]),
-                        op_to_u32(&args[COUNTER_INDEX]),
+                        op_to_u32(&args[COUNTER_ID]),
                         op_to_u32(&args[START_BYTE_POS]),
                         op_to_u32(&args[END_BYTE_POS]),
                     );
@@ -111,14 +111,14 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                     use coverage::coverage_counter_expression_args::*;
                     self.add_counter_expression_region(
                         caller_instance,
-                        op_to_u32(&args[COUNTER_EXPRESSION_INDEX]),
-                        op_to_u32(&args[LEFT_INDEX]),
+                        op_to_u32(&args[EXPRESSION_ID]),
+                        op_to_u32(&args[LEFT_ID]),
                         if intrinsic == sym::coverage_counter_add {
-                            CounterOp::Add
+                            ExprKind::Add
                         } else {
-                            CounterOp::Subtract
+                            ExprKind::Subtract
                         },
-                        op_to_u32(&args[RIGHT_INDEX]),
+                        op_to_u32(&args[RIGHT_ID]),
                         op_to_u32(&args[START_BYTE_POS]),
                         op_to_u32(&args[END_BYTE_POS]),
                     );
@@ -219,7 +219,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 let num_counters = self.const_u32(coverageinfo.num_counters);
                 use coverage::count_code_region_args::*;
                 let hash = args[FUNCTION_SOURCE_HASH].immediate();
-                let index = args[COUNTER_INDEX].immediate();
+                let index = args[COUNTER_ID].immediate();
                 debug!(
                     "translating Rust intrinsic `count_code_region()` to LLVM intrinsic: \
                     instrprof.increment(fn_name={}, hash={:?}, num_counters={:?}, index={:?})",
