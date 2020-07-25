@@ -17,7 +17,7 @@ use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, InstanceDef, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, RegionVid, TyCtxt};
 use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
@@ -287,6 +287,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         if let Err((move_data, move_errors)) = move_data_results {
             let mut promoted_mbcx = MirBorrowckCtxt {
                 infcx,
+                param_env,
                 body: promoted_body,
                 mir_def_id: def.did,
                 move_data: &move_data,
@@ -320,6 +321,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let mut mbcx = MirBorrowckCtxt {
         infcx,
+        param_env,
         body,
         mir_def_id: def.did,
         move_data: &mdpe.move_data,
@@ -473,6 +475,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
 crate struct MirBorrowckCtxt<'cx, 'tcx> {
     crate infcx: &'cx InferCtxt<'cx, 'tcx>,
+    param_env: ParamEnv<'tcx>,
     body: &'cx Body<'tcx>,
     mir_def_id: LocalDefId,
     move_data: &'cx MoveData<'tcx>,
