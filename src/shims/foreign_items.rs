@@ -111,7 +111,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         def_id: DefId,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
-        _unwind: Option<mir::BasicBlock>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
@@ -126,6 +126,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // First: functions that diverge.
         let (dest, ret) = match ret {
             None => match link_name {
+                "miri_start_panic" => {
+                    this.handle_miri_start_panic(args, unwind)?;
+                    return Ok(None);
+                }
                 // This matches calls to the foreign item `panic_impl`.
                 // The implementation is provided by the function with the `#[panic_handler]` attribute.
                 "panic_impl" => {
@@ -193,6 +197,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Here we dispatch all the shims for foreign functions. If you have a platform specific
         // shim, add it to the corresponding submodule.
         match link_name {
+            // Miri-specific extern functions
+            "miri_static_root" => {
+                let &[ptr] = check_arg_count(args)?;
+                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.force_ptr(ptr)?;
+                if ptr.offset != Size::ZERO {
+                    throw_unsup_format!("pointer passed to miri_static_root must point to beginning of an allocated block");
+                }
+                this.machine.static_roots.push(ptr.alloc_id);
+            }
+
             // Standard C allocation
             "malloc" => {
                 let &[size] = check_arg_count(args)?;

@@ -5,6 +5,7 @@ use std::ffi::OsStr;
 
 use rand::rngs::StdRng;
 use rand::SeedableRng;
+use log::info;
 
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, layout::LayoutCx, TyCtxt};
@@ -195,8 +196,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 /// Returns `Some(return_code)` if program executed completed.
 /// Returns `None` if an evaluation error occured.
 pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) -> Option<i64> {
-    // FIXME: on Windows, we ignore leaks (https://github.com/rust-lang/miri/issues/1302).
-    let ignore_leaks = config.ignore_leaks || tcx.sess.target.target.target_os == "windows";
+    // Copy setting before we move `config`.
+    let ignore_leaks = config.ignore_leaks;
 
     let (mut ecx, ret_place) = match create_ecx(tcx, main_id, config) {
         Ok(v) => v,
@@ -244,7 +245,8 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
     match res {
         Ok(return_code) => {
             if !ignore_leaks {
-                let leaks = ecx.memory.leak_report();
+                info!("Additonal static roots: {:?}", ecx.machine.static_roots);
+                let leaks = ecx.memory.leak_report(&ecx.machine.static_roots);
                 if leaks != 0 {
                     tcx.sess.err("the evaluated program leaked memory");
                     // Ignore the provided return code - let the reported error

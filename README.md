@@ -233,6 +233,29 @@ different Miri binaries, and as such worth documenting:
   interpret the code but compile it like rustc would. This is useful to be sure
   that the compiled `rlib`s are compatible with Miri.
 
+## Miri `extern` functions
+
+Miri provides some `extern` functions that programs can import to access
+Miri-specific functionality:
+
+```rust
+#[cfg(miri)]
+extern "Rust" {
+    /// Miri-provided extern function to mark the block `ptr` points to as a "root"
+    /// for some static memory. This memory and everything reachable by it is not
+    /// considered leaking even if it still exists when the program terminates.
+    ///
+    /// `ptr` has to point to the beginning of an allocated block.
+    fn miri_static_root(ptr: *const u8);
+
+    /// Miri-provided extern function to begin unwinding with the given payload.
+    ///
+    /// This is internal and unstable and should not be used; we give it here
+    /// just to be complete.
+    fn miri_start_panic(payload: *mut u8) -> !;
+}
+```
+
 ## Contributing and getting help
 
 If you want to contribute to Miri, great!  Please check out our

@@ -18,7 +18,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let intrinsic_name = this.tcx.item_name(instance.def_id());
@@ -32,13 +32,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(());
         }
 
-        // First handle intrinsics without return place.
+        // All supported intrinsics have a return place.
         let intrinsic_name = &*intrinsic_name.as_str();
         let (dest, ret) = match ret {
-            None => match intrinsic_name {
-                "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
-                _ => throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name),
-            },
+            None => throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name),
             Some(p) => p,
         };
 
