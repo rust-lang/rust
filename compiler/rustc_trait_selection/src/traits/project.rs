@@ -978,7 +978,9 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
             if is_match {
                 candidate_set.push_candidate(ctor(data));
 
-                if potentially_unnormalized_candidates && !obligation.predicate.needs_infer() {
+                if potentially_unnormalized_candidates
+                    && !obligation.predicate.has_infer_types_or_consts()
+                {
                     // HACK: Pick the first trait def candidate for a fully
                     // inferred predicate. This is to allow duplicates that
                     // differ only in normalization.

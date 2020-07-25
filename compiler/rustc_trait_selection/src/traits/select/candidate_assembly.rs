@@ -165,7 +165,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("winnowed to {} candidates for {:?}: {:?}", candidates.len(), stack, candidates);
 
-        let needs_infer = stack.obligation.predicate.needs_infer();
+        let needs_infer = stack.obligation.predicate.has_infer_types_or_consts();
 
         // If there are STILL multiple candidates, we can further
         // reduce the list by dropping duplicates -- including
