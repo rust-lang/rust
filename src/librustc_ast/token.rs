@@ -11,9 +11,11 @@ use crate::tokenstream::TokenTree;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
+use rustc_span::hygiene::ExpnKind;
+use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{self, Span, DUMMY_SP};
+use rustc_span::{self, FileName, RealFileName, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::{fmt, mem};
 
@@ -807,6 +809,31 @@ impl Nonterminal {
             }
         }
         false
+    }
+
+    // See issue #74616 for details
+    pub fn ident_name_compatibility_hack(
+        &self,
+        orig_span: Span,
+        source_map: &SourceMap,
+    ) -> Option<(Ident, bool)> {
+        if let NtIdent(ident, is_raw) = self {
+            if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
+                let filename = source_map.span_to_filename(orig_span);
+                if let FileName::Real(RealFileName::Named(path)) = filename {
+                    if (path.ends_with("time-macros-impl/src/lib.rs")
+                        && macro_name == sym::impl_macros)
+                        || (path.ends_with("js-sys/src/lib.rs") && macro_name == sym::arrays)
+                    {
+                        let snippet = source_map.span_to_snippet(orig_span);
+                        if snippet.as_deref() == Ok("$name") {
+                            return Some((*ident, *is_raw));
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 }
 
