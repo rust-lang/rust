@@ -299,6 +299,8 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
     };
     flags_builder.set("tls_model", tls_model).unwrap();
 
+    flags_builder.set("enable_simd", "true").unwrap();
+
     // FIXME(CraneStation/cranelift#732) fix LICM in presence of jump tables
     /*
     use rustc_session::config::OptLevel;
@@ -316,9 +318,12 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
     }*/
 
     let flags = settings::Flags::new(flags_builder);
-    cranelift_codegen::isa::lookup(target_triple)
-        .unwrap()
-        .finish(flags)
+
+    let mut isa_builder = cranelift_codegen::isa::lookup(target_triple).unwrap();
+    // Don't use "haswell", as it implies `has_lzcnt`.macOS CI is still at Ivy Bridge EP, so `lzcnt`
+    // is interpreted as `bsr`.
+    isa_builder.enable("nehalem").unwrap();
+    isa_builder.finish(flags)
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift

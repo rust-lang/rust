@@ -62,6 +62,18 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
                 pointer_ty(tcx)
             }
         }
+        ty::Adt(adt_def, _) if adt_def.repr.simd() => {
+            let (element, count) = match &tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().abi {
+                Abi::Vector { element, count } => (element.clone(), *count),
+                _ => unreachable!(),
+            };
+
+            match scalar_to_clif_type(tcx, element).by(u16::try_from(count).unwrap()) {
+                // Cranelift currently only implements icmp for 128bit vectors.
+                Some(vector_ty) if vector_ty.bits() == 128 => vector_ty,
+                _ => return None,
+            }
+        }
         ty::Param(_) => bug!("ty param {:?}", ty),
         _ => return None,
     })
@@ -71,10 +83,12 @@ fn clif_pair_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<(type
     Some(match ty.kind {
         ty::Tuple(substs) if substs.len() == 2 => {
             let mut types = substs.types();
-            (
-                clif_type_from_ty(tcx, types.next().unwrap())?,
-                clif_type_from_ty(tcx, types.next().unwrap())?,
-            )
+            let a = clif_type_from_ty(tcx, types.next().unwrap())?;
+            let b = clif_type_from_ty(tcx, types.next().unwrap())?;
+            if a.is_vector() || b.is_vector() {
+                return None;
+            }
+            (a, b)
         }
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, pointee_ty) {

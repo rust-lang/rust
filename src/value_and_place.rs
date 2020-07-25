@@ -272,6 +272,7 @@ pub(crate) struct CPlace<'tcx> {
 pub(crate) enum CPlaceInner {
     Var(Local, Variable),
     VarPair(Local, Variable, Variable),
+    VarLane(Local, Variable, u8),
     Addr(Pointer, Option<Value>),
 }
 
@@ -374,6 +375,12 @@ impl<'tcx> CPlace<'tcx> {
                 fx.bcx.set_val_label(val2, cranelift_codegen::ir::ValueLabel::new(var2.index()));
                 CValue::by_val_pair(val1, val2, layout)
             }
+            CPlaceInner::VarLane(_local, var, lane) => {
+                let val = fx.bcx.use_var(var);
+                fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                let val = fx.bcx.ins().extractlane(val, lane);
+                CValue::by_val(val, layout)
+            }
             CPlaceInner::Addr(ptr, extra) => {
                 if let Some(extra) = extra {
                     CValue::by_ref_unsized(ptr, extra, layout)
@@ -395,7 +402,8 @@ impl<'tcx> CPlace<'tcx> {
         match self.inner {
             CPlaceInner::Addr(ptr, extra) => (ptr, extra),
             CPlaceInner::Var(_, _)
-            | CPlaceInner::VarPair(_, _, _) => bug!("Expected CPlace::Addr, found {:?}", self),
+            | CPlaceInner::VarPair(_, _, _)
+            | CPlaceInner::VarLane(_, _, _) => bug!("Expected CPlace::Addr, found {:?}", self),
         }
     }
 
@@ -527,6 +535,22 @@ impl<'tcx> CPlace<'tcx> {
                 transmute_value(fx, var2, data2, dst_ty2);
                 return;
             }
+            CPlaceInner::VarLane(_local, var, lane) => {
+                let data = from.load_scalar(fx);
+
+                // First get the old vector
+                let vector = fx.bcx.use_var(var);
+                fx.bcx.set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
+
+                // Next insert the written lane into the vector
+                let vector = fx.bcx.ins().insertlane(vector, data, lane);
+
+                // Finally write the new vector
+                fx.bcx.set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                fx.bcx.def_var(var, vector);
+
+                return;
+            }
             CPlaceInner::Addr(ptr, None) => {
                 if dst_layout.size == Size::ZERO || dst_layout.abi == Abi::Uninhabited {
                     return;
@@ -590,20 +614,32 @@ impl<'tcx> CPlace<'tcx> {
         field: mir::Field,
     ) -> CPlace<'tcx> {
         let layout = self.layout();
-        if let CPlaceInner::VarPair(local, var1, var2) = self.inner {
-            let layout = layout.field(&*fx, field.index());
 
-            match field.as_u32() {
-                0 => return CPlace {
-                    inner: CPlaceInner::Var(local, var1),
-                    layout,
-                },
-                1 => return CPlace {
-                    inner: CPlaceInner::Var(local, var2),
-                    layout,
-                },
-                _ => unreachable!("field should be 0 or 1"),
+        match self.inner {
+            CPlaceInner::Var(local, var) => {
+                if let Abi::Vector { .. } = layout.abi {
+                    return CPlace {
+                        inner: CPlaceInner::VarLane(local, var, field.as_u32().try_into().unwrap()),
+                        layout: layout.field(fx, field.as_u32().try_into().unwrap()),
+                    };
+                }
             }
+            CPlaceInner::VarPair(local, var1, var2) => {
+                let layout = layout.field(&*fx, field.index());
+
+                match field.as_u32() {
+                    0 => return CPlace {
+                        inner: CPlaceInner::Var(local, var1),
+                        layout,
+                    },
+                    1 => return CPlace {
+                        inner: CPlaceInner::Var(local, var2),
+                        layout,
+                    },
+                    _ => unreachable!("field should be 0 or 1"),
+                }
+            }
+            _ => {}
         }
 
         let (base, extra) = self.to_ptr_maybe_unsized();

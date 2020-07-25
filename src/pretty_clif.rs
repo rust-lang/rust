@@ -248,7 +248,8 @@ pub(crate) fn write_clif_file<'tcx>(
             let target_triple = crate::target_triple(tcx.sess);
             writeln!(file, "test compile").unwrap();
             writeln!(file, "set is_pic").unwrap();
-            writeln!(file, "target {}", target_triple).unwrap();
+            writeln!(file, "set enable_simd").unwrap();
+            writeln!(file, "target {} haswell", target_triple).unwrap();
             writeln!(file, "").unwrap();
             file.write(clif.as_bytes()).unwrap();
         }
