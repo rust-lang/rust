@@ -12,7 +12,7 @@ This option is deprecated and does nothing.
 This option lets you choose which code model to use. \
 Code models put constraints on address ranges that the program and its symbols may use. \
 With smaller address ranges machine instructions
-may be able to use use more compact addressing modes.
+may be able to use more compact addressing modes.
 
 The specific ranges depend on target architectures and addressing modes available to them. \
 For x86 more detailed description of its code models can be found in
