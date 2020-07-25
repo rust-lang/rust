@@ -667,7 +667,7 @@ impl String {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * The memory at `ptr` needs to have been previously allocated by the
+    /// * The memory at `buf` needs to have been previously allocated by the
     ///   same allocator the standard library uses, with a required alignment of exactly 1.
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the correct value.
@@ -675,7 +675,7 @@ impl String {
     /// Violating these may cause problems like corrupting the allocator's
     /// internal data structures.
     ///
-    /// The ownership of `ptr` is effectively transferred to the
+    /// The ownership of `buf` is effectively transferred to the
     /// `String` which may then deallocate, reallocate or change the
     /// contents of memory pointed to by the pointer at will. Ensure
     /// that nothing else uses the pointer after calling this
