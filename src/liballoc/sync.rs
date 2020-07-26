@@ -7,7 +7,6 @@
 //! [arc]: struct.Arc.html
 
 use core::any::Any;
-use core::array::LengthAtMost32;
 use core::borrow;
 use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
@@ -2162,10 +2161,7 @@ where
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, const N: usize> TryFrom<Arc<[T]>> for Arc<[T; N]>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> TryFrom<Arc<[T]>> for Arc<[T; N]> {
     type Error = Arc<[T]>;
 
     fn try_from(boxed_slice: Arc<[T]>) -> Result<Self, Self::Error> {

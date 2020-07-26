@@ -235,7 +235,6 @@ use crate::boxed::Box;
 use std::boxed::Box;
 
 use core::any::Any;
-use core::array::LengthAtMost32;
 use core::borrow;
 use core::cell::Cell;
 use core::cmp::Ordering;
@@ -1516,10 +1515,7 @@ where
 }
 
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
     type Error = Rc<[T]>;
 
     fn try_from(boxed_slice: Rc<[T]>) -> Result<Self, Self::Error> {

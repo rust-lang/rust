@@ -9,7 +9,6 @@
 
 // ignore-tidy-filelength
 
-use core::array::LengthAtMost32;
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -2889,9 +2888,9 @@ macro_rules! __impl_slice_eq1 {
 __impl_slice_eq1! { [] VecDeque<A>, Vec<B>, }
 __impl_slice_eq1! { [] VecDeque<A>, &[B], }
 __impl_slice_eq1! { [] VecDeque<A>, &mut [B], }
-__impl_slice_eq1! { [const N: usize] VecDeque<A>, [B; N], [B; N]: LengthAtMost32 }
-__impl_slice_eq1! { [const N: usize] VecDeque<A>, &[B; N], [B; N]: LengthAtMost32 }
-__impl_slice_eq1! { [const N: usize] VecDeque<A>, &mut [B; N], [B; N]: LengthAtMost32 }
+__impl_slice_eq1! { [const N: usize] VecDeque<A>, [B; N], }
+__impl_slice_eq1! { [const N: usize] VecDeque<A>, &[B; N], }
+__impl_slice_eq1! { [const N: usize] VecDeque<A>, &mut [B; N], }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialOrd> PartialOrd for VecDeque<A> {

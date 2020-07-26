@@ -13,10 +13,10 @@ fn main() {
     //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this was previously accepted by the compiler but is being phased out
     big.into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T] as IntoIterator>::into_iter`
+    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this was previously accepted by the compiler but is being phased out
     [0u8; 33].into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T] as IntoIterator>::into_iter`
+    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this was previously accepted by the compiler but is being phased out
 
     Box::new(small).into_iter();
@@ -26,10 +26,10 @@ fn main() {
     //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this was previously accepted by the compiler but is being phased out
     Box::new(big).into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T] as IntoIterator>::into_iter`
+    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this was previously accepted by the compiler but is being phased out
     Box::new([0u8; 33]).into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T] as IntoIterator>::into_iter`
+    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this was previously accepted by the compiler but is being phased out
 
     Box::new(Box::new(small)).into_iter();
@@ -39,10 +39,10 @@ fn main() {
     //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this was previously accepted by the compiler but is being phased out
     Box::new(Box::new(big)).into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T] as IntoIterator>::into_iter`
+    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this was previously accepted by the compiler but is being phased out
     Box::new(Box::new([0u8; 33])).into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T] as IntoIterator>::into_iter`
+    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
     //~| WARNING this was previously accepted by the compiler but is being phased out
 
     // Expressions that should not

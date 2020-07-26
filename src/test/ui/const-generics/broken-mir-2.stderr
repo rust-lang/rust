@@ -1,5 +1,5 @@
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/broken-mir-2.rs:1:12
+  --> $DIR/broken-mir-2.rs:3:12
    |
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
@@ -7,17 +7,5 @@ LL | #![feature(const_generics)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
-error[E0277]: arrays only have std trait implementations for lengths 0..=32
-  --> $DIR/broken-mir-2.rs:7:36
-   |
-LL | struct S<T: Debug, const N: usize>([T; N]);
-   |                                    ^^^^^^ the trait `std::array::LengthAtMost32` is not implemented for `[T; N]`
-   |
-   = note: required because of the requirements on the impl of `std::fmt::Debug` for `[T; N]`
-   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&[T; N]`
-   = note: required for the cast to the object type `dyn std::fmt::Debug`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+warning: 1 warning emitted
 
-error: aborting due to previous error; 1 warning emitted
-
-For more information about this error, try `rustc --explain E0277`.

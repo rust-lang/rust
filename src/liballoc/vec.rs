@@ -59,7 +59,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::array::LengthAtMost32;
 use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -2378,18 +2377,18 @@ __impl_slice_eq1! { [] &mut [A], Vec<B>, #[stable(feature = "partialeq_vec_for_r
 __impl_slice_eq1! { [] Cow<'_, [A]>, Vec<B> where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &[B] where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
 __impl_slice_eq1! { [] Cow<'_, [A]>, &mut [B] where A: Clone, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [const N: usize] Vec<A>, [B; N] where [B; N]: LengthAtMost32, #[stable(feature = "rust1", since = "1.0.0")] }
-__impl_slice_eq1! { [const N: usize] Vec<A>, &[B; N] where [B; N]: LengthAtMost32, #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [const N: usize] Vec<A>, [B; N], #[stable(feature = "rust1", since = "1.0.0")] }
+__impl_slice_eq1! { [const N: usize] Vec<A>, &[B; N], #[stable(feature = "rust1", since = "1.0.0")] }
 
 // NOTE: some less important impls are omitted to reduce code bloat
 // FIXME(Centril): Reconsider this?
-//__impl_slice_eq1! { [const N: usize] Vec<A>, &mut [B; N], [B; N]: LengthAtMost32 }
-//__impl_slice_eq1! { [const N: usize] [A; N], Vec<B>, [A; N]: LengthAtMost32 }
-//__impl_slice_eq1! { [const N: usize] &[A; N], Vec<B>, [A; N]: LengthAtMost32 }
-//__impl_slice_eq1! { [const N: usize] &mut [A; N], Vec<B>, [A; N]: LengthAtMost32 }
-//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, [B; N], [B; N]: LengthAtMost32 }
-//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &[B; N], [B; N]: LengthAtMost32 }
-//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &mut [B; N], [B; N]: LengthAtMost32 }
+//__impl_slice_eq1! { [const N: usize] Vec<A>, &mut [B; N], }
+//__impl_slice_eq1! { [const N: usize] [A; N], Vec<B>, }
+//__impl_slice_eq1! { [const N: usize] &[A; N], Vec<B>, }
+//__impl_slice_eq1! { [const N: usize] &mut [A; N], Vec<B>, }
+//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, [B; N], }
+//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &[B; N], }
+//__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &mut [B; N], }
 
 /// Implements comparison of vectors, lexicographically.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2493,10 +2492,7 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
 }
 
 #[stable(feature = "vec_from_array", since = "1.44.0")]
-impl<T, const N: usize> From<[T; N]> for Vec<T>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> From<[T; N]> for Vec<T> {
     #[cfg(not(test))]
     fn from(s: [T; N]) -> Vec<T> {
         <[T]>::into_vec(box s)
