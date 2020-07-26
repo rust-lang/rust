@@ -2717,8 +2717,8 @@ fn lint_lazy_eval<'tcx>(
     allow_variant_calls: bool,
     simplify_using: &str,
 ) {
-    let is_option = is_type_diagnostic_item(cx, cx.tables().expr_ty(&args[0]), sym!(option_type));
-    let is_result = is_type_diagnostic_item(cx, cx.tables().expr_ty(&args[0]), sym!(result_type));
+    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]), sym!(option_type));
+    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]), sym!(result_type));
 
     if !is_option && !is_result {
         return;
