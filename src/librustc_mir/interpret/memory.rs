@@ -13,6 +13,7 @@ use std::fmt;
 use std::ptr;
 
 use rustc_ast::ast::Mutability;
+use rustc_hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::ty::{self, Instance, ParamEnv, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
@@ -116,6 +117,21 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 
     /// Lets us implement `HasDataLayout`, which is awfully convenient.
     pub tcx: TyCtxt<'tcx>,
+}
+
+
+/// Return the `tcx` allocation containing the initial value of the given static
+pub fn get_static(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> InterpResult<'tcx, &'tcx Allocation> {
+    trace!("get_static: Need to compute {:?}", def_id);
+    let instance = Instance::mono(tcx, def_id);
+    let gid = GlobalId { instance, promoted: None };
+    // Use the raw query here to break validation cycles. Later uses of the static
+    // will call the full query anyway.
+    let raw_const = tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid))?;
+    Ok(tcx.global_alloc(raw_const.alloc_id).unwrap_memory())
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M> {
@@ -473,17 +489,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 if tcx.is_foreign_item(def_id) {
                     throw_unsup!(ReadExternStatic(def_id));
                 }
-                trace!("get_global_alloc: Need to compute {:?}", def_id);
-                let instance = Instance::mono(tcx, def_id);
-                let gid = GlobalId { instance, promoted: None };
-                // Use the raw query here to break validation cycles. Later uses of the static
-                // will call the full query anyway.
-                let raw_const = tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid))?;
-                // Make sure we use the ID of the resolved memory, not the lazy one!
-                let id = raw_const.alloc_id;
-                let allocation = tcx.global_alloc(id).unwrap_memory();
 
-                (allocation, Some(def_id))
+                (get_static(tcx, def_id)?, Some(def_id))
             }
         };
         M::before_access_global(memory_extra, id, alloc, def_id, is_write)?;
