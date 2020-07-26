@@ -2614,7 +2614,7 @@ fn specialize_one_pattern<'p, 'tcx>(
             let pats = cx.pattern_arena.alloc_from_iter((0..n).filter_map(|i| {
                 let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
                 let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
-                let scalar = scalar.not_undef().ok()?;
+                let scalar = scalar.check_init().ok()?;
                 let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
                 let pattern = Pat { ty, span: pat.span, kind: box PatKind::Constant { value } };
                 Some(pattern)

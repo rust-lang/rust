@@ -606,7 +606,7 @@ impl<'tcx, Tag> ScalarMaybeUninit<Tag> {
     }
 
     #[inline]
-    pub fn not_undef(self) -> InterpResult<'static, Scalar<Tag>> {
+    pub fn check_init(self) -> InterpResult<'static, Scalar<Tag>> {
         match self {
             ScalarMaybeUninit::Scalar(scalar) => Ok(scalar),
             ScalarMaybeUninit::Uninit => throw_ub!(InvalidUninitBytes(None)),
@@ -615,72 +615,72 @@ impl<'tcx, Tag> ScalarMaybeUninit<Tag> {
 
     #[inline(always)]
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {
-        self.not_undef()?.to_bool()
+        self.check_init()?.to_bool()
     }
 
     #[inline(always)]
     pub fn to_char(self) -> InterpResult<'tcx, char> {
-        self.not_undef()?.to_char()
+        self.check_init()?.to_char()
     }
 
     #[inline(always)]
     pub fn to_f32(self) -> InterpResult<'tcx, Single> {
-        self.not_undef()?.to_f32()
+        self.check_init()?.to_f32()
     }
 
     #[inline(always)]
     pub fn to_f64(self) -> InterpResult<'tcx, Double> {
-        self.not_undef()?.to_f64()
+        self.check_init()?.to_f64()
     }
 
     #[inline(always)]
     pub fn to_u8(self) -> InterpResult<'tcx, u8> {
-        self.not_undef()?.to_u8()
+        self.check_init()?.to_u8()
     }
 
     #[inline(always)]
     pub fn to_u16(self) -> InterpResult<'tcx, u16> {
-        self.not_undef()?.to_u16()
+        self.check_init()?.to_u16()
     }
 
     #[inline(always)]
     pub fn to_u32(self) -> InterpResult<'tcx, u32> {
-        self.not_undef()?.to_u32()
+        self.check_init()?.to_u32()
     }
 
     #[inline(always)]
     pub fn to_u64(self) -> InterpResult<'tcx, u64> {
-        self.not_undef()?.to_u64()
+        self.check_init()?.to_u64()
     }
 
     #[inline(always)]
     pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
-        self.not_undef()?.to_machine_usize(cx)
+        self.check_init()?.to_machine_usize(cx)
     }
 
     #[inline(always)]
     pub fn to_i8(self) -> InterpResult<'tcx, i8> {
-        self.not_undef()?.to_i8()
+        self.check_init()?.to_i8()
     }
 
     #[inline(always)]
     pub fn to_i16(self) -> InterpResult<'tcx, i16> {
-        self.not_undef()?.to_i16()
+        self.check_init()?.to_i16()
     }
 
     #[inline(always)]
     pub fn to_i32(self) -> InterpResult<'tcx, i32> {
-        self.not_undef()?.to_i32()
+        self.check_init()?.to_i32()
     }
 
     #[inline(always)]
     pub fn to_i64(self) -> InterpResult<'tcx, i64> {
-        self.not_undef()?.to_i64()
+        self.check_init()?.to_i64()
     }
 
     #[inline(always)]
     pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, i64> {
-        self.not_undef()?.to_machine_isize(cx)
+        self.check_init()?.to_machine_isize(cx)
     }
 }
 

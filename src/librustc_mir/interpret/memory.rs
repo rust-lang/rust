@@ -171,7 +171,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
     ) -> Pointer<M::PointerTag> {
-        let alloc = Allocation::undef(size, align);
+        let alloc = Allocation::uninit(size, align);
         self.allocate_with(alloc, kind)
     }
 
@@ -907,18 +907,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         let dest_bytes = dest_bytes.as_mut_ptr();
 
-        // Prepare a copy of the undef mask.
+        // Prepare a copy of the initialization mask.
         let compressed = self.get_raw(src.alloc_id)?.compress_undef_range(src, size);
 
-        if compressed.all_bytes_undef() {
-            // Fast path: If all bytes are `undef` then there is nothing to copy. The target range
-            // is marked as undef but we otherwise omit changing the byte representation which may
-            // be arbitrary for undef bytes.
+        if compressed.no_bytes_init() {
+            // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
+            // is marked as unititialized but we otherwise omit changing the byte representation which may
+            // be arbitrary for uninitialized bytes.
             // This also avoids writing to the target bytes so that the backing allocation is never
-            // touched if the bytes stay undef for the whole interpreter execution. On contemporary
+            // touched if the bytes stay uninitialized for the whole interpreter execution. On contemporary
             // operating system this can avoid physically allocating the page.
             let dest_alloc = self.get_raw_mut(dest.alloc_id)?;
-            dest_alloc.mark_definedness(dest, size * length, false); // `Size` multiplication
+            dest_alloc.mark_init(dest, size * length, false); // `Size` multiplication
             dest_alloc.mark_relocation_range(relocations);
             return Ok(());
         }
@@ -958,7 +958,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
 
         // now fill in all the data
-        self.get_raw_mut(dest.alloc_id)?.mark_compressed_undef_range(
+        self.get_raw_mut(dest.alloc_id)?.mark_compressed_init_range(
             &compressed,
             dest,
             size,

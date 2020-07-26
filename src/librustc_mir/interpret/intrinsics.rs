@@ -150,7 +150,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::bitreverse => {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
-                let val = self.read_scalar(args[0])?.not_undef()?;
+                let val = self.read_scalar(args[0])?.check_init()?;
                 let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
                     Abi::Scalar(ref scalar) => scalar.value,
@@ -281,9 +281,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
                 let layout = self.layout_of(substs.type_at(0))?;
-                let val = self.read_scalar(args[0])?.not_undef()?;
+                let val = self.read_scalar(args[0])?.check_init()?;
                 let val_bits = self.force_bits(val, layout.size)?;
-                let raw_shift = self.read_scalar(args[1])?.not_undef()?;
+                let raw_shift = self.read_scalar(args[1])?.check_init()?;
                 let raw_shift_bits = self.force_bits(raw_shift, layout.size)?;
                 let width_bits = u128::from(layout.size.bits());
                 let shift_bits = raw_shift_bits % width_bits;
@@ -298,7 +298,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(result, dest)?;
             }
             sym::offset => {
-                let ptr = self.read_scalar(args[0])?.not_undef()?;
+                let ptr = self.read_scalar(args[0])?.check_init()?;
                 let offset_count = self.read_scalar(args[1])?.to_machine_isize(self)?;
                 let pointee_ty = substs.type_at(0);
 
@@ -306,7 +306,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(offset_ptr, dest)?;
             }
             sym::arith_offset => {
-                let ptr = self.read_scalar(args[0])?.not_undef()?;
+                let ptr = self.read_scalar(args[0])?.check_init()?;
                 let offset_count = self.read_scalar(args[1])?.to_machine_isize(self)?;
                 let pointee_ty = substs.type_at(0);
 

@@ -883,7 +883,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 let ptr = Pointer::new(AllocId(0), offset);
                                 alloc
                                     .read_scalar(&bx, ptr, size)
-                                    .and_then(|s| s.not_undef())
+                                    .and_then(|s| s.check_init())
                                     .unwrap_or_else(|e| {
                                         bx.tcx().sess.span_err(
                                             span,

@@ -63,7 +63,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 
     #[inline]
-    pub fn to_scalar_or_undef(self) -> ScalarMaybeUninit<Tag> {
+    pub fn to_scalar_or_uninit(self) -> ScalarMaybeUninit<Tag> {
         match self {
             Immediate::Scalar(val) => val,
             Immediate::ScalarPair(..) => bug!("Got a wide pointer where a scalar was expected"),
@@ -72,14 +72,14 @@ impl<'tcx, Tag> Immediate<Tag> {
 
     #[inline]
     pub fn to_scalar(self) -> InterpResult<'tcx, Scalar<Tag>> {
-        self.to_scalar_or_undef().not_undef()
+        self.to_scalar_or_uninit().check_init()
     }
 
     #[inline]
     pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
         match self {
             Immediate::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
-            Immediate::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?)),
+            Immediate::ScalarPair(a, b) => Ok((a.check_init()?, b.check_init()?)),
         }
     }
 }
@@ -333,7 +333,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<M::PointerTag>> {
-        Ok(self.read_immediate(op)?.to_scalar_or_undef())
+        Ok(self.read_immediate(op)?.to_scalar_or_uninit())
     }
 
     // Turn the wide MPlace into a string (must already be dereferenced!)

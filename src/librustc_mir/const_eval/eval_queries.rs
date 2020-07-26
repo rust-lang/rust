@@ -154,7 +154,7 @@ pub(super) fn op_to_const<'tcx>(
                 ScalarMaybeUninit::Uninit => to_const_value(op.assert_mem_place(ecx)),
             },
             Immediate::ScalarPair(a, b) => {
-                let (data, start) = match a.not_undef().unwrap() {
+                let (data, start) = match a.check_init().unwrap() {
                     Scalar::Ptr(ptr) => {
                         (ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(), ptr.offset.bytes())
                     }
