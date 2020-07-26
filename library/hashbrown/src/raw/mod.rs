@@ -34,7 +34,7 @@ cfg_if! {
 
 mod bitmask;
 
-use self::bitmask::BitMask;
+use self::bitmask::{BitMask, BitMaskIter};
 use self::imp::Group;
 
 // Branch prediction hint. This is currently only available on nightly but it
@@ -938,23 +938,14 @@ impl<T> RawTable<T> {
     #[inline]
     pub fn find(&self, hash: u64, mut eq: impl FnMut(&T) -> bool) -> Option<Bucket<T>> {
         unsafe {
-            for pos in self.probe_seq(hash) {
-                let group = Group::load(self.ctrl(pos));
-                for bit in group.match_byte(h2(hash)) {
-                    let index = (pos + bit) & self.bucket_mask;
-                    let bucket = self.bucket(index);
-                    if likely(eq(bucket.as_ref())) {
-                        return Some(bucket);
-                    }
-                }
-                if likely(group.match_empty().any_bit_set()) {
-                    return None;
+            for bucket in self.iter_hash(hash) {
+                let elm = bucket.as_ref();
+                if likely(eq(elm)) {
+                    return Some(bucket);
                 }
             }
+            None
         }
-
-        // probe_seq never returns.
-        unreachable!();
     }
 
     /// Returns the number of elements the map can hold without reallocating.
@@ -1002,6 +993,18 @@ impl<T> RawTable<T> {
             iter: RawIterRange::new(self.ctrl.as_ptr(), data, self.buckets()),
             items: self.items,
         }
+    }
+
+    /// Returns an iterator over occupied buckets that could match a given hash.
+    ///
+    /// In rare cases, the iterator may return a bucket with a different hash.
+    ///
+    /// It is up to the caller to ensure that the `RawTable` outlives the
+    /// `RawIterHash`. Because we cannot make the `next` method unsafe on the
+    /// `RawIterHash` struct, we have to make the `iter_hash` method unsafe.
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub unsafe fn iter_hash(&self, hash: u64) -> RawIterHash<'_, T> {
+        RawIterHash::new(self, hash)
     }
 
     /// Returns an iterator which removes all elements from the table without
@@ -1737,3 +1740,66 @@ impl<T> Iterator for RawDrain<'_, T> {
 
 impl<T> ExactSizeIterator for RawDrain<'_, T> {}
 impl<T> FusedIterator for RawDrain<'_, T> {}
+
+/// Iterator over occupied buckets that could match a given hash.
+///
+/// In rare cases, the iterator may return a bucket with a different hash.
+pub struct RawIterHash<'a, T> {
+    table: &'a RawTable<T>,
+
+    // The top 7 bits of the hash.
+    h2_hash: u8,
+
+    // The sequence of groups to probe in the search.
+    probe_seq: ProbeSeq,
+
+    // The current group and its position.
+    pos: usize,
+    group: Group,
+
+    // The elements within the group with a matching h2-hash.
+    bitmask: BitMaskIter,
+}
+
+impl<'a, T> RawIterHash<'a, T> {
+    fn new(table: &'a RawTable<T>, hash: u64) -> Self {
+        unsafe {
+            let h2_hash = h2(hash);
+            let mut probe_seq = table.probe_seq(hash);
+            let pos = probe_seq.next().unwrap();
+            let group = Group::load(table.ctrl(pos));
+            let bitmask = group.match_byte(h2_hash).into_iter();
+
+            RawIterHash {
+                table,
+                h2_hash,
+                probe_seq,
+                pos,
+                group,
+                bitmask,
+            }
+        }
+    }
+}
+
+impl<'a, T> Iterator for RawIterHash<'a, T> {
+    type Item = Bucket<T>;
+
+    fn next(&mut self) -> Option<Bucket<T>> {
+        unsafe {
+            loop {
+                if let Some(bit) = self.bitmask.next() {
+                    let index = (self.pos + bit) & self.table.bucket_mask;
+                    let bucket = self.table.bucket(index);
+                    return Some(bucket);
+                }
+                if likely(self.group.match_empty().any_bit_set()) {
+                    return None;
+                }
+                self.pos = self.probe_seq.next().unwrap();
+                self.group = Group::load(self.table.ctrl(self.pos));
+                self.bitmask = self.group.match_byte(self.h2_hash).into_iter();
+            }
+        }
+    }
+}
