@@ -522,9 +522,7 @@ impl fmt::Display for UnsupportedOpInfo {
         use UnsupportedOpInfo::*;
         match self {
             Unsupported(ref msg) => write!(f, "{}", msg),
-            ReadExternStatic(did) => {
-                write!(f, "cannot read from extern static ({:?})", did)
-            }
+            ReadExternStatic(did) => write!(f, "cannot read from extern static ({:?})", did),
             NoMirFor(did) => write!(f, "no MIR body is available for {:?}", did),
             ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
             ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),

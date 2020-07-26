@@ -13,8 +13,8 @@ use std::fmt;
 use std::ptr;
 
 use rustc_ast::ast::Mutability;
-use rustc_hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, Instance, ParamEnv, TyCtxt};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
@@ -119,12 +119,8 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub tcx: TyCtxt<'tcx>,
 }
 
-
 /// Return the `tcx` allocation containing the initial value of the given static
-pub fn get_static(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-) -> InterpResult<'tcx, &'tcx Allocation> {
+pub fn get_static(tcx: TyCtxt<'tcx>, def_id: DefId) -> InterpResult<'tcx, &'tcx Allocation> {
     trace!("get_static: Need to compute {:?}", def_id);
     let instance = Instance::mono(tcx, def_id);
     let gid = GlobalId { instance, promoted: None };
@@ -162,7 +158,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ///
     /// This function can fail only if `ptr` points to an `extern static`.
     #[inline]
-    pub fn global_base_pointer(&self, mut ptr: Pointer) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
+    pub fn global_base_pointer(
+        &self,
+        mut ptr: Pointer,
+    ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         // We need to handle `extern static`.
         let ptr = match self.tcx.get_global_alloc(ptr.alloc_id) {
             Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {
@@ -197,7 +196,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         };
         // Functions are global allocations, so make sure we get the right base pointer.
-        // We know this is not an `extern static` so this cannmot fail.
+        // We know this is not an `extern static` so this cannot fail.
         self.global_base_pointer(Pointer::from(id)).unwrap()
     }
 
@@ -659,7 +658,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if ptr.offset.bytes() != 0 {
             throw_ub!(InvalidFunctionPointer(ptr.erase_tag()))
         }
-        self.get_fn_alloc(ptr.alloc_id).ok_or_else(|| err_ub!(InvalidFunctionPointer(ptr.erase_tag())).into())
+        self.get_fn_alloc(ptr.alloc_id)
+            .ok_or_else(|| err_ub!(InvalidFunctionPointer(ptr.erase_tag())).into())
     }
 
     pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {
