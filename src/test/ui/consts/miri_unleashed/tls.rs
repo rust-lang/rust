@@ -14,4 +14,11 @@ static TEST_BAD: () = {
     //~| NOTE cannot access thread local static
 };
 
+// Make sure we catch taking a reference to thread-local storage.
+static TEST_BAD_REF: () = {
+    unsafe { let _val = &A; }
+    //~^ ERROR could not evaluate static initializer
+    //~| NOTE cannot access thread local static
+};
+
 fn main() {}
