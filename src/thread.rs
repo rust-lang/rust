@@ -11,7 +11,6 @@ use log::trace;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::{self, Instance};
 
 use crate::sync::SynchronizationState;
 use crate::*;
@@ -497,9 +496,6 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
-    ///
-    /// FIXME: This method should be replaced as soon as
-    /// https://github.com/rust-lang/rust/issues/70685 gets fixed.
     fn get_or_create_thread_local_alloc_id(&self, def_id: DefId) -> InterpResult<'tcx, AllocId> {
         let this = self.eval_context_ref();
         let tcx = this.tcx;
@@ -511,29 +507,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // We need to allocate a thread-specific allocation id for this
             // thread-local static.
             //
-            // At first, we invoke the `const_eval_raw` query and extract the
-            // allocation from it. Unfortunately, we have to duplicate the code
-            // from `Memory::get_global_alloc` that does this.
-            //
+            // At first, we compute the initial value for this static.
             // Then we store the retrieved allocation back into the `alloc_map`
             // to get a fresh allocation id, which we can use as a
             // thread-specific allocation id for the thread-local static.
+            // On first access to that allocation, it will be copied over to the machine memory.
             if tcx.is_foreign_item(def_id) {
                 throw_unsup_format!("foreign thread-local statics are not supported");
             }
-            // Invoke the `const_eval_raw` query.
-            let instance = Instance::mono(tcx.tcx, def_id);
-            let gid = GlobalId { instance, promoted: None };
-            let raw_const =
-                tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
-                    // no need to report anything, the const_eval call takes care of that
-                    // for statics
-                    assert!(tcx.is_static(def_id));
-                    err
-                })?;
-            let id = raw_const.alloc_id;
-            // Extract the allocation from the query result.
-            let allocation = tcx.global_alloc(id).unwrap_memory();
+            let allocation = interpret::get_static(*tcx, def_id)?;
             // Create a new allocation id for the same allocation in this hacky
             // way. Internally, `alloc_map` deduplicates allocations, but this
             // is fine because Miri will make a copy before a first mutable
