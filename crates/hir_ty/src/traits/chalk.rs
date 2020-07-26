@@ -246,7 +246,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     }
     // FIXME: lookup names
     fn adt_name(&self, struct_id: chalk_ir::AdtId<Interner>) -> String {
-        format!("Adt_{:?}", struct_id.0).replace("TypeCtorId(", "").replace(")", "")
+        let datum = self.db.struct_datum(self.krate, struct_id);
+        format!("{:?}", datum.name(&Interner))
     }
     fn assoc_type_name(&self, assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
         format!("Assoc_{}", assoc_ty_id.0)
