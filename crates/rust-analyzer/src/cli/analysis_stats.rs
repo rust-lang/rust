@@ -276,12 +276,16 @@ pub fn analysis_stats(
         num_exprs_unknown,
         if num_exprs > 0 { num_exprs_unknown * 100 / num_exprs } else { 100 }
     );
+    report_metric("unknown type", num_exprs_unknown, "#");
+
     eprintln!(
         "Expressions of partially unknown type: {} ({}%)",
         num_exprs_partially_unknown,
         if num_exprs > 0 { num_exprs_partially_unknown * 100 / num_exprs } else { 100 }
     );
+
     eprintln!("Type mismatches: {}", num_type_mismatches);
+    report_metric("type mismatches", num_type_mismatches, "#");
 
     let inference_time = inference_time.elapsed();
     let total_memory = ra_prof::memory_usage();
