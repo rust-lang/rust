@@ -137,15 +137,33 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
-    /// the *canonical* machine pointer to the allocation.  Must never be used
-    /// for any other pointers!
+    /// the machine pointer to the allocation.  Must never be used
+    /// for any other pointers, nor for TLS statics.
     ///
-    /// This represents a *direct* access to that memory, as opposed to access
-    /// through a pointer that was created by the program.
+    /// Using the resulting pointer represents a *direct* access to that memory
+    /// (e.g. by directly using a `static`),
+    /// as opposed to access through a pointer that was created by the program.
+    ///
+    /// This function can fail only if `ptr` points to an `extern static`.
     #[inline]
-    pub fn tag_global_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
-        let id = M::canonical_alloc_id(self, ptr.alloc_id);
-        ptr.with_tag(M::tag_global_base_pointer(&self.extra, id))
+    pub fn global_base_pointer(&self, mut ptr: Pointer) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
+        // We need to handle `extern static`.
+        let ptr = match self.tcx.get_global_alloc(ptr.alloc_id) {
+            Some(GlobalAlloc::Static(def_id)) if self.tcx.is_thread_local_static(def_id) => {
+                bug!("global memory cannot point to thread-local static")
+            }
+            Some(GlobalAlloc::Static(def_id)) if self.tcx.is_foreign_item(def_id) => {
+                ptr.alloc_id = M::extern_static_alloc_id(self, def_id)?;
+                ptr
+            }
+            _ => {
+                // No need to change the `AllocId`.
+                ptr
+            }
+        };
+        // And we need to get the tag.
+        let tag = M::tag_global_base_pointer(&self.extra, ptr.alloc_id);
+        Ok(ptr.with_tag(tag))
     }
 
     pub fn create_fn_alloc(
@@ -162,7 +180,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 id
             }
         };
-        self.tag_global_base_pointer(Pointer::from(id))
+        // Functions are global allocations, so make sure we get the right base pointer.
+        // We know this is not an `extern static` so this cannmot fail.
+        self.global_base_pointer(Pointer::from(id)).unwrap()
     }
 
     pub fn allocate(
@@ -195,6 +215,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             M::GLOBAL_KIND.map(MemoryKind::Machine),
             "dynamically allocating global memory"
         );
+        // This is a new allocation, not a new global one, so no `global_base_ptr`.
         let (alloc, tag) = M::init_allocation_extra(&self.extra, id, Cow::Owned(alloc), Some(kind));
         self.alloc_map.insert(id, (kind, alloc.into_owned()));
         Pointer::from(id).with_tag(tag)
@@ -437,6 +458,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Function(..)) => throw_ub!(DerefFunctionPointer(id)),
             None => throw_ub!(PointerUseAfterFree(id)),
             Some(GlobalAlloc::Static(def_id)) => {
+                assert!(tcx.is_static(def_id));
                 assert!(!tcx.is_thread_local_static(def_id));
                 // Notice that every static has two `AllocId` that will resolve to the same
                 // thing here: one maps to `GlobalAlloc::Static`, this is the "lazy" ID,
@@ -448,24 +470,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // The `GlobalAlloc::Memory` branch here is still reachable though; when a static
                 // contains a reference to memory that was created during its evaluation (i.e., not
                 // to another static), those inner references only exist in "resolved" form.
-                //
-                // Assumes `id` is already canonical.
                 if tcx.is_foreign_item(def_id) {
-                    trace!("get_global_alloc: foreign item {:?}", def_id);
-                    throw_unsup!(ReadForeignStatic(def_id))
+                    throw_unsup!(ReadExternStatic(def_id));
                 }
                 trace!("get_global_alloc: Need to compute {:?}", def_id);
                 let instance = Instance::mono(tcx, def_id);
                 let gid = GlobalId { instance, promoted: None };
                 // Use the raw query here to break validation cycles. Later uses of the static
                 // will call the full query anyway.
-                let raw_const =
-                    tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
-                        // no need to report anything, the const_eval call takes care of that
-                        // for statics
-                        assert!(tcx.is_static(def_id));
-                        err
-                    })?;
+                let raw_const = tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid))?;
                 // Make sure we use the ID of the resolved memory, not the lazy one!
                 let id = raw_const.alloc_id;
                 let allocation = tcx.global_alloc(id).unwrap_memory();
@@ -482,6 +495,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             alloc,
             M::GLOBAL_KIND.map(MemoryKind::Machine),
         );
+        // Sanity check that this is the same pointer we would have gotten via `global_base_pointer`.
         debug_assert_eq!(tag, M::tag_global_base_pointer(memory_extra, id));
         Ok(alloc)
     }
@@ -492,7 +506,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         &self,
         id: AllocId,
     ) -> InterpResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {
-        let id = M::canonical_alloc_id(self, id);
         // The error type of the inner closure here is somewhat funny.  We have two
         // ways of "erroring": An actual error, or because we got a reference from
         // `get_global_alloc` that we can actually use directly without inserting anything anywhere.
@@ -529,7 +542,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         &mut self,
         id: AllocId,
     ) -> InterpResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
-        let id = M::canonical_alloc_id(self, id);
         let tcx = self.tcx;
         let memory_extra = &self.extra;
         let a = self.alloc_map.get_mut_or(id, || {
@@ -568,7 +580,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
-        let id = M::canonical_alloc_id(self, id);
         // # Regular allocations
         // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static
@@ -621,7 +632,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
-    /// Assumes `id` is already canonical.
     fn get_fn_alloc(&self, id: AllocId) -> Option<FnVal<'tcx, M::ExtraFnVal>> {
         trace!("reading fn ptr: {}", id);
         if let Some(extra) = self.extra_fn_ptr_map.get(&id) {
@@ -642,8 +652,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         if ptr.offset.bytes() != 0 {
             throw_ub!(InvalidFunctionPointer(ptr.erase_tag()))
         }
-        let id = M::canonical_alloc_id(self, ptr.alloc_id);
-        self.get_fn_alloc(id).ok_or_else(|| err_ub!(InvalidFunctionPointer(ptr.erase_tag())).into())
+        self.get_fn_alloc(ptr.alloc_id).ok_or_else(|| err_ub!(InvalidFunctionPointer(ptr.erase_tag())).into())
     }
 
     pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {

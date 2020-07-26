@@ -541,9 +541,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         val: &ty::Const<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let tag_scalar = |scalar| match scalar {
-            Scalar::Ptr(ptr) => Scalar::Ptr(self.tag_global_base_pointer(ptr)),
-            Scalar::Raw { data, size } => Scalar::Raw { data, size },
+        let tag_scalar = |scalar| -> InterpResult<'tcx, _> {
+            Ok(match scalar {
+                Scalar::Ptr(ptr) => Scalar::Ptr(self.global_base_pointer(ptr)?),
+                Scalar::Raw { data, size } => Scalar::Raw { data, size },
+            })
         };
         // Early-return cases.
         let val_val = match val.val {
@@ -570,10 +572,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             ty::ConstKind::Value(val_val) => val_val,
         };
-        // This call allows the machine to create fresh allocation ids for
-        // thread-local statics (see the `adjust_global_const` function
-        // documentation).
-        let val_val = M::adjust_global_const(self, val_val)?;
         // Other cases need layout.
         let layout =
             from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(val.ty))?;
@@ -582,10 +580,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let id = self.tcx.create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
-                let ptr = self.tag_global_base_pointer(Pointer::new(id, offset));
+                let ptr = self.global_base_pointer(Pointer::new(id, offset))?;
                 Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
             }
-            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x).into()),
+            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x)?.into()),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
@@ -594,7 +592,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Size::from_bytes(start), // offset: `start`
                 );
                 Operand::Immediate(Immediate::new_slice(
-                    self.tag_global_base_pointer(ptr).into(),
+                    self.global_base_pointer(ptr)?.into(),
                     u64::try_from(end.checked_sub(start).unwrap()).unwrap(), // len: `end - start`
                     self,
                 ))
