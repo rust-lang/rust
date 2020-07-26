@@ -2710,8 +2710,8 @@ fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
 
 /// lint use of `<fn>_else(simple closure)` for `Option`s and `Result`s that can be
 /// replaced with `<fn>(return value of simple closure)`
-fn lint_lazy_eval<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn lint_lazy_eval<'tcx>(
+    cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     args: &'tcx [hir::Expr<'_>],
     allow_variant_calls: bool,
