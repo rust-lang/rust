@@ -410,6 +410,20 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         None
     }
 
+    /// Handles thread termination of the active thread: wakes up threads joining on this one,
+    /// and deallocated thread-local statics.
+    ///
+    /// This is called from `tls.rs` after handling the TLS dtors.
+    fn thread_terminated(&mut self) {
+        for (i, thread) in self.threads.iter_enumerated_mut() {
+            // Check if we need to unblock any threads.
+            if thread.state == ThreadState::BlockedOnJoin(self.active_thread) {
+                trace!("unblocking {:?} because {:?} terminated", i, self.active_thread);
+                thread.state = ThreadState::Enabled;
+            }
+        }
+    }
+
     /// Decide which action to take next and on which thread.
     ///
     /// The currently implemented scheduling policy is the one that is commonly
@@ -421,13 +435,6 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         // checks whether the thread has popped all its stack and if yes, sets
         // the thread state to terminated).
         if self.threads[self.active_thread].check_terminated() {
-            // Check if we need to unblock any threads.
-            for (i, thread) in self.threads.iter_enumerated_mut() {
-                if thread.state == ThreadState::BlockedOnJoin(self.active_thread) {
-                    trace!("unblocking {:?} because {:?} terminated", i, self.active_thread);
-                    thread.state = ThreadState::Enabled;
-                }
-            }
             return Ok(SchedulingAction::ExecuteDtors);
         }
         if self.threads[MAIN_THREAD].state == ThreadState::Terminated {
@@ -659,5 +666,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         let this = self.eval_context_mut();
         this.machine.threads.schedule()
+    }
+
+    #[inline]
+    fn thread_terminated(&mut self) {
+        self.eval_context_mut().machine.threads.thread_terminated()
     }
 }

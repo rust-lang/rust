@@ -9,7 +9,8 @@ struct TestCell {
 
 impl Drop for TestCell {
     fn drop(&mut self) {
-        println!("Dropping: {}", self.value.borrow())
+        for _ in 0..10 { thread::yield_now(); }
+        println!("Dropping: {} (should be before 'Continue main 1').", self.value.borrow())
     }
 }
 
@@ -28,7 +29,7 @@ fn check_destructors() {
     })
     .join()
     .unwrap();
-    println!("Continue main.")
+    println!("Continue main 1.")
 }
 
 struct JoinCell {
@@ -37,8 +38,9 @@ struct JoinCell {
 
 impl Drop for JoinCell {
     fn drop(&mut self) {
+        for _ in 0..10 { thread::yield_now(); }
         let join_handle = self.value.borrow_mut().take().unwrap();
-        println!("Joining: {}", join_handle.join().unwrap());
+        println!("Joining: {} (should be before 'Continue main 2').", join_handle.join().unwrap());
     }
 }
 
