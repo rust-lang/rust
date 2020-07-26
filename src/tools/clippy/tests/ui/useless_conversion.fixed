@@ -32,11 +32,20 @@ fn test_issue_3913() -> Result<(), std::io::Error> {
     Ok(())
 }
 
+fn test_issue_5833() -> Result<(), ()> {
+    let text = "foo\r\nbar\n\nbaz\n";
+    let lines = text.lines();
+    if Some("ok") == lines.into_iter().next() {}
+
+    Ok(())
+}
+
 fn main() {
     test_generic(10i32);
     test_generic2::<i32, i32>(10i32);
     test_questionmark().unwrap();
     test_issue_3913().unwrap();
+    test_issue_5833().unwrap();
 
     let _: String = "foo".into();
     let _: String = From::from("foo");

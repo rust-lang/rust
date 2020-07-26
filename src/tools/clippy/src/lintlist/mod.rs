@@ -1835,7 +1835,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "complexity",
         desc: "throwaway closures called in the expression they are defined",
         deprecation: None,
-        module: "misc_early",
+        module: "redundant_closure_call",
     },
     Lint {
         name: "redundant_closure_for_method_calls",
@@ -2291,6 +2291,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "comparing unit values",
         deprecation: None,
         module: "types",
+    },
+    Lint {
+        name: "unit_return_expecting_ord",
+        group: "correctness",
+        desc: "fn arguments of type Fn(...) -> Ord returning the unit type ().",
+        deprecation: None,
+        module: "unit_return_expecting_ord",
     },
     Lint {
         name: "unknown_clippy_lints",

@@ -11,7 +11,7 @@ use rustc_ast::ast::LitKind;
 use rustc_hir as hir;
 
 declare_clippy_lint! {
-    /// **What it does:** Finds occurences of `Vec::resize(0, an_int)`
+    /// **What it does:** Finds occurrences of `Vec::resize(0, an_int)`
     ///
     /// **Why is this bad?** This is probably an argument inversion mistake.
     ///

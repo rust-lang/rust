@@ -59,6 +59,7 @@ pub const LINKED_LIST: [&str; 4] = ["alloc", "collections", "linked_list", "Link
 pub const LINT: [&str; 3] = ["rustc_session", "lint", "Lint"];
 pub const MEM_DISCRIMINANT: [&str; 3] = ["core", "mem", "discriminant"];
 pub const MEM_FORGET: [&str; 3] = ["core", "mem", "forget"];
+pub const MEM_MANUALLY_DROP: [&str; 4] = ["core", "mem", "manually_drop", "ManuallyDrop"];
 pub const MEM_MAYBEUNINIT: [&str; 4] = ["core", "mem", "maybe_uninit", "MaybeUninit"];
 pub const MEM_MAYBEUNINIT_UNINIT: [&str; 5] = ["core", "mem", "maybe_uninit", "MaybeUninit", "uninit"];
 pub const MEM_REPLACE: [&str; 3] = ["core", "mem", "replace"];
