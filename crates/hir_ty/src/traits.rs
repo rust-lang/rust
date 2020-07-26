@@ -152,9 +152,6 @@ fn solve(
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
 ) -> Option<chalk_solve::Solution<Interner>> {
     let context = ChalkContext { db, krate };
-
-    let logging_db = LoggingRustIrDatabase::new(context);
-
     log::debug!("solve goal: {:?}", goal);
     let mut solver = create_chalk_solver();
 
@@ -169,17 +166,23 @@ fn solve(
         }
         remaining > 0
     };
-    let mut solve = || {
-        let solution = solver.solve_limited(&logging_db, goal, should_continue);
-        log::debug!("solve({:?}) => {:?}", goal, solution);
-        solution
-    };
-    // don't set the TLS for Chalk unless Chalk debugging is active, to make
-    // extra sure we only use it for debugging
-    let solution =
-        if is_chalk_debug() { chalk::tls::set_current_program(db, solve) } else { solve() };
 
-    log::debug!("chalk program:\n{}", logging_db);
+    let solution = if is_chalk_debug() {
+        let logging_db = LoggingRustIrDatabase::new(context);
+        let solve = || {
+            let solution = solver.solve_limited(&logging_db, goal, should_continue);
+            log::debug!("chalk program:\n{}", logging_db);
+            solution
+        };
+
+        // don't set the TLS for Chalk unless Chalk debugging is active, to make
+        // extra sure we only use it for debugging
+        chalk::tls::set_current_program(db, solve)
+    } else {
+        solver.solve_limited(&context, goal, should_continue)
+    };
+
+    log::debug!("solve({:?}) => {:?}", goal, solution);
 
     solution
 }
