@@ -1,5 +1,5 @@
 Def site: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#7)
-Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:20:37: 20:43 (#6) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:20:43: 20:45 (#6) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:20:43: 20:45 (#6) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:20:45: 20:50 (#6) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:20:50: 20:51 (#6) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:20:51: 20:53 (#6) }]
+Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:19:37: 19:43 (#6) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:19:43: 19:45 (#6) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:19:43: 19:45 (#6) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:19:45: 19:50 (#6) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:19:50: 19:51 (#6) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:19:51: 19:53 (#6) }]
 Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#7) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#7) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#7) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#7) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#7) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#7) }]
 #![feature /* 0#0 */(prelude_import)]
 #[prelude_import /* 0#1 */]
@@ -16,7 +16,6 @@ extern crate std /* 0#1 */;
 // We don't care about symbol ids, so we set them all to 0
 // in the stdout
 extern crate meta_macro /* 0#0 */;
-extern crate make_macro /* 0#0 */;
 
 macro_rules! produce_it
     /*

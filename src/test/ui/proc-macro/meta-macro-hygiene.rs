@@ -8,7 +8,6 @@
 // We don't care about symbol ids, so we set them all to 0
 // in the stdout
 extern crate meta_macro;
-extern crate make_macro;
 
 macro_rules! produce_it {
     () => {
