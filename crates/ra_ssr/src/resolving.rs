@@ -152,6 +152,7 @@ impl<'db> ResolutionScope<'db> {
             .left_biased()
             .map(|token| token.parent())
             .unwrap_or_else(|| file.syntax().clone());
+        let node = pick_node_for_resolution(node);
         let scope = sema.scope(&node);
         ResolutionScope {
             scope,
@@ -183,6 +184,33 @@ impl<'db> ResolutionScope<'db> {
             None
         }
     }
+}
+
+/// Returns a suitable node for resolving paths in the current scope. If we create a scope based on
+/// a statement node, then we can't resolve local variables that were defined in the current scope
+/// (only in parent scopes). So we find another node, ideally a child of the statement where local
+/// variable resolution is permitted.
+fn pick_node_for_resolution(node: SyntaxNode) -> SyntaxNode {
+    match node.kind() {
+        SyntaxKind::EXPR_STMT => {
+            if let Some(n) = node.first_child() {
+                mark::hit!(cursor_after_semicolon);
+                return n;
+            }
+        }
+        SyntaxKind::LET_STMT | SyntaxKind::BIND_PAT => {
+            if let Some(next) = node.next_sibling() {
+                return pick_node_for_resolution(next);
+            }
+        }
+        SyntaxKind::NAME => {
+            if let Some(parent) = node.parent() {
+                return pick_node_for_resolution(parent);
+            }
+        }
+        _ => {}
+    }
+    node
 }
 
 /// Returns whether `path` or any of its qualifiers contains type arguments.
