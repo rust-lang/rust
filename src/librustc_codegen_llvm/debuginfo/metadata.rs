@@ -34,7 +34,7 @@ use rustc_middle::mir::interpret::truncate;
 use rustc_middle::mir::{self, Field, GeneratorLayout};
 use rustc_middle::ty::layout::{self, IntegerExt, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::Instance;
+use rustc_middle::ty::{Instance, Visibility};
 use rustc_middle::ty::{self, AdtKind, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{self, DebugInfo};
@@ -1222,7 +1222,11 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                     offset: layout.fields.offset(i),
                     size: field.size,
                     align: field.align.abi,
-                    flags: DIFlags::FlagZero,
+                    flags: match f.vis {
+                        Visibility::Public => DIFlags::FlagPublic,
+                        Visibility::Restricted(..) => DIFlags::FlagProtected,
+                        Visibility::Invisible => DIFlags::FlagPrivate,
+                    },
                     discriminant: None,
                     source_info: None,
                 }
