@@ -1,12 +1,12 @@
 error[E0038]: the trait `NotObjectSafe` cannot be made into an object
-  --> $DIR/coherence-impl-trait-for-trait-object-safe.rs:7:6
+  --> $DIR/coherence-impl-trait-for-trait-object-safe.rs:7:24
    |
 LL | trait NotObjectSafe { fn eq(&self, other: Self); }
    |       -------------                       ---- ...because method `eq` references the `Self` type in this parameter
    |       |
    |       this trait cannot be made into an object...
 LL | impl NotObjectSafe for dyn NotObjectSafe { }
-   |      ^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
+   |                        ^^^^^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
    |
    = help: consider moving `eq` to another trait
 
