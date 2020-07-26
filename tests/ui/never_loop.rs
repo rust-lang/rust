@@ -166,7 +166,7 @@ pub fn test14() {
     }
 }
 
-// Issue #1991: the outter loop should not warn.
+// Issue #1991: the outer loop should not warn.
 pub fn test15() {
     'label: loop {
         while false {

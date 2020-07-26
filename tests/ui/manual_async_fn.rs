@@ -37,7 +37,7 @@ struct S {}
 impl S {
     fn inh_fut() -> impl Future<Output = i32> {
         async {
-            // NOTE: this code is here just to check that the identation is correct in the suggested fix
+            // NOTE: this code is here just to check that the indentation is correct in the suggested fix
             let a = 42;
             let b = 21;
             if a < b {

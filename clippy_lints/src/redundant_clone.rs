@@ -124,6 +124,12 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 continue;
             }
 
+            if let ty::Adt(ref def, _) = arg_ty.kind {
+                if match_def_path(cx, def.did, &paths::MEM_MANUALLY_DROP) {
+                    continue;
+                }
+            }
+
             // `{ cloned = &arg; clone(move cloned); }` or `{ cloned = &arg; to_path_buf(cloned); }`
             let (cloned, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(cx, mir, arg, from_borrow, bb));
 

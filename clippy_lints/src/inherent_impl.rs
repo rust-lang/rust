@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
             ..
         } = item.kind
         {
-            // Remember for each inherent implementation encoutered its span and generics
+            // Remember for each inherent implementation encountered its span and generics
             // but filter out implementations that have generic params (type or lifetime)
             // or are derived from a macro
             if !in_macro(item.span) && generics.params.is_empty() {
