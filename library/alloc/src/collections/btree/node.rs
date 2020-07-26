@@ -305,12 +305,6 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         self.height
     }
 
-    /// Removes any static information about whether this node is a `Leaf` or an
-    /// `Internal` node.
-    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
-    }
-
     /// Temporarily takes out another, immutable reference to the same node.
     fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {
         NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
@@ -1359,6 +1353,20 @@ unsafe fn move_edges<K, V>(
     unsafe {
         ptr::copy_nonoverlapping(source_ptr.add(source_offset), dest_ptr.add(dest_offset), count);
         dest.correct_childrens_parent_links(dest_offset, dest_offset + count);
+    }
+}
+
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Leaf> {
+    /// Removes any static information asserting that this node is a `Leaf` node.
+    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
+    }
+}
+
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
+    /// Removes any static information asserting that this node is an `Internal` node.
+    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
     }
 }
 
