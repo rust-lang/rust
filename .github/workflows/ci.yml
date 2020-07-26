@@ -101,9 +101,6 @@ jobs:
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
         if: success() && !env.SKIP_JOB
-      - name: install MSYS2 packages
-        run: src/ci/scripts/install-msys2-packages.sh
-        if: success() && !env.SKIP_JOB
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
         if: success() && !env.SKIP_JOB
@@ -209,9 +206,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
-        if: success() && !env.SKIP_JOB
-      - name: install MSYS2 packages
-        run: src/ci/scripts/install-msys2-packages.sh
         if: success() && !env.SKIP_JOB
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
@@ -560,9 +554,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
-        if: success() && !env.SKIP_JOB
-      - name: install MSYS2 packages
-        run: src/ci/scripts/install-msys2-packages.sh
         if: success() && !env.SKIP_JOB
       - name: install MinGW
         run: src/ci/scripts/install-mingw.sh
