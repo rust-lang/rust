@@ -23,43 +23,43 @@ LL |         let _: i32 = 0i32.into();
    |                      ^^^^^^^^^^^ help: consider removing `.into()`: `0i32`
 
 error: useless conversion to the same type
-  --> $DIR/useless_conversion.rs:51:21
+  --> $DIR/useless_conversion.rs:60:21
    |
 LL |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
 error: useless conversion to the same type
-  --> $DIR/useless_conversion.rs:52:21
+  --> $DIR/useless_conversion.rs:61:21
    |
 LL |     let _: String = From::from("foo".to_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `From::from()`: `"foo".to_string()`
 
 error: useless conversion to the same type
-  --> $DIR/useless_conversion.rs:53:13
+  --> $DIR/useless_conversion.rs:62:13
    |
 LL |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
 error: useless conversion to the same type
-  --> $DIR/useless_conversion.rs:54:13
+  --> $DIR/useless_conversion.rs:63:13
    |
 LL |     let _ = String::from(format!("A: {:04}", 123));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `format!("A: {:04}", 123)`
 
 error: useless conversion to the same type
-  --> $DIR/useless_conversion.rs:55:13
+  --> $DIR/useless_conversion.rs:64:13
    |
 LL |     let _ = "".lines().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `"".lines()`
 
 error: useless conversion to the same type
-  --> $DIR/useless_conversion.rs:56:13
+  --> $DIR/useless_conversion.rs:65:13
    |
 LL |     let _ = vec![1, 2, 3].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
 
 error: useless conversion to the same type
-  --> $DIR/useless_conversion.rs:57:21
+  --> $DIR/useless_conversion.rs:66:21
    |
 LL |     let _: String = format!("Hello {}", "world").into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `format!("Hello {}", "world")`

@@ -42,10 +42,8 @@ Table of contents:
 
 ## Usage
 
-Since this is a tool for helping the developer of a library or application
-write better code, it is recommended not to include Clippy as a hard dependency.
-Options include using it as an optional dependency, as a cargo subcommand, or
-as an included feature during build. These options are detailed below.
+Below are instructions on how to use Clippy as a subcommand, compiled from source
+or in Travis CI.
 
 ### As a cargo subcommand (`cargo clippy`)
 

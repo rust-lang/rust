@@ -1,0 +1,22 @@
+error: closure called just once immediately after it was declared
+  --> $DIR/redundant_closure_call_late.rs:15:5
+   |
+LL |     i = redun_closure();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::redundant-closure-call` implied by `-D warnings`
+
+error: closure called just once immediately after it was declared
+  --> $DIR/redundant_closure_call_late.rs:19:5
+   |
+LL |     i = shadowed_closure();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: closure called just once immediately after it was declared
+  --> $DIR/redundant_closure_call_late.rs:21:5
+   |
+LL |     i = shadowed_closure();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

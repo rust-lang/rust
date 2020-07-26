@@ -96,23 +96,20 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
         if_chain! {
             if let ExprKind::Block(ref block, _) = expr.kind;
             if let Some(ref ex) = block.expr;
-            if let Some(params) = match_function_call(cx, ex, &paths::BEGIN_PANIC);
-            if params.len() == 1;
+            if let Some(params) = match_function_call(cx, ex, &paths::BEGIN_PANIC)
+                .or_else(|| match_function_call(cx, ex, &paths::BEGIN_PANIC_FMT));
             then {
+                let span = get_outer_span(expr);
                 if is_expn_of(expr.span, "unimplemented").is_some() {
-                    let span = get_outer_span(expr);
                     span_lint(cx, UNIMPLEMENTED, span,
                               "`unimplemented` should not be present in production code");
                 } else if is_expn_of(expr.span, "todo").is_some() {
-                    let span = get_outer_span(expr);
                     span_lint(cx, TODO, span,
                               "`todo` should not be present in production code");
                 } else if is_expn_of(expr.span, "unreachable").is_some() {
-                    let span = get_outer_span(expr);
                     span_lint(cx, UNREACHABLE, span,
                               "`unreachable` should not be present in production code");
                 } else if is_expn_of(expr.span, "panic").is_some() {
-                    let span = get_outer_span(expr);
                     span_lint(cx, PANIC, span,
                               "`panic` should not be present in production code");
                     match_panic(params, expr, cx);

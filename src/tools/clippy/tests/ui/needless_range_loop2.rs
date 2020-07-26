@@ -83,3 +83,13 @@ fn main() {
         println!("{}", arr[i]);
     }
 }
+
+mod issue2277 {
+    pub fn example(list: &[[f64; 3]]) {
+        let mut x: [f64; 3] = [10.; 3];
+
+        for i in 0..3 {
+            x[i] = list.iter().map(|item| item[i]).sum::<f64>();
+        }
+    }
+}
