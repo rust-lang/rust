@@ -4998,27 +4998,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-log"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e0f8c7178e13481ff6765bd169b33e8d554c5d2bbede5e32c356194be02b9b9"
-dependencies = [
- "lazy_static",
- "log",
- "tracing-core",
-]
-
-[[package]]
-name = "tracing-serde"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6ccba2f8f16e0ed268fc765d9b7ff22e965e7185d32f8f1ec8294fe17d86e79"
-dependencies = [
- "serde",
- "tracing-core",
-]
-
-[[package]]
 name = "tracing-subscriber"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5028,14 +5007,11 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
+ "parking_lot 0.9.0",
  "regex",
- "serde",
- "serde_json",
  "sharded-slab",
  "smallvec 1.4.0",
  "tracing-core",
- "tracing-log",
- "tracing-serde",
 ]
 
 [[package]]
