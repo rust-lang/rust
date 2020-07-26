@@ -45,7 +45,7 @@
 # this flag will indicate that this version check should not be done.
 #version-check = true
 
-# Link libstdc++ statically into the librustc_llvm instead of relying on a
+# Link libstdc++ statically into the rustc_llvm instead of relying on a
 # dynamic version to be available.
 #static-libstdcpp = false
 

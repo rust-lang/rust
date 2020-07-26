@@ -4,9 +4,6 @@ name = "rustc_llvm"
 version = "0.0.0"
 edition = "2018"
 
-[lib]
-path = "lib.rs"
-
 [features]
 static-libstdcpp = []
 emscripten = []
@@ -15,5 +12,5 @@ emscripten = []
 libc = "0.2.73"
 
 [build-dependencies]
-build_helper = { path = "../build_helper" }
+build_helper = { path = "../../src/build_helper" }
 cc = "1.0.58"

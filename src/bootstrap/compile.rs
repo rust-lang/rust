@@ -560,7 +560,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     // Pass down configuration from the LLVM build into the build of
-    // librustc_llvm and librustc_codegen_llvm.
+    // rustc_llvm and rustc_codegen_llvm.
     //
     // Note that this is disabled if LLVM itself is disabled or we're in a check
     // build. If we are in a check build we still go ahead here presuming we've
@@ -579,7 +579,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             cargo.env("CFG_LLVM_ROOT", s);
         }
-        // Some LLVM linker flags (-L and -l) may be needed to link librustc_llvm.
+        // Some LLVM linker flags (-L and -l) may be needed to link rustc_llvm.
         if let Some(ref s) = builder.config.llvm_ldflags {
             cargo.env("LLVM_LINKER_FLAGS", s);
         }
