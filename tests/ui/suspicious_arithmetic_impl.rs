@@ -88,3 +88,33 @@ fn main() {}
 fn do_nothing(x: u32) -> u32 {
     x
 }
+
+struct MultipleBinops(u32);
+
+impl Add for MultipleBinops {
+    type Output = MultipleBinops;
+
+    // OK: multiple Binops in `add` impl
+    fn add(self, other: Self) -> Self::Output {
+        let mut result = self.0 + other.0;
+        if result >= u32::max_value() {
+            result -= u32::max_value();
+        }
+        MultipleBinops(result)
+    }
+}
+
+impl Mul for MultipleBinops {
+    type Output = MultipleBinops;
+
+    // OK: multiple Binops in `mul` impl
+    fn mul(self, other: Self) -> Self::Output {
+        let mut result: u32 = 0;
+        let size = std::cmp::max(self.0, other.0) as usize;
+        let mut v = vec![0; size + 1];
+        for i in 0..size + 1 {
+            result *= i as u32;
+        }
+        MultipleBinops(result)
+    }
+}
