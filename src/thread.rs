@@ -11,11 +11,7 @@ use log::trace;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::{
-    middle::codegen_fn_attrs::CodegenFnAttrFlags,
-    mir,
-    ty::{self, Instance},
-};
+use rustc_middle::ty::{self, Instance};
 
 use crate::sync::SynchronizationState;
 use crate::*;
@@ -499,41 +495,6 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 // Public interface to thread management.
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    /// A workaround for thread-local statics until
-    /// https://github.com/rust-lang/rust/issues/70685 is fixed: change the
-    /// thread-local allocation id with a freshly generated allocation id for
-    /// the currently active thread.
-    fn remap_thread_local_alloc_ids(
-        &self,
-        val: &mut mir::interpret::ConstValue<'tcx>,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
-        match *val {
-            mir::interpret::ConstValue::Scalar(Scalar::Ptr(ref mut ptr)) => {
-                let alloc_id = ptr.alloc_id;
-                let alloc = this.tcx.get_global_alloc(alloc_id);
-                let tcx = this.tcx;
-                let is_thread_local = |def_id| {
-                    tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
-                };
-                match alloc {
-                    Some(GlobalAlloc::Static(def_id)) if is_thread_local(def_id) => {
-                        ptr.alloc_id = this.get_or_create_thread_local_alloc_id(def_id)?;
-                    }
-                    _ => {}
-                }
-            }
-            _ => {
-                // FIXME: Handling only `Scalar` seems to work for now, but at
-                // least in principle thread-locals could be in any constant, so
-                // we should also consider other cases. However, once
-                // https://github.com/rust-lang/rust/issues/70685 gets fixed,
-                // this code will have to be rewritten anyway.
-            }
-        }
-        Ok(())
-    }
-
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
     ///

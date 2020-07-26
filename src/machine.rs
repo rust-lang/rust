@@ -426,44 +426,26 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         Ok(())
     }
 
-    fn thread_local_alloc_id(
+    fn thread_local_static_alloc_id(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         def_id: DefId,
     ) -> InterpResult<'tcx, AllocId> {
         ecx.get_or_create_thread_local_alloc_id(def_id)
     }
 
-    fn adjust_global_const(
-        ecx: &InterpCx<'mir, 'tcx, Self>,
-        mut val: mir::interpret::ConstValue<'tcx>,
-    ) -> InterpResult<'tcx, mir::interpret::ConstValue<'tcx>> {
-        // FIXME: Remove this, do The Right Thing in `thread_local_alloc_id` instead.
-        ecx.remap_thread_local_alloc_ids(&mut val)?;
-        Ok(val)
-    }
-
-    fn canonical_alloc_id(mem: &Memory<'mir, 'tcx, Self>, id: AllocId) -> AllocId {
-        let tcx = mem.tcx;
-        // Figure out if this is an extern static, and if yes, which one.
-        let def_id = match tcx.get_global_alloc(id) {
-            Some(GlobalAlloc::Static(def_id)) if tcx.is_foreign_item(def_id) => def_id,
-            _ => {
-                // No need to canonicalize anything.
-                return id;
-            }
-        };
-        let attrs = tcx.get_attrs(def_id);
+    fn extern_static_alloc_id(
+        memory: &Memory<'mir, 'tcx, Self>,
+        def_id: DefId,
+    ) -> InterpResult<'tcx, AllocId> {
+        let attrs = memory.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
             Some(name) => name,
-            None => tcx.item_name(def_id),
+            None => memory.tcx.item_name(def_id),
         };
-        // Check if we know this one.
-        if let Some(canonical_id) = mem.extra.extern_statics.get(&link_name) {
-            trace!("canonical_alloc_id: {:?} ({}) -> {:?}", id, link_name, canonical_id);
-            *canonical_id
+        if let Some(&id) = memory.extra.extern_statics.get(&link_name) {
+            Ok(id)
         } else {
-            // Return original id; `Memory::get_static_alloc` will throw an error.
-            id
+            throw_unsup_format!("`extern` static {:?} is not supported by Miri", def_id)
         }
     }
 
