@@ -11,6 +11,7 @@ use rustc_middle::ty::print::characteristic_def_id_of_type;
 use rustc_middle::ty::{self, DefIdTree, InstanceDef, TyCtxt};
 use rustc_span::symbol::Symbol;
 
+use super::PartitioningCx;
 use crate::monomorphize::collector::InliningMap;
 use crate::monomorphize::partitioning::merging;
 use crate::monomorphize::partitioning::{
@@ -22,35 +23,36 @@ pub struct DefaultPartitioning;
 impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
     fn place_root_mono_items(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        cx: &PartitioningCx<'_, 'tcx>,
         mono_items: &mut dyn Iterator<Item = MonoItem<'tcx>>,
     ) -> PreInliningPartitioning<'tcx> {
         let mut roots = FxHashSet::default();
         let mut codegen_units = FxHashMap::default();
-        let is_incremental_build = tcx.sess.opts.incremental.is_some();
+        let is_incremental_build = cx.tcx.sess.opts.incremental.is_some();
         let mut internalization_candidates = FxHashSet::default();
 
         // Determine if monomorphizations instantiated in this crate will be made
         // available to downstream crates. This depends on whether we are in
         // share-generics mode and whether the current crate can even have
         // downstream crates.
-        let export_generics = tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics();
+        let export_generics =
+            cx.tcx.sess.opts.share_generics() && cx.tcx.local_crate_exports_generics();
 
-        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+        let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
         let cgu_name_cache = &mut FxHashMap::default();
 
         for mono_item in mono_items {
-            match mono_item.instantiation_mode(tcx) {
+            match mono_item.instantiation_mode(cx.tcx) {
                 InstantiationMode::GloballyShared { .. } => {}
                 InstantiationMode::LocalCopy => continue,
             }
 
-            let characteristic_def_id = characteristic_def_id_of_mono_item(tcx, mono_item);
+            let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
             let is_volatile = is_incremental_build && mono_item.is_generic_fn();
 
             let codegen_unit_name = match characteristic_def_id {
                 Some(def_id) => compute_codegen_unit_name(
-                    tcx,
+                    cx.tcx,
                     cgu_name_builder,
                     def_id,
                     is_volatile,
@@ -65,7 +67,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
 
             let mut can_be_internalized = true;
             let (linkage, visibility) = mono_item_linkage_and_visibility(
-                tcx,
+                cx.tcx,
                 &mono_item,
                 &mut can_be_internalized,
                 export_generics,
@@ -97,17 +99,16 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
 
     fn merge_codegen_units(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        cx: &PartitioningCx<'_, 'tcx>,
         initial_partitioning: &mut PreInliningPartitioning<'tcx>,
-        target_cgu_count: usize,
     ) {
-        merging::merge_codegen_units(tcx, initial_partitioning, target_cgu_count);
+        merging::merge_codegen_units(cx, initial_partitioning);
     }
 
     fn place_inlined_mono_items(
         &mut self,
+        cx: &PartitioningCx<'_, 'tcx>,
         initial_partitioning: PreInliningPartitioning<'tcx>,
-        inlining_map: &InliningMap<'tcx>,
     ) -> PostInliningPartitioning<'tcx> {
         let mut new_partitioning = Vec::new();
         let mut mono_item_placements = FxHashMap::default();
@@ -124,7 +125,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
             // Collect all items that need to be available in this codegen unit.
             let mut reachable = FxHashSet::default();
             for root in old_codegen_unit.items().keys() {
-                follow_inlining(*root, inlining_map, &mut reachable);
+                follow_inlining(*root, cx.inlining_map, &mut reachable);
             }
 
             let mut new_codegen_unit = CodegenUnit::new(old_codegen_unit.name());
@@ -198,9 +199,8 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
 
     fn internalize_symbols(
         &mut self,
-        _tcx: TyCtxt<'tcx>,
+        cx: &PartitioningCx<'_, 'tcx>,
         partitioning: &mut PostInliningPartitioning<'tcx>,
-        inlining_map: &InliningMap<'tcx>,
     ) {
         if partitioning.codegen_units.len() == 1 {
             // Fast path for when there is only one codegen unit. In this case we
@@ -218,7 +218,7 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
         // Build a map from every monomorphization to all the monomorphizations that
         // reference it.
         let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = Default::default();
-        inlining_map.iter_accesses(|accessor, accessees| {
+        cx.inlining_map.iter_accesses(|accessor, accessees| {
             for accessee in accessees {
                 accessor_map.entry(*accessee).or_default().push(accessor);
             }
