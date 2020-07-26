@@ -87,7 +87,6 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
         debugOutput.show(true);
     }
 
-
     const isMultiFolderWorkspace = vscode.workspace.workspaceFolders!.length > 1;
     const firstWorkspace = vscode.workspace.workspaceFolders![0]; // folder exists or RA is not active.
     const workspace = !isMultiFolderWorkspace || !runnable.args.workspaceRoot ?
