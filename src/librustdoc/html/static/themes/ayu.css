@@ -199,7 +199,6 @@ pre {
 
 pre.rust .comment, pre.rust .doccomment {
 	color: #788797;
-	font-style: italic;
 }
 
 nav:not(.sidebar) {
