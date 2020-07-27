@@ -1,4 +1,4 @@
-error[E0581]: return type references an anonymous lifetime which is not constrained by the fn input types
+error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
   --> $DIR/issue-47511.rs:5:15
    |
 LL | fn f(_: X) -> X {
