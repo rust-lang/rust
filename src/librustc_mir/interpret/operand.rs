@@ -517,7 +517,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Constant(ref constant) => {
                 let val =
                     self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal);
-                self.eval_const_to_op(val, layout)?
+                self.const_to_op(val, layout)?
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -536,7 +536,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     // in patterns via the `const_eval` module
     /// The `val` and `layout` are assumed to already be in our interpreter
     /// "universe" (param_env).
-    crate fn eval_const_to_op(
+    crate fn const_to_op(
         &self,
         val: &ty::Const<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
@@ -559,16 +559,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // potentially requiring the current static to be evaluated again. This is not a
                 // problem here, because we are building an operand which means an actual read is
                 // happening.
-                //
-                // The machine callback `adjust_global_const` below is guaranteed to
-                // be called for all constants because `const_eval` calls
-                // `eval_const_to_op` recursively.
                 return Ok(self.const_eval(GlobalId { instance, promoted }, val.ty)?);
             }
             ty::ConstKind::Infer(..)
             | ty::ConstKind::Bound(..)
             | ty::ConstKind::Placeholder(..) => {
-                span_bug!(self.cur_span(), "eval_const_to_op: Unexpected ConstKind {:?}", val)
+                span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", val)
             }
             ty::ConstKind::Value(val_val) => val_val,
         };

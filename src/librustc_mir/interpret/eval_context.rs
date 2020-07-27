@@ -848,12 +848,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.tcx.span))?;
 
-        // Even though `ecx.const_eval` is called from `eval_const_to_op` we can never have a
+        // Even though `ecx.const_eval` is called from `const_to_op` we can never have a
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
-        // return `ConstValue::Unevaluated`, which is the only way that `eval_const_to_op` will call
+        // return `ConstValue::Unevaluated`, which is the only way that `const_to_op` will call
         // `ecx.const_eval`.
         let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
-        self.eval_const_to_op(&const_, None)
+        self.const_to_op(&const_, None)
     }
 
     pub fn const_eval_raw(
