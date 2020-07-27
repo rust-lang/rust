@@ -2392,26 +2392,26 @@ fn missing_items_err(
 }
 
 /// Resugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.
-fn bounds_from_generic_predicates(
-    tcx: TyCtxt<'_>,
-    predicates: ty::GenericPredicates<'_>,
+fn bounds_from_generic_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: ty::GenericPredicates<'tcx>,
 ) -> (String, String) {
-    let mut types: FxHashMap<Ty<'_>, Vec<DefId>> = FxHashMap::default();
+    let mut types: FxHashMap<Ty<'tcx>, Vec<DefId>> = FxHashMap::default();
     let mut projections = vec![];
     for (predicate, _) in predicates.predicates {
         debug!("predicate {:?}", predicate);
-        match predicate.kind() {
-            ty::PredicateKind::Trait(trait_predicate, _) => {
-                let entry = types.entry(trait_predicate.skip_binder().self_ty()).or_default();
-                let def_id = trait_predicate.skip_binder().def_id();
+        match predicate.skip_binders() {
+            ty::PredicateAtom::Trait(trait_predicate, _) => {
+                let entry = types.entry(trait_predicate.self_ty()).or_default();
+                let def_id = trait_predicate.def_id();
                 if Some(def_id) != tcx.lang_items().sized_trait() {
                     // Type params are `Sized` by default, do not add that restriction to the list
                     // if it is a positive requirement.
-                    entry.push(trait_predicate.skip_binder().def_id());
+                    entry.push(trait_predicate.def_id());
                 }
             }
-            ty::PredicateKind::Projection(projection_pred) => {
-                projections.push(projection_pred);
+            ty::PredicateAtom::Projection(projection_pred) => {
+                projections.push(ty::Binder::bind(projection_pred));
             }
             _ => {}
         }
@@ -2456,11 +2456,11 @@ fn bounds_from_generic_predicates(
 }
 
 /// Return placeholder code for the given function.
-fn fn_sig_suggestion(
-    tcx: TyCtxt<'_>,
-    sig: ty::FnSig<'_>,
+fn fn_sig_suggestion<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sig: ty::FnSig<'tcx>,
     ident: Ident,
-    predicates: ty::GenericPredicates<'_>,
+    predicates: ty::GenericPredicates<'tcx>,
     assoc: &ty::AssocItem,
 ) -> String {
     let args = sig
@@ -2938,10 +2938,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                    match predicate.kind() {
-                        ty::PredicateKind::Trait(ref data, _)
-                            if data.skip_binder().self_ty().is_param(index) =>
-                        {
+                    match predicate.skip_binders() {
+                        ty::PredicateAtom::Trait(data, _) if data.self_ty().is_param(index) => {
                             // HACK(eddyb) should get the original `Span`.
                             let span = tcx.def_span(def_id);
                             Some((predicate, span))
@@ -3612,7 +3610,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_predicate(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateKind::WellFormed(arg).to_predicate(self.tcx),
+            ty::PredicateAtom::WellFormed(arg).to_predicate(self.tcx),
         ));
     }
 
@@ -3893,29 +3891,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .borrow()
             .pending_obligations()
             .into_iter()
-            .filter_map(move |obligation| match obligation.predicate.kind() {
-                ty::PredicateKind::Projection(ref data) => {
-                    Some((data.to_poly_trait_ref(self.tcx), obligation))
+            .filter_map(move |obligation| {
+                match obligation.predicate.skip_binders() {
+                    ty::PredicateAtom::Projection(data) => {
+                        Some((ty::Binder::bind(data).to_poly_trait_ref(self.tcx), obligation))
+                    }
+                    ty::PredicateAtom::Trait(data, _) => {
+                        Some((ty::Binder::bind(data).to_poly_trait_ref(), obligation))
+                    }
+                    ty::PredicateAtom::Subtype(..) => None,
+                    ty::PredicateAtom::RegionOutlives(..) => None,
+                    ty::PredicateAtom::TypeOutlives(..) => None,
+                    ty::PredicateAtom::WellFormed(..) => None,
+                    ty::PredicateAtom::ObjectSafe(..) => None,
+                    ty::PredicateAtom::ConstEvaluatable(..) => None,
+                    ty::PredicateAtom::ConstEquate(..) => None,
+                    // N.B., this predicate is created by breaking down a
+                    // `ClosureType: FnFoo()` predicate, where
+                    // `ClosureType` represents some `Closure`. It can't
+                    // possibly be referring to the current closure,
+                    // because we haven't produced the `Closure` for
+                    // this closure yet; this is exactly why the other
+                    // code is looking for a self type of a unresolved
+                    // inference variable.
+                    ty::PredicateAtom::ClosureKind(..) => None,
                 }
-                ty::PredicateKind::Trait(ref data, _) => {
-                    Some((data.to_poly_trait_ref(), obligation))
-                }
-                ty::PredicateKind::Subtype(..) => None,
-                ty::PredicateKind::RegionOutlives(..) => None,
-                ty::PredicateKind::TypeOutlives(..) => None,
-                ty::PredicateKind::WellFormed(..) => None,
-                ty::PredicateKind::ObjectSafe(..) => None,
-                ty::PredicateKind::ConstEvaluatable(..) => None,
-                ty::PredicateKind::ConstEquate(..) => None,
-                // N.B., this predicate is created by breaking down a
-                // `ClosureType: FnFoo()` predicate, where
-                // `ClosureType` represents some `Closure`. It can't
-                // possibly be referring to the current closure,
-                // because we haven't produced the `Closure` for
-                // this closure yet; this is exactly why the other
-                // code is looking for a self type of a unresolved
-                // inference variable.
-                ty::PredicateKind::ClosureKind(..) => None,
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
     }
@@ -4225,7 +4225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// the corresponding argument's expression span instead of the `fn` call path span.
     fn point_at_arg_instead_of_call_if_possible(
         &self,
-        errors: &mut Vec<traits::FulfillmentError<'_>>,
+        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
         final_arg_types: &[(usize, Ty<'tcx>, Ty<'tcx>)],
         call_sp: Span,
         args: &'tcx [hir::Expr<'tcx>],
@@ -4244,7 +4244,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 continue;
             }
 
-            if let ty::PredicateKind::Trait(predicate, _) = error.obligation.predicate.kind() {
+            if let ty::PredicateAtom::Trait(predicate, _) =
+                error.obligation.predicate.skip_binders()
+            {
                 // Collect the argument position for all arguments that could have caused this
                 // `FulfillmentError`.
                 let mut referenced_in = final_arg_types
@@ -4255,7 +4257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let ty = self.resolve_vars_if_possible(&ty);
                         // We walk the argument type because the argument's type could have
                         // been `Option<T>`, but the `FulfillmentError` references `T`.
-                        if ty.walk().any(|arg| arg == predicate.skip_binder().self_ty().into()) {
+                        if ty.walk().any(|arg| arg == predicate.self_ty().into()) {
                             Some(i)
                         } else {
                             None
@@ -4284,15 +4286,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// instead of the `fn` call path span.
     fn point_at_type_arg_instead_of_call_if_possible(
         &self,
-        errors: &mut Vec<traits::FulfillmentError<'_>>,
+        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
         call_expr: &'tcx hir::Expr<'tcx>,
     ) {
         if let hir::ExprKind::Call(path, _) = &call_expr.kind {
             if let hir::ExprKind::Path(qpath) = &path.kind {
                 if let hir::QPath::Resolved(_, path) = &qpath {
                     for error in errors {
-                        if let ty::PredicateKind::Trait(predicate, _) =
-                            error.obligation.predicate.kind()
+                        if let ty::PredicateAtom::Trait(predicate, _) =
+                            error.obligation.predicate.skip_binders()
                         {
                             // If any of the type arguments in this path segment caused the
                             // `FullfillmentError`, point at its span (#61860).
@@ -4313,7 +4315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     } else {
                                         let ty = AstConv::ast_ty_to_ty(self, hir_ty);
                                         let ty = self.resolve_vars_if_possible(&ty);
-                                        if ty == predicate.skip_binder().self_ty() {
+                                        if ty == predicate.self_ty() {
                                             error.obligation.cause.make_mut().span = hir_ty.span;
                                         }
                                     }
@@ -5365,12 +5367,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     item_def_id,
                 };
 
-                let predicate =
-                    ty::PredicateKind::Projection(ty::Binder::bind(ty::ProjectionPredicate {
-                        projection_ty,
-                        ty: expected,
-                    }))
-                    .to_predicate(self.tcx);
+                let predicate = ty::PredicateAtom::Projection(ty::ProjectionPredicate {
+                    projection_ty,
+                    ty: expected,
+                })
+                .potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
                 let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
 
                 debug!("suggest_missing_await: trying obligation {:?}", obligation);

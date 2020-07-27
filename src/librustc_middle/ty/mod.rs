@@ -1018,7 +1018,7 @@ crate struct PredicateInner<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PredicateInner<'_>, 40);
+static_assert_size!(PredicateInner<'_>, 48);
 
 #[derive(Clone, Copy, Lift)]
 pub struct Predicate<'tcx> {
@@ -1048,6 +1048,44 @@ impl<'tcx> Predicate<'tcx> {
     pub fn kind(self) -> &'tcx PredicateKind<'tcx> {
         &self.inner.kind
     }
+
+    /// Returns the inner `PredicateAtom`.
+    ///
+    /// The returned atom may contain unbound variables bound to binders skipped in this method.
+    /// It is safe to reapply binders to the given atom.
+    ///
+    /// Note that this method panics in case this predicate has unbound variables.
+    pub fn skip_binders(self) -> PredicateAtom<'tcx> {
+        match self.kind() {
+            &PredicateKind::ForAll(binder) => binder.skip_binder(),
+            &PredicateKind::Atom(atom) => {
+                debug_assert!(!atom.has_escaping_bound_vars());
+                atom
+            }
+        }
+    }
+
+    /// Returns the inner `PredicateAtom`.
+    ///
+    /// Note that this method does not check if the predicate has unbound variables.
+    ///
+    /// Rebinding the returned atom can causes the previously bound variables
+    /// to end up at the wrong binding level.
+    pub fn skip_binders_unchecked(self) -> PredicateAtom<'tcx> {
+        match self.kind() {
+            &PredicateKind::ForAll(binder) => binder.skip_binder(),
+            &PredicateKind::Atom(atom) => atom,
+        }
+    }
+
+    /// Allows using a `Binder<PredicateAtom<'tcx>>` even if the given predicate previously
+    /// contained unbound variables by shifting these variables outwards.
+    pub fn bound_atom(self, tcx: TyCtxt<'tcx>) -> Binder<PredicateAtom<'tcx>> {
+        match self.kind() {
+            &PredicateKind::ForAll(binder) => binder,
+            &PredicateKind::Atom(atom) => Binder::wrap_nonbinding(tcx, atom),
+        }
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
@@ -1068,6 +1106,14 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum PredicateKind<'tcx> {
+    /// `for<'a>: ...`
+    ForAll(Binder<PredicateAtom<'tcx>>),
+    Atom(PredicateAtom<'tcx>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
+pub enum PredicateAtom<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
@@ -1075,17 +1121,17 @@ pub enum PredicateKind<'tcx> {
     /// A trait predicate will have `Constness::Const` if it originates
     /// from a bound on a `const fn` without the `?const` opt-out (e.g.,
     /// `const fn foobar<Foo: Bar>() {}`).
-    Trait(PolyTraitPredicate<'tcx>, Constness),
+    Trait(TraitPredicate<'tcx>, Constness),
 
     /// `where 'a: 'b`
-    RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
+    RegionOutlives(RegionOutlivesPredicate<'tcx>),
 
     /// `where T: 'a`
-    TypeOutlives(PolyTypeOutlivesPredicate<'tcx>),
+    TypeOutlives(TypeOutlivesPredicate<'tcx>),
 
     /// `where <T as TraitRef>::Name == X`, approximately.
     /// See the `ProjectionPredicate` struct for details.
-    Projection(PolyProjectionPredicate<'tcx>),
+    Projection(ProjectionPredicate<'tcx>),
 
     /// No syntax: `T` well-formed.
     WellFormed(GenericArg<'tcx>),
@@ -1099,13 +1145,29 @@ pub enum PredicateKind<'tcx> {
     ClosureKind(DefId, SubstsRef<'tcx>, ClosureKind),
 
     /// `T1 <: T2`
-    Subtype(PolySubtypePredicate<'tcx>),
+    Subtype(SubtypePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
+}
+
+impl<'tcx> PredicateAtom<'tcx> {
+    /// Wraps `self` with the given qualifier if this predicate has any unbound variables.
+    pub fn potentially_quantified(
+        self,
+        tcx: TyCtxt<'tcx>,
+        qualifier: impl FnOnce(Binder<PredicateAtom<'tcx>>) -> PredicateKind<'tcx>,
+    ) -> Predicate<'tcx> {
+        if self.has_escaping_bound_vars() {
+            qualifier(Binder::bind(self))
+        } else {
+            PredicateKind::Atom(self)
+        }
+        .to_predicate(tcx)
+    }
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -1119,7 +1181,7 @@ pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    pub predicates: FxHashMap<DefId, &'tcx [(ty::Predicate<'tcx>, Span)]>,
+    pub predicates: FxHashMap<DefId, &'tcx [(Predicate<'tcx>, Span)]>,
 }
 
 impl<'tcx> Predicate<'tcx> {
@@ -1132,7 +1194,7 @@ impl<'tcx> Predicate<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         trait_ref: &ty::PolyTraitRef<'tcx>,
-    ) -> ty::Predicate<'tcx> {
+    ) -> Predicate<'tcx> {
         // The interaction between HRTB and supertraits is not entirely
         // obvious. Let me walk you (and myself) through an example.
         //
@@ -1192,39 +1254,10 @@ impl<'tcx> Predicate<'tcx> {
         // substitution code expects equal binding levels in the values
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
-
-        let substs = &trait_ref.skip_binder().substs;
-        let kind = self.kind();
-        let new = match kind {
-            &PredicateKind::Trait(ref binder, constness) => {
-                PredicateKind::Trait(binder.map_bound(|data| data.subst(tcx, substs)), constness)
-            }
-            PredicateKind::Subtype(binder) => {
-                PredicateKind::Subtype(binder.map_bound(|data| data.subst(tcx, substs)))
-            }
-            PredicateKind::RegionOutlives(binder) => {
-                PredicateKind::RegionOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
-            }
-            PredicateKind::TypeOutlives(binder) => {
-                PredicateKind::TypeOutlives(binder.map_bound(|data| data.subst(tcx, substs)))
-            }
-            PredicateKind::Projection(binder) => {
-                PredicateKind::Projection(binder.map_bound(|data| data.subst(tcx, substs)))
-            }
-            &PredicateKind::WellFormed(data) => PredicateKind::WellFormed(data.subst(tcx, substs)),
-            &PredicateKind::ObjectSafe(trait_def_id) => PredicateKind::ObjectSafe(trait_def_id),
-            &PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
-                PredicateKind::ClosureKind(closure_def_id, closure_substs.subst(tcx, substs), kind)
-            }
-            &PredicateKind::ConstEvaluatable(def_id, const_substs) => {
-                PredicateKind::ConstEvaluatable(def_id, const_substs.subst(tcx, substs))
-            }
-            PredicateKind::ConstEquate(c1, c2) => {
-                PredicateKind::ConstEquate(c1.subst(tcx, substs), c2.subst(tcx, substs))
-            }
-        };
-
-        if new != *kind { new.to_predicate(tcx) } else { self }
+        let substs = trait_ref.skip_binder().substs;
+        let pred = self.skip_binders();
+        let new = pred.subst(tcx, substs);
+        if new != pred { new.potentially_quantified(tcx, PredicateKind::ForAll) } else { self }
     }
 }
 
@@ -1349,86 +1382,87 @@ impl ToPredicate<'tcx> for PredicateKind<'tcx> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
+impl ToPredicate<'tcx> for PredicateAtom<'tcx> {
+    #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        ty::PredicateKind::Trait(
-            ty::Binder::dummy(ty::TraitPredicate { trait_ref: self.value }),
-            self.constness,
-        )
-        .to_predicate(tcx)
+        debug_assert!(!self.has_escaping_bound_vars(), "escaping bound vars for {:?}", self);
+        tcx.mk_predicate(PredicateKind::Atom(self))
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&TraitRef<'tcx>> {
+impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<TraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        ty::PredicateKind::Trait(
-            ty::Binder::dummy(ty::TraitPredicate { trait_ref: *self.value }),
-            self.constness,
-        )
-        .to_predicate(tcx)
+        PredicateAtom::Trait(ty::TraitPredicate { trait_ref: self.value }, self.constness)
+            .to_predicate(tcx)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
-            .to_predicate(tcx)
+        ConstnessAnd {
+            value: self.value.map_bound(|trait_ref| ty::TraitPredicate { trait_ref }),
+            constness: self.constness,
+        }
+        .to_predicate(tcx)
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<&PolyTraitRef<'tcx>> {
+impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitPredicate<'tcx>> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        ty::PredicateKind::Trait(self.value.to_poly_trait_predicate(), self.constness)
-            .to_predicate(tcx)
+        PredicateAtom::Trait(self.value.skip_binder(), self.constness)
+            .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyRegionOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::RegionOutlives(self).to_predicate(tcx)
+        PredicateAtom::RegionOutlives(self.skip_binder())
+            .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyTypeOutlivesPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::TypeOutlives(self).to_predicate(tcx)
+        PredicateAtom::TypeOutlives(self.skip_binder())
+            .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        PredicateKind::Projection(self).to_predicate(tcx)
+        PredicateAtom::Projection(self.skip_binder())
+            .potentially_quantified(tcx, PredicateKind::ForAll)
     }
 }
 
 impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_ref(self) -> Option<PolyTraitRef<'tcx>> {
-        match self.kind() {
-            &PredicateKind::Trait(ref t, _) => Some(t.to_poly_trait_ref()),
-            PredicateKind::Projection(..)
-            | PredicateKind::Subtype(..)
-            | PredicateKind::RegionOutlives(..)
-            | PredicateKind::WellFormed(..)
-            | PredicateKind::ObjectSafe(..)
-            | PredicateKind::ClosureKind(..)
-            | PredicateKind::TypeOutlives(..)
-            | PredicateKind::ConstEvaluatable(..)
-            | PredicateKind::ConstEquate(..) => None,
+        match self.skip_binders() {
+            PredicateAtom::Trait(t, _) => Some(ty::Binder::bind(t.trait_ref)),
+            PredicateAtom::Projection(..)
+            | PredicateAtom::Subtype(..)
+            | PredicateAtom::RegionOutlives(..)
+            | PredicateAtom::WellFormed(..)
+            | PredicateAtom::ObjectSafe(..)
+            | PredicateAtom::ClosureKind(..)
+            | PredicateAtom::TypeOutlives(..)
+            | PredicateAtom::ConstEvaluatable(..)
+            | PredicateAtom::ConstEquate(..) => None,
         }
     }
 
     pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
-        match self.kind() {
-            &PredicateKind::TypeOutlives(data) => Some(data),
-            PredicateKind::Trait(..)
-            | PredicateKind::Projection(..)
-            | PredicateKind::Subtype(..)
-            | PredicateKind::RegionOutlives(..)
-            | PredicateKind::WellFormed(..)
-            | PredicateKind::ObjectSafe(..)
-            | PredicateKind::ClosureKind(..)
-            | PredicateKind::ConstEvaluatable(..)
-            | PredicateKind::ConstEquate(..) => None,
+        match self.skip_binders() {
+            PredicateAtom::TypeOutlives(data) => Some(ty::Binder::bind(data)),
+            PredicateAtom::Trait(..)
+            | PredicateAtom::Projection(..)
+            | PredicateAtom::Subtype(..)
+            | PredicateAtom::RegionOutlives(..)
+            | PredicateAtom::WellFormed(..)
+            | PredicateAtom::ObjectSafe(..)
+            | PredicateAtom::ClosureKind(..)
+            | PredicateAtom::ConstEvaluatable(..)
+            | PredicateAtom::ConstEquate(..) => None,
         }
     }
 }
@@ -1692,7 +1726,7 @@ pub struct ParamEnv<'tcx> {
     // Specifically, the low bit represents Reveal, with 0 meaning `UserFacing`
     // and 1 meaning `All`. The rest is the pointer.
     //
-    // This relies on the List<ty::Predicate<'tcx>> type having at least 2-byte
+    // This relies on the List<Predicate<'tcx>> type having at least 2-byte
     // alignment. Lists start with a usize and are repr(C) so this should be
     // fine; there is a debug_assert in the constructor as well.
     //
@@ -1706,7 +1740,7 @@ pub struct ParamEnv<'tcx> {
     ///
     /// Note: This is packed into the `packed_data` usize above, use the
     /// `caller_bounds()` method to access it.
-    caller_bounds: PhantomData<&'tcx List<ty::Predicate<'tcx>>>,
+    caller_bounds: PhantomData<&'tcx List<Predicate<'tcx>>>,
 
     /// Typically, this is `Reveal::UserFacing`, but during codegen we
     /// want `Reveal::All`.
@@ -1784,7 +1818,7 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     #[inline]
-    pub fn caller_bounds(self) -> &'tcx List<ty::Predicate<'tcx>> {
+    pub fn caller_bounds(self) -> &'tcx List<Predicate<'tcx>> {
         // mask out bottom bit
         unsafe { &*((self.packed_data & (!1)) as *const _) }
     }
@@ -1809,7 +1843,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Construct a trait environment with the given set of predicates.
     #[inline]
     pub fn new(
-        caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
+        caller_bounds: &'tcx List<Predicate<'tcx>>,
         reveal: Reveal,
         def_id: Option<DefId>,
     ) -> Self {

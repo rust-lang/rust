@@ -572,7 +572,14 @@ pub trait PrettyPrinter<'tcx>:
                     let mut is_sized = false;
                     p!(write("impl"));
                     for predicate in bounds.predicates {
-                        if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
+                        // Note: We can't use `to_opt_poly_trait_ref` here as `predicate`
+                        // may contain unbound variables. We therefore do this manually.
+                        //
+                        // FIXME(lcnr): Find out why exactly this is the case :)
+                        if let ty::PredicateAtom::Trait(pred, _) =
+                            predicate.bound_atom(self.tcx()).skip_binder()
+                        {
+                            let trait_ref = ty::Binder::bind(pred.trait_ref);
                             // Don't print +Sized, but rather +?Sized if absent.
                             if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
                                 is_sized = true;
@@ -2006,38 +2013,45 @@ define_print_and_forward_display! {
 
     ty::Predicate<'tcx> {
         match self.kind() {
-            &ty::PredicateKind::Trait(ref data, constness) => {
+            &ty::PredicateKind::Atom(atom) => p!(print(atom)),
+            ty::PredicateKind::ForAll(binder) => p!(print(binder)),
+        }
+    }
+
+    ty::PredicateAtom<'tcx> {
+        match *self {
+            ty::PredicateAtom::Trait(ref data, constness) => {
                 if let hir::Constness::Const = constness {
                     p!(write("const "));
                 }
                 p!(print(data))
             }
-            ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
-            ty::PredicateKind::RegionOutlives(predicate) => p!(print(predicate)),
-            ty::PredicateKind::TypeOutlives(predicate) => p!(print(predicate)),
-            ty::PredicateKind::Projection(predicate) => p!(print(predicate)),
-            ty::PredicateKind::WellFormed(arg) => p!(print(arg), write(" well-formed")),
-            &ty::PredicateKind::ObjectSafe(trait_def_id) => {
+            ty::PredicateAtom::Subtype(predicate) => p!(print(predicate)),
+            ty::PredicateAtom::RegionOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateAtom::TypeOutlives(predicate) => p!(print(predicate)),
+            ty::PredicateAtom::Projection(predicate) => p!(print(predicate)),
+            ty::PredicateAtom::WellFormed(arg) => p!(print(arg), write(" well-formed")),
+            ty::PredicateAtom::ObjectSafe(trait_def_id) => {
                 p!(write("the trait `"),
-                   print_def_path(trait_def_id, &[]),
-                   write("` is object-safe"))
+                print_def_path(trait_def_id, &[]),
+                write("` is object-safe"))
             }
-            &ty::PredicateKind::ClosureKind(closure_def_id, _closure_substs, kind) => {
+            ty::PredicateAtom::ClosureKind(closure_def_id, _closure_substs, kind) => {
                 p!(write("the closure `"),
-                   print_value_path(closure_def_id, &[]),
-                   write("` implements the trait `{}`", kind))
+                print_value_path(closure_def_id, &[]),
+                write("` implements the trait `{}`", kind))
             }
-            &ty::PredicateKind::ConstEvaluatable(def, substs) => {
+            ty::PredicateAtom::ConstEvaluatable(def, substs) => {
                 p!(write("the constant `"),
-                   print_value_path(def.did, substs),
-                   write("` can be evaluated"))
+                print_value_path(def.did, substs),
+                write("` can be evaluated"))
             }
-            ty::PredicateKind::ConstEquate(c1, c2) => {
+            ty::PredicateAtom::ConstEquate(c1, c2) => {
                 p!(write("the constant `"),
-                   print(c1),
-                   write("` equals `"),
-                   print(c2),
-                   write("`"))
+                print(c1),
+                write("` equals `"),
+                print(c2),
+                write("`"))
             }
         }
     }

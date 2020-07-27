@@ -798,25 +798,28 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // FIXME: do we want to commit to this behavior for param bounds?
         debug!("assemble_inherent_candidates_from_param(param_ty={:?})", param_ty);
 
-        let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| match predicate
-            .kind()
-        {
-            ty::PredicateKind::Trait(ref trait_predicate, _) => {
-                match trait_predicate.skip_binder().trait_ref.self_ty().kind {
-                    ty::Param(ref p) if *p == param_ty => Some(trait_predicate.to_poly_trait_ref()),
-                    _ => None,
-                }
-            }
-            ty::PredicateKind::Subtype(..)
-            | ty::PredicateKind::Projection(..)
-            | ty::PredicateKind::RegionOutlives(..)
-            | ty::PredicateKind::WellFormed(..)
-            | ty::PredicateKind::ObjectSafe(..)
-            | ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::TypeOutlives(..)
-            | ty::PredicateKind::ConstEvaluatable(..)
-            | ty::PredicateKind::ConstEquate(..) => None,
-        });
+        let bounds =
+            self.param_env.caller_bounds().iter().map(ty::Predicate::skip_binders).filter_map(
+                |predicate| match predicate {
+                    ty::PredicateAtom::Trait(trait_predicate, _) => {
+                        match trait_predicate.trait_ref.self_ty().kind {
+                            ty::Param(ref p) if *p == param_ty => {
+                                Some(ty::Binder::bind(trait_predicate.trait_ref))
+                            }
+                            _ => None,
+                        }
+                    }
+                    ty::PredicateAtom::Subtype(..)
+                    | ty::PredicateAtom::Projection(..)
+                    | ty::PredicateAtom::RegionOutlives(..)
+                    | ty::PredicateAtom::WellFormed(..)
+                    | ty::PredicateAtom::ObjectSafe(..)
+                    | ty::PredicateAtom::ClosureKind(..)
+                    | ty::PredicateAtom::TypeOutlives(..)
+                    | ty::PredicateAtom::ConstEvaluatable(..)
+                    | ty::PredicateAtom::ConstEquate(..) => None,
+                },
+            );
 
         self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {
             let trait_ref = this.erase_late_bound_regions(&poly_trait_ref);

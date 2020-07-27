@@ -582,18 +582,18 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         while !queue.is_empty() {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
-            let trait_pred = match obligation.predicate.kind() {
-                &ty::PredicateKind::Trait(trait_pred, _)
+            let trait_pred = match obligation.predicate.skip_binders() {
+                ty::PredicateAtom::Trait(trait_pred, _)
                     if traits.contains(&trait_pred.def_id()) =>
                 {
                     if unsize_did == trait_pred.def_id() {
-                        let unsize_ty = trait_pred.skip_binder().trait_ref.substs[1].expect_ty();
+                        let unsize_ty = trait_pred.trait_ref.substs[1].expect_ty();
                         if let ty::Tuple(..) = unsize_ty.kind {
                             debug!("coerce_unsized: found unsized tuple coercion");
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    trait_pred
+                    ty::Binder::bind(trait_pred)
                 }
                 _ => {
                     coercion.obligations.push(obligation);

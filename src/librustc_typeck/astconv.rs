@@ -1705,8 +1705,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     "conv_object_ty_poly_trait_ref: observing object predicate `{:?}`",
                     obligation.predicate
                 );
-                match obligation.predicate.kind() {
-                    ty::PredicateKind::Trait(pred, _) => {
+
+                match obligation.predicate.skip_binders() {
+                    ty::PredicateAtom::Trait(pred, _) => {
+                        let pred = ty::Binder::bind(pred);
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
                                 .in_definition_order()
@@ -1714,7 +1716,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .map(|item| item.def_id),
                         );
                     }
-                    &ty::PredicateKind::Projection(pred) => {
+                    ty::PredicateAtom::Projection(pred) => {
+                        let pred = ty::Binder::bind(pred);
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self =

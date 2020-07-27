@@ -447,21 +447,24 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         };
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
-            .filter_map(|obligation| match obligation.predicate.kind() {
-                ty::PredicateKind::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
+            // We don't care about regions here.
+            .filter_map(|obligation| match obligation.predicate.skip_binders() {
+                ty::PredicateAtom::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
                     let span = predicates
                         .predicates
                         .iter()
                         .zip(predicates.spans.iter())
                         .find_map(
-                            |(p, span)| if *p == obligation.predicate { Some(*span) } else { None },
+                            |(p, span)| {
+                                if *p == obligation.predicate { Some(*span) } else { None }
+                            },
                         )
                         .unwrap_or(rustc_span::DUMMY_SP);
                     Some((trait_pred, span))
                 }
                 _ => None,
             })
-            .find_map(|(trait_pred, span)| match trait_pred.skip_binder().self_ty().kind {
+            .find_map(|(trait_pred, span)| match trait_pred.self_ty().kind {
                 ty::Dynamic(..) => Some(span),
                 _ => None,
             })

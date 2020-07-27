@@ -102,7 +102,6 @@ impl<'tcx> CtxtInterners<'tcx> {
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
-
             chalk_environment_clause_list: Default::default(),
         }
     }
@@ -2128,14 +2127,23 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
-    pub fn mk_ty(&self, st: TyKind<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
         self.interners.intern_ty(st)
     }
 
     #[inline]
-    pub fn mk_predicate(&self, kind: PredicateKind<'tcx>) -> Predicate<'tcx> {
+    pub fn mk_predicate(self, kind: PredicateKind<'tcx>) -> Predicate<'tcx> {
         let inner = self.interners.intern_predicate(kind);
         Predicate { inner }
+    }
+
+    #[inline]
+    pub fn reuse_or_mk_predicate(
+        self,
+        pred: Predicate<'tcx>,
+        kind: PredicateKind<'tcx>,
+    ) -> Predicate<'tcx> {
+        if *pred.kind() != kind { self.mk_predicate(kind) } else { pred }
     }
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {

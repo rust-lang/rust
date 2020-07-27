@@ -114,12 +114,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds().iter())
             .filter(|p| !p.is_global())
             .filter_map(|obligation| {
-                if let ty::PredicateKind::Trait(poly_trait_ref, _) = obligation.predicate.kind() {
-                    if poly_trait_ref.def_id() == sized_trait || poly_trait_ref.skip_binder().has_escaping_bound_vars()
-                    {
+                // Note that we do not want to deal with qualified predicates here.
+                if let ty::PredicateKind::Atom(ty::PredicateAtom::Trait(pred, _)) = obligation.predicate.kind() {
+                    if pred.def_id() == sized_trait {
                         return None;
                     }
-                    Some(poly_trait_ref)
+                    Some(pred)
                 } else {
                     None
                 }
@@ -159,14 +159,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 }
             }
 
-            //
             // * Exclude a type that is specifically bounded by `Borrow`.
             // * Exclude a type whose reference also fulfills its bound. (e.g., `std::convert::AsRef`,
             //   `serde::Serialize`)
             let (implements_borrow_trait, all_borrowable_trait) = {
                 let preds = preds
                     .iter()
-                    .filter(|t| t.skip_binder().self_ty() == ty)
+                    .filter(|t| t.self_ty() == ty)
                     .collect::<Vec<_>>();
 
                 (
@@ -174,8 +173,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     !preds.is_empty() && {
                         let ty_empty_region = cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_root_empty, ty);
                         preds.iter().all(|t| {
-                            let ty_params = &t.skip_binder().trait_ref.substs.iter().skip(1).collect::<Vec<_>>();
-                            implements_trait(cx, ty_empty_region, t.def_id(), ty_params)
+                            let ty_params = t
+                                .trait_ref
+                                .substs
+                                .iter()
+                                .skip(1)
+                                .collect::<Vec<_>>();
+                            implements_trait(cx, ty_empty_region, t.def_id(), &ty_params)
                         })
                     },
                 )

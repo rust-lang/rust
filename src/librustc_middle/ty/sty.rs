@@ -652,8 +652,7 @@ impl<'tcx> Binder<ExistentialPredicate<'tcx>> {
                 Binder(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
             }
             ExistentialPredicate::Projection(p) => {
-                ty::PredicateKind::Projection(Binder(p.with_self_ty(tcx, self_ty)))
-                    .to_predicate(tcx)
+                Binder(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref =
@@ -896,6 +895,22 @@ impl<T> Binder<T> {
         Binder(value)
     }
 
+    /// Wraps `value` in a binder without actually binding any currently
+    /// unbound variables.
+    ///
+    /// Note that this will shift all debrujin indices of escaping bound variables
+    /// by 1 to avoid accidential captures.
+    pub fn wrap_nonbinding(tcx: TyCtxt<'tcx>, value: T) -> Binder<T>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        if value.has_escaping_bound_vars() {
+            Binder::bind(super::fold::shift_vars(tcx, &value, 1))
+        } else {
+            Binder::dummy(value)
+        }
+    }
+
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
     /// De Bruijn indices and the like. It is usually better to
@@ -977,6 +992,15 @@ impl<T> Binder<T> {
     {
         let (u, v) = f(self.0);
         (Binder(u), Binder(v))
+    }
+}
+
+impl<T> Binder<Option<T>> {
+    pub fn transpose(self) -> Option<Binder<T>> {
+        match self.0 {
+            Some(v) => Some(Binder(v)),
+            None => None,
+        }
     }
 }
 

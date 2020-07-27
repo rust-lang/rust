@@ -27,8 +27,8 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef,
-    ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPredicate, Ty,
+    TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness,
 };
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
@@ -1021,7 +1021,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     self.prove_predicate(
-                        ty::PredicateKind::WellFormed(inferred_ty.into()).to_predicate(self.tcx()),
+                        ty::PredicateAtom::WellFormed(inferred_ty.into()).to_predicate(self.tcx()),
                         Locations::All(span),
                         ConstraintCategory::TypeAnnotation,
                     );
@@ -1273,7 +1273,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     obligations.obligations.push(traits::Obligation::new(
                         ObligationCause::dummy(),
                         param_env,
-                        ty::PredicateKind::WellFormed(revealed_ty.into()).to_predicate(infcx.tcx),
+                        ty::PredicateAtom::WellFormed(revealed_ty.into()).to_predicate(infcx.tcx),
                     ));
                     obligations.add(
                         infcx
@@ -1617,7 +1617,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_call_dest(body, term, &sig, destination, term_location);
 
                 self.prove_predicates(
-                    sig.inputs_and_output.iter().map(|ty| ty::PredicateKind::WellFormed(ty.into())),
+                    sig.inputs_and_output.iter().map(|ty| ty::PredicateAtom::WellFormed(ty.into())),
                     term_location.to_locations(),
                     ConstraintCategory::Boring,
                 );
@@ -2022,18 +2022,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         traits::ObligationCauseCode::RepeatVec(should_suggest),
                                     ),
                                     self.param_env,
-                                    ty::PredicateKind::Trait(
-                                        ty::Binder::bind(ty::TraitPredicate {
-                                            trait_ref: ty::TraitRef::new(
-                                                self.tcx().require_lang_item(
-                                                    CopyTraitLangItem,
-                                                    Some(self.last_span),
-                                                ),
-                                                tcx.mk_substs_trait(ty, &[]),
-                                            ),
-                                        }),
-                                        hir::Constness::NotConst,
-                                    )
+                                    ty::Binder::bind(ty::TraitRef::new(
+                                        self.tcx().require_lang_item(
+                                            CopyTraitLangItem,
+                                            Some(self.last_span),
+                                        ),
+                                        tcx.mk_substs_trait(ty, &[]),
+                                    ))
+                                    .without_const()
                                     .to_predicate(self.tcx()),
                                 ),
                                 &traits::SelectionError::Unimplemented,
@@ -2706,8 +2702,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory,
     ) {
         self.prove_predicates(
-            Some(ty::PredicateKind::Trait(
-                trait_ref.to_poly_trait_ref().to_poly_trait_predicate(),
+            Some(ty::PredicateAtom::Trait(
+                ty::TraitPredicate { trait_ref },
                 hir::Constness::NotConst,
             )),
             locations,

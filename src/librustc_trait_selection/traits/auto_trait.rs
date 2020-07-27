@@ -344,8 +344,7 @@ impl AutoTraitFinder<'tcx> {
                         already_visited.remove(&pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
-                            ty::PredicateKind::Trait(pred, hir::Constness::NotConst)
-                                .to_predicate(self.tcx),
+                            pred.without_const().to_predicate(self.tcx),
                         );
                         predicates.push_back(pred);
                     } else {
@@ -408,21 +407,21 @@ impl AutoTraitFinder<'tcx> {
     /// under which a type implements an auto trait. A trait predicate involving
     /// a HRTB means that the type needs to work with any choice of lifetime,
     /// not just one specific lifetime (e.g., `'static`).
-    fn add_user_pred<'c>(
+    fn add_user_pred(
         &self,
-        user_computed_preds: &mut FxHashSet<ty::Predicate<'c>>,
-        new_pred: ty::Predicate<'c>,
+        user_computed_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        new_pred: ty::Predicate<'tcx>,
     ) {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
             if let (
-                ty::PredicateKind::Trait(new_trait, _),
-                ty::PredicateKind::Trait(old_trait, _),
-            ) = (new_pred.kind(), old_pred.kind())
+                ty::PredicateAtom::Trait(new_trait, _),
+                ty::PredicateAtom::Trait(old_trait, _),
+            ) = (new_pred.skip_binders(), old_pred.skip_binders())
             {
                 if new_trait.def_id() == old_trait.def_id() {
-                    let new_substs = new_trait.skip_binder().trait_ref.substs;
-                    let old_substs = old_trait.skip_binder().trait_ref.substs;
+                    let new_substs = new_trait.trait_ref.substs;
+                    let old_substs = old_trait.trait_ref.substs;
 
                     if !new_substs.types().eq(old_substs.types()) {
                         // We can't compare lifetimes if the types are different,
@@ -618,11 +617,12 @@ impl AutoTraitFinder<'tcx> {
     ) -> bool {
         let dummy_cause = ObligationCause::dummy();
 
-        for (obligation, mut predicate) in nested.map(|o| (o.clone(), o.predicate)) {
-            let is_new_pred = fresh_preds.insert(self.clean_pred(select.infcx(), predicate));
+        for obligation in nested {
+            let is_new_pred =
+                fresh_preds.insert(self.clean_pred(select.infcx(), obligation.predicate));
 
             // Resolve any inference variables that we can, to help selection succeed
-            predicate = select.infcx().resolve_vars_if_possible(&predicate);
+            let predicate = select.infcx().resolve_vars_if_possible(&obligation.predicate);
 
             // We only add a predicate as a user-displayable bound if
             // it involves a generic parameter, and doesn't contain
@@ -636,17 +636,19 @@ impl AutoTraitFinder<'tcx> {
             //
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
-            match predicate.kind() {
-                &ty::PredicateKind::Trait(p, _) => {
-                    if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
+
+            match predicate.skip_binders() {
+                ty::PredicateAtom::Trait(p, _) => {
+                    if self.is_param_no_infer(p.trait_ref.substs)
                         && !only_projections
                         && is_new_pred
                     {
                         self.add_user_pred(computed_preds, predicate);
                     }
-                    predicates.push_back(p);
+                    predicates.push_back(ty::Binder::bind(p));
                 }
-                &ty::PredicateKind::Projection(p) => {
+                ty::PredicateAtom::Projection(p) => {
+                    let p = ty::Binder::bind(p);
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
                         predicate
@@ -758,7 +760,7 @@ impl AutoTraitFinder<'tcx> {
                             }
                         }
                         Ok(None) => {
-                            // It's ok not to make progress when hvave no inference variables -
+                            // It's ok not to make progress when have no inference variables -
                             // in that case, we were only performing unifcation to check if an
                             // error occurred (which would indicate that it's impossible for our
                             // type to implement the auto trait).
@@ -771,12 +773,14 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                &ty::PredicateKind::RegionOutlives(binder) => {
+                ty::PredicateAtom::RegionOutlives(binder) => {
+                    let binder = ty::Binder::bind(binder);
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
-                &ty::PredicateKind::TypeOutlives(binder) => {
+                ty::PredicateAtom::TypeOutlives(binder) => {
+                    let binder = ty::Binder::bind(binder);
                     match (
                         binder.no_bound_vars(),
                         binder.map_bound_ref(|pred| pred.0).no_bound_vars(),

@@ -59,8 +59,8 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
         );
     }
 
-    pub fn trait_ref(&self) -> &ty::PolyTraitRef<'tcx> {
-        &self.top().0
+    pub fn trait_ref(&self) -> ty::PolyTraitRef<'tcx> {
+        self.top().0
     }
 
     pub fn top(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
@@ -109,7 +109,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
 
         // Don't recurse if this trait alias is already on the stack for the DFS search.
         let anon_pred = anonymize_predicate(tcx, pred);
-        if item.path.iter().rev().skip(1).any(|(tr, _)| {
+        if item.path.iter().rev().skip(1).any(|&(tr, _)| {
             anonymize_predicate(tcx, tr.without_const().to_predicate(tcx)) == anon_pred
         }) {
             return false;

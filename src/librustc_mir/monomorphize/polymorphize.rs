@@ -131,9 +131,9 @@ fn mark_used_by_predicates<'tcx>(
     let predicates = tcx.explicit_predicates_of(def_id);
     debug!("mark_parameters_used_in_predicates: predicates_of={:?}", predicates);
     for (predicate, _) in predicates.predicates {
-        match predicate.kind() {
-            ty::PredicateKind::Trait(predicate, ..) => {
-                let trait_ref = predicate.skip_binder().trait_ref;
+        match predicate.skip_binders() {
+            ty::PredicateAtom::Trait(predicate, ..) => {
+                let trait_ref = predicate.trait_ref;
                 if is_self_ty_used(unused_parameters, trait_ref.self_ty()) {
                     for ty in trait_ref.substs.types() {
                         debug!("unused_generic_params: (trait) ty={:?}", ty);
@@ -141,12 +141,11 @@ fn mark_used_by_predicates<'tcx>(
                     }
                 }
             }
-            ty::PredicateKind::Projection(predicate, ..) => {
-                let self_ty = predicate.skip_binder().projection_ty.self_ty();
+            ty::PredicateAtom::Projection(proj, ..) => {
+                let self_ty = proj.projection_ty.self_ty();
                 if is_self_ty_used(unused_parameters, self_ty) {
-                    let ty = predicate.ty();
-                    debug!("unused_generic_params: (projection) ty={:?}", ty);
-                    mark_ty(unused_parameters, ty.skip_binder());
+                    debug!("unused_generic_params: (projection ty={:?}", proj.ty);
+                    mark_ty(unused_parameters, proj.ty);
                 }
             }
             _ => (),

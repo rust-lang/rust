@@ -39,16 +39,16 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
     })
 }
 
-fn not_outlives_predicate(p: &ty::Predicate<'_>) -> bool {
-    match p.kind() {
-        ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
-        ty::PredicateKind::Trait(..)
-        | ty::PredicateKind::Projection(..)
-        | ty::PredicateKind::WellFormed(..)
-        | ty::PredicateKind::ObjectSafe(..)
-        | ty::PredicateKind::ClosureKind(..)
-        | ty::PredicateKind::Subtype(..)
-        | ty::PredicateKind::ConstEvaluatable(..)
-        | ty::PredicateKind::ConstEquate(..) => true,
+fn not_outlives_predicate(p: &ty::Predicate<'tcx>) -> bool {
+    match p.skip_binders() {
+        ty::PredicateAtom::RegionOutlives(..) | ty::PredicateAtom::TypeOutlives(..) => false,
+        ty::PredicateAtom::Trait(..)
+        | ty::PredicateAtom::Projection(..)
+        | ty::PredicateAtom::WellFormed(..)
+        | ty::PredicateAtom::ObjectSafe(..)
+        | ty::PredicateAtom::ClosureKind(..)
+        | ty::PredicateAtom::Subtype(..)
+        | ty::PredicateAtom::ConstEvaluatable(..)
+        | ty::PredicateAtom::ConstEquate(..) => true,
     }
 }

@@ -68,10 +68,7 @@ trait DefIdVisitor<'tcx> {
     }
 }
 
-struct DefIdVisitorSkeleton<'v, 'tcx, V>
-where
-    V: DefIdVisitor<'tcx> + ?Sized,
-{
+struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
     visited_opaque_tys: FxHashSet<DefId>,
     dummy: PhantomData<TyCtxt<'tcx>>,
@@ -87,34 +84,28 @@ where
             || (!self.def_id_visitor.shallow() && substs.visit_with(self))
     }
 
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool {
+        match predicate.skip_binders() {
+            ty::PredicateAtom::Trait(ty::TraitPredicate { trait_ref }, _) => {
+                self.visit_trait(trait_ref)
+            }
+            ty::PredicateAtom::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
+                ty.visit_with(self)
+                    || self.visit_trait(projection_ty.trait_ref(self.def_id_visitor.tcx()))
+            }
+            ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => {
+                ty.visit_with(self)
+            }
+            ty::PredicateAtom::RegionOutlives(..) => false,
+            _ => bug!("unexpected predicate: {:?}", predicate),
+        }
+    }
+
     fn visit_predicates(&mut self, predicates: ty::GenericPredicates<'tcx>) -> bool {
         let ty::GenericPredicates { parent: _, predicates } = predicates;
-        for (predicate, _span) in predicates {
-            match predicate.kind() {
-                ty::PredicateKind::Trait(poly_predicate, _) => {
-                    let ty::TraitPredicate { trait_ref } = poly_predicate.skip_binder();
-                    if self.visit_trait(trait_ref) {
-                        return true;
-                    }
-                }
-                ty::PredicateKind::Projection(poly_predicate) => {
-                    let ty::ProjectionPredicate { projection_ty, ty } =
-                        poly_predicate.skip_binder();
-                    if ty.visit_with(self) {
-                        return true;
-                    }
-                    if self.visit_trait(projection_ty.trait_ref(self.def_id_visitor.tcx())) {
-                        return true;
-                    }
-                }
-                ty::PredicateKind::TypeOutlives(poly_predicate) => {
-                    let ty::OutlivesPredicate(ty, _region) = poly_predicate.skip_binder();
-                    if ty.visit_with(self) {
-                        return true;
-                    }
-                }
-                ty::PredicateKind::RegionOutlives(..) => {}
-                _ => bug!("unexpected predicate: {:?}", predicate),
+        for &(predicate, _span) in predicates {
+            if self.visit_predicate(predicate) {
+                return true;
             }
         }
         false

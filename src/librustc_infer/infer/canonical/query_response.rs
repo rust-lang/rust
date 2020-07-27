@@ -525,28 +525,25 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         result_subst: &'a CanonicalVarValues<'tcx>,
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints.iter().map(move |constraint| {
-            let constraint = substitute_value(self.tcx, result_subst, constraint);
-            let ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
+            let ty::OutlivesPredicate(k1, r2) =
+                substitute_value(self.tcx, result_subst, constraint).skip_binder();
 
-            Obligation::new(
-                cause.clone(),
-                param_env,
-                match k1.unpack() {
-                    GenericArgKind::Lifetime(r1) => ty::PredicateKind::RegionOutlives(
-                        ty::Binder::bind(ty::OutlivesPredicate(r1, r2)),
-                    )
-                    .to_predicate(self.tcx),
-                    GenericArgKind::Type(t1) => ty::PredicateKind::TypeOutlives(ty::Binder::bind(
-                        ty::OutlivesPredicate(t1, r2),
-                    ))
-                    .to_predicate(self.tcx),
-                    GenericArgKind::Const(..) => {
-                        // Consts cannot outlive one another, so we don't expect to
-                        // ecounter this branch.
-                        span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
-                    }
-                },
-            )
+            let predicate = match k1.unpack() {
+                GenericArgKind::Lifetime(r1) => {
+                    ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2))
+                }
+                GenericArgKind::Type(t1) => {
+                    ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(t1, r2))
+                }
+                GenericArgKind::Const(..) => {
+                    // Consts cannot outlive one another, so we don't expect to
+                    // encounter this branch.
+                    span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
+                }
+            }
+            .potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
+
+            Obligation::new(cause.clone(), param_env, predicate)
         })
     }
 
@@ -666,10 +663,8 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
-            predicate: ty::PredicateKind::RegionOutlives(ty::Binder::dummy(ty::OutlivesPredicate(
-                sup, sub,
-            )))
-            .to_predicate(self.infcx.tcx),
+            predicate: ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(sup, sub))
+                .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
         });
     }
