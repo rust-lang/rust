@@ -75,10 +75,6 @@ crate struct CrateMetadata {
     /// quickly retrace a `DefPath`, which is needed for incremental
     /// compilation support.
     def_path_table: DefPathTable,
-    /// Trait impl data.
-    /// FIXME: Used only from queries and can use query cache,
-    /// so pre-decoding can probably be avoided.
-    trait_impls: FxHashMap<(u32, DefIndex), Lazy<[DefIndex]>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
@@ -1304,17 +1300,17 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             None => None,
         };
 
-        if let Some(filter) = filter {
-            if let Some(impls) = self.trait_impls.get(&filter) {
+        if let Some((cnum, index)) = filter {
+            if let Some(impls) =
+                self.root.tables.trait_impls.get(self, cnum).and_then(|t| t.get(self, index))
+            {
                 tcx.arena.alloc_from_iter(impls.decode(self).map(|idx| self.local_def_id(idx)))
             } else {
                 &[]
             }
         } else {
             tcx.arena.alloc_from_iter(
-                self.trait_impls
-                    .values()
-                    .flat_map(|impls| impls.decode(self).map(|idx| self.local_def_id(idx))),
+                self.root.all_trait_impls.decode(self).map(|idx| self.local_def_id(idx)),
             )
         }
     }
@@ -1646,11 +1642,6 @@ impl CrateMetadata {
         let def_path_table = record_time(&sess.perf_stats.decode_def_path_tables_time, || {
             root.def_path_table.decode((&blob, sess))
         });
-        let trait_impls = root
-            .impls
-            .decode((&blob, sess))
-            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
-            .collect();
         let alloc_decoding_state =
             AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
         let dependencies = Lock::new(cnum_map.iter().cloned().collect());
@@ -1658,7 +1649,6 @@ impl CrateMetadata {
             blob,
             root,
             def_path_table,
-            trait_impls,
             raw_proc_macros,
             source_map_import_info: OnceCell::new(),
             alloc_decoding_state,

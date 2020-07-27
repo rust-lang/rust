@@ -93,24 +93,34 @@ impl<T: Encodable> FixedSizeEncoding for Option<Lazy<T>> {
     }
 }
 
+macro_rules! meta_body {
+    ($T:ident) => {
+        fixed_size_encoding_byte_len_and_defaults!(u32::BYTE_LEN * 2);
+
+        fn from_bytes(b: &[u8]) -> Self {
+            Some(Lazy::from_position_and_meta(
+                <Option<Lazy<$T>>>::from_bytes(b)?.position,
+                u32::from_bytes(&b[u32::BYTE_LEN..]) as usize,
+            ))
+        }
+
+        fn write_to_bytes(self, b: &mut [u8]) {
+            self.map(|lazy| Lazy::<$T>::from_position(lazy.position)).write_to_bytes(b);
+
+            let len = self.map_or(0, |lazy| lazy.meta);
+            let len: u32 = len.try_into().unwrap();
+
+            len.write_to_bytes(&mut b[u32::BYTE_LEN..]);
+        }
+    };
+}
+
+impl<I: Idx, T: Encodable> FixedSizeEncoding for Option<Lazy<Table<I, Lazy<[T], usize>>, usize>> {
+    meta_body!(T);
+}
+
 impl<T: Encodable> FixedSizeEncoding for Option<Lazy<[T]>> {
-    fixed_size_encoding_byte_len_and_defaults!(u32::BYTE_LEN * 2);
-
-    fn from_bytes(b: &[u8]) -> Self {
-        Some(Lazy::from_position_and_meta(
-            <Option<Lazy<T>>>::from_bytes(b)?.position,
-            u32::from_bytes(&b[u32::BYTE_LEN..]) as usize,
-        ))
-    }
-
-    fn write_to_bytes(self, b: &mut [u8]) {
-        self.map(|lazy| Lazy::<T>::from_position(lazy.position)).write_to_bytes(b);
-
-        let len = self.map_or(0, |lazy| lazy.meta);
-        let len: u32 = len.try_into().unwrap();
-
-        len.write_to_bytes(&mut b[u32::BYTE_LEN..]);
-    }
+    meta_body!(T);
 }
 
 /// Random-access table (i.e. offering constant-time `get`/`set`), similar to

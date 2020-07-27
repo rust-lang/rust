@@ -564,7 +564,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode the def IDs of impls, for coherence checking.
         i = self.position();
-        let impls = self.encode_impls();
+        let all_trait_impls = self.encode_trait_impls();
         let impl_bytes = self.position() - i;
 
         let tcx = self.tcx;
@@ -677,12 +677,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             foreign_modules,
             source_map,
             def_path_table,
-            impls,
             exported_symbols,
             interpret_alloc_index,
             tables,
             syntax_contexts,
             expn_data,
+            all_trait_impls,
         });
 
         let total_bytes = self.position();
@@ -1586,34 +1586,37 @@ impl EncodeContext<'a, 'tcx> {
         self.lazy(&tcx.lang_items().missing)
     }
 
-    /// Encodes an index, mapping each trait to its (local) implementations.
-    fn encode_impls(&mut self) -> Lazy<[TraitImpls]> {
+    fn encode_trait_impls(&mut self) -> Lazy<[DefIndex]> {
         debug!("EncodeContext::encode_impls()");
         let tcx = self.tcx;
         let mut visitor = ImplVisitor { tcx, impls: FxHashMap::default() };
         tcx.hir().krate().visit_all_item_likes(&mut visitor);
 
-        let mut all_impls: Vec<_> = visitor.impls.into_iter().collect();
+        let all_impls: Vec<_> = visitor.impls.into_iter().collect();
+        let mut all_trait_impls = Vec::new();
 
-        // Bring everything into deterministic order for hashing
-        all_impls.sort_by_cached_key(|&(trait_def_id, _)| tcx.def_path_hash(trait_def_id));
+        let mut table_map: FxHashMap<u32, TableBuilder<DefIndex, Lazy<[DefIndex]>>> =
+            Default::default();
 
-        let all_impls: Vec<_> = all_impls
-            .into_iter()
-            .map(|(trait_def_id, mut impls)| {
-                // Bring everything into deterministic order for hashing
-                impls.sort_by_cached_key(|&index| {
-                    tcx.hir().definitions().def_path_hash(LocalDefId { local_def_index: index })
-                });
+        for (trait_def_id, mut impls) in all_impls {
+            // Bring everything into deterministic order for hashing
+            impls.sort_by_cached_key(|&index| {
+                tcx.hir().definitions().def_path_hash(LocalDefId { local_def_index: index })
+            });
 
-                TraitImpls {
-                    trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
-                    impls: self.lazy(&impls),
-                }
-            })
-            .collect();
+            all_trait_impls.extend(&impls);
 
-        self.lazy(&all_impls)
+            table_map
+                .entry(trait_def_id.krate.as_u32())
+                .or_default()
+                .set(trait_def_id.index, self.lazy(&impls));
+        }
+
+        for (cnum, builder) in table_map {
+            let table = builder.encode(&mut self.opaque);
+            self.tables.trait_impls.set(cnum, table);
+        }
+        self.lazy(&all_trait_impls)
     }
 
     // Encodes all symbols exported from this crate into the metadata.

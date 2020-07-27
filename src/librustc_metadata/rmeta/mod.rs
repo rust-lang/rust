@@ -197,7 +197,7 @@ crate struct CrateRoot<'tcx> {
     native_libraries: Lazy<[NativeLib]>,
     foreign_modules: Lazy<[ForeignModule]>,
     def_path_table: Lazy<rustc_hir::definitions::DefPathTable>,
-    impls: Lazy<[TraitImpls]>,
+    all_trait_impls: Lazy<[DefIndex]>,
     interpret_alloc_index: Lazy<[u32]>,
 
     tables: LazyTables<'tcx>,
@@ -230,23 +230,17 @@ crate struct CrateDep {
     pub extra_filename: String,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
-crate struct TraitImpls {
-    trait_id: (u32, DefIndex),
-    impls: Lazy<[DefIndex]>,
-}
-
 /// Define `LazyTables` and `TableBuilders` at the same time.
 macro_rules! define_tables {
-    ($($name:ident: Table<DefIndex, $T:ty>),+ $(,)?) => {
+    ($($name:ident: Table<$I:ty, $T:ty>),+ $(,)?) => {
         #[derive(RustcEncodable, RustcDecodable)]
         crate struct LazyTables<'tcx> {
-            $($name: Lazy!(Table<DefIndex, $T>)),+
+            $($name: Lazy!(Table<$I, $T>)),+
         }
 
         #[derive(Default)]
         struct TableBuilders<'tcx> {
-            $($name: TableBuilder<DefIndex, $T>),+
+            $($name: TableBuilder<$I, $T>),+
         }
 
         impl TableBuilders<'tcx> {
@@ -286,6 +280,7 @@ define_tables! {
     mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u64>>>,
+    trait_impls: Table<u32, Lazy!(Table<DefIndex, Lazy!([DefIndex])>)>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
