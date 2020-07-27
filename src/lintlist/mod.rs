@@ -363,7 +363,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "derive_ord_xor_partial_ord",
         group: "correctness",
-        desc: "default lint description",
+        desc: "deriving `Ord` but implementing `PartialOrd` explicitly",
         deprecation: None,
         module: "derive",
     },

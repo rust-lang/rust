@@ -1,6 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
-    get_trait_def_id, is_automatically_derived, is_copy, match_path, span_lint_and_help, span_lint_and_note, span_lint_and_then,
+    get_trait_def_id, is_automatically_derived, is_copy, match_path, span_lint_and_help, span_lint_and_note,
+    span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
