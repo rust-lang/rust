@@ -137,6 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
+            check_ord_pord(cx, item.span, trait_ref, ty, is_automatically_derived);
 
             if is_automatically_derived {
                 check_unsafe_derive_deserialize(cx, item, trait_ref, ty);
@@ -191,6 +192,60 @@ fn check_hash_peq<'tcx>(
                                 diag.span_note(
                                     cx.tcx.hir().span(hir_id),
                                     "`PartialEq` implemented here"
+                                );
+                            }
+                        }
+                    );
+                }
+            });
+        }
+    }
+}
+
+/// Implementation of the `DERIVE_ORD_XOR_PARTIAL_ORD` lint.
+fn check_ord_pord<'tcx>(
+    cx: &LateContext<'tcx>,
+    span: Span,
+    trait_ref: &TraitRef<'_>,
+    ty: Ty<'tcx>,
+    ord_is_automatically_derived: bool,
+) {
+    if_chain! {
+        if match_path(&trait_ref.path, &paths::ORD);
+        if let Some(pord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait();
+        if let Some(def_id) = &trait_ref.trait_def_id();
+        if !def_id.is_local();
+        then {
+            // Look for the PartialOrd implementations for `ty`
+            cx.tcx.for_each_relevant_impl(pord_trait_def_id, ty, |impl_id| {
+                let pord_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
+
+                if pord_is_automatically_derived == ord_is_automatically_derived {
+                    return;
+                }
+
+                let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
+
+                // Only care about `impl PartialOrd<Foo> for Foo`
+                // For `impl PartialOrd<B> for A, input_types is [A, B]
+                if trait_ref.substs.type_at(1) == ty {
+                    let mess = if pord_is_automatically_derived {
+                        "you are implementing `Ord` explicitly but have derived `PartialOrd`"
+                    } else {
+                        "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
+                    };
+
+                    span_lint_and_then(
+                        cx,
+                        DERIVE_ORD_XOR_PARTIAL_ORD,
+                        span,
+                        mess,
+                        |diag| {
+                            if let Some(local_def_id) = impl_id.as_local() {
+                                let hir_id = cx.tcx.hir().as_local_hir_id(local_def_id);
+                                diag.span_note(
+                                    cx.tcx.hir().span(hir_id),
+                                    "`PartialOrd` implemented here"
                                 );
                             }
                         }
