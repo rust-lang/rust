@@ -16,13 +16,16 @@
 
 use std::{any::Any, fmt};
 
-use ra_syntax::{SyntaxNode, SyntaxNodePtr};
+use ra_syntax::SyntaxNodePtr;
 
 use crate::{db::AstDatabase, InFile};
 
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn message(&self) -> String;
     fn source(&self) -> InFile<SyntaxNodePtr>;
+    fn highlighting_source(&self) -> InFile<SyntaxNodePtr> {
+        self.source()
+    }
     fn as_any(&self) -> &(dyn Any + Send + 'static);
     fn is_experimental(&self) -> bool {
         false
@@ -35,12 +38,6 @@ pub trait AstDiagnostic {
 }
 
 impl dyn Diagnostic {
-    pub fn syntax_node(&self, db: &impl AstDatabase) -> SyntaxNode {
-        let source = self.source();
-        let node = db.parse_or_expand(source.file_id).unwrap();
-        source.value.to_node(&node)
-    }
-
     pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {
         self.as_any().downcast_ref()
     }

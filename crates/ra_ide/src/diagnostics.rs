@@ -69,7 +69,6 @@ pub(crate) fn diagnostics(
             })
         })
         .on::<hir::diagnostics::MissingFields, _>(|d| {
-            let range = sema.diagnostics_range(d).range;
             // Note that although we could add a diagnostics to
             // fill the missing tuple field, e.g :
             // `struct A(usize);`
@@ -95,15 +94,12 @@ pub(crate) fn diagnostics(
                 };
                 Some((
                     Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()),
-                    range,
+                    sema.diagnostics_range(d).range,
                 ))
             };
 
             res.borrow_mut().push(Diagnostic {
-                range: d
-                    .list_parent_ast(db)
-                    .map(|path| path.syntax().text_range())
-                    .unwrap_or(range),
+                range: d.highlighting_source().file_syntax(db).text_range(),
                 message: d.message(),
                 severity: Severity::Error,
                 fix,

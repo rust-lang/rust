@@ -9,7 +9,7 @@ use hir_def::DefWithBodyId;
 use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
 use ra_prof::profile;
-use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
+use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 use stdx::format_to;
 
 use crate::db::HirDatabase;
@@ -64,16 +64,6 @@ pub struct MissingFields {
     pub list_parent_path: Option<AstPtr<ast::Path>>,
 }
 
-impl MissingFields {
-    fn root(&self, db: &dyn AstDatabase) -> SyntaxNode {
-        db.parse_or_expand(self.file).unwrap()
-    }
-
-    pub fn list_parent_ast(&self, db: &dyn AstDatabase) -> Option<ast::Path> {
-        self.list_parent_path.as_ref().map(|path| path.to_node(&self.root(db)))
-    }
-}
-
 impl Diagnostic for MissingFields {
     fn message(&self) -> String {
         let mut buf = String::from("Missing structure fields:\n");
@@ -85,8 +75,16 @@ impl Diagnostic for MissingFields {
     fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.field_list.clone().into() }
     }
+
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
+    }
+
+    fn highlighting_source(&self) -> InFile<SyntaxNodePtr> {
+        self.list_parent_path
+            .clone()
+            .map(|path| InFile { file_id: self.file, value: path.into() })
+            .unwrap_or_else(|| self.source())
     }
 }
 
@@ -94,7 +92,8 @@ impl AstDiagnostic for MissingFields {
     type AST = ast::RecordExprFieldList;
 
     fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
-        self.field_list.to_node(&self.root(db))
+        let root = db.parse_or_expand(self.file).unwrap();
+        self.field_list.to_node(&root)
     }
 }
 
@@ -260,7 +259,10 @@ impl AstDiagnostic for MismatchedArgCount {
 #[cfg(test)]
 mod tests {
     use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId};
-    use hir_expand::diagnostics::{Diagnostic, DiagnosticSinkBuilder};
+    use hir_expand::{
+        db::AstDatabase,
+        diagnostics::{Diagnostic, DiagnosticSinkBuilder},
+    };
     use ra_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
     use ra_syntax::{TextRange, TextSize};
     use rustc_hash::FxHashMap;
@@ -307,7 +309,9 @@ mod tests {
         db.diagnostics(|d| {
             // FXIME: macros...
             let file_id = d.source().file_id.original_file(&db);
-            let range = d.syntax_node(&db).text_range();
+            let highlighting_source = d.highlighting_source();
+            let node = db.parse_or_expand(highlighting_source.file_id).unwrap();
+            let range = highlighting_source.value.to_node(&node).text_range();
             let message = d.message().to_owned();
             actual.entry(file_id).or_default().push((range, message));
         });
@@ -345,7 +349,7 @@ struct Beefy {
 }
 fn baz() {
     let zz = Beefy {
-           //^^^^^... Missing structure fields:
+           //^^^^^ Missing structure fields:
            //    |    - seven
         one: (),
         two: (),
@@ -370,8 +374,8 @@ struct S { foo: i32, bar: () }
 impl S {
     fn new() -> S {
         S {
-        //^... Missing structure fields:
-        //|    - bar
+      //^ Missing structure fields:
+      //|    - bar
             foo: 92,
             baz: 62,
           //^^^^^^^ no such field
