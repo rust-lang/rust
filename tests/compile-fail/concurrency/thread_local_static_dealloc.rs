@@ -9,5 +9,5 @@ static mut TLS: u8 = 0;
 
 fn main() { unsafe {
     let dangling_ptr = std::thread::spawn(|| &TLS as *const u8 as usize).join().unwrap();
-    let _val = *(dangling_ptr as *const u8);
+    let _val = *(dangling_ptr as *const u8); //~ ERROR dereferenced after this allocation got freed
 } }
