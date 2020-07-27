@@ -215,7 +215,6 @@ fn check_ord_pord<'tcx>(
         if let Some(pord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait();
         if let Some(def_id) = &trait_ref.trait_def_id();
         if *def_id == ord_trait_def_id;
-        if !def_id.is_local();
         then {
             // Look for the PartialOrd implementations for `ty`
             cx.tcx.for_each_relevant_impl(pord_trait_def_id, ty, |impl_id| {
