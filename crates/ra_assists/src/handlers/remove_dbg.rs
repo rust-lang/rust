@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    TextSize, T,
+    TextRange, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -27,19 +27,32 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         return None;
     }
 
-    let macro_range = macro_call.syntax().text_range();
+    let semicolon_on_end = macro_call.semicolon_token().is_some();
+    let is_leaf = macro_call.syntax().next_sibling().is_none();
 
-    let macro_content = {
-        let macro_args = macro_call.token_tree()?.syntax().clone();
+    let macro_end = match semicolon_on_end {
+        true => macro_call.syntax().text_range().end() - TextSize::of(';'),
+        false => macro_call.syntax().text_range().end(),
+    };
 
-        let text = macro_args.text();
-        let without_parens = TextSize::of('(')..text.len() - TextSize::of(')');
-        text.slice(without_parens).to_string()
+    // macro_range determines what will be deleted and replaced with macro_content
+    let macro_range = TextRange::new(macro_call.syntax().text_range().start(), macro_end);
+    let paste_instead_of_dbg = {
+        let text = macro_call.token_tree()?.syntax().text();
+
+        // leafines determines if we should include the parenthesis or not
+        let slice_index: TextRange = match is_leaf {
+            // leaf means - we can extract the contents of the dbg! in text
+            true => TextRange::new(TextSize::of('('), text.len() - TextSize::of(')')),
+            // not leaf - means we should keep the parens
+            false => TextRange::new(TextSize::from(0 as u32), text.len()),
+        };
+        text.slice(slice_index).to_string()
     };
 
     let target = macro_call.syntax().text_range();
     acc.add(AssistId("remove_dbg", AssistKind::Refactor), "Remove dbg!()", target, |builder| {
-        builder.replace(macro_range, macro_content);
+        builder.replace(macro_range, paste_instead_of_dbg);
     })
 }
 
@@ -132,6 +145,8 @@ fn foo(n: usize) {
     fn test_remove_dbg_keep_semicolon() {
         // https://github.com/rust-analyzer/rust-analyzer/issues/5129#issuecomment-651399779
         // not quite though
+        // adding a comment at the end of the line makes
+        // the ast::MacroCall to include the semicolon at the end
         let code = "
 let res = <|>dbg!(1 * 20); // needless comment
 ";
