@@ -84,7 +84,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
         USE_ITEM => Some(FoldKind::Imports),
-        ARG_LIST => Some(FoldKind::ArgList),
+        ARG_LIST | PARAM_LIST => Some(FoldKind::ArgList),
         RECORD_FIELD_DEF_LIST
         | RECORD_FIELD_PAT_LIST
         | RECORD_FIELD_LIST
@@ -383,6 +383,18 @@ fn main() <fold block>{
 const _: S = S <fold block>{
 
 }</fold>;
+"#,
+        )
+    }
+
+    #[test]
+    fn fold_multiline_params() {
+        check(
+            r#"
+fn foo<fold arglist>(
+    x: i32,
+    y: String,
+)</fold> {}
 "#,
         )
     }
