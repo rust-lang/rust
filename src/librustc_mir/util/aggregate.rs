@@ -52,7 +52,6 @@ pub fn expand_aggregate<'tcx>(
         .enumerate()
         .map(move |(i, (op, ty))| {
             let lhs_field = if let AggregateKind::Array(_) = kind {
-                // FIXME(eddyb) `offset` should be u64.
                 let offset = i as u64;
                 assert_eq!(offset as usize, i);
                 tcx.mk_place_elem(

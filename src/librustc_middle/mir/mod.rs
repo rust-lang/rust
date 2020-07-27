@@ -1583,7 +1583,7 @@ pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PlaceElem<'_>, 16);
+static_assert_size!(PlaceElem<'_>, 24);
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
@@ -2297,7 +2297,7 @@ impl<'tcx> UserTypeProjections {
         self.map_projections(|pat_ty_proj| pat_ty_proj.index())
     }
 
-    pub fn subslice(self, from: u32, to: u32) -> Self {
+    pub fn subslice(self, from: u64, to: u64) -> Self {
         self.map_projections(|pat_ty_proj| pat_ty_proj.subslice(from, to))
     }
 
@@ -2343,7 +2343,7 @@ impl UserTypeProjection {
         self
     }
 
-    pub(crate) fn subslice(mut self, from: u32, to: u32) -> Self {
+    pub(crate) fn subslice(mut self, from: u64, to: u64) -> Self {
         self.projs.push(ProjectionElem::Subslice { from, to, from_end: true });
         self
     }
