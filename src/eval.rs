@@ -211,11 +211,10 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
     let res: InterpResult<'_, i64> = (|| {
         // Main loop.
         loop {
+            let info = ecx.preprocess_diagnostics();
             match ecx.schedule()? {
                 SchedulingAction::ExecuteStep => {
-                    let info = ecx.preprocess_diagnostics();
                     assert!(ecx.step()?, "a terminated thread was scheduled for execution");
-                    ecx.process_diagnostics(info);
                 }
                 SchedulingAction::ExecuteTimeoutCallback => {
                     assert!(ecx.machine.communicate,
@@ -233,6 +232,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                     break;
                 }
             }
+            ecx.process_diagnostics(info);
         }
         let return_code = ecx.read_scalar(ret_place.into())?.check_init()?.to_machine_isize(&ecx)?;
         Ok(return_code)

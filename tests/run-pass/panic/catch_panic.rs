@@ -1,4 +1,4 @@
-// normalize-stderr-test "[^ ]*libcore/[a-z/]+.rs[0-9:]*" -> "$$LOC"
+// normalize-stderr-test "[^ ]*libcore/[a-z_/]+.rs[0-9:]*" -> "$$LOC"
 #![feature(never_type)]
 #![allow(unconditional_panic)]
 

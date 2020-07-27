@@ -328,9 +328,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// schedules them one by one each time it is called and reenables the
     /// thread so that it can be executed normally by the main execution loop.
     ///
-    /// FIXME: we do not support yet deallocation of thread local statics.
-    /// Issue: https://github.com/rust-lang/miri/issues/1369
-    ///
     /// Note: we consistently run TLS destructors for all threads, including the
     /// main thread. However, it is not clear that we should run the TLS
     /// destructors for the main thread. See issue:
@@ -351,6 +348,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return Ok(())
             }
         }
+        // The remaining dtors make some progress each time around the scheduler loop,
+        // until they return `false` to indicate that they are done.
+
         // The macOS thread wide destructor runs "before any TLS slots get
         // freed", so do that first.
         if this.schedule_macos_tls_dtor()? {
@@ -367,6 +367,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // All dtors done!
         this.machine.tls.delete_all_thread_tls(active_thread);
+        this.thread_terminated()?;
 
         Ok(())
     }

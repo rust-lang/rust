@@ -6,7 +6,6 @@ use log::trace;
 use rand::Rng;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_mir::interpret::{AllocCheck, AllocId, InterpResult, Memory, Machine, Pointer, PointerArithmetic};
 use rustc_target::abi::{Size, HasDataLayout};
 
 use crate::*;
@@ -79,7 +78,7 @@ impl<'mir, 'tcx> GlobalState {
     ) -> InterpResult<'tcx, u64> {
         let mut global_state = memory.extra.intptrcast.borrow_mut();
         let global_state = &mut *global_state;
-        let id = Evaluator::canonical_alloc_id(memory, ptr.alloc_id);
+        let id = ptr.alloc_id;
 
         // There is nothing wrong with a raw pointer being cast to an integer only after
         // it became dangling.  Hence `MaybeDead`.
