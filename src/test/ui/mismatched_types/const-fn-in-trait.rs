@@ -1,5 +1,3 @@
-// rustc-env:RUST_NEW_ERROR_FORMAT
-
 #![feature(const_fn)]
 
 trait Foo {
