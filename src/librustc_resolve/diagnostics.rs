@@ -442,7 +442,7 @@ impl<'a> Resolver<'a> {
                 );
                 err
             }
-            ResolutionError::ParamInTyOfConstArg(name) => {
+            ResolutionError::ParamInTyOfConstParam(name) => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
@@ -452,6 +452,17 @@ impl<'a> Resolver<'a> {
                 err.span_label(
                     span,
                     format!("the type must not depend on the parameter `{}`", name),
+                );
+                err
+            }
+            ResolutionError::ParamInAnonConstInTyDefault(name) => {
+                let mut err = self.session.struct_span_err(
+                    span,
+                    "constant values inside of type parameter defaults must not depend on generic parameters",
+                );
+                err.span_label(
+                    span,
+                    format!("the anonymous constant must not depend on the parameter `{}`", name),
                 );
                 err
             }

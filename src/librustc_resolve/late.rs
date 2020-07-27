@@ -570,7 +570,15 @@ impl<'a, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
                     if let Some(ref ty) = default {
                         self.ribs[TypeNS].push(default_ban_rib);
-                        self.visit_ty(ty);
+                        self.with_rib(ValueNS, ForwardTyParamBanRibKind, |this| {
+                            // HACK: We use an empty `ForwardTyParamBanRibKind` here which
+                            // is only used to forbid the use of const parameters inside of
+                            // type defaults.
+                            //
+                            // While the rib name doesn't really fit here, it does allow us to use the same
+                            // code for both const and type parameters.
+                            this.visit_ty(ty);
+                        });
                         default_ban_rib = self.ribs[TypeNS].pop().unwrap();
                     }
 
@@ -1081,7 +1089,9 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn with_constant_rib(&mut self, f: impl FnOnce(&mut Self)) {
         debug!("with_constant_rib");
         self.with_rib(ValueNS, ConstantItemRibKind, |this| {
-            this.with_label_rib(ConstantItemRibKind, f);
+            this.with_rib(TypeNS, ConstantItemRibKind, |this| {
+                this.with_label_rib(ConstantItemRibKind, f);
+            })
         });
     }
 

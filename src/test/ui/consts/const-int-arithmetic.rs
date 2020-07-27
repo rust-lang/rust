@@ -3,7 +3,6 @@
 #![feature(const_checked_int_methods)]
 #![feature(const_euclidean_int_methods)]
 #![feature(const_overflowing_int_methods)]
-#![feature(const_saturating_int_methods)]
 #![feature(const_wrapping_int_methods)]
 
 use std::{i8, i128};

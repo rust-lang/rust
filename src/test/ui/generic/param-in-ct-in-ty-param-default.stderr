@@ -1,0 +1,8 @@
+error: constant values inside of type parameter defaults must not depend on generic parameters
+  --> $DIR/param-in-ct-in-ty-param-default.rs:1:44
+   |
+LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
+   |                                            ^ the anonymous constant must not depend on the parameter `T`
+
+error: aborting due to previous error
+

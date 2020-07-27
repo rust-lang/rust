@@ -153,7 +153,7 @@ fn main() {
             e => e,
         };
         println!("\nDid not run successfully: {:?}\n{:?}\n-------------", e, cmd);
-        exec_cmd(&mut on_fail).expect("could not run the backup command");
+        status_code(&mut on_fail).expect("could not run the backup command");
         std::process::exit(1);
     }
 
@@ -182,17 +182,10 @@ fn main() {
         }
     }
 
-    let code = exec_cmd(&mut cmd).unwrap_or_else(|_| panic!("\n\n failed to run {:?}", cmd));
+    let code = status_code(&mut cmd).unwrap_or_else(|_| panic!("\n\n failed to run {:?}", cmd));
     std::process::exit(code);
 }
 
-#[cfg(unix)]
-fn exec_cmd(cmd: &mut Command) -> io::Result<i32> {
-    use std::os::unix::process::CommandExt;
-    Err(cmd.exec())
-}
-
-#[cfg(not(unix))]
-fn exec_cmd(cmd: &mut Command) -> io::Result<i32> {
+fn status_code(cmd: &mut Command) -> io::Result<i32> {
     cmd.status().map(|status| status.code().unwrap())
 }

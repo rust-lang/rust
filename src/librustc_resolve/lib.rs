@@ -215,7 +215,9 @@ enum ResolutionError<'a> {
     /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics:defaults)
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
-    ParamInTyOfConstArg(Symbol),
+    ParamInTyOfConstParam(Symbol),
+    /// constant values inside of type parameter defaults must not depend on generic parameters.
+    ParamInAnonConstInTyDefault(Symbol),
     /// Error E0735: type parameters with a default cannot use `Self`
     SelfInTyParamDefault,
     /// Error E0767: use of unreachable label
@@ -2514,7 +2516,7 @@ impl<'a> Resolver<'a> {
                         }
                         ConstParamTyRibKind => {
                             if record_used {
-                                self.report_error(span, ParamInTyOfConstArg(rib_ident.name));
+                                self.report_error(span, ParamInTyOfConstParam(rib_ident.name));
                             }
                             return Res::Err;
                         }
@@ -2526,18 +2528,40 @@ impl<'a> Resolver<'a> {
                 }
             }
             Res::Def(DefKind::TyParam, _) | Res::SelfTy(..) => {
+                let mut in_ty_param_default = false;
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
                         | AssocItemRibKind
                         | ModuleRibKind(..)
-                        | MacroDefinition(..)
-                        | ForwardTyParamBanRibKind
-                        | ConstantItemRibKind => {
+                        | MacroDefinition(..) => {
                             // Nothing to do. Continue.
                             continue;
                         }
+
+                        // We only forbid constant items if we are inside of type defaults,
+                        // for example `struct Foo<T, U = [u8; std::mem::size_of::<T>()]>`
+                        ForwardTyParamBanRibKind => {
+                            in_ty_param_default = true;
+                            continue;
+                        }
+                        ConstantItemRibKind => {
+                            if in_ty_param_default {
+                                if record_used {
+                                    self.report_error(
+                                        span,
+                                        ResolutionError::ParamInAnonConstInTyDefault(
+                                            rib_ident.name,
+                                        ),
+                                    );
+                                }
+                                return Res::Err;
+                            } else {
+                                continue;
+                            }
+                        }
+
                         // This was an attempt to use a type parameter outside its scope.
                         ItemRibKind(has_generic_params) => has_generic_params,
                         FnItemRibKind => HasGenericParams::Yes,
@@ -2545,7 +2569,7 @@ impl<'a> Resolver<'a> {
                             if record_used {
                                 self.report_error(
                                     span,
-                                    ResolutionError::ParamInTyOfConstArg(rib_ident.name),
+                                    ResolutionError::ParamInTyOfConstParam(rib_ident.name),
                                 );
                             }
                             return Res::Err;
@@ -2572,22 +2596,45 @@ impl<'a> Resolver<'a> {
                     // (spuriously) conflicting with the const param.
                     ribs.next();
                 }
+
+                let mut in_ty_param_default = false;
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
                         | AssocItemRibKind
                         | ModuleRibKind(..)
-                        | MacroDefinition(..)
-                        | ForwardTyParamBanRibKind
-                        | ConstantItemRibKind => continue,
+                        | MacroDefinition(..) => continue,
+
+                        // We only forbid constant items if we are inside of type defaults,
+                        // for example `struct Foo<T, U = [u8; std::mem::size_of::<T>()]>`
+                        ForwardTyParamBanRibKind => {
+                            in_ty_param_default = true;
+                            continue;
+                        }
+                        ConstantItemRibKind => {
+                            if in_ty_param_default {
+                                if record_used {
+                                    self.report_error(
+                                        span,
+                                        ResolutionError::ParamInAnonConstInTyDefault(
+                                            rib_ident.name,
+                                        ),
+                                    );
+                                }
+                                return Res::Err;
+                            } else {
+                                continue;
+                            }
+                        }
+
                         ItemRibKind(has_generic_params) => has_generic_params,
                         FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
                             if record_used {
                                 self.report_error(
                                     span,
-                                    ResolutionError::ParamInTyOfConstArg(rib_ident.name),
+                                    ResolutionError::ParamInTyOfConstParam(rib_ident.name),
                                 );
                             }
                             return Res::Err;
