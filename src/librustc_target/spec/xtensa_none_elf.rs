@@ -31,7 +31,7 @@ pub fn target() -> TargetResult {
             // See the thumb_base.rs file for an explanation of this value
             emit_debug_gdb_scripts: false,
 
-            abi_blacklist: vec![
+            unsupported_abis: vec![
                 Abi::Stdcall,
                 Abi::Fastcall,
                 Abi::Vectorcall,
