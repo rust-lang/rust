@@ -550,6 +550,7 @@ pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 impl Pat {
@@ -2138,6 +2139,7 @@ impl Param {
                 id: DUMMY_NODE_ID,
                 kind: PatKind::Ident(BindingMode::ByValue(mutbl), eself_ident, None),
                 span,
+                tokens: None,
             }),
             span,
             ty,
