@@ -149,8 +149,8 @@ fn main() {
 
     if let Some(mut on_fail) = on_fail {
         let e = match cmd.status() {
-            Ok(s) if s.success() => std::process::exit(0),
-            e => e,
+            Ok(s) => if s.success() { std::process::exit(0) } else { format!("Ok({})", s) },
+            Err(e) => format!("Err({})", e),
         };
         println!("\nDid not run successfully: {}\n{:?}\n-------------", e, cmd);
         status_code(&mut on_fail).expect("could not run the backup command");
