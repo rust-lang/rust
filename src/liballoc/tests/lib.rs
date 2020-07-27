@@ -6,6 +6,7 @@
 #![feature(map_first_last)]
 #![feature(new_uninit)]
 #![feature(pattern)]
+#![feature(str_split_once)]
 #![feature(trusted_len)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
