@@ -160,7 +160,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 /// times. Because of this, if the only thing known about a type is that it
 /// implements `FnOnce`, it can only be called once.
 ///
-/// `FnOnce` is implemented automatically by closure that might consume captured
+/// `FnOnce` is implemented automatically by closures that might consume captured
 /// variables, as well as all types that implement [`FnMut`], e.g., (safe)
 /// [function pointers] (since `FnOnce` is a supertrait of [`FnMut`]).
 ///

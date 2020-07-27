@@ -1,7 +1,6 @@
 // run-pass
 // ignore-windows
 // ignore-emscripten no threads support
-// exec-env:RUSTC_LOG=debug
 
 use std::cell::Cell;
 use std::fmt;
@@ -19,10 +18,13 @@ impl fmt::Debug for Foo {
 }
 
 pub fn main() {
-    thread::spawn(move|| {
+    thread::spawn(move || {
         let mut f = Foo(Cell::new(0));
         println!("{:?}", f);
         let Foo(ref mut f) = f;
         assert_eq!(f.get(), 1);
-    }).join().ok().unwrap();
+    })
+    .join()
+    .ok()
+    .unwrap();
 }

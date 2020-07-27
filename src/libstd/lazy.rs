@@ -827,6 +827,8 @@ mod tests {
                         tx.send(msg).unwrap();
                         break;
                     }
+                    #[cfg(target_env = "sgx")]
+                    crate::thread::yield_now();
                 }
             });
         }
