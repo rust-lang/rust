@@ -5,61 +5,61 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "A",
-                span: #0 bytes(402..403),
+                span: #CTXT bytes(445..446),
             },
         ],
-        span: #3 bytes(269..271),
+        span: #CTXT bytes(312..314),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): const A : u8 = 0 ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "const",
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
     Ident {
         ident: "A",
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
     Punct {
         ch: ':',
         spacing: Alone,
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
     Ident {
         ident: "u8",
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
     Punct {
         ch: '=',
         spacing: Alone,
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
     Literal {
         kind: Integer,
         symbol: "0",
         suffix: None,
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
     Punct {
         ch: ';',
         spacing: Alone,
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
 ]
 PRINT-DERIVE INPUT (DISPLAY): struct A { }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
     Ident {
         ident: "A",
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [],
-        span: #0 bytes(0..0),
+        span: #CTXT bytes(0..0),
     },
 ]

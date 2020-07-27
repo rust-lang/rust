@@ -1,32 +1,3 @@
-Def site: $DIR/auxiliary/make-macro.rs:7:9: 10:10 (#3)
-#![feature /* 0#0 */(prelude_import)]
-#[prelude_import /* 0#1 */]
-use std /* 0#1 */::prelude /* 0#1 */::v1 /* 0#1 */::*;
-#[macro_use /* 0#1 */]
-extern crate std /* 0#1 */;
-// aux-build:make-macro.rs
-// aux-build:meta-macro.rs
-// edition:2018
-// compile-flags: -Z span-debug -Z unpretty=expanded,hygiene
-// check-pass
-// normalize-stdout-test "\d+#" -> "0#"
-// ^ We don't care about symbol ids, so set them all to 0
-// in the stdout
-extern crate meta_macro /* 0#0 */;
-
-fn main /* 0#0 */() { }
-
-/*
-Expansions:
-0: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
-1: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
-2: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
-
-SyntaxContexts:
-#0: parent: #0, outer_mark: (ExpnId(0), Opaque)
-#1: parent: #0, outer_mark: (ExpnId(1), Opaque)
-#2: parent: #0, outer_mark: (ExpnId(1), Transparent)
-#3: parent: #0, outer_mark: (ExpnId(2), Opaque)
-#4: parent: #0, outer_mark: (ExpnId(2), Transparent)
-#5: parent: #0, outer_mark: (ExpnId(2), SemiTransparent)
-*/
+Def site: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#CTXT)
+Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:20:37: 20:43 (#CTXT) }, Punct { ch: ':', spacing: Joint, span: $DIR/meta-macro-hygiene.rs:20:43: 20:45 (#CTXT) }, Punct { ch: ':', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:20:43: 20:45 (#CTXT) }, Ident { ident: "dummy", span: $DIR/meta-macro-hygiene.rs:20:45: 20:50 (#CTXT) }, Punct { ch: '!', spacing: Alone, span: $DIR/meta-macro-hygiene.rs:20:50: 20:51 (#CTXT) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/meta-macro-hygiene.rs:20:51: 20:53 (#CTXT) }]
+Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#CTXT) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#CTXT) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#CTXT) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#CTXT) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#CTXT) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 16:10 (#CTXT) }]

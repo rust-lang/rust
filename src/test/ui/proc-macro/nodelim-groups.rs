@@ -1,6 +1,7 @@
 // run-pass
 // aux-build:test-macros.rs
 // compile-flags: -Z span-debug
+// normalize-stdout-test "#\d+" -> "#CTXT"
 // edition:2018
 //
 // Tests the pretty-printing behavior of inserting `NoDelim` groups

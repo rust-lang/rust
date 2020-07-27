@@ -155,7 +155,7 @@ impl<I: Idx, T> TableBuilder<I, T>
 where
     Option<T>: FixedSizeEncoding,
 {
-    pub(super) fn set(&mut self, i: I, value: T) {
+    pub(crate) fn set(&mut self, i: I, value: T) {
         // FIXME(eddyb) investigate more compact encodings for sparse tables.
         // On the PR @michaelwoerister mentioned:
         // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
@@ -170,7 +170,7 @@ where
         Some(value).write_to_bytes_at(&mut self.bytes, i);
     }
 
-    pub(super) fn encode(&self, buf: &mut Encoder) -> Lazy<Table<I, T>> {
+    pub(crate) fn encode(&self, buf: &mut Encoder) -> Lazy<Table<I, T>> {
         let pos = buf.position();
         buf.emit_raw_bytes(&self.bytes);
         Lazy::from_position_and_meta(NonZeroUsize::new(pos as usize).unwrap(), self.bytes.len())

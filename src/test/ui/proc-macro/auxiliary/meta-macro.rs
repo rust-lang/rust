@@ -10,3 +10,6 @@ extern crate make_macro;
 use proc_macro::{TokenStream, Span};
 
 make_macro::make_it!(print_def_site);
+
+#[proc_macro]
+pub fn dummy(input: TokenStream) -> TokenStream { input }

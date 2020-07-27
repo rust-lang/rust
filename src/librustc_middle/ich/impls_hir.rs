@@ -147,13 +147,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for LocalDefId {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for CrateNum {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        hcx.def_path_hash(DefId { krate: *self, index: CRATE_DEF_INDEX }).hash_stable(hcx, hasher);
-    }
-}
-
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for CrateNum {
     type KeyType = DefPathHash;
 

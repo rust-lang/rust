@@ -1,4 +1,4 @@
-use crate::rmeta::table::FixedSizeEncoding;
+use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
 use log::{debug, trace};
@@ -30,15 +30,16 @@ use rustc_middle::ty::codec::{self as ty_codec, TyEncoder};
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder, UseSpecializedEncodable};
 use rustc_session::config::CrateType;
+use rustc_span::hygiene::{ExpnDataEncodeMode, HygieneEncodeContext};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{self, ExternalSource, FileName, SourceFile, Span};
+use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use rustc_target::abi::VariantIdx;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
-struct EncodeContext<'tcx> {
+struct EncodeContext<'a, 'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
 
@@ -66,6 +67,7 @@ struct EncodeContext<'tcx> {
     // with a result containing a foreign `Span`.
     required_source_files: Option<GrowableBitSet<usize>>,
     is_proc_macro: bool,
+    hygiene_ctxt: &'a HygieneEncodeContext,
 }
 
 macro_rules! encoder_methods {
@@ -76,7 +78,7 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'tcx> Encoder for EncodeContext<'tcx> {
+impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     type Error = <opaque::Encoder as Encoder>::Error;
 
     #[inline]
@@ -107,13 +109,13 @@ impl<'tcx> Encoder for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<T, ()>> for EncodeContext<'tcx> {
+impl<'a, 'tcx, T> SpecializedEncoder<Lazy<T, ()>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
         self.emit_lazy_distance(*lazy)
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<[T], usize>> for EncodeContext<'tcx> {
+impl<'a, 'tcx, T> SpecializedEncoder<Lazy<[T], usize>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<[T]>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         if lazy.meta == 0 {
@@ -123,7 +125,7 @@ impl<'tcx, T> SpecializedEncoder<Lazy<[T], usize>> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>, usize>> for EncodeContext<'tcx>
+impl<'a, 'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>, usize>> for EncodeContext<'a, 'tcx>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -133,14 +135,14 @@ where
     }
 }
 
-impl<'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, cnum: &CrateNum) -> Result<(), Self::Error> {
         self.emit_u32(cnum.as_u32())
     }
 }
 
-impl<'tcx> SpecializedEncoder<DefId> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<DefId> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_id: &DefId) -> Result<(), Self::Error> {
         let DefId { krate, index } = *def_id;
@@ -150,14 +152,31 @@ impl<'tcx> SpecializedEncoder<DefId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<SyntaxContext> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, ctxt: &SyntaxContext) -> Result<(), Self::Error> {
+        rustc_span::hygiene::raw_encode_syntax_context(*ctxt, &self.hygiene_ctxt, self)
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<ExpnId> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, expn: &ExpnId) -> Result<(), Self::Error> {
+        rustc_span::hygiene::raw_encode_expn_id(
+            *expn,
+            &mut self.hygiene_ctxt,
+            ExpnDataEncodeMode::Metadata,
+            self,
+        )
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_index: &DefIndex) -> Result<(), Self::Error> {
         self.emit_u32(def_index.as_u32())
     }
 }
 
-impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
         if span.is_dummy() {
             return TAG_INVALID_SPAN.encode(self);
@@ -234,26 +253,58 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         let len = hi - lo;
         len.encode(self)?;
 
+        // Don't serialize any `SyntaxContext`s from a proc-macro crate,
+        // since we don't load proc-macro dependencies during serialization.
+        // This means that any hygiene information from macros used *within*
+        // a proc-macro crate (e.g. invoking a macro that expands to a proc-macro
+        // definition) will be lost.
+        //
+        // This can show up in two ways:
+        //
+        // 1. Any hygiene information associated with identifier of
+        // a proc macro (e.g. `#[proc_macro] pub fn $name`) will be lost.
+        // Since proc-macros can only be invoked from a different crate,
+        // real code should never need to care about this.
+        //
+        // 2. Using `Span::def_site` or `Span::mixed_site` will not
+        // include any hygiene information associated with the defintion
+        // site. This means that a proc-macro cannot emit a `$crate`
+        // identifier which resolves to one of its dependencies,
+        // which also should never come up in practice.
+        //
+        // Additionally, this affects `Span::parent`, and any other
+        // span inspection APIs that would otherwise allow traversing
+        // the `SyntaxContexts` associated with a span.
+        //
+        // None of these user-visible effects should result in any
+        // cross-crate inconsistencies (getting one behavior in the same
+        // crate, and a different behavior in another crate) due to the
+        // limited surface that proc-macros can expose.
+        if self.is_proc_macro {
+            SyntaxContext::root().encode(self)?;
+        } else {
+            span.ctxt.encode(self)?;
+        }
+
         if tag == TAG_VALID_SPAN_FOREIGN {
             // This needs to be two lines to avoid holding the `self.source_file_cache`
             // while calling `cnum.encode(self)`
             let cnum = self.source_file_cache.0.cnum;
             cnum.encode(self)?;
         }
-        Ok(())
 
-        // Don't encode the expansion context.
+        Ok(())
     }
 }
 
-impl<'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_id: &LocalDefId) -> Result<(), Self::Error> {
         self.specialized_encode(&def_id.to_def_id())
     }
 }
 
-impl<'a, 'b, 'tcx> SpecializedEncoder<&'a ty::TyS<'b>> for EncodeContext<'tcx>
+impl<'a, 'b, 'c, 'tcx> SpecializedEncoder<&'a ty::TyS<'b>> for EncodeContext<'c, 'tcx>
 where
     &'a ty::TyS<'b>: UseSpecializedEncodable,
 {
@@ -264,7 +315,7 @@ where
     }
 }
 
-impl<'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'tcx> {
+impl<'a, 'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, predicate: &ty::Predicate<'b>) -> Result<(), Self::Error> {
         debug_assert!(self.tcx.lift(predicate).is_some());
         let predicate =
@@ -275,7 +326,7 @@ impl<'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
         use std::collections::hash_map::Entry;
         let index = match self.interpret_allocs.entry(*alloc_id) {
@@ -292,13 +343,13 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.opaque)
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'tcx>
+impl<'a, 'tcx, T> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'a, 'tcx>
 where
     mir::ClearCrossCrate<T>: UseSpecializedEncodable,
 {
@@ -307,7 +358,7 @@ where
     }
 }
 
-impl<'tcx> TyEncoder for EncodeContext<'tcx> {
+impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     fn position(&self) -> usize {
         self.opaque.position()
     }
@@ -315,17 +366,17 @@ impl<'tcx> TyEncoder for EncodeContext<'tcx> {
 
 /// Helper trait to allow overloading `EncodeContext::lazy` for iterators.
 trait EncodeContentsForLazy<T: ?Sized + LazyMeta> {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) -> T::Meta;
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> T::Meta;
 }
 
 impl<T: Encodable> EncodeContentsForLazy<T> for &T {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) {
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
         self.encode(ecx).unwrap()
     }
 }
 
 impl<T: Encodable> EncodeContentsForLazy<T> for T {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) {
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
         self.encode(ecx).unwrap()
     }
 }
@@ -335,7 +386,7 @@ where
     I: IntoIterator,
     I::Item: EncodeContentsForLazy<T>,
 {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) -> usize {
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> usize {
         self.into_iter().map(|value| value.encode_contents_for_lazy(ecx)).count()
     }
 }
@@ -352,7 +403,7 @@ macro_rules! record {
     }};
 }
 
-impl<'tcx> EncodeContext<'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn emit_lazy_distance<T: ?Sized + LazyMeta>(
         &mut self,
         lazy: Lazy<T>,
@@ -478,6 +529,7 @@ impl<'tcx> EncodeContext<'tcx> {
 
         let mut i = self.position();
 
+        // Encode the crate deps
         let crate_deps = self.encode_crate_deps();
         let dylib_dependency_formats = self.encode_dylib_dependency_formats();
         let dep_bytes = self.position() - i;
@@ -556,11 +608,22 @@ impl<'tcx> EncodeContext<'tcx> {
         let proc_macro_data_bytes = self.position() - i;
 
         // Encode exported symbols info. This is prefetched in `encode_metadata` so we encode
-        // this late to give the prefetching as much time as possible to complete.
+        // this as late as possible to give the prefetching as much time as possible to complete.
         i = self.position();
         let exported_symbols = tcx.exported_symbols(LOCAL_CRATE);
         let exported_symbols = self.encode_exported_symbols(&exported_symbols);
         let exported_symbols_bytes = self.position() - i;
+
+        // Encode the hygiene data,
+        // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The process
+        // of encoding other items (e.g. `optimized_mir`) may cause us to load
+        // data from the incremental cache. If this causes us to deserialize a `Span`,
+        // then we may load additional `SyntaxContext`s into the global `HygieneData`.
+        // Therefore, we need to encode the hygiene data last to ensure that we encode
+        // any `SyntaxContext`s that might be used.
+        i = self.position();
+        let (syntax_contexts, expn_data) = self.encode_hygiene();
+        let hygiene_bytes = self.position() - i;
 
         // Encode source_map. This needs to be done last,
         // since encoding `Span`s tells us which `SourceFiles` we actually
@@ -618,6 +681,8 @@ impl<'tcx> EncodeContext<'tcx> {
             exported_symbols,
             interpret_alloc_index,
             tables,
+            syntax_contexts,
+            expn_data,
         });
 
         let total_bytes = self.position();
@@ -643,6 +708,7 @@ impl<'tcx> EncodeContext<'tcx> {
             println!(" proc-macro-data-bytes: {}", proc_macro_data_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           table bytes: {}", tables_bytes);
+            println!("         hygiene bytes: {}", hygiene_bytes);
             println!("            zero bytes: {}", zero_bytes);
             println!("           total bytes: {}", total_bytes);
         }
@@ -651,7 +717,7 @@ impl<'tcx> EncodeContext<'tcx> {
     }
 }
 
-impl EncodeContext<'tcx> {
+impl EncodeContext<'a, 'tcx> {
     fn encode_variances_of(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_variances_of({:?})", def_id);
         record!(self.tables.variances[def_id] <- &self.tcx.variances_of(def_id)[..]);
@@ -752,11 +818,12 @@ impl EncodeContext<'tcx> {
         vis: &hir::Visibility<'_>,
     ) {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id(id);
+        let local_def_id = tcx.hir().local_def_id(id);
+        let def_id = local_def_id.to_def_id();
         debug!("EncodeContext::encode_info_for_mod({:?})", def_id);
 
         let data = ModData {
-            reexports: match tcx.module_exports(def_id) {
+            reexports: match tcx.module_exports(local_def_id) {
                 Some(exports) => {
                     let hir_map = self.tcx.hir();
                     self.lazy(
@@ -767,9 +834,8 @@ impl EncodeContext<'tcx> {
                 }
                 _ => Lazy::empty(),
             },
+            expansion: tcx.hir().definitions().expansion_that_defined(local_def_id),
         };
-
-        let def_id = def_id.to_def_id();
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
         record!(self.tables.visibility[def_id] <- ty::Visibility::from_hir(vis, id, self.tcx));
@@ -1425,6 +1491,25 @@ impl EncodeContext<'tcx> {
         self.lazy(foreign_modules.iter().cloned())
     }
 
+    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable) {
+        let mut syntax_contexts: TableBuilder<_, _> = Default::default();
+        let mut expn_data_table: TableBuilder<_, _> = Default::default();
+
+        let _: Result<(), !> = self.hygiene_ctxt.encode(
+            &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table),
+            |(this, syntax_contexts, _), index, ctxt_data| {
+                syntax_contexts.set(index, this.lazy(ctxt_data));
+                Ok(())
+            },
+            |(this, _, expn_data_table), index, expn_data| {
+                expn_data_table.set(index, this.lazy(expn_data));
+                Ok(())
+            },
+        );
+
+        (syntax_contexts.encode(&mut self.opaque), expn_data_table.encode(&mut self.opaque))
+    }
+
     fn encode_proc_macros(&mut self) -> Option<Lazy<[DefIndex]>> {
         let is_proc_macro = self.tcx.sess.crate_types().contains(&CrateType::ProcMacro);
         if is_proc_macro {
@@ -1614,7 +1699,7 @@ impl EncodeContext<'tcx> {
 }
 
 // FIXME(eddyb) make metadata encoding walk over all definitions, instead of HIR.
-impl Visitor<'tcx> for EncodeContext<'tcx> {
+impl Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -1652,7 +1737,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
     }
 }
 
-impl EncodeContext<'tcx> {
+impl EncodeContext<'a, 'tcx> {
     fn encode_fields(&mut self, adt_def: &ty::AdtDef) {
         for (variant_index, variant) in adt_def.variants.iter_enumerated() {
             for (field_index, _field) in variant.fields.iter().enumerate() {
@@ -1906,6 +1991,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     encoder.emit_raw_bytes(&[0, 0, 0, 0]);
 
     let source_map_files = tcx.sess.source_map().files();
+    let hygiene_ctxt = HygieneEncodeContext::default();
 
     let mut ecx = EncodeContext {
         opaque: encoder,
@@ -1919,6 +2005,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         interpret_allocs_inverse: Default::default(),
         required_source_files: Some(GrowableBitSet::with_capacity(source_map_files.len())),
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
+        hygiene_ctxt: &hygiene_ctxt,
     };
     drop(source_map_files);
 

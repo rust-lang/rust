@@ -12,6 +12,8 @@
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(min_specialization)]
+#![feature(option_expect_none)]
+#![feature(refcell_take)]
 
 // FIXME(#56935): Work around ICEs during cross-compilation.
 #[allow(unused)]
@@ -30,8 +32,8 @@ pub mod edition;
 use edition::Edition;
 pub mod hygiene;
 pub use hygiene::SyntaxContext;
-use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, ForLoopLoc, MacroKind};
+use hygiene::{Transparency, NUM_TRANSPARENCIES};
 pub mod def_id;
 use def_id::{CrateNum, DefId, LOCAL_CRATE};
 mod span_encoding;
@@ -44,7 +46,6 @@ mod analyze_source_file;
 pub mod fatal_error;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 
@@ -86,6 +87,9 @@ impl SessionGlobals {
     }
 }
 
+// If this ever becomes non thread-local, `decode_syntax_context`
+// and `decode_expn_id` will need to be updated to handle concurrent
+// deserialization.
 scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: SessionGlobals);
 
 // FIXME: Perhaps this should not implement Rustc{Decodable, Encodable}
@@ -1733,8 +1737,9 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc_middle.
 pub trait HashStableContext {
-    fn hash_spans(&self) -> bool;
     fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
+    fn hash_crate_num(&mut self, _: CrateNum, hasher: &mut StableHasher);
+    fn hash_spans(&self) -> bool;
     fn byte_pos_to_line_and_col(
         &mut self,
         byte: BytePos,
@@ -1757,15 +1762,14 @@ where
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
-        const TAG_EXPANSION: u8 = 0;
-        const TAG_NO_EXPANSION: u8 = 1;
 
         if !ctx.hash_spans() {
             return;
         }
 
         if *self == DUMMY_SP {
-            return std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            return;
         }
 
         // If this is not an empty or invalid span, we want to hash the last
@@ -1775,12 +1779,16 @@ where
         let (file_lo, line_lo, col_lo) = match ctx.byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => {
-                return std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+                std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+                span.ctxt.hash_stable(ctx, hasher);
+                return;
             }
         };
 
         if !file_lo.contains(span.hi) {
-            return std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            span.ctxt.hash_stable(ctx, hasher);
+            return;
         }
 
         std::hash::Hash::hash(&TAG_VALID_SPAN, hasher);
@@ -1793,8 +1801,16 @@ where
         let len = ((span.hi - span.lo).0 as u64) << 32;
         let line_col_len = col | line | len;
         std::hash::Hash::hash(&line_col_len, hasher);
+        span.ctxt.hash_stable(ctx, hasher);
+    }
+}
 
-        if span.ctxt == SyntaxContext::root() {
+impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        const TAG_EXPANSION: u8 = 0;
+        const TAG_NO_EXPANSION: u8 = 1;
+
+        if *self == SyntaxContext::root() {
             TAG_NO_EXPANSION.hash_stable(ctx, hasher);
         } else {
             TAG_EXPANSION.hash_stable(ctx, hasher);
@@ -1803,21 +1819,39 @@ where
             // times, we cache a stable hash of it and hash that instead of
             // recursing every time.
             thread_local! {
-                static CACHE: RefCell<FxHashMap<hygiene::ExpnId, u64>> = Default::default();
+                static CACHE: RefCell<Vec<Option<[Option<u64>; NUM_TRANSPARENCIES]>>> = Default::default();
             }
 
             let sub_hash: u64 = CACHE.with(|cache| {
-                let expn_id = span.ctxt.outer_expn();
+                let (expn_id, transparency, _) = self.outer_mark_with_data();
+                let index = expn_id.as_u32() as usize;
 
-                if let Some(&sub_hash) = cache.borrow().get(&expn_id) {
-                    return sub_hash;
+                if let Some(sub_hash_cache) = cache.borrow().get(index).copied().flatten() {
+                    if let Some(sub_hash) = sub_hash_cache[transparency as usize] {
+                        return sub_hash;
+                    }
                 }
+
+                let new_len = index + 1;
 
                 let mut hasher = StableHasher::new();
                 expn_id.expn_data().hash_stable(ctx, &mut hasher);
+                transparency.hash_stable(ctx, &mut hasher);
+
                 let sub_hash: Fingerprint = hasher.finish();
                 let sub_hash = sub_hash.to_smaller_hash();
-                cache.borrow_mut().insert(expn_id, sub_hash);
+
+                let mut cache = cache.borrow_mut();
+                if cache.len() < new_len {
+                    cache.resize(new_len, None);
+                }
+                if let Some(mut sub_hash_cache) = cache[index] {
+                    sub_hash_cache[transparency as usize] = Some(sub_hash);
+                } else {
+                    let mut sub_hash_cache = [None; NUM_TRANSPARENCIES];
+                    sub_hash_cache[transparency as usize] = Some(sub_hash);
+                    cache[index] = Some(sub_hash_cache);
+                }
                 sub_hash
             });
 

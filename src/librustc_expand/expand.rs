@@ -1,7 +1,7 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::configure;
-use crate::hygiene::{ExpnData, ExpnId, ExpnKind, SyntaxContext};
+use crate::hygiene::{ExpnData, ExpnKind, SyntaxContext};
 use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::module::{parse_external_mod, push_directory, Directory, DirectoryOwnership};
 use crate::placeholders::{placeholder, PlaceholderExpander};
@@ -28,7 +28,7 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Limit;
 use rustc_span::source_map::respan;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{FileName, Span, DUMMY_SP};
+use rustc_span::{ExpnId, FileName, Span, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};
 use std::io::ErrorKind;

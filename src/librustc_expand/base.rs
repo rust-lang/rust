@@ -13,7 +13,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
 use rustc_span::source_map::SourceMap;
@@ -873,6 +873,8 @@ impl SyntaxExtension {
             local_inner_macros: self.local_inner_macros,
             edition: self.edition,
             macro_def_id,
+            krate: LOCAL_CRATE,
+            orig_id: None,
         }
     }
 }

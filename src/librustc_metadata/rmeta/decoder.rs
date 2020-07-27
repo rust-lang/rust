@@ -32,18 +32,21 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::common::record_time;
 use rustc_serialize::{opaque, Decodable, Decoder, SpecializedDecoder, UseSpecializedDecodable};
 use rustc_session::Session;
+use rustc_span::hygiene::ExpnDataDecodeMode;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{self, hygiene::MacroKind, BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{self, hygiene::MacroKind, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use log::debug;
 use proc_macro::bridge::client::ProcMacro;
+use std::cell::Cell;
 use std::io;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
 pub use cstore_impl::{provide, provide_extern};
+use rustc_span::hygiene::HygieneDecodeContext;
 
 mod cstore_impl;
 
@@ -105,6 +108,13 @@ crate struct CrateMetadata {
     private_dep: bool,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
+
+    /// Additional data used for decoding `HygieneData` (e.g. `SyntaxContext`
+    /// and `ExpnId`).
+    /// Note that we store a `HygieneDecodeContext` for each `CrateMetadat`. This is
+    /// because `SyntaxContext` ids are not globally unique, so we need
+    /// to track which ids we've decoded on a per-crate basis.
+    hygiene_context: HygieneDecodeContext,
 
     // --- Data used only for improving diagnostics ---
     /// Information about the `extern crate` item or path that caused this crate to be loaded.
@@ -411,6 +421,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
 
         let lo = BytePos::decode(self)?;
         let len = BytePos::decode(self)?;
+        let ctxt = SyntaxContext::decode(self)?;
         let hi = lo + len;
 
         let sess = if let Some(sess) = self.sess {
@@ -524,7 +535,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let hi =
             (hi + source_file.translated_source_file.start_pos) - source_file.original_start_pos;
 
-        Ok(Span::with_root_ctxt(lo, hi))
+        Ok(Span::new(lo, hi, ctxt))
     }
 }
 
@@ -1120,6 +1131,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         !self.is_proc_macro(id) && self.root.tables.mir.get(self, id).is_some()
     }
 
+    fn module_expansion(&self, id: DefIndex, sess: &Session) -> ExpnId {
+        if let EntryKind::Mod(m) = self.kind(id) {
+            m.decode((self, sess)).expansion
+        } else {
+            panic!("Expected module, found {:?}", self.local_def_id(id))
+        }
+    }
+
     fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
         self.root
             .tables
@@ -1652,6 +1671,7 @@ impl CrateMetadata {
             private_dep,
             host_hash,
             extern_crate: Lock::new(None),
+            hygiene_context: Default::default(),
         }
     }
 
@@ -1782,5 +1802,59 @@ fn macro_kind(raw: &ProcMacro) -> MacroKind {
         ProcMacro::CustomDerive { .. } => MacroKind::Derive,
         ProcMacro::Attr { .. } => MacroKind::Attr,
         ProcMacro::Bang { .. } => MacroKind::Bang,
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<SyntaxContext> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<SyntaxContext, Self::Error> {
+        let cdata = self.cdata();
+        let sess = self.sess.unwrap();
+        let cname = cdata.root.name;
+        rustc_span::hygiene::decode_syntax_context(self, &cdata.hygiene_context, |_, id| {
+            debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
+            Ok(cdata
+                .root
+                .syntax_contexts
+                .get(&cdata, id)
+                .unwrap_or_else(|| panic!("Missing SyntaxContext {:?} for crate {:?}", id, cname))
+                .decode((&cdata, sess)))
+        })
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<ExpnId> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<ExpnId, Self::Error> {
+        let local_cdata = self.cdata();
+        let sess = self.sess.unwrap();
+        let expn_cnum = Cell::new(None);
+        let get_ctxt = |cnum| {
+            expn_cnum.set(Some(cnum));
+            if cnum == LOCAL_CRATE {
+                &local_cdata.hygiene_context
+            } else {
+                &local_cdata.cstore.get_crate_data(cnum).cdata.hygiene_context
+            }
+        };
+
+        rustc_span::hygiene::decode_expn_id(
+            self,
+            ExpnDataDecodeMode::Metadata(get_ctxt),
+            |_this, index| {
+                let cnum = expn_cnum.get().unwrap();
+                // Lookup local `ExpnData`s in our own crate data. Foreign `ExpnData`s
+                // are stored in the owning crate, to avoid duplication.
+                let crate_data = if cnum == LOCAL_CRATE {
+                    local_cdata
+                } else {
+                    local_cdata.cstore.get_crate_data(cnum)
+                };
+                Ok(crate_data
+                    .root
+                    .expn_data
+                    .get(&crate_data, index)
+                    .unwrap()
+                    .decode((&crate_data, sess)))
+            },
+        )
     }
 }
