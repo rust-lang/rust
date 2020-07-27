@@ -157,14 +157,19 @@ struct ConstPropMachine<'mir, 'tcx> {
     written_only_inside_own_block_locals: FxHashSet<Local>,
     /// Locals that need to be cleared after every block terminates.
     only_propagate_inside_block_locals: BitSet<Local>,
+    can_const_prop: IndexVec<Local, ConstPropMode>,
 }
 
 impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
-    fn new(only_propagate_inside_block_locals: BitSet<Local>) -> Self {
+    fn new(
+        only_propagate_inside_block_locals: BitSet<Local>,
+        can_const_prop: IndexVec<Local, ConstPropMode>,
+    ) -> Self {
         Self {
             stack: Vec::new(),
             written_only_inside_own_block_locals: Default::default(),
             only_propagate_inside_block_locals,
+            can_const_prop,
         }
     }
 }
@@ -243,6 +248,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         local: Local,
     ) -> InterpResult<'tcx, Result<&'a mut LocalValue<Self::PointerTag>, MemPlace<Self::PointerTag>>>
     {
+        if ecx.machine.can_const_prop[local] == ConstPropMode::NoPropagation {
+            throw_machine_stop_str!("tried to write to a local that is marked as not propagatable")
+        }
         if frame == 0 && ecx.machine.only_propagate_inside_block_locals.contains(local) {
             ecx.machine.written_only_inside_own_block_locals.insert(local);
         }
@@ -287,7 +295,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
 struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
     tcx: TyCtxt<'tcx>,
-    can_const_prop: IndexVec<Local, ConstPropMode>,
     param_env: ParamEnv<'tcx>,
     // FIXME(eddyb) avoid cloning these two fields more than once,
     // by accessing them through `ecx` instead.
@@ -347,7 +354,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             tcx,
             span,
             param_env,
-            ConstPropMachine::new(only_propagate_inside_block_locals),
+            ConstPropMachine::new(only_propagate_inside_block_locals, can_const_prop),
             (),
         );
 
@@ -373,7 +380,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             ecx,
             tcx,
             param_env,
-            can_const_prop,
             // FIXME(eddyb) avoid cloning these two fields more than once,
             // by accessing them through `ecx` instead.
             source_scopes: body.source_scopes.clone(),
@@ -1031,7 +1037,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         let source_info = statement.source_info;
         self.source_info = Some(source_info);
         if let StatementKind::Assign(box (place, ref mut rval)) = statement.kind {
-            let can_const_prop = self.can_const_prop[place.local];
+            let can_const_prop = self.ecx.machine.can_const_prop[place.local];
             if let Some(()) = self.const_prop(rval, source_info, place) {
                 // This will return None if the above `const_prop` invocation only "wrote" a
                 // type whose creation requires no write. E.g. a generator whose initial state
