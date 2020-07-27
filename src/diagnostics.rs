@@ -218,7 +218,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let this = self.eval_context_ref();
         if this.active_thread_stack().is_empty() {
-            // Diagnostics can happen even with the emoty stack (e.g. deallocation thread-local statics).
+            // Diagnostics can happen even with the empty stack (e.g. deallocation of thread-local statics).
             return TopFrameInfo { stack_size: 0, instance: None, span: DUMMY_SP };
         }
         let frame = this.frame();
