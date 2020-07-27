@@ -36,8 +36,9 @@ pub trait AstDiagnostic {
 
 impl dyn Diagnostic {
     pub fn syntax_node(&self, db: &impl AstDatabase) -> SyntaxNode {
-        let node = db.parse_or_expand(self.source().file_id).unwrap();
-        self.source().value.to_node(&node)
+        let source = self.source();
+        let node = db.parse_or_expand(source.file_id).unwrap();
+        source.value.to_node(&node)
     }
 
     pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {

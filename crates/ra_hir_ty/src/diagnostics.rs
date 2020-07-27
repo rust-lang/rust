@@ -9,7 +9,7 @@ use hir_def::DefWithBodyId;
 use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};
 use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
 use ra_prof::profile;
-use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
+use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 use stdx::format_to;
 
 use crate::db::HirDatabase;
@@ -61,6 +61,17 @@ pub struct MissingFields {
     pub file: HirFileId,
     pub field_list: AstPtr<ast::RecordExprFieldList>,
     pub missed_fields: Vec<Name>,
+    pub list_parent_path: Option<AstPtr<ast::Path>>,
+}
+
+impl MissingFields {
+    fn root(&self, db: &dyn AstDatabase) -> SyntaxNode {
+        db.parse_or_expand(self.file).unwrap()
+    }
+
+    pub fn list_parent_ast(&self, db: &dyn AstDatabase) -> Option<ast::Path> {
+        self.list_parent_path.as_ref().map(|path| path.to_node(&self.root(db)))
+    }
 }
 
 impl Diagnostic for MissingFields {
@@ -83,9 +94,7 @@ impl AstDiagnostic for MissingFields {
     type AST = ast::RecordExprFieldList;
 
     fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.source().file_id).unwrap();
-        let node = self.source().value.to_node(&root);
-        ast::RecordExprFieldList::cast(node).unwrap()
+        self.field_list.to_node(&self.root(db))
     }
 }
 
@@ -316,6 +325,41 @@ mod tests {
         }
 
         assert_eq!(annotations, actual);
+    }
+
+    #[test]
+    fn structure_name_highlighted_for_missing_fields() {
+        check_diagnostics(
+            r#"
+struct Beefy {
+    one: i32,
+    two: i32,
+    three: i32,
+    four: i32,
+    five: i32,
+    six: i32,
+    seven: i32,
+    eight: i32,
+    nine: i32,
+    ten: i32,
+}
+fn baz() {
+    let zz = Beefy {
+           //^^^^^... Missing structure fields:
+           //    |    - seven
+        one: (),
+        two: (),
+        three: (),
+        four: (),
+        five: (),
+        six: (),
+        eight: (),
+        nine: (),
+        ten: (),
+    };
+}
+"#,
+        );
     }
 
     #[test]

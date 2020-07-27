@@ -111,6 +111,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                         file: source_ptr.file_id,
                         field_list: AstPtr::new(&field_list),
                         missed_fields,
+                        list_parent_path: record_lit.path().map(|path| AstPtr::new(&path)),
                     })
                 }
             }

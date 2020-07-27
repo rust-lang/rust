@@ -100,8 +100,10 @@ pub(crate) fn diagnostics(
             };
 
             res.borrow_mut().push(Diagnostic {
-                // TODO kb use a smaller range here
-                range,
+                range: d
+                    .list_parent_ast(db)
+                    .map(|path| path.syntax().text_range())
+                    .unwrap_or(range),
                 message: d.message(),
                 severity: Severity::Error,
                 fix,
