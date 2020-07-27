@@ -389,7 +389,7 @@ impl<'tcx> Instance<'tcx> {
             debug!(" => associated item with unsizeable self: Self");
             Some(Instance { def: InstanceDef::VtableShim(def_id), substs })
         } else {
-            Instance::resolve(tcx, param_env, def_id, substs).ok().flatten()
+            Instance::resolve_for_fn_ptr(tcx, param_env, def_id, substs)
         }
     }
 
