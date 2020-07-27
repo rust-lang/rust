@@ -173,7 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             let is_automatically_derived = is_automatically_derived(&*item.attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
-            check_ord_pord(cx, item.span, trait_ref, ty, is_automatically_derived);
+            check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
 
             if is_automatically_derived {
                 check_unsafe_derive_deserialize(cx, item, trait_ref, ty);
@@ -239,7 +239,7 @@ fn check_hash_peq<'tcx>(
 }
 
 /// Implementation of the `DERIVE_ORD_XOR_PARTIAL_ORD` lint.
-fn check_ord_pord<'tcx>(
+fn check_ord_partial_ord<'tcx>(
     cx: &LateContext<'tcx>,
     span: Span,
     trait_ref: &TraitRef<'_>,
@@ -248,15 +248,15 @@ fn check_ord_pord<'tcx>(
 ) {
     if_chain! {
         if let Some(ord_trait_def_id) = get_trait_def_id(cx, &paths::ORD);
-        if let Some(pord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait();
+        if let Some(partial_ord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait();
         if let Some(def_id) = &trait_ref.trait_def_id();
         if *def_id == ord_trait_def_id;
         then {
             // Look for the PartialOrd implementations for `ty`
-            cx.tcx.for_each_relevant_impl(pord_trait_def_id, ty, |impl_id| {
-                let pord_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
+            cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
+                let partial_ord_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
 
-                if pord_is_automatically_derived == ord_is_automatically_derived {
+                if partial_ord_is_automatically_derived == ord_is_automatically_derived {
                     return;
                 }
 
@@ -265,7 +265,7 @@ fn check_ord_pord<'tcx>(
                 // Only care about `impl PartialOrd<Foo> for Foo`
                 // For `impl PartialOrd<B> for A, input_types is [A, B]
                 if trait_ref.substs.type_at(1) == ty {
-                    let mess = if pord_is_automatically_derived {
+                    let mess = if partial_ord_is_automatically_derived {
                         "you are implementing `Ord` explicitly but have derived `PartialOrd`"
                     } else {
                         "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
