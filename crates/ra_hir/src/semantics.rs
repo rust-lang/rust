@@ -145,6 +145,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.original_range(node)
     }
 
+    pub fn diagnostics_fix_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        self.imp.diagnostics_fix_range(diagnostics)
+    }
+
     pub fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
         self.imp.diagnostics_range(diagnostics)
     }
@@ -374,6 +378,13 @@ impl<'db> SemanticsImpl<'db> {
     fn original_range(&self, node: &SyntaxNode) -> FileRange {
         let node = self.find_file(node.clone());
         original_range(self.db, node.as_ref())
+    }
+
+    fn diagnostics_fix_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {
+        let src = diagnostics.fix_source();
+        let root = self.db.parse_or_expand(src.file_id).unwrap();
+        let node = src.value.to_node(&root);
+        original_range(self.db, src.with_value(&node))
     }
 
     fn diagnostics_range(&self, diagnostics: &dyn Diagnostic) -> FileRange {

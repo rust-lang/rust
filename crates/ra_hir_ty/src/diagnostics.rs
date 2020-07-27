@@ -37,7 +37,7 @@ impl Diagnostic for NoSuchField {
         "no such field".to_string()
     }
 
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
         InFile::new(self.file, self.field.clone().into())
     }
 
@@ -50,9 +50,8 @@ impl AstDiagnostic for NoSuchField {
     type AST = ast::RecordExprField;
 
     fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.source().file_id).unwrap();
-        let node = self.source().value.to_node(&root);
-        ast::RecordExprField::cast(node).unwrap()
+        let root = db.parse_or_expand(self.file).unwrap();
+        self.field.to_node(&root)
     }
 }
 
@@ -72,19 +71,19 @@ impl Diagnostic for MissingFields {
         }
         buf
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.field_list.clone().into() }
+    }
+
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        self.list_parent_path
+            .clone()
+            .map(|path| InFile { file_id: self.file, value: path.into() })
+            .unwrap_or_else(|| self.fix_source())
     }
 
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
-    }
-
-    fn highlighting_source(&self) -> InFile<SyntaxNodePtr> {
-        self.list_parent_path
-            .clone()
-            .map(|path| InFile { file_id: self.file, value: path.into() })
-            .unwrap_or_else(|| self.source())
     }
 }
 
@@ -112,7 +111,7 @@ impl Diagnostic for MissingPatFields {
         }
         buf
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.field_list.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -131,7 +130,7 @@ impl Diagnostic for MissingMatchArms {
     fn message(&self) -> String {
         String::from("Missing match arm")
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.match_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -149,7 +148,7 @@ impl Diagnostic for MissingOkInTailExpr {
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -162,8 +161,7 @@ impl AstDiagnostic for MissingOkInTailExpr {
 
     fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.file).unwrap();
-        let node = self.source().value.to_node(&root);
-        ast::Expr::cast(node).unwrap()
+        self.expr.to_node(&root)
     }
 }
 
@@ -177,7 +175,7 @@ impl Diagnostic for BreakOutsideOfLoop {
     fn message(&self) -> String {
         "break outside of loop".to_string()
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -190,8 +188,7 @@ impl AstDiagnostic for BreakOutsideOfLoop {
 
     fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.file).unwrap();
-        let node = self.source().value.to_node(&root);
-        ast::Expr::cast(node).unwrap()
+        self.expr.to_node(&root)
     }
 }
 
@@ -205,7 +202,7 @@ impl Diagnostic for MissingUnsafe {
     fn message(&self) -> String {
         format!("This operation is unsafe and requires an unsafe function or block")
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -217,9 +214,8 @@ impl AstDiagnostic for MissingUnsafe {
     type AST = ast::Expr;
 
     fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.source().file_id).unwrap();
-        let node = self.source().value.to_node(&root);
-        ast::Expr::cast(node).unwrap()
+        let root = db.parse_or_expand(self.file).unwrap();
+        self.expr.to_node(&root)
     }
 }
 
@@ -236,7 +232,7 @@ impl Diagnostic for MismatchedArgCount {
         let s = if self.expected == 1 { "" } else { "s" };
         format!("Expected {} argument{}, found {}", self.expected, s, self.found)
     }
-    fn source(&self) -> InFile<SyntaxNodePtr> {
+    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.call_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -250,7 +246,7 @@ impl Diagnostic for MismatchedArgCount {
 impl AstDiagnostic for MismatchedArgCount {
     type AST = ast::CallExpr;
     fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.source().file_id).unwrap();
+        let root = db.parse_or_expand(self.file).unwrap();
         let node = self.source().value.to_node(&root);
         ast::CallExpr::cast(node).unwrap()
     }
@@ -308,12 +304,11 @@ mod tests {
         let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
         db.diagnostics(|d| {
             // FXIME: macros...
-            let file_id = d.source().file_id.original_file(&db);
-            let highlighting_source = d.highlighting_source();
-            let node = db.parse_or_expand(highlighting_source.file_id).unwrap();
-            let range = highlighting_source.value.to_node(&node).text_range();
+            let source = d.source();
+            let root = db.parse_or_expand(source.file_id).unwrap();
+            let range = source.value.to_node(&root).text_range();
             let message = d.message().to_owned();
-            actual.entry(file_id).or_default().push((range, message));
+            actual.entry(source.file_id.original_file(&db)).or_default().push((range, message));
         });
 
         for (file_id, diags) in actual.iter_mut() {

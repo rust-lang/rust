@@ -54,18 +54,19 @@ pub(crate) fn diagnostics(
     let res = RefCell::new(res);
     let mut sink = DiagnosticSinkBuilder::new()
         .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
-            let original_file = d.source().file_id.original_file(db);
             let fix = Fix::new(
                 "Create module",
-                FileSystemEdit::CreateFile { anchor: original_file, dst: d.candidate.clone() }
-                    .into(),
+                FileSystemEdit::CreateFile {
+                    anchor: d.file.original_file(db),
+                    dst: d.candidate.clone(),
+                }
+                .into(),
             );
-            let range = sema.diagnostics_range(d).range;
             res.borrow_mut().push(Diagnostic {
-                range,
+                range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
-                fix: Some((fix, range)),
+                fix: Some((fix, sema.diagnostics_fix_range(d).range)),
             })
         })
         .on::<hir::diagnostics::MissingFields, _>(|d| {
@@ -94,12 +95,12 @@ pub(crate) fn diagnostics(
                 };
                 Some((
                     Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()),
-                    sema.diagnostics_range(d).range,
+                    sema.diagnostics_fix_range(d).range,
                 ))
             };
 
             res.borrow_mut().push(Diagnostic {
-                range: d.highlighting_source().file_syntax(db).text_range(),
+                range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
                 fix,
@@ -110,21 +111,23 @@ pub(crate) fn diagnostics(
             let replacement = format!("Ok({})", node.syntax());
             let edit = TextEdit::replace(node.syntax().text_range(), replacement);
             let source_change = SourceFileEdit { file_id, edit }.into();
-            let range = sema.diagnostics_range(d).range;
             res.borrow_mut().push(Diagnostic {
-                range,
+                range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
-                fix: Some((Fix::new("Wrap with ok", source_change), range)),
+                fix: Some((
+                    Fix::new("Wrap with ok", source_change),
+                    sema.diagnostics_fix_range(d).range,
+                )),
             })
         })
         .on::<hir::diagnostics::NoSuchField, _>(|d| {
-            let range = sema.diagnostics_range(d).range;
             res.borrow_mut().push(Diagnostic {
-                range,
+                range: sema.diagnostics_range(d).range,
                 message: d.message(),
                 severity: Severity::Error,
-                fix: missing_struct_field_fix(&sema, file_id, d).map(|fix| (fix, range)),
+                fix: missing_struct_field_fix(&sema, file_id, d)
+                    .map(|fix| (fix, sema.diagnostics_fix_range(d).range)),
             })
         })
         // Only collect experimental diagnostics when they're enabled.
