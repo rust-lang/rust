@@ -1280,8 +1280,8 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the starting point is greater than the end point or if
-    /// the end point is greater than the length of the vector.
+    /// Panics if the starting point is greater than the ending point or if
+    /// the ending point is greater than the length of the vector.
     ///
     /// # Examples
     ///
