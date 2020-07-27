@@ -7,10 +7,16 @@ LL |     B { a: usize },
    |     -------------- `E::B` defined here
 ...
 LL |     let _: E = E::B;
-   |                ^^^-
-   |                |  |
-   |                |  help: a tuple variant with a similar name exists: `A`
-   |                did you mean `E::B { /* fields */ }`?
+   |                ^^^^
+   |
+help: a tuple variant with a similar name exists
+   |
+LL |     let _: E = E::A;
+   |                   ^
+help: use struct literal syntax instead
+   |
+LL |     let _: E = E::B { a: val };
+   |                ^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:29:20

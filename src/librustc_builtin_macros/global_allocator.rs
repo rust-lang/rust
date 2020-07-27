@@ -58,7 +58,7 @@ impl AllocFnFactory<'_, '_> {
         let mut abi_args = Vec::new();
         let mut i = 0;
         let mut mk = || {
-            let name = self.cx.ident_of(&format!("arg{}", i), self.span);
+            let name = Ident::from_str_and_span(&format!("arg{}", i), self.span);
             i += 1;
             name
         };
@@ -72,19 +72,15 @@ impl AllocFnFactory<'_, '_> {
         let kind = ItemKind::Fn(ast::Defaultness::Final, sig, Generics::default(), block);
         let item = self.cx.item(
             self.span,
-            self.cx.ident_of(&self.kind.fn_name(method.name), self.span),
+            Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),
             self.attrs(),
             kind,
         );
         self.cx.stmt_item(self.span, item)
     }
 
-    fn call_allocator(&self, method: &str, mut args: Vec<P<Expr>>) -> P<Expr> {
-        let method = self.cx.std_path(&[
-            Symbol::intern("alloc"),
-            Symbol::intern("GlobalAlloc"),
-            Symbol::intern(method),
-        ]);
+    fn call_allocator(&self, method: Symbol, mut args: Vec<P<Expr>>) -> P<Expr> {
+        let method = self.cx.std_path(&[sym::alloc, sym::GlobalAlloc, method]);
         let method = self.cx.expr_path(self.cx.path(self.span, method));
         let allocator = self.cx.path_ident(self.span, self.global);
         let allocator = self.cx.expr_path(allocator);
@@ -115,11 +111,8 @@ impl AllocFnFactory<'_, '_> {
                 args.push(self.cx.param(self.span, size, ty_usize.clone()));
                 args.push(self.cx.param(self.span, align, ty_usize));
 
-                let layout_new = self.cx.std_path(&[
-                    Symbol::intern("alloc"),
-                    Symbol::intern("Layout"),
-                    Symbol::intern("from_size_align_unchecked"),
-                ]);
+                let layout_new =
+                    self.cx.std_path(&[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
                 let layout_new = self.cx.expr_path(self.cx.path(self.span, layout_new));
                 let size = self.cx.expr_ident(self.span, size);
                 let align = self.cx.expr_ident(self.span, align);

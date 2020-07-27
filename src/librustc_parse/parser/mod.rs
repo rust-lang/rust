@@ -193,7 +193,7 @@ impl TokenCursor {
                         tree,
                         self.stack.len()
                     );
-                    collecting.buf.push(tree.clone().into())
+                    collecting.buf.push(tree.clone())
                 }
             }
 
@@ -213,7 +213,7 @@ impl TokenCursor {
             tok => return tok,
         };
 
-        let stripped = strip_doc_comment_decoration(&name.as_str());
+        let stripped = strip_doc_comment_decoration(name);
 
         // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
         // required to wrap the text.
@@ -250,7 +250,7 @@ impl TokenCursor {
             TokenCursorFrame::new(
                 delim_span,
                 token::NoDelim,
-                &if doc_comment_style(&name.as_str()) == AttrStyle::Inner {
+                &if doc_comment_style(name) == AttrStyle::Inner {
                     [TokenTree::token(token::Pound, sp), TokenTree::token(token::Not, sp), body]
                         .iter()
                         .cloned()
@@ -672,6 +672,26 @@ impl<'a> Parser<'a> {
                                 }
                             }
 
+                            // If this was a missing `@` in a binding pattern
+                            // bail with a suggestion
+                            // https://github.com/rust-lang/rust/issues/72373
+                            if self.prev_token.is_ident() && self.token.kind == token::DotDot {
+                                let msg = format!(
+                                    "if you meant to bind the contents of \
+                                    the rest of the array pattern into `{}`, use `@`",
+                                    pprust::token_to_string(&self.prev_token)
+                                );
+                                expect_err
+                                    .span_suggestion_verbose(
+                                        self.prev_token.span.shrink_to_hi().until(self.token.span),
+                                        &msg,
+                                        " @ ".to_string(),
+                                        Applicability::MaybeIncorrect,
+                                    )
+                                    .emit();
+                                break;
+                            }
+
                             // Attempt to keep parsing if it was an omitted separator.
                             match f(self) {
                                 Ok(t) => {
@@ -679,7 +699,7 @@ impl<'a> Parser<'a> {
                                     // misses a separator.
                                     expect_err
                                         .span_suggestion_short(
-                                            sp,
+                                            self.sess.source_map().next_point(sp),
                                             &format!("missing `{}`", token_str),
                                             token_str,
                                             Applicability::MaybeIncorrect,
@@ -1131,7 +1151,7 @@ impl<'a> Parser<'a> {
     /// This restriction shouldn't be an issue in practice,
     /// since this function is used to record the tokens for
     /// a parsed AST item, which always has matching delimiters.
-    fn collect_tokens<R>(
+    pub fn collect_tokens<R>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, (R, TokenStream)> {
@@ -1173,7 +1193,7 @@ impl<'a> Parser<'a> {
         let mut collected_tokens = if let Some(collecting) = self.token_cursor.collecting.take() {
             collecting.buf
         } else {
-            let msg = format!("our vector went away?");
+            let msg = "our vector went away?";
             debug!("collect_tokens: {}", msg);
             self.sess.span_diagnostic.delay_span_bug(self.token.span, &msg);
             // This can happen due to a bad interaction of two unrelated recovery mechanisms

@@ -39,7 +39,7 @@ impl Display for Sugg<'_> {
 #[allow(clippy::wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
-    pub fn hir_opt(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> Option<Self> {
+    pub fn hir_opt(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Self> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
             Self::hir_from_snippet(cx, expr, snippet)
@@ -48,7 +48,7 @@ impl<'a> Sugg<'a> {
 
     /// Convenience function around `hir_opt` for suggestions with a default
     /// text.
-    pub fn hir(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
+    pub fn hir(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
         Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
     }
 
@@ -60,7 +60,7 @@ impl<'a> Sugg<'a> {
     ///   to
     /// `HasPlaceholders`
     pub fn hir_with_applicability(
-        cx: &LateContext<'_, '_>,
+        cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
         default: &'a str,
         applicability: &mut Applicability,
@@ -77,7 +77,7 @@ impl<'a> Sugg<'a> {
     }
 
     /// Same as `hir`, but will use the pre expansion span if the `expr` was in a macro.
-    pub fn hir_with_macro_callsite(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
+    pub fn hir_with_macro_callsite(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
         let snippet = snippet_with_macro_callsite(cx, expr.span, default);
 
         Self::hir_from_snippet(cx, expr, snippet)
@@ -85,7 +85,7 @@ impl<'a> Sugg<'a> {
 
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
-    fn hir_from_snippet(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, snippet: Cow<'a, str>) -> Self {
+    fn hir_from_snippet(cx: &LateContext<'_>, expr: &hir::Expr<'_>, snippet: Cow<'a, str>) -> Self {
         if let Some(range) = higher::range(cx, expr) {
             let op = match range.limits {
                 ast::RangeLimits::HalfOpen => AssocOp::DotDot,
@@ -325,22 +325,22 @@ pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
 /// parenthesis will always be added for a mix of these.
 pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
     /// Returns `true` if the operator is a shift operator `<<` or `>>`.
-    fn is_shift(op: &AssocOp) -> bool {
-        matches!(*op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
+    fn is_shift(op: AssocOp) -> bool {
+        matches!(op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
     }
 
     /// Returns `true` if the operator is a arithmetic operator
     /// (i.e., `+`, `-`, `*`, `/`, `%`).
-    fn is_arith(op: &AssocOp) -> bool {
+    fn is_arith(op: AssocOp) -> bool {
         matches!(
-            *op,
+            op,
             AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus
         )
     }
 
     /// Returns `true` if the operator `op` needs parenthesis with the operator
     /// `other` in the direction `dir`.
-    fn needs_paren(op: &AssocOp, other: &AssocOp, dir: Associativity) -> bool {
+    fn needs_paren(op: AssocOp, other: AssocOp, dir: Associativity) -> bool {
         other.precedence() < op.precedence()
             || (other.precedence() == op.precedence()
                 && ((op != other && associativity(op) != dir)
@@ -349,14 +349,14 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
             || is_shift(other) && is_arith(op)
     }
 
-    let lhs_paren = if let Sugg::BinOp(ref lop, _) = *lhs {
-        needs_paren(&op, lop, Associativity::Left)
+    let lhs_paren = if let Sugg::BinOp(lop, _) = *lhs {
+        needs_paren(op, lop, Associativity::Left)
     } else {
         false
     };
 
-    let rhs_paren = if let Sugg::BinOp(ref rop, _) = *rhs {
-        needs_paren(&op, rop, Associativity::Right)
+    let rhs_paren = if let Sugg::BinOp(rop, _) = *rhs {
+        needs_paren(op, rop, Associativity::Right)
     } else {
         false
     };
@@ -424,13 +424,13 @@ enum Associativity {
 /// they are considered
 /// associative.
 #[must_use]
-fn associativity(op: &AssocOp) -> Associativity {
+fn associativity(op: AssocOp) -> Associativity {
     use rustc_ast::util::parser::AssocOp::{
         Add, As, Assign, AssignOp, BitAnd, BitOr, BitXor, Colon, Divide, DotDot, DotDotEq, Equal, Greater,
         GreaterEqual, LAnd, LOr, Less, LessEqual, Modulus, Multiply, NotEqual, ShiftLeft, ShiftRight, Subtract,
     };
 
-    match *op {
+    match op {
         Assign | AssignOp(_) => Associativity::Right,
         Add | BitAnd | BitOr | BitXor | LAnd | LOr | Multiply | As | Colon => Associativity::Both,
         Divide | Equal | Greater | GreaterEqual | Less | LessEqual | Modulus | NotEqual | ShiftLeft | ShiftRight
@@ -492,24 +492,24 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
 /// before it on its line.
 fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
     let lo = cx.sess().source_map().lookup_char_pos(span.lo());
-    if let Some(line) = lo.file.get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */) {
-        if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
-            // We can mix char and byte positions here because we only consider `[ \t]`.
-            if lo.col == CharPos(pos) {
-                Some(line[..pos].into())
+    lo.file
+        .get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */)
+        .and_then(|line| {
+            if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
+                // We can mix char and byte positions here because we only consider `[ \t]`.
+                if lo.col == CharPos(pos) {
+                    Some(line[..pos].into())
+                } else {
+                    None
+                }
             } else {
                 None
             }
-        } else {
-            None
-        }
-    } else {
-        None
-    }
+        })
 }
 
 /// Convenience extension trait for `DiagnosticBuilder`.
-pub trait DiagnosticBuilderExt<'a, T: LintContext> {
+pub trait DiagnosticBuilderExt<T: LintContext> {
     /// Suggests to add an attribute to an item.
     ///
     /// Correctly handles indentation of the attribute and item.
@@ -530,7 +530,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext> {
 
     /// Suggest to add an item before another.
     ///
-    /// The item should not be indented (expect for inner indentation).
+    /// The item should not be indented (except for inner indentation).
     ///
     /// # Example
     ///
@@ -556,7 +556,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext> {
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability);
 }
 
-impl<'a, 'b, 'c, T: LintContext> DiagnosticBuilderExt<'c, T> for rustc_errors::DiagnosticBuilder<'b> {
+impl<T: LintContext> DiagnosticBuilderExt<T> for rustc_errors::DiagnosticBuilder<'_> {
     fn suggest_item_with_attr<D: Display + ?Sized>(
         &mut self,
         cx: &T,

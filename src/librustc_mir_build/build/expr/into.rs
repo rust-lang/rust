@@ -5,6 +5,7 @@ use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
 use rustc_ast::ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
@@ -43,7 +44,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let block_and = match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, source_info);
-                this.in_scope(region_scope, lint_level, |this| this.into(destination, block, value))
+                ensure_sufficient_stack(|| {
+                    this.in_scope(region_scope, lint_level, |this| {
+                        this.into(destination, block, value)
+                    })
+                })
             }
             ExprKind::Block { body: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
@@ -135,19 +140,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // body, even when the exact code in the body cannot unwind
 
                 let loop_block = this.cfg.start_new_block();
+                let exit_block = this.cfg.start_new_block();
 
                 // Start the loop.
                 this.cfg.goto(block, source_info, loop_block);
 
-                this.in_breakable_scope(Some(loop_block), destination, expr_span, move |this| {
+                this.in_breakable_scope(Some(loop_block), exit_block, destination, move |this| {
                     // conduct the test, if necessary
                     let body_block = this.cfg.start_new_block();
+                    let diverge_cleanup = this.diverge_cleanup();
                     this.cfg.terminate(
                         loop_block,
                         source_info,
-                        TerminatorKind::FalseUnwind { real_target: body_block, unwind: None },
+                        TerminatorKind::FalseUnwind {
+                            real_target: body_block,
+                            unwind: Some(diverge_cleanup),
+                        },
                     );
-                    this.diverge_from(loop_block);
 
                     // The “return” value of the loop body must always be an unit. We therefore
                     // introduce a unit temporary as the destination for the loop body.
@@ -155,12 +164,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Execute the body, branching back to the test.
                     let body_block_end = unpack!(this.into(tmp, body_block, body));
                     this.cfg.goto(body_block_end, source_info, loop_block);
-
-                    // Loops are only exited by `break` expressions.
-                    None
-                })
+                });
+                exit_block.unit()
             }
-            ExprKind::Call { ty, fun, args, from_hir_call } => {
+            ExprKind::Call { ty, fun, args, from_hir_call, fn_span } => {
                 let intrinsic = match ty.kind {
                     ty::FnDef(def_id, _) => {
                         let f = ty.fn_sig(this.hir.tcx());
@@ -186,10 +193,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let ptr_ty = ptr.ty;
                     // Create an *internal* temp for the pointer, so that unsafety
                     // checking won't complain about the raw pointer assignment.
-                    let ptr_temp = this.local_decls.push(LocalDecl::with_source_info(
-                        ptr_ty,
-                        source_info,
-                    ).internal());
+                    let ptr_temp = this
+                        .local_decls
+                        .push(LocalDecl::with_source_info(ptr_ty, source_info).internal());
                     let ptr_temp = Place::from(ptr_temp);
                     let block = unpack!(this.into(ptr_temp, block, ptr));
                     this.into(this.hir.tcx().mk_place_deref(ptr_temp), block, val)
@@ -200,8 +206,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .collect();
 
                     let success = this.cfg.start_new_block();
+                    let cleanup = this.diverge_cleanup();
 
                     this.record_operands_moved(&args);
+
+                    debug!("into_expr: fn_span={:?}", fn_span);
 
                     this.cfg.terminate(
                         block,
@@ -209,7 +218,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         TerminatorKind::Call {
                             func: fun,
                             args,
-                            cleanup: None,
+                            cleanup: Some(cleanup),
                             // FIXME(varkor): replace this with an uninhabitedness-based check.
                             // This requires getting access to the current module to call
                             // `tcx.is_ty_uninhabited_from`, which is currently tricky to do.
@@ -219,9 +228,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 Some((destination, success))
                             },
                             from_hir_call,
+                            fn_span,
                         },
                     );
-                    this.diverge_from(block);
                     success.unit()
                 }
             }
@@ -310,7 +319,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 block.unit()
             }
-            ExprKind::InlineAsm { template, operands, options } => {
+            ExprKind::InlineAsm { template, operands, options, line_spans } => {
                 use crate::hair;
                 use rustc_middle::mir;
                 let operands = operands
@@ -353,8 +362,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         hair::InlineAsmOperand::SymFn { expr } => {
                             mir::InlineAsmOperand::SymFn { value: box this.as_constant(expr) }
                         }
-                        hair::InlineAsmOperand::SymStatic { expr } => {
-                            mir::InlineAsmOperand::SymStatic { value: box this.as_constant(expr) }
+                        hair::InlineAsmOperand::SymStatic { def_id } => {
+                            mir::InlineAsmOperand::SymStatic { def_id }
                         }
                     })
                     .collect();
@@ -368,6 +377,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         template,
                         operands,
                         options,
+                        line_spans,
                         destination: if options.contains(InlineAsmOptions::NORETURN) {
                             None
                         } else {
@@ -381,12 +391,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // These cases don't actually need a destination
             ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
-            | ExprKind::Continue { .. }
-            | ExprKind::Break { .. }
-            | ExprKind::LlvmInlineAsm { .. }
-            | ExprKind::Return { .. } => {
+            | ExprKind::LlvmInlineAsm { .. } => {
                 unpack!(block = this.stmt_expr(block, expr, None));
                 this.cfg.push_assign_unit(block, source_info, destination, this.hir.tcx());
+                block.unit()
+            }
+
+            ExprKind::Continue { .. } | ExprKind::Break { .. } | ExprKind::Return { .. } => {
+                unpack!(block = this.stmt_expr(block, expr, None));
+                // No assign, as these have type `!`.
                 block.unit()
             }
 
@@ -424,12 +437,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let scope = this.local_scope();
                 let value = unpack!(block = this.as_operand(block, scope, value));
                 let resume = this.cfg.start_new_block();
+                let cleanup = this.generator_drop_cleanup();
                 this.cfg.terminate(
                     block,
                     source_info,
-                    TerminatorKind::Yield { value, resume, resume_arg: destination, drop: None },
+                    TerminatorKind::Yield { value, resume, resume_arg: destination, drop: cleanup },
                 );
-                this.generator_drop_cleanup(block);
                 resume.unit()
             }
 
@@ -444,6 +457,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Tuple { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Literal { .. }
+            | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above

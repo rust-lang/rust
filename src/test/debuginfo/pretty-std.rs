@@ -2,7 +2,7 @@
 // only-cdb // "Temporarily" ignored on GDB/LLDB due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#10381)
 // compile-flags:-g
-// min-gdb-version 7.7
+// min-gdb-version: 7.7
 // min-lldb-version: 310
 
 // === GDB TESTS ===================================================================================
@@ -60,6 +60,9 @@
 
 // lldb-command: print none
 // lldb-check:[...]$5 = None
+
+// lldb-command: print os_string
+// lldb-check:[...]$6 = "IAMA OS string 😃"[...]
 
 
 // === CDB TESTS ==================================================================================

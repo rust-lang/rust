@@ -1,0 +1,8 @@
+error: cannot load a crate with a non-ascii name `му_сгате`
+  --> $DIR/crate_name_nonascii_forbidden-2.rs:5:5
+   |
+LL | use му_сгате::baz;
+   |     ^^^^^^^^
+
+error: aborting due to previous error
+

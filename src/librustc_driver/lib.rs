@@ -64,8 +64,8 @@ pub const EXIT_SUCCESS: i32 = 0;
 /// Exit status code used for compilation failures and invalid flags.
 pub const EXIT_FAILURE: i32 = 1;
 
-const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
-                              md#bug-reports";
+const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
+    ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
 
 const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["Z", "C", "crate-type"];
 
@@ -307,6 +307,7 @@ pub fn run_compiler(
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
                 }
+                trace!("finished pretty-printing");
                 return early_exit();
             }
 
@@ -346,12 +347,15 @@ pub fn run_compiler(
 
             queries.global_ctxt()?;
 
+            // Drop AST after creating GlobalCtxt to free memory
+            let _timer = sess.prof.generic_activity("drop_ast");
+            mem::drop(queries.expansion()?.take());
+
             if sess.opts.debugging_opts.no_analysis || sess.opts.debugging_opts.ast_json {
                 return early_exit();
             }
 
             if sess.opts.debugging_opts.save_analysis {
-                let expanded_crate = &queries.expansion()?.peek().0;
                 let crate_name = queries.crate_name()?.peek().clone();
                 queries.global_ctxt()?.peek_mut().enter(|tcx| {
                     let result = tcx.analysis(LOCAL_CRATE);
@@ -359,7 +363,6 @@ pub fn run_compiler(
                     sess.time("save_analysis", || {
                         save::process_crate(
                             tcx,
-                            &expanded_crate,
                             &crate_name,
                             &compiler.input(),
                             None,
@@ -371,23 +374,13 @@ pub fn run_compiler(
                     });
 
                     result
-                    // AST will be dropped *after* the `after_analysis` callback
-                    // (needed by the RLS)
                 })?;
-            } else {
-                // Drop AST after creating GlobalCtxt to free memory
-                let _timer = sess.prof.generic_activity("drop_ast");
-                mem::drop(queries.expansion()?.take());
             }
 
             queries.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
-            }
-
-            if sess.opts.debugging_opts.save_analysis {
-                mem::drop(queries.expansion()?.take());
             }
 
             queries.ongoing_codegen()?;
@@ -704,7 +697,7 @@ impl RustcDefaultCalls {
                         .parse_sess
                         .config
                         .iter()
-                        .filter_map(|&(name, ref value)| {
+                        .filter_map(|&(name, value)| {
                             // Note that crt-static is a specially recognized cfg
                             // directive that's printed out here as part of
                             // rust-lang/rust#37406, but in general the
@@ -713,9 +706,7 @@ impl RustcDefaultCalls {
                             // specifically allowing the crt-static cfg and that's
                             // it, this is intended to get into Cargo and then go
                             // through to build scripts.
-                            let value = value.as_ref().map(|s| s.as_str());
-                            let value = value.as_ref().map(|s| s.as_ref());
-                            if (name != sym::target_feature || value != Some("crt-static"))
+                            if (name != sym::target_feature || value != Some(sym::crt_dash_static))
                                 && !allow_unstable_cfg
                                 && find_gated_cfg(|cfg_sym| cfg_sym == name).is_some()
                             {

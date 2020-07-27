@@ -18,5 +18,5 @@ pub mod prelude {
     pub use crate::sys::ext::fs::{DirEntryExt, FileExt, MetadataExt, OpenOptionsExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use crate::sys::ext::io::{AsRawFd, FromRawFd, IntoRawFd};
+    pub use crate::sys::ext::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 }

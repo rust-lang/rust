@@ -1,11 +1,11 @@
 // build-fail
 
 pub const unsafe fn fake_type<T>() -> T {
-    hint_unreachable()
+    hint_unreachable() //~ ERROR evaluation of constant value failed
 }
 
 pub const unsafe fn hint_unreachable() -> ! {
-    fake_type() //~ ERROR evaluation of constant value failed
+    fake_type()
 }
 
 trait Const {

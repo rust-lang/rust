@@ -4,6 +4,7 @@
 
 use std::cmp::Ordering;
 
+#[allow(clippy::unnested_or_patterns, clippy::match_like_matches_macro)]
 #[warn(clippy::neg_cmp_op_on_partial_ord)]
 fn main() {
     let a_value = 1.0;
@@ -56,6 +57,6 @@ fn main() {
     // The macro always negates the result of the given comparison in its
     // internal check which automatically triggered the lint. As it's an
     // external macro there was no chance to do anything about it which led
-    // to a whitelisting of all external macros.
+    // to an exempting of all external macros.
     assert!(a_value < another_value);
 }

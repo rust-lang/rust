@@ -8,6 +8,10 @@ LL |     consume(node) + r
    |             ^^^^ value used here after partial move
    |
    = note: move occurs because value has type `std::boxed::Box<List>`, which does not implement the `Copy` trait
+help: borrow this field in the pattern to avoid moving `node.next.0`
+   |
+LL |         Some(ref right) => consume(right),
+   |              ^^^
 
 error: aborting due to previous error
 

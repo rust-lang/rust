@@ -52,8 +52,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessBorrowedRef => [NEEDLESS_BORROWED_REFERENCE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
-    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
+    fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         if pat.span.from_expansion() {
             // OK, simple enough, lints doesn't check in macro.
             return;

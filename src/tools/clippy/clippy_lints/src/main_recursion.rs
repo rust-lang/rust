@@ -31,12 +31,12 @@ pub struct MainRecursion {
 
 impl_lint_pass!(MainRecursion => [MAIN_RECURSION]);
 
-impl LateLintPass<'_, '_> for MainRecursion {
-    fn check_crate(&mut self, _: &LateContext<'_, '_>, krate: &Crate<'_>) {
+impl LateLintPass<'_> for MainRecursion {
+    fn check_crate(&mut self, _: &LateContext<'_>, krate: &Crate<'_>) {
         self.has_no_std_attr = is_no_std_crate(krate);
     }
 
-    fn check_expr_post(&mut self, cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+    fn check_expr_post(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if self.has_no_std_attr {
             return;
         }

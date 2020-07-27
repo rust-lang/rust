@@ -354,11 +354,7 @@ impl<T> Packet<T> {
 
         // See comments on Arc::clone() on why we do this (for `mem::forget`).
         if old_count > MAX_REFCOUNT {
-            // remove `unsafe` on bootstrap bump
-            #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-            unsafe {
-                abort();
-            }
+            abort();
         }
     }
 

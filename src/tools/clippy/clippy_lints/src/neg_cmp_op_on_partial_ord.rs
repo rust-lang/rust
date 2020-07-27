@@ -45,8 +45,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NoNegCompOpForPartialOrd => [NEG_CMP_OP_ON_PARTIAL_ORD]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
 
             if !in_external_macro(cx.sess(), expr.span);
@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
 
             then {
 
-                let ty = cx.tables.expr_ty(left);
+                let ty = cx.typeck_results().expr_ty(left);
 
                 let implements_ord = {
                     if let Some(id) = utils::get_trait_def_id(cx, &paths::ORD) {

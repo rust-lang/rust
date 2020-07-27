@@ -12,7 +12,7 @@ This option is deprecated and does nothing.
 This option lets you choose which code model to use. \
 Code models put constraints on address ranges that the program and its symbols may use. \
 With smaller address ranges machine instructions
-may be able to use use more compact addressing modes.
+may be able to use more compact addressing modes.
 
 The specific ranges depend on target architectures and addressing modes available to them. \
 For x86 more detailed description of its code models can be found in
@@ -41,6 +41,18 @@ generated code, but may be slower to compile.
 
 The default value, if not specified, is 16 for non-incremental builds. For
 incremental builds the default is 256 which allows caching to be more granular.
+
+## control-flow-guard
+
+This flag controls whether LLVM enables the Windows [Control Flow 
+Guard](https://docs.microsoft.com/en-us/windows/win32/secbp/control-flow-guard) 
+platform security feature. This flag is currently ignored for non-Windows targets. 
+It takes one of the following values:
+
+* `y`, `yes`, `on`, `checks`, or no value: enable Control Flow Guard.
+* `nochecks`: emit Control Flow Guard metadata without runtime enforcement checks (this 
+should only be used for testing purposes as it does not provide security enforcement).
+* `n`, `no`, `off`: do not enable Control Flow Guard (the default).
 
 ## debug-assertions
 

@@ -20,7 +20,6 @@ pub mod cmath;
 pub mod condvar;
 pub mod env;
 pub mod ext;
-pub mod fast_thread_local;
 pub mod fs;
 pub mod handle;
 pub mod io;
@@ -35,7 +34,8 @@ pub mod process;
 pub mod rand;
 pub mod rwlock;
 pub mod thread;
-pub mod thread_local;
+pub mod thread_local_dtor;
+pub mod thread_local_key;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
@@ -61,7 +61,23 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_FILE_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_PATH_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_NO_DATA => return ErrorKind::BrokenPipe,
-        c::ERROR_OPERATION_ABORTED => return ErrorKind::TimedOut,
+        c::ERROR_INVALID_PARAMETER => return ErrorKind::InvalidInput,
+        c::ERROR_SEM_TIMEOUT
+        | c::WAIT_TIMEOUT
+        | c::ERROR_DRIVER_CANCEL_TIMEOUT
+        | c::ERROR_OPERATION_ABORTED
+        | c::ERROR_SERVICE_REQUEST_TIMEOUT
+        | c::ERROR_COUNTER_TIMEOUT
+        | c::ERROR_TIMEOUT
+        | c::ERROR_RESOURCE_CALL_TIMED_OUT
+        | c::ERROR_CTX_MODEM_RESPONSE_TIMEOUT
+        | c::ERROR_CTX_CLIENT_QUERY_TIMEOUT
+        | c::FRS_ERR_SYSVOL_POPULATE_TIMEOUT
+        | c::ERROR_DS_TIMELIMIT_EXCEEDED
+        | c::DNS_ERROR_RECORD_TIMED_OUT
+        | c::ERROR_IPSEC_IKE_TIMED_OUT
+        | c::ERROR_RUNLEVEL_SWITCH_TIMEOUT
+        | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return ErrorKind::TimedOut,
         _ => {}
     }
 
@@ -295,7 +311,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
         .checked_mul(1000)
         .and_then(|ms| ms.checked_add((dur.subsec_nanos() as u64) / 1_000_000))
         .and_then(|ms| ms.checked_add(if dur.subsec_nanos() % 1_000_000 > 0 { 1 } else { 0 }))
-        .map(|ms| if ms > <c::DWORD>::max_value() as u64 { c::INFINITE } else { ms as c::DWORD })
+        .map(|ms| if ms > <c::DWORD>::MAX as u64 { c::INFINITE } else { ms as c::DWORD })
         .unwrap_or(c::INFINITE)
 }
 
@@ -314,8 +330,5 @@ pub fn abort_internal() -> ! {
         llvm_asm!("int $$0x29" :: "{ecx}"(7) ::: volatile); // 7 is FAST_FAIL_FATAL_APP_EXIT
         crate::intrinsics::unreachable();
     }
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
-    unsafe {
-        crate::intrinsics::abort();
-    }
+    crate::intrinsics::abort();
 }

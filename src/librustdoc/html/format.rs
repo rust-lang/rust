@@ -63,8 +63,20 @@ impl Buffer {
         Buffer { for_html: false, buffer: String::new() }
     }
 
+    crate fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
+    }
+
     crate fn into_inner(self) -> String {
         self.buffer
+    }
+
+    crate fn insert_str(&mut self, idx: usize, s: &str) {
+        self.buffer.insert_str(idx, s);
+    }
+
+    crate fn push_str(&mut self, s: &str) {
+        self.buffer.push_str(s);
     }
 
     // Intended for consumption by write! and writeln! (std::fmt) but without
@@ -468,7 +480,7 @@ impl clean::Path {
 
 pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let cache = cache();
-    if !did.is_local() && !cache.access_levels.is_public(did) {
+    if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
         return None;
     }
 

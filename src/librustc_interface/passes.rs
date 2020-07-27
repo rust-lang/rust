@@ -3,6 +3,7 @@ use crate::proc_macro_decls;
 use crate::util;
 
 use log::{info, log_enabled, warn};
+use once_cell::sync::Lazy;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self, ast, visit};
 use rustc_codegen_ssa::back::link::emit_metadata;
@@ -19,6 +20,7 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
 use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
@@ -33,7 +35,7 @@ use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_span::FileName;
+use rustc_span::{FileName, RealFileName};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 
@@ -101,6 +103,7 @@ pub fn configure_and_expand(
     krate: ast::Crate,
     crate_name: &str,
 ) -> Result<(ast::Crate, BoxedResolver)> {
+    log::trace!("configure_and_expand");
     // Currently, we ignore the name resolution data structures for the purposes of dependency
     // tracking. Instead we will run name resolution and include its output in the hash of each
     // item, much like we do for macro expansion. In other words, the hash reflects not just
@@ -230,6 +233,7 @@ fn configure_and_expand_inner<'a>(
     resolver_arenas: &'a ResolverArenas<'a>,
     metadata_loader: &'a MetadataLoaderDyn,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
+    log::trace!("configure_and_expand_inner");
     pre_expansion_lint(sess, lint_store, &krate);
 
     let mut resolver = Resolver::new(sess, &krate, crate_name, metadata_loader, &resolver_arenas);
@@ -291,6 +295,7 @@ fn configure_and_expand_inner<'a>(
             recursion_limit: sess.recursion_limit(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
+            span_debug: sess.opts.debugging_opts.span_debug,
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
@@ -306,16 +311,21 @@ fn configure_and_expand_inner<'a>(
             ecx.check_unused_macros();
         });
 
-        let mut missing_fragment_specifiers: Vec<_> =
-            ecx.parse_sess.missing_fragment_specifiers.borrow().iter().cloned().collect();
-        missing_fragment_specifiers.sort();
+        let mut missing_fragment_specifiers: Vec<_> = ecx
+            .parse_sess
+            .missing_fragment_specifiers
+            .borrow()
+            .iter()
+            .map(|(span, node_id)| (*span, *node_id))
+            .collect();
+        missing_fragment_specifiers.sort_unstable_by_key(|(span, _)| *span);
 
         let recursion_limit_hit = ecx.reduced_recursion_limit.is_some();
 
-        for span in missing_fragment_specifiers {
+        for (span, node_id) in missing_fragment_specifiers {
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
             let msg = "missing fragment specifier";
-            resolver.lint_buffer().buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
+            resolver.lint_buffer().buffer_lint(lint, node_id, span, msg);
         }
         if cfg!(windows) {
             env::set_var("PATH", &old_path);
@@ -344,13 +354,8 @@ fn configure_and_expand_inner<'a>(
         )
     });
 
-    // If we're actually rustdoc then there's no need to actually compile
-    // anything, so switch everything to just looping
-    let mut should_loop = sess.opts.actually_rustdoc;
     if let Some(PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops)) = sess.opts.pretty {
-        should_loop |= true;
-    }
-    if should_loop {
+        log::debug!("replacing bodies with loop {{}}");
         util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
     }
 
@@ -540,6 +545,22 @@ fn escape_dep_filename(filename: &FileName) -> String {
     filename.to_string().replace(" ", "\\ ")
 }
 
+// Makefile comments only need escaping newlines and `\`.
+// The result can be unescaped by anything that can unescape `escape_default` and friends.
+fn escape_dep_env(symbol: Symbol) -> String {
+    let s = symbol.as_str();
+    let mut escaped = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '\n' => escaped.push_str(r"\n"),
+            '\r' => escaped.push_str(r"\r"),
+            '\\' => escaped.push_str(r"\\"),
+            _ => escaped.push(c),
+        }
+    }
+    escaped
+}
+
 fn write_out_deps(
     sess: &Session,
     boxed_resolver: &Steal<Rc<RefCell<BoxedResolver>>>,
@@ -569,13 +590,16 @@ fn write_out_deps(
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
                     if let Some((path, _)) = source.dylib {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        let file_name = FileName::Real(RealFileName::Named(path));
+                        files.push(escape_dep_filename(&file_name));
                     }
                     if let Some((path, _)) = source.rlib {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        let file_name = FileName::Real(RealFileName::Named(path));
+                        files.push(escape_dep_filename(&file_name));
                     }
                     if let Some((path, _)) = source.rmeta {
-                        files.push(escape_dep_filename(&FileName::Real(path)));
+                        let file_name = FileName::Real(RealFileName::Named(path));
+                        files.push(escape_dep_filename(&file_name));
                     }
                 }
             });
@@ -592,6 +616,25 @@ fn write_out_deps(
         for path in files {
             writeln!(file, "{}:", path)?;
         }
+
+        // Emit special comments with information about accessed environment variables.
+        let env_depinfo = sess.parse_sess.env_depinfo.borrow();
+        if !env_depinfo.is_empty() {
+            let mut envs: Vec<_> = env_depinfo
+                .iter()
+                .map(|(k, v)| (escape_dep_env(*k), v.map(escape_dep_env)))
+                .collect();
+            envs.sort_unstable();
+            writeln!(file)?;
+            for (k, v) in envs {
+                write!(file, "# env-dep:{}", k)?;
+                if let Some(v) = v {
+                    write!(file, "={}", v)?;
+                }
+                writeln!(file)?;
+            }
+        }
+
         Ok(())
     })();
 
@@ -672,7 +715,8 @@ pub fn prepare_outputs(
     Ok(outputs)
 }
 
-pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
+pub static DEFAULT_QUERY_PROVIDERS: Lazy<Providers> = Lazy::new(|| {
+    let providers = &mut Providers::default();
     providers.analysis = analysis;
     proc_macro_decls::provide(providers);
     plugin::build::provide(providers);
@@ -691,12 +735,15 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_lint::provide(providers);
     rustc_symbol_mangling::provide(providers);
     rustc_codegen_ssa::provide(providers);
-}
+    *providers
+});
 
-pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
-    rustc_metadata::provide_extern(providers);
-    rustc_codegen_ssa::provide_extern(providers);
-}
+pub static DEFAULT_EXTERN_QUERY_PROVIDERS: Lazy<Providers> = Lazy::new(|| {
+    let mut extern_providers = *DEFAULT_QUERY_PROVIDERS;
+    rustc_metadata::provide_extern(&mut extern_providers);
+    rustc_codegen_ssa::provide_extern(&mut extern_providers);
+    extern_providers
+});
 
 pub struct QueryContext<'tcx>(&'tcx GlobalCtxt<'tcx>);
 
@@ -725,17 +772,19 @@ pub fn create_global_ctxt<'tcx>(
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
-    let defs: &'tcx Definitions = arena.alloc(mem::take(&mut resolver_outputs.definitions));
+    let defs: &'tcx Definitions = arena.alloc(mem::replace(
+        &mut resolver_outputs.definitions,
+        Definitions::new(crate_name, sess.local_crate_disambiguator()),
+    ));
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
     let codegen_backend = compiler.codegen_backend();
-    let mut local_providers = ty::query::Providers::default();
-    default_provide(&mut local_providers);
+    let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
     codegen_backend.provide(&mut local_providers);
 
-    let mut extern_providers = local_providers;
-    default_provide_extern(&mut extern_providers);
+    let mut extern_providers = *DEFAULT_EXTERN_QUERY_PROVIDERS;
+    codegen_backend.provide(&mut extern_providers);
     codegen_backend.provide_extern(&mut extern_providers);
 
     if let Some(callback) = compiler.override_queries {
@@ -838,7 +887,12 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 
     sess.time("MIR_effect_checking", || {
         for def_id in tcx.body_owners() {
-            mir::transform::check_unsafety::check_unsafety(tcx, def_id.to_def_id())
+            mir::transform::check_unsafety::check_unsafety(tcx, def_id);
+
+            if tcx.hir().body_const_context(def_id).is_some() {
+                tcx.ensure()
+                    .mir_drops_elaborated_and_const_checked(ty::WithOptConstParam::unknown(def_id));
+            }
         }
     });
 

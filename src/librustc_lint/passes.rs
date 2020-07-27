@@ -90,15 +90,15 @@ macro_rules! expand_lint_pass_methods {
 
 macro_rules! declare_late_lint_pass {
     ([], [$hir:tt], [$($methods:tt)*]) => (
-        pub trait LateLintPass<'a, $hir>: LintPass {
-            expand_lint_pass_methods!(&LateContext<'a, $hir>, [$($methods)*]);
+        pub trait LateLintPass<$hir>: LintPass {
+            expand_lint_pass_methods!(&LateContext<$hir>, [$($methods)*]);
         }
     )
 }
 
 late_lint_methods!(declare_late_lint_pass, [], ['tcx]);
 
-impl LateLintPass<'_, '_> for HardwiredLints {}
+impl LateLintPass<'_> for HardwiredLints {}
 
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {
@@ -110,7 +110,7 @@ macro_rules! expand_combined_late_lint_pass_method {
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_methods {
     ($passes:tt, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &LateContext<'a, 'tcx>, $($param: $arg),*) {
+        $(fn $name(&mut self, context: &LateContext<'tcx>, $($param: $arg),*) {
             expand_combined_late_lint_pass_method!($passes, self, $name, (context, $($param),*));
         })*
     )
@@ -138,7 +138,7 @@ macro_rules! declare_combined_late_lint_pass {
             }
         }
 
-        impl<'a, 'tcx> LateLintPass<'a, 'tcx> for $name {
+        impl<'tcx> LateLintPass<'tcx> for $name {
             expand_combined_late_lint_pass_methods!([$($passes),*], $methods);
         }
 
@@ -282,4 +282,4 @@ macro_rules! declare_combined_early_lint_pass {
 /// A lint pass boxed up as a trait object.
 pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
 pub type LateLintPassObject =
-    Box<dyn for<'a, 'tcx> LateLintPass<'a, 'tcx> + sync::Send + sync::Sync + 'static>;
+    Box<dyn for<'tcx> LateLintPass<'tcx> + sync::Send + sync::Sync + 'static>;

@@ -5,15 +5,15 @@ use rustc_ast::ast::{self, Attribute, NodeId, PatKind};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{self, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
-use rustc_parse::{self, parser, MACRO_ARGUMENTS};
-use rustc_session::parse::ParseSess;
-use rustc_span::def_id::DefId;
+use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
+use rustc_session::{parse::ParseSess, Limit};
+use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
 use rustc_span::source_map::SourceMap;
@@ -120,10 +120,7 @@ impl Annotatable {
         }
     }
 
-    crate fn into_tokens(self) -> TokenStream {
-        // `Annotatable` can be converted into tokens directly, but we
-        // are packing it into a nonterminal as a piece of AST to make
-        // the produced token stream look nicer in pretty-printed form.
+    crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
         let nt = match self {
             Annotatable::Item(item) => token::NtItem(item),
             Annotatable::TraitItem(item) | Annotatable::ImplItem(item) => {
@@ -142,7 +139,7 @@ impl Annotatable {
             | Annotatable::StructField(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
         };
-        TokenTree::token(token::Interpolated(Lrc::new(nt)), DUMMY_SP).into()
+        nt_to_tokenstream(&nt, sess, DUMMY_SP)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
@@ -738,7 +735,7 @@ pub struct SyntaxExtension {
     pub kind: SyntaxExtensionKind,
     /// Span of the macro definition.
     pub span: Span,
-    /// Whitelist of unstable features that are treated as stable inside this macro.
+    /// List of unstable features that are treated as stable inside this macro.
     pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
     /// Suppresses the `unsafe_code` lint for code produced by this macro.
     pub allow_internal_unsafe: bool,
@@ -876,6 +873,8 @@ impl SyntaxExtension {
             local_inner_macros: self.local_inner_macros,
             edition: self.edition,
             macro_def_id,
+            krate: LOCAL_CRATE,
+            orig_id: None,
         }
     }
 }
@@ -889,7 +888,7 @@ pub enum InvocationRes {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub trait Resolver {
+pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;
 
     fn resolve_dollar_crates(&mut self);
@@ -914,6 +913,9 @@ pub trait Resolver {
     ) -> Result<InvocationRes, Indeterminate>;
 
     fn check_unused_macros(&mut self);
+
+    /// Some parent node that is close enough to the given macro call.
+    fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId;
 
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
     fn add_derive_copy(&mut self, expn_id: ExpnId);
@@ -941,9 +943,9 @@ pub struct ExpansionData {
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
-    pub reduced_recursion_limit: Option<usize>,
+    pub reduced_recursion_limit: Option<Limit>,
     pub root_path: PathBuf,
-    pub resolver: &'a mut dyn Resolver,
+    pub resolver: &'a mut dyn ResolverExpand,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
     /// Called directly after having parsed an external `mod foo;` in expansion.
@@ -954,7 +956,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn new(
         parse_sess: &'a ParseSess,
         ecfg: expand::ExpansionConfig<'a>,
-        resolver: &'a mut dyn Resolver,
+        resolver: &'a mut dyn ResolverExpand,
         extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
@@ -1061,9 +1063,6 @@ impl<'a> ExtCtxt<'a> {
     pub fn set_trace_macros(&mut self, x: bool) {
         self.ecfg.trace_mac = x
     }
-    pub fn ident_of(&self, st: &str, sp: Span) -> Ident {
-        Ident::from_str_and_span(st, sp)
-    }
     pub fn std_path(&self, components: &[Symbol]) -> Vec<Ident> {
         let def_site = self.with_def_site_ctxt(DUMMY_SP);
         iter::once(Ident::new(kw::DollarCrate, def_site))
@@ -1095,7 +1094,7 @@ impl<'a> ExtCtxt<'a> {
         if !path.is_absolute() {
             let callsite = span.source_callsite();
             let mut result = match self.source_map().span_to_unmapped_path(callsite) {
-                FileName::Real(path) => path,
+                FileName::Real(name) => name.into_local_path(),
                 FileName::DocTest(path, _) => path,
                 other => {
                     return Err(self.struct_span_err(

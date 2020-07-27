@@ -6,13 +6,13 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::Mutability;
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty;
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
 use crate::clean::{self, GetDefId, ToSource, TypeKind};
@@ -194,6 +194,7 @@ pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
+    let is_spotlight = load_attrs(cx, did).clean(cx).has_doc_flag(sym::spotlight);
     let is_auto = cx.tcx.trait_is_auto(did);
     clean::Trait {
         auto: auto_trait,
@@ -201,6 +202,7 @@ pub fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
         generics,
         items: trait_items,
         bounds: supertrait_bounds,
+        is_spotlight,
         is_auto,
     }
 }
@@ -278,7 +280,7 @@ fn build_type_alias_type(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type>
     type_.def_id().and_then(|did| build_ty(cx, did))
 }
 
-pub fn build_ty(cx: &DocContext, did: DefId) -> Option<clean::Type> {
+pub fn build_ty(cx: &DocContext<'_>, did: DefId) -> Option<clean::Type> {
     match cx.tcx.def_kind(did) {
         DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Const | DefKind::Static => {
             Some(cx.tcx.type_of(did).clean(cx))
@@ -337,6 +339,18 @@ pub fn build_impl(
         if let Some(traitref) = associated_trait {
             if !cx.renderinfo.borrow().access_levels.is_public(traitref.def_id) {
                 return;
+            }
+        }
+
+        // Skip foreign unstable traits from lists of trait implementations and
+        // such. This helps prevent dependencies of the standard library, for
+        // example, from getting documented as "traits `u32` implements" which
+        // isn't really too helpful.
+        if let Some(trait_did) = associated_trait {
+            if let Some(stab) = cx.tcx.lookup_stability(trait_did.def_id) {
+                if stab.level.is_unstable() {
+                    return;
+                }
             }
         }
     }
@@ -454,11 +468,7 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                         name: None,
                         attrs: clean::Attributes::default(),
                         source: clean::Span::empty(),
-                        def_id: cx
-                            .tcx
-                            .hir()
-                            .local_def_id_from_node_id(ast::CRATE_NODE_ID)
-                            .to_def_id(),
+                        def_id: DefId::local(CRATE_DEF_INDEX),
                         visibility: clean::Public,
                         stability: None,
                         deprecation: None,

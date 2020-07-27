@@ -19,7 +19,7 @@ impl FileDesc {
         self.fd
     }
 
-    /// Extracts the actual filedescriptor without closing it.
+    /// Extracts the actual file descriptor without closing it.
     pub fn into_raw(self) -> Fd {
         let fd = self.fd;
         mem::forget(self);

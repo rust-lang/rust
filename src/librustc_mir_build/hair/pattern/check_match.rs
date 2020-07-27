@@ -3,7 +3,7 @@ use super::_match::WitnessPreference::*;
 use super::_match::{expand_pattern, is_useful, MatchCheckCtxt, Matrix, PatStack};
 use super::{PatCtxt, PatKind, PatternError};
 
-use arena::TypedArena;
+use rustc_arena::TypedArena;
 use rustc_ast::ast::Mutability;
 use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -12,6 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{HirId, Pat};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::config::nightly_options;
 use rustc_session::lint::builtin::BINDINGS_WITH_VARIANT_NAME;
 use rustc_session::lint::builtin::{IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS};
 use rustc_session::parse::feature_err;
@@ -27,7 +28,7 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
 
     let mut visitor = MatchVisitor {
         tcx,
-        tables: tcx.body_tables(body_id),
+        typeck_results: tcx.typeck_body(body_id),
         param_env: tcx.param_env(def_id),
         pattern_arena: TypedArena::default(),
     };
@@ -40,7 +41,7 @@ fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBu
 
 struct MatchVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     pattern_arena: TypedArena<super::Pat<'tcx>>,
 }
@@ -135,7 +136,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         pat: &'tcx hir::Pat<'tcx>,
         have_errors: &mut bool,
     ) -> (&'p super::Pat<'tcx>, Ty<'tcx>) {
-        let mut patcx = PatCtxt::new(self.tcx, self.param_env, self.tables);
+        let mut patcx = PatCtxt::new(self.tcx, self.param_env, self.typeck_results);
         patcx.include_lint_checks();
         let pattern = patcx.lower_pattern(pat);
         let pattern_ty = pattern.ty;
@@ -189,7 +190,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         // Fifth, check if the match is exhaustive.
         // Note: An empty match isn't the same as an empty matrix for diagnostics purposes,
         // since an empty matrix can occur when there are arms, if those arms all have guards.
-        let scrut_ty = self.tables.expr_ty_adjusted(scrut);
+        let scrut_ty = self.typeck_results.expr_ty_adjusted(scrut);
         let is_empty_match = inlined_arms.is_empty();
         check_exhaustive(&mut cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
     }
@@ -285,9 +286,9 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
     pat.walk_always(|p| {
         if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
             if let Some(ty::BindByValue(hir::Mutability::Not)) =
-                cx.tables.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
+                cx.typeck_results.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
             {
-                let pat_ty = cx.tables.pat_ty(p).peel_refs();
+                let pat_ty = cx.typeck_results.pat_ty(p).peel_refs();
                 if let ty::Adt(edef, _) = pat_ty.kind {
                     if edef.is_enum()
                         && edef.variants.iter().any(|variant| {
@@ -392,8 +393,8 @@ fn check_arms<'p, 'tcx>(
                 }
             }
             Useful(unreachable_subpatterns) => {
-                for pat in unreachable_subpatterns {
-                    unreachable_pattern(cx.tcx, pat.span, id, None);
+                for span in unreachable_subpatterns {
+                    unreachable_pattern(cx.tcx, span, id, None);
                 }
             }
             UsefulWithWitness(_) => bug!(),
@@ -487,9 +488,27 @@ fn check_exhaustive<'p, 'tcx>(
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.help(
         "ensure that all possible cases are being handled, \
-         possibly by adding wildcards or more match arms",
+              possibly by adding wildcards or more match arms",
     );
     err.note(&format!("the matched value is of type `{}`", scrut_ty));
+    if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
+        && !is_empty_match
+        && witnesses.len() == 1
+        && witnesses[0].is_wildcard()
+    {
+        err.note(&format!(
+            "`{}` does not have a fixed maximum value, \
+                so a wildcard `_` is necessary to match exhaustively",
+            scrut_ty,
+        ));
+        if nightly_options::is_nightly_build() {
+            err.help(&format!(
+                "add `#![feature(precise_pointer_size_matching)]` \
+                    to the crate attributes to enable precise `{}` matching",
+                scrut_ty,
+            ));
+        }
+    }
     err.emit();
 }
 
@@ -579,18 +598,20 @@ fn maybe_point_at_variant(ty: Ty<'_>, patterns: &[super::Pat<'_>]) -> Vec<Span> 
 
 /// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.
 fn is_binding_by_move(cx: &MatchVisitor<'_, '_>, hir_id: HirId, span: Span) -> bool {
-    !cx.tables.node_type(hir_id).is_copy_modulo_regions(cx.tcx, cx.param_env, span)
+    !cx.typeck_results.node_type(hir_id).is_copy_modulo_regions(cx.tcx.at(span), cx.param_env)
 }
 
 /// Check the legality of legality of by-move bindings.
 fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: bool, pat: &Pat<'_>) {
     let sess = cx.tcx.sess;
-    let tables = cx.tables;
+    let typeck_results = cx.typeck_results;
 
     // Find all by-ref spans.
     let mut by_ref_spans = Vec::new();
     pat.each_binding(|_, hir_id, span, _| {
-        if let Some(ty::BindByReference(_)) = tables.extract_binding_mode(sess, hir_id, span) {
+        if let Some(ty::BindByReference(_)) =
+            typeck_results.extract_binding_mode(sess, hir_id, span)
+        {
             by_ref_spans.push(span);
         }
     });
@@ -611,7 +632,9 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
     };
     pat.walk_always(|p| {
         if let hir::PatKind::Binding(.., sub) = &p.kind {
-            if let Some(ty::BindByValue(_)) = tables.extract_binding_mode(sess, p.hir_id, p.span) {
+            if let Some(ty::BindByValue(_)) =
+                typeck_results.extract_binding_mode(sess, p.hir_id, p.span)
+            {
                 if is_binding_by_move(cx, p.hir_id, p.span) {
                     check_move(p, sub.as_deref());
                 }
@@ -655,16 +678,16 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
     };
     let binding_span = pat.span.with_hi(name.span.hi());
 
-    let tables = cx.tables;
+    let typeck_results = cx.typeck_results;
     let sess = cx.tcx.sess;
 
     // Get the binding move, extract the mutability if by-ref.
-    let mut_outer = match tables.extract_binding_mode(sess, pat.hir_id, pat.span) {
+    let mut_outer = match typeck_results.extract_binding_mode(sess, pat.hir_id, pat.span) {
         Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id, pat.span) => {
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
             sub.each_binding(|_, hir_id, span, _| {
-                match tables.extract_binding_mode(sess, hir_id, span) {
+                match typeck_results.extract_binding_mode(sess, hir_id, span) {
                     Some(ty::BindByValue(_)) | None => {}
                     Some(ty::BindByReference(_)) => conflicts_ref.push(span),
                 }
@@ -673,7 +696,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
                 let occurs_because = format!(
                     "move occurs because `{}` has type `{}` which does not implement the `Copy` trait",
                     name,
-                    tables.node_type(pat.hir_id),
+                    typeck_results.node_type(pat.hir_id),
                 );
                 sess.struct_span_err(pat.span, "borrow of moved value")
                     .span_label(binding_span, format!("value moved into `{}` here", name))
@@ -693,7 +716,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pat<'_
     let mut conflicts_mut_mut = Vec::new();
     let mut conflicts_mut_ref = Vec::new();
     sub.each_binding(|_, hir_id, span, name| {
-        match tables.extract_binding_mode(sess, hir_id, span) {
+        match typeck_results.extract_binding_mode(sess, hir_id, span) {
             Some(ty::BindByReference(mut_inner)) => match (mut_outer, mut_inner) {
                 (Mutability::Not, Mutability::Not) => {} // Both sides are `ref`.
                 (Mutability::Mut, Mutability::Mut) => conflicts_mut_mut.push((span, name)), // 2x `ref mut`.

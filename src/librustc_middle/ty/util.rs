@@ -176,7 +176,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if let ty::Adt(def, substs) = ty.kind {
             for field in def.all_fields() {
                 let field_ty = field.ty(self, substs);
-                if let Error = field_ty.kind {
+                if let Error(_) = field_ty.kind {
                     return true;
                 }
             }
@@ -471,8 +471,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This is a significant `DefId` because, when we do
     /// type-checking, we type-check this fn item and all of its
     /// (transitive) closures together. Therefore, when we fetch the
-    /// `typeck_tables_of` the closure, for example, we really wind up
-    /// fetching the `typeck_tables_of` the enclosing fn item.
+    /// `typeck` the closure, for example, we really wind up
+    /// fetching the `typeck` the enclosing fn item.
     pub fn closure_base_def_id(self, def_id: DefId) -> DefId {
         let mut def_id = def_id;
         while self.is_closure(def_id) {
@@ -681,11 +681,10 @@ impl<'tcx> ty::TyS<'tcx> {
     /// winds up being reported as an error during NLL borrow check.
     pub fn is_copy_modulo_regions(
         &'tcx self,
-        tcx: TyCtxt<'tcx>,
+        tcx_at: TyCtxtAt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        span: Span,
     ) -> bool {
-        tcx.at(span).is_copy_raw(param_env.and(self))
+        tcx_at.is_copy_raw(param_env.and(self))
     }
 
     /// Checks whether values of this type `T` have a size known at
@@ -705,13 +704,9 @@ impl<'tcx> ty::TyS<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    pub fn is_freeze(
-        &'tcx self,
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        span: Span,
-    ) -> bool {
-        self.is_trivially_freeze() || tcx.at(span).is_freeze_raw(param_env.and(self))
+    // FIXME: use `TyCtxtAt` instead of separate `Span`.
+    pub fn is_freeze(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.is_trivially_freeze() || tcx_at.is_freeze_raw(param_env.and(self))
     }
 
     /// Fast path helper for testing if a type is `Freeze`.
@@ -730,7 +725,7 @@ impl<'tcx> ty::TyS<'tcx> {
             | ty::Ref(..)
             | ty::RawPtr(_)
             | ty::FnDef(..)
-            | ty::Error
+            | ty::Error(_)
             | ty::FnPtr(_) => true,
             ty::Tuple(_) => self.tuple_fields().all(Self::is_trivially_freeze),
             ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_freeze(),
@@ -775,6 +770,57 @@ impl<'tcx> ty::TyS<'tcx> {
                 let erased = tcx.normalize_erasing_regions(param_env, query_ty);
                 tcx.needs_drop_raw(param_env.and(erased))
             }
+        }
+    }
+
+    /// Returns `true` if equality for this type is both reflexive and structural.
+    ///
+    /// Reflexive equality for a type is indicated by an `Eq` impl for that type.
+    ///
+    /// Primitive types (`u32`, `str`) have structural equality by definition. For composite data
+    /// types, equality for the type as a whole is structural when it is the same as equality
+    /// between all components (fields, array elements, etc.) of that type. For ADTs, structural
+    /// equality is indicated by an implementation of `PartialStructuralEq` and `StructuralEq` for
+    /// that type.
+    ///
+    /// This function is "shallow" because it may return `true` for a composite type whose fields
+    /// are not `StructuralEq`. For example, `[T; 4]` has structural equality regardless of `T`
+    /// because equality for arrays is determined by the equality of each array element. If you
+    /// want to know whether a given call to `PartialEq::eq` will proceed structurally all the way
+    /// down, you will need to use a type visitor.
+    #[inline]
+    pub fn is_structural_eq_shallow(&'tcx self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind {
+            // Look for an impl of both `PartialStructuralEq` and `StructuralEq`.
+            Adt(..) => tcx.has_structural_eq_impls(self),
+
+            // Primitive types that satisfy `Eq`.
+            Bool | Char | Int(_) | Uint(_) | Str | Never => true,
+
+            // Composite types that satisfy `Eq` when all of their fields do.
+            //
+            // Because this function is "shallow", we return `true` for these composites regardless
+            // of the type(s) contained within.
+            Ref(..) | Array(..) | Slice(_) | Tuple(..) => true,
+
+            // Raw pointers use bitwise comparison.
+            RawPtr(_) | FnPtr(_) => true,
+
+            // Floating point numbers are not `Eq`.
+            Float(_) => false,
+
+            // Conservatively return `false` for all others...
+
+            // Anonymous function types
+            FnDef(..) | Closure(..) | Dynamic(..) | Generator(..) => false,
+
+            // Generic or inferred types
+            //
+            // FIXME(ecstaticmorse): Maybe we should `bug` here? This should probably only be
+            // called for known, fully-monomorphized types.
+            Projection(_) | Opaque(..) | Param(_) | Bound(..) | Placeholder(_) | Infer(_) => false,
+
+            Foreign(_) | GeneratorWitness(..) | Error(_) => false,
         }
     }
 
@@ -827,7 +873,15 @@ impl<'tcx> ty::TyS<'tcx> {
                     // Find non representable fields with their spans
                     fold_repr(def.all_fields().map(|field| {
                         let ty = field.ty(tcx, substs);
-                        let span = tcx.hir().span_if_local(field.did).unwrap_or(sp);
+                        let span = match field
+                            .did
+                            .as_local()
+                            .map(|id| tcx.hir().as_local_hir_id(id))
+                            .and_then(|id| tcx.hir().find(id))
+                        {
+                            Some(hir::Node::Field(field)) => field.ty.span,
+                            _ => sp,
+                        };
                         match is_type_structurally_recursive(
                             tcx,
                             span,
@@ -1049,7 +1103,7 @@ pub fn needs_drop_components(
         // Foreign types can never have destructors.
         ty::Foreign(..) => Ok(SmallVec::new()),
 
-        ty::Dynamic(..) | ty::Error => Err(AlwaysRequiresDrop),
+        ty::Dynamic(..) | ty::Error(_) => Err(AlwaysRequiresDrop),
 
         ty::Slice(ty) => needs_drop_components(ty, target_layout),
         ty::Array(elem_ty, size) => {

@@ -84,8 +84,8 @@ declare_lint_pass!(TyTyKind => [
     USAGE_OF_QUALIFIED_TY,
 ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
-    fn check_path(&mut self, cx: &LateContext<'_, '_>, path: &'tcx Path<'tcx>, _: HirId) {
+impl<'tcx> LateLintPass<'tcx> for TyTyKind {
+    fn check_path(&mut self, cx: &LateContext<'_>, path: &'tcx Path<'tcx>, _: HirId) {
         let segments = path.segments.iter().rev().skip(1).rev();
 
         if let Some(last) = segments.last() {
@@ -105,7 +105,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_, '_>, ty: &'tcx Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx Ty<'tcx>) {
         match &ty.kind {
             TyKind::Path(qpath) => {
                 if let QPath::Resolved(_, path) = qpath {
@@ -164,7 +164,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
     }
 }
 
-fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment<'_>) -> bool {
+fn lint_ty_kind_usage(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> bool {
     if let Some(res) = segment.res {
         if let Some(did) = res.opt_def_id() {
             return cx.tcx.is_diagnostic_item(sym::TyKind, did);
@@ -174,7 +174,7 @@ fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment<'_>) -> bo
     false
 }
 
-fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty<'_>) -> Option<String> {
+fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, ty: &Ty<'_>) -> Option<String> {
     if let TyKind::Path(qpath) = &ty.kind {
         if let QPath::Resolved(_, path) = qpath {
             let did = path.res.opt_def_id()?;

@@ -94,7 +94,8 @@ struct InternalNode<K, V> {
     data: LeafNode<K, V>,
 
     /// The pointers to the children of this node. `len + 1` of these are considered
-    /// initialized and valid.
+    /// initialized and valid. Although during the process of `into_iter` or `drop`,
+    /// some pointers are dangling while others still need to be traversed.
     edges: [MaybeUninit<BoxedNode<K, V>>; 2 * B],
 }
 
@@ -107,7 +108,7 @@ impl<K, V> InternalNode<K, V> {
     /// `len` of 0), there must be one initialized and valid edge. This function does not set up
     /// such an edge.
     unsafe fn new() -> Self {
-        InternalNode { data: LeafNode::new(), edges: [MaybeUninit::UNINIT; 2 * B] }
+        InternalNode { data: unsafe { LeafNode::new() }, edges: [MaybeUninit::UNINIT; 2 * B] }
     }
 }
 
@@ -131,7 +132,7 @@ impl<K, V> BoxedNode<K, V> {
     }
 
     unsafe fn from_ptr(ptr: NonNull<LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::new_unchecked(ptr.as_ptr()) }
+        BoxedNode { ptr: unsafe { Unique::new_unchecked(ptr.as_ptr()) } }
     }
 
     fn as_ptr(&self) -> NonNull<LeafNode<K, V>> {
@@ -152,6 +153,11 @@ unsafe impl<K: Sync, V: Sync> Sync for Root<K, V> {}
 unsafe impl<K: Send, V: Send> Send for Root<K, V> {}
 
 impl<K, V> Root<K, V> {
+    /// Returns the number of levels below the root.
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
     /// Returns a new owned tree, with its own root node that is initially empty.
     pub fn new_leaf() -> Self {
         Root { node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })), height: 0 }
@@ -392,21 +398,23 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         let height = self.height;
         let node = self.node;
         let ret = self.ascend().ok();
-        Global.dealloc(
-            node.cast(),
-            if height > 0 {
-                Layout::new::<InternalNode<K, V>>()
-            } else {
-                Layout::new::<LeafNode<K, V>>()
-            },
-        );
+        unsafe {
+            Global.dealloc(
+                node.cast(),
+                if height > 0 {
+                    Layout::new::<InternalNode<K, V>>()
+                } else {
+                    Layout::new::<LeafNode<K, V>>()
+                },
+            );
+        }
         ret
     }
 }
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Unsafely asserts to the compiler some static information about whether this
-    /// node is a `Leaf`.
+    /// node is a `Leaf` or an `Internal`.
     unsafe fn cast_unchecked<NewType>(&mut self) -> NodeRef<marker::Mut<'_>, K, V, NewType> {
         NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
     }
@@ -513,7 +521,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
-    /// Adds a key/value pair the end of the node.
+    /// Adds a key/value pair to the end of the node.
     pub fn push(&mut self, key: K, val: V) {
         assert!(self.len() < CAPACITY);
 
@@ -565,7 +573,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         debug_assert!(first <= self.len());
         debug_assert!(after_last <= self.len() + 1);
         for i in first..after_last {
-            Handle::new_edge(self.reborrow_mut(), i).correct_parent_link();
+            unsafe { Handle::new_edge(self.reborrow_mut(), i) }.correct_parent_link();
         }
     }
 
@@ -600,8 +608,10 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
 }
 
 impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
-    /// Removes a key/value pair from the end of this node. If this is an internal node,
-    /// also removes the edge that was to the right of that pair.
+    /// Removes a key/value pair from the end of this node and returns the pair.
+    /// If this is an internal node, also removes the edge that was to the right
+    /// of that pair and returns the orphaned node that this edge owned with its
+    /// parent erased.
     pub fn pop(&mut self) -> (K, V, Option<Root<K, V>>) {
         assert!(self.len() > 0);
 
@@ -789,7 +799,7 @@ impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeT
         &mut self,
     ) -> Handle<NodeRef<marker::Mut<'_>, K, V, NodeType>, HandleType> {
         // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
-        Handle { node: self.node.reborrow_mut(), idx: self.idx, _marker: PhantomData }
+        Handle { node: unsafe { self.node.reborrow_mut() }, idx: self.idx, _marker: PhantomData }
     }
 }
 
@@ -881,11 +891,11 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     }
 
     /// Unsafely asserts to the compiler some static information about whether the underlying
-    /// node of this handle is a `Leaf`.
+    /// node of this handle is a `Leaf` or an `Internal`.
     unsafe fn cast_unchecked<NewType>(
         &mut self,
     ) -> Handle<NodeRef<marker::Mut<'_>, K, V, NewType>, marker::Edge> {
-        Handle::new_edge(self.node.cast_unchecked(), self.idx)
+        unsafe { Handle::new_edge(self.node.cast_unchecked(), self.idx) }
     }
 
     /// Inserts a new key/value pair and an edge that will go to the right of that new pair
@@ -1330,8 +1340,10 @@ unsafe fn move_kv<K, V>(
     dest_offset: usize,
     count: usize,
 ) {
-    ptr::copy_nonoverlapping(source.0.add(source_offset), dest.0.add(dest_offset), count);
-    ptr::copy_nonoverlapping(source.1.add(source_offset), dest.1.add(dest_offset), count);
+    unsafe {
+        ptr::copy_nonoverlapping(source.0.add(source_offset), dest.0.add(dest_offset), count);
+        ptr::copy_nonoverlapping(source.1.add(source_offset), dest.1.add(dest_offset), count);
+    }
 }
 
 // Source and destination must have the same height.
@@ -1344,8 +1356,10 @@ unsafe fn move_edges<K, V>(
 ) {
     let source_ptr = source.as_internal_mut().edges.as_mut_ptr();
     let dest_ptr = dest.as_internal_mut().edges.as_mut_ptr();
-    ptr::copy_nonoverlapping(source_ptr.add(source_offset), dest_ptr.add(dest_offset), count);
-    dest.correct_childrens_parent_links(dest_offset, dest_offset + count);
+    unsafe {
+        ptr::copy_nonoverlapping(source_ptr.add(source_offset), dest_ptr.add(dest_offset), count);
+        dest.correct_childrens_parent_links(dest_offset, dest_offset + count);
+    }
 }
 
 impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
@@ -1459,12 +1473,16 @@ pub mod marker {
 }
 
 unsafe fn slice_insert<T>(slice: &mut [T], idx: usize, val: T) {
-    ptr::copy(slice.as_ptr().add(idx), slice.as_mut_ptr().add(idx + 1), slice.len() - idx);
-    ptr::write(slice.get_unchecked_mut(idx), val);
+    unsafe {
+        ptr::copy(slice.as_ptr().add(idx), slice.as_mut_ptr().add(idx + 1), slice.len() - idx);
+        ptr::write(slice.get_unchecked_mut(idx), val);
+    }
 }
 
 unsafe fn slice_remove<T>(slice: &mut [T], idx: usize) -> T {
-    let ret = ptr::read(slice.get_unchecked(idx));
-    ptr::copy(slice.as_ptr().add(idx + 1), slice.as_mut_ptr().add(idx), slice.len() - idx - 1);
-    ret
+    unsafe {
+        let ret = ptr::read(slice.get_unchecked(idx));
+        ptr::copy(slice.as_ptr().add(idx + 1), slice.as_mut_ptr().add(idx), slice.len() - idx - 1);
+        ret
+    }
 }

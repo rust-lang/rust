@@ -1,0 +1,14 @@
+error: higher-ranked subtype error
+  --> $DIR/old-lub-glb-object.rs:10:14
+   |
+LL |         _ => y,
+   |              ^
+
+error: higher-ranked subtype error
+  --> $DIR/old-lub-glb-object.rs:10:14
+   |
+LL |         _ => y,
+   |              ^
+
+error: aborting due to 2 previous errors
+

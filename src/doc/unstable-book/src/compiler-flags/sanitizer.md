@@ -12,8 +12,7 @@ This feature allows for use of one of following sanitizers:
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
 
 To enable a sanitizer compile with `-Zsanitizer=address`, `-Zsanitizer=leak`,
-`-Zsanitizer=memory` or `-Zsanitizer=thread`. Only a single sanitizer can be
-enabled at a time.
+`-Zsanitizer=memory` or `-Zsanitizer=thread`.
 
 # AddressSanitizer
 
@@ -26,6 +25,9 @@ of bugs:
 * Use after scope
 * Double-free, invalid free
 * Memory leaks
+
+The memory leak detection is enabled by default on Linux, and can be enabled
+with runtime flag `ASAN_OPTIONS=detect_leaks=1` on macOS.
 
 AddressSanitizer is supported on the following targets:
 
@@ -197,10 +199,6 @@ fn main() {
 
 ```shell
 $ export \
-  CC=clang \
-  CXX=clang++ \
-  CFLAGS='-fsanitize=memory -fsanitize-memory-track-origins' \
-  CXXFLAGS='-fsanitize=memory -fsanitize-memory-track-origins' \
   RUSTFLAGS='-Zsanitizer=memory -Zsanitizer-memory-track-origins' \
   RUSTDOCFLAGS='-Zsanitizer=memory -Zsanitizer-memory-track-origins'
 $ cargo clean

@@ -1,0 +1,8 @@
+error: item has unused generic parameters
+  --> $DIR/predicates.rs:9:4
+   |
+LL | fn bar<I>() {
+   |    ^^^ - generic parameter `I` is unused
+
+error: aborting due to previous error
+

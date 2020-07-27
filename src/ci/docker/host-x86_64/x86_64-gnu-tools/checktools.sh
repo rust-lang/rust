@@ -1,0 +1,26 @@
+#!/bin/sh
+
+set -eu
+
+X_PY="$1"
+
+# Try to test all the tools and store the build/test success in the TOOLSTATE_FILE
+
+set +e
+python3 "$X_PY" test --no-fail-fast \
+    src/doc/book \
+    src/doc/nomicon \
+    src/doc/reference \
+    src/doc/rust-by-example \
+    src/doc/embedded-book \
+    src/doc/edition-guide \
+    src/tools/rls \
+    src/tools/rustfmt \
+    src/tools/miri \
+
+set -e
+
+# debugging: print out the saved toolstates
+cat /tmp/toolstate/toolstates.json
+python3 "$X_PY" test check-tools
+python3 "$X_PY" test src/tools/clippy

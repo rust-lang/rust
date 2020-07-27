@@ -18,7 +18,7 @@ pub fn target() -> TargetResult {
             features: "+v7,+vfp3,-d32,+thumb2,-neon".to_string(),
             cpu: "generic".to_string(),
             max_atomic_width: Some(64),
-            abi_blacklist: super::arm_base::abi_blacklist(),
+            unsupported_abis: super::arm_base::unsupported_abis(),
             target_mcount: "__mcount".to_string(),
             ..base
         },

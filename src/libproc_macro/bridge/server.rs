@@ -8,6 +8,8 @@ use super::client::HandleStore;
 /// Declare an associated item of one of the traits below, optionally
 /// adjusting it (i.e., adding bounds to types and default bodies to methods).
 macro_rules! associated_item {
+    (type FreeFunctions) =>
+        (type FreeFunctions: 'static;);
     (type TokenStream) =>
         (type TokenStream: 'static + Clone;);
     (type TokenStreamBuilder) =>

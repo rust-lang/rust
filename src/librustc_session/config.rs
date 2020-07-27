@@ -10,6 +10,7 @@ use crate::{early_error, early_warn, Session};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::impl_stable_hash_via_hash;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use rustc_target::spec::{Target, TargetTriple};
 
@@ -37,35 +38,55 @@ pub struct Config {
     pub ptr_width: u32,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Sanitizer {
-    Address,
-    Leak,
-    Memory,
-    Thread,
-}
-
-impl fmt::Display for Sanitizer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Sanitizer::Address => "address".fmt(f),
-            Sanitizer::Leak => "leak".fmt(f),
-            Sanitizer::Memory => "memory".fmt(f),
-            Sanitizer::Thread => "thread".fmt(f),
-        }
+bitflags! {
+    #[derive(Default, RustcEncodable, RustcDecodable)]
+    pub struct SanitizerSet: u8 {
+        const ADDRESS = 1 << 0;
+        const LEAK    = 1 << 1;
+        const MEMORY  = 1 << 2;
+        const THREAD  = 1 << 3;
     }
 }
 
-impl FromStr for Sanitizer {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Sanitizer, ()> {
-        match s {
-            "address" => Ok(Sanitizer::Address),
-            "leak" => Ok(Sanitizer::Leak),
-            "memory" => Ok(Sanitizer::Memory),
-            "thread" => Ok(Sanitizer::Thread),
-            _ => Err(()),
+/// Formats a sanitizer set as a comma separated list of sanitizers' names.
+impl fmt::Display for SanitizerSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut first = true;
+        for s in *self {
+            let name = match s {
+                SanitizerSet::ADDRESS => "address",
+                SanitizerSet::LEAK => "leak",
+                SanitizerSet::MEMORY => "memory",
+                SanitizerSet::THREAD => "thread",
+                _ => panic!("unrecognized sanitizer {:?}", s),
+            };
+            if !first {
+                f.write_str(",")?;
+            }
+            f.write_str(name)?;
+            first = false;
         }
+        Ok(())
+    }
+}
+
+impl IntoIterator for SanitizerSet {
+    type Item = SanitizerSet;
+    type IntoIter = std::vec::IntoIter<SanitizerSet>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        [SanitizerSet::ADDRESS, SanitizerSet::LEAK, SanitizerSet::MEMORY, SanitizerSet::THREAD]
+            .iter()
+            .copied()
+            .filter(|&s| self.contains(s))
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+}
+
+impl<CTX> HashStable<CTX> for SanitizerSet {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.bits().hash_stable(ctx, hasher);
     }
 }
 
@@ -82,7 +103,7 @@ pub enum Strip {
     Symbols,
 }
 
-/// The different settings that the `-Z control_flow_guard` flag can have.
+/// The different settings that the `-C control-flow-guard` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum CFGuard {
     /// Do not emit Control Flow Guard metadata or checks.
@@ -696,18 +717,20 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
     let mut ret = FxHashSet::default();
     ret.reserve(6); // the minimum number of insertions
     // Target bindings.
-    ret.insert((Symbol::intern("target_os"), Some(Symbol::intern(os))));
+    ret.insert((sym::target_os, Some(Symbol::intern(os))));
     if let Some(ref fam) = sess.target.target.options.target_family {
-        ret.insert((Symbol::intern("target_family"), Some(Symbol::intern(fam))));
-        if fam == "windows" || fam == "unix" {
-            ret.insert((Symbol::intern(fam), None));
+        ret.insert((sym::target_family, Some(Symbol::intern(fam))));
+        if fam == "windows" {
+            ret.insert((sym::windows, None));
+        } else if fam == "unix" {
+            ret.insert((sym::unix, None));
         }
     }
-    ret.insert((Symbol::intern("target_arch"), Some(Symbol::intern(arch))));
-    ret.insert((Symbol::intern("target_endian"), Some(Symbol::intern(end))));
-    ret.insert((Symbol::intern("target_pointer_width"), Some(Symbol::intern(wordsz))));
-    ret.insert((Symbol::intern("target_env"), Some(Symbol::intern(env))));
-    ret.insert((Symbol::intern("target_vendor"), Some(Symbol::intern(vendor))));
+    ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
+    ret.insert((sym::target_endian, Some(Symbol::intern(end))));
+    ret.insert((sym::target_pointer_width, Some(Symbol::intern(wordsz))));
+    ret.insert((sym::target_env, Some(Symbol::intern(env))));
+    ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
     if sess.target.target.options.has_elf_tls {
         ret.insert((sym::target_thread_local, None));
     }
@@ -726,12 +749,14 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
             }
         }
     }
-    if let Some(s) = &sess.opts.debugging_opts.sanitizer {
+
+    for s in sess.opts.debugging_opts.sanitizer {
         let symbol = Symbol::intern(&s.to_string());
         ret.insert((sym::sanitize, Some(symbol)));
     }
+
     if sess.opts.debug_assertions {
-        ret.insert((Symbol::intern("debug_assertions"), None));
+        ret.insert((sym::debug_assertions, None));
     }
     if sess.opts.crate_types.contains(&CrateType::ProcMacro) {
         ret.insert((sym::proc_macro, None));
@@ -1031,7 +1056,7 @@ pub fn get_cmd_lint_options(
                 // HACK: forbid is always specified last, so it can't be overridden.
                 // FIXME: remove this once <https://github.com/rust-lang/rust/issues/70819> is
                 // fixed and `forbid` works as expected.
-                usize::max_value()
+                usize::MAX
             } else {
                 passed_arg_pos
             };
@@ -1682,6 +1707,31 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    if debugging_opts.instrument_coverage {
+        if cg.profile_generate.enabled() || cg.profile_use.is_some() {
+            early_error(
+                error_format,
+                "option `-Z instrument-coverage` is not compatible with either `-C profile-use` \
+                or `-C profile-generate`",
+            );
+        }
+
+        // `-Z instrument-coverage` implies:
+        //   * `-Z symbol-mangling-version=v0` - to ensure consistent and reversable name mangling.
+        //     Note, LLVM coverage tools can analyze coverage over multiple runs, including some
+        //     changes to source code; so mangled names must be consistent across compilations.
+        //   * `-C link-dead-code` - so unexecuted code is still counted as zero, rather than be
+        //     optimized out. Note that instrumenting dead code can be explicitly disabled with:
+        //         `-Z instrument-coverage -C link-dead-code=no`.
+        debugging_opts.symbol_mangling_version = SymbolManglingVersion::V0;
+        if cg.link_dead_code == None {
+            // FIXME(richkadel): Investigate if the `instrument-coverage` implementation can
+            // inject ["zero counters"](https://llvm.org/docs/CoverageMappingFormat.html#counter)
+            // in the coverage map when "dead code" is removed, rather than forcing `link-dead-code`.
+            cg.link_dead_code = Some(true);
+        }
+    }
+
     if !cg.embed_bitcode {
         match cg.lto {
             LtoCli::No | LtoCli::Unspecified => {}
@@ -1826,6 +1876,7 @@ fn parse_pretty(
                 }
             }
         };
+        log::debug!("got unpretty option: {:?}", first);
         first
     }
 }
@@ -1954,9 +2005,11 @@ impl PpMode {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
-            PpmSource(PpmNormal | PpmEveryBodyLoops | PpmIdentified) => false,
+            PpmSource(PpmNormal | PpmIdentified) => false,
 
-            PpmSource(PpmExpanded | PpmExpandedIdentified | PpmExpandedHygiene)
+            PpmSource(
+                PpmExpanded | PpmEveryBodyLoops | PpmExpandedIdentified | PpmExpandedHygiene,
+            )
             | PpmHir(_)
             | PpmHirTree(_)
             | PpmMir
@@ -1995,7 +2048,7 @@ impl PpMode {
 crate mod dep_tracking {
     use super::{
         CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
-        OutputTypes, Passes, Sanitizer, SourceFileHashAlgorithm, SwitchWithOptPath,
+        OutputTypes, Passes, SanitizerSet, SourceFileHashAlgorithm, SwitchWithOptPath,
         SymbolManglingVersion,
     };
     use crate::lint;
@@ -2069,8 +2122,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(UnstableFeatures);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
     impl_dep_tracking_hash_via_hash!(NativeLibKind);
-    impl_dep_tracking_hash_via_hash!(Sanitizer);
-    impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
+    impl_dep_tracking_hash_via_hash!(SanitizerSet);
     impl_dep_tracking_hash_via_hash!(CFGuard);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
@@ -2085,7 +2137,6 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>, NativeLibKind));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
-    impl_dep_tracking_hash_for_sortable_vec_of!(Sanitizer);
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
     where

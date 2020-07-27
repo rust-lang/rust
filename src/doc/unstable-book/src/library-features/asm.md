@@ -68,10 +68,13 @@ Let us see another example that also uses an input:
 let i: u64 = 3;
 let o: u64;
 unsafe {
-    asm!("
-        mov {0}, {1}
-        add {0}, {number}
-    ", out(reg) o, in(reg) i, number = const 5);
+    asm!(
+        "mov {0}, {1}",
+        "add {0}, {number}",
+        out(reg) o,
+        in(reg) i,
+        number = const 5,
+    );
 }
 assert_eq!(o, 8);
 ```
@@ -82,13 +85,18 @@ and then adding `5` to it.
 
 The example shows a few things:
 
-First we can see that inputs are declared by writing `in` instead of `out`.
+First, we can see that `asm!` allows multiple template string arguments; each
+one is treated as a separate line of assembly code, as if they were all joined
+together with newlines between them. This makes it easy to format assembly
+code.
 
-Second one of our operands has a type we haven't seen yet, `const`.
+Second, we can see that inputs are declared by writing `in` instead of `out`.
+
+Third, one of our operands has a type we haven't seen yet, `const`.
 This tells the compiler to expand this argument to value directly inside the assembly template.
 This is only possible for constants and literals.
 
-Third we can see that we can specify an argument number, or name as in any format string.
+Fourth, we can see that we can specify an argument number, or name as in any format string.
 For inline assembly templates this is particularly useful as arguments are often used more than once.
 For more complex inline assembly using this facility is generally recommended, as it improves
 readability, and allows reordering instructions without changing the argument order.
@@ -137,10 +145,13 @@ let mut a: u64 = 4;
 let b: u64 = 4;
 let c: u64 = 4;
 unsafe {
-    asm!("
-        add {0}, {1}
-        add {0}, {2}
-    ", inout(reg) a, in(reg) b, in(reg) c);
+    asm!(
+        "add {0}, {1}",
+        "add {0}, {2}",
+        inout(reg) a,
+        in(reg) b,
+        in(reg) c,
+    );
 }
 assert_eq!(a, 12);
 ```
@@ -201,7 +212,7 @@ fn mul(a: u64, b: u64) -> u128 {
         );
     }
 
-    (hi as u128) << 64 + lo as u128
+    ((hi as u128) << 64) + lo as u128
 }
 ```
 
@@ -233,7 +244,7 @@ unsafe {
         // ECX 0 selects the L0 cache information.
         inout("ecx") 0 => ecx,
         lateout("ebx") ebx,
-        lateout("edx") _
+        lateout("edx") _,
     );
 }
 
@@ -255,12 +266,14 @@ This can also be used with a general register class (e.g. `reg`) to obtain a scr
 // Multiply x by 6 using shifts and adds
 let mut x: u64 = 4;
 unsafe {
-    asm!("
-        mov {tmp}, {x}
-        shl {tmp}, 1
-        shl {x}, 2
-        add {x}, {tmp}
-    ", x = inout(reg) x, tmp = out(reg) _);
+    asm!(
+        "mov {tmp}, {x}",
+        "shl {tmp}, 1",
+        "shl {x}, 2",
+        "add {x}, {tmp}",
+        x = inout(reg) x,
+        tmp = out(reg) _,
+    );
 }
 assert_eq!(x, 4 * 6);
 ```
@@ -338,7 +351,7 @@ unsafe {
     asm!(
         "add {0}, {1}",
         inlateout(reg) a, in(reg) b,
-        options(pure, nomem, nostack)
+        options(pure, nomem, nostack),
     );
 }
 assert_eq!(a, 8);
@@ -371,22 +384,26 @@ reg_operand := dir_spec "(" reg_spec ")" operand_expr
 operand := reg_operand / "const" const_expr / "sym" path
 option := "pure" / "nomem" / "readonly" / "preserves_flags" / "noreturn" / "att_syntax"
 options := "options(" option *["," option] [","] ")"
-asm := "asm!(" format_string *("," [ident "="] operand) ["," options] [","] ")"
+asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) ["," options] [","] ")"
 ```
 
-The macro will initially be supported only on ARM, AArch64, x86, x86-64 and RISC-V targets. Support for more targets may be added in the future. The compiler will emit an error if `asm!` is used on an unsupported target.
+The macro will initially be supported only on ARM, AArch64, Hexagon, x86, x86-64 and RISC-V targets. Support for more targets may be added in the future. The compiler will emit an error if `asm!` is used on an unsupported target.
 
 [format-syntax]: https://doc.rust-lang.org/std/fmt/#syntax
 
-## Template string
+## Template string arguments
 
 The assembler template uses the same syntax as [format strings][format-syntax] (i.e. placeholders are specified by curly braces). The corresponding arguments are accessed in order, by index, or by name. However, implicit named arguments (introduced by [RFC #2795][rfc-2795]) are not supported.
 
-As with format strings, named arguments must appear after positional arguments. Explicit register operands must appear at the end of the operand list, after any named arguments if any. Explicit register operands cannot be used by placeholders in the template string. All other operands must appear at least once in the template string, otherwise a compiler error is generated.
+An `asm!` invocation may have one or more template string arguments; an `asm!` with multiple template string arguments is treated as if all the strings were concatenated with a `\n` between them. The expected usage is for each template string argument to correspond to a line of assembly code. All template string arguments must appear before any other arguments.
+
+As with format strings, named arguments must appear after positional arguments. Explicit register operands must appear at the end of the operand list, after named arguments if any.
+
+Explicit register operands cannot be used by placeholders in the template string. All other named and positional operands must appear at least once in the template string, otherwise a compiler error is generated.
 
 The exact assembly code syntax is target-specific and opaque to the compiler except for the way operands are substituted into the template string to form the code passed to the assembler.
 
-The 4 targets specified in this RFC (x86, ARM, AArch64, RISC-V) all use the assembly code syntax of the GNU assembler (GAS). On x86, the `.intel_syntax noprefix` mode of GAS is used by default. On ARM, the `.syntax unified` mode is used. These targets impose an additional restriction on the assembly code: any assembler state (e.g. the current section which can be changed with `.section`) must be restored to its original value at the end of the asm string. Assembly code that does not conform to the GAS syntax will result in assembler-specific behavior.
+The 5 targets specified in this RFC (x86, ARM, AArch64, RISC-V, Hexagon) all use the assembly code syntax of the GNU assembler (GAS). On x86, the `.intel_syntax noprefix` mode of GAS is used by default. On ARM, the `.syntax unified` mode is used. These targets impose an additional restriction on the assembly code: any assembler state (e.g. the current section which can be changed with `.section`) must be restored to its original value at the end of the asm string. Assembly code that does not conform to the GAS syntax will result in assembler-specific behavior.
 
 [rfc-2795]: https://github.com/rust-lang/rfcs/pull/2795
 
@@ -457,7 +474,7 @@ Here is the list of currently supported register classes:
 | AArch64 | `reg` | `x[0-28]`, `x30` | `r` |
 | AArch64 | `vreg` | `v[0-31]` | `w` |
 | AArch64 | `vreg_low16` | `v[0-15]` | `x` |
-| ARM | `reg` | `r[0-r10]`, `r12`, `r14` | `r` |
+| ARM | `reg` | `r[0-5]` `r7`\*, `r[8-10]`, `r11`\*, `r12`, `r14` | `r` |
 | ARM (Thumb) | `reg_thumb` | `r[0-r7]` | `l` |
 | ARM (ARM) | `reg_thumb` | `r[0-r10]`, `r12`, `r14` | `l` |
 | ARM | `sreg` | `s[0-31]` | `t` |
@@ -468,12 +485,20 @@ Here is the list of currently supported register classes:
 | ARM | `qreg` | `q[0-15]` | `w` |
 | ARM | `qreg_low8` | `q[0-7]` | `t` |
 | ARM | `qreg_low4` | `q[0-3]` | `x` |
+| NVPTX | `reg16` | None\* | `h` |
+| NVPTX | `reg32` | None\* | `r` |
+| NVPTX | `reg64` | None\* | `l` |
 | RISC-V | `reg` | `x1`, `x[5-7]`, `x[9-15]`, `x[16-31]` (non-RV32E) | `r` |
 | RISC-V | `freg` | `f[0-31]` | `f` |
+| Hexagon | `reg` | `r[0-28]` | `r` |
 
 > **Note**: On x86 we treat `reg_byte` differently from `reg` because the compiler can allocate `al` and `ah` separately whereas `reg` reserves the whole register.
 >
 > Note #2: On x86-64 the high byte registers (e.g. `ah`) are only available when used as an explicit register. Specifying the `reg_byte` register class for an operand will always allocate a low byte register.
+>
+> Note #3: NVPTX doesn't have a fixed register set, so named registers are not supported.
+>
+> Note #4: On ARM the frame pointer is either `r7` or `r11` depending on the platform.
 
 Additional register classes may be added in the future based on demand (e.g. MMX, x87, etc).
 
@@ -495,10 +520,14 @@ Each register class has constraints on which value types they can be used with. 
 | ARM | `sreg` | `vfp2` | `i32`, `f32` |
 | ARM | `dreg` | `vfp2` | `i64`, `f64`, `i8x8`, `i16x4`, `i32x2`, `i64x1`, `f32x2` |
 | ARM | `qreg` | `neon` | `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4` |
+| NVPTX | `reg16` | None | `i8`, `i16` |
+| NVPTX | `reg32` | None | `i8`, `i16`, `i32`, `f32` |
+| NVPTX | `reg64` | None | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
 | RISC-V32 | `reg` | None | `i8`, `i16`, `i32`, `f32` |
 | RISC-V64 | `reg` | None | `i8`, `i16`, `i32`, `f32`, `i64`, `f64` |
 | RISC-V | `freg` | `f` | `f32` |
 | RISC-V | `freg` | `d` | `f64` |
+| Hexagon | `reg` | None | `i8`, `i16`, `i32`, `f32` |
 
 > **Note**: For the purposes of the above table pointers, function pointers and `isize`/`usize` are treated as the equivalent integer type (`i16`/`i32`/`i64` depending on the target).
 
@@ -555,13 +584,18 @@ Some registers have multiple names. These are all treated by the compiler as ide
 | RISC-V | `f[10-17]` | `fa[0-7]` |
 | RISC-V | `f[18-27]` | `fs[2-11]` |
 | RISC-V | `f[28-31]` | `ft[8-11]` |
+| Hexagon | `r29` | `sp` |
+| Hexagon | `r30` | `fr` |
+| Hexagon | `r31` | `lr` |
 
 Some registers cannot be used for input or output operands:
 
 | Architecture | Unsupported register | Reason |
 | ------------ | -------------------- | ------ |
 | All | `sp` | The stack pointer must be restored to its original value at the end of an asm code block. |
-| All | `bp` (x86), `r11` (ARM), `x29` (AArch64), `x8` (RISC-V) | The frame pointer cannot be used as an input or output. |
+| All | `bp` (x86), `x29` (AArch64), `x8` (RISC-V), `fr` (Hexagon) | The frame pointer cannot be used as an input or output. |
+| ARM | `r7` or `r11` | On ARM the frame pointer can be either `r7` or `r11` depending on the target. The frame pointer cannot be used as an input or output. |
+| ARM | `r6` | `r6` is used internally by LLVM as a base pointer and therefore cannot be used as an input or output. |
 | x86 | `k0` | This is a constant zero register which can't be modified. |
 | x86 | `ip` | This is the program counter, not a real register. |
 | x86 | `mm[0-7]` | MMX registers are not currently supported (but may be in the future). |
@@ -570,6 +604,7 @@ Some registers cannot be used for input or output operands:
 | ARM | `pc` | This is the program counter, not a real register. |
 | RISC-V | `x0` | This is a constant zero register which can't be modified. |
 | RISC-V | `gp`, `tp` | These registers are reserved and cannot be used as inputs or outputs. |
+| Hexagon | `lr` | This is the link register which cannot be used as an input or output. |
 
 ## Template modifiers
 
@@ -610,8 +645,12 @@ The supported modifiers are a subset of LLVM's (and GCC's) [asm template argumen
 | ARM | `dreg` | None | `d0` | `P` |
 | ARM | `qreg` | None | `q0` | `q` |
 | ARM | `qreg` | `e` / `f` | `d0` / `d1` | `e` / `f` |
+| NVPTX | `reg16` | None | `rs0` | None |
+| NVPTX | `reg32` | None | `r0` | None |
+| NVPTX | `reg64` | None | `rd0` | None |
 | RISC-V | `reg` | None | `x1` | None |
 | RISC-V | `freg` | None | `f0` | None |
+| Hexagon | `reg` | None | `r0` | None |
 
 > Notes:
 > - on ARM `e` / `f`: this prints the low or high doubleword register name of a NEON quad (128-bit) register.

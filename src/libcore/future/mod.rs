@@ -12,6 +12,7 @@ use crate::{
 mod future;
 mod into_future;
 mod pending;
+mod poll_fn;
 mod ready;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -24,6 +25,9 @@ pub use into_future::IntoFuture;
 pub use pending::{pending, Pending};
 #[unstable(feature = "future_readiness_fns", issue = "70921")]
 pub use ready::{ready, Ready};
+
+#[unstable(feature = "future_poll_fn", issue = "72302")]
+pub use poll_fn::{poll_fn, PollFn};
 
 /// This type is needed because:
 ///
@@ -56,6 +60,7 @@ pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
 where
     T: Generator<ResumeTy, Yield = ()>,
 {
+    #[rustc_diagnostic_item = "gen_future"]
     struct GenFuture<T: Generator<ResumeTy, Yield = ()>>(T);
 
     // We rely on the fact that async/await futures are immovable in order to create
@@ -84,5 +89,7 @@ where
 #[unstable(feature = "gen_future", issue = "50547")]
 #[inline]
 pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
-    &mut *cx.0.as_ptr().cast()
+    // SAFETY: the caller must guarantee that `cx.0` is a valid pointer
+    // that fulfills all the requirements for a mutable reference.
+    unsafe { &mut *cx.0.as_ptr().cast() }
 }

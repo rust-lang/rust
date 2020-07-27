@@ -146,6 +146,9 @@ crate enum ExprKind<'tcx> {
         // Whether this is from a call in HIR, rather than from an overloaded
         // operator. True for overloaded function call.
         from_hir_call: bool,
+        /// This `Span` is the span of the function, without the dot and receiver
+        /// (e.g. `foo(a, b)` in `x.foo(a, b)`
+        fn_span: Span,
     },
     Deref {
         arg: ExprRef<'tcx>,
@@ -283,7 +286,10 @@ crate enum ExprKind<'tcx> {
         template: &'tcx [InlineAsmTemplatePiece],
         operands: Vec<InlineAsmOperand<'tcx>>,
         options: InlineAsmOptions,
+        line_spans: &'tcx [Span],
     },
+    /// An expression taking a reference to a thread local.
+    ThreadLocalRef(DefId),
     LlvmInlineAsm {
         asm: &'tcx hir::LlvmInlineAsmInner,
         outputs: Vec<ExprRef<'tcx>>,
@@ -371,7 +377,7 @@ crate enum InlineAsmOperand<'tcx> {
         expr: ExprRef<'tcx>,
     },
     SymStatic {
-        expr: ExprRef<'tcx>,
+        def_id: DefId,
     },
 }
 

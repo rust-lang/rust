@@ -23,7 +23,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// println!("");
+    ///
+    /// // Good
+    /// println!();
     /// ```
     pub PRINTLN_EMPTY_STRING,
     style,
@@ -32,8 +36,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `print!()` with a format
-    /// string that
-    /// ends in a newline.
+    /// string that ends in a newline.
     ///
     /// **Why is this bad?** You should use `println!()` instead, which appends the
     /// newline.
@@ -125,7 +128,12 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
+    ///
+    /// // Bad
     /// writeln!(buf, "");
+    ///
+    /// // Good
+    /// writeln!(buf);
     /// ```
     pub WRITELN_EMPTY_STRING,
     style,
@@ -147,7 +155,12 @@ declare_clippy_lint! {
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// # let name = "World";
+    ///
+    /// // Bad
     /// write!(buf, "Hello {}!\n", name);
+    ///
+    /// // Good
+    /// writeln!(buf, "Hello {}!", name);
     /// ```
     pub WRITE_WITH_NEWLINE,
     style,
@@ -168,7 +181,12 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
+    ///
+    /// // Bad
     /// writeln!(buf, "{}", "foo");
+    ///
+    /// // Good
+    /// writeln!(buf, "foo");
     /// ```
     pub WRITE_LITERAL,
     style,
@@ -280,11 +298,11 @@ impl EarlyLintPass for Write {
                 if fmt_str.symbol == Symbol::intern("") {
                     let mut applicability = Applicability::MachineApplicable;
                     let suggestion = expr.map_or_else(
-                        move || {
+                        || {
                             applicability = Applicability::HasPlaceholders;
                             Cow::Borrowed("v")
                         },
-                        move |expr| snippet_with_applicability(cx, expr.span, "v", &mut applicability),
+                        |e| snippet_with_applicability(cx, e.span, "v", &mut Applicability::MachineApplicable),
                     );
 
                     span_lint_and_sugg(
@@ -352,7 +370,7 @@ impl Write {
         tts: &TokenStream,
         is_write: bool,
     ) -> (Option<StrLit>, Option<Expr>) {
-        use fmt_macros::{
+        use rustc_parse_format::{
             AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec, ParseMode, Parser,
             Piece,
         };

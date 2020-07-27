@@ -8,17 +8,24 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
-pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &'a LateContext<'a, 'tcx>) -> Option<FxHashSet<HirId>> {
+pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> Option<FxHashSet<HirId>> {
     let mut delegate = MutVarsDelegate {
         used_mutably: FxHashSet::default(),
         skip: false,
     };
     let def_id = expr.hir_id.owner.to_def_id();
     cx.tcx.infer_ctxt().enter(|infcx| {
-        ExprUseVisitor::new(&mut delegate, &infcx, def_id.expect_local(), cx.param_env, cx.tables).walk_expr(expr);
+        ExprUseVisitor::new(
+            &mut delegate,
+            &infcx,
+            def_id.expect_local(),
+            cx.param_env,
+            cx.typeck_results(),
+        )
+        .walk_expr(expr);
     });
 
     if delegate.skip {
@@ -27,11 +34,7 @@ pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr<'_>, cx: &'a LateContext<'a,
     Some(delegate.used_mutably)
 }
 
-pub fn is_potentially_mutated<'a, 'tcx>(
-    variable: &'tcx Path<'_>,
-    expr: &'tcx Expr<'_>,
-    cx: &'a LateContext<'a, 'tcx>,
-) -> bool {
+pub fn is_potentially_mutated<'tcx>(variable: &'tcx Path<'_>, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
     if let Res::Local(id) = variable.res {
         mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&id))
     } else {
@@ -46,8 +49,8 @@ struct MutVarsDelegate {
 
 impl<'tcx> MutVarsDelegate {
     #[allow(clippy::similar_names)]
-    fn update(&mut self, cat: &Place<'tcx>) {
-        match cat.base {
+    fn update(&mut self, cat: &PlaceWithHirId<'tcx>) {
+        match cat.place.base {
             PlaceBase::Local(id) => {
                 self.used_mutably.insert(id);
             },
@@ -63,15 +66,15 @@ impl<'tcx> MutVarsDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
-    fn consume(&mut self, _: &Place<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &Place<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             self.update(&cmt)
         }
     }
 
-    fn mutate(&mut self, cmt: &Place<'tcx>) {
+    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>) {
         self.update(&cmt)
     }
 }

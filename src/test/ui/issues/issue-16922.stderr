@@ -1,11 +1,16 @@
-error[E0621]: explicit lifetime required in the type of `value`
-  --> $DIR/issue-16922.rs:4:5
+error[E0759]: `value` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/issue-16922.rs:4:14
    |
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {
-   |                       -- help: add explicit lifetime `'static` to the type of `value`: `&'static T`
+   |                       -- this data with an anonymous lifetime `'_`...
 LL |     Box::new(value) as Box<dyn Any>
-   |     ^^^^^^^^^^^^^^^ lifetime `'static` required
+   |              ^^^^^ ...is captured here, requiring it to live as long as `'static`
+   |
+help: to declare that the trait object captures data from argument `value`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn foo<T: Any>(value: &T) -> Box<dyn Any + '_> {
+   |                                          ^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0621`.
+For more information about this error, try `rustc --explain E0759`.

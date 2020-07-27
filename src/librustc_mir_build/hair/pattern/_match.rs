@@ -1,285 +1,288 @@
-/// Note: most of the tests relevant to this file can be found (at the time of writing) in
-/// src/tests/ui/pattern/usefulness.
-///
-/// This file includes the logic for exhaustiveness and usefulness checking for
-/// pattern-matching. Specifically, given a list of patterns for a type, we can
-/// tell whether:
-/// (a) the patterns cover every possible constructor for the type [exhaustiveness]
-/// (b) each pattern is necessary [usefulness]
-///
-/// The algorithm implemented here is a modified version of the one described in:
-/// http://moscova.inria.fr/~maranget/papers/warn/index.html
-/// However, to save future implementors from reading the original paper, we
-/// summarise the algorithm here to hopefully save time and be a little clearer
-/// (without being so rigorous).
-///
-/// # Premise
-///
-/// The core of the algorithm revolves about a "usefulness" check. In particular, we
-/// are trying to compute a predicate `U(P, p)` where `P` is a list of patterns (we refer to this as
-/// a matrix). `U(P, p)` represents whether, given an existing list of patterns
-/// `P_1 ..= P_m`, adding a new pattern `p` will be "useful" (that is, cover previously-
-/// uncovered values of the type).
-///
-/// If we have this predicate, then we can easily compute both exhaustiveness of an
-/// entire set of patterns and the individual usefulness of each one.
-/// (a) the set of patterns is exhaustive iff `U(P, _)` is false (i.e., adding a wildcard
-/// match doesn't increase the number of values we're matching)
-/// (b) a pattern `P_i` is not useful if `U(P[0..=(i-1), P_i)` is false (i.e., adding a
-/// pattern to those that have come before it doesn't increase the number of values
-/// we're matching).
-///
-/// # Core concept
-///
-/// The idea that powers everything that is done in this file is the following: a value is made
-/// from a constructor applied to some fields. Examples of constructors are `Some`, `None`, `(,)`
-/// (the 2-tuple constructor), `Foo {..}` (the constructor for a struct `Foo`), and `2` (the
-/// constructor for the number `2`). Fields are just a (possibly empty) list of values.
-///
-/// Some of the constructors listed above might feel weird: `None` and `2` don't take any
-/// arguments. This is part of what makes constructors so general: we will consider plain values
-/// like numbers and string literals to be constructors that take no arguments, also called "0-ary
-/// constructors"; they are the simplest case of constructors. This allows us to see any value as
-/// made up from a tree of constructors, each having a given number of children. For example:
-/// `(None, Ok(0))` is made from 4 different constructors.
-///
-/// This idea can be extended to patterns: a pattern captures a set of possible values, and we can
-/// describe this set using constructors. For example, `Err(_)` captures all values of the type
-/// `Result<T, E>` that start with the `Err` constructor (for some choice of `T` and `E`). The
-/// wildcard `_` captures all values of the given type starting with any of the constructors for
-/// that type.
-///
-/// We use this to compute whether different patterns might capture a same value. Do the patterns
-/// `Ok("foo")` and `Err(_)` capture a common value? The answer is no, because the first pattern
-/// captures only values starting with the `Ok` constructor and the second only values starting
-/// with the `Err` constructor. Do the patterns `Some(42)` and `Some(1..10)` intersect? They might,
-/// since they both capture values starting with `Some`. To be certain, we need to dig under the
-/// `Some` constructor and continue asking the question. This is the main idea behind the
-/// exhaustiveness algorithm: by looking at patterns constructor-by-constructor, we can efficiently
-/// figure out if some new pattern might capture a value that hadn't been captured by previous
-/// patterns.
-///
-/// Constructors are represented by the `Constructor` enum, and its fields by the `Fields` enum.
-/// Most of the complexity of this file resides in transforming between patterns and
-/// (`Constructor`, `Fields`) pairs, handling all the special cases correctly.
-///
-/// Caveat: this constructors/fields distinction doesn't quite cover every Rust value. For example
-/// a value of type `Rc<u64>` doesn't fit this idea very well, nor do various other things.
-/// However, this idea covers most of the cases that are relevant to exhaustiveness checking.
-///
-///
-/// # Algorithm
-///
-/// Recall that `U(P, p)` represents whether, given an existing list of patterns (aka matrix) `P`,
-/// adding a new pattern `p` will cover previously-uncovered values of the type.
-/// During the course of the algorithm, the rows of the matrix won't just be individual patterns,
-/// but rather partially-deconstructed patterns in the form of a list of fields. The paper
-/// calls those pattern-vectors, and we will call them pattern-stacks. The same holds for the
-/// new pattern `p`.
-///
-/// For example, say we have the following:
-/// ```
-///     // x: (Option<bool>, Result<()>)
-///     match x {
-///         (Some(true), _) => {}
-///         (None, Err(())) => {}
-///         (None, Err(_)) => {}
-///     }
-/// ```
-/// Here, the matrix `P` starts as:
-/// [
-///     [(Some(true), _)],
-///     [(None, Err(()))],
-///     [(None, Err(_))],
-/// ]
-/// We can tell it's not exhaustive, because `U(P, _)` is true (we're not covering
-/// `[(Some(false), _)]`, for instance). In addition, row 3 is not useful, because
-/// all the values it covers are already covered by row 2.
-///
-/// A list of patterns can be thought of as a stack, because we are mainly interested in the top of
-/// the stack at any given point, and we can pop or apply constructors to get new pattern-stacks.
-/// To match the paper, the top of the stack is at the beginning / on the left.
-///
-/// There are two important operations on pattern-stacks necessary to understand the algorithm:
-///     1. We can pop a given constructor off the top of a stack. This operation is called
-///        `specialize`, and is denoted `S(c, p)` where `c` is a constructor (like `Some` or
-///        `None`) and `p` a pattern-stack.
-///        If the pattern on top of the stack can cover `c`, this removes the constructor and
-///        pushes its arguments onto the stack. It also expands OR-patterns into distinct patterns.
-///        Otherwise the pattern-stack is discarded.
-///        This essentially filters those pattern-stacks whose top covers the constructor `c` and
-///        discards the others.
-///
-///        For example, the first pattern above initially gives a stack `[(Some(true), _)]`. If we
-///        pop the tuple constructor, we are left with `[Some(true), _]`, and if we then pop the
-///        `Some` constructor we get `[true, _]`. If we had popped `None` instead, we would get
-///        nothing back.
-///
-///        This returns zero or more new pattern-stacks, as follows. We look at the pattern `p_1`
-///        on top of the stack, and we have four cases:
-///             1.1. `p_1 = c(r_1, .., r_a)`, i.e. the top of the stack has constructor `c`. We
-///                  push onto the stack the arguments of this constructor, and return the result:
-///                     r_1, .., r_a, p_2, .., p_n
-///             1.2. `p_1 = c'(r_1, .., r_a')` where `c ≠ c'`. We discard the current stack and
-///                  return nothing.
-///             1.3. `p_1 = _`. We push onto the stack as many wildcards as the constructor `c` has
-///                  arguments (its arity), and return the resulting stack:
-///                     _, .., _, p_2, .., p_n
-///             1.4. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting
-///                  stack:
-///                     S(c, (r_1, p_2, .., p_n))
-///                     S(c, (r_2, p_2, .., p_n))
-///
-///     2. We can pop a wildcard off the top of the stack. This is called `D(p)`, where `p` is
-///        a pattern-stack.
-///        This is used when we know there are missing constructor cases, but there might be
-///        existing wildcard patterns, so to check the usefulness of the matrix, we have to check
-///        all its *other* components.
-///
-///        It is computed as follows. We look at the pattern `p_1` on top of the stack,
-///        and we have three cases:
-///             1.1. `p_1 = c(r_1, .., r_a)`. We discard the current stack and return nothing.
-///             1.2. `p_1 = _`. We return the rest of the stack:
-///                     p_2, .., p_n
-///             1.3. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting
-///               stack.
-///                     D((r_1, p_2, .., p_n))
-///                     D((r_2, p_2, .., p_n))
-///
-///     Note that the OR-patterns are not always used directly in Rust, but are used to derive the
-///     exhaustive integer matching rules, so they're written here for posterity.
-///
-/// Both those operations extend straightforwardly to a list or pattern-stacks, i.e. a matrix, by
-/// working row-by-row. Popping a constructor ends up keeping only the matrix rows that start with
-/// the given constructor, and popping a wildcard keeps those rows that start with a wildcard.
-///
-///
-/// The algorithm for computing `U`
-/// -------------------------------
-/// The algorithm is inductive (on the number of columns: i.e., components of tuple patterns).
-/// That means we're going to check the components from left-to-right, so the algorithm
-/// operates principally on the first component of the matrix and new pattern-stack `p`.
-/// This algorithm is realised in the `is_useful` function.
-///
-/// Base case. (`n = 0`, i.e., an empty tuple pattern)
-///     - If `P` already contains an empty pattern (i.e., if the number of patterns `m > 0`),
-///       then `U(P, p)` is false.
-///     - Otherwise, `P` must be empty, so `U(P, p)` is true.
-///
-/// Inductive step. (`n > 0`, i.e., whether there's at least one column
-///                  [which may then be expanded into further columns later])
-///     We're going to match on the top of the new pattern-stack, `p_1`.
-///         - If `p_1 == c(r_1, .., r_a)`, i.e. we have a constructor pattern.
-///           Then, the usefulness of `p_1` can be reduced to whether it is useful when
-///           we ignore all the patterns in the first column of `P` that involve other constructors.
-///           This is where `S(c, P)` comes in:
-///           `U(P, p) := U(S(c, P), S(c, p))`
-///           This special case is handled in `is_useful_specialized`.
-///
-///           For example, if `P` is:
-///           [
-///               [Some(true), _],
-///               [None, 0],
-///           ]
-///           and `p` is [Some(false), 0], then we don't care about row 2 since we know `p` only
-///           matches values that row 2 doesn't. For row 1 however, we need to dig into the
-///           arguments of `Some` to know whether some new value is covered. So we compute
-///           `U([[true, _]], [false, 0])`.
-///
-///         - If `p_1 == _`, then we look at the list of constructors that appear in the first
-///               component of the rows of `P`:
-///             + If there are some constructors that aren't present, then we might think that the
-///               wildcard `_` is useful, since it covers those constructors that weren't covered
-///               before.
-///               That's almost correct, but only works if there were no wildcards in those first
-///               components. So we need to check that `p` is useful with respect to the rows that
-///               start with a wildcard, if there are any. This is where `D` comes in:
-///               `U(P, p) := U(D(P), D(p))`
-///
-///               For example, if `P` is:
-///               [
-///                   [_, true, _],
-///                   [None, false, 1],
-///               ]
-///               and `p` is [_, false, _], the `Some` constructor doesn't appear in `P`. So if we
-///               only had row 2, we'd know that `p` is useful. However row 1 starts with a
-///               wildcard, so we need to check whether `U([[true, _]], [false, 1])`.
-///
-///             + Otherwise, all possible constructors (for the relevant type) are present. In this
-///               case we must check whether the wildcard pattern covers any unmatched value. For
-///               that, we can think of the `_` pattern as a big OR-pattern that covers all
-///               possible constructors. For `Option`, that would mean `_ = None | Some(_)` for
-///               example. The wildcard pattern is useful in this case if it is useful when
-///               specialized to one of the possible constructors. So we compute:
-///               `U(P, p) := ∃(k ϵ constructors) U(S(k, P), S(k, p))`
-///
-///               For example, if `P` is:
-///               [
-///                   [Some(true), _],
-///                   [None, false],
-///               ]
-///               and `p` is [_, false], both `None` and `Some` constructors appear in the first
-///               components of `P`. We will therefore try popping both constructors in turn: we
-///               compute U([[true, _]], [_, false]) for the `Some` constructor, and U([[false]],
-///               [false]) for the `None` constructor. The first case returns true, so we know that
-///               `p` is useful for `P`. Indeed, it matches `[Some(false), _]` that wasn't matched
-///               before.
-///
-///         - If `p_1 == r_1 | r_2`, then the usefulness depends on each `r_i` separately:
-///           `U(P, p) := U(P, (r_1, p_2, .., p_n))
-///                    || U(P, (r_2, p_2, .., p_n))`
-///
-/// Modifications to the algorithm
-/// ------------------------------
-/// The algorithm in the paper doesn't cover some of the special cases that arise in Rust, for
-/// example uninhabited types and variable-length slice patterns. These are drawn attention to
-/// throughout the code below. I'll make a quick note here about how exhaustive integer matching is
-/// accounted for, though.
-///
-/// Exhaustive integer matching
-/// ---------------------------
-/// An integer type can be thought of as a (huge) sum type: 1 | 2 | 3 | ...
-/// So to support exhaustive integer matching, we can make use of the logic in the paper for
-/// OR-patterns. However, we obviously can't just treat ranges x..=y as individual sums, because
-/// they are likely gigantic. So we instead treat ranges as constructors of the integers. This means
-/// that we have a constructor *of* constructors (the integers themselves). We then need to work
-/// through all the inductive step rules above, deriving how the ranges would be treated as
-/// OR-patterns, and making sure that they're treated in the same way even when they're ranges.
-/// There are really only four special cases here:
-/// - When we match on a constructor that's actually a range, we have to treat it as if we would
-///   an OR-pattern.
-///     + It turns out that we can simply extend the case for single-value patterns in
-///      `specialize` to either be *equal* to a value constructor, or *contained within* a range
-///      constructor.
-///     + When the pattern itself is a range, you just want to tell whether any of the values in
-///       the pattern range coincide with values in the constructor range, which is precisely
-///       intersection.
-///   Since when encountering a range pattern for a value constructor, we also use inclusion, it
-///   means that whenever the constructor is a value/range and the pattern is also a value/range,
-///   we can simply use intersection to test usefulness.
-/// - When we're testing for usefulness of a pattern and the pattern's first component is a
-///   wildcard.
-///     + If all the constructors appear in the matrix, we have a slight complication. By default,
-///       the behaviour (i.e., a disjunction over specialised matrices for each constructor) is
-///       invalid, because we want a disjunction over every *integer* in each range, not just a
-///       disjunction over every range. This is a bit more tricky to deal with: essentially we need
-///       to form equivalence classes of subranges of the constructor range for which the behaviour
-///       of the matrix `P` and new pattern `p` are the same. This is described in more
-///       detail in `split_grouped_constructors`.
-///     + If some constructors are missing from the matrix, it turns out we don't need to do
-///       anything special (because we know none of the integers are actually wildcards: i.e., we
-///       can't span wildcards using ranges).
+//! Note: most of the tests relevant to this file can be found (at the time of writing) in
+//! src/tests/ui/pattern/usefulness.
+//!
+//! This file includes the logic for exhaustiveness and usefulness checking for
+//! pattern-matching. Specifically, given a list of patterns for a type, we can
+//! tell whether:
+//! (a) the patterns cover every possible constructor for the type (exhaustiveness)
+//! (b) each pattern is necessary (usefulness)
+//!
+//! The algorithm implemented here is a modified version of the one described in:
+//! http://moscova.inria.fr/~maranget/papers/warn/index.html
+//! However, to save future implementors from reading the original paper, we
+//! summarise the algorithm here to hopefully save time and be a little clearer
+//! (without being so rigorous).
+//!
+//! # Premise
+//!
+//! The core of the algorithm revolves about a "usefulness" check. In particular, we
+//! are trying to compute a predicate `U(P, p)` where `P` is a list of patterns (we refer to this as
+//! a matrix). `U(P, p)` represents whether, given an existing list of patterns
+//! `P_1 ..= P_m`, adding a new pattern `p` will be "useful" (that is, cover previously-
+//! uncovered values of the type).
+//!
+//! If we have this predicate, then we can easily compute both exhaustiveness of an
+//! entire set of patterns and the individual usefulness of each one.
+//! (a) the set of patterns is exhaustive iff `U(P, _)` is false (i.e., adding a wildcard
+//! match doesn't increase the number of values we're matching)
+//! (b) a pattern `P_i` is not useful if `U(P[0..=(i-1), P_i)` is false (i.e., adding a
+//! pattern to those that have come before it doesn't increase the number of values
+//! we're matching).
+//!
+//! # Core concept
+//!
+//! The idea that powers everything that is done in this file is the following: a value is made
+//! from a constructor applied to some fields. Examples of constructors are `Some`, `None`, `(,)`
+//! (the 2-tuple constructor), `Foo {..}` (the constructor for a struct `Foo`), and `2` (the
+//! constructor for the number `2`). Fields are just a (possibly empty) list of values.
+//!
+//! Some of the constructors listed above might feel weird: `None` and `2` don't take any
+//! arguments. This is part of what makes constructors so general: we will consider plain values
+//! like numbers and string literals to be constructors that take no arguments, also called "0-ary
+//! constructors"; they are the simplest case of constructors. This allows us to see any value as
+//! made up from a tree of constructors, each having a given number of children. For example:
+//! `(None, Ok(0))` is made from 4 different constructors.
+//!
+//! This idea can be extended to patterns: a pattern captures a set of possible values, and we can
+//! describe this set using constructors. For example, `Err(_)` captures all values of the type
+//! `Result<T, E>` that start with the `Err` constructor (for some choice of `T` and `E`). The
+//! wildcard `_` captures all values of the given type starting with any of the constructors for
+//! that type.
+//!
+//! We use this to compute whether different patterns might capture a same value. Do the patterns
+//! `Ok("foo")` and `Err(_)` capture a common value? The answer is no, because the first pattern
+//! captures only values starting with the `Ok` constructor and the second only values starting
+//! with the `Err` constructor. Do the patterns `Some(42)` and `Some(1..10)` intersect? They might,
+//! since they both capture values starting with `Some`. To be certain, we need to dig under the
+//! `Some` constructor and continue asking the question. This is the main idea behind the
+//! exhaustiveness algorithm: by looking at patterns constructor-by-constructor, we can efficiently
+//! figure out if some new pattern might capture a value that hadn't been captured by previous
+//! patterns.
+//!
+//! Constructors are represented by the `Constructor` enum, and its fields by the `Fields` enum.
+//! Most of the complexity of this file resides in transforming between patterns and
+//! (`Constructor`, `Fields`) pairs, handling all the special cases correctly.
+//!
+//! Caveat: this constructors/fields distinction doesn't quite cover every Rust value. For example
+//! a value of type `Rc<u64>` doesn't fit this idea very well, nor do various other things.
+//! However, this idea covers most of the cases that are relevant to exhaustiveness checking.
+//!
+//!
+//! # Algorithm
+//!
+//! Recall that `U(P, p)` represents whether, given an existing list of patterns (aka matrix) `P`,
+//! adding a new pattern `p` will cover previously-uncovered values of the type.
+//! During the course of the algorithm, the rows of the matrix won't just be individual patterns,
+//! but rather partially-deconstructed patterns in the form of a list of fields. The paper
+//! calls those pattern-vectors, and we will call them pattern-stacks. The same holds for the
+//! new pattern `p`.
+//!
+//! For example, say we have the following:
+//! ```
+//!     // x: (Option<bool>, Result<()>)
+//!     match x {
+//!         (Some(true), _) => {}
+//!         (None, Err(())) => {}
+//!         (None, Err(_)) => {}
+//!     }
+//! ```
+//! Here, the matrix `P` starts as:
+//! [
+//!     [(Some(true), _)],
+//!     [(None, Err(()))],
+//!     [(None, Err(_))],
+//! ]
+//! We can tell it's not exhaustive, because `U(P, _)` is true (we're not covering
+//! `[(Some(false), _)]`, for instance). In addition, row 3 is not useful, because
+//! all the values it covers are already covered by row 2.
+//!
+//! A list of patterns can be thought of as a stack, because we are mainly interested in the top of
+//! the stack at any given point, and we can pop or apply constructors to get new pattern-stacks.
+//! To match the paper, the top of the stack is at the beginning / on the left.
+//!
+//! There are two important operations on pattern-stacks necessary to understand the algorithm:
+//!
+//! 1. We can pop a given constructor off the top of a stack. This operation is called
+//!    `specialize`, and is denoted `S(c, p)` where `c` is a constructor (like `Some` or
+//!    `None`) and `p` a pattern-stack.
+//!    If the pattern on top of the stack can cover `c`, this removes the constructor and
+//!    pushes its arguments onto the stack. It also expands OR-patterns into distinct patterns.
+//!    Otherwise the pattern-stack is discarded.
+//!    This essentially filters those pattern-stacks whose top covers the constructor `c` and
+//!    discards the others.
+//!
+//!    For example, the first pattern above initially gives a stack `[(Some(true), _)]`. If we
+//!    pop the tuple constructor, we are left with `[Some(true), _]`, and if we then pop the
+//!    `Some` constructor we get `[true, _]`. If we had popped `None` instead, we would get
+//!    nothing back.
+//!
+//!    This returns zero or more new pattern-stacks, as follows. We look at the pattern `p_1`
+//!    on top of the stack, and we have four cases:
+//!         1.1. `p_1 = c(r_1, .., r_a)`, i.e. the top of the stack has constructor `c`. We
+//!              push onto the stack the arguments of this constructor, and return the result:
+//!                 r_1, .., r_a, p_2, .., p_n
+//!         1.2. `p_1 = c'(r_1, .., r_a')` where `c ≠ c'`. We discard the current stack and
+//!              return nothing.
+//!         1.3. `p_1 = _`. We push onto the stack as many wildcards as the constructor `c` has
+//!              arguments (its arity), and return the resulting stack:
+//!                 _, .., _, p_2, .., p_n
+//!         1.4. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting
+//!              stack:
+//!                 S(c, (r_1, p_2, .., p_n))
+//!                 S(c, (r_2, p_2, .., p_n))
+//!
+//! 2. We can pop a wildcard off the top of the stack. This is called `D(p)`, where `p` is
+//!    a pattern-stack.
+//!    This is used when we know there are missing constructor cases, but there might be
+//!    existing wildcard patterns, so to check the usefulness of the matrix, we have to check
+//!    all its *other* components.
+//!
+//!    It is computed as follows. We look at the pattern `p_1` on top of the stack,
+//!    and we have three cases:
+//!         1.1. `p_1 = c(r_1, .., r_a)`. We discard the current stack and return nothing.
+//!         1.2. `p_1 = _`. We return the rest of the stack:
+//!                 p_2, .., p_n
+//!         1.3. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting
+//!           stack.
+//!                 D((r_1, p_2, .., p_n))
+//!                 D((r_2, p_2, .., p_n))
+//!
+//! Note that the OR-patterns are not always used directly in Rust, but are used to derive the
+//! exhaustive integer matching rules, so they're written here for posterity.
+//!
+//! Both those operations extend straightforwardly to a list or pattern-stacks, i.e. a matrix, by
+//! working row-by-row. Popping a constructor ends up keeping only the matrix rows that start with
+//! the given constructor, and popping a wildcard keeps those rows that start with a wildcard.
+//!
+//!
+//! The algorithm for computing `U`
+//! -------------------------------
+//! The algorithm is inductive (on the number of columns: i.e., components of tuple patterns).
+//! That means we're going to check the components from left-to-right, so the algorithm
+//! operates principally on the first component of the matrix and new pattern-stack `p`.
+//! This algorithm is realised in the `is_useful` function.
+//!
+//! Base case. (`n = 0`, i.e., an empty tuple pattern)
+//!     - If `P` already contains an empty pattern (i.e., if the number of patterns `m > 0`),
+//!       then `U(P, p)` is false.
+//!     - Otherwise, `P` must be empty, so `U(P, p)` is true.
+//!
+//! Inductive step. (`n > 0`, i.e., whether there's at least one column
+//!                  [which may then be expanded into further columns later])
+//! We're going to match on the top of the new pattern-stack, `p_1`.
+//!     - If `p_1 == c(r_1, .., r_a)`, i.e. we have a constructor pattern.
+//! Then, the usefulness of `p_1` can be reduced to whether it is useful when
+//! we ignore all the patterns in the first column of `P` that involve other constructors.
+//! This is where `S(c, P)` comes in:
+//! `U(P, p) := U(S(c, P), S(c, p))`
+//! This special case is handled in `is_useful_specialized`.
+//!
+//! For example, if `P` is:
+//! [
+//! [Some(true), _],
+//! [None, 0],
+//! ]
+//! and `p` is [Some(false), 0], then we don't care about row 2 since we know `p` only
+//! matches values that row 2 doesn't. For row 1 however, we need to dig into the
+//! arguments of `Some` to know whether some new value is covered. So we compute
+//! `U([[true, _]], [false, 0])`.
+//!
+//!   - If `p_1 == _`, then we look at the list of constructors that appear in the first
+//! component of the rows of `P`:
+//!   + If there are some constructors that aren't present, then we might think that the
+//! wildcard `_` is useful, since it covers those constructors that weren't covered
+//! before.
+//! That's almost correct, but only works if there were no wildcards in those first
+//! components. So we need to check that `p` is useful with respect to the rows that
+//! start with a wildcard, if there are any. This is where `D` comes in:
+//! `U(P, p) := U(D(P), D(p))`
+//!
+//! For example, if `P` is:
+//! [
+//!     [_, true, _],
+//!     [None, false, 1],
+//! ]
+//! and `p` is [_, false, _], the `Some` constructor doesn't appear in `P`. So if we
+//! only had row 2, we'd know that `p` is useful. However row 1 starts with a
+//! wildcard, so we need to check whether `U([[true, _]], [false, 1])`.
+//!
+//!   + Otherwise, all possible constructors (for the relevant type) are present. In this
+//! case we must check whether the wildcard pattern covers any unmatched value. For
+//! that, we can think of the `_` pattern as a big OR-pattern that covers all
+//! possible constructors. For `Option`, that would mean `_ = None | Some(_)` for
+//! example. The wildcard pattern is useful in this case if it is useful when
+//! specialized to one of the possible constructors. So we compute:
+//! `U(P, p) := ∃(k ϵ constructors) U(S(k, P), S(k, p))`
+//!
+//! For example, if `P` is:
+//! [
+//!     [Some(true), _],
+//!     [None, false],
+//! ]
+//! and `p` is [_, false], both `None` and `Some` constructors appear in the first
+//! components of `P`. We will therefore try popping both constructors in turn: we
+//! compute `U([[true, _]], [_, false])` for the `Some` constructor, and `U([[false]],
+//! [false])` for the `None` constructor. The first case returns true, so we know that
+//! `p` is useful for `P`. Indeed, it matches `[Some(false), _]` that wasn't matched
+//! before.
+//!
+//!   - If `p_1 == r_1 | r_2`, then the usefulness depends on each `r_i` separately:
+//! `U(P, p) := U(P, (r_1, p_2, .., p_n))
+//!  || U(P, (r_2, p_2, .., p_n))`
+//!
+//! Modifications to the algorithm
+//! ------------------------------
+//! The algorithm in the paper doesn't cover some of the special cases that arise in Rust, for
+//! example uninhabited types and variable-length slice patterns. These are drawn attention to
+//! throughout the code below. I'll make a quick note here about how exhaustive integer matching is
+//! accounted for, though.
+//!
+//! Exhaustive integer matching
+//! ---------------------------
+//! An integer type can be thought of as a (huge) sum type: 1 | 2 | 3 | ...
+//! So to support exhaustive integer matching, we can make use of the logic in the paper for
+//! OR-patterns. However, we obviously can't just treat ranges x..=y as individual sums, because
+//! they are likely gigantic. So we instead treat ranges as constructors of the integers. This means
+//! that we have a constructor *of* constructors (the integers themselves). We then need to work
+//! through all the inductive step rules above, deriving how the ranges would be treated as
+//! OR-patterns, and making sure that they're treated in the same way even when they're ranges.
+//! There are really only four special cases here:
+//! - When we match on a constructor that's actually a range, we have to treat it as if we would
+//!   an OR-pattern.
+//!     + It turns out that we can simply extend the case for single-value patterns in
+//!      `specialize` to either be *equal* to a value constructor, or *contained within* a range
+//!      constructor.
+//!     + When the pattern itself is a range, you just want to tell whether any of the values in
+//!       the pattern range coincide with values in the constructor range, which is precisely
+//!       intersection.
+//!   Since when encountering a range pattern for a value constructor, we also use inclusion, it
+//!   means that whenever the constructor is a value/range and the pattern is also a value/range,
+//!   we can simply use intersection to test usefulness.
+//! - When we're testing for usefulness of a pattern and the pattern's first component is a
+//!   wildcard.
+//!     + If all the constructors appear in the matrix, we have a slight complication. By default,
+//!       the behaviour (i.e., a disjunction over specialised matrices for each constructor) is
+//!       invalid, because we want a disjunction over every *integer* in each range, not just a
+//!       disjunction over every range. This is a bit more tricky to deal with: essentially we need
+//!       to form equivalence classes of subranges of the constructor range for which the behaviour
+//!       of the matrix `P` and new pattern `p` are the same. This is described in more
+//!       detail in `split_grouped_constructors`.
+//!     + If some constructors are missing from the matrix, it turns out we don't need to do
+//!       anything special (because we know none of the integers are actually wildcards: i.e., we
+//!       can't span wildcards using ranges).
 use self::Constructor::*;
 use self::SliceKind::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::vec::Idx;
 
 use super::{compare_const_vals, PatternFoldable, PatternFolder};
 use super::{FieldPat, Pat, PatKind, PatRange};
 
+use rustc_arena::TypedArena;
 use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
@@ -291,8 +294,6 @@ use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, VariantIdx};
-
-use arena::TypedArena;
 
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
@@ -801,7 +802,11 @@ impl<'tcx> Constructor<'tcx> {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
             }
-            ConstantValue(c) => cx.tcx.destructure_const(cx.param_env.and(c)).variant,
+            ConstantValue(c) => cx
+                .tcx
+                .destructure_const(cx.param_env.and(c))
+                .variant
+                .expect("destructed const of adt without variant id"),
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt),
         }
     }
@@ -1025,11 +1030,11 @@ enum Fields<'p, 'tcx> {
     /// have not measured if it really made a difference.
     Slice(&'p [Pat<'tcx>]),
     Vec(SmallVec<[&'p Pat<'tcx>; 2]>),
-    /// Patterns where some of the fields need to be hidden. `len` caches the number of non-hidden
-    /// fields.
+    /// Patterns where some of the fields need to be hidden. `kept_count` caches the number of
+    /// non-hidden fields.
     Filtered {
         fields: SmallVec<[FilteredField<'p, 'tcx>; 2]>,
-        len: usize,
+        kept_count: usize,
     },
 }
 
@@ -1066,10 +1071,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         constructor: &Constructor<'tcx>,
         ty: Ty<'tcx>,
     ) -> Self {
-        debug!("Fields::wildcards({:#?}, {:?})", constructor, ty);
         let wildcard_from_ty = |ty| &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
 
-        match constructor {
+        let ret = match constructor {
             Single | Variant(_) => match ty.kind {
                 ty::Tuple(ref fs) => {
                     Fields::wildcards_from_tys(cx, fs.into_iter().map(|ty| ty.expect_ty()))
@@ -1093,7 +1097,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         if has_no_hidden_fields {
                             Fields::wildcards_from_tys(cx, field_tys)
                         } else {
-                            let mut len = 0;
+                            let mut kept_count = 0;
                             let fields = variant
                                 .fields
                                 .iter()
@@ -1110,12 +1114,12 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                                     if is_uninhabited && (!is_visible || is_non_exhaustive) {
                                         FilteredField::Hidden(ty)
                                     } else {
-                                        len += 1;
+                                        kept_count += 1;
                                         FilteredField::Kept(wildcard_from_ty(ty))
                                     }
                                 })
                                 .collect();
-                            Fields::Filtered { fields, len }
+                            Fields::Filtered { fields, kept_count }
                         }
                     }
                 }
@@ -1129,14 +1133,19 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, ty),
             },
             ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => Fields::empty(),
-        }
+        };
+        debug!("Fields::wildcards({:?}, {:?}) = {:#?}", constructor, ty, ret);
+        ret
     }
 
+    /// Returns the number of patterns from the viewpoint of match-checking, i.e. excluding hidden
+    /// fields. This is what we want in most cases in this file, the only exception being
+    /// conversion to/from `Pat`.
     fn len(&self) -> usize {
         match self {
             Fields::Slice(pats) => pats.len(),
             Fields::Vec(pats) => pats.len(),
-            Fields::Filtered { len, .. } => *len,
+            Fields::Filtered { kept_count, .. } => *kept_count,
         }
     }
 
@@ -1206,7 +1215,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         let pats: &[_] = cx.pattern_arena.alloc_from_iter(pats);
 
         match self {
-            Fields::Filtered { fields, len } => {
+            Fields::Filtered { fields, kept_count } => {
                 let mut pats = pats.iter();
                 let mut fields = fields.clone();
                 for f in &mut fields {
@@ -1215,7 +1224,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         *p = pats.next().unwrap();
                     }
                 }
-                Fields::Filtered { fields, len: *len }
+                Fields::Filtered { fields, kept_count: *kept_count }
             }
             _ => Fields::Slice(pats),
         }
@@ -1238,15 +1247,15 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
 }
 
 #[derive(Clone, Debug)]
-crate enum Usefulness<'tcx, 'p> {
+crate enum Usefulness<'tcx> {
     /// Carries a list of unreachable subpatterns. Used only in the presence of or-patterns.
-    Useful(Vec<&'p Pat<'tcx>>),
+    Useful(Vec<Span>),
     /// Carries a list of witnesses of non-exhaustiveness.
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful,
 }
 
-impl<'tcx, 'p> Usefulness<'tcx, 'p> {
+impl<'tcx> Usefulness<'tcx> {
     fn new_useful(preference: WitnessPreference) -> Self {
         match preference {
             ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
@@ -1261,7 +1270,7 @@ impl<'tcx, 'p> Usefulness<'tcx, 'p> {
         }
     }
 
-    fn apply_constructor(
+    fn apply_constructor<'p>(
         self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
         ctor: &Constructor<'tcx>,
@@ -1516,7 +1525,7 @@ fn all_constructors<'a, 'tcx>(
         }
         ty::Uint(uty) => {
             let size = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size();
-            let max = truncate(u128::max_value(), size);
+            let max = truncate(u128::MAX, size);
             vec![make_range(0, max)]
         }
         _ => {
@@ -1820,7 +1829,7 @@ crate fn is_useful<'p, 'tcx>(
     hir_id: HirId,
     is_under_guard: bool,
     is_top_level: bool,
-) -> Usefulness<'tcx, 'p> {
+) -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
@@ -1844,16 +1853,35 @@ crate fn is_useful<'p, 'tcx>(
         // We need to push the already-seen patterns into the matrix in order to detect redundant
         // branches like `Some(_) | Some(0)`. We also keep track of the unreachable subpatterns.
         let mut matrix = matrix.clone();
-        let mut unreachable_pats = Vec::new();
+        // `Vec` of all the unreachable branches of the current or-pattern.
+        let mut unreachable_branches = Vec::new();
+        // Subpatterns that are unreachable from all branches. E.g. in the following case, the last
+        // `true` is unreachable only from one branch, so it is overall reachable.
+        // ```
+        // match (true, true) {
+        //     (true, true) => {}
+        //     (false | true, false | true) => {}
+        // }
+        // ```
+        let mut unreachable_subpats = FxHashSet::default();
+        // Whether any branch at all is useful.
         let mut any_is_useful = false;
+
         for v in vs {
             let res = is_useful(cx, &matrix, &v, witness_preference, hir_id, is_under_guard, false);
             match res {
                 Useful(pats) => {
-                    any_is_useful = true;
-                    unreachable_pats.extend(pats);
+                    if !any_is_useful {
+                        any_is_useful = true;
+                        // Initialize with the first set of unreachable subpatterns encountered.
+                        unreachable_subpats = pats.into_iter().collect();
+                    } else {
+                        // Keep the patterns unreachable from both this and previous branches.
+                        unreachable_subpats =
+                            pats.into_iter().filter(|p| unreachable_subpats.contains(p)).collect();
+                    }
                 }
-                NotUseful => unreachable_pats.push(v.head()),
+                NotUseful => unreachable_branches.push(v.head().span),
                 UsefulWithWitness(_) => {
                     bug!("Encountered or-pat in `v` during exhaustiveness checking")
                 }
@@ -1863,14 +1891,22 @@ crate fn is_useful<'p, 'tcx>(
                 matrix.push(v);
             }
         }
-        return if any_is_useful { Useful(unreachable_pats) } else { NotUseful };
+        if any_is_useful {
+            // Collect all the unreachable patterns.
+            unreachable_branches.extend(unreachable_subpats);
+            return Useful(unreachable_branches);
+        } else {
+            return NotUseful;
+        }
     }
 
-    let pcx = PatCtxt { ty: v.head().ty, span: v.head().span };
+    // FIXME(Nadrieril): Hack to work around type normalization issues (see #72476).
+    let ty = matrix.heads().next().map(|r| r.ty).unwrap_or(v.head().ty);
+    let pcx = PatCtxt { ty, span: v.head().span };
 
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v.head());
 
-    if let Some(constructor) = pat_constructor(cx.tcx, cx.param_env, v.head()) {
+    let ret = if let Some(constructor) = pat_constructor(cx.tcx, cx.param_env, v.head()) {
         debug!("is_useful - expanding constructor: {:#?}", constructor);
         split_grouped_constructors(
             cx.tcx,
@@ -1901,11 +1937,11 @@ crate fn is_useful<'p, 'tcx>(
 
         let used_ctors: Vec<Constructor<'_>> =
             matrix.heads().filter_map(|p| pat_constructor(cx.tcx, cx.param_env, p)).collect();
-        debug!("used_ctors = {:#?}", used_ctors);
+        debug!("is_useful_used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
         let all_ctors = all_constructors(cx, pcx);
-        debug!("all_ctors = {:#?}", all_ctors);
+        debug!("is_useful_all_ctors = {:#?}", all_ctors);
 
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
@@ -1920,7 +1956,7 @@ crate fn is_useful<'p, 'tcx>(
         // can be big.
         let missing_ctors = MissingConstructors::new(all_ctors, used_ctors);
 
-        debug!("missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
+        debug!("is_useful_missing_ctors.empty()={:#?}", missing_ctors.is_empty(),);
 
         if missing_ctors.is_empty() {
             let (all_ctors, _) = missing_ctors.into_inner();
@@ -1988,7 +2024,9 @@ crate fn is_useful<'p, 'tcx>(
                 usefulness.apply_missing_ctors(cx, pcx.ty, &missing_ctors)
             }
         }
-    }
+    };
+    debug!("is_useful::returns({:#?}, {:#?}) = {:?}", matrix, v, ret);
+    ret
 }
 
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
@@ -2002,7 +2040,7 @@ fn is_useful_specialized<'p, 'tcx>(
     witness_preference: WitnessPreference,
     hir_id: HirId,
     is_under_guard: bool,
-) -> Usefulness<'tcx, 'p> {
+) -> Usefulness<'tcx> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, ty);
 
     // We cache the result of `Fields::wildcards` because it is used a lot.
@@ -2576,7 +2614,7 @@ fn specialize_one_pattern<'p, 'tcx>(
             let pats = cx.pattern_arena.alloc_from_iter((0..n).filter_map(|i| {
                 let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
                 let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
-                let scalar = scalar.not_undef().ok()?;
+                let scalar = scalar.check_init().ok()?;
                 let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
                 let pattern = Pat { ty, span: pat.span, kind: box PatKind::Constant { value } };
                 Some(pattern)
@@ -2647,7 +2685,10 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     };
-    debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
+    debug!(
+        "specialize({:#?}, {:#?}, {:#?}) = {:#?}",
+        pat, constructor, ctor_wild_subpatterns, result
+    );
 
     result
 }

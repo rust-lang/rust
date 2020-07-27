@@ -42,13 +42,13 @@ declare_clippy_lint! {
     "outer expressions with no effect"
 }
 
-fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
+fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if expr.span.from_expansion() {
         return false;
     }
     match expr.kind {
         ExprKind::Lit(..) | ExprKind::Closure(..) => true,
-        ExprKind::Path(..) => !has_drop(cx, cx.tables.expr_ty(expr)),
+        ExprKind::Path(..) => !has_drop(cx, cx.typeck_results().expr_ty(expr)),
         ExprKind::Index(ref a, ref b) | ExprKind::Binary(_, ref a, ref b) => {
             has_no_effect(cx, a) && has_no_effect(cx, b)
         },
@@ -61,7 +61,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
         | ExprKind::AddrOf(_, _, ref inner)
         | ExprKind::Box(ref inner) => has_no_effect(cx, inner),
         ExprKind::Struct(_, ref fields, ref base) => {
-            !has_drop(cx, cx.tables.expr_ty(expr))
+            !has_drop(cx, cx.typeck_results().expr_ty(expr))
                 && fields.iter().all(|field| has_no_effect(cx, &field.expr))
                 && base.as_ref().map_or(true, |base| has_no_effect(cx, base))
         },
@@ -70,7 +70,8 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
                 let res = qpath_res(cx, qpath, callee.hir_id);
                 match res {
                     Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..) => {
-                        !has_drop(cx, cx.tables.expr_ty(expr)) && args.iter().all(|arg| has_no_effect(cx, arg))
+                        !has_drop(cx, cx.typeck_results().expr_ty(expr))
+                            && args.iter().all(|arg| has_no_effect(cx, arg))
                     },
                     _ => false,
                 }
@@ -87,8 +88,8 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
 
 declare_lint_pass!(NoEffect => [NO_EFFECT, UNNECESSARY_OPERATION]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoEffect {
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NoEffect {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if let StmtKind::Semi(ref expr) = stmt.kind {
             if has_no_effect(cx, expr) {
                 span_lint(cx, NO_EFFECT, stmt.span, "statement with no effect");
@@ -119,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoEffect {
     }
 }
 
-fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option<Vec<&'a Expr<'a>>> {
+fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec<&'a Expr<'a>>> {
     if expr.span.from_expansion() {
         return None;
     }
@@ -137,7 +138,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option
         | ExprKind::AddrOf(_, _, ref inner)
         | ExprKind::Box(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
         ExprKind::Struct(_, ref fields, ref base) => {
-            if has_drop(cx, cx.tables.expr_ty(expr)) {
+            if has_drop(cx, cx.typeck_results().expr_ty(expr)) {
                 None
             } else {
                 Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
@@ -147,8 +148,8 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr<'a>) -> Option
             if let ExprKind::Path(ref qpath) = callee.kind {
                 let res = qpath_res(cx, qpath, callee.hir_id);
                 match res {
-                    Res::Def(DefKind::Struct, ..) | Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _)
-                        if !has_drop(cx, cx.tables.expr_ty(expr)) =>
+                    Res::Def(DefKind::Struct | DefKind::Variant | DefKind::Ctor(..), ..)
+                        if !has_drop(cx, cx.typeck_results().expr_ty(expr)) =>
                     {
                         Some(args.iter().collect())
                     },

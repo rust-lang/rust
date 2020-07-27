@@ -1,6 +1,14 @@
+// run-rustfix
+
 #[derive(Debug)]
 struct Foo {
     x: isize
+}
+
+impl From<Foo> for isize {
+    fn from(val: Foo) -> isize {
+        val.x
+    }
 }
 
 fn main() {

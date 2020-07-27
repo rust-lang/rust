@@ -47,21 +47,21 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_const_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
-        let lo = self.token.span;
+        let const_span = self.token.span;
 
         self.expect_keyword(kw::Const)?;
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
-        self.sess.gated_spans.gate(sym::const_generics, lo.to(self.prev_token.span));
+        self.sess.gated_spans.gate(sym::const_generics, const_span.to(self.prev_token.span));
 
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs.into(),
             bounds: Vec::new(),
-            kind: GenericParamKind::Const { ty },
+            kind: GenericParamKind::Const { ty, kw_span: const_span },
             is_placeholder: false,
         })
     }
@@ -157,6 +157,7 @@ impl<'a> Parser<'a> {
         Ok(ast::Generics {
             params,
             where_clause: WhereClause {
+                has_where_token: false,
                 predicates: Vec::new(),
                 span: self.prev_token.span.shrink_to_hi(),
             },
@@ -170,12 +171,16 @@ impl<'a> Parser<'a> {
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     pub(super) fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
-        let mut where_clause =
-            WhereClause { predicates: Vec::new(), span: self.prev_token.span.shrink_to_hi() };
+        let mut where_clause = WhereClause {
+            has_where_token: false,
+            predicates: Vec::new(),
+            span: self.prev_token.span.shrink_to_hi(),
+        };
 
         if !self.eat_keyword(kw::Where) {
             return Ok(where_clause);
         }
+        where_clause.has_where_token = true;
         let lo = self.prev_token.span;
 
         // We are considering adding generics to the `where` keyword as an alternative higher-rank

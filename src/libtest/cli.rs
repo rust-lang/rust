@@ -115,7 +115,7 @@ fn optgroups() -> getopts::Options {
         .optflagopt(
             "",
             "report-time",
-            "Show execution time of each test. Awailable values:
+            "Show execution time of each test. Available values:
             plain   = do not colorize the execution time (default);
             colored = colorize output according to the `color` parameter value;
 

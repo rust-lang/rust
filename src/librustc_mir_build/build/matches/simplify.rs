@@ -160,13 +160,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     ty::Int(ity) => {
                         let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
-                        let max = truncate(u128::max_value(), size);
+                        let max = truncate(u128::MAX, size);
                         let bias = 1u128 << (size.bits() - 1);
                         (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
                         let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
-                        let max = truncate(u128::max_value(), size);
+                        let max = truncate(u128::MAX, size);
                         (Some((0, max, size)), 0)
                     }
                     _ => (None, 0),

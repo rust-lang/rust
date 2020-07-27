@@ -27,7 +27,7 @@ use crate::traits::query::{
     OutlivesBound,
 };
 use crate::traits::specialization_graph;
-use crate::traits::{self, Vtable};
+use crate::traits::{self, ImplSource};
 use crate::ty::steal::Steal;
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
@@ -44,7 +44,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, HirIdSet, ItemLocalId, TraitCandidate};
-use rustc_index::vec::IndexVec;
+use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::CrateDisambiguator;
@@ -57,6 +57,7 @@ use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[macro_use]

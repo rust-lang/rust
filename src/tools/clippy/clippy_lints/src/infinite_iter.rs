@@ -44,8 +44,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InfiniteIter => [INFINITE_ITER, MAYBE_INFINITE_ITER]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InfiniteIter {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for InfiniteIter {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (lint, msg) = match complete_infinite_iter(cx, expr) {
             Infinite => (INFINITE_ITER, "infinite iteration detected"),
             MaybeInfinite => (MAYBE_INFINITE_ITER, "possible infinite iteration detected"),
@@ -140,9 +140,9 @@ const HEURISTICS: [(&str, usize, Heuristic, Finiteness); 19] = [
     ("scan", 3, First, MaybeInfinite),
 ];
 
-fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Finiteness {
+fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
-        ExprKind::MethodCall(ref method, _, ref args) => {
+        ExprKind::MethodCall(ref method, _, ref args, _) => {
             for &(name, len, heuristic, cap) in &HEURISTICS {
                 if method.ident.name.as_str() == name && args.len() == len {
                     return (match heuristic {
@@ -216,9 +216,9 @@ const INFINITE_COLLECTORS: [&[&str]; 8] = [
     &paths::VEC_DEQUE,
 ];
 
-fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Finiteness {
+fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
-        ExprKind::MethodCall(ref method, _, ref args) => {
+        ExprKind::MethodCall(ref method, _, ref args, _) => {
             for &(name, len) in &COMPLETING_METHODS {
                 if method.ident.name.as_str() == name && args.len() == len {
                     return is_infinite(cx, &args[0]);
@@ -230,13 +230,14 @@ fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Finitene
                 }
             }
             if method.ident.name == sym!(last) && args.len() == 1 {
-                let not_double_ended = get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR)
-                    .map_or(false, |id| !implements_trait(cx, cx.tables.expr_ty(&args[0]), id, &[]));
+                let not_double_ended = get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR).map_or(false, |id| {
+                    !implements_trait(cx, cx.typeck_results().expr_ty(&args[0]), id, &[])
+                });
                 if not_double_ended {
                     return is_infinite(cx, &args[0]);
                 }
             } else if method.ident.name == sym!(collect) {
-                let ty = cx.tables.expr_ty(expr);
+                let ty = cx.typeck_results().expr_ty(expr);
                 if INFINITE_COLLECTORS.iter().any(|path| match_type(cx, ty, path)) {
                     return is_infinite(cx, &args[0]);
                 }

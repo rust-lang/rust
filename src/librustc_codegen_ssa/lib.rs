@@ -34,6 +34,7 @@ use std::path::{Path, PathBuf};
 pub mod back;
 pub mod base;
 pub mod common;
+pub mod coverageinfo;
 pub mod debuginfo;
 pub mod glue;
 pub mod meth;
@@ -137,12 +138,12 @@ pub struct CodegenResults {
     pub crate_info: CrateInfo,
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide_both(providers);
 }
 
-pub fn provide_extern(providers: &mut Providers<'_>) {
+pub fn provide_extern(providers: &mut Providers) {
     crate::back::symbol_export::provide_extern(providers);
     crate::base::provide_both(providers);
 }

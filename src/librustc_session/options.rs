@@ -248,10 +248,10 @@ macro_rules! options {
         pub const parse_passes: &str = "a space-separated list of passes, or `all`";
         pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
         pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-        pub const parse_sanitizer: &str = "one of: `address`, `leak`, `memory` or `thread`";
-        pub const parse_sanitizer_list: &str = "comma separated list of sanitizers";
+        pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `leak`, `memory` or `thread`";
         pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
-        pub const parse_cfguard: &str = "either `disabled`, `nochecks`, or `checks`";
+        pub const parse_cfguard: &str =
+            "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
         pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
         pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
         pub const parse_optimization_fuel: &str = "crate=integer";
@@ -459,24 +459,15 @@ macro_rules! options {
             true
         }
 
-        fn parse_sanitizer(slot: &mut Option<Sanitizer>, v: Option<&str>) -> bool {
-            if let Some(Ok(s)) =  v.map(str::parse) {
-                *slot = Some(s);
-                true
-            } else {
-                false
-            }
-        }
-
-        fn parse_sanitizer_list(slot: &mut Vec<Sanitizer>, v: Option<&str>) -> bool {
+        fn parse_sanitizers(slot: &mut SanitizerSet, v: Option<&str>) -> bool {
             if let Some(v) = v {
-                for s in v.split(',').map(str::parse) {
-                    if let Ok(s) = s {
-                        if !slot.contains(&s) {
-                            slot.push(s);
-                        }
-                    } else {
-                        return false;
+                for s in v.split(',') {
+                    *slot |= match s {
+                        "address" => SanitizerSet::ADDRESS,
+                        "leak" => SanitizerSet::LEAK,
+                        "memory" => SanitizerSet::MEMORY,
+                        "thread" => SanitizerSet::THREAD,
+                        _ => return false,
                     }
                 }
                 true
@@ -505,12 +496,24 @@ macro_rules! options {
         }
 
         fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> bool {
-            match v {
-                Some("disabled") => *slot = CFGuard::Disabled,
-                Some("nochecks") => *slot = CFGuard::NoChecks,
-                Some("checks") => *slot = CFGuard::Checks,
-                _ => return false,
+            if v.is_some() {
+                let mut bool_arg = None;
+                if parse_opt_bool(&mut bool_arg, v) {
+                    *slot = if bool_arg.unwrap() {
+                        CFGuard::Checks
+                    } else {
+                        CFGuard::Disabled
+                    };
+                    return true
+                }
             }
+
+            *slot = match v {
+                None => CFGuard::Checks,
+                Some("checks") => CFGuard::Checks,
+                Some("nochecks") => CFGuard::NoChecks,
+                Some(_) => return false,
+            };
             true
         }
 
@@ -689,6 +692,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "choose the code model to use (`rustc --print code-models` for details)"),
     codegen_units: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
+    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED],
+        "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(debug_assertions)` directive"),
     debuginfo: usize = (0, parse_uint, [TRACKED],
@@ -712,7 +717,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "extra arguments to append to the linker invocation (space separated)"),
-    link_dead_code: bool = (false, parse_bool, [UNTRACKED],
+    link_dead_code: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
         "keep dead code at link time (useful for code coverage) (default: no)"),
     linker: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "system linker to link outputs with"),
@@ -806,8 +811,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "enable the experimental Chalk-based trait solving engine"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
-    control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [UNTRACKED],
-        "use Windows Control Flow Guard (`disabled`, `nochecks` or `checks`)"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
     debug_macros: bool = (false, parse_bool, [TRACKED],
@@ -876,12 +879,22 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "fix undefined behavior when a thread doesn't eventually make progress \
         (such as entering an empty infinite loop) by inserting llvm.sideeffect \
         (default: no)"),
+    instrument_coverage: bool = (false, parse_bool, [TRACKED],
+        "instrument the generated code to support LLVM source-based code coverage \
+        reports (note, the compiler build config must include `profiler = true`, \
+        and is mutually exclusive with `-C profile-generate`/`-C profile-use`); \
+        implies `-C link-dead-code` (unless explicitly disabled)` and
+        `-Z symbol-mangling-version=v0`; and disables/overrides some optimization \
+        options (default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
         "keep hygiene data after analysis (default: no)"),
     link_native_libraries: bool = (true, parse_bool, [UNTRACKED],
         "link native libraries in the linker invocation (default: yes)"),
+    link_self_contained: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "control whether to link Rust provided C objects/libraries or rely
+         on C toolchain installed in the system"),
     link_only: bool = (false, parse_bool, [TRACKED],
         "link the `.rlink` file generated by `-Z no-link` (default: no)"),
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
@@ -936,6 +949,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         (default: PLT is disabled if full relro is enabled)"),
     polonius: bool = (false, parse_bool, [UNTRACKED],
         "enable polonius-based borrow-checker (default: no)"),
+    polymorphize: bool = (false, parse_bool, [TRACKED],
+          "perform polymorphization analysis"),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to prepend the linker invocation (can be used several times)"),
     pre_link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
@@ -948,13 +963,13 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "print the result of the monomorphization collection pass"),
-    print_region_graph: bool = (false, parse_bool, [UNTRACKED],
-        "prints region inference graph. \
-        Use with RUST_REGION_GRAPH=help for more info (default: no)"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
         "print layout information for each type encountered (default: no)"),
     profile: bool = (false, parse_bool, [TRACKED],
         "insert profiling code (default: no)"),
+    profile_emit: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
+        "file path to emit profiling data at runtime when using 'profile' \
+        (default based on relative source path)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
     query_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -968,11 +983,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     // soon.
     run_dsymutil: bool = (true, parse_bool, [TRACKED],
         "if on Mac, run `dsymutil` and delete intermediate object files (default: yes)"),
-    sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
+    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
         "use a sanitizer"),
     sanitizer_memory_track_origins: usize = (0, parse_sanitizer_memory_track_origins, [TRACKED],
         "enable origins tracking in MemorySanitizer"),
-    sanitizer_recover: Vec<Sanitizer> = (vec![], parse_sanitizer_list, [TRACKED],
+    sanitizer_recover: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
         "enable recovery for selected sanitizers"),
     saturating_float_casts: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
@@ -993,6 +1008,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "make the current crate share its generic instantiations"),
     show_span: Option<String> = (None, parse_opt_string, [TRACKED],
         "show spans for compiler debugging (expr|pat|ty)"),
+    span_debug: bool = (false, parse_bool, [UNTRACKED],
+        "forward proc_macro::Span's `Debug` impl to `Span`"),
     // o/w tests have closure@path
     span_free_formats: bool = (false, parse_bool, [UNTRACKED],
         "exclude spans when debug-printing compiler state (default: no)"),

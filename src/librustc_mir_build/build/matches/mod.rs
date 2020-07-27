@@ -10,7 +10,7 @@ use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::{fx::{FxHashMap, FxHashSet}, stack::ensure_sufficient_stack};
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
@@ -225,6 +225,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
     ) -> BlockAnd<()> {
+        let match_scope = self.scopes.topmost();
+
         let arm_end_blocks: Vec<_> = arm_candidates
             .into_iter()
             .map(|(arm, candidate)| {
@@ -245,7 +247,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let arm_block = this.bind_pattern(
                         outer_source_info,
                         candidate,
-                        arm.guard.as_ref(),
+                        arm.guard.as_ref().map(|g| (g, match_scope)),
                         &fake_borrow_temps,
                         scrutinee_span,
                         Some(arm.scope),
@@ -282,7 +284,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         outer_source_info: SourceInfo,
         candidate: Candidate<'_, 'tcx>,
-        guard: Option<&Guard<'tcx>>,
+        guard: Option<(&Guard<'tcx>, region::Scope)>,
         fake_borrow_temps: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         arm_scope: Option<region::Scope>,
@@ -907,30 +909,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             split_or_candidate |= self.simplify_candidate(candidate);
         }
 
-        if split_or_candidate {
-            // At least one of the candidates has been split into subcandidates.
-            // We need to change the candidate list to include those.
-            let mut new_candidates = Vec::new();
+        ensure_sufficient_stack(|| {
+            if split_or_candidate {
+                // At least one of the candidates has been split into subcandidates.
+                // We need to change the candidate list to include those.
+                let mut new_candidates = Vec::new();
 
-            for candidate in candidates {
-                candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
+                for candidate in candidates {
+                    candidate.visit_leaves(|leaf_candidate| new_candidates.push(leaf_candidate));
+                }
+                self.match_simplified_candidates(
+                    span,
+                    start_block,
+                    otherwise_block,
+                    &mut *new_candidates,
+                    fake_borrows,
+                );
+            } else {
+                self.match_simplified_candidates(
+                    span,
+                    start_block,
+                    otherwise_block,
+                    candidates,
+                    fake_borrows,
+                );
             }
-            self.match_simplified_candidates(
-                span,
-                start_block,
-                otherwise_block,
-                &mut *new_candidates,
-                fake_borrows,
-            );
-        } else {
-            self.match_simplified_candidates(
-                span,
-                start_block,
-                otherwise_block,
-                candidates,
-                fake_borrows,
-            );
-        };
+        });
     }
 
     fn match_simplified_candidates(
@@ -1588,7 +1592,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         parent_bindings: &[(Vec<Binding<'tcx>>, Vec<Ascription<'tcx>>)],
-        guard: Option<&Guard<'tcx>>,
+        guard: Option<(&Guard<'tcx>, region::Scope)>,
         fake_borrows: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         schedule_drops: bool,
@@ -1700,7 +1704,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //      the reference that we create for the arm.
         //    * So we eagerly create the reference for the arm and then take a
         //      reference to that.
-        if let Some(guard) = guard {
+        if let Some((guard, region_scope)) = guard {
             let tcx = self.hir.tcx();
             let bindings = parent_bindings
                 .iter()
@@ -1744,7 +1748,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 unreachable
             });
             let outside_scope = self.cfg.start_new_block();
-            self.exit_top_scope(otherwise_post_guard_block, outside_scope, source_info);
+            self.exit_scope(
+                source_info.span,
+                region_scope,
+                otherwise_post_guard_block,
+                outside_scope,
+            );
             self.false_edges(
                 outside_scope,
                 otherwise_block,

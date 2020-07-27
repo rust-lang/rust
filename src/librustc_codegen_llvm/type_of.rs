@@ -7,7 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::{FnAbiExt, TyAndLayout};
 use rustc_middle::ty::print::obsolete::DefPathBasedNames;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
-use rustc_target::abi::{Abi, Align, FieldsShape};
+use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{LayoutOf, PointeeInfo, Scalar, Size, TyAndLayoutMethods, Variants};
 
@@ -70,10 +70,10 @@ fn uncached_llvm_type<'a, 'tcx>(
                     write!(&mut name, "::{}", def.variants[index].ident).unwrap();
                 }
             }
-            if let (&ty::Generator(_, substs, _), &Variants::Single { index })
+            if let (&ty::Generator(_, _, _), &Variants::Single { index })
                  = (&layout.ty.kind, &layout.variants)
             {
-                write!(&mut name, "::{}", substs.as_generator().variant_name(index)).unwrap();
+                write!(&mut name, "::{}", ty::GeneratorSubsts::variant_name(index)).unwrap();
             }
             Some(name)
         }
@@ -310,12 +310,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             F64 => cx.type_f64(),
             Pointer => {
                 // If we know the alignment, pick something better than i8.
-                let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {
-                    cx.type_pointee_for_align(pointee.align)
-                } else {
-                    cx.type_i8()
-                };
-                cx.type_ptr_to(pointee)
+                let (pointee, address_space) =
+                    if let Some(pointee) = self.pointee_info_at(cx, offset) {
+                        (cx.type_pointee_for_align(pointee.align), pointee.address_space)
+                    } else {
+                        (cx.type_i8(), AddressSpace::DATA)
+                    };
+                cx.type_ptr_to_ext(pointee, address_space)
             }
         }
     }

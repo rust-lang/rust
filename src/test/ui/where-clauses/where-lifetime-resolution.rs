@@ -7,7 +7,6 @@ fn f() where
     //~^ ERROR use of undeclared lifetime name `'a`
     for<'a> dyn for<'b> Trait2<'a, 'b>: Trait2<'a, 'b>,
     //~^ ERROR use of undeclared lifetime name `'b`
-    //~| ERROR nested quantification of lifetimes
 {}
 
 fn main() {}

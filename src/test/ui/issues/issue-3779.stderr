@@ -5,9 +5,12 @@ LL | struct S {
    | ^^^^^^^^ recursive type has infinite size
 LL |
 LL |     element: Option<S>
-   |     ------------------ recursive without indirection
+   |              --------- recursive without indirection
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `S` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `S` representable
+   |
+LL |     element: Box<Option<S>>
+   |              ^^^^         ^
 
 error: aborting due to previous error
 

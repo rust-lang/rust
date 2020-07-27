@@ -56,8 +56,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LetIfSeq => [USELESS_LET_IF_SEQ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
-    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block<'_>) {
+impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
         let mut it = block.stmts.iter().peekable();
         while let Some(stmt) = it.next() {
             if_chain! {
@@ -73,10 +73,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 then {
                     let span = stmt.span.to(if_.span);
 
-                    let has_interior_mutability = !cx.tables.node_type(canonical_id).is_freeze(
-                        cx.tcx,
+                    let has_interior_mutability = !cx.typeck_results().node_type(canonical_id).is_freeze(
+                        cx.tcx.at(span),
                         cx.param_env,
-                        span
                     );
                     if has_interior_mutability { return; }
 
@@ -138,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
 }
 
 struct UsedVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     id: hir::HirId,
     used: bool,
 }
@@ -163,8 +162,8 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
     }
 }
 
-fn check_assign<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
+fn check_assign<'tcx>(
+    cx: &LateContext<'tcx>,
     decl: hir::HirId,
     block: &'tcx hir::Block<'_>,
 ) -> Option<&'tcx hir::Expr<'tcx>> {
@@ -198,7 +197,7 @@ fn check_assign<'a, 'tcx>(
     None
 }
 
-fn used_in_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> bool {
+fn used_in_expr<'tcx>(cx: &LateContext<'tcx>, id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> bool {
     let mut v = UsedVisitor { cx, id, used: false };
     intravisit::walk_expr(&mut v, expr);
     v.used

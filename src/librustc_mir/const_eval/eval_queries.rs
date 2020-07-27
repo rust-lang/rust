@@ -27,7 +27,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
-    let tcx = ecx.tcx.tcx;
+    let tcx = *ecx.tcx;
     let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
@@ -81,13 +81,14 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
 pub(super) fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
-    span: Span,
+    root_span: Span,
     param_env: ty::ParamEnv<'tcx>,
     can_access_statics: bool,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(
-        tcx.at(span),
+        tcx,
+        root_span,
         param_env,
         CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
         MemoryExtra { can_access_statics },
@@ -153,7 +154,7 @@ pub(super) fn op_to_const<'tcx>(
                 ScalarMaybeUninit::Uninit => to_const_value(op.assert_mem_place(ecx)),
             },
             Immediate::ScalarPair(a, b) => {
-                let (data, start) = match a.not_undef().unwrap() {
+                let (data, start) = match a.check_init().unwrap() {
                     Scalar::Ptr(ptr) => {
                         (ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(), ptr.offset.bytes())
                     }
@@ -163,7 +164,7 @@ pub(super) fn op_to_const<'tcx>(
                         0,
                     ),
                 };
-                let len = b.to_machine_usize(&ecx.tcx.tcx).unwrap();
+                let len = b.to_machine_usize(ecx).unwrap();
                 let start = start.try_into().unwrap();
                 let len: usize = len.try_into().unwrap();
                 ConstValue::Slice { data, start, end: start + len }
@@ -212,7 +213,7 @@ fn validate_and_turn_into_const<'tcx>(
     })();
 
     val.map_err(|error| {
-        let err = error_to_const_error(&ecx, error);
+        let err = error_to_const_error(&ecx, error, None);
         err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
             diag.note(note_on_undefined_behavior_error());
             diag.emit();
@@ -225,9 +226,9 @@ pub fn const_eval_validated_provider<'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::ConstEvalResult<'tcx> {
     // see comment in const_eval_raw_provider for what we're doing here
-    if key.param_env.reveal == Reveal::All {
+    if key.param_env.reveal() == Reveal::All {
         let mut key = key;
-        key.param_env.reveal = Reveal::UserFacing;
+        key.param_env = key.param_env.with_user_facing();
         match tcx.const_eval_validated(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
@@ -239,7 +240,7 @@ pub fn const_eval_validated_provider<'tcx>(
     // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
     if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
-        let ty = key.value.instance.ty_env(tcx, key.param_env);
+        let ty = key.value.instance.ty(tcx, key.param_env);
         let substs = match ty.kind {
             ty::FnDef(_, substs) => substs,
             _ => bug!("intrinsic with type {:?}", ty),
@@ -266,9 +267,9 @@ pub fn const_eval_raw_provider<'tcx>(
     // information being available.
 
     // In case we fail in the `UserFacing` variant, we just do the real computation.
-    if key.param_env.reveal == Reveal::All {
+    if key.param_env.reveal() == Reveal::All {
         let mut key = key;
-        key.param_env.reveal = Reveal::UserFacing;
+        key.param_env = key.param_env.with_user_facing();
         match tcx.const_eval_raw(key) {
             // try again with reveal all as requested
             Err(ErrorHandled::TooGeneric) => {}
@@ -287,21 +288,21 @@ pub fn const_eval_raw_provider<'tcx>(
     }
 
     let cid = key.value;
-    let def_id = cid.instance.def.def_id();
+    let def = cid.instance.def.with_opt_param();
 
-    if let Some(def_id) = def_id.as_local() {
-        if tcx.has_typeck_tables(def_id) {
-            if let Some(error_reported) = tcx.typeck_tables_of(def_id).tainted_by_errors {
+    if let Some(def) = def.as_local() {
+        if tcx.has_typeck_results(def.did) {
+            if let Some(error_reported) = tcx.typeck_opt_const_arg(def).tainted_by_errors {
                 return Err(ErrorHandled::Reported(error_reported));
             }
         }
     }
 
-    let is_static = tcx.is_static(def_id);
+    let is_static = tcx.is_static(def.did);
 
-    let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = InterpCx::new(
-        tcx.at(span),
+        tcx,
+        tcx.def_span(def.did),
         key.param_env,
         CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
         MemoryExtra { can_access_statics: is_static },
@@ -309,22 +310,23 @@ pub fn const_eval_raw_provider<'tcx>(
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body))
-        .and_then(|place| {
-            Ok(RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
-        })
+        .map(|place| RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
         .map_err(|error| {
-            let err = error_to_const_error(&ecx, error);
+            let err = error_to_const_error(&ecx, error, None);
             // errors in statics are always emitted as fatal errors
             if is_static {
                 // Ensure that if the above error was either `TooGeneric` or `Reported`
                 // an error must be reported.
-                let v = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
+                let v = err.report_as_error(
+                    ecx.tcx.at(ecx.cur_span()),
+                    "could not evaluate static initializer",
+                );
 
                 // If this is `Reveal:All`, then we need to make sure an error is reported but if
                 // this is `Reveal::UserFacing`, then it's expected that we could get a
                 // `TooGeneric` error. When we fall back to `Reveal::All`, then it will either
                 // succeed or we'll report this error then.
-                if key.param_env.reveal == Reveal::All {
+                if key.param_env.reveal() == Reveal::All {
                     tcx.sess.delay_span_bug(
                         err.span,
                         &format!("static eval failure did not emit an error: {:#?}", v),
@@ -332,9 +334,9 @@ pub fn const_eval_raw_provider<'tcx>(
                 }
 
                 v
-            } else if def_id.is_local() {
+            } else if let Some(def) = def.as_local() {
                 // constant defined in this crate, we can figure out a lint level!
-                match tcx.def_kind(def_id) {
+                match tcx.def_kind(def.did.to_def_id()) {
                     // constants never produce a hard error at the definition site. Anything else is
                     // a backwards compatibility hazard (and will break old versions of winapi for
                     // sure)
@@ -344,9 +346,9 @@ pub fn const_eval_raw_provider<'tcx>(
                     // validation thus preventing such a hard error from being a backwards
                     // compatibility hazard
                     DefKind::Const | DefKind::AssocConst => {
-                        let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+                        let hir_id = tcx.hir().as_local_hir_id(def.did);
                         err.report_as_lint(
-                            tcx.at(tcx.def_span(def_id)),
+                            tcx.at(tcx.def_span(def.did)),
                             "any use of this value will cause an error",
                             hir_id,
                             Some(err.span),
@@ -357,7 +359,7 @@ pub fn const_eval_raw_provider<'tcx>(
                     // deny-by-default lint
                     _ => {
                         if let Some(p) = cid.promoted {
-                            let span = tcx.promoted_mir(def_id)[p].span;
+                            let span = tcx.promoted_mir_of_opt_const_arg(def.to_global())[p].span;
                             if let err_inval!(ReferencedConstant) = err.error {
                                 err.report_as_error(
                                     tcx.at(span),
@@ -367,20 +369,23 @@ pub fn const_eval_raw_provider<'tcx>(
                                 err.report_as_lint(
                                     tcx.at(span),
                                     "reaching this expression at runtime will panic or abort",
-                                    tcx.hir().as_local_hir_id(def_id.expect_local()),
+                                    tcx.hir().as_local_hir_id(def.did),
                                     Some(err.span),
                                 )
                             }
                         // anything else (array lengths, enum initializers, constant patterns) are
                         // reported as hard errors
                         } else {
-                            err.report_as_error(ecx.tcx, "evaluation of constant value failed")
+                            err.report_as_error(
+                                ecx.tcx.at(ecx.cur_span()),
+                                "evaluation of constant value failed",
+                            )
                         }
                     }
                 }
             } else {
                 // use of broken constant from other crate
-                err.report_as_error(ecx.tcx, "could not evaluate constant")
+                err.report_as_error(ecx.tcx.at(ecx.cur_span()), "could not evaluate constant")
             }
         })
 }

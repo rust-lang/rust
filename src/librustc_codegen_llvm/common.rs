@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{Allocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::{self, HasDataLayout, LayoutOf, Pointer, Size};
+use rustc_target::abi::{self, AddressSpace, HasDataLayout, LayoutOf, Pointer, Size};
 
 use libc::{c_char, c_uint};
 use log::debug;
@@ -206,7 +206,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let len = s.as_str().len();
         let cs = consts::ptrcast(
             self.const_cstr(s, false),
-            self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(self)),
+            self.type_ptr_to(self.layout_of(self.tcx.types.str_).llvm_type(self)),
         );
         (cs, self.const_usize(len as u64))
     }
@@ -244,7 +244,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
             Scalar::Ptr(ptr) => {
-                let base_addr = match self.tcx.global_alloc(ptr.alloc_id) {
+                let (base_addr, base_addr_space) = match self.tcx.global_alloc(ptr.alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         let init = const_alloc_to_llvm(self, alloc);
                         let value = match alloc.mutability {
@@ -254,17 +254,21 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         if !self.sess().fewer_names() {
                             llvm::set_value_name(value, format!("{:?}", ptr.alloc_id).as_bytes());
                         }
-                        value
+                        (value, AddressSpace::DATA)
                     }
-                    GlobalAlloc::Function(fn_instance) => self.get_fn_addr(fn_instance),
+                    GlobalAlloc::Function(fn_instance) => (
+                        self.get_fn_addr(fn_instance.polymorphize(self.tcx)),
+                        self.data_layout().instruction_address_space,
+                    ),
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
-                        self.get_static(def_id)
+                        assert!(!self.tcx.is_thread_local_static(def_id));
+                        (self.get_static(def_id), AddressSpace::DATA)
                     }
                 };
                 let llval = unsafe {
                     llvm::LLVMConstInBoundsGEP(
-                        self.const_bitcast(base_addr, self.type_i8p()),
+                        self.const_bitcast(base_addr, self.type_i8p_ext(base_addr_space)),
                         &self.const_usize(ptr.offset.bytes()),
                         1,
                     )

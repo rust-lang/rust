@@ -20,6 +20,7 @@ use crate::core::new_handler;
 use crate::externalfiles::ExternalHtml;
 use crate::html;
 use crate::html::markdown::IdMap;
+use crate::html::render::StylePath;
 use crate::html::static_files;
 use crate::opts;
 use crate::passes::{self, Condition, DefaultPassOption};
@@ -123,10 +124,6 @@ pub struct Options {
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
     pub default_passes: DefaultPassOption,
-    /// Document items that have lower than `pub` visibility.
-    pub document_private: bool,
-    /// Document items that have `doc(hidden)`.
-    pub document_hidden: bool,
     /// Any passes manually selected by the user.
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
@@ -177,8 +174,6 @@ impl fmt::Debug for Options {
             .field("test_args", &self.test_args)
             .field("persist_doctests", &self.persist_doctests)
             .field("default_passes", &self.default_passes)
-            .field("document_private", &self.document_private)
-            .field("document_hidden", &self.document_hidden)
             .field("manual_passes", &self.manual_passes)
             .field("display_warnings", &self.display_warnings)
             .field("show_coverage", &self.show_coverage)
@@ -213,7 +208,7 @@ pub struct RenderOptions {
     pub sort_modules_alphabetically: bool,
     /// List of themes to extend the docs with. Original argument name is included to assist in
     /// displaying errors if it fails a theme check.
-    pub themes: Vec<PathBuf>,
+    pub themes: Vec<StylePath>,
     /// If present, CSS file that contains rules to add to the default CSS.
     pub extension_css: Option<PathBuf>,
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
@@ -248,8 +243,10 @@ pub struct RenderOptions {
     /// If false, the `select` element to have search filtering by crates on rendered docs
     /// won't be generated.
     pub generate_search_filter: bool,
-    /// Option (disabled by default) to generate files used by RLS and some other tools.
-    pub generate_redirect_pages: bool,
+    /// Document items that have lower than `pub` visibility.
+    pub document_private: bool,
+    /// Document items that have `doc(hidden)`.
+    pub document_hidden: bool,
 }
 
 impl Options {
@@ -414,7 +411,7 @@ impl Options {
                     ))
                     .emit();
                 }
-                themes.push(theme_file);
+                themes.push(StylePath { path: theme_file, disabled: true });
             }
         }
 
@@ -530,7 +527,6 @@ impl Options {
         let static_root_path = matches.opt_str("static-root-path");
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
-        let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
         let debugging_options_strs = matches.opt_strs("Z");
@@ -567,8 +563,6 @@ impl Options {
             should_test,
             test_args,
             default_passes,
-            document_private,
-            document_hidden,
             manual_passes,
             display_warnings,
             show_coverage,
@@ -596,7 +590,8 @@ impl Options {
                 markdown_css,
                 markdown_playground_url,
                 generate_search_filter,
-                generate_redirect_pages,
+                document_private,
+                document_hidden,
             },
             output_format,
         })

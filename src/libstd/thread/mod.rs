@@ -641,9 +641,8 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn current() -> Thread {
     thread_info::current_thread().expect(
-        "use of std::thread::current() is not \
-                                          possible after the thread's local \
-                                          data has been destroyed",
+        "use of std::thread::current() is not possible \
+         after the thread's local data has been destroyed",
     )
 }
 
@@ -1530,7 +1529,6 @@ mod tests {
     use crate::sync::mpsc::{channel, Sender};
     use crate::thread::{self, ThreadId};
     use crate::time::Duration;
-    use crate::u32;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
@@ -1743,7 +1741,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_park_timeout_unpark_not_called() {
         for _ in 0..10 {
             thread::park_timeout(Duration::from_millis(10));
@@ -1751,7 +1748,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_park_timeout_unpark_called_other_thread() {
         for _ in 0..10 {
             let th = thread::current();
@@ -1766,7 +1762,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn sleep_ms_smoke() {
         thread::sleep(Duration::from_millis(2));
     }

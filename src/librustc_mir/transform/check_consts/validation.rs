@@ -40,7 +40,7 @@ pub struct Qualifs<'mir, 'tcx> {
 }
 
 impl Qualifs<'mir, 'tcx> {
-    fn indirectly_mutable(
+    pub fn indirectly_mutable(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -56,7 +56,7 @@ impl Qualifs<'mir, 'tcx> {
             // without breaking stable code?
             MaybeMutBorrowedLocals::mut_borrows_only(tcx, &body, param_env)
                 .unsound_ignore_borrow_on_drop()
-                .into_engine(tcx, &body, def_id)
+                .into_engine(tcx, &body, def_id.to_def_id())
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -68,7 +68,7 @@ impl Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
-    fn needs_drop(
+    pub fn needs_drop(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -83,7 +83,7 @@ impl Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, def_id, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsDrop, ccx)
-                .into_engine(tcx, &body, def_id)
+                .into_engine(tcx, &body, def_id.to_def_id())
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -95,7 +95,7 @@ impl Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary.
-    fn has_mut_interior(
+    pub fn has_mut_interior(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
         local: Local,
@@ -110,7 +110,7 @@ impl Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, def_id, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(HasMutInterior, ccx)
-                .into_engine(tcx, &body, def_id)
+                .into_engine(tcx, &body, def_id.to_def_id())
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -153,7 +153,7 @@ impl Qualifs<'mir, 'tcx> {
 
             hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
-                    .into_engine(ccx.tcx, &ccx.body, ccx.def_id)
+                    .into_engine(ccx.tcx, &ccx.body, ccx.def_id.to_def_id())
                     .iterate_to_fixpoint()
                     .into_results_cursor(&ccx.body);
 
@@ -195,24 +195,16 @@ impl Validator<'mir, 'tcx> {
         let ConstCx { tcx, body, def_id, const_kind, .. } = *self.ccx;
 
         let use_min_const_fn_checks = (const_kind == Some(hir::ConstContext::ConstFn)
-            && crate::const_eval::is_min_const_fn(tcx, def_id))
+            && crate::const_eval::is_min_const_fn(tcx, def_id.to_def_id()))
             && !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
 
         if use_min_const_fn_checks {
             // Enforce `min_const_fn` for stable `const fn`s.
             use crate::transform::qualify_min_const_fn::is_min_const_fn;
-            if let Err((span, err)) = is_min_const_fn(tcx, def_id, &body) {
+            if let Err((span, err)) = is_min_const_fn(tcx, def_id.to_def_id(), &body) {
                 error_min_const_fn_violation(tcx, span, err);
                 return;
             }
-        }
-
-        check_short_circuiting_in_const_local(self.ccx);
-
-        if body.is_cfg_cyclic() {
-            // We can't provide a good span for the error here, but this should be caught by the
-            // HIR const-checker anyways.
-            self.check_op_spanned(ops::Loop, body.span);
         }
 
         self.visit_body(&body);
@@ -220,10 +212,10 @@ impl Validator<'mir, 'tcx> {
         // Ensure that the end result is `Sync` in a non-thread local `static`.
         let should_check_for_sync = const_kind
             == Some(hir::ConstContext::Static(hir::Mutability::Not))
-            && !tcx.is_thread_local_static(def_id);
+            && !tcx.is_thread_local_static(def_id.to_def_id());
 
         if should_check_for_sync {
-            let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
+            let hir_id = tcx.hir().as_local_hir_id(def_id);
             check_return_ty_is_sync(tcx, &body, hir_id);
         }
     }
@@ -232,42 +224,23 @@ impl Validator<'mir, 'tcx> {
         self.qualifs.in_return_place(self.ccx)
     }
 
-    /// Emits an error at the given `span` if an expression cannot be evaluated in the current
-    /// context.
-    pub fn check_op_spanned<O>(&mut self, op: O, span: Span)
-    where
-        O: NonConstOp,
-    {
-        debug!("check_op: op={:?}", op);
-
-        if op.is_allowed_in_item(self) {
-            return;
-        }
-
-        // If an operation is supported in miri it can be turned on with
-        // `-Zunleash-the-miri-inside-of-you`.
-        let is_unleashable = O::IS_SUPPORTED_IN_MIRI;
-
-        if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-            self.tcx.sess.miri_unleashed_feature(span, O::feature_gate());
-            return;
-        }
-
-        op.emit_error(self, span);
-    }
-
     /// Emits an error if an expression cannot be evaluated in the current context.
     pub fn check_op(&mut self, op: impl NonConstOp) {
-        let span = self.span;
-        self.check_op_spanned(op, span)
+        ops::non_const(self.ccx, op, self.span);
+    }
+
+    /// Emits an error at the given `span` if an expression cannot be evaluated in the current
+    /// context.
+    pub fn check_op_spanned(&mut self, op: impl NonConstOp, span: Span) {
+        ops::non_const(self.ccx, op, span);
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
-        if self.tcx.is_thread_local_static(def_id) {
-            self.check_op_spanned(ops::ThreadLocalAccess, span)
-        } else {
-            self.check_op_spanned(ops::StaticAccess, span)
-        }
+        assert!(
+            !self.tcx.is_thread_local_static(def_id),
+            "tls access is checked in `Rvalue::ThreadLocalRef"
+        );
+        self.check_op_spanned(ops::StaticAccess, span)
     }
 }
 
@@ -332,6 +305,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         self.super_rvalue(rvalue, location);
 
         match *rvalue {
+            Rvalue::ThreadLocalRef(_) => self.check_op(ops::ThreadLocalAccess),
+
             Rvalue::Use(_)
             | Rvalue::Repeat(..)
             | Rvalue::UnaryOp(UnOp::Neg, _)
@@ -500,21 +475,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 self.super_statement(statement, location);
             }
 
-            StatementKind::FakeRead(
-                FakeReadCause::ForMatchedPlace
-                | FakeReadCause::ForMatchGuard
-                | FakeReadCause::ForGuardBinding,
-                _,
-            ) => {
-                self.super_statement(statement, location);
-                self.check_op(ops::IfOrMatch);
-            }
             StatementKind::LlvmInlineAsm { .. } => {
                 self.super_statement(statement, location);
                 self.check_op(ops::InlineAsm);
             }
 
-            StatementKind::FakeRead(FakeReadCause::ForLet | FakeReadCause::ForIndex, _)
+            StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag { .. }
@@ -554,8 +520,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     let instance = Instance::resolve(self.tcx, self.param_env, def_id, substs);
                     debug!("Resolving ({:?}) -> {:?}", def_id, instance);
                     if let Ok(Some(func)) = instance {
-                        if let InstanceDef::Item(def_id) = func.def {
-                            if is_const_fn(self.tcx, def_id) {
+                        if let InstanceDef::Item(def) = func.def {
+                            if is_const_fn(self.tcx, def.did) {
                                 return;
                             }
                         }
@@ -565,9 +531,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 if is_lang_panic_fn(self.tcx, def_id) {
                     self.check_op(ops::Panic);
                 } else if let Some(feature) = is_unstable_const_fn(self.tcx, def_id) {
-                    // Exempt unstable const fns inside of macros with
+                    // Exempt unstable const fns inside of macros or functions with
                     // `#[allow_internal_unstable]`.
-                    if !self.span.allows_unstable(feature) {
+                    use crate::transform::qualify_min_const_fn::lib_feature_allowed;
+                    if !self.span.allows_unstable(feature)
+                        && !lib_feature_allowed(self.tcx, self.def_id.to_def_id(), feature)
+                    {
                         self.check_op(ops::FnCallUnstable(def_id, feature));
                     }
                 } else {
@@ -577,8 +546,14 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
             // projections that cannot be `NeedsDrop`.
-            TerminatorKind::Drop { location: dropped_place, .. }
-            | TerminatorKind::DropAndReplace { location: dropped_place, .. } => {
+            TerminatorKind::Drop { place: dropped_place, .. }
+            | TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
+                // If we are checking live drops after drop-elaboration, don't emit duplicate
+                // errors here.
+                if super::post_drop_elaboration::checking_enabled(self.tcx) {
+                    return;
+                }
+
                 let mut err_span = self.span;
 
                 // Check to see if the type of this place can ever have a drop impl. If not, this
@@ -599,7 +574,10 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 };
 
                 if needs_drop {
-                    self.check_op_spanned(ops::LiveDrop, err_span);
+                    self.check_op_spanned(
+                        ops::LiveDrop(Some(terminator.source_info.span)),
+                        err_span,
+                    );
                 }
             }
 
@@ -611,7 +589,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             // instead.
             TerminatorKind::Abort
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::FalseEdges { .. }
+            | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Goto { .. }
@@ -632,44 +610,6 @@ fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) 
         )
         .help("add `#![feature(const_fn)]` to the crate attributes to enable")
         .emit();
-}
-
-fn check_short_circuiting_in_const_local(ccx: &ConstCx<'_, 'tcx>) {
-    let body = ccx.body;
-
-    if body.control_flow_destroyed.is_empty() {
-        return;
-    }
-
-    let mut locals = body.vars_iter();
-    if let Some(local) = locals.next() {
-        let span = body.local_decls[local].source_info.span;
-        let mut error = ccx.tcx.sess.struct_span_err(
-            span,
-            &format!(
-                "new features like let bindings are not permitted in {}s \
-                which also use short circuiting operators",
-                ccx.const_kind(),
-            ),
-        );
-        for (span, kind) in body.control_flow_destroyed.iter() {
-            error.span_note(
-                *span,
-                &format!(
-                    "use of {} here does not actually short circuit due to \
-                     the const evaluator presently not being able to do control flow. \
-                     See issue #49146 <https://github.com/rust-lang/rust/issues/49146> \
-                     for more information.",
-                    kind
-                ),
-            );
-        }
-        for local in locals {
-            let span = body.local_decls[local].source_info.span;
-            error.span_note(span, "more locals are defined here");
-        }
-        error.emit();
-    }
 }
 
 fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) {

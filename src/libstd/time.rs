@@ -60,6 +60,21 @@ pub use core::time::Duration;
 /// }
 /// ```
 ///
+/// # OS-specific behaviors
+///
+/// An `Instant` is a wrapper around system-specific types and it may behave
+/// differently depending on the underlying operating system. For example,
+/// the following snippet is fine on Linux but panics on macOS:
+///
+/// ```no_run
+/// use std::time::{Instant, Duration};
+///
+/// let now = Instant::now();
+/// let max_nanoseconds = u64::MAX / 1_000_000_000;
+/// let duration = Duration::new(max_nanoseconds, 0);
+/// println!("{:?}", now + duration);
+/// ```
+///
 /// # Underlying System calls
 /// Currently, the following system calls are being used to get the current time using `now()`:
 ///
@@ -226,7 +241,7 @@ impl Instant {
         // returned instead of what the OS says if the OS goes backwards.
         //
         // To hopefully mitigate the impact of this, a few platforms are
-        // whitelisted as "these at least haven't gone backwards yet".
+        // excluded as "these at least haven't gone backwards yet".
         if time::Instant::actually_monotonic() {
             return Instant(os_now);
         }
@@ -686,7 +701,7 @@ mod tests {
 
         // checked_add_duration will not panic on overflow
         let mut maybe_t = Some(Instant::now());
-        let max_duration = Duration::from_secs(u64::max_value());
+        let max_duration = Duration::from_secs(u64::MAX);
         // in case `Instant` can store `>= now + max_duration`.
         for _ in 0..2 {
             maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
@@ -766,7 +781,7 @@ mod tests {
 
         // checked_add_duration will not panic on overflow
         let mut maybe_t = Some(SystemTime::UNIX_EPOCH);
-        let max_duration = Duration::from_secs(u64::max_value());
+        let max_duration = Duration::from_secs(u64::MAX);
         // in case `SystemTime` can store `>= UNIX_EPOCH + max_duration`.
         for _ in 0..2 {
             maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
@@ -796,11 +811,11 @@ mod tests {
 
         // Right now for CI this test is run in an emulator, and apparently the
         // aarch64 emulator's sense of time is that we're still living in the
-        // 70s.
+        // 70s. This is also true for riscv (also qemu)
         //
         // Otherwise let's assume that we're all running computers later than
         // 2000.
-        if !cfg!(target_arch = "aarch64") {
+        if !cfg!(target_arch = "aarch64") && !cfg!(target_arch = "riscv64") {
             assert!(a > thirty_years);
         }
 

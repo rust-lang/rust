@@ -4,6 +4,7 @@
 //
 // No we expect to run into a more user-friendly cycle error instead.
 #![feature(specialization)]
+//~^ WARN the feature `specialization` is incomplete
 
 trait Trait<T> { type Assoc; }
 //~^ ERROR E0391

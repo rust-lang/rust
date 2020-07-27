@@ -16,14 +16,14 @@ log = "0.4"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 lazy_static = "1"
 once_cell = { version = "1", features = ["parking_lot"] }
-rustc_serialize = { path = "../libserialize", package = "serialize" }
-graphviz = { path = "../libgraphviz" }
+rustc_serialize = { path = "../librustc_serialize" }
+rustc_graphviz = { path = "../librustc_graphviz" }
 cfg-if = "0.1.2"
 crossbeam-utils = { version = "0.7", features = ["nightly"] }
 stable_deref_trait = "1.0.0"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 rayon-core = { version = "0.3.0", package = "rustc-rayon-core" }
-rustc-hash = "1.0.1"
+rustc-hash = "1.1.0"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_index = { path = "../librustc_index", package = "rustc_index" }
 bitflags = "1.2.1"

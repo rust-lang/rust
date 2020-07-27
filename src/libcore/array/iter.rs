@@ -1,6 +1,5 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
-use super::LengthAtMost32;
 use crate::{
     fmt,
     iter::{ExactSizeIterator, FusedIterator, TrustedLen},
@@ -13,10 +12,7 @@ use crate::{
 ///
 /// [array]: ../../std/primitive.array.html
 #[unstable(feature = "array_value_iter", issue = "65798")]
-pub struct IntoIter<T, const N: usize>
-where
-    [T; N]: LengthAtMost32,
-{
+pub struct IntoIter<T, const N: usize> {
     /// This is the array we are iterating over.
     ///
     /// Elements with index `i` where `alive.start <= i < alive.end` have not
@@ -39,10 +35,7 @@ where
     alive: Range<usize>,
 }
 
-impl<T, const N: usize> IntoIter<T, N>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> IntoIter<T, N> {
     /// Creates a new iterator over the given `array`.
     ///
     /// *Note*: this method might never get stabilized and/or removed in the
@@ -99,10 +92,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> Iterator for IntoIter<T, N>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> Iterator for IntoIter<T, N> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         if self.alive.start == self.alive.end {
@@ -146,10 +136,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.alive.start == self.alive.end {
             return None;
@@ -182,10 +169,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> Drop for IntoIter<T, N>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> Drop for IntoIter<T, N> {
     fn drop(&mut self) {
         // SAFETY: This is safe: `as_mut_slice` returns exactly the sub-slice
         // of elements that have not been moved out yet and that remain
@@ -195,10 +179,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> ExactSizeIterator for IntoIter<T, N>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> ExactSizeIterator for IntoIter<T, N> {
     fn len(&self) -> usize {
         // Will never underflow due to the invariant `alive.start <=
         // alive.end`.
@@ -210,20 +191,17 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T, const N: usize> FusedIterator for IntoIter<T, N> where [T; N]: LengthAtMost32 {}
+impl<T, const N: usize> FusedIterator for IntoIter<T, N> {}
 
 // The iterator indeed reports the correct length. The number of "alive"
 // elements (that will still be yielded) is the length of the range `alive`.
 // This range is decremented in length in either `next` or `next_back`. It is
 // always decremented by 1 in those methods, but only if `Some(_)` is returned.
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> where [T; N]: LengthAtMost32 {}
+unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T: Clone, const N: usize> Clone for IntoIter<T, N>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {
     fn clone(&self) -> Self {
         // SAFETY: each point of unsafety is documented inside the unsafe block
         unsafe {
@@ -249,10 +227,7 @@ where
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-impl<T: fmt::Debug, const N: usize> fmt::Debug for IntoIter<T, N>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T: fmt::Debug, const N: usize> fmt::Debug for IntoIter<T, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Only print the elements that were not yielded yet: we cannot
         // access the yielded elements anymore.

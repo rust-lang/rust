@@ -22,7 +22,7 @@ Then, you can generate the manifest and all the packages from `path/to/dist` to
 ```
 $ BUILD_MANIFEST_DISABLE_SIGNING=1 cargo +nightly run \
     path/to/dist path/to/output 1970-01-01 \
-    nightly nightly nightly nightly nightly nightly nightly \
+    nightly nightly nightly nightly nightly nightly nightly nightly \
     http://example.com
 ```
 

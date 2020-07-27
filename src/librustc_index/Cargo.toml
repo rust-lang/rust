@@ -10,5 +10,5 @@ path = "lib.rs"
 doctest = false
 
 [dependencies]
-rustc_serialize = { path = "../libserialize", package = "serialize" }
-smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+rustc_serialize = { path = "../librustc_serialize" }
+arrayvec = "0.5.1"

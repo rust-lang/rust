@@ -227,10 +227,10 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         let predicate_matches_closure = |p: Predicate<'tcx>| {
             let mut relator: SimpleEqRelation<'tcx> = SimpleEqRelation::new(tcx, self_param_env);
             match (predicate.kind(), p.kind()) {
-                (ty::PredicateKind::Trait(a, _), ty::PredicateKind::Trait(b, _)) => {
+                (&ty::PredicateKind::Trait(a, _), &ty::PredicateKind::Trait(b, _)) => {
                     relator.relate(a, b).is_ok()
                 }
-                (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {
+                (&ty::PredicateKind::Projection(a), &ty::PredicateKind::Projection(b)) => {
                     relator.relate(a, b).is_ok()
                 }
                 _ => predicate == p,
@@ -310,8 +310,8 @@ impl TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _: ty::Variance,
-        a: &T,
-        b: &T,
+        a: T,
+        b: T,
     ) -> RelateResult<'tcx, T> {
         // Here we ignore variance because we require drop impl's types
         // to be *exactly* the same as to the ones in the struct definition.
@@ -354,8 +354,8 @@ impl TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: &ty::Binder<T>,
-        b: &ty::Binder<T>,
+        a: ty::Binder<T>,
+        b: ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>>
     where
         T: Relate<'tcx>,
@@ -364,8 +364,8 @@ impl TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
 
         // Anonymizing the LBRs is necessary to solve (Issue #59497).
         // After we do so, it should be totally fine to skip the binders.
-        let anon_a = self.tcx.anonymize_late_bound_regions(a);
-        let anon_b = self.tcx.anonymize_late_bound_regions(b);
+        let anon_a = self.tcx.anonymize_late_bound_regions(&a);
+        let anon_b = self.tcx.anonymize_late_bound_regions(&b);
         self.relate(anon_a.skip_binder(), anon_b.skip_binder())?;
 
         Ok(a.clone())

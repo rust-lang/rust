@@ -2,77 +2,37 @@
 mod tests {
     use crate::*;
 
-    fn check_raw_str(
-        s: &str,
-        expected: UnvalidatedRawStr,
-        validated: Result<ValidatedRawStr, LexRawStrError>,
-    ) {
+    fn check_raw_str(s: &str, expected_hashes: u16, expected_err: Option<RawStrError>) {
         let s = &format!("r{}", s);
         let mut cursor = Cursor::new(s);
         cursor.bump();
-        let tok = cursor.raw_double_quoted_string(0);
-        assert_eq!(tok, expected);
-        assert_eq!(tok.validate(), validated);
+        let (n_hashes, err) = cursor.raw_double_quoted_string(0);
+        assert_eq!(n_hashes, expected_hashes);
+        assert_eq!(err, expected_err);
     }
 
     #[test]
     fn test_naked_raw_str() {
-        check_raw_str(
-            r#""abc""#,
-            UnvalidatedRawStr {
-                n_start_hashes: 0,
-                n_end_hashes: 0,
-                valid_start: true,
-                valid_end: true,
-                possible_terminator_offset: None,
-            },
-            Ok(ValidatedRawStr { n_hashes: 0 }),
-        );
+        check_raw_str(r#""abc""#, 0, None);
     }
 
     #[test]
     fn test_raw_no_start() {
-        check_raw_str(
-            r##""abc"#"##,
-            UnvalidatedRawStr {
-                n_start_hashes: 0,
-                n_end_hashes: 0,
-                valid_start: true,
-                valid_end: true,
-                possible_terminator_offset: None,
-            },
-            Ok(ValidatedRawStr { n_hashes: 0 }),
-        );
+        check_raw_str(r##""abc"#"##, 0, None);
     }
 
     #[test]
     fn test_too_many_terminators() {
         // this error is handled in the parser later
-        check_raw_str(
-            r###"#"abc"##"###,
-            UnvalidatedRawStr {
-                n_start_hashes: 1,
-                n_end_hashes: 1,
-                valid_end: true,
-                valid_start: true,
-                possible_terminator_offset: None,
-            },
-            Ok(ValidatedRawStr { n_hashes: 1 }),
-        );
+        check_raw_str(r###"#"abc"##"###, 1, None);
     }
 
     #[test]
     fn test_unterminated() {
         check_raw_str(
             r#"#"abc"#,
-            UnvalidatedRawStr {
-                n_start_hashes: 1,
-                n_end_hashes: 0,
-                valid_end: false,
-                valid_start: true,
-                possible_terminator_offset: None,
-            },
-            Err(LexRawStrError::NoTerminator {
+            1,
+            Some(RawStrError::NoTerminator {
                 expected: 1,
                 found: 0,
                 possible_terminator_offset: None,
@@ -80,14 +40,8 @@ mod tests {
         );
         check_raw_str(
             r###"##"abc"#"###,
-            UnvalidatedRawStr {
-                n_start_hashes: 2,
-                n_end_hashes: 1,
-                valid_start: true,
-                valid_end: false,
-                possible_terminator_offset: Some(7),
-            },
-            Err(LexRawStrError::NoTerminator {
+            2,
+            Some(RawStrError::NoTerminator {
                 expected: 2,
                 found: 1,
                 possible_terminator_offset: Some(7),
@@ -96,14 +50,8 @@ mod tests {
         // We're looking for "# not just any #
         check_raw_str(
             r###"##"abc#"###,
-            UnvalidatedRawStr {
-                n_start_hashes: 2,
-                n_end_hashes: 0,
-                valid_start: true,
-                valid_end: false,
-                possible_terminator_offset: None,
-            },
-            Err(LexRawStrError::NoTerminator {
+            2,
+            Some(RawStrError::NoTerminator {
                 expected: 2,
                 found: 0,
                 possible_terminator_offset: None,
@@ -113,17 +61,7 @@ mod tests {
 
     #[test]
     fn test_invalid_start() {
-        check_raw_str(
-            r##"#~"abc"#"##,
-            UnvalidatedRawStr {
-                n_start_hashes: 1,
-                n_end_hashes: 0,
-                valid_start: false,
-                valid_end: false,
-                possible_terminator_offset: None,
-            },
-            Err(LexRawStrError::InvalidStarter),
-        );
+        check_raw_str(r##"#~"abc"#"##, 1, Some(RawStrError::InvalidStarter { bad_char: '~' }));
     }
 
     #[test]
@@ -131,14 +69,8 @@ mod tests {
         // https://github.com/rust-lang/rust/issues/70677
         check_raw_str(
             r#"""#,
-            UnvalidatedRawStr {
-                n_start_hashes: 0,
-                n_end_hashes: 0,
-                valid_start: true,
-                valid_end: false,
-                possible_terminator_offset: None,
-            },
-            Err(LexRawStrError::NoTerminator {
+            0,
+            Some(RawStrError::NoTerminator {
                 expected: 0,
                 found: 0,
                 possible_terminator_offset: None,

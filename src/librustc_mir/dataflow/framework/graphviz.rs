@@ -3,6 +3,7 @@
 use std::cell::RefCell;
 use std::{io, ops, str};
 
+use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::{BitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};

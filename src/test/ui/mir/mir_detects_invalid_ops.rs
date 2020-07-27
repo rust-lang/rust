@@ -19,6 +19,6 @@ fn mod_by_zero() {
 fn oob_error_for_slices() {
     let a: *const [_] = &[1, 2, 3];
     unsafe {
-        let _b = (*a)[3]; //~ ERROR this operation will panic at runtime [unconditional_panic]
+        let _b = (*a)[3];
     }
 }

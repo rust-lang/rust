@@ -1,12 +1,21 @@
-error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/regions-proc-bound-capture.rs:9:5
+error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/regions-proc-bound-capture.rs:9:14
    |
-LL | fn static_proc(x: &isize) -> Box<dyn FnMut()->(isize) + 'static> {
-   |                   ------ help: add explicit lifetime `'static` to the type of `x`: `&'static isize`
+LL | fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + 'static> {
+   |                   ------ this data with an anonymous lifetime `'_`...
 LL |     // This is illegal, because the region bound on `proc` is 'static.
-LL |     Box::new(move|| { *x })
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'static` required
+LL |     Box::new(move || { *x })
+   |              ^^^^^^^^^^^^^^ ...is captured here, requiring it to live as long as `'static`
+   |
+help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `x`
+   |
+LL | fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + '_> {
+   |                                                           ^^
+help: alternatively, add an explicit `'static` bound to this reference
+   |
+LL | fn static_proc(x: &'static isize) -> Box<dyn FnMut() -> (isize) + 'static> {
+   |                   ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0621`.
+For more information about this error, try `rustc --explain E0759`.

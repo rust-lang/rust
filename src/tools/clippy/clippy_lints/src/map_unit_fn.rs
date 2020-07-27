@@ -100,8 +100,8 @@ fn is_unit_type(ty: Ty<'_>) -> bool {
     }
 }
 
-fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
-    let ty = cx.tables.expr_ty(expr);
+fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    let ty = cx.typeck_results().expr_ty(expr);
 
     if let ty::FnDef(id, _) = ty.kind {
         if let Some(fn_type) = cx.tcx.fn_sig(id).no_bound_vars() {
@@ -111,21 +111,21 @@ fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
     false
 }
 
-fn is_unit_expression(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>) -> bool {
-    is_unit_type(cx.tables.expr_ty(expr))
+fn is_unit_expression(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    is_unit_type(cx.typeck_results().expr_ty(expr))
 }
 
 /// The expression inside a closure may or may not have surrounding braces and
 /// semicolons, which causes problems when generating a suggestion. Given an
 /// expression that evaluates to '()' or '!', recursively remove useless braces
 /// and semi-colons until is suitable for including in the suggestion template
-fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr<'_>) -> Option<Span> {
+fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> Option<Span> {
     if !is_unit_expression(cx, expr) {
         return None;
     }
 
     match expr.kind {
-        hir::ExprKind::Call(_, _) | hir::ExprKind::MethodCall(_, _, _) => {
+        hir::ExprKind::Call(_, _) | hir::ExprKind::MethodCall(_, _, _, _) => {
             // Calls can't be reduced any more
             Some(expr.span)
         },
@@ -160,10 +160,10 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr<'_>)
     }
 }
 
-fn unit_closure<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &'a hir::Expr<'a>,
-) -> Option<(&'tcx hir::Param<'tcx>, &'a hir::Expr<'a>)> {
+fn unit_closure<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &hir::Expr<'_>,
+) -> Option<(&'tcx hir::Param<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if let hir::ExprKind::Closure(_, ref decl, inner_expr_id, _, _) = expr.kind {
         let body = cx.tcx.hir().body(inner_expr_id);
         let body_expr = &body.value;
@@ -186,7 +186,7 @@ fn unit_closure<'a, 'tcx>(
 /// `y` => `_y`
 ///
 /// Anything else will return `a`.
-fn let_binding_name(cx: &LateContext<'_, '_>, var_arg: &hir::Expr<'_>) -> String {
+fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
     match &var_arg.kind {
         hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
         hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
@@ -202,16 +202,17 @@ fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     )
 }
 
-fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr<'_>, map_args: &[hir::Expr<'_>]) {
+fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr<'_>, map_args: &[hir::Expr<'_>]) {
     let var_arg = &map_args[0];
 
-    let (map_type, variant, lint) = if is_type_diagnostic_item(cx, cx.tables.expr_ty(var_arg), sym!(option_type)) {
-        ("Option", "Some", OPTION_MAP_UNIT_FN)
-    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(var_arg), sym!(result_type)) {
-        ("Result", "Ok", RESULT_MAP_UNIT_FN)
-    } else {
-        return;
-    };
+    let (map_type, variant, lint) =
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym!(option_type)) {
+            ("Option", "Some", OPTION_MAP_UNIT_FN)
+        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(var_arg), sym!(result_type)) {
+            ("Result", "Ok", RESULT_MAP_UNIT_FN)
+        } else {
+            return;
+        };
     let fn_arg = &map_args[1];
 
     if is_unit_function(cx, fn_arg) {
@@ -258,8 +259,8 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>, expr: &hir::
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapUnit {
-    fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &hir::Stmt<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MapUnit {
+    fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
         if stmt.span.from_expansion() {
             return;
         }

@@ -12,6 +12,7 @@ use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBindin
 use rustc_ast::ast::NodeId;
 use rustc_ast::unwrap_or;
 use rustc_ast::util::lev_distance::find_best_match_for_name;
+use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
@@ -261,8 +262,8 @@ impl<'a> Resolver<'a> {
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
-            if let Some(blacklisted_binding) = this.blacklisted_binding {
-                if ptr::eq(binding, blacklisted_binding) {
+            if let Some(unusable_binding) = this.unusable_binding {
+                if ptr::eq(binding, unusable_binding) {
                     return Err((Determined, Weak::No));
                 }
             }
@@ -277,12 +278,12 @@ impl<'a> Resolver<'a> {
             return resolution
                 .binding
                 .and_then(|binding| {
-                    // If the primary binding is blacklisted, search further and return the shadowed
-                    // glob binding if it exists. What we really want here is having two separate
-                    // scopes in a module - one for non-globs and one for globs, but until that's done
-                    // use this hack to avoid inconsistent resolution ICEs during import validation.
-                    if let Some(blacklisted_binding) = self.blacklisted_binding {
-                        if ptr::eq(binding, blacklisted_binding) {
+                    // If the primary binding is unusable, search further and return the shadowed glob
+                    // binding if it exists. What we really want here is having two separate scopes in
+                    // a module - one for non-globs and one for globs, but until that's done use this
+                    // hack to avoid inconsistent resolution ICEs during import validation.
+                    if let Some(unusable_binding) = self.unusable_binding {
+                        if ptr::eq(binding, unusable_binding) {
                             return resolution.shadowed_glob;
                         }
                     }
@@ -874,9 +875,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: &'b Import<'b>) -> Option<UnresolvedImportError> {
         let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-        let orig_blacklisted_binding = match &import.kind {
+        let orig_unusable_binding = match &import.kind {
             ImportKind::Single { target_bindings, .. } => {
-                Some(mem::replace(&mut self.r.blacklisted_binding, target_bindings[TypeNS].get()))
+                Some(mem::replace(&mut self.r.unusable_binding, target_bindings[TypeNS].get()))
             }
             _ => None,
         };
@@ -890,8 +891,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             import.crate_lint(),
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
-        if let Some(orig_blacklisted_binding) = orig_blacklisted_binding {
-            self.r.blacklisted_binding = orig_blacklisted_binding;
+        if let Some(orig_unusable_binding) = orig_unusable_binding {
+            self.r.unusable_binding = orig_unusable_binding;
         }
         import.vis.set(orig_vis);
         if let PathResult::Failed { .. } | PathResult::NonModule(..) = path_res {
@@ -1012,8 +1013,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         self.r.per_ns(|this, ns| {
             if !type_ns_only || ns == TypeNS {
                 let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-                let orig_blacklisted_binding =
-                    mem::replace(&mut this.blacklisted_binding, target_bindings[ns].get());
+                let orig_unusable_binding =
+                    mem::replace(&mut this.unusable_binding, target_bindings[ns].get());
                 let orig_last_import_segment = mem::replace(&mut this.last_import_segment, true);
                 let binding = this.resolve_ident_in_module(
                     module,
@@ -1024,7 +1025,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     import.span,
                 );
                 this.last_import_segment = orig_last_import_segment;
-                this.blacklisted_binding = orig_blacklisted_binding;
+                this.unusable_binding = orig_unusable_binding;
                 import.vis.set(orig_vis);
 
                 match binding {
@@ -1033,8 +1034,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         let initial_res = source_bindings[ns].get().map(|initial_binding| {
                             all_ns_err = false;
                             if let Some(target_binding) = target_bindings[ns].get() {
-                                // Note that as_str() de-gensyms the Symbol
-                                if target.name.as_str() == "_"
+                                if target.name == kw::Underscore
                                     && initial_binding.is_extern_crate()
                                     && !initial_binding.is_import()
                                 {
@@ -1132,7 +1132,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 });
 
                 let lev_suggestion =
-                    find_best_match_for_name(names, &ident.as_str(), None).map(|suggestion| {
+                    find_best_match_for_name(names, ident.name, None).map(|suggestion| {
                         (
                             vec![(ident.span, suggestion.to_string())],
                             String::from("a similar name exists in the module"),
@@ -1290,8 +1290,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     return;
                 }
 
-                let orig_blacklisted_binding =
-                    mem::replace(&mut this.blacklisted_binding, target_bindings[ns].get());
+                let orig_unusable_binding =
+                    mem::replace(&mut this.unusable_binding, target_bindings[ns].get());
 
                 match this.early_resolve_ident_in_lexical_scope(
                     target,
@@ -1310,7 +1310,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     Err(_) => is_redundant[ns] = Some(false),
                 }
 
-                this.blacklisted_binding = orig_blacklisted_binding;
+                this.unusable_binding = orig_unusable_binding;
             }
         });
 
@@ -1393,8 +1393,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             let is_good_import =
                 binding.is_import() && !binding.is_ambiguity() && !ident.span.from_expansion();
             if is_good_import || binding.is_macro_def() {
-                let res = binding.res();
-                if res != Res::Err {
+                let res = binding.res().map_id(|id| this.local_def_id(id));
+                if res != def::Res::Err {
                     reexports.push(Export { ident, res, span: binding.span, vis: binding.vis });
                 }
             }
@@ -1467,7 +1467,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         if !reexports.is_empty() {
             if let Some(def_id) = module.def_id() {
-                self.r.export_map.insert(def_id, reexports);
+                // Call to `expect_local` should be fine because current
+                // code is only called for local modules.
+                self.r.export_map.insert(def_id.expect_local(), reexports);
             }
         }
     }

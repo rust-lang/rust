@@ -80,8 +80,7 @@ where
         PpmTyped => {
             abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
 
-            let empty_tables = ty::TypeckTables::empty(None);
-            let annotation = TypedAnnotation { tcx, tables: Cell::new(&empty_tables) };
+            let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
             tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
         }
         _ => panic!("Should use call_with_pp_support"),
@@ -304,12 +303,24 @@ impl<'a> pprust::PpAnn for HygieneAnnotation<'a> {
     }
 }
 
-struct TypedAnnotation<'a, 'tcx> {
+struct TypedAnnotation<'tcx> {
     tcx: TyCtxt<'tcx>,
-    tables: Cell<&'a ty::TypeckTables<'tcx>>,
+    maybe_typeck_results: Cell<Option<&'tcx ty::TypeckResults<'tcx>>>,
 }
 
-impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
+impl<'tcx> TypedAnnotation<'tcx> {
+    /// Gets the type-checking results for the current body.
+    /// As this will ICE if called outside bodies, only call when working with
+    /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[track_caller]
+    fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
+        self.maybe_typeck_results
+            .get()
+            .expect("`TypedAnnotation::typeck_results` called outside of body")
+    }
+}
+
+impl<'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'tcx> {
     fn sess(&self) -> &Session {
         &self.tcx.sess
     }
@@ -327,15 +338,15 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
+impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        let old_tables = self.tables.get();
+        let old_maybe_typeck_results = self.maybe_typeck_results.get();
         if let pprust_hir::Nested::Body(id) = nested {
-            self.tables.set(self.tcx.body_tables(id));
+            self.maybe_typeck_results.set(Some(self.tcx.typeck_body(id)));
         }
         let pp_ann = &(&self.tcx.hir() as &dyn hir::intravisit::Map<'_>);
         pprust_hir::PpAnn::nested(pp_ann, state, nested);
-        self.tables.set(old_tables);
+        self.maybe_typeck_results.set(old_maybe_typeck_results);
     }
     fn pre(&self, s: &mut pprust_hir::State<'_>, node: pprust_hir::AnnNode<'_>) {
         if let pprust_hir::AnnNode::Expr(_) = node {
@@ -347,7 +358,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
             s.s.space();
             s.s.word("as");
             s.s.space();
-            s.s.word(self.tables.get().expr_ty(expr).to_string());
+            s.s.word(self.typeck_results().expr_ty(expr).to_string());
             s.pclose();
         }
     }

@@ -151,7 +151,7 @@ fn enforce_empty_impls_for_marker_traits(
     struct_span_err!(tcx.sess, span, E0715, "impls for marker traits cannot contain items").emit();
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     use self::builtin::coerce_unsized_info;
     use self::inherent_impls::{crate_inherent_impls, inherent_impls};
     use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;
@@ -216,7 +216,7 @@ fn check_object_overlap<'tcx>(
         let component_def_ids = data.iter().flat_map(|predicate| {
             match predicate.skip_binder() {
                 ty::ExistentialPredicate::Trait(tr) => Some(tr.def_id),
-                ty::ExistentialPredicate::AutoTrait(def_id) => Some(*def_id),
+                ty::ExistentialPredicate::AutoTrait(def_id) => Some(def_id),
                 // An associated type projection necessarily comes with
                 // an additional `Trait` requirement.
                 ty::ExistentialPredicate::Projection(..) => None,

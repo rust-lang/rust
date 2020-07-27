@@ -1,14 +1,46 @@
-error[E0308]: mismatched types
-  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:56
+error: lifetime may not live long enough
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:9:5
+   |
+LL | fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+LL |     // Illegal now because there is no `'b:'a` declaration.
+LL |     *x = *y;
+   |     ^^^^^^^ assignment requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:16:5
+   |
+LL | fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
+   |      -- -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+...
+LL |     a(x, y, z);
+   |     ^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: higher-ranked subtype error
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
    |
 LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
-   |            -----------------------------------------   ^ expected concrete lifetime, found bound lifetime parameter
-   |            |
-   |            expected due to this
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
    |
-   = note: expected fn pointer `for<'r, 's, 't0, 't1, 't2, 't3> fn(&'r mut &'s isize, &'t0 mut &'t1 isize, &'t2 mut &'t3 isize)`
-                 found fn item `for<'r, 's, 't0> fn(&'r mut &isize, &'s mut &isize, &'t0 mut &isize) {a::<'_, '_, '_>}`
+LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: higher-ranked subtype error
+  --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:12
+   |
+LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 5 previous errors
+

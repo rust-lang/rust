@@ -52,8 +52,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ComparisonChain => [COMPARISON_CHAIN]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ComparisonChain {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
@@ -99,7 +99,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ComparisonChain {
                 }
 
                 // Check that the type being compared implements `core::cmp::Ord`
-                let ty = cx.tables.expr_ty(lhs1);
+                let ty = cx.typeck_results().expr_ty(lhs1);
                 let is_ord = get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]));
 
                 if !is_ord {
@@ -122,8 +122,5 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ComparisonChain {
 }
 
 fn kind_is_cmp(kind: BinOpKind) -> bool {
-    match kind {
-        BinOpKind::Lt | BinOpKind::Gt | BinOpKind::Eq => true,
-        _ => false,
-    }
+    matches!(kind, BinOpKind::Lt | BinOpKind::Gt | BinOpKind::Eq)
 }

@@ -142,11 +142,6 @@ use crate::{
     ops::{self, Deref, DerefMut},
 };
 
-// Note that this is not a lang item per se, but it has a hidden dependency on
-// `Iterator`, which is one. The compiler assumes that the `next` method of
-// `Iterator` is an enumeration with one type parameter and two variants,
-// which basically means it must be `Option`.
-
 /// The `Option` type. See [the module level documentation](index.html) for more.
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[rustc_diagnostic_item = "option_type"]
@@ -184,8 +179,9 @@ impl<T> Option<T> {
     /// [`Some`]: #variant.Some
     #[must_use = "if you intended to assert that this has a value, consider `.unwrap()` instead"]
     #[inline]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_some(&self) -> bool {
+    pub const fn is_some(&self) -> bool {
         matches!(*self, Some(_))
     }
 
@@ -205,8 +201,9 @@ impl<T> Option<T> {
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
                   `.and_then(|| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_none(&self) -> bool {
+    pub const fn is_none(&self) -> bool {
         !self.is_some()
     }
 
@@ -264,8 +261,9 @@ impl<T> Option<T> {
     /// println!("still can print text: {:?}", text);
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_ref(&self) -> Option<&T> {
+    pub const fn as_ref(&self) -> Option<&T> {
         match *self {
             Some(ref x) => Some(x),
             None => None,
@@ -585,8 +583,9 @@ impl<T> Option<T> {
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<'_, T> {
+    pub const fn iter(&self) -> Iter<'_, T> {
         Iter { inner: Item { opt: self.as_ref() } }
     }
 
@@ -926,7 +925,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_zip)]
     /// let x = Some(1);
     /// let y = Some("hi");
     /// let z = None::<u8>;
@@ -934,9 +932,12 @@ impl<T> Option<T> {
     /// assert_eq!(x.zip(y), Some((1, "hi")));
     /// assert_eq!(x.zip(z), None);
     /// ```
-    #[unstable(feature = "option_zip", issue = "70086")]
+    #[stable(feature = "option_zip_option", since = "1.46.0")]
     pub fn zip<U>(self, other: Option<U>) -> Option<(T, U)> {
-        self.zip_with(other, |a, b| (a, b))
+        match (self, other) {
+            (Some(a), Some(b)) => Some((a, b)),
+            _ => None,
+        }
     }
 
     /// Zips `self` and another `Option` with function `f`.
@@ -1684,6 +1685,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 /// to allow `x?` (where `x` is an `Option<T>`) to be converted into your error type, you can
 /// implement `impl From<NoneError>` for `YourErrorType`. In that case, `x?` within a function that
 /// returns `Result<_, YourErrorType>` will translate a `None` value into an `Err` result.
+#[rustc_diagnostic_item = "none_error"]
 #[unstable(feature = "try_trait", issue = "42327")]
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub struct NoneError;

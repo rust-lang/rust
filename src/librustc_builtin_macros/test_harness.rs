@@ -6,7 +6,7 @@ use rustc_ast::attr;
 use rustc_ast::entry::{self, EntryPointType};
 use rustc_ast::mut_visit::{ExpectOne, *};
 use rustc_ast::ptr::P;
-use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
@@ -37,7 +37,7 @@ struct TestCtxt<'a> {
 // existing main functions, and synthesizing a main test harness
 pub fn inject(
     sess: &ParseSess,
-    resolver: &mut dyn Resolver,
+    resolver: &mut dyn ResolverExpand,
     should_test: bool,
     krate: &mut ast::Crate,
     span_diagnostic: &rustc_errors::Handler,
@@ -164,10 +164,8 @@ impl MutVisitor for EntryPointCleaner {
             EntryPointType::MainNamed | EntryPointType::MainAttr | EntryPointType::Start => item
                 .map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
                     let allow_ident = Ident::new(sym::allow, self.def_site);
-                    let dc_nested = attr::mk_nested_word_item(Ident::from_str_and_span(
-                        "dead_code",
-                        self.def_site,
-                    ));
+                    let dc_nested =
+                        attr::mk_nested_word_item(Ident::new(sym::dead_code, self.def_site));
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
                     let attrs = attrs
@@ -192,7 +190,7 @@ impl MutVisitor for EntryPointCleaner {
 /// Crawl over the crate, inserting test reexports and the test main function
 fn generate_test_harness(
     sess: &ParseSess,
-    resolver: &mut dyn Resolver,
+    resolver: &mut dyn ResolverExpand,
     reexport_test_harness_main: Option<Symbol>,
     krate: &mut ast::Crate,
     features: &Features,
@@ -272,7 +270,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let mut test_runner = cx
         .test_runner
         .clone()
-        .unwrap_or(ecx.path(sp, vec![test_id, ecx.ident_of(runner_name, sp)]));
+        .unwrap_or(ecx.path(sp, vec![test_id, Ident::from_str_and_span(runner_name, sp)]));
 
     test_runner.span = sp;
 

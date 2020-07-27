@@ -16,7 +16,7 @@ use rustc_middle::ty::{self, DefIdTree};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span};
 
 use crate::imports::{Import, ImportKind, ImportResolver};
@@ -32,6 +32,10 @@ type Res = def::Res<ast::NodeId>;
 
 /// A vector of spans and replacements, a message and applicability.
 crate type Suggestion = (Vec<(Span, String)>, String, Applicability);
+
+/// Potential candidate for an undeclared or out-of-scope label - contains the ident of a
+/// similarly named label and whether or not it is reachable.
+crate type LabelSuggestion = (Ident, bool);
 
 crate struct TypoSuggestion {
     pub candidate: Symbol,
@@ -49,6 +53,7 @@ crate struct ImportSuggestion {
     pub did: Option<DefId>,
     pub descr: &'static str,
     pub path: Path,
+    pub accessible: bool,
 }
 
 /// Adjust the impl span so that just the `impl` keyword is taken by removing
@@ -107,7 +112,7 @@ impl<'a> Resolver<'a> {
                 match outer_res {
                     Res::SelfTy(maybe_trait_defid, maybe_impl_defid) => {
                         if let Some(impl_span) =
-                            maybe_impl_defid.and_then(|def_id| self.definitions.opt_span(def_id))
+                            maybe_impl_defid.and_then(|def_id| self.opt_span(def_id))
                         {
                             err.span_label(
                                 reduce_impl_span_to_impl_keyword(sm, impl_span),
@@ -126,12 +131,12 @@ impl<'a> Resolver<'a> {
                         return err;
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
-                        if let Some(span) = self.definitions.opt_span(def_id) {
+                        if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "type parameter from outer function");
                         }
                     }
                     Res::Def(DefKind::ConstParam, def_id) => {
-                        if let Some(span) = self.definitions.opt_span(def_id) {
+                        if let Some(span) = self.opt_span(def_id) {
                             err.span_label(span, "const parameter from outer function");
                         }
                     }
@@ -281,7 +286,7 @@ impl<'a> Resolver<'a> {
                 err.span_label(span, "used in a pattern more than once");
                 err
             }
-            ResolutionError::UndeclaredLabel(name, lev_candidate) => {
+            ResolutionError::UndeclaredLabel { name, suggestion } => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
@@ -289,16 +294,31 @@ impl<'a> Resolver<'a> {
                     "use of undeclared label `{}`",
                     name
                 );
-                if let Some(lev_candidate) = lev_candidate {
-                    err.span_suggestion(
-                        span,
-                        "a label with a similar name exists in this scope",
-                        lev_candidate.to_string(),
-                        Applicability::MaybeIncorrect,
-                    );
-                } else {
-                    err.span_label(span, format!("undeclared label `{}`", name));
+
+                err.span_label(span, format!("undeclared label `{}`", name));
+
+                match suggestion {
+                    // A reachable label with a similar name exists.
+                    Some((ident, true)) => {
+                        err.span_label(ident.span, "a label with a similar name is reachable");
+                        err.span_suggestion(
+                            span,
+                            "try using similarly named label",
+                            ident.name.to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    // An unreachable label with a similar name exists.
+                    Some((ident, false)) => {
+                        err.span_label(
+                            ident.span,
+                            "a label with a similar name exists but is unreachable",
+                        );
+                    }
+                    // No similarly-named labels exist.
+                    None => (),
                 }
+
                 err
             }
             ResolutionError::SelfImportsOnlyAllowedWithin { root, span_with_rename } => {
@@ -422,6 +442,19 @@ impl<'a> Resolver<'a> {
                 );
                 err
             }
+            ResolutionError::ParamInTyOfConstArg(name) => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0770,
+                    "the type of const parameters must not depend on other generic parameters"
+                );
+                err.span_label(
+                    span,
+                    format!("the type must not depend on the parameter `{}`", name),
+                );
+                err
+            }
             ResolutionError::SelfInTyParamDefault => {
                 let mut err = struct_span_err!(
                     self.session,
@@ -430,6 +463,45 @@ impl<'a> Resolver<'a> {
                     "type parameters cannot use `Self` in their defaults"
                 );
                 err.span_label(span, "`Self` in type parameter default".to_string());
+                err
+            }
+            ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0767,
+                    "use of unreachable label `{}`",
+                    name,
+                );
+
+                err.span_label(definition_span, "unreachable label defined here");
+                err.span_label(span, format!("unreachable label `{}`", name));
+                err.note(
+                    "labels are unreachable through functions, closures, async blocks and modules",
+                );
+
+                match suggestion {
+                    // A reachable label with a similar name exists.
+                    Some((ident, true)) => {
+                        err.span_label(ident.span, "a label with a similar name is reachable");
+                        err.span_suggestion(
+                            span,
+                            "try using similarly named label",
+                            ident.name.to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    // An unreachable label with a similar name exists.
+                    Some((ident, false)) => {
+                        err.span_label(
+                            ident.span,
+                            "a label with a similar name exists but is also unreachable",
+                        );
+                    }
+                    // No similarly-named labels exist.
+                    None => (),
+                }
+
                 err
             }
         }
@@ -615,7 +687,7 @@ impl<'a> Resolver<'a> {
 
         match find_best_match_for_name(
             suggestions.iter().map(|suggestion| &suggestion.candidate),
-            &ident.as_str(),
+            ident.name,
             None,
         ) {
             Some(found) if found != ident.name => {
@@ -629,6 +701,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
+        parent_scope: &ParentScope<'a>,
         start_module: Module<'a>,
         crate_name: Ident,
         filter_fn: FilterFn,
@@ -639,23 +712,49 @@ impl<'a> Resolver<'a> {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
         let not_local_module = crate_name.name != kw::Crate;
-        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
+        let mut worklist =
+            vec![(start_module, Vec::<ast::PathSegment>::new(), true, not_local_module)];
+        let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, in_module_is_extern)) = worklist.pop() {
+        while let Some((in_module, path_segments, accessible, in_module_is_extern)) =
+            match worklist.pop() {
+                None => worklist_via_import.pop(),
+                Some(x) => Some(x),
+            }
+        {
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
-                // avoid imports entirely
-                if name_binding.is_import() && !name_binding.is_extern_crate() {
-                    return;
-                }
-                // avoid non-importable candidates as well
+                // avoid non-importable candidates
                 if !name_binding.is_importable() {
                     return;
                 }
 
+                let child_accessible =
+                    accessible && this.is_accessible_from(name_binding.vis, parent_scope.module);
+
+                // do not venture inside inaccessible items of other crates
+                if in_module_is_extern && !child_accessible {
+                    return;
+                }
+
+                let via_import = name_binding.is_import() && !name_binding.is_extern_crate();
+
+                // There is an assumption elsewhere that paths of variants are in the enum's
+                // declaration and not imported. With this assumption, the variant component is
+                // chopped and the rest of the path is assumed to be the enum's own path. For
+                // errors where a variant is used as the type instead of the enum, this causes
+                // funny looking invalid suggestions, i.e `foo` instead of `foo::MyEnum`.
+                if via_import && name_binding.is_possibly_imported_variant() {
+                    return;
+                }
+
                 // collect results based on the filter function
-                if ident.name == lookup_ident.name && ns == namespace {
+                // avoid suggesting anything from the same module in which we are resolving
+                if ident.name == lookup_ident.name
+                    && ns == namespace
+                    && !ptr::eq(in_module, parent_scope.module)
+                {
                     let res = name_binding.res();
                     if filter_fn(res) {
                         // create the path
@@ -668,19 +767,28 @@ impl<'a> Resolver<'a> {
 
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path { span: name_binding.span, segments: segms };
-                        // the entity is accessible in the following cases:
-                        // 1. if it's defined in the same crate, it's always
-                        // accessible (since private entities can be made public)
-                        // 2. if it's defined in another crate, it's accessible
-                        // only if both the module is public and the entity is
-                        // declared as public (due to pruning, we don't explore
-                        // outside crate private modules => no need to check this)
-                        if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
-                            let did = match res {
-                                Res::Def(DefKind::Ctor(..), did) => this.parent(did),
-                                _ => res.opt_def_id(),
-                            };
-                            candidates.push(ImportSuggestion { did, descr: res.descr(), path });
+                        let did = match res {
+                            Res::Def(DefKind::Ctor(..), did) => this.parent(did),
+                            _ => res.opt_def_id(),
+                        };
+
+                        if child_accessible {
+                            // Remove invisible match if exists
+                            if let Some(idx) = candidates
+                                .iter()
+                                .position(|v: &ImportSuggestion| v.did == did && !v.accessible)
+                            {
+                                candidates.remove(idx);
+                            }
+                        }
+
+                        if candidates.iter().all(|v: &ImportSuggestion| v.did != did) {
+                            candidates.push(ImportSuggestion {
+                                did,
+                                descr: res.descr(),
+                                path,
+                                accessible: child_accessible,
+                            });
                         }
                     }
                 }
@@ -694,18 +802,21 @@ impl<'a> Resolver<'a> {
                     let is_extern_crate_that_also_appears_in_prelude =
                         name_binding.is_extern_crate() && lookup_ident.span.rust_2018();
 
-                    let is_visible_to_user =
-                        !in_module_is_extern || name_binding.vis == ty::Visibility::Public;
-
-                    if !is_extern_crate_that_also_appears_in_prelude && is_visible_to_user {
-                        // add the module to the lookup
+                    if !is_extern_crate_that_also_appears_in_prelude {
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
+                        // add the module to the lookup
                         if seen_modules.insert(module.def_id().unwrap()) {
-                            worklist.push((module, path_segments, is_extern));
+                            if via_import { &mut worklist_via_import } else { &mut worklist }
+                                .push((module, path_segments, child_accessible, is_extern));
                         }
                     }
                 }
             })
+        }
+
+        // If only some candidates are accessible, take just them
+        if !candidates.iter().all(|v: &ImportSuggestion| !v.accessible) {
+            candidates = candidates.into_iter().filter(|x| x.accessible).collect();
         }
 
         candidates
@@ -722,6 +833,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         lookup_ident: Ident,
         namespace: Namespace,
+        parent_scope: &ParentScope<'a>,
         filter_fn: FilterFn,
     ) -> Vec<ImportSuggestion>
     where
@@ -730,6 +842,7 @@ impl<'a> Resolver<'a> {
         let mut suggestions = self.lookup_import_candidates_from_module(
             lookup_ident,
             namespace,
+            parent_scope,
             self.graph_root,
             Ident::with_dummy_span(kw::Crate),
             &filter_fn,
@@ -746,14 +859,13 @@ impl<'a> Resolver<'a> {
                     // otherwise cause duplicate suggestions.
                     continue;
                 }
-                if let Some(crate_id) =
-                    self.crate_loader.maybe_process_path_extern(ident.name, ident.span)
-                {
+                if let Some(crate_id) = self.crate_loader.maybe_process_path_extern(ident.name) {
                     let crate_root =
                         self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                     suggestions.extend(self.lookup_import_candidates_from_module(
                         lookup_ident,
                         namespace,
+                        parent_scope,
                         crate_root,
                         ident,
                         &filter_fn,
@@ -781,8 +893,7 @@ impl<'a> Resolver<'a> {
         );
         self.add_typo_suggestion(err, suggestion, ident.span);
 
-        if macro_kind == MacroKind::Derive && (ident.as_str() == "Send" || ident.as_str() == "Sync")
-        {
+        if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
             let msg = format!("unsafe traits like `{}` should be implemented explicitly", ident);
             err.span_note(ident.span, &msg);
         }
@@ -797,44 +908,42 @@ impl<'a> Resolver<'a> {
         suggestion: Option<TypoSuggestion>,
         span: Span,
     ) -> bool {
-        if let Some(suggestion) = suggestion {
+        let suggestion = match suggestion {
+            None => return false,
             // We shouldn't suggest underscore.
-            if suggestion.candidate == kw::Underscore {
-                return false;
-            }
-
-            let msg = format!(
-                "{} {} with a similar name exists",
-                suggestion.res.article(),
-                suggestion.res.descr()
-            );
-            err.span_suggestion(
-                span,
-                &msg,
-                suggestion.candidate.to_string(),
-                Applicability::MaybeIncorrect,
-            );
-            let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
-                LOCAL_CRATE => self.definitions.opt_span(def_id),
-                _ => Some(
-                    self.session
-                        .source_map()
-                        .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
+            Some(suggestion) if suggestion.candidate == kw::Underscore => return false,
+            Some(suggestion) => suggestion,
+        };
+        let msg = format!(
+            "{} {} with a similar name exists",
+            suggestion.res.article(),
+            suggestion.res.descr()
+        );
+        err.span_suggestion(
+            span,
+            &msg,
+            suggestion.candidate.to_string(),
+            Applicability::MaybeIncorrect,
+        );
+        let def_span = suggestion.res.opt_def_id().and_then(|def_id| match def_id.krate {
+            LOCAL_CRATE => self.opt_span(def_id),
+            _ => Some(
+                self.session
+                    .source_map()
+                    .guess_head_span(self.cstore().get_span_untracked(def_id, self.session)),
+            ),
+        });
+        if let Some(span) = def_span {
+            err.span_label(
+                self.session.source_map().guess_head_span(span),
+                &format!(
+                    "similarly named {} `{}` defined here",
+                    suggestion.res.descr(),
+                    suggestion.candidate.as_str(),
                 ),
-            });
-            if let Some(span) = def_span {
-                err.span_label(
-                    self.session.source_map().guess_head_span(span),
-                    &format!(
-                        "similarly named {} `{}` defined here",
-                        suggestion.res.descr(),
-                        suggestion.candidate.as_str(),
-                    ),
-                );
-            }
-            return true;
+            );
         }
-        false
+        true
     }
 
     fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
@@ -1475,7 +1584,7 @@ crate fn show_candidates(
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
-    better: bool,
+    instead: bool,
     found_use: bool,
 ) {
     if candidates.is_empty() {
@@ -1486,6 +1595,7 @@ crate fn show_candidates(
     // by iterating through a hash map, so make sure they are ordered:
     let mut path_strings: Vec<_> =
         candidates.iter().map(|c| path_names_to_string(&c.path)).collect();
+
     path_strings.sort();
     path_strings.dedup();
 
@@ -1494,8 +1604,9 @@ crate fn show_candidates(
     } else {
         ("one of these", "items")
     };
-    let instead = if better { " instead" } else { "" };
-    let msg = format!("consider importing {} {}{}", determiner, kind, instead);
+
+    let instead = if instead { " instead" } else { "" };
+    let mut msg = format!("consider importing {} {}{}", determiner, kind, instead);
 
     if let Some(span) = use_placement_span {
         for candidate in &mut path_strings {
@@ -1507,12 +1618,13 @@ crate fn show_candidates(
 
         err.span_suggestions(span, &msg, path_strings.into_iter(), Applicability::Unspecified);
     } else {
-        let mut msg = msg;
         msg.push(':');
+
         for candidate in path_strings {
             msg.push('\n');
             msg.push_str(&candidate);
         }
+
         err.note(&msg);
     }
 }

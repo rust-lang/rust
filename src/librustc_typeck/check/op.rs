@@ -1,16 +1,19 @@
 //! Code related to processing overloaded binary and unary operators.
 
 use super::method::MethodCallee;
-use super::{FnCtxt, Needs};
+use super::FnCtxt;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
+use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::TyKind::{Adt, Array, Char, FnDef, Never, Ref, Str, Tuple, Uint};
-use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable};
-use rustc_span::symbol::Ident;
+use rustc_middle::ty::{
+    self, suggest_constraining_type_param, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+};
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 
@@ -57,9 +60,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
                 // && and || are a simple case.
-                self.check_expr_coercable_to_type(lhs_expr, tcx.types.bool);
+                self.check_expr_coercable_to_type(lhs_expr, tcx.types.bool, None);
                 let lhs_diverges = self.diverges.get();
-                self.check_expr_coercable_to_type(rhs_expr, tcx.types.bool);
+                self.check_expr_coercable_to_type(rhs_expr, tcx.types.bool, None);
 
                 // Depending on the LHS' value, the RHS can never execute.
                 self.diverges.set(lhs_diverges);
@@ -121,9 +124,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
-                self.demand_suptype(*lhs_span, tcx.mk_bool(), lhs_ty);
-                self.demand_suptype(*rhs_span, tcx.mk_bool(), rhs_ty);
-                tcx.mk_bool()
+                self.demand_suptype(*lhs_span, tcx.types.bool, lhs_ty);
+                self.demand_suptype(*rhs_span, tcx.types.bool, rhs_ty);
+                tcx.types.bool
             }
 
             BinOpCategory::Shift => {
@@ -140,7 +143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             BinOpCategory::Comparison => {
                 // both LHS and RHS and result will have the same type
                 self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
-                tcx.mk_bool()
+                tcx.types.bool
             }
         }
     }
@@ -165,19 +168,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // trait matching creating lifetime constraints that are too strict.
                 // e.g., adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
                 // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
-                let lhs_ty = self.check_expr_with_needs(lhs_expr, Needs::None);
+                let lhs_ty = self.check_expr(lhs_expr);
                 let fresh_var = self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: lhs_expr.span,
                 });
-                self.demand_coerce(lhs_expr, lhs_ty, fresh_var, AllowTwoPhase::No)
+                self.demand_coerce(lhs_expr, lhs_ty, fresh_var, Some(rhs_expr), AllowTwoPhase::No)
             }
             IsAssign::Yes => {
                 // rust-lang/rust#52126: We have to use strict
                 // equivalence on the LHS of an assign-op like `+=`;
                 // overwritten or mutably-borrowed places cannot be
                 // coerced to a supertype.
-                self.check_expr_with_needs(lhs_expr, Needs::MutPlace)
+                self.check_expr(lhs_expr)
             }
         };
         let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);
@@ -196,7 +199,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 
         // see `NB` above
-        let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var);
+        let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
         let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {
@@ -237,7 +240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // some cases applied on the RHS, on top of which we need
                         // to autoref, which is not allowed by apply_adjustments.
                         // self.apply_adjustments(rhs_expr, vec![autoref]);
-                        self.tables
+                        self.typeck_results
                             .borrow_mut()
                             .adjustments_mut()
                             .entry(rhs_expr.hir_id)
@@ -249,255 +252,230 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 method.sig.output()
             }
+            // error types are considered "builtin"
+            Err(()) if lhs_ty.references_error() || rhs_ty.references_error() => {
+                self.tcx.ty_error()
+            }
             Err(()) => {
-                // error types are considered "builtin"
-                if !lhs_ty.references_error() && !rhs_ty.references_error() {
-                    let source_map = self.tcx.sess.source_map();
-
-                    match is_assign {
-                        IsAssign::Yes => {
-                            let mut err = struct_span_err!(
-                                self.tcx.sess,
-                                expr.span,
-                                E0368,
-                                "binary assignment operation `{}=` cannot be applied to type `{}`",
-                                op.node.as_str(),
-                                lhs_ty,
-                            );
-                            err.span_label(
+                let source_map = self.tcx.sess.source_map();
+                let (mut err, missing_trait, use_output, involves_fn) = match is_assign {
+                    IsAssign::Yes => {
+                        let mut err = struct_span_err!(
+                            self.tcx.sess,
+                            expr.span,
+                            E0368,
+                            "binary assignment operation `{}=` cannot be applied to type `{}`",
+                            op.node.as_str(),
+                            lhs_ty,
+                        );
+                        err.span_label(
+                            lhs_expr.span,
+                            format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty),
+                        );
+                        let missing_trait = match op.node {
+                            hir::BinOpKind::Add => Some("std::ops::AddAssign"),
+                            hir::BinOpKind::Sub => Some("std::ops::SubAssign"),
+                            hir::BinOpKind::Mul => Some("std::ops::MulAssign"),
+                            hir::BinOpKind::Div => Some("std::ops::DivAssign"),
+                            hir::BinOpKind::Rem => Some("std::ops::RemAssign"),
+                            hir::BinOpKind::BitAnd => Some("std::ops::BitAndAssign"),
+                            hir::BinOpKind::BitXor => Some("std::ops::BitXorAssign"),
+                            hir::BinOpKind::BitOr => Some("std::ops::BitOrAssign"),
+                            hir::BinOpKind::Shl => Some("std::ops::ShlAssign"),
+                            hir::BinOpKind::Shr => Some("std::ops::ShrAssign"),
+                            _ => None,
+                        };
+                        (err, missing_trait, false, false)
+                    }
+                    IsAssign::No => {
+                        let (message, missing_trait, use_output) = match op.node {
+                            hir::BinOpKind::Add => (
+                                format!("cannot add `{}` to `{}`", rhs_ty, lhs_ty),
+                                Some("std::ops::Add"),
+                                true,
+                            ),
+                            hir::BinOpKind::Sub => (
+                                format!("cannot subtract `{}` from `{}`", rhs_ty, lhs_ty),
+                                Some("std::ops::Sub"),
+                                true,
+                            ),
+                            hir::BinOpKind::Mul => (
+                                format!("cannot multiply `{}` to `{}`", rhs_ty, lhs_ty),
+                                Some("std::ops::Mul"),
+                                true,
+                            ),
+                            hir::BinOpKind::Div => (
+                                format!("cannot divide `{}` by `{}`", lhs_ty, rhs_ty),
+                                Some("std::ops::Div"),
+                                true,
+                            ),
+                            hir::BinOpKind::Rem => (
+                                format!("cannot mod `{}` by `{}`", lhs_ty, rhs_ty),
+                                Some("std::ops::Rem"),
+                                true,
+                            ),
+                            hir::BinOpKind::BitAnd => (
+                                format!("no implementation for `{} & {}`", lhs_ty, rhs_ty),
+                                Some("std::ops::BitAnd"),
+                                true,
+                            ),
+                            hir::BinOpKind::BitXor => (
+                                format!("no implementation for `{} ^ {}`", lhs_ty, rhs_ty),
+                                Some("std::ops::BitXor"),
+                                true,
+                            ),
+                            hir::BinOpKind::BitOr => (
+                                format!("no implementation for `{} | {}`", lhs_ty, rhs_ty),
+                                Some("std::ops::BitOr"),
+                                true,
+                            ),
+                            hir::BinOpKind::Shl => (
+                                format!("no implementation for `{} << {}`", lhs_ty, rhs_ty),
+                                Some("std::ops::Shl"),
+                                true,
+                            ),
+                            hir::BinOpKind::Shr => (
+                                format!("no implementation for `{} >> {}`", lhs_ty, rhs_ty),
+                                Some("std::ops::Shr"),
+                                true,
+                            ),
+                            hir::BinOpKind::Eq | hir::BinOpKind::Ne => (
+                                format!(
+                                    "binary operation `{}` cannot be applied to type `{}`",
+                                    op.node.as_str(),
+                                    lhs_ty
+                                ),
+                                Some("std::cmp::PartialEq"),
+                                false,
+                            ),
+                            hir::BinOpKind::Lt
+                            | hir::BinOpKind::Le
+                            | hir::BinOpKind::Gt
+                            | hir::BinOpKind::Ge => (
+                                format!(
+                                    "binary operation `{}` cannot be applied to type `{}`",
+                                    op.node.as_str(),
+                                    lhs_ty
+                                ),
+                                Some("std::cmp::PartialOrd"),
+                                false,
+                            ),
+                            _ => (
+                                format!(
+                                    "binary operation `{}` cannot be applied to type `{}`",
+                                    op.node.as_str(),
+                                    lhs_ty
+                                ),
+                                None,
+                                false,
+                            ),
+                        };
+                        let mut err =
+                            struct_span_err!(self.tcx.sess, op.span, E0369, "{}", message.as_str());
+                        let mut involves_fn = false;
+                        if !lhs_expr.span.eq(&rhs_expr.span) {
+                            involves_fn |= self.add_type_neq_err_label(
+                                &mut err,
                                 lhs_expr.span,
-                                format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty),
+                                lhs_ty,
+                                rhs_ty,
+                                op,
+                                is_assign,
                             );
-                            let mut suggested_deref = false;
-                            if let Ref(_, rty, _) = lhs_ty.kind {
-                                if {
-                                    self.infcx.type_is_copy_modulo_regions(
-                                        self.param_env,
-                                        rty,
-                                        lhs_expr.span,
-                                    ) && self
-                                        .lookup_op_method(rty, &[rhs_ty], Op::Binary(op, is_assign))
-                                        .is_ok()
-                                } {
-                                    if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                                        let msg = &format!(
-                                            "`{}=` can be used on '{}', you can dereference `{}`",
-                                            op.node.as_str(),
-                                            rty.peel_refs(),
-                                            lstring,
-                                        );
-                                        err.span_suggestion(
-                                            lhs_expr.span,
-                                            msg,
-                                            format!("*{}", lstring),
-                                            rustc_errors::Applicability::MachineApplicable,
-                                        );
-                                        suggested_deref = true;
-                                    }
-                                }
-                            }
-                            let missing_trait = match op.node {
-                                hir::BinOpKind::Add => Some("std::ops::AddAssign"),
-                                hir::BinOpKind::Sub => Some("std::ops::SubAssign"),
-                                hir::BinOpKind::Mul => Some("std::ops::MulAssign"),
-                                hir::BinOpKind::Div => Some("std::ops::DivAssign"),
-                                hir::BinOpKind::Rem => Some("std::ops::RemAssign"),
-                                hir::BinOpKind::BitAnd => Some("std::ops::BitAndAssign"),
-                                hir::BinOpKind::BitXor => Some("std::ops::BitXorAssign"),
-                                hir::BinOpKind::BitOr => Some("std::ops::BitOrAssign"),
-                                hir::BinOpKind::Shl => Some("std::ops::ShlAssign"),
-                                hir::BinOpKind::Shr => Some("std::ops::ShrAssign"),
-                                _ => None,
-                            };
-                            if let Some(missing_trait) = missing_trait {
-                                if op.node == hir::BinOpKind::Add
-                                    && self.check_str_addition(
-                                        lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, true, op,
-                                    )
-                                {
-                                    // This has nothing here because it means we did string
-                                    // concatenation (e.g., "Hello " += "World!"). This means
-                                    // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(p) = lhs_ty.kind {
-                                    suggest_constraining_param(
-                                        self.tcx,
-                                        self.body_id,
-                                        &mut err,
-                                        lhs_ty,
-                                        rhs_ty,
-                                        missing_trait,
-                                        p,
-                                        false,
-                                    );
-                                } else if !suggested_deref {
-                                    suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
-                                }
-                            }
-                            err.emit();
+                            involves_fn |= self.add_type_neq_err_label(
+                                &mut err,
+                                rhs_expr.span,
+                                rhs_ty,
+                                lhs_ty,
+                                op,
+                                is_assign,
+                            );
                         }
-                        IsAssign::No => {
-                            let (message, missing_trait, use_output) = match op.node {
-                                hir::BinOpKind::Add => (
-                                    format!("cannot add `{}` to `{}`", rhs_ty, lhs_ty),
-                                    Some("std::ops::Add"),
-                                    true,
-                                ),
-                                hir::BinOpKind::Sub => (
-                                    format!("cannot subtract `{}` from `{}`", rhs_ty, lhs_ty),
-                                    Some("std::ops::Sub"),
-                                    true,
-                                ),
-                                hir::BinOpKind::Mul => (
-                                    format!("cannot multiply `{}` to `{}`", rhs_ty, lhs_ty),
-                                    Some("std::ops::Mul"),
-                                    true,
-                                ),
-                                hir::BinOpKind::Div => (
-                                    format!("cannot divide `{}` by `{}`", lhs_ty, rhs_ty),
-                                    Some("std::ops::Div"),
-                                    true,
-                                ),
-                                hir::BinOpKind::Rem => (
-                                    format!("cannot mod `{}` by `{}`", lhs_ty, rhs_ty),
-                                    Some("std::ops::Rem"),
-                                    true,
-                                ),
-                                hir::BinOpKind::BitAnd => (
-                                    format!("no implementation for `{} & {}`", lhs_ty, rhs_ty),
-                                    Some("std::ops::BitAnd"),
-                                    true,
-                                ),
-                                hir::BinOpKind::BitXor => (
-                                    format!("no implementation for `{} ^ {}`", lhs_ty, rhs_ty),
-                                    Some("std::ops::BitXor"),
-                                    true,
-                                ),
-                                hir::BinOpKind::BitOr => (
-                                    format!("no implementation for `{} | {}`", lhs_ty, rhs_ty),
-                                    Some("std::ops::BitOr"),
-                                    true,
-                                ),
-                                hir::BinOpKind::Shl => (
-                                    format!("no implementation for `{} << {}`", lhs_ty, rhs_ty),
-                                    Some("std::ops::Shl"),
-                                    true,
-                                ),
-                                hir::BinOpKind::Shr => (
-                                    format!("no implementation for `{} >> {}`", lhs_ty, rhs_ty),
-                                    Some("std::ops::Shr"),
-                                    true,
-                                ),
-                                hir::BinOpKind::Eq | hir::BinOpKind::Ne => (
-                                    format!(
-                                        "binary operation `{}` cannot be applied to type `{}`",
-                                        op.node.as_str(),
-                                        lhs_ty
-                                    ),
-                                    Some("std::cmp::PartialEq"),
-                                    false,
-                                ),
-                                hir::BinOpKind::Lt
-                                | hir::BinOpKind::Le
-                                | hir::BinOpKind::Gt
-                                | hir::BinOpKind::Ge => (
-                                    format!(
-                                        "binary operation `{}` cannot be applied to type `{}`",
-                                        op.node.as_str(),
-                                        lhs_ty
-                                    ),
-                                    Some("std::cmp::PartialOrd"),
-                                    false,
-                                ),
-                                _ => (
-                                    format!(
-                                        "binary operation `{}` cannot be applied to type `{}`",
-                                        op.node.as_str(),
-                                        lhs_ty
-                                    ),
-                                    None,
-                                    false,
-                                ),
-                            };
-                            let mut err = struct_span_err!(
-                                self.tcx.sess,
-                                op.span,
-                                E0369,
-                                "{}",
-                                message.as_str()
+                        (err, missing_trait, use_output, involves_fn)
+                    }
+                };
+                let mut suggested_deref = false;
+                if let Ref(_, rty, _) = lhs_ty.kind {
+                    if {
+                        self.infcx.type_is_copy_modulo_regions(self.param_env, rty, lhs_expr.span)
+                            && self
+                                .lookup_op_method(rty, &[rhs_ty], Op::Binary(op, is_assign))
+                                .is_ok()
+                    } {
+                        if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
+                            let msg = &format!(
+                                "`{}{}` can be used on `{}`, you can dereference `{}`",
+                                op.node.as_str(),
+                                match is_assign {
+                                    IsAssign::Yes => "=",
+                                    IsAssign::No => "",
+                                },
+                                rty.peel_refs(),
+                                lstring,
                             );
-
-                            let mut involves_fn = false;
-                            if !lhs_expr.span.eq(&rhs_expr.span) {
-                                involves_fn |= self.add_type_neq_err_label(
-                                    &mut err,
-                                    lhs_expr.span,
-                                    lhs_ty,
-                                    rhs_ty,
-                                    op,
-                                    is_assign,
-                                );
-                                involves_fn |= self.add_type_neq_err_label(
-                                    &mut err,
-                                    rhs_expr.span,
-                                    rhs_ty,
-                                    lhs_ty,
-                                    op,
-                                    is_assign,
-                                );
-                            }
-
-                            let mut suggested_deref = false;
-                            if let Ref(_, rty, _) = lhs_ty.kind {
-                                if {
-                                    self.infcx.type_is_copy_modulo_regions(
-                                        self.param_env,
-                                        rty,
-                                        lhs_expr.span,
-                                    ) && self
-                                        .lookup_op_method(rty, &[rhs_ty], Op::Binary(op, is_assign))
-                                        .is_ok()
-                                } {
-                                    if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
-                                        err.help(&format!(
-                                            "`{}` can be used on '{}', you can \
-                                            dereference `{2}`: `*{2}`",
-                                            op.node.as_str(),
-                                            rty.peel_refs(),
-                                            lstring
-                                        ));
-                                        suggested_deref = true;
-                                    }
-                                }
-                            }
-                            if let Some(missing_trait) = missing_trait {
-                                if op.node == hir::BinOpKind::Add
-                                    && self.check_str_addition(
-                                        lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, false, op,
-                                    )
-                                {
-                                    // This has nothing here because it means we did string
-                                    // concatenation (e.g., "Hello " + "World!"). This means
-                                    // we don't want the note in the else clause to be emitted
-                                } else if let ty::Param(p) = lhs_ty.kind {
-                                    suggest_constraining_param(
-                                        self.tcx,
-                                        self.body_id,
-                                        &mut err,
-                                        lhs_ty,
-                                        rhs_ty,
-                                        missing_trait,
-                                        p,
-                                        use_output,
-                                    );
-                                } else if !suggested_deref && !involves_fn {
-                                    suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
-                                }
-                            }
-                            err.emit();
+                            err.span_suggestion_verbose(
+                                lhs_expr.span.shrink_to_lo(),
+                                msg,
+                                "*".to_string(),
+                                rustc_errors::Applicability::MachineApplicable,
+                            );
+                            suggested_deref = true;
                         }
                     }
                 }
-                self.tcx.types.err
+                if let Some(missing_trait) = missing_trait {
+                    let mut visitor = TypeParamVisitor(vec![]);
+                    visitor.visit_ty(lhs_ty);
+
+                    if op.node == hir::BinOpKind::Add
+                        && self.check_str_addition(
+                            lhs_expr, rhs_expr, lhs_ty, rhs_ty, &mut err, is_assign, op,
+                        )
+                    {
+                        // This has nothing here because it means we did string
+                        // concatenation (e.g., "Hello " + "World!"). This means
+                        // we don't want the note in the else clause to be emitted
+                    } else if let [ty] = &visitor.0[..] {
+                        if let ty::Param(p) = ty.kind {
+                            // Check if the method would be found if the type param wasn't
+                            // involved. If so, it means that adding a trait bound to the param is
+                            // enough. Otherwise we do not give the suggestion.
+                            let mut eraser = TypeParamEraser(&self, expr.span);
+                            let needs_bound = self
+                                .lookup_op_method(
+                                    eraser.fold_ty(lhs_ty),
+                                    &[eraser.fold_ty(rhs_ty)],
+                                    Op::Binary(op, is_assign),
+                                )
+                                .is_ok();
+                            if needs_bound {
+                                suggest_constraining_param(
+                                    self.tcx,
+                                    self.body_id,
+                                    &mut err,
+                                    ty,
+                                    rhs_ty,
+                                    missing_trait,
+                                    p,
+                                    use_output,
+                                );
+                            } else if *ty != lhs_ty {
+                                // When we know that a missing bound is responsible, we don't show
+                                // this note as it is redundant.
+                                err.note(&format!(
+                                    "the trait `{}` is not implemented for `{}`",
+                                    missing_trait, lhs_ty
+                                ));
+                            }
+                        } else {
+                            bug!("type param visitor stored a non type param: {:?}", ty.kind);
+                        }
+                    } else if !suggested_deref && !involves_fn {
+                        suggest_impl_missing(&mut err, lhs_ty, &missing_trait);
+                    }
+                }
+                err.emit();
+                self.tcx.ty_error()
             }
         };
 
@@ -518,14 +496,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = ty.kind {
             let source_map = self.tcx.sess.source_map();
-            if !self.tcx.has_typeck_tables(def_id) {
+            if !self.tcx.has_typeck_results(def_id) {
                 return false;
             }
             // We're emitting a suggestion, so we can just ignore regions
-            let fn_sig = *self.tcx.fn_sig(def_id).skip_binder();
+            let fn_sig = self.tcx.fn_sig(def_id).skip_binder();
 
             let other_ty = if let FnDef(def_id, _) = other_ty.kind {
-                if !self.tcx.has_typeck_tables(def_id) {
+                if !self.tcx.has_typeck_results(def_id) {
                     return false;
                 }
                 // We're emitting a suggestion, so we can just ignore regions
@@ -570,7 +548,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
         err: &mut rustc_errors::DiagnosticBuilder<'_>,
-        is_assign: bool,
+        is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {
         let source_map = self.tcx.sess.source_map();
@@ -593,7 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &format!("{:?}", rhs_ty) == "&&str"
                     ) =>
             {
-                if !is_assign { // Do not supply this message if `&str += &str`
+                if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
                     err.span_label(
                         op.span,
                         "`+` cannot be used to concatenate two `&str` strings",
@@ -634,7 +612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     source_map.span_to_snippet(rhs_expr.span),
                     is_assign,
                 ) {
-                    (Ok(l), Ok(r), false) => {
+                    (Ok(l), Ok(r), IsAssign::No) => {
                         let to_string = if l.starts_with('&') {
                             // let a = String::new(); let b = String::new();
                             // let _ = &a + b;
@@ -686,11 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     err.span_label(
                         ex.span,
-                        format!(
-                            "cannot apply unary \
-                                                    operator `{}`",
-                            op.as_str()
-                        ),
+                        format!("cannot apply unary operator `{}`", op.as_str()),
                     );
                     match actual.kind {
                         Uint(_) if op == hir::UnOp::UnNeg => {
@@ -709,7 +683,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     err.emit();
                 }
-                self.tcx.types.err
+                self.tcx.ty_error()
             }
         }
     }
@@ -728,16 +702,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let (opname, trait_did) = if let Op::Binary(op, IsAssign::Yes) = op {
             match op.node {
-                hir::BinOpKind::Add => ("add_assign", lang.add_assign_trait()),
-                hir::BinOpKind::Sub => ("sub_assign", lang.sub_assign_trait()),
-                hir::BinOpKind::Mul => ("mul_assign", lang.mul_assign_trait()),
-                hir::BinOpKind::Div => ("div_assign", lang.div_assign_trait()),
-                hir::BinOpKind::Rem => ("rem_assign", lang.rem_assign_trait()),
-                hir::BinOpKind::BitXor => ("bitxor_assign", lang.bitxor_assign_trait()),
-                hir::BinOpKind::BitAnd => ("bitand_assign", lang.bitand_assign_trait()),
-                hir::BinOpKind::BitOr => ("bitor_assign", lang.bitor_assign_trait()),
-                hir::BinOpKind::Shl => ("shl_assign", lang.shl_assign_trait()),
-                hir::BinOpKind::Shr => ("shr_assign", lang.shr_assign_trait()),
+                hir::BinOpKind::Add => (sym::add_assign, lang.add_assign_trait()),
+                hir::BinOpKind::Sub => (sym::sub_assign, lang.sub_assign_trait()),
+                hir::BinOpKind::Mul => (sym::mul_assign, lang.mul_assign_trait()),
+                hir::BinOpKind::Div => (sym::div_assign, lang.div_assign_trait()),
+                hir::BinOpKind::Rem => (sym::rem_assign, lang.rem_assign_trait()),
+                hir::BinOpKind::BitXor => (sym::bitxor_assign, lang.bitxor_assign_trait()),
+                hir::BinOpKind::BitAnd => (sym::bitand_assign, lang.bitand_assign_trait()),
+                hir::BinOpKind::BitOr => (sym::bitor_assign, lang.bitor_assign_trait()),
+                hir::BinOpKind::Shl => (sym::shl_assign, lang.shl_assign_trait()),
+                hir::BinOpKind::Shr => (sym::shr_assign, lang.shr_assign_trait()),
                 hir::BinOpKind::Lt
                 | hir::BinOpKind::Le
                 | hir::BinOpKind::Ge
@@ -751,30 +725,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else if let Op::Binary(op, IsAssign::No) = op {
             match op.node {
-                hir::BinOpKind::Add => ("add", lang.add_trait()),
-                hir::BinOpKind::Sub => ("sub", lang.sub_trait()),
-                hir::BinOpKind::Mul => ("mul", lang.mul_trait()),
-                hir::BinOpKind::Div => ("div", lang.div_trait()),
-                hir::BinOpKind::Rem => ("rem", lang.rem_trait()),
-                hir::BinOpKind::BitXor => ("bitxor", lang.bitxor_trait()),
-                hir::BinOpKind::BitAnd => ("bitand", lang.bitand_trait()),
-                hir::BinOpKind::BitOr => ("bitor", lang.bitor_trait()),
-                hir::BinOpKind::Shl => ("shl", lang.shl_trait()),
-                hir::BinOpKind::Shr => ("shr", lang.shr_trait()),
-                hir::BinOpKind::Lt => ("lt", lang.partial_ord_trait()),
-                hir::BinOpKind::Le => ("le", lang.partial_ord_trait()),
-                hir::BinOpKind::Ge => ("ge", lang.partial_ord_trait()),
-                hir::BinOpKind::Gt => ("gt", lang.partial_ord_trait()),
-                hir::BinOpKind::Eq => ("eq", lang.eq_trait()),
-                hir::BinOpKind::Ne => ("ne", lang.eq_trait()),
+                hir::BinOpKind::Add => (sym::add, lang.add_trait()),
+                hir::BinOpKind::Sub => (sym::sub, lang.sub_trait()),
+                hir::BinOpKind::Mul => (sym::mul, lang.mul_trait()),
+                hir::BinOpKind::Div => (sym::div, lang.div_trait()),
+                hir::BinOpKind::Rem => (sym::rem, lang.rem_trait()),
+                hir::BinOpKind::BitXor => (sym::bitxor, lang.bitxor_trait()),
+                hir::BinOpKind::BitAnd => (sym::bitand, lang.bitand_trait()),
+                hir::BinOpKind::BitOr => (sym::bitor, lang.bitor_trait()),
+                hir::BinOpKind::Shl => (sym::shl, lang.shl_trait()),
+                hir::BinOpKind::Shr => (sym::shr, lang.shr_trait()),
+                hir::BinOpKind::Lt => (sym::lt, lang.partial_ord_trait()),
+                hir::BinOpKind::Le => (sym::le, lang.partial_ord_trait()),
+                hir::BinOpKind::Ge => (sym::ge, lang.partial_ord_trait()),
+                hir::BinOpKind::Gt => (sym::gt, lang.partial_ord_trait()),
+                hir::BinOpKind::Eq => (sym::eq, lang.eq_trait()),
+                hir::BinOpKind::Ne => (sym::ne, lang.eq_trait()),
                 hir::BinOpKind::And | hir::BinOpKind::Or => {
                     span_bug!(span, "&& and || are not overloadable")
                 }
             }
         } else if let Op::Unary(hir::UnOp::UnNot, _) = op {
-            ("not", lang.not_trait())
+            (sym::not, lang.not_trait())
         } else if let Op::Unary(hir::UnOp::UnNeg, _) = op {
-            ("neg", lang.neg_trait())
+            (sym::neg, lang.neg_trait())
         } else {
             bug!("lookup_op_method: op not supported: {:?}", op)
         };
@@ -785,7 +759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let method = trait_did.and_then(|trait_did| {
-            let opname = Ident::from_str(opname);
+            let opname = Ident::with_dummy_span(opname);
             self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys))
         });
 
@@ -928,8 +902,7 @@ fn suggest_impl_missing(err: &mut DiagnosticBuilder<'_>, ty: Ty<'_>, missing_tra
     if let Adt(def, _) = ty.peel_refs().kind {
         if def.did.is_local() {
             err.note(&format!(
-                "an implementation of `{}` might \
-                be missing for `{}`",
+                "an implementation of `{}` might be missing for `{}`",
                 missing_trait, ty
             ));
         }
@@ -973,5 +946,34 @@ fn suggest_constraining_param(
     } else {
         let span = tcx.def_span(param_def_id);
         err.span_label(span, msg);
+    }
+}
+
+struct TypeParamVisitor<'tcx>(Vec<Ty<'tcx>>);
+
+impl<'tcx> TypeVisitor<'tcx> for TypeParamVisitor<'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+        if let ty::Param(_) = ty.kind {
+            self.0.push(ty);
+        }
+        ty.super_visit_with(self)
+    }
+}
+
+struct TypeParamEraser<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, Span);
+
+impl TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.0.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.kind {
+            ty::Param(_) => self.0.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::MiscVariable,
+                span: self.1,
+            }),
+            _ => ty.super_fold_with(self),
+        }
     }
 }

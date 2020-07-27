@@ -322,7 +322,7 @@ impl<I: Iterator> IntoIterator for I {
 pub trait Extend<A> {
     /// Extends a collection with the contents of an iterator.
     ///
-    /// As this is the only method for this trait, the [trait-level] docs
+    /// As this is the only required method for this trait, the [trait-level] docs
     /// contain more details.
     ///
     /// [trait-level]: trait.Extend.html
@@ -341,6 +341,20 @@ pub trait Extend<A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
+
+    /// Extends a collection with exactly one element.
+    #[unstable(feature = "extend_one", issue = "72631")]
+    fn extend_one(&mut self, item: A) {
+        self.extend(Some(item));
+    }
+
+    /// Reserves capacity in a collection for the given number of additional elements.
+    ///
+    /// The default implementation does nothing.
+    #[unstable(feature = "extend_one", issue = "72631")]
+    fn extend_reserve(&mut self, additional: usize) {
+        let _ = additional;
+    }
 }
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
@@ -348,4 +362,5 @@ impl Extend<()> for () {
     fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
         iter.into_iter().for_each(drop)
     }
+    fn extend_one(&mut self, _item: ()) {}
 }

@@ -3,7 +3,7 @@ use self::collector::NodeCollector;
 use crate::hir::{Owner, OwnerNodes};
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
-use rustc_ast::ast::{self, NodeId};
+use rustc_ast::ast::{self};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -14,7 +14,7 @@ use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
@@ -56,7 +56,7 @@ fn fn_sig<'hir>(node: Node<'hir>) -> Option<&'hir FnSig<'hir>> {
     }
 }
 
-fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
+pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
     match node {
         Node::Item(Item {
             kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
@@ -158,19 +158,6 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn local_def_id_from_node_id(&self, node: NodeId) -> LocalDefId {
-        self.opt_local_def_id_from_node_id(node).unwrap_or_else(|| {
-            let hir_id = self.node_id_to_hir_id(node);
-            bug!(
-                "local_def_id_from_node_id: no entry for `{}`, which has a map of `{:?}`",
-                node,
-                self.find_entry(hir_id)
-            )
-        })
-    }
-
-    // FIXME(eddyb) this function can and should return `LocalDefId`.
-    #[inline]
     pub fn local_def_id(&self, hir_id: HirId) -> LocalDefId {
         self.opt_local_def_id(hir_id).unwrap_or_else(|| {
             bug!(
@@ -183,38 +170,12 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<LocalDefId> {
-        let node_id = self.hir_id_to_node_id(hir_id);
-        self.opt_local_def_id_from_node_id(node_id)
-    }
-
-    #[inline]
-    pub fn opt_local_def_id_from_node_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.tcx.definitions.opt_local_def_id(node)
-    }
-
-    #[inline]
-    pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
-        self.tcx.definitions.as_local_node_id(def_id)
+        self.tcx.definitions.opt_hir_id_to_local_def_id(hir_id)
     }
 
     #[inline]
     pub fn as_local_hir_id(&self, def_id: LocalDefId) -> HirId {
         self.tcx.definitions.as_local_hir_id(def_id)
-    }
-
-    #[inline]
-    pub fn hir_id_to_node_id(&self, hir_id: HirId) -> NodeId {
-        self.tcx.definitions.hir_id_to_node_id(hir_id)
-    }
-
-    #[inline]
-    pub fn node_id_to_hir_id(&self, node_id: NodeId) -> HirId {
-        self.tcx.definitions.node_id_to_hir_id(node_id)
-    }
-
-    #[inline]
-    pub fn opt_node_id_to_hir_id(&self, node_id: NodeId) -> Option<HirId> {
-        self.tcx.definitions.opt_node_id_to_hir_id(node_id)
     }
 
     #[inline]
@@ -267,7 +228,6 @@ impl<'hir> Map<'hir> {
                 ImplItemKind::Const(..) => DefKind::AssocConst,
                 ImplItemKind::Fn(..) => DefKind::AssocFn,
                 ImplItemKind::TyAlias(..) => DefKind::AssocTy,
-                ImplItemKind::OpaqueTy(..) => DefKind::AssocOpaqueTy,
             },
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
@@ -374,6 +334,16 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn enclosing_body_owner(&self, hir_id: HirId) -> HirId {
+        for (parent, _) in self.parent_iter(hir_id) {
+            if let Some(body) = self.maybe_body_owned_by(parent) {
+                return self.body_owner(body);
+            }
+        }
+
+        bug!("no `enclosing_body_owner` for hir_id `{}`", hir_id);
+    }
+
     /// Returns the `HirId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
@@ -401,6 +371,13 @@ impl<'hir> Map<'hir> {
                 "body_owned_by: {} has no associated body",
                 self.node_to_string(id)
             );
+        })
+    }
+
+    pub fn body_param_names(&self, id: BodyId) -> impl Iterator<Item = Ident> + 'hir {
+        self.body(id).params.iter().map(|arg| match arg.pat.kind {
+            PatKind::Binding(_, _, ident, _) => ident,
+            _ => Ident::new(kw::Invalid, rustc_span::DUMMY_SP),
         })
     }
 
@@ -481,11 +458,11 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn visit_item_likes_in_module<V>(&self, module: DefId, visitor: &mut V)
+    pub fn visit_item_likes_in_module<V>(&self, module: LocalDefId, visitor: &mut V)
     where
         V: ItemLikeVisitor<'hir>,
     {
-        let module = self.tcx.hir_module_items(module.expect_local());
+        let module = self.tcx.hir_module_items(module);
 
         for id in &module.items {
             visitor.visit_item(self.expect_item(*id));
@@ -576,18 +553,8 @@ impl<'hir> Map<'hir> {
 
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
-    pub fn is_const_context(&self, hir_id: HirId) -> bool {
-        let parent_id = self.get_parent_item(hir_id);
-        match self.get(parent_id) {
-            Node::Item(&Item { kind: ItemKind::Const(..) | ItemKind::Static(..), .. })
-            | Node::TraitItem(&TraitItem { kind: TraitItemKind::Const(..), .. })
-            | Node::ImplItem(&ImplItem { kind: ImplItemKind::Const(..), .. })
-            | Node::AnonConst(_) => true,
-            Node::Item(&Item { kind: ItemKind::Fn(ref sig, ..), .. }) => {
-                sig.header.constness == Constness::Const
-            }
-            _ => false,
-        }
+    pub fn is_inside_const_context(&self, hir_id: HirId) -> bool {
+        self.body_const_context(self.local_def_id(self.enclosing_body_owner(hir_id))).is_some()
     }
 
     /// Whether `hir_id` corresponds to a `mod` or a crate.
@@ -711,6 +678,8 @@ impl<'hir> Map<'hir> {
             if let Node::Item(Item {
                 kind:
                     ItemKind::Fn(..)
+                    | ItemKind::Const(..)
+                    | ItemKind::Static(..)
                     | ItemKind::Mod(..)
                     | ItemKind::Enum(..)
                     | ItemKind::Struct(..)
@@ -739,11 +708,7 @@ impl<'hir> Map<'hir> {
                 return CRATE_HIR_ID;
             }
             match self.get(scope) {
-                Node::Item(Item {
-                    kind: ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }),
-                    ..
-                })
-                | Node::Block(_) => {}
+                Node::Block(_) => {}
                 _ => break,
             }
         }
@@ -1064,9 +1029,6 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
             ImplItemKind::TyAlias(_) => {
                 format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
             }
-            ImplItemKind::OpaqueTy(_) => {
-                format!("assoc opaque type {} in {}{}", ii.ident, path_str(), id_str)
-            }
         },
         Some(Node::TraitItem(ti)) => {
             let kind = match ti.kind {
@@ -1105,6 +1067,6 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.def_kind = |tcx, def_id| tcx.hir().def_kind(def_id.expect_local());
 }

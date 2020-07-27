@@ -16,8 +16,8 @@ pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
-#[path = "../unix/thread_local.rs"]
-pub mod thread_local;
+#[path = "../unix/thread_local_key.rs"]
+pub mod thread_local_key;
 pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;
@@ -52,10 +52,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
 }
 
 pub fn abort_internal() -> ! {
-    #[cfg_attr(not(bootstrap), allow(unused_unsafe))] // remove `unsafe` on bootstrap bump
-    unsafe {
-        core::intrinsics::abort();
-    }
+    core::intrinsics::abort();
 }
 
 pub use libc::strlen;

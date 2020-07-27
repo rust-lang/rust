@@ -38,9 +38,9 @@ use rustc_span::Span;
 use std::fmt::Debug;
 
 pub use self::FulfillmentErrorCode::*;
+pub use self::ImplSource::*;
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
-pub use self::Vtable::*;
 
 pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
 pub use self::coherence::{OrphanCheckErr, OverlapResult};
@@ -60,7 +60,6 @@ pub use self::specialize::specialization_graph::FutureCompatOverlapError;
 pub use self::specialize::specialization_graph::FutureCompatOverlapErrorKind;
 pub use self::specialize::{specialization_graph, translate_substs, OverlapError};
 pub use self::structural_match::search_for_structural_match_violation;
-pub use self::structural_match::type_marked_structural;
 pub use self::structural_match::NonStructuralMatchTy;
 pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
 pub use self::util::{expand_trait_aliases, TraitAliasExpander};
@@ -298,7 +297,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     );
 
     let mut predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.into_iter())
+        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds().into_iter())
             .map(|obligation| obligation.predicate)
             .collect();
 
@@ -306,7 +305,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     let elaborated_env = ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
-        unnormalized_env.reveal,
+        unnormalized_env.reveal(),
         unnormalized_env.def_id,
     );
 
@@ -362,7 +361,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let outlives_env: Vec<_> =
         non_outlives_predicates.iter().chain(&outlives_predicates).cloned().collect();
     let outlives_env =
-        ty::ParamEnv::new(tcx.intern_predicates(&outlives_env), unnormalized_env.reveal, None);
+        ty::ParamEnv::new(tcx.intern_predicates(&outlives_env), unnormalized_env.reveal(), None);
     let outlives_predicates = match do_normalize_predicates(
         tcx,
         region_context,
@@ -384,7 +383,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
     ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
-        unnormalized_env.reveal,
+        unnormalized_env.reveal(),
         unnormalized_env.def_id,
     )
 }
@@ -419,15 +418,14 @@ where
     Ok(resolved_value)
 }
 
-/// Normalizes the predicates and checks whether they hold in an empty
-/// environment. If this returns false, then either normalize
-/// encountered an error or one of the predicates did not hold. Used
-/// when creating vtables to check for unsatisfiable methods.
-pub fn normalize_and_test_predicates<'tcx>(
+/// Normalizes the predicates and checks whether they hold in an empty environment. If this
+/// returns true, then either normalize encountered an error or one of the predicates did not
+/// hold. Used when creating vtables to check for unsatisfiable methods.
+pub fn impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: Vec<ty::Predicate<'tcx>>,
 ) -> bool {
-    debug!("normalize_and_test_predicates(predicates={:?})", predicates);
+    debug!("impossible_predicates(predicates={:?})", predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
         let param_env = ty::ParamEnv::reveal_all();
@@ -444,22 +442,23 @@ pub fn normalize_and_test_predicates<'tcx>(
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
         }
 
-        fulfill_cx.select_all_or_error(&infcx).is_ok()
+        fulfill_cx.select_all_or_error(&infcx).is_err()
     });
-    debug!("normalize_and_test_predicates(predicates={:?}) = {:?}", predicates, result);
+    debug!("impossible_predicates(predicates={:?}) = {:?}", predicates, result);
     result
 }
 
-fn substitute_normalize_and_test_predicates<'tcx>(
+fn subst_and_check_impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (DefId, SubstsRef<'tcx>),
 ) -> bool {
-    debug!("substitute_normalize_and_test_predicates(key={:?})", key);
+    debug!("subst_and_check_impossible_predicates(key={:?})", key);
 
-    let predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
-    let result = normalize_and_test_predicates(tcx, predicates);
+    let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
+    predicates.retain(|predicate| !predicate.needs_subst());
+    let result = impossible_predicates(tcx, predicates);
 
-    debug!("substitute_normalize_and_test_predicates(key={:?}) = {:?}", key, result);
+    debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
     result
 }
 
@@ -511,7 +510,7 @@ fn vtable_methods<'tcx>(
             // Note that this method could then never be called, so we
             // do not want to try and codegen it, in that case (see #23435).
             let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-            if !normalize_and_test_predicates(tcx, predicates.predicates) {
+            if impossible_predicates(tcx, predicates.predicates) {
                 debug!("vtable_methods: predicates do not hold");
                 return None;
             }
@@ -540,13 +539,6 @@ fn type_implements_trait<'tcx>(
         trait_def_id, ty, params, param_env
     );
 
-    // Do not check on infer_types to avoid panic in evaluate_obligation.
-    if ty.has_infer_types() {
-        return false;
-    }
-
-    let ty = tcx.erase_regions(&ty);
-
     let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, params) };
 
     let obligation = Obligation {
@@ -558,15 +550,16 @@ fn type_implements_trait<'tcx>(
     tcx.infer_ctxt().enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     object_safety::provide(providers);
+    structural_match::provide(providers);
     *providers = ty::query::Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
         vtable_methods,
-        substitute_normalize_and_test_predicates,
         type_implements_trait,
+        subst_and_check_impossible_predicates,
         ..*providers
     };
 }

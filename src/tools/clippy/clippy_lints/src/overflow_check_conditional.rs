@@ -25,9 +25,9 @@ declare_clippy_lint! {
 
 declare_lint_pass!(OverflowCheckConditional => [OVERFLOW_CHECK_CONDITIONAL]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
+impl<'tcx> LateLintPass<'tcx> for OverflowCheckConditional {
     // a + b < a, a > a + b, a < a - b, a - b > a
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let eq = |l, r| SpanlessEq::new(cx).eq_path_segment(l, r);
         if_chain! {
             if let ExprKind::Binary(ref op, ref first, ref second) = expr.kind;
@@ -36,8 +36,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
             if let ExprKind::Path(QPath::Resolved(_, ref path2)) = ident2.kind;
             if let ExprKind::Path(QPath::Resolved(_, ref path3)) = second.kind;
             if eq(&path1.segments[0], &path3.segments[0]) || eq(&path2.segments[0], &path3.segments[0]);
-            if cx.tables.expr_ty(ident1).is_integral();
-            if cx.tables.expr_ty(ident2).is_integral();
+            if cx.typeck_results().expr_ty(ident1).is_integral();
+            if cx.typeck_results().expr_ty(ident2).is_integral();
             then {
                 if let BinOpKind::Lt = op.node {
                     if let BinOpKind::Add = op2.node {
@@ -61,8 +61,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OverflowCheckConditional {
             if let ExprKind::Path(QPath::Resolved(_, ref path2)) = ident2.kind;
             if let ExprKind::Path(QPath::Resolved(_, ref path3)) = first.kind;
             if eq(&path1.segments[0], &path3.segments[0]) || eq(&path2.segments[0], &path3.segments[0]);
-            if cx.tables.expr_ty(ident1).is_integral();
-            if cx.tables.expr_ty(ident2).is_integral();
+            if cx.typeck_results().expr_ty(ident1).is_integral();
+            if cx.typeck_results().expr_ty(ident2).is_integral();
             then {
                 if let BinOpKind::Gt = op.node {
                     if let BinOpKind::Add = op2.node {

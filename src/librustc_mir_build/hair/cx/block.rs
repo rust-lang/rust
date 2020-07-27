@@ -65,7 +65,7 @@ fn mirror_stmts<'a, 'tcx>(
                 let mut pattern = cx.pattern_from_hir(&local.pat);
 
                 if let Some(ty) = &local.ty {
-                    if let Some(&user_ty) = cx.tables.user_provided_types().get(ty.hir_id) {
+                    if let Some(&user_ty) = cx.typeck_results.user_provided_types().get(ty.hir_id) {
                         debug!("mirror_stmts: user_ty={:?}", user_ty);
                         pattern = Pat {
                             ty: pattern.ty,
@@ -105,7 +105,7 @@ crate fn to_expr_ref<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
     block: &'tcx hir::Block<'tcx>,
 ) -> ExprRef<'tcx> {
-    let block_ty = cx.tables().node_type(block.hir_id);
+    let block_ty = cx.typeck_results().node_type(block.hir_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(block.hir_id.local_id);
     let expr = Expr {
         ty: block_ty,

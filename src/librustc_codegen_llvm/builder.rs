@@ -18,6 +18,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::sym;
 use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -652,6 +653,56 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildSExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
+    fn fptoui_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
+        // WebAssembly has saturating floating point to integer casts if the
+        // `nontrapping-fptoint` target feature is activated. We'll use those if
+        // they are available.
+        if self.sess().target.target.arch == "wasm32"
+            && self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
+        {
+            let src_ty = self.cx.val_ty(val);
+            let float_width = self.cx.float_width(src_ty);
+            let int_width = self.cx.int_width(dest_ty);
+            let name = match (int_width, float_width) {
+                (32, 32) => Some("llvm.wasm.trunc.saturate.unsigned.i32.f32"),
+                (32, 64) => Some("llvm.wasm.trunc.saturate.unsigned.i32.f64"),
+                (64, 32) => Some("llvm.wasm.trunc.saturate.unsigned.i64.f32"),
+                (64, 64) => Some("llvm.wasm.trunc.saturate.unsigned.i64.f64"),
+                _ => None,
+            };
+            if let Some(name) = name {
+                let intrinsic = self.get_intrinsic(name);
+                return Some(self.call(intrinsic, &[val], None));
+            }
+        }
+        None
+    }
+
+    fn fptosi_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
+        // WebAssembly has saturating floating point to integer casts if the
+        // `nontrapping-fptoint` target feature is activated. We'll use those if
+        // they are available.
+        if self.sess().target.target.arch == "wasm32"
+            && self.sess().target_features.contains(&sym::nontrapping_dash_fptoint)
+        {
+            let src_ty = self.cx.val_ty(val);
+            let float_width = self.cx.float_width(src_ty);
+            let int_width = self.cx.int_width(dest_ty);
+            let name = match (int_width, float_width) {
+                (32, 32) => Some("llvm.wasm.trunc.saturate.signed.i32.f32"),
+                (32, 64) => Some("llvm.wasm.trunc.saturate.signed.i32.f64"),
+                (64, 32) => Some("llvm.wasm.trunc.saturate.signed.i64.f32"),
+                (64, 64) => Some("llvm.wasm.trunc.saturate.signed.i64.f64"),
+                _ => None,
+            };
+            if let Some(name) = name {
+                let intrinsic = self.get_intrinsic(name);
+                return Some(self.call(intrinsic, &[val], None));
+            }
+        }
+        None
+    }
+
     fn fptoui(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildFPToUI(self.llbuilder, val, dest_ty, UNNAMED) }
     }
@@ -997,6 +1048,33 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.call_lifetime_intrinsic("llvm.lifetime.end.p0i8", ptr, size);
     }
 
+    fn instrprof_increment(
+        &mut self,
+        fn_name: &'ll Value,
+        hash: &'ll Value,
+        num_counters: &'ll Value,
+        index: &'ll Value,
+    ) -> &'ll Value {
+        debug!(
+            "instrprof_increment() with args ({:?}, {:?}, {:?}, {:?})",
+            fn_name, hash, num_counters, index
+        );
+
+        let llfn = unsafe { llvm::LLVMRustGetInstrProfIncrementIntrinsic(self.cx().llmod) };
+        let args = &[fn_name, hash, num_counters, index];
+        let args = self.check_call("call", llfn, args);
+
+        unsafe {
+            llvm::LLVMRustBuildCall(
+                self.llbuilder,
+                llfn,
+                args.as_ptr() as *const &llvm::Value,
+                args.len() as c_uint,
+                None,
+            )
+        }
+    }
+
     fn call(
         &mut self,
         llfn: &'ll Value,
@@ -1252,7 +1330,12 @@ impl Builder<'a, 'll, 'tcx> {
         self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
     }
 
-    fn phi(&mut self, ty: &'ll Type, vals: &[&'ll Value], bbs: &[&'ll BasicBlock]) -> &'ll Value {
+    pub(crate) fn phi(
+        &mut self,
+        ty: &'ll Type,
+        vals: &[&'ll Value],
+        bbs: &[&'ll BasicBlock],
+    ) -> &'ll Value {
         assert_eq!(vals.len(), bbs.len());
         let phi = unsafe { llvm::LLVMBuildPhi(self.llbuilder, ty, UNNAMED) };
         unsafe {

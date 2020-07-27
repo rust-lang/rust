@@ -6,12 +6,12 @@ use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_target::abi::LayoutOf;
 
-pub fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>]], arith: &str) {
+pub fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>]], arith: &str) {
     let unwrap_arg = &args[0][1];
     let arith_lhs = &args[1][0];
     let arith_rhs = &args[1][1];
 
-    let ty = cx.tables.expr_ty(arith_lhs);
+    let ty = cx.typeck_results().expr_ty(arith_lhs);
     if !ty.is_integral() {
         return;
     }
@@ -57,7 +57,7 @@ pub fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<
         );
     } else {
         match (mm, arith) {
-            (MinMax::Max, "add") | (MinMax::Max, "mul") | (MinMax::Min, "sub") => (),
+            (MinMax::Max, "add" | "mul") | (MinMax::Min, "sub") => (),
             _ => return,
         }
 
@@ -85,7 +85,7 @@ enum MinMax {
     Max,
 }
 
-fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>) -> Option<MinMax> {
+fn is_min_or_max<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) -> Option<MinMax> {
     // `T::max_value()` `T::min_value()` inherent methods
     if_chain! {
         if let hir::ExprKind::Call(func, args) = &expr.kind;
@@ -101,7 +101,7 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &hir::Expr<'_>) -> Opti
         }
     }
 
-    let ty = cx.tables.expr_ty(expr);
+    let ty = cx.typeck_results().expr_ty(expr);
     let ty_str = ty.to_string();
 
     // `std::T::MAX` `std::T::MIN` constants

@@ -63,11 +63,11 @@ impl PredicateSet<'tcx> {
     fn insert(&mut self, pred: ty::Predicate<'tcx>) -> bool {
         // We have to be careful here because we want
         //
-        //    for<'a> Foo<&'a int>
+        //    for<'a> Foo<&'a i32>
         //
         // and
         //
-        //    for<'b> Foo<&'b int>
+        //    for<'b> Foo<&'b i32>
         //
         // to be considered equivalent. So normalize all late-bound
         // regions before we throw things into the underlying set.
@@ -80,6 +80,14 @@ impl Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
         for pred in iter {
             self.insert(pred);
         }
+    }
+
+    fn extend_one(&mut self, pred: ty::Predicate<'tcx>) {
+        self.insert(pred);
+    }
+
+    fn extend_reserve(&mut self, additional: usize) {
+        Extend::<ty::Predicate<'tcx>>::extend_reserve(&mut self.set, additional);
     }
 }
 
@@ -134,10 +142,12 @@ fn predicate_obligation<'tcx>(
     predicate: ty::Predicate<'tcx>,
     span: Option<Span>,
 ) -> PredicateObligation<'tcx> {
-    let mut cause = ObligationCause::dummy();
-    if let Some(span) = span {
-        cause.span = span;
-    }
+    let cause = if let Some(span) = span {
+        ObligationCause::dummy_with_span(span)
+    } else {
+        ObligationCause::dummy()
+    };
+
     Obligation { cause, param_env: ty::ParamEnv::empty(), recursion_depth: 0, predicate }
 }
 

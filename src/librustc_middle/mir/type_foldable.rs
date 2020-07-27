@@ -27,11 +27,11 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 values: values.clone(),
                 targets: targets.clone(),
             },
-            Drop { ref location, target, unwind } => {
-                Drop { location: location.fold_with(folder), target, unwind }
+            Drop { ref place, target, unwind } => {
+                Drop { place: place.fold_with(folder), target, unwind }
             }
-            DropAndReplace { ref location, ref value, target, unwind } => DropAndReplace {
-                location: location.fold_with(folder),
+            DropAndReplace { ref place, ref value, target, unwind } => DropAndReplace {
+                place: place.fold_with(folder),
                 value: value.fold_with(folder),
                 target,
                 unwind,
@@ -42,7 +42,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 resume_arg: resume_arg.fold_with(folder),
                 drop,
             },
-            Call { ref func, ref args, ref destination, cleanup, from_hir_call } => {
+            Call { ref func, ref args, ref destination, cleanup, from_hir_call, fn_span } => {
                 let dest =
                     destination.as_ref().map(|&(ref loc, dest)| (loc.fold_with(folder), dest));
 
@@ -52,20 +52,20 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     destination: dest,
                     cleanup,
                     from_hir_call,
+                    fn_span,
                 }
             }
             Assert { ref cond, expected, ref msg, target, cleanup } => {
                 use AssertKind::*;
                 let msg = match msg {
-                    BoundsCheck { ref len, ref index } => {
+                    BoundsCheck { len, index } => {
                         BoundsCheck { len: len.fold_with(folder), index: index.fold_with(folder) }
                     }
-                    Overflow(_)
-                    | OverflowNeg
-                    | DivisionByZero
-                    | RemainderByZero
-                    | ResumedAfterReturn(_)
-                    | ResumedAfterPanic(_) => msg.clone(),
+                    Overflow(op, l, r) => Overflow(*op, l.fold_with(folder), r.fold_with(folder)),
+                    OverflowNeg(op) => OverflowNeg(op.fold_with(folder)),
+                    DivisionByZero(op) => DivisionByZero(op.fold_with(folder)),
+                    RemainderByZero(op) => RemainderByZero(op.fold_with(folder)),
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => msg.clone(),
                 };
                 Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
             }
@@ -74,13 +74,17 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Abort => Abort,
             Return => Return,
             Unreachable => Unreachable,
-            FalseEdges { real_target, imaginary_target } => {
-                FalseEdges { real_target, imaginary_target }
+            FalseEdge { real_target, imaginary_target } => {
+                FalseEdge { real_target, imaginary_target }
             }
             FalseUnwind { real_target, unwind } => FalseUnwind { real_target, unwind },
-            InlineAsm { template, ref operands, options, destination } => {
-                InlineAsm { template, operands: operands.fold_with(folder), options, destination }
-            }
+            InlineAsm { template, ref operands, options, line_spans, destination } => InlineAsm {
+                template,
+                operands: operands.fold_with(folder),
+                options,
+                line_spans,
+                destination,
+            },
         };
         Terminator { source_info: self.source_info, kind }
     }
@@ -92,9 +96,9 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             SwitchInt { ref discr, switch_ty, .. } => {
                 discr.visit_with(visitor) || switch_ty.visit_with(visitor)
             }
-            Drop { ref location, .. } => location.visit_with(visitor),
-            DropAndReplace { ref location, ref value, .. } => {
-                location.visit_with(visitor) || value.visit_with(visitor)
+            Drop { ref place, .. } => place.visit_with(visitor),
+            DropAndReplace { ref place, ref value, .. } => {
+                place.visit_with(visitor) || value.visit_with(visitor)
             }
             Yield { ref value, .. } => value.visit_with(visitor),
             Call { ref func, ref args, ref destination, .. } => {
@@ -112,12 +116,11 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                         BoundsCheck { ref len, ref index } => {
                             len.visit_with(visitor) || index.visit_with(visitor)
                         }
-                        Overflow(_)
-                        | OverflowNeg
-                        | DivisionByZero
-                        | RemainderByZero
-                        | ResumedAfterReturn(_)
-                        | ResumedAfterPanic(_) => false,
+                        Overflow(_, l, r) => l.visit_with(visitor) || r.visit_with(visitor),
+                        OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
+                            op.visit_with(visitor)
+                        }
+                        ResumedAfterReturn(_) | ResumedAfterPanic(_) => false,
                     }
                 } else {
                     false
@@ -130,7 +133,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             | Return
             | GeneratorDrop
             | Unreachable
-            | FalseEdges { .. }
+            | FalseEdge { .. }
             | FalseUnwind { .. } => false,
         }
     }
@@ -173,6 +176,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
         match *self {
             Use(ref op) => Use(op.fold_with(folder)),
             Repeat(ref op, len) => Repeat(op.fold_with(folder), len),
+            ThreadLocalRef(did) => ThreadLocalRef(did.fold_with(folder)),
             Ref(region, bk, ref place) => {
                 Ref(region.fold_with(folder), bk, place.fold_with(folder))
             }
@@ -216,6 +220,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
         match *self {
             Use(ref op) => op.visit_with(visitor),
             Repeat(ref op, _) => op.visit_with(visitor),
+            ThreadLocalRef(did) => did.visit_with(visitor),
             Ref(region, _, ref place) => region.visit_with(visitor) || place.visit_with(visitor),
             AddressOf(_, ref place) => place.visit_with(visitor),
             Len(ref place) => place.visit_with(visitor),

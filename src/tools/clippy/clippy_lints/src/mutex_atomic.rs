@@ -22,9 +22,15 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # let y = true;
+    ///
+    /// // Bad
     /// # use std::sync::Mutex;
-    /// # let y = 1;
     /// let x = Mutex::new(&y);
+    ///
+    /// // Good
+    /// # use std::sync::atomic::AtomicBool;
+    /// let x = AtomicBool::new(y);
     /// ```
     pub MUTEX_ATOMIC,
     perf,
@@ -46,6 +52,10 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::sync::Mutex;
     /// let x = Mutex::new(0usize);
+    ///
+    /// // Good
+    /// # use std::sync::atomic::AtomicUsize;
+    /// let x = AtomicUsize::new(0usize);
     /// ```
     pub MUTEX_INTEGER,
     nursery,
@@ -54,9 +64,9 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Mutex => [MUTEX_ATOMIC, MUTEX_INTEGER]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Mutex {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
-        let ty = cx.tables.expr_ty(expr);
+impl<'tcx> LateLintPass<'tcx> for Mutex {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        let ty = cx.typeck_results().expr_ty(expr);
         if let ty::Adt(_, subst) = ty.kind {
             if is_type_diagnostic_item(cx, ty, sym!(mutex_type)) {
                 let mutex_param = subst.type_at(0);

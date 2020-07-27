@@ -1,0 +1,14 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-57611-trait-alias.rs:21:9
+   |
+LL |         |x| x
+   |         ^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-57611-trait-alias.rs:21:9
+   |
+LL |         |x| x
+   |         ^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -68,13 +68,13 @@ impl<'tcx> MonoItem<'tcx> {
         }
     }
 
-    pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> SymbolName {
+    pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> SymbolName<'tcx> {
         match *self {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(hir_id) => {
                 let def_id = tcx.hir().local_def_id(hir_id);
-                SymbolName { name: Symbol::intern(&format!("global_asm_{:?}", def_id)) }
+                SymbolName::new(tcx, &format!("global_asm_{:?}", def_id))
             }
         }
     }
@@ -86,14 +86,14 @@ impl<'tcx> MonoItem<'tcx> {
             .debugging_opts
             .inline_in_all_cgus
             .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
-            && !tcx.sess.opts.cg.link_dead_code;
+            && tcx.sess.opts.cg.link_dead_code != Some(true);
 
         match *self {
             MonoItem::Fn(ref instance) => {
                 let entry_def_id = tcx.entry_fn(LOCAL_CRATE).map(|(id, _)| id);
-                // If this function isn't inlined or otherwise has explicit
-                // linkage, then we'll be creating a globally shared version.
-                if self.explicit_linkage(tcx).is_some()
+                // If this function isn't inlined or otherwise has an extern
+                // indicator, then we'll be creating a globally shared version.
+                if tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
                     || !instance.def.generates_cgu_internal_copy(tcx)
                     || Some(instance.def_id()) == entry_def_id.map(LocalDefId::to_def_id)
                 {
@@ -102,7 +102,7 @@ impl<'tcx> MonoItem<'tcx> {
 
                 // At this point we don't have explicit linkage and we're an
                 // inlined function. If we're inlining into all CGUs then we'll
-                // be creating a local copy per CGU
+                // be creating a local copy per CGU.
                 if generate_cgu_internal_copies {
                     return InstantiationMode::LocalCopy;
                 }
@@ -168,7 +168,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => return true,
         };
 
-        tcx.substitute_normalize_and_test_predicates((def_id, &substs))
+        !tcx.subst_and_check_impossible_predicates((def_id, &substs))
     }
 
     pub fn to_string(&self, tcx: TyCtxt<'tcx>, debug: bool) -> String {
@@ -335,9 +335,9 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey(Option<HirId>, SymbolName);
+        pub struct ItemSortKey<'tcx>(Option<HirId>, SymbolName<'tcx>);
 
-        fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey {
+        fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
                 match item {
                     MonoItem::Fn(ref instance) => {
@@ -346,8 +346,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def_id) => {
-                                def_id.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
+                            InstanceDef::Item(def) => {
+                                def.did.as_local().map(|def_id| tcx.hir().as_local_hir_id(def_id))
                             }
                             InstanceDef::VtableShim(..)
                             | InstanceDef::ReifyShim(..)
@@ -448,8 +448,7 @@ impl CodegenUnitNameBuilder<'tcx> {
         if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
             cgu_name
         } else {
-            let cgu_name = &cgu_name.as_str();
-            Symbol::intern(&CodegenUnit::mangle_name(cgu_name))
+            Symbol::intern(&CodegenUnit::mangle_name(&cgu_name.as_str()))
         }
     }
 

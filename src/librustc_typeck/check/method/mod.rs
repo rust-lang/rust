@@ -28,7 +28,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 use self::probe::{IsSuggestion, ProbeScope};
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     suggest::provide(providers);
     probe::provide(providers);
 }
@@ -194,11 +194,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.lookup_probe(span, segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
 
         for import_id in &pick.import_ids {
-            let import_def_id = self.tcx.hir().local_def_id(*import_id);
-            debug!("used_trait_import: {:?}", import_def_id);
-            Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
+            debug!("used_trait_import: {:?}", import_id);
+            Lrc::get_mut(&mut self.typeck_results.borrow_mut().used_trait_imports)
                 .unwrap()
-                .insert(import_def_id.to_def_id());
+                .insert(*import_id);
         }
 
         self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span);
@@ -296,8 +295,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         opt_input_types: Option<&[Ty<'tcx>]>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!(
-            "lookup_in_trait_adjusted(self_ty={:?}, \
-                m_name={}, trait_def_id={:?})",
+            "lookup_in_trait_adjusted(self_ty={:?}, m_name={}, trait_def_id={:?})",
             self_ty, m_name, trait_def_id
         );
 
@@ -401,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligations.push(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateKind::WellFormed(method_ty).to_predicate(tcx),
+            ty::PredicateKind::WellFormed(method_ty.into()).to_predicate(tcx),
         ));
 
         let callee = MethodCallee { def_id, substs: trait_ref.substs, sig: fn_sig };
@@ -458,12 +456,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )?;
         debug!("resolve_ufcs: pick={:?}", pick);
         {
-            let mut tables = self.tables.borrow_mut();
-            let used_trait_imports = Lrc::get_mut(&mut tables.used_trait_imports).unwrap();
+            let mut typeck_results = self.typeck_results.borrow_mut();
+            let used_trait_imports = Lrc::get_mut(&mut typeck_results.used_trait_imports).unwrap();
             for import_id in pick.import_ids {
-                let import_def_id = tcx.hir().local_def_id(import_id);
-                debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
-                used_trait_imports.insert(import_def_id.to_def_id());
+                debug!("resolve_ufcs: used_trait_import: {:?}", import_id);
+                used_trait_imports.insert(import_id);
             }
         }
 

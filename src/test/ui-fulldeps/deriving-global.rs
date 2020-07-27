@@ -2,7 +2,7 @@
 
 #![feature(rustc_private)]
 
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 
 mod submod {
     // if any of these are implemented without global calls for any

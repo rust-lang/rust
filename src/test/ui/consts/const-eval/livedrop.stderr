@@ -1,0 +1,12 @@
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/livedrop.rs:3:9
+   |
+LL |     let mut always_returned = None;
+   |         ^^^^^^^^^^^^^^^^^^^ constants cannot evaluate destructors
+...
+LL |         always_returned = never_returned;
+   |         --------------- value is dropped here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0493`.

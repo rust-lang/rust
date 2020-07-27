@@ -147,13 +147,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for LocalDefId {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for CrateNum {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        hcx.def_path_hash(DefId { krate: *self, index: CRATE_DEF_INDEX }).hash_stable(hcx, hasher);
-    }
-}
-
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for CrateNum {
     type KeyType = DefPathHash;
 
@@ -210,16 +203,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitCandidate {
 }
 
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
-    type KeyType = (DefPathHash, SmallVec<[(DefPathHash, hir::ItemLocalId); 1]>);
+    type KeyType = (DefPathHash, SmallVec<[DefPathHash; 1]>);
 
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Self::KeyType {
         let hir::TraitCandidate { def_id, import_ids } = self;
 
-        let import_keys = import_ids
-            .iter()
-            .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner), hir_id.local_id))
-            .collect();
-        (hcx.def_path_hash(*def_id), import_keys)
+        (
+            hcx.def_path_hash(*def_id),
+            import_ids.iter().map(|def_id| hcx.local_def_path_hash(*def_id)).collect(),
+        )
     }
 }
 

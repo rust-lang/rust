@@ -133,6 +133,8 @@ impl rustc_serialize::UseSpecializedDecodable for DefIndex {}
 
 /// A `DefId` identifies a particular *definition*, by combining a crate
 /// index and a def index.
+///
+/// You can create a `DefId` from a `LocalDefId` using `local_def_id.to_def_id()`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
 pub struct DefId {
     pub krate: CrateNum,
@@ -243,5 +245,11 @@ impl rustc_serialize::UseSpecializedDecodable for LocalDefId {}
 impl<CTX: HashStableContext> HashStable<CTX> for DefId {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         hcx.hash_def_id(*self, hasher)
+    }
+}
+
+impl<CTX: HashStableContext> HashStable<CTX> for CrateNum {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        hcx.hash_crate_num(*self, hasher)
     }
 }

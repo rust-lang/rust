@@ -1,4 +1,4 @@
-#![feature(const_raw_ptr_to_usize_cast, const_compare_raw_pointers, const_raw_ptr_deref)]
+#![feature(const_raw_ptr_to_usize_cast, const_raw_ptr_deref)]
 
 fn main() {
     let x: &'static bool = &(42 as *const i32 == 43 as *const i32);

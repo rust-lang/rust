@@ -3,6 +3,7 @@ use super::{
     SelectionContext,
 };
 
+use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
 use crate::traits::normalize_projection_type;
 
@@ -13,11 +14,11 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
-use rustc_middle::ty::TypeckTables;
 use rustc_middle::ty::{
     self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
     TyCtxt, TypeFoldable, WithConstness,
 };
+use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
@@ -42,10 +43,12 @@ pub trait InferCtxtExt<'tcx> {
         body_id: hir::HirId,
     );
 
-    fn suggest_borrow_on_unsized_slice(
+    fn suggest_dereferences(
         &self,
-        code: &ObligationCauseCode<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::PolyTraitRef<'tcx>,
+        points_at_arg: bool,
     );
 
     fn get_closure_name(
@@ -142,7 +145,7 @@ pub trait InferCtxtExt<'tcx> {
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'tcx>,
         target_ty: Ty<'tcx>,
-        tables: &ty::TypeckTables<'tcx>,
+        typeck_results: &ty::TypeckResults<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
     );
@@ -170,7 +173,7 @@ pub trait InferCtxtExt<'tcx> {
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
     (
-        generics.where_clause.span_for_predicates_or_empty_place().shrink_to_hi(),
+        generics.where_clause.tail_span_for_suggestion(),
         format!(
             "{} {}",
             if !generics.where_clause.predicates.is_empty() { "," } else { " where" },
@@ -318,7 +321,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         body_id: hir::HirId,
     ) {
-        let self_ty = trait_ref.self_ty();
+        let self_ty = trait_ref.skip_binder().self_ty();
         let (param_ty, projection) = match &self_ty.kind {
             ty::Param(_) => (true, None),
             ty::Projection(projection) => (false, Some(projection)),
@@ -450,23 +453,53 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    /// When encountering an assignment of an unsized trait, like `let x = ""[..];`, provide a
-    /// suggestion to borrow the initializer in order to use have a slice instead.
-    fn suggest_borrow_on_unsized_slice(
+    /// When after several dereferencing, the reference satisfies the trait
+    /// binding. This function provides dereference suggestion for this
+    /// specific situation.
+    fn suggest_dereferences(
         &self,
-        code: &ObligationCauseCode<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::PolyTraitRef<'tcx>,
+        points_at_arg: bool,
     ) {
-        if let &ObligationCauseCode::VariableType(hir_id) = code {
-            let parent_node = self.tcx.hir().get_parent_node(hir_id);
-            if let Some(Node::Local(ref local)) = self.tcx.hir().find(parent_node) {
-                if let Some(ref expr) = local.init {
-                    if let hir::ExprKind::Index(_, _) = expr.kind {
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
+        // It only make sense when suggesting dereferences for arguments
+        if !points_at_arg {
+            return;
+        }
+        let param_env = obligation.param_env;
+        let body_id = obligation.cause.body_id;
+        let span = obligation.cause.span;
+        let real_trait_ref = match &obligation.cause.code {
+            ObligationCauseCode::ImplDerivedObligation(cause)
+            | ObligationCauseCode::DerivedObligation(cause)
+            | ObligationCauseCode::BuiltinDerivedObligation(cause) => &cause.parent_trait_ref,
+            _ => trait_ref,
+        };
+        let real_ty = match real_trait_ref.self_ty().no_bound_vars() {
+            Some(ty) => ty,
+            None => return,
+        };
+
+        if let ty::Ref(region, base_ty, mutbl) = real_ty.kind {
+            let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty);
+            if let Some(steps) = autoderef.find_map(|(ty, steps)| {
+                // Re-add the `&`
+                let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
+                let obligation =
+                    self.mk_trait_obligation_with_new_self_ty(param_env, real_trait_ref, ty);
+                Some(steps).filter(|_| self.predicate_may_hold(&obligation))
+            }) {
+                if steps > 0 {
+                    if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        // Don't care about `&mut` because `DerefMut` is used less
+                        // often and user will not expect autoderef happens.
+                        if src.starts_with("&") && !src.starts_with("&mut ") {
+                            let derefs = "*".repeat(steps);
                             err.span_suggestion(
-                                expr.span,
-                                "consider borrowing here",
-                                format!("&{}", snippet),
+                                span,
+                                "consider adding dereference here",
+                                format!("&{}{}", derefs, &src[1..]),
                                 Applicability::MachineApplicable,
                             );
                         }
@@ -524,7 +557,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
         points_at_arg: bool,
     ) {
-        let self_ty = trait_ref.self_ty();
+        let self_ty = match trait_ref.self_ty().no_bound_vars() {
+            None => return,
+            Some(ty) => ty,
+        };
+
         let (def_id, output_ty, callable) = match self_ty.kind {
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
             ty::FnDef(def_id, _) => (def_id, self_ty.fn_sig(self.tcx).output(), "function"),
@@ -707,7 +744,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return;
             }
 
-            let mut suggested_ty = trait_ref.self_ty();
+            let mut suggested_ty = match trait_ref.self_ty().no_bound_vars() {
+                Some(ty) => ty,
+                None => return,
+            };
 
             for refs_remaining in 0..refs_number {
                 if let ty::Ref(_, inner_ty, _) = suggested_ty.kind {
@@ -829,6 +869,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         span: Span,
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) {
+        let is_empty_tuple =
+            |ty: ty::Binder<Ty<'_>>| ty.skip_binder().kind == ty::Tuple(ty::List::empty());
+
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find(parent_node);
@@ -840,7 +883,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if let hir::ExprKind::Block(blk, _) = &body.value.kind {
                 if sig.decl.output.span().overlaps(span)
                     && blk.expr.is_none()
-                    && "()" == &trait_ref.self_ty().to_string()
+                    && is_empty_tuple(trait_ref.self_ty())
                 {
                     // FIXME(estebank): When encountering a method with a trait
                     // bound not satisfied in the return type with a body that has
@@ -925,12 +968,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(&body);
 
-        let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
+        let typeck_results = self.in_progress_typeck_results.map(|t| t.borrow()).unwrap();
 
         let mut ret_types = visitor
             .returns
             .iter()
-            .filter_map(|expr| tables.node_type_opt(expr.hir_id))
+            .filter_map(|expr| typeck_results.node_type_opt(expr.hir_id))
             .map(|ty| self.resolve_vars_if_possible(&ty));
         let (last_ty, all_returns_have_same_type, only_never_return) = ret_types.clone().fold(
             (None, true, true),
@@ -938,7 +981,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
              ty| {
                 let ty = self.resolve_vars_if_possible(&ty);
                 same &=
-                    ty.kind != ty::Error
+                    !matches!(ty.kind, ty::Error(_))
                         && last_ty.map_or(true, |last_ty| {
                             // FIXME: ideally we would use `can_coerce` here instead, but `typeck` comes
                             // *after* in the dependency graph.
@@ -957,7 +1000,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             },
         );
         let all_returns_conform_to_trait =
-            if let Some(ty_ret_ty) = tables.node_type_opt(ret_ty.hir_id) {
+            if let Some(ty_ret_ty) = typeck_results.node_type_opt(ret_ty.hir_id) {
                 match ty_ret_ty.kind {
                     ty::Dynamic(predicates, _) => {
                         let cause = ObligationCause::misc(ret_ty.span, ret_ty.hir_id);
@@ -1085,9 +1128,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Point at all the `return`s in the function as they have failed trait bounds.
             let mut visitor = ReturnsVisitor::default();
             visitor.visit_body(&body);
-            let tables = self.in_progress_tables.map(|t| t.borrow()).unwrap();
+            let typeck_results = self.in_progress_typeck_results.map(|t| t.borrow()).unwrap();
             for expr in &visitor.returns {
-                if let Some(returned_ty) = tables.node_type_opt(expr.hir_id) {
+                if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
                     let ty = self.resolve_vars_if_possible(&returned_ty);
                     err.span_label(expr.span, &format!("this returned value is of type `{}`", ty));
                 }
@@ -1104,7 +1147,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         crate fn build_fn_sig_string<'tcx>(
             tcx: TyCtxt<'tcx>,
-            trait_ref: &ty::TraitRef<'tcx>,
+            trait_ref: ty::TraitRef<'tcx>,
         ) -> String {
             let inputs = trait_ref.substs.type_at(1);
             let sig = if let ty::Tuple(inputs) = inputs.kind {
@@ -1271,7 +1314,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 ObligationCauseCode::DerivedObligation(derived_obligation)
                 | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation)
                 | ObligationCauseCode::ImplDerivedObligation(derived_obligation) => {
-                    let ty = derived_obligation.parent_trait_ref.self_ty();
+                    let ty = derived_obligation.parent_trait_ref.skip_binder().self_ty();
                     debug!(
                         "maybe_note_obligation_cause_for_async_await: \
                             parent_trait_ref={:?} self_ty.kind={:?}",
@@ -1285,7 +1328,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         }
                         ty::GeneratorWitness(..) => {}
                         _ if generator.is_none() => {
-                            trait_ref = Some(*derived_obligation.parent_trait_ref.skip_binder());
+                            trait_ref = Some(derived_obligation.parent_trait_ref.skip_binder());
                             target_ty = Some(ty);
                         }
                         _ => {}
@@ -1317,25 +1360,25 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return false;
         }
 
-        // Get the tables from the infcx if the generator is the function we are
+        // Get the typeck results from the infcx if the generator is the function we are
         // currently type-checking; otherwise, get them by performing a query.
         // This is needed to avoid cycles.
-        let in_progress_tables = self.in_progress_tables.map(|t| t.borrow());
+        let in_progress_typeck_results = self.in_progress_typeck_results.map(|t| t.borrow());
         let generator_did_root = self.tcx.closure_base_def_id(generator_did);
         debug!(
             "maybe_note_obligation_cause_for_async_await: generator_did={:?} \
-             generator_did_root={:?} in_progress_tables.hir_owner={:?} span={:?}",
+             generator_did_root={:?} in_progress_typeck_results.hir_owner={:?} span={:?}",
             generator_did,
             generator_did_root,
-            in_progress_tables.as_ref().map(|t| t.hir_owner),
+            in_progress_typeck_results.as_ref().map(|t| t.hir_owner),
             span
         );
-        let query_tables;
-        let tables: &TypeckTables<'tcx> = match &in_progress_tables {
-            Some(t) if t.hir_owner.map(|owner| owner.to_def_id()) == Some(generator_did_root) => t,
+        let query_typeck_results;
+        let typeck_results: &TypeckResults<'tcx> = match &in_progress_typeck_results {
+            Some(t) if t.hir_owner.to_def_id() == generator_did_root => t,
             _ => {
-                query_tables = self.tcx.typeck_tables_of(generator_did.expect_local());
-                &query_tables
+                query_typeck_results = self.tcx.typeck(generator_did.expect_local());
+                &query_typeck_results
             }
         };
 
@@ -1382,7 +1425,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         if let Some(upvars) = self.tcx.upvars_mentioned(generator_did) {
             interior_or_upvar_span = upvars.iter().find_map(|(upvar_id, upvar)| {
-                let upvar_ty = tables.node_type(*upvar_id);
+                let upvar_ty = typeck_results.node_type(*upvar_id);
                 let upvar_ty = self.resolve_vars_if_possible(&upvar_ty);
                 if ty_matches(&upvar_ty) {
                     Some(GeneratorInteriorOrUpvar::Upvar(upvar.span))
@@ -1392,7 +1435,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             });
         };
 
-        tables
+        typeck_results
             .generator_interior_types
             .iter()
             .find(|ty::GeneratorInteriorTypeCause { ty, .. }| ty_matches(ty))
@@ -1403,7 +1446,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .into_iter()
                     .map(|id| hir.expect_expr(id))
                     .find(|await_expr| {
-                        let ty = tables.expr_ty_adjusted(&await_expr);
+                        let ty = typeck_results.expr_ty_adjusted(&await_expr);
                         debug!(
                             "maybe_note_obligation_cause_for_async_await: await_expr={:?}",
                             await_expr
@@ -1421,7 +1464,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         debug!(
             "maybe_note_obligation_cause_for_async_await: interior_or_upvar={:?} \
                 generator_interior_types={:?}",
-            interior_or_upvar_span, tables.generator_interior_types
+            interior_or_upvar_span, typeck_results.generator_interior_types
         );
         if let Some(interior_or_upvar_span) = interior_or_upvar_span {
             self.note_obligation_cause_for_async_await(
@@ -1432,7 +1475,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 outer_generator,
                 trait_ref,
                 target_ty,
-                tables,
+                typeck_results,
                 obligation,
                 next_code,
             );
@@ -1453,7 +1496,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         outer_generator: Option<DefId>,
         trait_ref: ty::TraitRef<'tcx>,
         target_ty: Ty<'tcx>,
-        tables: &ty::TypeckTables<'tcx>,
+        typeck_results: &ty::TypeckResults<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
     ) {
@@ -1570,7 +1613,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // Look at the last interior type to get a span for the `.await`.
                         debug!(
                             "note_obligation_cause_for_async_await generator_interior_types: {:#?}",
-                            tables.generator_interior_types
+                            typeck_results.generator_interior_types
                         );
                         explain_yield(interior_span, yield_span, scope_span);
                     }
@@ -1591,7 +1634,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             // ^^^^^^^ a temporary `&T` created inside this method call due to `&self`
                             // ```
                             //
-                            let is_region_borrow = tables
+                            let is_region_borrow = typeck_results
                                 .expr_adjustments(expr)
                                 .iter()
                                 .any(|adj| adj.is_region_borrow());
@@ -1608,7 +1651,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     _ => false,
                                 };
 
-                            if (tables.is_method_call(e) && is_region_borrow)
+                            if (typeck_results.is_method_call(e) && is_region_borrow)
                                 || is_raw_borrow_inside_fn_like_call
                             {
                                 err.span_help(
@@ -1663,6 +1706,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::IntrinsicType
             | ObligationCauseCode::MethodReceiver
             | ObligationCauseCode::ReturnNoExpression
+            | ObligationCauseCode::UnifyReceiver(..)
             | ObligationCauseCode::MiscObligation => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
@@ -1742,15 +1786,56 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
             }
-            ObligationCauseCode::VariableType(_) => {
-                err.note("all local variables must have a statically known size");
+            ObligationCauseCode::VariableType(hir_id) => {
+                let parent_node = self.tcx.hir().get_parent_node(hir_id);
+                match self.tcx.hir().find(parent_node) {
+                    Some(Node::Local(hir::Local {
+                        init: Some(hir::Expr { kind: hir::ExprKind::Index(_, _), span, .. }),
+                        ..
+                    })) => {
+                        // When encountering an assignment of an unsized trait, like
+                        // `let x = ""[..];`, provide a suggestion to borrow the initializer in
+                        // order to use have a slice instead.
+                        err.span_suggestion_verbose(
+                            span.shrink_to_lo(),
+                            "consider borrowing here",
+                            "&".to_owned(),
+                            Applicability::MachineApplicable,
+                        );
+                        err.note("all local variables must have a statically known size");
+                    }
+                    Some(Node::Param(param)) => {
+                        err.span_suggestion_verbose(
+                            param.ty_span.shrink_to_lo(),
+                            "function arguments must have a statically known size, borrowed types \
+                            always have a known size",
+                            "&".to_owned(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {
+                        err.note("all local variables must have a statically known size");
+                    }
+                }
                 if !self.tcx.features().unsized_locals {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
-            ObligationCauseCode::SizedArgumentType => {
-                err.note("all function arguments must have a statically known size");
-                if !self.tcx.features().unsized_locals {
+            ObligationCauseCode::SizedArgumentType(sp) => {
+                if let Some(span) = sp {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        "function arguments must have a statically known size, borrowed types \
+                         always have a known size",
+                        "&".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    err.note("all function arguments must have a statically known size");
+                }
+                if tcx.sess.opts.unstable_features.is_nightly_build()
+                    && !self.tcx.features().unsized_locals
+                {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
@@ -1769,26 +1854,44 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
             }
-            ObligationCauseCode::FieldSized { adt_kind: ref item, last } => match *item {
-                AdtKind::Struct => {
-                    if last {
-                        err.note(
-                            "the last field of a packed struct may only have a \
-                             dynamically sized type if it does not need drop to be run",
-                        );
-                    } else {
-                        err.note(
-                            "only the last field of a struct may have a dynamically sized type",
-                        );
+            ObligationCauseCode::FieldSized { adt_kind: ref item, last, span } => {
+                match *item {
+                    AdtKind::Struct => {
+                        if last {
+                            err.note(
+                                "the last field of a packed struct may only have a \
+                                dynamically sized type if it does not need drop to be run",
+                            );
+                        } else {
+                            err.note(
+                                "only the last field of a struct may have a dynamically sized type",
+                            );
+                        }
+                    }
+                    AdtKind::Union => {
+                        err.note("no field of a union may have a dynamically sized type");
+                    }
+                    AdtKind::Enum => {
+                        err.note("no field of an enum variant may have a dynamically sized type");
                     }
                 }
-                AdtKind::Union => {
-                    err.note("no field of a union may have a dynamically sized type");
-                }
-                AdtKind::Enum => {
-                    err.note("no field of an enum variant may have a dynamically sized type");
-                }
-            },
+                err.help("change the field's type to have a statically known size");
+                err.span_suggestion(
+                    span.shrink_to_lo(),
+                    "borrowed types always have a statically known size",
+                    "&".to_string(),
+                    Applicability::MachineApplicable,
+                );
+                err.multipart_suggestion(
+                    "the `Box` type always has a statically known size and allocates its contents \
+                     in the heap",
+                    vec![
+                        (span.shrink_to_lo(), "Box<".to_string()),
+                        (span.shrink_to_hi(), ">".to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            }
             ObligationCauseCode::ConstSized => {
                 err.note("constant expressions must have a statically known size");
             }
@@ -1909,9 +2012,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let self_ty = self.resolve_vars_if_possible(&trait_ref.self_ty());
 
+                // Do not check on infer_types to avoid panic in evaluate_obligation.
+                if self_ty.has_infer_types() {
+                    return;
+                }
+                let self_ty = self.tcx.erase_regions(&self_ty);
+
                 let impls_future = self.tcx.type_implements_trait((
                     future_trait,
-                    self_ty,
+                    self_ty.skip_binder(),
                     ty::List::empty(),
                     obligation.param_env,
                 ));
@@ -1927,7 +2036,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let projection_ty = ty::ProjectionTy {
                     // `T`
                     substs: self.tcx.mk_substs_trait(
-                        trait_ref.self_ty(),
+                        trait_ref.self_ty().skip_binder(),
                         self.fresh_substs_for_item(span, item_def_id),
                     ),
                     // `Future::Output`
@@ -1976,8 +2085,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 /// Collect all the returned expressions within the input expression.
 /// Used to point at the return spans when we want to suggest some change to them.
 #[derive(Default)]
-struct ReturnsVisitor<'v> {
-    returns: Vec<&'v hir::Expr<'v>>,
+pub struct ReturnsVisitor<'v> {
+    pub returns: Vec<&'v hir::Expr<'v>>,
     in_block_tail: bool,
 }
 
@@ -2058,7 +2167,7 @@ pub trait NextTypeParamName {
 
 impl NextTypeParamName for &[hir::GenericParam<'_>] {
     fn next_type_param_name(&self, name: Option<&str>) -> String {
-        // This is the whitelist of possible parameter names that we might suggest.
+        // This is the list of possible parameter names that we might suggest.
         let name = name.and_then(|n| n.chars().next()).map(|c| c.to_string().to_uppercase());
         let name = name.as_deref();
         let possible_names = [name.unwrap_or("T"), "T", "U", "V", "X", "Y", "Z", "A", "B", "C"];

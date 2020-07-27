@@ -1,16 +1,16 @@
-#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![feature(rustc_private)]
-#![feature(str_strip)]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
+// warn on rustc internal lints
+#![deny(rustc::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
-#[allow(unused_extern_crates)]
+extern crate rustc_data_structures;
 extern crate rustc_driver;
-#[allow(unused_extern_crates)]
 extern crate rustc_errors;
-#[allow(unused_extern_crates)]
 extern crate rustc_interface;
-#[allow(unused_extern_crates)]
 extern crate rustc_middle;
 
 use rustc_interface::interface;
@@ -79,7 +79,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
 
             let conf = clippy_lints::read_conf(&[], &sess);
             clippy_lints::register_plugins(&mut lint_store, &sess, &conf);
-            clippy_lints::register_pre_expansion_lints(&mut lint_store, &conf);
+            clippy_lints::register_pre_expansion_lints(&mut lint_store);
             clippy_lints::register_renamed(&mut lint_store);
         }));
 
@@ -94,7 +94,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
 #[allow(clippy::find_map, clippy::filter_map)]
 fn describe_lints() {
     use lintlist::{Level, Lint, ALL_LINTS, LINT_LEVELS};
-    use std::collections::HashSet;
+    use rustc_data_structures::fx::FxHashSet;
 
     println!(
         "
@@ -138,7 +138,7 @@ Available lint options:
 
     let scoped = |x: &str| format!("clippy::{}", x);
 
-    let lint_groups: HashSet<_> = lints.iter().map(|lint| lint.group).collect();
+    let lint_groups: FxHashSet<_> = lints.iter().map(|lint| lint.group).collect();
 
     println!("Lint checks provided by clippy:\n");
     println!("    {}  {:7.7}  meaning", padded("name"), "default");
@@ -208,6 +208,7 @@ Usage:
 
 Common options:
     -h, --help               Print this message
+        --rustc              Pass all args to rustc
     -V, --version            Print version info and exit
 
 Other options are the same as `cargo check`.
@@ -298,12 +299,6 @@ pub fn main() {
     exit(rustc_driver::catch_with_exit_code(move || {
         let mut orig_args: Vec<String> = env::args().collect();
 
-        if orig_args.iter().any(|a| a == "--version" || a == "-V") {
-            let version_info = rustc_tools_util::get_version_info!();
-            println!("{}", version_info);
-            exit(0);
-        }
-
         // Get the sysroot, looking from most specific to this invocation to the least:
         // - command line
         // - runtime environment
@@ -349,6 +344,28 @@ pub fn main() {
             .map(|pb| pb.to_string_lossy().to_string())
             .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust");
 
+        // make "clippy-driver --rustc" work like a subcommand that passes further args to "rustc"
+        // for example `clippy-driver --rustc --version` will print the rustc version that clippy-driver
+        // uses
+        if let Some(pos) = orig_args.iter().position(|arg| arg == "--rustc") {
+            orig_args.remove(pos);
+            orig_args[0] = "rustc".to_string();
+
+            // if we call "rustc", we need to pass --sysroot here as well
+            let mut args: Vec<String> = orig_args.clone();
+            if !have_sys_root_arg {
+                args.extend(vec!["--sysroot".into(), sys_root]);
+            };
+
+            return rustc_driver::run_compiler(&args, &mut DefaultCallbacks, None, None);
+        }
+
+        if orig_args.iter().any(|a| a == "--version" || a == "-V") {
+            let version_info = rustc_tools_util::get_version_info!();
+            println!("{}", version_info);
+            exit(0);
+        }
+
         // Setting RUSTC_WRAPPER causes Cargo to pass 'rustc' as the first argument.
         // We're invoking the compiler programmatically, so we ignore this/
         let wrapper_mode = orig_args.get(1).map(Path::new).and_then(Path::file_stem) == Some("rustc".as_ref());
@@ -365,13 +382,8 @@ pub fn main() {
 
         let should_describe_lints = || {
             let args: Vec<_> = env::args().collect();
-            args.windows(2).any(|args| {
-                args[1] == "help"
-                    && match args[0].as_str() {
-                        "-W" | "-A" | "-D" | "-F" => true,
-                        _ => false,
-                    }
-            })
+            args.windows(2)
+                .any(|args| args[1] == "help" && matches!(args[0].as_str(), "-W" | "-A" | "-D" | "-F"))
         };
 
         if !wrapper_mode && should_describe_lints() {

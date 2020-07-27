@@ -1,4 +1,4 @@
-use crate::rmeta::table::FixedSizeEncoding;
+use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
 use log::{debug, trace};
@@ -16,6 +16,7 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::{EncodedMetadata, ForeignModule, LinkagePreference, NativeLib};
@@ -27,17 +28,18 @@ use rustc_middle::mir::{self, interpret};
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::{self as ty_codec, TyEncoder};
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
-use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder};
+use rustc_serialize::{opaque, Encodable, Encoder, SpecializedEncoder, UseSpecializedEncodable};
 use rustc_session::config::CrateType;
+use rustc_span::hygiene::{ExpnDataEncodeMode, HygieneEncodeContext};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, ExternalSource, FileName, SourceFile, Span};
+use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
 use rustc_target::abi::VariantIdx;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::path::Path;
 
-struct EncodeContext<'tcx> {
+struct EncodeContext<'a, 'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
 
@@ -51,7 +53,21 @@ struct EncodeContext<'tcx> {
     interpret_allocs_inverse: Vec<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
-    source_file_cache: Lrc<SourceFile>,
+    // The `usize` is an index into the `MonotonicVec`
+    // that stores the `SourceFile`
+    source_file_cache: (Lrc<SourceFile>, usize),
+    // The indices (into the `SourceMap`'s `MonotonicVec`)
+    // of all of the `SourceFiles` that we need to serialize.
+    // When we serialize a `Span`, we insert the index of its
+    // `SourceFile` into the `GrowableBitSet`.
+    //
+    // This needs to be a `GrowableBitSet` and not a
+    // regular `BitSet` because we may actually import new `SourceFiles`
+    // during metadata encoding, due to executing a query
+    // with a result containing a foreign `Span`.
+    required_source_files: Option<GrowableBitSet<usize>>,
+    is_proc_macro: bool,
+    hygiene_ctxt: &'a HygieneEncodeContext,
 }
 
 macro_rules! encoder_methods {
@@ -62,7 +78,7 @@ macro_rules! encoder_methods {
     }
 }
 
-impl<'tcx> Encoder for EncodeContext<'tcx> {
+impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
     type Error = <opaque::Encoder as Encoder>::Error;
 
     #[inline]
@@ -93,13 +109,13 @@ impl<'tcx> Encoder for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<T>> for EncodeContext<'tcx> {
+impl<'a, 'tcx, T> SpecializedEncoder<Lazy<T, ()>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
         self.emit_lazy_distance(*lazy)
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
+impl<'a, 'tcx, T> SpecializedEncoder<Lazy<[T], usize>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<[T]>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         if lazy.meta == 0 {
@@ -109,7 +125,7 @@ impl<'tcx, T> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>>> for EncodeContext<'tcx>
+impl<'a, 'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>, usize>> for EncodeContext<'a, 'tcx>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -119,14 +135,14 @@ where
     }
 }
 
-impl<'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<CrateNum> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, cnum: &CrateNum) -> Result<(), Self::Error> {
         self.emit_u32(cnum.as_u32())
     }
 }
 
-impl<'tcx> SpecializedEncoder<DefId> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<DefId> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_id: &DefId) -> Result<(), Self::Error> {
         let DefId { krate, index } = *def_id;
@@ -136,14 +152,31 @@ impl<'tcx> SpecializedEncoder<DefId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<SyntaxContext> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, ctxt: &SyntaxContext) -> Result<(), Self::Error> {
+        rustc_span::hygiene::raw_encode_syntax_context(*ctxt, &self.hygiene_ctxt, self)
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<ExpnId> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, expn: &ExpnId) -> Result<(), Self::Error> {
+        rustc_span::hygiene::raw_encode_expn_id(
+            *expn,
+            &mut self.hygiene_ctxt,
+            ExpnDataEncodeMode::Metadata,
+            self,
+        )
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_index: &DefIndex) -> Result<(), Self::Error> {
         self.emit_u32(def_index.as_u32())
     }
 }
 
-impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
         if span.is_dummy() {
             return TAG_INVALID_SPAN.encode(self);
@@ -154,17 +187,22 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         // The Span infrastructure should make sure that this invariant holds:
         debug_assert!(span.lo <= span.hi);
 
-        if !self.source_file_cache.contains(span.lo) {
+        if !self.source_file_cache.0.contains(span.lo) {
             let source_map = self.tcx.sess.source_map();
             let source_file_index = source_map.lookup_source_file_idx(span.lo);
-            self.source_file_cache = source_map.files()[source_file_index].clone();
+            self.source_file_cache =
+                (source_map.files()[source_file_index].clone(), source_file_index);
         }
 
-        if !self.source_file_cache.contains(span.hi) {
+        if !self.source_file_cache.0.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
             return TAG_INVALID_SPAN.encode(self);
         }
+
+        let source_files = self.required_source_files.as_mut().expect("Already encoded SourceMap!");
+        // Record the fact that we need to encode the data for this `SourceFile`
+        source_files.insert(self.source_file_cache.1);
 
         // There are two possible cases here:
         // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
@@ -176,7 +214,13 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         // 2. This span comes from our own crate. No special hamdling is needed - we just
         // write `TAG_VALID_SPAN_LOCAL` to let the deserializer know that it should use
         // our own source map information.
-        let (tag, lo, hi) = if self.source_file_cache.is_imported() {
+        //
+        // If we're a proc-macro crate, we always treat this as a local `Span`.
+        // In `encode_source_map`, we serialize foreign `SourceFile`s into our metadata
+        // if we're a proc-macro crate.
+        // This allows us to avoid loading the dependencies of proc-macro crates: all of
+        // the information we need to decode `Span`s is stored in the proc-macro crate.
+        let (tag, lo, hi) = if self.source_file_cache.0.is_imported() && !self.is_proc_macro {
             // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
             // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
             // are relative to the source map information for the 'foreign' crate whose CrateNum
@@ -188,13 +232,13 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
             // Span that can be used without any additional trouble.
             let external_start_pos = {
                 // Introduce a new scope so that we drop the 'lock()' temporary
-                match &*self.source_file_cache.external_src.lock() {
+                match &*self.source_file_cache.0.external_src.lock() {
                     ExternalSource::Foreign { original_start_pos, .. } => *original_start_pos,
                     src => panic!("Unexpected external source {:?}", src),
                 }
             };
-            let lo = (span.lo - self.source_file_cache.start_pos) + external_start_pos;
-            let hi = (span.hi - self.source_file_cache.start_pos) + external_start_pos;
+            let lo = (span.lo - self.source_file_cache.0.start_pos) + external_start_pos;
+            let hi = (span.hi - self.source_file_cache.0.start_pos) + external_start_pos;
 
             (TAG_VALID_SPAN_FOREIGN, lo, hi)
         } else {
@@ -209,32 +253,80 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         let len = hi - lo;
         len.encode(self)?;
 
+        // Don't serialize any `SyntaxContext`s from a proc-macro crate,
+        // since we don't load proc-macro dependencies during serialization.
+        // This means that any hygiene information from macros used *within*
+        // a proc-macro crate (e.g. invoking a macro that expands to a proc-macro
+        // definition) will be lost.
+        //
+        // This can show up in two ways:
+        //
+        // 1. Any hygiene information associated with identifier of
+        // a proc macro (e.g. `#[proc_macro] pub fn $name`) will be lost.
+        // Since proc-macros can only be invoked from a different crate,
+        // real code should never need to care about this.
+        //
+        // 2. Using `Span::def_site` or `Span::mixed_site` will not
+        // include any hygiene information associated with the defintion
+        // site. This means that a proc-macro cannot emit a `$crate`
+        // identifier which resolves to one of its dependencies,
+        // which also should never come up in practice.
+        //
+        // Additionally, this affects `Span::parent`, and any other
+        // span inspection APIs that would otherwise allow traversing
+        // the `SyntaxContexts` associated with a span.
+        //
+        // None of these user-visible effects should result in any
+        // cross-crate inconsistencies (getting one behavior in the same
+        // crate, and a different behavior in another crate) due to the
+        // limited surface that proc-macros can expose.
+        if self.is_proc_macro {
+            SyntaxContext::root().encode(self)?;
+        } else {
+            span.ctxt.encode(self)?;
+        }
+
         if tag == TAG_VALID_SPAN_FOREIGN {
             // This needs to be two lines to avoid holding the `self.source_file_cache`
             // while calling `cnum.encode(self)`
-            let cnum = self.source_file_cache.cnum;
+            let cnum = self.source_file_cache.0.cnum;
             cnum.encode(self)?;
         }
-        Ok(())
 
-        // Don't encode the expansion context.
+        Ok(())
     }
 }
 
-impl<'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_encode(&mut self, def_id: &LocalDefId) -> Result<(), Self::Error> {
         self.specialized_encode(&def_id.to_def_id())
     }
 }
 
-impl<'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'tcx> {
-    fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
+impl<'a, 'b, 'c, 'tcx> SpecializedEncoder<&'a ty::TyS<'b>> for EncodeContext<'c, 'tcx>
+where
+    &'a ty::TyS<'b>: UseSpecializedEncodable,
+{
+    fn specialized_encode(&mut self, ty: &&'a ty::TyS<'b>) -> Result<(), Self::Error> {
+        debug_assert!(self.tcx.lift(ty).is_some());
+        let ty = unsafe { std::mem::transmute::<&&'a ty::TyS<'b>, &&'tcx ty::TyS<'tcx>>(ty) };
         ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
     }
 }
 
-impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
+impl<'a, 'b, 'tcx> SpecializedEncoder<ty::Predicate<'b>> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, predicate: &ty::Predicate<'b>) -> Result<(), Self::Error> {
+        debug_assert!(self.tcx.lift(predicate).is_some());
+        let predicate =
+            unsafe { std::mem::transmute::<&ty::Predicate<'b>, &ty::Predicate<'tcx>>(predicate) };
+        ty_codec::encode_with_shorthand(self, predicate, |encoder| {
+            &mut encoder.predicate_shorthands
+        })
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
         use std::collections::hash_map::Entry;
         let index = match self.interpret_allocs.entry(*alloc_id) {
@@ -251,28 +343,22 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx> SpecializedEncoder<&'tcx [(ty::Predicate<'tcx>, Span)]> for EncodeContext<'tcx> {
-    fn specialized_encode(
-        &mut self,
-        predicates: &&'tcx [(ty::Predicate<'tcx>, Span)],
-    ) -> Result<(), Self::Error> {
-        ty_codec::encode_spanned_predicates(self, predicates, |ecx| &mut ecx.predicate_shorthands)
-    }
-}
-
-impl<'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'tcx> {
+impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.opaque)
     }
 }
 
-impl<'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'tcx> {
+impl<'a, 'tcx, T> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'a, 'tcx>
+where
+    mir::ClearCrossCrate<T>: UseSpecializedEncodable,
+{
     fn specialized_encode(&mut self, _: &mir::ClearCrossCrate<T>) -> Result<(), Self::Error> {
         Ok(())
     }
 }
 
-impl<'tcx> TyEncoder for EncodeContext<'tcx> {
+impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     fn position(&self) -> usize {
         self.opaque.position()
     }
@@ -280,17 +366,17 @@ impl<'tcx> TyEncoder for EncodeContext<'tcx> {
 
 /// Helper trait to allow overloading `EncodeContext::lazy` for iterators.
 trait EncodeContentsForLazy<T: ?Sized + LazyMeta> {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) -> T::Meta;
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> T::Meta;
 }
 
 impl<T: Encodable> EncodeContentsForLazy<T> for &T {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) {
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
         self.encode(ecx).unwrap()
     }
 }
 
 impl<T: Encodable> EncodeContentsForLazy<T> for T {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) {
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) {
         self.encode(ecx).unwrap()
     }
 }
@@ -300,7 +386,7 @@ where
     I: IntoIterator,
     I::Item: EncodeContentsForLazy<T>,
 {
-    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'tcx>) -> usize {
+    fn encode_contents_for_lazy(self, ecx: &mut EncodeContext<'a, 'tcx>) -> usize {
         self.into_iter().map(|value| value.encode_contents_for_lazy(ecx)).count()
     }
 }
@@ -317,7 +403,7 @@ macro_rules! record {
     }};
 }
 
-impl<'tcx> EncodeContext<'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn emit_lazy_distance<T: ?Sized + LazyMeta>(
         &mut self,
         lazy: Lazy<T>,
@@ -376,17 +462,24 @@ impl<'tcx> EncodeContext<'tcx> {
         let all_source_files = source_map.files();
 
         let (working_dir, _cwd_remapped) = self.tcx.sess.working_dir.clone();
+        // By replacing the `Option` with `None`, we ensure that we can't
+        // accidentally serialize any more `Span`s after the source map encoding
+        // is done.
+        let required_source_files = self.required_source_files.take().unwrap();
 
         let adapted = all_source_files
             .iter()
-            .filter(|source_file| {
-                // No need to re-export imported source_files, as any downstream
-                // crate will import them from their original source.
-                // FIXME(eddyb) the `Span` encoding should take that into account.
-                !source_file.is_imported()
+            .enumerate()
+            .filter(|(idx, source_file)| {
+                // Only serialize `SourceFile`s that were used
+                // during the encoding of a `Span`
+                required_source_files.contains(*idx) &&
+                // Don't serialize imported `SourceFile`s, unless
+                // we're in a proc-macro crate.
+                (!source_file.is_imported() || self.is_proc_macro)
             })
-            .map(|source_file| {
-                match source_file.name {
+            .map(|(_, source_file)| {
+                let mut adapted = match source_file.name {
                     // This path of this SourceFile has been modified by
                     // path-remapping, so we use it verbatim (and avoid
                     // cloning the whole map in the process).
@@ -396,6 +489,7 @@ impl<'tcx> EncodeContext<'tcx> {
                     // any relative paths are potentially relative to a
                     // wrong directory.
                     FileName::Real(ref name) => {
+                        let name = name.stable_name();
                         let mut adapted = (**source_file).clone();
                         adapted.name = Path::new(&working_dir).join(name).into();
                         adapted.name_hash = {
@@ -408,18 +502,34 @@ impl<'tcx> EncodeContext<'tcx> {
 
                     // expanded code, not from a file
                     _ => source_file.clone(),
+                };
+
+                // We're serializing this `SourceFile` into our crate metadata,
+                // so mark it as coming from this crate.
+                // This also ensures that we don't try to deserialize the
+                // `CrateNum` for a proc-macro dependency - since proc macro
+                // dependencies aren't loaded when we deserialize a proc-macro,
+                // trying to remap the `CrateNum` would fail.
+                if self.is_proc_macro {
+                    Lrc::make_mut(&mut adapted).cnum = LOCAL_CRATE;
                 }
+                adapted
             })
             .collect::<Vec<_>>();
 
         self.lazy(adapted.iter().map(|rc| &**rc))
     }
 
+    fn is_proc_macro(&self) -> bool {
+        self.tcx.sess.crate_types().contains(&CrateType::ProcMacro)
+    }
+
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot<'tcx>> {
-        let is_proc_macro = self.tcx.sess.crate_types().contains(&CrateType::ProcMacro);
+        let is_proc_macro = self.is_proc_macro();
 
         let mut i = self.position();
 
+        // Encode the crate deps
         let crate_deps = self.encode_crate_deps();
         let dylib_dependency_formats = self.encode_dylib_dependency_formats();
         let dep_bytes = self.position() - i;
@@ -446,11 +556,6 @@ impl<'tcx> EncodeContext<'tcx> {
         let native_lib_bytes = self.position() - i;
 
         let foreign_modules = self.encode_foreign_modules();
-
-        // Encode source_map
-        i = self.position();
-        let source_map = self.encode_source_map();
-        let source_map_bytes = self.position() - i;
 
         // Encode DefPathTable
         i = self.position();
@@ -503,11 +608,29 @@ impl<'tcx> EncodeContext<'tcx> {
         let proc_macro_data_bytes = self.position() - i;
 
         // Encode exported symbols info. This is prefetched in `encode_metadata` so we encode
-        // this last to give the prefetching as much time as possible to complete.
+        // this as late as possible to give the prefetching as much time as possible to complete.
         i = self.position();
-        let exported_symbols = self.tcx.exported_symbols(LOCAL_CRATE);
+        let exported_symbols = tcx.exported_symbols(LOCAL_CRATE);
         let exported_symbols = self.encode_exported_symbols(&exported_symbols);
         let exported_symbols_bytes = self.position() - i;
+
+        // Encode the hygiene data,
+        // IMPORTANT: this *must* be the last thing that we encode (other than `SourceMap`). The process
+        // of encoding other items (e.g. `optimized_mir`) may cause us to load
+        // data from the incremental cache. If this causes us to deserialize a `Span`,
+        // then we may load additional `SyntaxContext`s into the global `HygieneData`.
+        // Therefore, we need to encode the hygiene data last to ensure that we encode
+        // any `SyntaxContext`s that might be used.
+        i = self.position();
+        let (syntax_contexts, expn_data) = self.encode_hygiene();
+        let hygiene_bytes = self.position() - i;
+
+        // Encode source_map. This needs to be done last,
+        // since encoding `Span`s tells us which `SourceFiles` we actually
+        // need to encode.
+        i = self.position();
+        let source_map = self.encode_source_map();
+        let source_map_bytes = self.position() - i;
 
         let attrs = tcx.hir().krate_attrs();
         let has_default_lib_allocator = attr::contains_name(&attrs, sym::default_lib_allocator);
@@ -558,11 +681,13 @@ impl<'tcx> EncodeContext<'tcx> {
             exported_symbols,
             interpret_alloc_index,
             tables,
+            syntax_contexts,
+            expn_data,
         });
 
         let total_bytes = self.position();
 
-        if self.tcx.sess.meta_stats() {
+        if tcx.sess.meta_stats() {
             let mut zero_bytes = 0;
             for e in self.opaque.data.iter() {
                 if *e == 0 {
@@ -583,6 +708,7 @@ impl<'tcx> EncodeContext<'tcx> {
             println!(" proc-macro-data-bytes: {}", proc_macro_data_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           table bytes: {}", tables_bytes);
+            println!("         hygiene bytes: {}", hygiene_bytes);
             println!("            zero bytes: {}", zero_bytes);
             println!("           total bytes: {}", total_bytes);
         }
@@ -591,7 +717,7 @@ impl<'tcx> EncodeContext<'tcx> {
     }
 }
 
-impl EncodeContext<'tcx> {
+impl EncodeContext<'a, 'tcx> {
     fn encode_variances_of(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_variances_of({:?})", def_id);
         record!(self.tables.variances[def_id] <- &self.tcx.variances_of(def_id)[..]);
@@ -692,14 +818,23 @@ impl EncodeContext<'tcx> {
         vis: &hir::Visibility<'_>,
     ) {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id(id).to_def_id();
+        let local_def_id = tcx.hir().local_def_id(id);
+        let def_id = local_def_id.to_def_id();
         debug!("EncodeContext::encode_info_for_mod({:?})", def_id);
 
         let data = ModData {
-            reexports: match tcx.module_exports(def_id) {
-                Some(exports) => self.lazy(exports),
+            reexports: match tcx.module_exports(local_def_id) {
+                Some(exports) => {
+                    let hir_map = self.tcx.hir();
+                    self.lazy(
+                        exports
+                            .iter()
+                            .map(|export| export.map_id(|id| hir_map.as_local_hir_id(id))),
+                    )
+                }
                 _ => Lazy::empty(),
             },
+            expansion: tcx.hir().definitions().expansion_that_defined(local_def_id),
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(self.lazy(data)));
@@ -864,7 +999,6 @@ impl EncodeContext<'tcx> {
                 }))
             }
             ty::AssocKind::Type => EntryKind::AssocType(container),
-            ty::AssocKind::OpaqueTy => span_bug!(ast_item.span, "opaque type in trait"),
         });
         record!(self.tables.visibility[def_id] <- trait_item.vis);
         record!(self.tables.span[def_id] <- ast_item.span);
@@ -882,7 +1016,6 @@ impl EncodeContext<'tcx> {
                     self.encode_item_type(def_id);
                 }
             }
-            ty::AssocKind::OpaqueTy => unreachable!(),
         }
         if trait_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -947,7 +1080,6 @@ impl EncodeContext<'tcx> {
                     has_self: impl_item.fn_has_self_parameter,
                 }))
             }
-            ty::AssocKind::OpaqueTy => EntryKind::AssocOpaqueTy(container),
             ty::AssocKind::Type => EntryKind::AssocType(container)
         });
         record!(self.tables.visibility[def_id] <- impl_item.vis);
@@ -979,7 +1111,7 @@ impl EncodeContext<'tcx> {
                 let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                 needs_inline || is_const_fn || always_encode_mir
             }
-            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => false,
+            hir::ImplItemKind::TyAlias(..) => false,
         };
         if mir {
             self.encode_optimized_mir(def_id.expect_local());
@@ -987,24 +1119,20 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Symbol]> {
-        self.tcx.dep_graph.with_ignore(|| {
-            let body = self.tcx.hir().body(body_id);
-            self.lazy(body.params.iter().map(|arg| match arg.pat.kind {
-                hir::PatKind::Binding(_, _, ident, _) => ident.name,
-                _ => kw::Invalid,
-            }))
-        })
+    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Ident]> {
+        self.tcx.dep_graph.with_ignore(|| self.lazy(self.tcx.hir().body_param_names(body_id)))
     }
 
-    fn encode_fn_param_names(&mut self, param_names: &[Ident]) -> Lazy<[Symbol]> {
-        self.lazy(param_names.iter().map(|ident| ident.name))
+    fn encode_fn_param_names(&mut self, param_names: &[Ident]) -> Lazy<[Ident]> {
+        self.lazy(param_names.iter())
     }
 
     fn encode_optimized_mir(&mut self, def_id: LocalDefId) {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
             record!(self.tables.mir[def_id.to_def_id()] <- self.tcx.optimized_mir(def_id));
+            record!(self.tables.unused_generic_params[def_id.to_def_id()] <-
+                    self.tcx.unused_generic_params(def_id));
         }
     }
 
@@ -1309,9 +1437,9 @@ impl EncodeContext<'tcx> {
         debug!("EncodeContext::encode_info_for_closure({:?})", def_id);
 
         // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
-        // including on the signature, which is inferred in `typeck_tables_of.
+        // including on the signature, which is inferred in `typeck.
         let hir_id = self.tcx.hir().as_local_hir_id(def_id);
-        let ty = self.tcx.typeck_tables_of(def_id).node_type(hir_id);
+        let ty = self.tcx.typeck(def_id).node_type(hir_id);
 
         record!(self.tables.kind[def_id.to_def_id()] <- match ty.kind {
             ty::Generator(..) => {
@@ -1342,7 +1470,7 @@ impl EncodeContext<'tcx> {
         let const_data = self.encode_rendered_const_for_body(body_id);
         let qualifs = self.tcx.mir_const_qualif(def_id);
 
-        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::Const(qualifs, const_data));
+        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(qualifs, const_data));
         record!(self.tables.visibility[def_id.to_def_id()] <- ty::Visibility::Public);
         record!(self.tables.span[def_id.to_def_id()] <- self.tcx.def_span(def_id));
         self.encode_item_type(def_id.to_def_id());
@@ -1361,6 +1489,25 @@ impl EncodeContext<'tcx> {
     fn encode_foreign_modules(&mut self) -> Lazy<[ForeignModule]> {
         let foreign_modules = self.tcx.foreign_modules(LOCAL_CRATE);
         self.lazy(foreign_modules.iter().cloned())
+    }
+
+    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable) {
+        let mut syntax_contexts: TableBuilder<_, _> = Default::default();
+        let mut expn_data_table: TableBuilder<_, _> = Default::default();
+
+        let _: Result<(), !> = self.hygiene_ctxt.encode(
+            &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table),
+            |(this, syntax_contexts, _), index, ctxt_data| {
+                syntax_contexts.set(index, this.lazy(ctxt_data));
+                Ok(())
+            },
+            |(this, _, expn_data_table), index, expn_data| {
+                expn_data_table.set(index, this.lazy(expn_data));
+                Ok(())
+            },
+        );
+
+        (syntax_contexts.encode(&mut self.opaque), expn_data_table.encode(&mut self.opaque))
     }
 
     fn encode_proc_macros(&mut self) -> Option<Lazy<[DefIndex]>> {
@@ -1481,7 +1628,7 @@ impl EncodeContext<'tcx> {
     ) -> Lazy<[(ExportedSymbol<'tcx>, SymbolExportLevel)]> {
         // The metadata symbol name is special. It should not show up in
         // downstream crates.
-        let metadata_symbol_name = SymbolName::new(&metadata_symbol_name(self.tcx));
+        let metadata_symbol_name = SymbolName::new(self.tcx, &metadata_symbol_name(self.tcx));
 
         self.lazy(
             exported_symbols
@@ -1552,7 +1699,7 @@ impl EncodeContext<'tcx> {
 }
 
 // FIXME(eddyb) make metadata encoding walk over all definitions, instead of HIR.
-impl Visitor<'tcx> for EncodeContext<'tcx> {
+impl Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -1590,7 +1737,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
     }
 }
 
-impl EncodeContext<'tcx> {
+impl EncodeContext<'a, 'tcx> {
     fn encode_fields(&mut self, adt_def: &ty::AdtDef) {
         for (variant_index, variant) in adt_def.variants.iter_enumerated() {
             for (field_index, _field) in variant.fields.iter().enumerate() {
@@ -1776,7 +1923,7 @@ impl<'tcx, 'v> ParItemLikeVisitor<'v> for PrefetchVisitor<'tcx> {
                     self.prefetch_mir(def_id)
                 }
             }
-            hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(..) => (),
+            hir::ImplItemKind::TyAlias(..) => (),
         }
     }
 }
@@ -1843,6 +1990,9 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // Will be filled with the root position after encoding everything.
     encoder.emit_raw_bytes(&[0, 0, 0, 0]);
 
+    let source_map_files = tcx.sess.source_map().files();
+    let hygiene_ctxt = HygieneEncodeContext::default();
+
     let mut ecx = EncodeContext {
         opaque: encoder,
         tcx,
@@ -1850,10 +2000,14 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         lazy_state: LazyState::NoNode,
         type_shorthands: Default::default(),
         predicate_shorthands: Default::default(),
-        source_file_cache: tcx.sess.source_map().files()[0].clone(),
+        source_file_cache: (source_map_files[0].clone(), 0),
         interpret_allocs: Default::default(),
         interpret_allocs_inverse: Default::default(),
+        required_source_files: Some(GrowableBitSet::with_capacity(source_map_files.len())),
+        is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
+        hygiene_ctxt: &hygiene_ctxt,
     };
+    drop(source_map_files);
 
     // Encode the rustc version string in a predictable location.
     rustc_version().encode(&mut ecx).unwrap();

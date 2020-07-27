@@ -14,6 +14,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, CachingSourceMapView, SourceFile};
 
+use rustc_span::def_id::{CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use std::cmp::Ord;
 
@@ -67,13 +68,15 @@ impl<'a> StableHashingContext<'a> {
     /// Don't use it for anything else or you'll run the risk of
     /// leaking data out of the tracking system.
     #[inline]
-    pub fn new(
+    fn new_with_or_without_spans(
         sess: &'a Session,
         krate: &'a hir::Crate<'a>,
         definitions: &'a Definitions,
         cstore: &'a dyn CrateStore,
+        always_ignore_spans: bool,
     ) -> Self {
-        let hash_spans_initial = !sess.opts.debugging_opts.incremental_ignore_spans;
+        let hash_spans_initial =
+            !always_ignore_spans && !sess.opts.debugging_opts.incremental_ignore_spans;
 
         StableHashingContext {
             sess,
@@ -86,6 +89,33 @@ impl<'a> StableHashingContext<'a> {
             hash_bodies: true,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
         }
+    }
+
+    #[inline]
+    pub fn new(
+        sess: &'a Session,
+        krate: &'a hir::Crate<'a>,
+        definitions: &'a Definitions,
+        cstore: &'a dyn CrateStore,
+    ) -> Self {
+        Self::new_with_or_without_spans(
+            sess,
+            krate,
+            definitions,
+            cstore,
+            /*always_ignore_spans=*/ false,
+        )
+    }
+
+    #[inline]
+    pub fn ignore_spans(
+        sess: &'a Session,
+        krate: &'a hir::Crate<'a>,
+        definitions: &'a Definitions,
+        cstore: &'a dyn CrateStore,
+    ) -> Self {
+        let always_ignore_spans = true;
+        Self::new_with_or_without_spans(sess, krate, definitions, cstore, always_ignore_spans)
     }
 
     #[inline]
@@ -198,6 +228,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
 impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     fn hash_spans(&self) -> bool {
         self.hash_spans
+    }
+
+    #[inline]
+    fn hash_crate_num(&mut self, cnum: CrateNum, hasher: &mut StableHasher) {
+        let hcx = self;
+        hcx.def_path_hash(DefId { krate: cnum, index: CRATE_DEF_INDEX }).hash_stable(hcx, hasher);
     }
 
     #[inline]

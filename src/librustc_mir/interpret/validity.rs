@@ -45,7 +45,7 @@ macro_rules! throw_validation_failure {
 /// If $e throws an error matching the pattern, throw a validation failure.
 /// Other errors are passed back to the caller, unchanged -- and if they reach the root of
 /// the visitor, we make sure only validation errors and `InvalidProgram` errors are left.
-/// This lets you use the patterns as a kind of validation whitelist, asserting which errors
+/// This lets you use the patterns as a kind of validation list, asserting which errors
 /// can possibly happen:
 ///
 /// ```
@@ -208,8 +208,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     fn aggregate_field_path_elem(&mut self, layout: TyAndLayout<'tcx>, field: usize) -> PathElem {
         // First, check if we are projecting to a variant.
         match layout.variants {
-            Variants::Multiple { discr_index, .. } => {
-                if discr_index == field {
+            Variants::Multiple { tag_field, .. } => {
+                if tag_field == field {
                     return match layout.ty.kind {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
                         ty::Generator(..) => PathElem::GeneratorTag,
@@ -226,8 +226,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 let mut name = None;
                 if let Some(def_id) = def_id.as_local() {
-                    let tables = self.ecx.tcx.typeck_tables_of(def_id);
-                    if let Some(upvars) = tables.upvar_list.get(&def_id.to_def_id()) {
+                    let tables = self.ecx.tcx.typeck(def_id);
+                    if let Some(upvars) = tables.closure_captures.get(&def_id.to_def_id()) {
                         // Sometimes the index is beyond the number of upvars (seen
                         // for a generator).
                         if let Some((&var_hir_id, _)) = upvars.get_index(field) {
@@ -276,19 +276,21 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         }
     }
 
-    fn visit_elem(
+    fn with_elem<R>(
         &mut self,
-        new_op: OpTy<'tcx, M::PointerTag>,
         elem: PathElem,
-    ) -> InterpResult<'tcx> {
+        f: impl FnOnce(&mut Self) -> InterpResult<'tcx, R>,
+    ) -> InterpResult<'tcx, R> {
         // Remember the old state
         let path_len = self.path.len();
-        // Perform operation
+        // Record new element
         self.path.push(elem);
-        self.visit_value(new_op)?;
+        // Perform operation
+        let r = f(self)?;
         // Undo changes
         self.path.truncate(path_len);
-        Ok(())
+        // Done
+        Ok(r)
     }
 
     fn check_wide_ptr_meta(
@@ -366,7 +368,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let place = try_validation!(
             self.ecx.ref_to_mplace(value),
             self.path,
-            err_ub!(InvalidUninitBytes { .. }) => { "uninitialized {}", kind },
+            err_ub!(InvalidUninitBytes(None)) => { "uninitialized {}", kind },
         );
         if place.layout.is_unsized() {
             self.check_wide_ptr_meta(place.meta, place.layout)?;
@@ -418,6 +420,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // Skip validation entirely for some external statics
                 let alloc_kind = self.ecx.tcx.get_global_alloc(ptr.alloc_id);
                 if let Some(GlobalAlloc::Static(did)) = alloc_kind {
+                    assert!(!self.ecx.tcx.is_thread_local_static(did));
                     // See const_eval::machine::MemoryExtra::can_access_statics for why
                     // this check is so important.
                     // This check is reachable when the const just referenced the static,
@@ -476,7 +479,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     value.to_bool(),
                     self.path,
-                    err_ub!(InvalidBool(..)) => { "{}", value } expected { "a boolean" },
+                    err_ub!(InvalidBool(..)) | err_ub!(InvalidUninitBytes(None)) =>
+                        { "{}", value } expected { "a boolean" },
                 );
                 Ok(true)
             }
@@ -485,7 +489,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 try_validation!(
                     value.to_char(),
                     self.path,
-                    err_ub!(InvalidChar(..)) => { "{}", value } expected { "a valid unicode codepoint" },
+                    err_ub!(InvalidChar(..)) | err_ub!(InvalidUninitBytes(None)) =>
+                        { "{}", value } expected { "a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)" },
                 );
                 Ok(true)
             }
@@ -495,7 +500,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // types below!
                 if self.ref_tracking_for_consts.is_some() {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
-                    let is_bits = value.not_undef().map_or(false, |v| v.is_bits());
+                    let is_bits = value.check_init().map_or(false, |v| v.is_bits());
                     if !is_bits {
                         throw_validation_failure!(self.path,
                             { "{}", value } expected { "initialized plain (non-pointer) bytes" }
@@ -514,7 +519,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let place = try_validation!(
                     self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
                     self.path,
-                    err_ub!(InvalidUninitBytes { .. } ) => { "uninitialized raw pointer" },
+                    err_ub!(InvalidUninitBytes(None)) => { "uninitialized raw pointer" },
                 );
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
@@ -532,10 +537,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             ty::FnPtr(_sig) => {
                 let value = self.ecx.read_scalar(value)?;
                 let _fn = try_validation!(
-                    value.not_undef().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
+                    value.check_init().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
+                    err_ub!(InvalidUninitBytes(None)) |
                     err_unsup!(ReadBytesAsPointer) =>
                         { "{}", value } expected { "a function pointer" },
                 );
@@ -560,7 +566,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Generator(..) => Ok(false),
             // Some types only occur during typechecking, they have no layout.
             // We should not see them here and we could not check them anyway.
-            ty::Error
+            ty::Error(_)
             | ty::Infer(..)
             | ty::Placeholder(..)
             | ty::Bound(..)
@@ -590,9 +596,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         }
         // At least one value is excluded. Get the bits.
         let value = try_validation!(
-            value.not_undef(),
+            value.check_init(),
             self.path,
-            err_ub!(InvalidUninitBytes { .. }) => { "{}", value }
+            err_ub!(InvalidUninitBytes(None)) => { "{}", value }
                 expected { "something {}", wrapping_range_format(valid_range, max_hi) },
         );
         let bits = match value.to_bits_or_ptr(op.layout.size, self.ecx) {
@@ -645,6 +651,25 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         &self.ecx
     }
 
+    fn read_discriminant(
+        &mut self,
+        op: OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, VariantIdx> {
+        self.with_elem(PathElem::EnumTag, move |this| {
+            Ok(try_validation!(
+                this.ecx.read_discriminant(op),
+                this.path,
+                err_ub!(InvalidTag(val)) =>
+                    { "{}", val } expected { "a valid enum tag" },
+                err_ub!(InvalidUninitBytes(None)) =>
+                    { "uninitialized bytes" } expected { "a valid enum tag" },
+                err_unsup!(ReadPointerAsBytes) =>
+                    { "a pointer" } expected { "a valid enum tag" },
+            )
+            .1)
+        })
+    }
+
     #[inline]
     fn visit_field(
         &mut self,
@@ -653,7 +678,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         new_op: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         let elem = self.aggregate_field_path_elem(old_op.layout, field);
-        self.visit_elem(new_op, elem)
+        self.with_elem(elem, move |this| this.visit_value(new_op))
     }
 
     #[inline]
@@ -669,7 +694,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             ty::Generator(..) => PathElem::GeneratorState(variant_id),
             _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
         };
-        self.visit_elem(new_op, name)
+        self.with_elem(name, move |this| this.visit_value(new_op))
     }
 
     #[inline(always)]
@@ -692,15 +717,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // Sanity check: `builtin_deref` does not know any pointers that are not primitive.
         assert!(op.layout.ty.builtin_deref(true).is_none());
 
-        // Recursively walk the type. Translate some possible errors to something nicer.
-        try_validation!(
-            self.walk_value(op),
-            self.path,
-            err_ub!(InvalidDiscriminant(val)) =>
-                { "{}", val } expected { "a valid enum discriminant" },
-            err_unsup!(ReadPointerAsBytes) =>
-                { "a pointer" } expected { "plain (non-pointer) bytes" },
-        );
+        // Recursively walk the value at its type.
+        self.walk_value(op)?;
 
         // *After* all of this, check the ABI.  We need to check the ABI to handle
         // types like `NonNull` where the `Scalar` info is more restrictive than what
@@ -815,6 +833,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
 
                                 throw_validation_failure!(self.path, { "uninitialized bytes" })
                             }
+                            err_unsup!(ReadPointerAsBytes) => {
+                                throw_validation_failure!(self.path, { "a pointer" } expected { "plain (non-pointer) bytes" })
+                            }
+
                             // Propagate upwards (that will also check for unexpected errors).
                             _ => return Err(err),
                         }

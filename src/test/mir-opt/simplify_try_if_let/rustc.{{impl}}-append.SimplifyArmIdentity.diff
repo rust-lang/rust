@@ -26,7 +26,7 @@
   
       bb0: {
           _3 = discriminant(((*_1).1: std::option::Option<std::ptr::NonNull<Node>>)); // scope 0 at $DIR/simplify_try_if_let.rs:22:13: 22:17
-          switchInt(move _3) -> [0isize: bb3, 1isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_try_if_let.rs:22:13: 22:17
+          switchInt(move _3) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_try_if_let.rs:22:13: 22:17
       }
   
       bb1: {
@@ -62,7 +62,7 @@
       bb4: {
           StorageDead(_6);                 // scope 1 at $DIR/simplify_try_if_let.rs:26:59: 26:60
           _7 = discriminant(_5);           // scope 1 at $DIR/simplify_try_if_let.rs:26:24: 26:40
-          switchInt(move _7) -> [1isize: bb6, otherwise: bb5]; // scope 1 at $DIR/simplify_try_if_let.rs:26:24: 26:40
+          switchInt(move _7) -> [1_isize: bb6, otherwise: bb5]; // scope 1 at $DIR/simplify_try_if_let.rs:26:24: 26:40
       }
   
       bb5: {
@@ -80,12 +80,11 @@
           StorageLive(_8);                 // scope 1 at $DIR/simplify_try_if_let.rs:26:29: 26:39
           _8 = ((_5 as Some).0: std::ptr::NonNull<Node>); // scope 1 at $DIR/simplify_try_if_let.rs:26:29: 26:39
           StorageLive(_9);                 // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
--         StorageLive(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
--         _10 = _8;                        // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
--         ((_9 as Some).0: std::ptr::NonNull<Node>) = move _10; // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
--         discriminant(_9) = 1;            // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
--         StorageDead(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:61: 28:62
-+         _9 = move _5;                    // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+          StorageLive(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
+          _10 = _8;                        // scope 3 at $DIR/simplify_try_if_let.rs:28:51: 28:61
+          ((_9 as Some).0: std::ptr::NonNull<Node>) = move _10; // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+          discriminant(_9) = 1;            // scope 3 at $DIR/simplify_try_if_let.rs:28:46: 28:62
+          StorageDead(_10);                // scope 3 at $DIR/simplify_try_if_let.rs:28:61: 28:62
           StorageLive(_11);                // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:38
           StorageLive(_12);                // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:29
           _12 = &mut _4;                   // scope 3 at $DIR/simplify_try_if_let.rs:28:25: 28:29
@@ -116,7 +115,7 @@
   
       bb8: {
           StorageDead(_5);                 // scope 1 at $DIR/simplify_try_if_let.rs:31:13: 31:14
-          StorageDead(_4);                 // scope 0 at $DIR/simplify_try_if_let.rs:32:9: 32:10
+          StorageDead(_4);                 // scope 0 at $DIR/simplify_try_if_let.rs:31:13: 31:14
           goto -> bb9;                     // scope 0 at $DIR/simplify_try_if_let.rs:21:9: 32:10
       }
   

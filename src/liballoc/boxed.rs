@@ -92,11 +92,13 @@
 //! pub struct Foo;
 //!
 //! #[no_mangle]
+//! #[allow(improper_ctypes_definitions)]
 //! pub extern "C" fn foo_new() -> Box<Foo> {
 //!     Box::new(Foo)
 //! }
 //!
 //! #[no_mangle]
+//! #[allow(improper_ctypes_definitions)]
 //! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}
 //! ```
 //!
@@ -128,7 +130,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::any::Any;
-use core::array::LengthAtMost32;
 use core::borrow;
 use core::cmp::Ordering;
 use core::convert::{From, TryFrom};
@@ -248,7 +249,7 @@ impl<T> Box<T> {
     #[unstable(feature = "box_into_boxed_slice", issue = "71582")]
     pub fn into_boxed_slice(boxed: Box<T>) -> Box<[T]> {
         // *mut T and *mut [T; 1] have the same size and alignment
-        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut [T; 1] as *mut [T]) }
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut [T; 1]) }
     }
 }
 
@@ -311,7 +312,7 @@ impl<T> Box<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<T> {
-        Box::from_raw(Box::into_raw(self) as *mut T)
+        unsafe { Box::from_raw(Box::into_raw(self) as *mut T) }
     }
 }
 
@@ -349,7 +350,7 @@ impl<T> Box<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Box<[T]> {
-        Box::from_raw(Box::into_raw(self) as *mut [T])
+        unsafe { Box::from_raw(Box::into_raw(self) as *mut [T]) }
     }
 }
 
@@ -382,7 +383,10 @@ impl<T: ?Sized> Box<T> {
     ///
     /// unsafe {
     ///     let ptr = alloc(Layout::new::<i32>()) as *mut i32;
-    ///     *ptr = 5;
+    ///     // In general .write is required to avoid attempting to destruct
+    ///     // the (uninitialized) previous contents of `ptr`, though for this
+    ///     // simple example `*ptr = 5` would have worked as well.
+    ///     ptr.write(5);
     ///     let x = Box::from_raw(ptr);
     /// }
     /// ```
@@ -393,7 +397,7 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
-        Box(Unique::new_unchecked(raw))
+        Box(unsafe { Unique::new_unchecked(raw) })
     }
 
     /// Consumes the `Box`, returning a wrapped raw pointer.
@@ -865,11 +869,24 @@ impl From<Box<str>> for Box<[u8]> {
     }
 }
 
+#[stable(feature = "box_from_array", since = "1.45.0")]
+impl<T, const N: usize> From<[T; N]> for Box<[T]> {
+    /// Converts a `[T; N]` into a `Box<[T]>`
+    ///
+    /// This conversion moves the array to newly heap-allocated memory.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let boxed: Box<[u8]> = Box::from([4, 2]);
+    /// println!("{:?}", boxed);
+    /// ```
+    fn from(array: [T; N]) -> Box<[T]> {
+        box array
+    }
+}
+
 #[stable(feature = "boxed_slice_try_from", since = "1.43.0")]
-impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]>
-where
-    [T; N]: LengthAtMost32,
-{
+impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
     type Error = Box<[T]>;
 
     fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
@@ -1089,6 +1106,14 @@ impl<A> FromIterator<A> for Box<[A]> {
 impl<T: Clone> Clone for Box<[T]> {
     fn clone(&self) -> Self {
         self.to_vec().into_boxed_slice()
+    }
+
+    fn clone_from(&mut self, other: &Self) {
+        if self.len() == other.len() {
+            self.clone_from_slice(&other);
+        } else {
+            *self = other.clone();
+        }
     }
 }
 

@@ -1,5 +1,6 @@
 use crate::ich::{self, StableHashingContext};
 use crate::ty::fast_reject::SimplifiedType;
+use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -100,24 +101,11 @@ impl<'tcx> Node {
         trait_item_kind: ty::AssocKind,
         trait_def_id: DefId,
     ) -> Option<ty::AssocItem> {
-        use crate::ty::AssocKind::*;
-
         tcx.associated_items(self.def_id())
             .filter_by_name_unhygienic(trait_item_name.name)
             .find(move |impl_item| {
-                match (trait_item_kind, impl_item.kind) {
-                | (Const, Const)
-                | (Fn, Fn)
-                | (Type, Type)
-                | (Type, OpaqueTy)  // assoc. types can be made opaque in impls
-                => tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id),
-
-                | (Const, _)
-                | (Fn, _)
-                | (Type, _)
-                | (OpaqueTy, _)
-                => false,
-            }
+                trait_item_kind == impl_item.kind
+                    && tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id)
             })
             .copied()
     }
@@ -239,7 +227,8 @@ pub fn ancestors(
     start_from_impl: DefId,
 ) -> Result<Ancestors<'tcx>, ErrorReported> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id);
-    if specialization_graph.has_errored {
+
+    if specialization_graph.has_errored || tcx.type_of(start_from_impl).references_error() {
         Err(ErrorReported)
     } else {
         Ok(Ancestors {

@@ -7,7 +7,6 @@ LL |
 LL | impl <T: Sync+'static> Foo for T { }
    |                        ^^^ `T` cannot be sent between threads safely
    |
-   = help: the trait `std::marker::Send` is not implemented for `T`
 help: consider further restricting this bound
    |
 LL | impl <T: Sync+'static + std::marker::Send> Foo for T { }

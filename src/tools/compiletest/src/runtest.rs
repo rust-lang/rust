@@ -13,7 +13,6 @@ use crate::header::TestProps;
 use crate::json;
 use crate::util::get_pointer_width;
 use crate::util::{logv, PathBufExt};
-use diff;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
@@ -624,7 +623,7 @@ impl<'test> TestCx<'test> {
             .arg("-L")
             .arg(&aux_dir)
             .args(&self.props.compile_flags)
-            .envs(self.props.exec_env.clone());
+            .envs(self.props.rustc_env.clone());
         self.maybe_add_external_args(
             &mut rustc,
             self.split_maybe_args(&self.config.target_rustcflags),
@@ -1079,15 +1078,38 @@ impl<'test> TestCx<'test> {
         // Switch LLDB into "Rust mode"
         let rust_src_root =
             self.config.find_rust_src_root().expect("Could not find Rust source root");
-        let rust_pp_module_rel_path = Path::new("./src/etc/lldb_rust_formatters.py");
+        let rust_pp_module_rel_path = Path::new("./src/etc/lldb_lookup.py");
         let rust_pp_module_abs_path =
             rust_src_root.join(rust_pp_module_rel_path).to_str().unwrap().to_owned();
 
+        let rust_type_regexes = vec![
+            "^(alloc::([a-z_]+::)+)String$",
+            "^&str$",
+            "^&\\[.+\\]$",
+            "^(std::ffi::([a-z_]+::)+)OsString$",
+            "^(alloc::([a-z_]+::)+)Vec<.+>$",
+            "^(alloc::([a-z_]+::)+)VecDeque<.+>$",
+            "^(alloc::([a-z_]+::)+)BTreeSet<.+>$",
+            "^(alloc::([a-z_]+::)+)BTreeMap<.+>$",
+            "^(std::collections::([a-z_]+::)+)HashMap<.+>$",
+            "^(std::collections::([a-z_]+::)+)HashSet<.+>$",
+            "^(alloc::([a-z_]+::)+)Rc<.+>$",
+            "^(alloc::([a-z_]+::)+)Arc<.+>$",
+            "^(core::([a-z_]+::)+)Cell<.+>$",
+            "^(core::([a-z_]+::)+)Ref<.+>$",
+            "^(core::([a-z_]+::)+)RefMut<.+>$",
+            "^(core::([a-z_]+::)+)RefCell<.+>$",
+        ];
+
         script_str
             .push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[..]);
-        script_str.push_str("type summary add --no-value ");
-        script_str.push_str("--python-function lldb_rust_formatters.print_val ");
-        script_str.push_str("-x \".*\" --category Rust\n");
+        script_str.push_str("type synthetic add -l lldb_lookup.synthetic_lookup -x '.*' ");
+        script_str.push_str("--category Rust\n");
+        for type_regex in rust_type_regexes {
+            script_str.push_str("type summary add -F lldb_lookup.summary_lookup  -e -x -h ");
+            script_str.push_str(&format!("'{}' ", type_regex));
+            script_str.push_str("--category Rust\n");
+        }
         script_str.push_str("type category enable Rust\n");
 
         // Set breakpoints on every line that contains the string "#break"
@@ -1584,29 +1606,34 @@ impl<'test> TestCx<'test> {
             //
             // into
             //
-            //      remote-test-client run program:support-lib.so arg1 arg2
+            //      remote-test-client run program 2 support-lib.so support-lib2.so arg1 arg2
             //
             // The test-client program will upload `program` to the emulator
             // along with all other support libraries listed (in this case
-            // `support-lib.so`. It will then execute the program on the
-            // emulator with the arguments specified (in the environment we give
-            // the process) and then report back the same result.
+            // `support-lib.so` and `support-lib2.so`. It will then execute
+            // the program on the emulator with the arguments specified
+            // (in the environment we give the process) and then report back
+            // the same result.
             _ if self.config.remote_test_client.is_some() => {
                 let aux_dir = self.aux_output_dir_name();
-                let ProcArgs { mut prog, args } = self.make_run_args();
+                let ProcArgs { prog, args } = self.make_run_args();
+                let mut support_libs = Vec::new();
                 if let Ok(entries) = aux_dir.read_dir() {
                     for entry in entries {
                         let entry = entry.unwrap();
                         if !entry.path().is_file() {
                             continue;
                         }
-                        prog.push_str(":");
-                        prog.push_str(entry.path().to_str().unwrap());
+                        support_libs.push(entry.path());
                     }
                 }
                 let mut test_client =
                     Command::new(self.config.remote_test_client.as_ref().unwrap());
-                test_client.args(&["run", &prog]).args(args).envs(env.clone());
+                test_client
+                    .args(&["run", &support_libs.len().to_string(), &prog])
+                    .args(support_libs)
+                    .args(args)
+                    .envs(env.clone());
                 self.compose_and_run(
                     test_client,
                     self.config.run_lib_path.to_str().unwrap(),
@@ -1956,6 +1983,9 @@ impl<'test> TestCx<'test> {
             }
             Some(CompareMode::Polonius) => {
                 rustc.args(&["-Zpolonius", "-Zborrowck=mir"]);
+            }
+            Some(CompareMode::Chalk) => {
+                rustc.args(&["-Zchalk"]);
             }
             None => {}
         }
@@ -2709,6 +2739,10 @@ impl<'test> TestCx<'test> {
             cmd.env("RUSTDOC", cwd.join(rustdoc));
         }
 
+        if let Some(ref rust_demangler) = self.config.rust_demangler_path {
+            cmd.env("RUST_DEMANGLER", cwd.join(rust_demangler));
+        }
+
         if let Some(ref node) = self.config.nodejs {
             cmd.env("NODE", node);
         }
@@ -3101,14 +3135,47 @@ impl<'test> TestCx<'test> {
         }
         for l in test_file_contents.lines() {
             if l.starts_with("// EMIT_MIR ") {
-                let test_name = l.trim_start_matches("// EMIT_MIR ");
-                let expected_file = test_dir.join(test_name);
+                let test_name = l.trim_start_matches("// EMIT_MIR ").trim();
+                let mut test_names = test_name.split(' ');
+                // sometimes we specify two files so that we get a diff between the two files
+                let test_name = test_names.next().unwrap();
+                let expected_file;
+                let from_file;
+                let to_file;
 
-                let dumped_string = if test_name.ends_with(".diff") {
-                    let test_name = test_name.trim_end_matches(".diff");
-                    let before = format!("{}.before.mir", test_name);
-                    let after = format!("{}.after.mir", test_name);
-                    let before = self.get_mir_dump_dir().join(before);
+                if test_name.ends_with(".diff") {
+                    let trimmed = test_name.trim_end_matches(".diff");
+                    let test_against = format!("{}.after.mir", trimmed);
+                    from_file = format!("{}.before.mir", trimmed);
+                    expected_file = test_name.to_string();
+                    assert!(
+                        test_names.next().is_none(),
+                        "two mir pass names specified for MIR diff"
+                    );
+                    to_file = Some(test_against);
+                } else if let Some(first_pass) = test_names.next() {
+                    let second_pass = test_names.next().unwrap();
+                    assert!(
+                        test_names.next().is_none(),
+                        "three mir pass names specified for MIR diff"
+                    );
+                    expected_file = format!("{}.{}-{}.diff", test_name, first_pass, second_pass);
+                    let second_file = format!("{}.{}.mir", test_name, second_pass);
+                    from_file = format!("{}.{}.mir", test_name, first_pass);
+                    to_file = Some(second_file);
+                } else {
+                    expected_file = test_name.to_string();
+                    from_file = test_name.to_string();
+                    assert!(
+                        test_names.next().is_none(),
+                        "two mir pass names specified for MIR dump"
+                    );
+                    to_file = None;
+                };
+                let expected_file = test_dir.join(expected_file);
+
+                let dumped_string = if let Some(after) = to_file {
+                    let before = self.get_mir_dump_dir().join(from_file);
                     let after = self.get_mir_dump_dir().join(after);
                     debug!(
                         "comparing the contents of: {} with {}",
@@ -3132,7 +3199,7 @@ impl<'test> TestCx<'test> {
                 } else {
                     let mut output_file = PathBuf::new();
                     output_file.push(self.get_mir_dump_dir());
-                    output_file.push(test_name);
+                    output_file.push(&from_file);
                     debug!(
                         "comparing the contents of: {} with {}",
                         output_file.display(),
@@ -3145,7 +3212,7 @@ impl<'test> TestCx<'test> {
                             output_file.parent().unwrap().display()
                         );
                     }
-                    self.check_mir_test_timestamp(test_name, &output_file);
+                    self.check_mir_test_timestamp(&from_file, &output_file);
                     let dumped_string = fs::read_to_string(&output_file).unwrap();
                     self.normalize_output(&dumped_string, &[])
                 };

@@ -26,7 +26,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust,ignore
+    /// // Bad
     /// xs.map(|x| foo(x))
+    ///
+    /// // Good
+    /// xs.map(foo)
     /// ```
     /// where `foo(_)` is a plain function that takes the exact argument type of
     /// `x`.
@@ -60,14 +64,14 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE, REDUNDANT_CLOSURE_FOR_METHOD_CALLS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for EtaReduction {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 
         match expr.kind {
-            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args) => {
+            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) => {
                 for arg in args {
                     check_closure(cx, arg)
                 }
@@ -77,7 +81,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
     }
 }
 
-fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Closure(_, ref decl, eid, _, _) = expr.kind {
         let body = cx.tcx.hir().body(eid);
         let ex = &body.value;
@@ -93,7 +97,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
             // Are the expression or the arguments type-adjusted? Then we need the closure
             if !(is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)));
 
-            let fn_ty = cx.tables.expr_ty(caller);
+            let fn_ty = cx.typeck_results().expr_ty(caller);
 
             if matches!(fn_ty.kind, ty::FnDef(_, _) | ty::FnPtr(_) | ty::Closure(_, _));
 
@@ -116,7 +120,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
         );
 
         if_chain!(
-            if let ExprKind::MethodCall(ref path, _, ref args) = ex.kind;
+            if let ExprKind::MethodCall(ref path, _, ref args, _) = ex.kind;
 
             // Not the same number of arguments, there is no way the closure is the same as the function return;
             if args.len() == decl.inputs.len();
@@ -124,7 +128,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
             // Are the expression or the arguments type-adjusted? Then we need the closure
             if !(is_adjusted(cx, ex) || args.iter().skip(1).any(|arg| is_adjusted(cx, arg)));
 
-            let method_def_id = cx.tables.type_dependent_def_id(ex.hir_id).unwrap();
+            let method_def_id = cx.typeck_results().type_dependent_def_id(ex.hir_id).unwrap();
             if !type_is_unsafe_function(cx, cx.tcx.type_of(method_def_id));
 
             if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
@@ -147,9 +151,9 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
 }
 
 /// Tries to determine the type for universal function call to be used instead of the closure
-fn get_ufcs_type_name(cx: &LateContext<'_, '_>, method_def_id: def_id::DefId, self_arg: &Expr<'_>) -> Option<String> {
+fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_arg: &Expr<'_>) -> Option<String> {
     let expected_type_of_self = &cx.tcx.fn_sig(method_def_id).inputs_and_output().skip_binder()[0];
-    let actual_type_of_self = &cx.tables.node_type(self_arg.hir_id);
+    let actual_type_of_self = &cx.typeck_results().node_type(self_arg.hir_id);
 
     if let Some(trait_id) = cx.tcx.trait_of_item(method_def_id) {
         if match_borrow_depth(expected_type_of_self, &actual_type_of_self)
@@ -171,10 +175,7 @@ fn get_ufcs_type_name(cx: &LateContext<'_, '_>, method_def_id: def_id::DefId, se
 fn match_borrow_depth(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
     match (&lhs.kind, &rhs.kind) {
         (ty::Ref(_, t1, mut1), ty::Ref(_, t2, mut2)) => mut1 == mut2 && match_borrow_depth(&t1, &t2),
-        (l, r) => match (l, r) {
-            (ty::Ref(_, _, _), _) | (_, ty::Ref(_, _, _)) => false,
-            (_, _) => true,
-        },
+        (l, r) => !matches!((l, r), (ty::Ref(_, _, _), _) | (_, ty::Ref(_, _, _))),
     }
 }
 
@@ -192,7 +193,7 @@ fn match_types(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
     }
 }
 
-fn get_type_name(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> String {
+fn get_type_name(cx: &LateContext<'_>, ty: Ty<'_>) -> String {
     match ty.kind {
         ty::Adt(t, _) => cx.tcx.def_path_str(t.did),
         ty::Ref(_, r, _) => get_type_name(cx, &r),

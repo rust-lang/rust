@@ -11,7 +11,7 @@ use if_chain::if_chain;
 
 use super::UNNECESSARY_FILTER_MAP;
 
-pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+pub(super) fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
     }
@@ -52,11 +52,7 @@ pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, args: &[hir::
 }
 
 // returns (found_mapping, found_filtering)
-fn check_expression<'a, 'tcx>(
-    cx: &'a LateContext<'a, 'tcx>,
-    arg_id: hir::HirId,
-    expr: &'tcx hir::Expr<'_>,
-) -> (bool, bool) {
+fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> (bool, bool) {
     match &expr.kind {
         hir::ExprKind::Call(ref func, ref args) => {
             if_chain! {
@@ -65,7 +61,7 @@ fn check_expression<'a, 'tcx>(
                     if match_qpath(path, &paths::OPTION_SOME) {
                         if_chain! {
                             if let hir::ExprKind::Path(path) = &args[0].kind;
-                            if let Res::Local(ref local) = cx.tables.qpath_res(path, args[0].hir_id);
+                            if let Res::Local(ref local) = cx.qpath_res(path, args[0].hir_id);
                             then {
                                 if arg_id == *local {
                                     return (false, false)
@@ -81,13 +77,10 @@ fn check_expression<'a, 'tcx>(
             }
             (true, true)
         },
-        hir::ExprKind::Block(ref block, _) => {
-            if let Some(expr) = &block.expr {
-                check_expression(cx, arg_id, &expr)
-            } else {
-                (false, false)
-            }
-        },
+        hir::ExprKind::Block(ref block, _) => block
+            .expr
+            .as_ref()
+            .map_or((false, false), |expr| check_expression(cx, arg_id, &expr)),
         hir::ExprKind::Match(_, arms, _) => {
             let mut found_mapping = false;
             let mut found_filtering = false;
@@ -104,7 +97,7 @@ fn check_expression<'a, 'tcx>(
 }
 
 struct ReturnVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     arg_id: hir::HirId,
     // Found a non-None return that isn't Some(input)
     found_mapping: bool,
@@ -113,7 +106,7 @@ struct ReturnVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ReturnVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'a, 'tcx>, arg_id: hir::HirId) -> ReturnVisitor<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'tcx>, arg_id: hir::HirId) -> ReturnVisitor<'a, 'tcx> {
         ReturnVisitor {
             cx,
             arg_id,

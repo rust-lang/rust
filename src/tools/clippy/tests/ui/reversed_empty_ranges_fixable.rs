@@ -4,6 +4,8 @@
 const ANSWER: i32 = 42;
 
 fn main() {
+    // These should be linted:
+
     (42..=21).for_each(|x| println!("{}", x));
     let _ = (ANSWER..21).filter(|x| x % 2 == 0).take(10).collect::<Vec<_>>();
 
@@ -21,4 +23,7 @@ fn main() {
 
     for _ in 21..=42 {}
     for _ in 21..42 {}
+
+    // This range is empty but should be ignored, see issue #5689
+    let _ = &arr[0..0];
 }

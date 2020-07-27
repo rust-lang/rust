@@ -25,7 +25,7 @@ LL | |     }
    | |_____- `S2` defined here
 ...
 LL |       S2;
-   |       ^^ did you mean `S2 { /* fields */ }`?
+   |       ^^ help: use struct literal syntax instead: `S2 { s: val }`
 
 error[E0423]: expected value, found struct `xcrate::S`
   --> $DIR/privacy-struct-ctor.rs:43:5

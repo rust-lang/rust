@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// non-async-aware MutexGuard.
     ///
     /// **Why is this bad?** The Mutex types found in syd::sync and parking_lot
-    /// are not designed to operator in an async context across await points.
+    /// are not designed to operate in an async context across await points.
     ///
     /// There are two potential solutions. One is to use an asynx-aware Mutex
     /// type. Many asynchronous foundation crates provide such a Mutex type. The
@@ -51,26 +51,21 @@ declare_clippy_lint! {
 
 declare_lint_pass!(AwaitHoldingLock => [AWAIT_HOLDING_LOCK]);
 
-impl LateLintPass<'_, '_> for AwaitHoldingLock {
-    fn check_body(&mut self, cx: &LateContext<'_, '_>, body: &'_ Body<'_>) {
+impl LateLintPass<'_> for AwaitHoldingLock {
+    fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
         use AsyncGeneratorKind::{Block, Closure, Fn};
-        match body.generator_kind {
-            Some(GeneratorKind::Async(Block))
-            | Some(GeneratorKind::Async(Closure))
-            | Some(GeneratorKind::Async(Fn)) => {
-                let body_id = BodyId {
-                    hir_id: body.value.hir_id,
-                };
-                let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-                let tables = cx.tcx.typeck_tables_of(def_id);
-                check_interior_types(cx, &tables.generator_interior_types, body.value.span);
-            },
-            _ => {},
+        if let Some(GeneratorKind::Async(Block | Closure | Fn)) = body.generator_kind {
+            let body_id = BodyId {
+                hir_id: body.value.hir_id,
+            };
+            let def_id = cx.tcx.hir().body_owner_def_id(body_id);
+            let typeck_results = cx.tcx.typeck(def_id);
+            check_interior_types(cx, &typeck_results.generator_interior_types, body.value.span);
         }
     }
 }
 
-fn check_interior_types(cx: &LateContext<'_, '_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
+fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
     for ty_cause in ty_causes {
         if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind {
             if is_mutex_guard(cx, adt.did) {
@@ -87,7 +82,7 @@ fn check_interior_types(cx: &LateContext<'_, '_>, ty_causes: &[GeneratorInterior
     }
 }
 
-fn is_mutex_guard(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
+fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
     match_def_path(cx, def_id, &paths::MUTEX_GUARD)
         || match_def_path(cx, def_id, &paths::RWLOCK_READ_GUARD)
         || match_def_path(cx, def_id, &paths::RWLOCK_WRITE_GUARD)

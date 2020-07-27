@@ -13,10 +13,24 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
+    /// fn simple_double_parens() -> i32 {
+    ///     ((0))
+    /// }
+    ///
+    /// // Good
+    /// fn simple_no_parens() -> i32 {
+    ///     0
+    /// }
+    ///
+    /// // or
+    ///
     /// # fn foo(bar: usize) {}
-    /// ((0));
+    /// // Bad
     /// foo((0));
-    /// ((1, 2));
+    ///
+    /// // Good
+    /// foo(0);
     /// ```
     pub DOUBLE_PARENS,
     complexity,
@@ -56,7 +70,7 @@ impl EarlyLintPass for DoubleParens {
                     }
                 }
             },
-            ExprKind::MethodCall(_, ref params) => {
+            ExprKind::MethodCall(_, ref params, _) => {
                 if params.len() == 2 {
                     let param = &params[1];
                     if let ExprKind::Paren(_) = param.kind {

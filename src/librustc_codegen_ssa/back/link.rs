@@ -4,7 +4,7 @@ use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::{EncodedMetadata, LibSource, NativeLib};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
-use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, Sanitizer};
+use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SanitizerSet};
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
@@ -12,7 +12,7 @@ use rustc_session::utils::NativeLibKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::crt_objects::CrtObjectsFallback;
+use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel};
 
@@ -25,16 +25,10 @@ use crate::{looks_like_rust_object_file, CodegenResults, CrateInfo, METADATA_FIL
 use cc::windows_registry;
 use tempfile::{Builder as TempFileBuilder, TempDir};
 
-use std::ascii;
-use std::char;
-use std::env;
 use std::ffi::OsString;
-use std::fmt;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
-use std::str;
+use std::{ascii, char, env, fmt, fs, io, mem, str};
 
 pub fn remove(sess: &Session, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
@@ -146,7 +140,12 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
 // toolchain
-fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Command {
+fn get_linker(
+    sess: &Session,
+    linker: &Path,
+    flavor: LinkerFlavor,
+    self_contained: bool,
+) -> Command {
     let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
@@ -205,7 +204,7 @@ fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> Command {
 
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
-    let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths();
+    let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths(self_contained);
     let mut msvc_changed_path = false;
     if sess.target.target.options.is_like_msvc {
         if let Some(ref tool) = msvc_tool {
@@ -543,6 +542,67 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             continue;
         }
 
+        // Detect '-static-pie' used with an older version of gcc or clang not supporting it.
+        // Fallback from '-static-pie' to '-static' in that case.
+        if sess.target.target.options.linker_is_gnu
+            && flavor != LinkerFlavor::Ld
+            && (out.contains("unrecognized command line option")
+                || out.contains("unknown argument"))
+            && (out.contains("-static-pie") || out.contains("--no-dynamic-linker"))
+            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-static-pie")
+        {
+            info!("linker output: {:?}", out);
+            warn!(
+                "Linker does not support -static-pie command line option. Retrying with -static instead."
+            );
+            // Mirror `add_(pre,post)_link_objects` to replace CRT objects.
+            let self_contained = crt_objects_fallback(sess, crate_type);
+            let opts = &sess.target.target.options;
+            let pre_objects = if self_contained {
+                &opts.pre_link_objects_fallback
+            } else {
+                &opts.pre_link_objects
+            };
+            let post_objects = if self_contained {
+                &opts.post_link_objects_fallback
+            } else {
+                &opts.post_link_objects
+            };
+            let get_objects = |objects: &CrtObjects, kind| {
+                objects
+                    .get(&kind)
+                    .iter()
+                    .copied()
+                    .flatten()
+                    .map(|obj| get_object_file_path(sess, obj, self_contained).into_os_string())
+                    .collect::<Vec<_>>()
+            };
+            let pre_objects_static_pie = get_objects(pre_objects, LinkOutputKind::StaticPicExe);
+            let post_objects_static_pie = get_objects(post_objects, LinkOutputKind::StaticPicExe);
+            let mut pre_objects_static = get_objects(pre_objects, LinkOutputKind::StaticNoPicExe);
+            let mut post_objects_static = get_objects(post_objects, LinkOutputKind::StaticNoPicExe);
+            // Assume that we know insertion positions for the replacement arguments from replaced
+            // arguments, which is true for all supported targets.
+            assert!(pre_objects_static.is_empty() || !pre_objects_static_pie.is_empty());
+            assert!(post_objects_static.is_empty() || !post_objects_static_pie.is_empty());
+            for arg in cmd.take_args() {
+                if arg.to_string_lossy() == "-static-pie" {
+                    // Replace the output kind.
+                    cmd.arg("-static");
+                } else if pre_objects_static_pie.contains(&arg) {
+                    // Replace the pre-link objects (replace the first and remove the rest).
+                    cmd.args(mem::take(&mut pre_objects_static));
+                } else if post_objects_static_pie.contains(&arg) {
+                    // Replace the post-link objects (replace the first and remove the rest).
+                    cmd.args(mem::take(&mut post_objects_static));
+                } else {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{:?}", &cmd);
+            continue;
+        }
+
         // Here's a terribly awful hack that really shouldn't be present in any
         // compiler. Here an environment variable is supported to automatically
         // retry the linker invocation if the linker looks like it segfaulted.
@@ -717,23 +777,26 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     }
 }
 
-fn link_sanitizer_runtime(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {
-    let sanitizer = match &sess.opts.debugging_opts.sanitizer {
-        Some(s) => s,
-        None => return,
-    };
-
+fn link_sanitizers(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {
     if crate_type != CrateType::Executable {
         return;
     }
+    let sanitizer = sess.opts.debugging_opts.sanitizer;
+    if sanitizer.contains(SanitizerSet::ADDRESS) {
+        link_sanitizer_runtime(sess, linker, "asan");
+    }
+    if sanitizer.contains(SanitizerSet::LEAK) {
+        link_sanitizer_runtime(sess, linker, "lsan");
+    }
+    if sanitizer.contains(SanitizerSet::MEMORY) {
+        link_sanitizer_runtime(sess, linker, "msan");
+    }
+    if sanitizer.contains(SanitizerSet::THREAD) {
+        link_sanitizer_runtime(sess, linker, "tsan");
+    }
+}
 
-    let name = match sanitizer {
-        Sanitizer::Address => "asan",
-        Sanitizer::Leak => "lsan",
-        Sanitizer::Memory => "msan",
-        Sanitizer::Thread => "tsan",
-    };
-
+fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
     let default_sysroot = filesearch::get_or_default_sysroot();
     let default_tlib =
         filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.triple());
@@ -752,7 +815,10 @@ fn link_sanitizer_runtime(sess: &Session, crate_type: CrateType, linker: &mut dy
             linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
             linker.link_dylib(Symbol::intern(&libname));
         }
-        "x86_64-unknown-linux-gnu" | "x86_64-fuchsia" | "aarch64-fuchsia" => {
+        "aarch64-fuchsia"
+        | "aarch64-unknown-linux-gnu"
+        | "x86_64-fuchsia"
+        | "x86_64-unknown-linux-gnu" => {
             let filename = format!("librustc{}_rt.{}.a", channel, name);
             let path = default_tlib.join(&filename);
             linker.link_whole_rlib(&path);
@@ -1011,9 +1077,11 @@ fn get_crt_libs_path(sess: &Session) -> Option<PathBuf> {
     }
 }
 
-fn get_object_file_path(sess: &Session, name: &str) -> PathBuf {
+fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> PathBuf {
     // prefer system {,dll}crt2.o libs, see get_crt_libs_path comment for more details
-    if sess.target.target.llvm_target.contains("windows-gnu") {
+    if sess.opts.debugging_opts.link_self_contained.is_none()
+        && sess.target.target.llvm_target.contains("windows-gnu")
+    {
         if let Some(compiler_libs_path) = get_crt_libs_path(sess) {
             let file_path = compiler_libs_path.join(name);
             if file_path.exists() {
@@ -1025,6 +1093,13 @@ fn get_object_file_path(sess: &Session, name: &str) -> PathBuf {
     let file_path = fs.get_lib_path().join(name);
     if file_path.exists() {
         return file_path;
+    }
+    // Special directory with objects used only in self-contained linkage mode
+    if self_contained {
+        let file_path = fs.get_self_contained_lib_path().join(name);
+        if file_path.exists() {
+            return file_path;
+        }
     }
     for search_path in fs.search_paths() {
         let file_path = search_path.dir.join(name);
@@ -1194,9 +1269,10 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
     };
 
     // Adjust the output kind to target capabilities.
-    let pic_exe_supported = sess.target.target.options.position_independent_executables;
-    let static_pic_exe_supported = false; // FIXME: Add this option to target specs.
-    let static_dylib_supported = sess.target.target.options.crt_static_allows_dylibs;
+    let opts = &sess.target.target.options;
+    let pic_exe_supported = opts.position_independent_executables;
+    let static_pic_exe_supported = opts.static_position_independent_executables;
+    let static_dylib_supported = opts.crt_static_allows_dylibs;
     match kind {
         LinkOutputKind::DynamicPicExe if !pic_exe_supported => LinkOutputKind::DynamicNoPicExe,
         LinkOutputKind::StaticPicExe if !static_pic_exe_supported => LinkOutputKind::StaticNoPicExe,
@@ -1208,6 +1284,10 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 /// Whether we link to our own CRT objects instead of relying on gcc to pull them.
 /// We only provide such support for a very limited number of targets.
 fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
+    if let Some(self_contained) = sess.opts.debugging_opts.link_self_contained {
+        return self_contained;
+    }
+
     match sess.target.target.options.crt_objects_fallback {
         // FIXME: Find a better heuristic for "native musl toolchain is available",
         // based on host and linker path, for example.
@@ -1227,12 +1307,13 @@ fn add_pre_link_objects(
     cmd: &mut dyn Linker,
     sess: &Session,
     link_output_kind: LinkOutputKind,
-    fallback: bool,
+    self_contained: bool,
 ) {
     let opts = &sess.target.target.options;
-    let objects = if fallback { &opts.pre_link_objects_fallback } else { &opts.pre_link_objects };
+    let objects =
+        if self_contained { &opts.pre_link_objects_fallback } else { &opts.pre_link_objects };
     for obj in objects.get(&link_output_kind).iter().copied().flatten() {
-        cmd.add_object(&get_object_file_path(sess, obj));
+        cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
 }
 
@@ -1241,30 +1322,21 @@ fn add_post_link_objects(
     cmd: &mut dyn Linker,
     sess: &Session,
     link_output_kind: LinkOutputKind,
-    fallback: bool,
+    self_contained: bool,
 ) {
     let opts = &sess.target.target.options;
-    let objects = if fallback { &opts.post_link_objects_fallback } else { &opts.post_link_objects };
+    let objects =
+        if self_contained { &opts.post_link_objects_fallback } else { &opts.post_link_objects };
     for obj in objects.get(&link_output_kind).iter().copied().flatten() {
-        cmd.add_object(&get_object_file_path(sess, obj));
+        cmd.add_object(&get_object_file_path(sess, obj, self_contained));
     }
 }
 
 /// Add arbitrary "pre-link" args defined by the target spec or from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
-fn add_pre_link_args(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    flavor: LinkerFlavor,
-    crate_type: CrateType,
-) {
+fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
         cmd.args(args);
-    }
-    if let Some(args) = sess.target.target.options.pre_link_args_crt.get(&flavor) {
-        if sess.crt_static(Some(crate_type)) {
-            cmd.args(args);
-        }
     }
     cmd.args(&sess.opts.debugging_opts.pre_link_args);
 }
@@ -1418,9 +1490,12 @@ fn link_local_crate_native_libs_and_dependent_crate_libs<'a, B: ArchiveBuilder<'
 }
 
 /// Add sysroot and other globally set directories to the directory search list.
-fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session) {
+fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session, self_contained: bool) {
     // Prefer system mingw-w64 libs, see get_crt_libs_path comment for more details.
-    if cfg!(windows) && sess.target.target.llvm_target.contains("windows-gnu") {
+    if sess.opts.debugging_opts.link_self_contained.is_none()
+        && cfg!(windows)
+        && sess.target.target.llvm_target.contains("windows-gnu")
+    {
         if let Some(compiler_libs_path) = get_crt_libs_path(sess) {
             cmd.include_path(&compiler_libs_path);
         }
@@ -1430,6 +1505,12 @@ fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session) {
     // The location of crates will be determined as needed.
     let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
     cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
+
+    // Special directory with libraries used only in self-contained linkage mode
+    if self_contained {
+        let lib_path = sess.target_filesearch(PathKind::All).get_self_contained_lib_path();
+        cmd.include_path(&fix_windows_verbatim_for_gcc(&lib_path));
+    }
 }
 
 /// Add options making relocation sections in the produced ELF files read-only
@@ -1492,27 +1573,33 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     codegen_results: &CodegenResults,
     target_cpu: &str,
 ) -> Command {
-    let base_cmd = get_linker(sess, path, flavor);
+    let crt_objects_fallback = crt_objects_fallback(sess, crate_type);
+    let base_cmd = get_linker(sess, path, flavor, crt_objects_fallback);
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
     assert!(base_cmd.get_args().is_empty() || sess.target.target.target_vendor == "uwp");
     let cmd = &mut *codegen_results.linker_info.to_linker(base_cmd, &sess, flavor, target_cpu);
     let link_output_kind = link_output_kind(sess, crate_type);
-    let crt_objects_fallback = crt_objects_fallback(sess, crate_type);
 
     // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
-    add_pre_link_args(cmd, sess, flavor, crate_type);
+    add_pre_link_args(cmd, sess, flavor);
 
     // NO-OPT-OUT
     add_link_script(cmd, sess, tmpdir, crate_type);
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     if sess.target.target.options.is_like_fuchsia && crate_type == CrateType::Executable {
-        let prefix = match sess.opts.debugging_opts.sanitizer {
-            Some(Sanitizer::Address) => "asan/",
-            _ => "",
+        let prefix = if sess.opts.debugging_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
+            "asan/"
+        } else {
+            ""
         };
         cmd.arg(format!("--dynamic-linker={}ld.so.1", prefix));
+    }
+
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
+    if sess.target.target.options.eh_frame_header {
+        cmd.add_eh_frame_header();
     }
 
     // NO-OPT-OUT, OBJECT-FILES-NO
@@ -1534,7 +1621,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // OBJECT-FILES-YES, AUDIT-ORDER
-    link_sanitizer_runtime(sess, crate_type, cmd);
+    link_sanitizers(sess, crate_type, cmd);
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     // Linker plugins should be specified early in the list of arguments
@@ -1543,7 +1630,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     // FIXME: Order-dependent, at least relatively to other args adding searh directories.
-    add_library_search_dirs(cmd, sess);
+    add_library_search_dirs(cmd, sess, crt_objects_fallback);
 
     // OBJECT-FILES-YES
     add_local_crate_regular_objects(cmd, codegen_results);
@@ -1574,22 +1661,13 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // FIXME: Order dependent, applies to the following objects. Where should it be placed?
     // Try to strip as much out of the generated object by removing unused
     // sections if possible. See more comments in linker.rs
-    if !sess.opts.cg.link_dead_code {
+    if sess.opts.cg.link_dead_code != Some(true) {
         let keep_metadata = crate_type == CrateType::Dylib;
         cmd.gc_sections(keep_metadata);
     }
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    // FIXME: Support `StaticPicExe` correctly.
-    match link_output_kind {
-        LinkOutputKind::DynamicPicExe | LinkOutputKind::StaticPicExe => {
-            cmd.position_independent_executable()
-        }
-        LinkOutputKind::DynamicNoPicExe | LinkOutputKind::StaticNoPicExe => {
-            cmd.no_position_independent_executable()
-        }
-        _ => {}
-    }
+    cmd.set_output_kind(link_output_kind, out_filename);
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     add_relro_args(cmd, sess);
@@ -1618,24 +1696,13 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         tmpdir,
     );
 
-    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
-    // FIXME: Merge with the previous `link_output_kind` match,
-    // and support `StaticPicExe` and `StaticDylib` correctly.
-    match link_output_kind {
-        LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => {
-            cmd.build_static_executable()
-        }
-        LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => cmd.build_dylib(out_filename),
-        _ => {}
-    }
-
     // OBJECT-FILES-NO, AUDIT-ORDER
-    if sess.opts.cg.profile_generate.enabled() {
+    if sess.opts.cg.profile_generate.enabled() || sess.opts.debugging_opts.instrument_coverage {
         cmd.pgo_gen();
     }
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    if sess.opts.debugging_opts.control_flow_guard != CFGuard::Disabled {
+    if sess.opts.cg.control_flow_guard != CFGuard::Disabled {
         cmd.control_flow_guard();
     }
 

@@ -14,9 +14,11 @@ impl Bar for &'static u32 {
 }
 
 fn foo<T>(x: &T)
-    where for<'a> &'a T: Bar
-{}
+where
+    for<'a> &'a T: Bar,
+{
+}
 
 fn main() {
-    foo(&X); //~ ERROR trait bound
+    foo(&X); //~ ERROR implementation of `Bar` is not general enough
 }

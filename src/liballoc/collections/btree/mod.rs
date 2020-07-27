@@ -19,7 +19,9 @@ pub unsafe fn unwrap_unchecked<T>(val: Option<T>) -> T {
         if cfg!(debug_assertions) {
             panic!("'unchecked' unwrap on None in BTreeMap");
         } else {
-            core::intrinsics::unreachable();
+            unsafe {
+                core::intrinsics::unreachable();
+            }
         }
     })
 }

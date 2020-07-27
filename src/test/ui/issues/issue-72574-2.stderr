@@ -1,0 +1,14 @@
+error: `_x @` is not allowed in a tuple struct
+  --> $DIR/issue-72574-2.rs:6:20
+   |
+LL |         Binder(_a, _x @ ..) => {}
+   |                    ^^^^^^^ this is only allowed in slice patterns
+   |
+   = help: remove this and bind each tuple field independently
+help: if you don't need to use the contents of _x, discard the tuple's remaining fields
+   |
+LL |         Binder(_a, ..) => {}
+   |                    ^^
+
+error: aborting due to previous error
+

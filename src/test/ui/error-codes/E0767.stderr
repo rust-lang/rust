@@ -1,0 +1,14 @@
+error[E0767]: use of unreachable label `'a`
+  --> $DIR/E0767.rs:4:26
+   |
+LL |     'a: loop {
+   |     -- unreachable label defined here
+LL |         || {
+LL |             loop { break 'a; }
+   |                          ^^ unreachable label `'a`
+   |
+   = note: labels are unreachable through functions, closures, async blocks and modules
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0767`.

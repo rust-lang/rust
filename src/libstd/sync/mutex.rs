@@ -107,6 +107,60 @@ use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 ///
 /// *guard += 1;
 /// ```
+///
+/// It is sometimes necessary to manually drop the mutex guard to unlock it
+/// sooner than the end of the enclosing scope.
+///
+/// ```
+/// use std::sync::{Arc, Mutex};
+/// use std::thread;
+///
+/// const N: usize = 3;
+///
+/// let data_mutex = Arc::new(Mutex::new(vec![1, 2, 3, 4]));
+/// let res_mutex = Arc::new(Mutex::new(0));
+///
+/// let mut threads = Vec::with_capacity(N);
+/// (0..N).for_each(|_| {
+///     let data_mutex_clone = Arc::clone(&data_mutex);
+///     let res_mutex_clone = Arc::clone(&res_mutex);
+///
+///     threads.push(thread::spawn(move || {
+///         let mut data = data_mutex_clone.lock().unwrap();
+///         // This is the result of some important and long-ish work.
+///         let result = data.iter().fold(0, |acc, x| acc + x * 2);
+///         data.push(result);
+///         drop(data);
+///         *res_mutex_clone.lock().unwrap() += result;
+///     }));
+/// });
+///
+/// let mut data = data_mutex.lock().unwrap();
+/// // This is the result of some important and long-ish work.
+/// let result = data.iter().fold(0, |acc, x| acc + x * 2);
+/// data.push(result);
+/// // We drop the `data` explicitly because it's not necessary anymore and the
+/// // thread still has work to do. This allow other threads to start working on
+/// // the data immediately, without waiting for the rest of the unrelated work
+/// // to be done here.
+/// //
+/// // It's even more important here than in the threads because we `.join` the
+/// // threads after that. If we had not dropped the mutex guard, a thread could
+/// // be waiting forever for it, causing a deadlock.
+/// drop(data);
+/// // Here the mutex guard is not assigned to a variable and so, even if the
+/// // scope does not end after this line, the mutex is still released: there is
+/// // no deadlock.
+/// *res_mutex.lock().unwrap() += result;
+///
+/// threads.into_iter().for_each(|thread| {
+///     thread
+///         .join()
+///         .expect("The thread creating or execution failed !")
+/// });
+///
+/// assert_eq!(*res_mutex.lock().unwrap(), 800);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mutex_type")]
 pub struct Mutex<T: ?Sized> {

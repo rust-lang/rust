@@ -100,28 +100,70 @@
 // lldb-command:run
 
 // lldb-command:print/d noPadding8
-// lldbg-check:[...]$0 = (-100, 100)
-// lldbr-check:((i8, u8)) noPadding8 = { = -100 -100 = 100 100 }
+// lldbg-check:[...]$0 = { 0 = -100 1 = 100 }
+// lldbr-check:((i8, u8)) noPadding8 = { 0 = -100 1 = 100 }
 // lldb-command:print noPadding16
-// lldbg-check:[...]$1 = (0, 1, 2)
-// lldbr-check:((i16, i16, u16)) noPadding16 = { = 0 = 1 = 2 }
+// lldbg-check:[...]$1 = { 0 = 0 1 = 1 2 = 2 }
+// lldbr-check:((i16, i16, u16)) noPadding16 = { 0 = 0 1 = 1 2 = 2 }
 // lldb-command:print noPadding32
-// lldbg-check:[...]$2 = (3, 4.5, 5)
-// lldbr-check:((i32, f32, u32)) noPadding32 = { = 3 = 4.5 = 5 }
+// lldbg-check:[...]$2 = { 0 = 3 1 = 4.5 2 = 5 }
+// lldbr-check:((i32, f32, u32)) noPadding32 = { 0 = 3 1 = 4.5 2 = 5 }
 // lldb-command:print noPadding64
-// lldbg-check:[...]$3 = (6, 7.5, 8)
-// lldbr-check:((i64, f64, u64)) noPadding64 = { = 6 = 7.5 = 8 }
+// lldbg-check:[...]$3 = { 0 = 6 1 = 7.5 2 = 8 }
+// lldbr-check:((i64, f64, u64)) noPadding64 = { 0 = 6 1 = 7.5 2 = 8 }
 
 // lldb-command:print internalPadding1
-// lldbg-check:[...]$4 = (9, 10)
-// lldbr-check:((i16, i32)) internalPadding1 = { = 9 = 10 }
+// lldbg-check:[...]$4 = { 0 = 9 1 = 10 }
+// lldbr-check:((i16, i32)) internalPadding1 = { 0 = 9 1 = 10 }
 // lldb-command:print internalPadding2
-// lldbg-check:[...]$5 = (11, 12, 13, 14)
-// lldbr-check:((i16, i32, u32, u64)) internalPadding2 = { = 11 = 12 = 13 = 14 }
+// lldbg-check:[...]$5 = { 0 = 11 1 = 12 2 = 13 3 = 14 }
+// lldbr-check:((i16, i32, u32, u64)) internalPadding2 = { 0 = 11 1 = 12 2 = 13 3 = 14 }
 
 // lldb-command:print paddingAtEnd
-// lldbg-check:[...]$6 = (15, 16)
-// lldbr-check:((i32, i16)) paddingAtEnd = { = 15 = 16 }
+// lldbg-check:[...]$6 = { 0 = 15 1 = 16 }
+// lldbr-check:((i32, i16)) paddingAtEnd = { 0 = 15 1 = 16 }
+
+
+// === CDB TESTS ==================================================================================
+
+// cdb-command: g
+
+// cdb-command:dx noPadding8,d
+// cdb-check:noPadding8,d [...]: (-100, 100) [Type: tuple<i8, u8>]
+// cdb-check:[...][0]              : -100 [Type: [...]]
+// cdb-check:[...][1]              : 100 [Type: [...]]
+// cdb-command:dx noPadding16,d
+// cdb-check:noPadding16,d [...]: (0, 1, 2) [Type: tuple<i16, i16, u16>]
+// cdb-check:[...][0]              : 0 [Type: [...]]
+// cdb-check:[...][1]              : 1 [Type: [...]]
+// cdb-check:[...][2]              : 2 [Type: [...]]
+// cdb-command:dx noPadding32,d
+// cdb-check:noPadding32,d [...]: (3, 4.5[...], 5) [Type: tuple<i32, f32, u32>]
+// cdb-check:[...][0]              : 3 [Type: [...]]
+// cdb-check:[...][1]              : 4.5[...] [Type: [...]]
+// cdb-check:[...][2]              : 5 [Type: [...]]
+// cdb-command:dx noPadding64,d
+// cdb-check:noPadding64,d [...]: (6, 7.5[...], 8) [Type: tuple<i64, f64, u64>]
+// cdb-check:[...][0]              : 6 [Type: [...]]
+// cdb-check:[...][1]              : 7.500000 [Type: [...]]
+// cdb-check:[...][2]              : 8 [Type: [...]]
+
+// cdb-command:dx internalPadding1,d
+// cdb-check:internalPadding1,d [...]: (9, 10) [Type: tuple<i16, i32>]
+// cdb-check:[...][0]              : 9 [Type: short]
+// cdb-check:[...][1]              : 10 [Type: int]
+// cdb-command:dx internalPadding2,d
+// cdb-check:internalPadding2,d [...]: (11, 12, 13, 14) [Type: tuple<i16, i32, u32, u64>]
+// cdb-check:[...][0]              : 11 [Type: [...]]
+// cdb-check:[...][1]              : 12 [Type: [...]]
+// cdb-check:[...][2]              : 13 [Type: [...]]
+// cdb-check:[...][3]              : 14 [Type: [...]]
+
+// cdb-command:dx paddingAtEnd,d
+// cdb-check:paddingAtEnd,d [...]: (15, 16) [Type: tuple<i32, i16>]
+// cdb-check:[...][0]              : 15 [Type: [...]]
+// cdb-check:[...][1]              : 16 [Type: [...]]
+
 
 #![allow(unused_variables)]
 #![allow(dead_code)]

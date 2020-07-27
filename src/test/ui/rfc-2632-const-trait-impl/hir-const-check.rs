@@ -4,12 +4,13 @@
 #![allow(incomplete_features)]
 
 pub trait MyTrait {
-    fn method(&self);
+    fn method(&self) -> Option<()>;
 }
 
 impl const MyTrait for () {
-    fn method(&self) {
-        match *self {} //~ ERROR `match` is not allowed in a `const fn`
+    fn method(&self) -> Option<()> {
+        Some(())?; //~ ERROR `?` is not allowed in a `const fn`
+        None
     }
 }
 

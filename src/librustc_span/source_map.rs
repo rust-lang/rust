@@ -40,6 +40,41 @@ pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
     }
 }
 
+pub mod monotonic {
+    use std::ops::{Deref, DerefMut};
+
+    /// A `MonotonicVec` is a `Vec` which can only be grown.
+    /// Once inserted, an element can never be removed or swapped,
+    /// guaranteeing that any indices into a `MonotonicVec` are stable
+    // This is declared in its own module to ensure that the private
+    // field is inaccessible
+    pub struct MonotonicVec<T>(Vec<T>);
+    impl<T> MonotonicVec<T> {
+        pub fn new(val: Vec<T>) -> MonotonicVec<T> {
+            MonotonicVec(val)
+        }
+
+        pub fn push(&mut self, val: T) {
+            self.0.push(val);
+        }
+    }
+
+    impl<T> Default for MonotonicVec<T> {
+        fn default() -> Self {
+            MonotonicVec::new(vec![])
+        }
+    }
+
+    impl<T> Deref for MonotonicVec<T> {
+        type Target = Vec<T>;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl<T> !DerefMut for MonotonicVec<T> {}
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
 pub struct Spanned<T> {
     pub node: T,
@@ -86,6 +121,8 @@ impl FileLoader for RealFileLoader {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct StableSourceFileId(u128);
 
+// FIXME: we need a more globally consistent approach to the problem solved by
+// StableSourceFileId, perhaps built atop source_file.name_hash.
 impl StableSourceFileId {
     pub fn new(source_file: &SourceFile) -> StableSourceFileId {
         StableSourceFileId::new_from_pieces(
@@ -95,14 +132,21 @@ impl StableSourceFileId {
         )
     }
 
-    pub fn new_from_pieces(
+    fn new_from_pieces(
         name: &FileName,
         name_was_remapped: bool,
         unmapped_path: Option<&FileName>,
     ) -> StableSourceFileId {
         let mut hasher = StableHasher::new();
 
-        name.hash(&mut hasher);
+        if let FileName::Real(real_name) = name {
+            // rust-lang/rust#70924: Use the stable (virtualized) name when
+            // available. (We do not want artifacts from transient file system
+            // paths for libstd to leak into our build artifacts.)
+            real_name.stable_name().hash(&mut hasher)
+        } else {
+            name.hash(&mut hasher);
+        }
         name_was_remapped.hash(&mut hasher);
         unmapped_path.hash(&mut hasher);
 
@@ -116,7 +160,7 @@ impl StableSourceFileId {
 
 #[derive(Default)]
 pub(super) struct SourceMapFiles {
-    source_files: Vec<Lrc<SourceFile>>,
+    source_files: monotonic::MonotonicVec<Lrc<SourceFile>>,
     stable_id_to_source_file: FxHashMap<StableSourceFileId, Lrc<SourceFile>>,
 }
 
@@ -190,7 +234,9 @@ impl SourceMap {
         Ok(bytes)
     }
 
-    pub fn files(&self) -> MappedLockGuard<'_, Vec<Lrc<SourceFile>>> {
+    // By returning a `MonotonicVec`, we ensure that consumers cannot invalidate
+    // any existing indices pointing into `files`.
+    pub fn files(&self) -> MappedLockGuard<'_, monotonic::MonotonicVec<Lrc<SourceFile>>> {
         LockGuard::map(self.files.borrow(), |files| &mut files.source_files)
     }
 
@@ -235,7 +281,7 @@ impl SourceMap {
 
     fn try_new_source_file(
         &self,
-        filename: FileName,
+        mut filename: FileName,
         src: String,
     ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
         // The path is used to determine the directory for loading submodules and
@@ -245,13 +291,22 @@ impl SourceMap {
         // be empty, so the working directory will be used.
         let unmapped_path = filename.clone();
 
-        let (filename, was_remapped) = match filename {
-            FileName::Real(filename) => {
-                let (filename, was_remapped) = self.path_mapping.map_prefix(filename);
-                (FileName::Real(filename), was_remapped)
+        let was_remapped;
+        if let FileName::Real(real_filename) = &mut filename {
+            match real_filename {
+                RealFileName::Named(path_to_be_remapped)
+                | RealFileName::Devirtualized {
+                    local_path: path_to_be_remapped,
+                    virtual_name: _,
+                } => {
+                    let mapped = self.path_mapping.map_prefix(path_to_be_remapped.clone());
+                    was_remapped = mapped.1;
+                    *path_to_be_remapped = mapped.0;
+                }
             }
-            other => (other, false),
-        };
+        } else {
+            was_remapped = false;
+        }
 
         let file_id =
             StableSourceFileId::new_from_pieces(&filename, was_remapped, Some(&unmapped_path));
@@ -801,9 +856,7 @@ impl SourceMap {
 
         // Disregard indexes that are at the start or end of their spans, they can't fit bigger
         // characters.
-        if (!forwards && end_index == usize::min_value())
-            || (forwards && start_index == usize::max_value())
-        {
+        if (!forwards && end_index == usize::MIN) || (forwards && start_index == usize::MAX) {
             debug!("find_width_of_character_at_span: start or end of span, cannot be multibyte");
             return 1;
         }
@@ -896,6 +949,8 @@ impl SourceMap {
     }
 
     // Returns the index of the `SourceFile` (in `self.files`) that contains `pos`.
+    // This index is guaranteed to be valid for the lifetime of this `SourceMap`,
+    // since `source_files` is a `MonotonicVec`
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
         self.files
             .borrow()
@@ -998,7 +1053,7 @@ impl SourceMap {
     }
     pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
         source_file.add_external_src(|| match source_file.name {
-            FileName::Real(ref name) => self.file_loader.read_file(name).ok(),
+            FileName::Real(ref name) => self.file_loader.read_file(name.local_path()).ok(),
             _ => None,
         })
     }

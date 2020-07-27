@@ -191,7 +191,7 @@ use rustc_span::source_map::respan;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
-use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
+use ty::{Bounds, Path, Ptr, PtrTy, Self_, Ty};
 
 use crate::deriving;
 
@@ -204,14 +204,14 @@ pub struct TraitDef<'a> {
     pub attributes: Vec<ast::Attribute>,
 
     /// Path of the trait, including any type parameters
-    pub path: Path<'a>,
+    pub path: Path,
 
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    pub additional_bounds: Vec<Ty<'a>>,
+    pub additional_bounds: Vec<Ty>,
 
     /// Any extra lifetimes and/or bounds, e.g., `D: serialize::Decoder`
-    pub generics: LifetimeBounds<'a>,
+    pub generics: Bounds,
 
     /// Is it an `unsafe` trait?
     pub is_unsafe: bool,
@@ -221,14 +221,14 @@ pub struct TraitDef<'a> {
 
     pub methods: Vec<MethodDef<'a>>,
 
-    pub associated_types: Vec<(Ident, Ty<'a>)>,
+    pub associated_types: Vec<(Ident, Ty)>,
 }
 
 pub struct MethodDef<'a> {
     /// name of the method
-    pub name: &'a str,
+    pub name: Symbol,
     /// List of generics, e.g., `R: rand::Rng`
-    pub generics: LifetimeBounds<'a>,
+    pub generics: Bounds,
 
     /// Whether there is a self argument (outer Option) i.e., whether
     /// this is a static function, and whether it is a pointer (inner
@@ -236,10 +236,10 @@ pub struct MethodDef<'a> {
     pub explicit_self: Option<Option<PtrTy>>,
 
     /// Arguments other than the self argument
-    pub args: Vec<(Ty<'a>, &'a str)>,
+    pub args: Vec<(Ty, Symbol)>,
 
     /// Returns type
-    pub ret_ty: Ty<'a>,
+    pub ret_ty: Ty,
 
     pub attributes: Vec<ast::Attribute>,
 
@@ -681,7 +681,7 @@ impl<'a> TraitDef<'a> {
         let opt_trait_ref = Some(trait_ref);
         let unused_qual = {
             let word = rustc_ast::attr::mk_nested_word_item(Ident::new(
-                Symbol::intern("unused_qualifications"),
+                sym::unused_qualifications,
                 self.span,
             ));
             let list = rustc_ast::attr::mk_list_item(Ident::new(sym::allow, self.span), vec![word]);
@@ -818,7 +818,7 @@ impl<'a> MethodDef<'a> {
     ) -> P<Expr> {
         let substructure = Substructure {
             type_ident,
-            method_ident: cx.ident_of(self.name, trait_.span),
+            method_ident: Ident::new(self.name, trait_.span),
             self_args,
             nonself_args,
             fields,
@@ -865,7 +865,7 @@ impl<'a> MethodDef<'a> {
 
         for (ty, name) in self.args.iter() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = cx.ident_of(name, trait_.span);
+            let ident = Ident::new(*name, trait_.span);
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(trait_.span, ident);
@@ -913,7 +913,7 @@ impl<'a> MethodDef<'a> {
 
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
 
-        let method_ident = cx.ident_of(self.name, trait_.span);
+        let method_ident = Ident::new(self.name, trait_.span);
         let fn_decl = cx.fn_decl(args, ast::FnRetTy::Ty(ret_type));
         let body_block = cx.block_expr(body);
 
@@ -1170,8 +1170,10 @@ impl<'a> MethodDef<'a> {
             )
             .collect::<Vec<String>>();
 
-        let self_arg_idents =
-            self_arg_names.iter().map(|name| cx.ident_of(name, sp)).collect::<Vec<Ident>>();
+        let self_arg_idents = self_arg_names
+            .iter()
+            .map(|name| Ident::from_str_and_span(name, sp))
+            .collect::<Vec<Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to an int
@@ -1180,7 +1182,7 @@ impl<'a> MethodDef<'a> {
             .iter()
             .map(|name| {
                 let vi_suffix = format!("{}_vi", &name[..]);
-                cx.ident_of(&vi_suffix[..], trait_.span)
+                Ident::from_str_and_span(&vi_suffix, trait_.span)
             })
             .collect::<Vec<Ident>>();
 
@@ -1315,7 +1317,7 @@ impl<'a> MethodDef<'a> {
                 // Since we know that all the arguments will match if we reach
                 // the match expression we add the unreachable intrinsics as the
                 // result of the catch all which should help llvm in optimizing it
-                Some(deriving::call_intrinsic(cx, sp, "unreachable", vec![]))
+                Some(deriving::call_intrinsic(cx, sp, sym::unreachable, vec![]))
             }
             _ => None,
         };
@@ -1363,7 +1365,7 @@ impl<'a> MethodDef<'a> {
             for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
                 let self_addr = cx.expr_addr_of(sp, self_arg.clone());
                 let variant_value =
-                    deriving::call_intrinsic(cx, sp, "discriminant_value", vec![self_addr]);
+                    deriving::call_intrinsic(cx, sp, sym::discriminant_value, vec![self_addr]);
                 let let_stmt = cx.stmt_let(sp, false, ident, variant_value);
                 index_let_stmts.push(let_stmt);
 
@@ -1464,7 +1466,7 @@ impl<'a> MethodDef<'a> {
             // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
-            deriving::call_intrinsic(cx, sp, "unreachable", vec![])
+            deriving::call_intrinsic(cx, sp, sym::unreachable, vec![])
         } else {
             // Final wrinkle: the self_args are expressions that deref
             // down to desired places, but we cannot actually deref
@@ -1568,7 +1570,7 @@ impl<'a> TraitDef<'a> {
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = struct_field.span.with_ctxt(self.span.ctxt());
-            let ident = cx.ident_of(&format!("{}_{}", prefix, i), self.span);
+            let ident = Ident::from_str_and_span(&format!("{}_{}", prefix, i), self.span);
             paths.push(ident.with_span_pos(sp));
             let val = cx.expr_path(cx.path_ident(sp, ident));
             let val = if use_temporaries { val } else { cx.expr_deref(sp, val) };

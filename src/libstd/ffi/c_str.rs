@@ -234,15 +234,14 @@ pub struct NulError(usize, Vec<u8>);
 
 /// An error indicating that a nul byte was not in the expected position.
 ///
-/// The slice used to create a [`CStr`] must have one and only one nul
-/// byte at the end of the slice.
+/// The slice used to create a [`CStr`] must have one and only one nul byte,
+/// positioned at the end.
 ///
-/// This error is created by the
-/// [`from_bytes_with_nul`][`CStr::from_bytes_with_nul`] method on
-/// [`CStr`]. See its documentation for more.
+/// This error is created by the [`from_bytes_with_nul`] method on [`CStr`].
+/// See its documentation for more.
 ///
 /// [`CStr`]: struct.CStr.html
-/// [`CStr::from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
+/// [`from_bytes_with_nul`]: struct.CStr.html#method.from_bytes_with_nul
 ///
 /// # Examples
 ///
@@ -257,6 +256,32 @@ pub struct FromBytesWithNulError {
     kind: FromBytesWithNulErrorKind,
 }
 
+/// An error indicating that a nul byte was not in the expected position.
+///
+/// The vector used to create a [`CString`] must have one and only one nul byte,
+/// positioned at the end.
+///
+/// This error is created by the [`from_vec_with_nul`] method on [`CString`].
+/// See its documentation for more.
+///
+/// [`CString`]: struct.CString.html
+/// [`from_vec_with_nul`]: struct.CString.html#method.from_vec_with_nul
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cstring_from_vec_with_nul)]
+/// use std::ffi::{CString, FromVecWithNulError};
+///
+/// let _: FromVecWithNulError = CString::from_vec_with_nul(b"f\0oo".to_vec()).unwrap_err();
+/// ```
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+pub struct FromVecWithNulError {
+    error_kind: FromBytesWithNulErrorKind,
+    bytes: Vec<u8>,
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 enum FromBytesWithNulErrorKind {
     InteriorNul(usize),
@@ -269,6 +294,59 @@ impl FromBytesWithNulError {
     }
     fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError { kind: FromBytesWithNulErrorKind::NotNulTerminated }
+    }
+}
+
+#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+impl FromVecWithNulError {
+    /// Returns a slice of [`u8`]s bytes that were attempted to convert to a [`CString`].
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(cstring_from_vec_with_nul)]
+    /// use std::ffi::CString;
+    ///
+    /// // Some invalid bytes in a vector
+    /// let bytes = b"f\0oo".to_vec();
+    ///
+    /// let value = CString::from_vec_with_nul(bytes.clone());
+    ///
+    /// assert_eq!(&bytes[..], value.unwrap_err().as_bytes());
+    /// ```
+    ///
+    /// [`CString`]: struct.CString.html
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes[..]
+    }
+
+    /// Returns the bytes that were attempted to convert to a [`CString`].
+    ///
+    /// This method is carefully constructed to avoid allocation. It will
+    /// consume the error, moving out the bytes, so that a copy of the bytes
+    /// does not need to be made.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(cstring_from_vec_with_nul)]
+    /// use std::ffi::CString;
+    ///
+    /// // Some invalid bytes in a vector
+    /// let bytes = b"f\0oo".to_vec();
+    ///
+    /// let value = CString::from_vec_with_nul(bytes.clone());
+    ///
+    /// assert_eq!(bytes, value.unwrap_err().into_bytes());
+    /// ```
+    ///
+    /// [`CString`]: struct.CString.html
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
     }
 }
 
@@ -395,6 +473,12 @@ impl CString {
     /// ownership of a string that was allocated by foreign code) is likely to lead
     /// to undefined behavior or allocator corruption.
     ///
+    /// It should be noted that the length isn't just "recomputed," but that
+    /// the recomputed length must match the original length from the
+    /// [`into_raw`] call. This means the [`into_raw`]/`from_raw` methods
+    /// should not be used when passing the string to C functions that can
+    /// modify the string's length.
+    ///
     /// > **Note:** If you need to borrow a string that was allocated by
     /// > foreign code, use [`CStr`]. If you need to take ownership of
     /// > a string that was allocated by foreign code, you will need to
@@ -439,6 +523,11 @@ impl CString {
     /// this string.
     ///
     /// Failure to call [`from_raw`] will lead to a memory leak.
+    ///
+    /// The C side must **not** modify the length of the string (by writing a
+    /// `NULL` somewhere inside the string or removing the final one) before
+    /// it makes it back into Rust using [`from_raw`]. See the safety section
+    /// in [`from_raw`].
     ///
     /// [`from_raw`]: #method.from_raw
     ///
@@ -631,6 +720,86 @@ impl CString {
         // See https://github.com/rust-lang/rust/issues/62553.
         let this = mem::ManuallyDrop::new(self);
         unsafe { ptr::read(&this.inner) }
+    }
+
+    /// Converts a `Vec` of `u8` to a `CString` without checking the invariants
+    /// on the given `Vec`.
+    ///
+    /// # Safety
+    ///
+    /// The given `Vec` **must** have one nul byte as its last element.
+    /// This means it cannot be empty nor have any other nul byte anywhere else.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(cstring_from_vec_with_nul)]
+    /// use std::ffi::CString;
+    /// assert_eq!(
+    ///     unsafe { CString::from_vec_with_nul_unchecked(b"abc\0".to_vec()) },
+    ///     unsafe { CString::from_vec_unchecked(b"abc".to_vec()) }
+    /// );
+    /// ```
+    #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+    pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u8>) -> Self {
+        Self { inner: v.into_boxed_slice() }
+    }
+
+    /// Attempts to converts a `Vec` of `u8` to a `CString`.
+    ///
+    /// Runtime checks are present to ensure there is only one nul byte in the
+    /// `Vec`, its last element.
+    ///
+    /// # Errors
+    ///
+    /// If a nul byte is present and not the last element or no nul bytes
+    /// is present, an error will be returned.
+    ///
+    /// # Examples
+    ///
+    /// A successful conversion will produce the same result as [`new`] when
+    /// called without the ending nul byte.
+    ///
+    /// ```
+    /// #![feature(cstring_from_vec_with_nul)]
+    /// use std::ffi::CString;
+    /// assert_eq!(
+    ///     CString::from_vec_with_nul(b"abc\0".to_vec())
+    ///         .expect("CString::from_vec_with_nul failed"),
+    ///     CString::new(b"abc".to_vec()).expect("CString::new failed")
+    /// );
+    /// ```
+    ///
+    /// A incorrectly formatted vector will produce an error.
+    ///
+    /// ```
+    /// #![feature(cstring_from_vec_with_nul)]
+    /// use std::ffi::{CString, FromVecWithNulError};
+    /// // Interior nul byte
+    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"a\0bc".to_vec()).unwrap_err();
+    /// // No nul byte
+    /// let _: FromVecWithNulError = CString::from_vec_with_nul(b"abc".to_vec()).unwrap_err();
+    /// ```
+    ///
+    /// [`new`]: #method.new
+    #[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+    pub fn from_vec_with_nul(v: Vec<u8>) -> Result<Self, FromVecWithNulError> {
+        let nul_pos = memchr::memchr(0, &v);
+        match nul_pos {
+            Some(nul_pos) if nul_pos + 1 == v.len() => {
+                // SAFETY: We know there is only one nul byte, at the end
+                // of the vec.
+                Ok(unsafe { Self::from_vec_with_nul_unchecked(v) })
+            }
+            Some(nul_pos) => Err(FromVecWithNulError {
+                error_kind: FromBytesWithNulErrorKind::InteriorNul(nul_pos),
+                bytes: v,
+            }),
+            None => Err(FromVecWithNulError {
+                error_kind: FromBytesWithNulErrorKind::NotNulTerminated,
+                bytes: v,
+            }),
+        }
     }
 }
 
@@ -962,6 +1131,23 @@ impl fmt::Display for FromBytesWithNulError {
             write!(f, " at byte pos {}", pos)?;
         }
         Ok(())
+    }
+}
+
+#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+impl Error for FromVecWithNulError {}
+
+#[unstable(feature = "cstring_from_vec_with_nul", issue = "73179")]
+impl fmt::Display for FromVecWithNulError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.error_kind {
+            FromBytesWithNulErrorKind::InteriorNul(pos) => {
+                write!(f, "data provided contains an interior nul byte at pos {}", pos)
+            }
+            FromBytesWithNulErrorKind::NotNulTerminated => {
+                write!(f, "data provided is not nul terminated")
+            }
+        }
     }
 }
 
@@ -1365,6 +1551,27 @@ impl ops::Index<ops::RangeFull> for CString {
     }
 }
 
+#[stable(feature = "cstr_range_from", since = "1.47.0")]
+impl ops::Index<ops::RangeFrom<usize>> for CStr {
+    type Output = CStr;
+
+    fn index(&self, index: ops::RangeFrom<usize>) -> &CStr {
+        let bytes = self.to_bytes_with_nul();
+        // we need to manually check the starting index to account for the null
+        // byte, since otherwise we could get an empty string that doesn't end
+        // in a null.
+        if index.start < bytes.len() {
+            unsafe { CStr::from_bytes_with_nul_unchecked(&bytes[index.start..]) }
+        } else {
+            panic!(
+                "index out of bounds: the len is {} but the index is {}",
+                bytes.len(),
+                index.start
+            );
+        }
+    }
+}
+
 #[stable(feature = "cstring_asref", since = "1.7.0")]
 impl AsRef<CStr> for CStr {
     #[inline]
@@ -1560,5 +1767,22 @@ mod tests {
         const CSTR: &CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"Hello, world!\0") };
 
         assert_eq!(CSTR.to_str().unwrap(), "Hello, world!");
+    }
+
+    #[test]
+    fn cstr_index_from() {
+        let original = b"Hello, world!\0";
+        let cstr = CStr::from_bytes_with_nul(original).unwrap();
+        let result = CStr::from_bytes_with_nul(&original[7..]).unwrap();
+
+        assert_eq!(&cstr[7..], result);
+    }
+
+    #[test]
+    #[should_panic]
+    fn cstr_index_from_empty() {
+        let original = b"Hello, world!\0";
+        let cstr = CStr::from_bytes_with_nul(original).unwrap();
+        let _ = &cstr[original.len()..];
     }
 }

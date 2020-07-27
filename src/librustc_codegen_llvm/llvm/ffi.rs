@@ -1,6 +1,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+use super::coverageinfo::{SmallVectorCounterExpression, SmallVectorCounterMappingRegion};
+
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DINameSpace, DISPFlags, DIScope,
@@ -45,6 +47,8 @@ pub enum CallConv {
     X86_64_Win64 = 79,
     X86_VectorCall = 80,
     X86_Intr = 83,
+    AvrNonBlockingInterrupt = 84,
+    AvrInterrupt = 85,
     AmdGpuKernel = 91,
 }
 
@@ -231,6 +235,8 @@ pub enum TypeKind {
     Metadata = 14,
     X86_MMX = 15,
     Token = 16,
+    ScalableVector = 17,
+    BFloat = 18,
 }
 
 impl TypeKind {
@@ -253,6 +259,8 @@ impl TypeKind {
             TypeKind::Metadata => rustc_codegen_ssa::common::TypeKind::Metadata,
             TypeKind::X86_MMX => rustc_codegen_ssa::common::TypeKind::X86_MMX,
             TypeKind::Token => rustc_codegen_ssa::common::TypeKind::Token,
+            TypeKind::ScalableVector => rustc_codegen_ssa::common::TypeKind::ScalableVector,
+            TypeKind::BFloat => rustc_codegen_ssa::common::TypeKind::BFloat,
         }
     }
 }
@@ -437,11 +445,12 @@ pub enum OptStage {
 /// LLVMRustSanitizerOptions
 #[repr(C)]
 pub struct SanitizerOptions {
-    pub sanitize_memory: bool,
-    pub sanitize_thread: bool,
     pub sanitize_address: bool,
-    pub sanitize_recover: bool,
+    pub sanitize_address_recover: bool,
+    pub sanitize_memory: bool,
+    pub sanitize_memory_recover: bool,
     pub sanitize_memory_track_origins: c_int,
+    pub sanitize_thread: bool,
 }
 
 /// LLVMRelocMode
@@ -487,6 +496,17 @@ pub enum DiagnosticKind {
     OptimizationFailure,
     PGOProfile,
     Linker,
+}
+
+/// LLVMRustDiagnosticLevel
+#[derive(Copy, Clone)]
+#[repr(C)]
+#[allow(dead_code)] // Variants constructed by C++.
+pub enum DiagnosticLevel {
+    Error,
+    Warning,
+    Note,
+    Remark,
 }
 
 /// LLVMRustArchiveKind
@@ -631,6 +651,16 @@ pub struct Linker<'a>(InvariantOpaque<'a>);
 
 pub type DiagnosticHandler = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
+
+pub mod coverageinfo {
+    use super::InvariantOpaque;
+
+    #[repr(C)]
+    pub struct SmallVectorCounterExpression<'a>(InvariantOpaque<'a>);
+
+    #[repr(C)]
+    pub struct SmallVectorCounterMappingRegion<'a>(InvariantOpaque<'a>);
+}
 
 pub mod debuginfo {
     use super::{InvariantOpaque, Metadata};
@@ -1347,6 +1377,7 @@ extern "C" {
 
     // Miscellaneous instructions
     pub fn LLVMBuildPhi(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
+    pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &'a Value;
     pub fn LLVMRustBuildCall(
         B: &Builder<'a>,
         Fn: &'a Value,
@@ -1614,6 +1645,58 @@ extern "C" {
         ConstraintsLen: size_t,
     ) -> bool;
 
+    pub fn LLVMRustCoverageSmallVectorCounterExpressionCreate()
+    -> &'a mut SmallVectorCounterExpression<'a>;
+    pub fn LLVMRustCoverageSmallVectorCounterExpressionDispose(
+        Container: &'a mut SmallVectorCounterExpression<'a>,
+    );
+    pub fn LLVMRustCoverageSmallVectorCounterExpressionAdd(
+        Container: &mut SmallVectorCounterExpression<'a>,
+        Kind: rustc_codegen_ssa::coverageinfo::CounterOp,
+        LeftIndex: c_uint,
+        RightIndex: c_uint,
+    );
+
+    pub fn LLVMRustCoverageSmallVectorCounterMappingRegionCreate()
+    -> &'a mut SmallVectorCounterMappingRegion<'a>;
+    pub fn LLVMRustCoverageSmallVectorCounterMappingRegionDispose(
+        Container: &'a mut SmallVectorCounterMappingRegion<'a>,
+    );
+    pub fn LLVMRustCoverageSmallVectorCounterMappingRegionAdd(
+        Container: &mut SmallVectorCounterMappingRegion<'a>,
+        Index: c_uint,
+        FileID: c_uint,
+        LineStart: c_uint,
+        ColumnStart: c_uint,
+        LineEnd: c_uint,
+        ColumnEnd: c_uint,
+    );
+
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteFilenamesSectionToBuffer(
+        Filenames: *const *const c_char,
+        FilenamesLen: size_t,
+        BufferOut: &RustString,
+    );
+
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteMappingToBuffer(
+        VirtualFileMappingIDs: *const c_uint,
+        NumVirtualFileMappingIDs: c_uint,
+        Expressions: *const SmallVectorCounterExpression<'_>,
+        MappingRegions: *const SmallVectorCounterMappingRegion<'_>,
+        BufferOut: &RustString,
+    );
+
+    pub fn LLVMRustCoverageComputeHash(Name: *const c_char) -> u64;
+
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteSectionNameToString(M: &Module, Str: &RustString);
+
+    #[allow(improper_ctypes)]
+    pub fn LLVMRustCoverageWriteMappingVarNameToString(Str: &RustString);
+
+    pub fn LLVMRustCoverageMappingVersion() -> u32;
     pub fn LLVMRustDebugMetadataVersion() -> u32;
     pub fn LLVMRustVersionMajor() -> u32;
     pub fn LLVMRustVersionMinor() -> u32;
@@ -1683,6 +1766,16 @@ extern "C" {
         SizeInBits: u64,
         Encoding: c_uint,
     ) -> &'a DIBasicType;
+
+    pub fn LLVMRustDIBuilderCreateTypedef(
+        Builder: &DIBuilder<'a>,
+        Type: &'a DIBasicType,
+        Name: *const c_char,
+        NameLen: size_t,
+        File: &'a DIFile,
+        LineNo: c_uint,
+        Scope: Option<&'a DIScope>,
+    ) -> &'a DIDerivedType;
 
     pub fn LLVMRustDIBuilderCreatePointerType(
         Builder: &DIBuilder<'a>,
@@ -2054,6 +2147,7 @@ extern "C" {
 
     pub fn LLVMRustUnpackInlineAsmDiagnostic(
         DI: &'a DiagnosticInfo,
+        level_out: &mut DiagnosticLevel,
         cookie_out: &mut c_uint,
         message_out: &mut Option<&'a Twine>,
         instruction_out: &mut Option<&'a Value>,
@@ -2070,7 +2164,15 @@ extern "C" {
     );
 
     #[allow(improper_ctypes)]
-    pub fn LLVMRustWriteSMDiagnosticToString(d: &SMDiagnostic, s: &RustString);
+    pub fn LLVMRustUnpackSMDiagnostic(
+        d: &SMDiagnostic,
+        message_out: &RustString,
+        buffer_out: &RustString,
+        level_out: &mut DiagnosticLevel,
+        loc_out: &mut c_uint,
+        ranges_out: *mut c_uint,
+        num_ranges: &mut usize,
+    ) -> bool;
 
     pub fn LLVMRustWriteArchive(
         Dst: *const c_char,
@@ -2117,10 +2219,18 @@ extern "C" {
         PreservedSymbols: *const *const c_char,
         PreservedSymbolsLen: c_uint,
     ) -> Option<&'static mut ThinLTOData>;
-    pub fn LLVMRustPrepareThinLTORename(Data: &ThinLTOData, Module: &Module) -> bool;
+    pub fn LLVMRustPrepareThinLTORename(
+        Data: &ThinLTOData,
+        Module: &Module,
+        Target: &TargetMachine,
+    ) -> bool;
     pub fn LLVMRustPrepareThinLTOResolveWeak(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOInternalize(Data: &ThinLTOData, Module: &Module) -> bool;
-    pub fn LLVMRustPrepareThinLTOImport(Data: &ThinLTOData, Module: &Module) -> bool;
+    pub fn LLVMRustPrepareThinLTOImport(
+        Data: &ThinLTOData,
+        Module: &Module,
+        Target: &TargetMachine,
+    ) -> bool;
     pub fn LLVMRustGetThinLTOModuleImports(
         Data: *const ThinLTOData,
         ModuleNameCallback: ThinLTOModuleNameCallback,

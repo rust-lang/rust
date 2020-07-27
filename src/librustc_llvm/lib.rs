@@ -13,8 +13,15 @@ pub struct RustString {
     pub bytes: RefCell<Vec<u8>>,
 }
 
+impl RustString {
+    pub fn len(&self) -> usize {
+        self.bytes.borrow().len()
+    }
+}
+
 /// Appending to a Rust string -- used by RawRustStringOstream.
 #[no_mangle]
+#[allow(improper_ctypes_definitions)]
 pub unsafe extern "C" fn LLVMRustStringWriteImpl(
     sr: &RustString,
     ptr: *const c_char,
@@ -75,6 +82,14 @@ pub fn initialize_available_targets() {
         LLVMInitializeAMDGPUTargetMC,
         LLVMInitializeAMDGPUAsmPrinter,
         LLVMInitializeAMDGPUAsmParser
+    );
+    init_target!(
+        llvm_component = "avr",
+        LLVMInitializeAVRTargetInfo,
+        LLVMInitializeAVRTarget,
+        LLVMInitializeAVRTargetMC,
+        LLVMInitializeAVRAsmPrinter,
+        LLVMInitializeAVRAsmParser
     );
     init_target!(
         llvm_component = "mips",

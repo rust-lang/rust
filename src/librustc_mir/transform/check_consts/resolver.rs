@@ -121,25 +121,25 @@ where
         self.super_assign(place, rvalue, location);
     }
 
-    fn visit_terminator_kind(&mut self, kind: &mir::TerminatorKind<'tcx>, location: Location) {
+    fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         // The effect of assignment to the return place in `TerminatorKind::Call` is not applied
         // here; that occurs in `apply_call_return_effect`.
 
-        if let mir::TerminatorKind::DropAndReplace { value, location: dest, .. } = kind {
+        if let mir::TerminatorKind::DropAndReplace { value, place, .. } = &terminator.kind {
             let qualif = qualifs::in_operand::<Q, _>(
                 self.ccx,
                 &mut |l| self.qualifs_per_local.contains(l),
                 value,
             );
 
-            if !dest.is_indirect() {
-                self.assign_qualif_direct(dest, qualif);
+            if !place.is_indirect() {
+                self.assign_qualif_direct(place, qualif);
             }
         }
 
         // We need to assign qualifs to the dropped location before visiting the operand that
         // replaces it since qualifs can be cleared on move.
-        self.super_terminator_kind(kind, location);
+        self.super_terminator(terminator, location);
     }
 }
 

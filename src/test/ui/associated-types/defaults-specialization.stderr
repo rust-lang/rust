@@ -1,5 +1,14 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/defaults-specialization.rs:3:38
+   |
+LL | #![feature(associated_type_defaults, specialization)]
+   |                                      ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
 error[E0053]: method `make` has an incompatible type for trait
-  --> $DIR/defaults-specialization.rs:18:18
+  --> $DIR/defaults-specialization.rs:19:18
    |
 LL |     fn make() -> Self::Ty {
    |                  -------- type in trait
@@ -11,7 +20,7 @@ LL |     fn make() -> u8 { 0 }
               found fn pointer `fn() -> u8`
 
 error[E0053]: method `make` has an incompatible type for trait
-  --> $DIR/defaults-specialization.rs:34:18
+  --> $DIR/defaults-specialization.rs:35:18
    |
 LL |     fn make() -> Self::Ty {
    |                  -------- type in trait
@@ -26,7 +35,7 @@ LL |     fn make() -> bool { true }
               found fn pointer `fn() -> bool`
 
 error[E0308]: mismatched types
-  --> $DIR/defaults-specialization.rs:9:9
+  --> $DIR/defaults-specialization.rs:10:9
    |
 LL |     type Ty = u8;
    |     ------------- associated type defaults can't be assumed inside the trait defining them
@@ -40,7 +49,7 @@ LL |         0u8
                          found type `u8`
 
 error[E0308]: mismatched types
-  --> $DIR/defaults-specialization.rs:25:29
+  --> $DIR/defaults-specialization.rs:26:29
    |
 LL |     fn make() -> Self::Ty { 0u8 }
    |                  --------   ^^^ expected associated type, found `u8`
@@ -53,7 +62,7 @@ LL |     fn make() -> Self::Ty { 0u8 }
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0308]: mismatched types
-  --> $DIR/defaults-specialization.rs:43:29
+  --> $DIR/defaults-specialization.rs:44:29
    |
 LL |     default type Ty = bool;
    |     ----------------------- expected this associated type
@@ -67,7 +76,7 @@ LL |     fn make() -> Self::Ty { true }
                          found type `bool`
 
 error[E0308]: mismatched types
-  --> $DIR/defaults-specialization.rs:86:32
+  --> $DIR/defaults-specialization.rs:87:32
    |
 LL |     let _: <B<()> as Tr>::Ty = 0u8;
    |            -----------------   ^^^ expected associated type, found `u8`
@@ -77,13 +86,13 @@ LL |     let _: <B<()> as Tr>::Ty = 0u8;
    = note: expected associated type `<B<()> as Tr>::Ty`
                          found type `u8`
 help: a method is available that returns `<B<()> as Tr>::Ty`
-  --> $DIR/defaults-specialization.rs:8:5
+  --> $DIR/defaults-specialization.rs:9:5
    |
 LL |     fn make() -> Self::Ty {
    |     ^^^^^^^^^^^^^^^^^^^^^ consider calling `Tr::make`
 
 error[E0308]: mismatched types
-  --> $DIR/defaults-specialization.rs:87:32
+  --> $DIR/defaults-specialization.rs:88:32
    |
 LL |     let _: <B<()> as Tr>::Ty = true;
    |            -----------------   ^^^^ expected associated type, found `bool`
@@ -93,13 +102,13 @@ LL |     let _: <B<()> as Tr>::Ty = true;
    = note: expected associated type `<B<()> as Tr>::Ty`
                          found type `bool`
 help: a method is available that returns `<B<()> as Tr>::Ty`
-  --> $DIR/defaults-specialization.rs:8:5
+  --> $DIR/defaults-specialization.rs:9:5
    |
 LL |     fn make() -> Self::Ty {
    |     ^^^^^^^^^^^^^^^^^^^^^ consider calling `Tr::make`
 
 error[E0308]: mismatched types
-  --> $DIR/defaults-specialization.rs:88:33
+  --> $DIR/defaults-specialization.rs:89:33
    |
 LL |     let _: <B2<()> as Tr>::Ty = 0u8;
    |            ------------------   ^^^ expected associated type, found `u8`
@@ -109,13 +118,13 @@ LL |     let _: <B2<()> as Tr>::Ty = 0u8;
    = note: expected associated type `<B2<()> as Tr>::Ty`
                          found type `u8`
 help: a method is available that returns `<B2<()> as Tr>::Ty`
-  --> $DIR/defaults-specialization.rs:8:5
+  --> $DIR/defaults-specialization.rs:9:5
    |
 LL |     fn make() -> Self::Ty {
    |     ^^^^^^^^^^^^^^^^^^^^^ consider calling `Tr::make`
 
 error[E0308]: mismatched types
-  --> $DIR/defaults-specialization.rs:89:33
+  --> $DIR/defaults-specialization.rs:90:33
    |
 LL |     let _: <B2<()> as Tr>::Ty = true;
    |            ------------------   ^^^^ expected associated type, found `bool`
@@ -125,12 +134,12 @@ LL |     let _: <B2<()> as Tr>::Ty = true;
    = note: expected associated type `<B2<()> as Tr>::Ty`
                          found type `bool`
 help: a method is available that returns `<B2<()> as Tr>::Ty`
-  --> $DIR/defaults-specialization.rs:8:5
+  --> $DIR/defaults-specialization.rs:9:5
    |
 LL |     fn make() -> Self::Ty {
    |     ^^^^^^^^^^^^^^^^^^^^^ consider calling `Tr::make`
 
-error: aborting due to 9 previous errors
+error: aborting due to 9 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0053, E0308.
 For more information about an error, try `rustc --explain E0053`.

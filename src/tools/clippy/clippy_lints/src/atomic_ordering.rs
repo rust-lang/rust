@@ -52,8 +52,8 @@ const ATOMIC_TYPES: [&str; 12] = [
     "AtomicUsize",
 ];
 
-fn type_is_atomic(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
-    if let ty::Adt(&ty::AdtDef { did, .. }, _) = cx.tables.expr_ty(expr).kind {
+fn type_is_atomic(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let ty::Adt(&ty::AdtDef { did, .. }, _) = cx.typeck_results().expr_ty(expr).kind {
         ATOMIC_TYPES
             .iter()
             .any(|ty| match_def_path(cx, did, &["core", "sync", "atomic", ty]))
@@ -62,21 +62,21 @@ fn type_is_atomic(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> bool {
     }
 }
 
-fn match_ordering_def_path(cx: &LateContext<'_, '_>, did: DefId, orderings: &[&str]) -> bool {
+fn match_ordering_def_path(cx: &LateContext<'_>, did: DefId, orderings: &[&str]) -> bool {
     orderings
         .iter()
         .any(|ordering| match_def_path(cx, did, &["core", "sync", "atomic", "Ordering", ordering]))
 }
 
-fn check_atomic_load_store(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
-        if let ExprKind::MethodCall(ref method_path, _, args) = &expr.kind;
+        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
         let method = method_path.ident.name.as_str();
         if type_is_atomic(cx, &args[0]);
         if method == "load" || method == "store";
         let ordering_arg = if method == "load" { &args[1] } else { &args[2] };
         if let ExprKind::Path(ref ordering_qpath) = ordering_arg.kind;
-        if let Some(ordering_def_id) = cx.tables.qpath_res(ordering_qpath, ordering_arg.hir_id).opt_def_id();
+        if let Some(ordering_def_id) = cx.qpath_res(ordering_qpath, ordering_arg.hir_id).opt_def_id();
         then {
             if method == "load" &&
                 match_ordering_def_path(cx, ordering_def_id, &["Release", "AcqRel"]) {
@@ -103,16 +103,16 @@ fn check_atomic_load_store(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
-fn check_memory_fence(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
+fn check_memory_fence(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Call(ref func, ref args) = expr.kind;
         if let ExprKind::Path(ref func_qpath) = func.kind;
-        if let Some(def_id) = cx.tables.qpath_res(func_qpath, func.hir_id).opt_def_id();
+        if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
         if ["fence", "compiler_fence"]
             .iter()
             .any(|func| match_def_path(cx, def_id, &["core", "sync", "atomic", func]));
         if let ExprKind::Path(ref ordering_qpath) = &args[0].kind;
-        if let Some(ordering_def_id) = cx.tables.qpath_res(ordering_qpath, args[0].hir_id).opt_def_id();
+        if let Some(ordering_def_id) = cx.qpath_res(ordering_qpath, args[0].hir_id).opt_def_id();
         if match_ordering_def_path(cx, ordering_def_id, &["Relaxed"]);
         then {
             span_lint_and_help(
@@ -127,8 +127,8 @@ fn check_memory_fence(cx: &LateContext<'_, '_>, expr: &Expr<'_>) {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AtomicOrdering {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for AtomicOrdering {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         check_atomic_load_store(cx, expr);
         check_memory_fence(cx, expr);
     }

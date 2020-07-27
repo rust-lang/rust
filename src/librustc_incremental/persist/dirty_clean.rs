@@ -3,9 +3,9 @@
 //! we will compare the fingerprint from the current and from the previous
 //! compilation session as appropriate:
 //!
-//! - `#[rustc_clean(cfg="rev2", except="typeck_tables_of")]` if we are
+//! - `#[rustc_clean(cfg="rev2", except="typeck")]` if we are
 //!   in `#[cfg(rev2)]`, then the fingerprints associated with
-//!   `DepNode::typeck_tables_of(X)` must be DIFFERENT (`X` is the `DefId` of the
+//!   `DepNode::typeck(X)` must be DIFFERENT (`X` is the `DefId` of the
 //!   current node).
 //! - `#[rustc_clean(cfg="rev2")]` same as above, except that the
 //!   fingerprints must be the SAME (along with all other fingerprints).
@@ -48,7 +48,7 @@ const BASE_FN: &[&str] = &[
     label_strs::type_of,
     // And a big part of compilation (that we eventually want to cache) is type inference
     // information:
-    label_strs::typeck_tables_of,
+    label_strs::typeck,
 ];
 
 /// DepNodes for Hir, which is pretty much everything
@@ -64,8 +64,7 @@ const BASE_IMPL: &[&str] =
 
 /// DepNodes for mir_built/Optimized, which is relevant in "executable"
 /// code, i.e., functions+methods
-const BASE_MIR: &[&str] =
-    &[label_strs::optimized_mir, label_strs::promoted_mir, label_strs::mir_built];
+const BASE_MIR: &[&str] = &[label_strs::optimized_mir, label_strs::promoted_mir];
 
 /// Struct, Enum and Union DepNodes
 ///
@@ -168,7 +167,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
-        // all codegen-specific attributes are `Whitelisted` in rustc_ast::feature_gate.
+        // all codegen-specific attributes are `AssumedUsed` in rustc_ast::feature_gate.
         all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
     })
 }
@@ -234,7 +233,7 @@ impl DirtyCleanVisitor<'tcx> {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(LABEL) {
                 let value = expect_associated_value(self.tcx, &item);
-                return Some(self.resolve_labels(&item, &value.as_str()));
+                return Some(self.resolve_labels(&item, value));
             }
         }
         None
@@ -245,7 +244,7 @@ impl DirtyCleanVisitor<'tcx> {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(EXCEPT) {
                 let value = expect_associated_value(self.tcx, &item);
-                return self.resolve_labels(&item, &value.as_str());
+                return self.resolve_labels(&item, value);
             }
         }
         // if no `label` or `except` is given, only the node's group are asserted
@@ -336,7 +335,6 @@ impl DirtyCleanVisitor<'tcx> {
                 ImplItemKind::Fn(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                 ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
-                ImplItemKind::OpaqueTy(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
             },
             _ => self.tcx.sess.span_fatal(
                 attr.span,
@@ -348,9 +346,9 @@ impl DirtyCleanVisitor<'tcx> {
         (name, labels)
     }
 
-    fn resolve_labels(&self, item: &NestedMetaItem, value: &str) -> Labels {
+    fn resolve_labels(&self, item: &NestedMetaItem, value: Symbol) -> Labels {
         let mut out = Labels::default();
-        for label in value.split(',') {
+        for label in value.as_str().split(',') {
             let label = label.trim();
             if DepNode::has_label_string(label) {
                 if out.contains(label) {
@@ -377,7 +375,7 @@ impl DirtyCleanVisitor<'tcx> {
         let def_path_hash = self.tcx.def_path_hash(def_id);
         labels.iter().map(move |label| match DepNode::from_label_string(label, def_path_hash) {
             Ok(dep_node) => dep_node,
-            Err(()) => unreachable!(),
+            Err(()) => unreachable!("label: {}", label),
         })
     }
 

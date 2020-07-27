@@ -1,16 +1,25 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:6:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
 error[E0391]: cycle detected when building specialization graph of trait `Trait`
-  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:8:1
+  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:9:1
    |
 LL | trait Trait<T> { type Assoc; }
    | ^^^^^^^^^^^^^^
    |
    = note: ...which again requires building specialization graph of trait `Trait`, completing the cycle
 note: cycle used when coherence checking all impls of trait `Trait`
-  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:8:1
+  --> $DIR/coherence-inherited-assoc-ty-cycle-err.rs:9:1
    |
 LL | trait Trait<T> { type Assoc; }
    | ^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0391`.

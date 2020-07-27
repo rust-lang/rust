@@ -88,7 +88,7 @@ pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
 }
 
 /// Checks whether the function has a `const` modifier or, in case it is an intrinsic, whether
-/// said intrinsic is on the whitelist for being const callable.
+/// said intrinsic has a `rustc_const_{un,}stable` attribute.
 fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
 
@@ -156,7 +156,7 @@ fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         && tcx.lookup_const_stability(def_id).map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         is_const_fn_raw,
         is_const_impl_raw: |tcx, def_id| is_const_impl_raw(tcx, def_id.expect_local()),

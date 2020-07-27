@@ -383,7 +383,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                 }
             }
             TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
-                if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
+                if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                     return Err((span, "missing fragment specifier".to_string()));
                 }
             }
@@ -566,7 +566,7 @@ fn inner_parse_loop<'root, 'tt>(
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
                 TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
-                    if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
+                    if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                         return Error(span, "missing fragment specifier".to_string());
                     }
                 }
@@ -785,7 +785,7 @@ fn may_begin_with(token: &Token, name: Symbol) -> bool {
         sym::literal => token.can_begin_literal_maybe_minus(),
         sym::vis => match token.kind {
             // The follow-set of :vis + "priv" keyword + interpolated
-            token::Comma | token::Ident(..) | token::Interpolated(_) => true,
+            token::Comma | token::Ident(..) | token::Interpolated(..) => true,
             _ => token.can_begin_type(),
         },
         sym::block => match token.kind {
@@ -866,10 +866,23 @@ fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Result<Nonterminal, (
 }
 
 fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a, Nonterminal> {
+    // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)
+    // needs to have them force-captured here.
+    // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
+    // which requires having captured tokens available. Since we cannot determine
+    // in advance whether or not a proc-macro will be (transitively) invoked,
+    // we always capture tokens for any `Nonterminal` which needs them.
     Ok(match name {
-        sym::item => match p.parse_item()? {
-            Some(i) => token::NtItem(i),
-            None => return Err(p.struct_span_err(p.token.span, "expected an item keyword")),
+        sym::item => match p.collect_tokens(|this| this.parse_item())? {
+            (Some(mut item), tokens) => {
+                // If we captured tokens during parsing (due to outer attributes),
+                // use those.
+                if item.tokens.is_none() {
+                    item.tokens = Some(tokens);
+                }
+                token::NtItem(item)
+            }
+            (None, _) => return Err(p.struct_span_err(p.token.span, "expected an item keyword")),
         },
         sym::block => token::NtBlock(p.parse_block()?),
         sym::stmt => match p.parse_stmt()? {
@@ -877,7 +890,15 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
             None => return Err(p.struct_span_err(p.token.span, "expected a statement")),
         },
         sym::pat => token::NtPat(p.parse_pat(None)?),
-        sym::expr => token::NtExpr(p.parse_expr()?),
+        sym::expr => {
+            let (mut expr, tokens) = p.collect_tokens(|this| this.parse_expr())?;
+            // If we captured tokens during parsing (due to outer attributes),
+            // use those.
+            if expr.tokens.is_none() {
+                expr.tokens = Some(tokens);
+            }
+            token::NtExpr(expr)
+        }
         sym::literal => token::NtLiteral(p.parse_literal_maybe_minus()?),
         sym::ty => token::NtTy(p.parse_ty()?),
         // this could be handled like a token, since it is one

@@ -441,8 +441,8 @@ impl Direction for Forward {
             Goto { target } => propagate(target, exit_state),
 
             Assert { target, cleanup: unwind, expected: _, msg: _, cond: _ }
-            | Drop { target, unwind, location: _ }
-            | DropAndReplace { target, unwind, value: _, location: _ }
+            | Drop { target, unwind, place: _ }
+            | DropAndReplace { target, unwind, value: _, place: _ }
             | FalseUnwind { real_target: target, unwind } => {
                 if let Some(unwind) = unwind {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
@@ -453,7 +453,7 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            FalseEdges { real_target, imaginary_target } => {
+            FalseEdge { real_target, imaginary_target } => {
                 propagate(real_target, exit_state);
                 propagate(imaginary_target, exit_state);
             }
@@ -467,7 +467,7 @@ impl Direction for Forward {
                 propagate(target, exit_state);
             }
 
-            Call { cleanup, destination, ref func, ref args, from_hir_call: _ } => {
+            Call { cleanup, destination, ref func, ref args, from_hir_call: _, fn_span: _ } => {
                 if let Some(unwind) = cleanup {
                     if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
                         propagate(unwind, exit_state);
@@ -482,7 +482,7 @@ impl Direction for Forward {
                 }
             }
 
-            InlineAsm { template: _, operands: _, options: _, destination } => {
+            InlineAsm { template: _, operands: _, options: _, line_spans: _, destination } => {
                 if let Some(target) = destination {
                     propagate(target, exit_state);
                 }

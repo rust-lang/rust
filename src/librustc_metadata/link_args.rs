@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
@@ -11,7 +11,7 @@ crate fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
     for attr in tcx.hir().krate().item.attrs.iter() {
         if attr.has_name(sym::link_args) {
             if let Some(linkarg) = attr.value_str() {
-                collector.add_link_args(&linkarg.as_str());
+                collector.add_link_args(linkarg);
             }
         }
     }
@@ -36,7 +36,7 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector {
         // First, add all of the custom #[link_args] attributes
         for m in it.attrs.iter().filter(|a| a.check_name(sym::link_args)) {
             if let Some(linkarg) = m.value_str() {
-                self.add_link_args(&linkarg.as_str());
+                self.add_link_args(linkarg);
             }
         }
     }
@@ -46,7 +46,7 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector {
 }
 
 impl Collector {
-    fn add_link_args(&mut self, args: &str) {
-        self.args.extend(args.split(' ').filter(|s| !s.is_empty()).map(|s| s.to_string()))
+    fn add_link_args(&mut self, args: Symbol) {
+        self.args.extend(args.as_str().split(' ').filter(|s| !s.is_empty()).map(|s| s.to_string()))
     }
 }

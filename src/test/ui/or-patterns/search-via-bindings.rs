@@ -3,7 +3,6 @@
 // run-pass
 
 #![feature(or_patterns)]
-#![allow(unreachable_patterns)] // FIXME(or-patterns) this shouldn't trigger
 
 fn search(target: (bool, bool, bool)) -> u32 {
     let x = ((false, true), (false, true), (false, true));

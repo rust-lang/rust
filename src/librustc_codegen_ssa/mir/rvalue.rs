@@ -190,17 +190,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 if bx.cx().tcx().has_attr(def_id, sym::rustc_args_required_const) {
                                     bug!("reifying a fn ptr that requires const arguments");
                                 }
-                                OperandValue::Immediate(
-                                    bx.get_fn_addr(
-                                        ty::Instance::resolve_for_fn_ptr(
-                                            bx.tcx(),
-                                            ty::ParamEnv::reveal_all(),
-                                            def_id,
-                                            substs,
-                                        )
-                                        .unwrap(),
-                                    ),
+                                let instance = ty::Instance::resolve_for_fn_ptr(
+                                    bx.tcx(),
+                                    ty::ParamEnv::reveal_all(),
+                                    def_id,
+                                    substs,
                                 )
+                                .unwrap()
+                                .polymorphize(bx.cx().tcx());
+                                OperandValue::Immediate(bx.get_fn_addr(instance))
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
@@ -213,7 +211,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     def_id,
                                     substs,
                                     ty::ClosureKind::FnOnce,
-                                );
+                                )
+                                .polymorphize(bx.cx().tcx());
                                 OperandValue::Immediate(bx.cx().get_fn_addr(instance))
                             }
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
@@ -522,6 +521,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let operand = OperandRef { val: OperandValue::Immediate(val), layout: box_layout };
                 (bx, operand)
             }
+            mir::Rvalue::ThreadLocalRef(def_id) => {
+                assert!(bx.cx().tcx().is_static(def_id));
+                let static_ = bx.get_static(def_id);
+                let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
+                let operand = OperandRef::from_immediate_or_packed_pair(&mut bx, static_, layout);
+                (bx, operand)
+            }
             mir::Rvalue::Use(ref operand) => {
                 let operand = self.codegen_operand(&mut bx, operand);
                 (bx, operand)
@@ -745,6 +751,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::UnaryOp(..) |
             mir::Rvalue::Discriminant(..) |
             mir::Rvalue::NullaryOp(..) |
+            mir::Rvalue::ThreadLocalRef(_) |
             mir::Rvalue::Use(..) => // (*)
                 true,
             mir::Rvalue::Repeat(..) |
@@ -766,11 +773,16 @@ fn cast_float_to_int<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     float_ty: Bx::Type,
     int_ty: Bx::Type,
 ) -> Bx::Value {
-    let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
-
     if let Some(false) = bx.cx().sess().opts.debugging_opts.saturating_float_casts {
-        return fptosui_result;
+        return if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
     }
+
+    let try_sat_result = if signed { bx.fptosi_sat(x, int_ty) } else { bx.fptoui_sat(x, int_ty) };
+    if let Some(try_sat_result) = try_sat_result {
+        return try_sat_result;
+    }
+
+    let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
 
     let int_width = bx.cx().int_width(int_ty);
     let float_width = bx.cx().float_width(float_ty);

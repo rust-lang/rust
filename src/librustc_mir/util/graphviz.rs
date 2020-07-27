@@ -1,3 +1,4 @@
+use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
@@ -76,7 +77,7 @@ where
 /// Write a graphviz HTML-styled label for the given basic block, with
 /// all necessary escaping already performed. (This is suitable for
 /// emitting directly, as is done in this module, or for use with the
-/// LabelText::HtmlStr from libgraphviz.)
+/// LabelText::HtmlStr from librustc_graphviz.)
 ///
 /// `init` and `fini` are callbacks for emitting additional rows of
 /// data (using HTML enclosed with `<tr>` in the emitted text).
@@ -97,17 +98,12 @@ where
     write!(w, r#"<table border="0" cellborder="1" cellspacing="0">"#)?;
 
     // Basic block number at the top.
-    let (blk, color) = if data.is_cleanup {
-        (format!("{} (cleanup)", block.index()), "lightblue")
-    } else {
-        (format!("{}", block.index()), "gray")
-    };
     write!(
         w,
-        r#"<tr><td bgcolor="{color}" align="center" colspan="{colspan}">{blk}</td></tr>"#,
+        r#"<tr><td {attrs} colspan="{colspan}">{blk}</td></tr>"#,
+        attrs = r#"bgcolor="gray" align="center""#,
         colspan = num_cols,
-        blk = blk,
-        color = color
+        blk = block.index()
     )?;
 
     init(w)?;

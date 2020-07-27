@@ -332,12 +332,12 @@ fn check_predicates<'tcx>(
         });
 
     // Include the well-formed predicates of the type parameters of the impl.
-    for ty in tcx.impl_trait_ref(impl1_def_id).unwrap().substs.types() {
+    for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().substs {
         if let Some(obligations) = wf::obligations(
             infcx,
             tcx.param_env(impl1_def_id),
             tcx.hir().as_local_hir_id(impl1_def_id),
-            ty,
+            arg,
             span,
         ) {
             impl2_predicates

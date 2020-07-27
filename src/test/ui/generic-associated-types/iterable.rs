@@ -1,7 +1,7 @@
 #![allow(incomplete_features)]
 #![feature(generic_associated_types)]
 
-// FIXME(#30472) normalize enough to handle this.
+// run-pass
 
 trait Iterable {
     type Item<'a> where Self: 'a;
@@ -13,39 +13,35 @@ trait Iterable {
 // Impl for struct type
 impl<T> Iterable for Vec<T> {
     type Item<'a> where T: 'a = <std::slice::Iter<'a, T> as Iterator>::Item;
-    //~^ ERROR type mismatch resolving
     type Iter<'a> where T: 'a = std::slice::Iter<'a, T>;
 
     fn iter<'a>(&'a self) -> Self::Iter<'a> {
-    //~^ ERROR type mismatch resolving
-        self.iter()
+        self[..].iter()
     }
 }
 
 // Impl for a primitive type
 impl<T> Iterable for [T] {
     type Item<'a> where T: 'a = <std::slice::Iter<'a, T> as Iterator>::Item;
-    //~^ ERROR type mismatch resolving
     type Iter<'a> where T: 'a = std::slice::Iter<'a, T>;
 
     fn iter<'a>(&'a self) -> Self::Iter<'a> {
-    //~^ ERROR type mismatch resolving
         self.iter()
     }
 }
 
-fn make_iter<'a, I: Iterable>(it: &'a I) -> I::Iter<'a> {
+fn make_iter<'a, I: Iterable + ?Sized>(it: &'a I) -> I::Iter<'a> {
     it.iter()
 }
 
-fn get_first<'a, I: Iterable>(it: &'a I) -> Option<I::Item<'a>> {
+fn get_first<'a, I: Iterable + ?Sized>(it: &'a I) -> Option<I::Item<'a>> {
     it.iter().next()
 }
 
 fn main() {
     let v = vec![1, 2, 3];
-    assert_eq!(v, make_iter(&v).copied().collect());
-    assert_eq!(v, make_iter(&*v).copied().collect());
-    assert_eq!(1, get_first(&v));
-    assert_eq!(1, get_first(&*v));
+    assert_eq!(v, make_iter(&v).copied().collect::<Vec<_>>());
+    assert_eq!(v, make_iter(&*v).copied().collect::<Vec<_>>());
+    assert_eq!(Some(&1), get_first(&v));
+    assert_eq!(Some(&1), get_first(&*v));
 }

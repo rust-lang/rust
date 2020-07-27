@@ -1,29 +1,29 @@
 error: malformed `target_feature` attribute input
-  --> $DIR/invalid-attribute.rs:16:1
+  --> $DIR/invalid-attribute.rs:17:1
    |
 LL | #[target_feature = "+sse2"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[target_feature(enable = "name")]`
 
 error: the feature named `foo` is not valid for this target
-  --> $DIR/invalid-attribute.rs:18:18
+  --> $DIR/invalid-attribute.rs:19:18
    |
 LL | #[target_feature(enable = "foo")]
    |                  ^^^^^^^^^^^^^^ `foo` is not valid for this target
 
 error: malformed `target_feature` attribute input
-  --> $DIR/invalid-attribute.rs:21:18
+  --> $DIR/invalid-attribute.rs:22:18
    |
 LL | #[target_feature(bar)]
    |                  ^^^ help: must be of the form: `enable = ".."`
 
 error: malformed `target_feature` attribute input
-  --> $DIR/invalid-attribute.rs:23:18
+  --> $DIR/invalid-attribute.rs:24:18
    |
 LL | #[target_feature(disable = "baz")]
    |                  ^^^^^^^^^^^^^^^ help: must be of the form: `enable = ".."`
 
 error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
-  --> $DIR/invalid-attribute.rs:27:1
+  --> $DIR/invalid-attribute.rs:28:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ LL | fn bar() {}
    = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
 error: attribute should be applied to a function
-  --> $DIR/invalid-attribute.rs:33:1
+  --> $DIR/invalid-attribute.rs:34:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL | mod another {}
    | -------------- not a function
 
 error: attribute should be applied to a function
-  --> $DIR/invalid-attribute.rs:38:1
+  --> $DIR/invalid-attribute.rs:39:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL | const FOO: usize = 7;
    | --------------------- not a function
 
 error: attribute should be applied to a function
-  --> $DIR/invalid-attribute.rs:43:1
+  --> $DIR/invalid-attribute.rs:44:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -62,7 +62,7 @@ LL | struct Foo;
    | ----------- not a function
 
 error: attribute should be applied to a function
-  --> $DIR/invalid-attribute.rs:48:1
+  --> $DIR/invalid-attribute.rs:49:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +71,7 @@ LL | enum Bar { }
    | ------------ not a function
 
 error: attribute should be applied to a function
-  --> $DIR/invalid-attribute.rs:53:1
+  --> $DIR/invalid-attribute.rs:54:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL | union Qux { f1: u16, f2: u16 }
    | ------------------------------ not a function
 
 error: attribute should be applied to a function
-  --> $DIR/invalid-attribute.rs:58:1
+  --> $DIR/invalid-attribute.rs:59:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,13 +89,13 @@ LL | trait Baz { }
    | ------------- not a function
 
 error: cannot use `#[inline(always)]` with `#[target_feature]`
-  --> $DIR/invalid-attribute.rs:63:1
+  --> $DIR/invalid-attribute.rs:64:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
 error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
-  --> $DIR/invalid-attribute.rs:85:5
+  --> $DIR/invalid-attribute.rs:86:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,7 +107,7 @@ LL |     || {};
    = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
 error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
-  --> $DIR/invalid-attribute.rs:73:5
+  --> $DIR/invalid-attribute.rs:74:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

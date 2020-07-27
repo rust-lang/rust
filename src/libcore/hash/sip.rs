@@ -43,7 +43,7 @@ struct SipHasher24 {
 ///
 /// SipHash is a general-purpose hashing function: it runs at a good
 /// speed (competitive with Spooky and City) and permits strong _keyed_
-/// hashing. This lets you key your hashtables from a strong RNG, such as
+/// hashing. This lets you key your hash tables from a strong RNG, such as
 /// [`rand::os::OsRng`](https://doc.rust-lang.org/rand/rand/os/struct.OsRng.html).
 ///
 /// Although the SipHash algorithm is considered to be generally strong,
@@ -130,15 +130,19 @@ unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
     let mut i = 0; // current byte index (from LSB) in the output u64
     let mut out = 0;
     if i + 3 < len {
-        out = load_int_le!(buf, start + i, u32) as u64;
+        // SAFETY: `i` cannot be greater than `len`, and the caller must guarantee
+        // that the index start..start+len is in bounds.
+        out = unsafe { load_int_le!(buf, start + i, u32) } as u64;
         i += 4;
     }
     if i + 1 < len {
-        out |= (load_int_le!(buf, start + i, u16) as u64) << (i * 8);
+        // SAFETY: same as above.
+        out |= (unsafe { load_int_le!(buf, start + i, u16) } as u64) << (i * 8);
         i += 2
     }
     if i < len {
-        out |= (*buf.get_unchecked(start + i) as u64) << (i * 8);
+        // SAFETY: same as above.
+        out |= (unsafe { *buf.get_unchecked(start + i) } as u64) << (i * 8);
         i += 1;
     }
     debug_assert_eq!(i, len);

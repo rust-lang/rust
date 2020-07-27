@@ -1,14 +1,14 @@
-// Test that both `&&` and `||` actually short-circuit when the `const_if_match` feature flag is
-// enabled. Without the feature flag, both sides are evaluated unconditionally.
+// run-pass
 
-// revisions: stock if_match
+// Test that both `&&` and `||` actually short-circuit.
+// Formerly, both sides were evaluated unconditionally
 
-#![feature(rustc_attrs)]
 #![feature(const_panic)]
-#![cfg_attr(if_match, feature(const_if_match))]
 
-const _: bool = true || panic!();  //[stock]~ ERROR any use of this value will cause an error
-const _: bool = false && panic!(); //[stock]~ ERROR any use of this value will cause an error
+const TRUE: bool = true || panic!();
+const FALSE: bool = false && panic!();
 
-#[rustc_error]
-fn main() {} //[if_match]~ ERROR fatal error triggered by #[rustc_error]
+fn main() {
+    assert!(TRUE);
+    assert!(!FALSE);
+}

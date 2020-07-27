@@ -28,18 +28,13 @@ declare_clippy_lint! {
 
 declare_lint_pass!(WildcardDependencies => [WILDCARD_DEPENDENCIES]);
 
-impl LateLintPass<'_, '_> for WildcardDependencies {
-    fn check_crate(&mut self, cx: &LateContext<'_, '_>, _: &Crate<'_>) {
+impl LateLintPass<'_> for WildcardDependencies {
+    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
         if !run_lints(cx, &[WILDCARD_DEPENDENCIES], CRATE_HIR_ID) {
             return;
         }
 
-        let metadata = if let Ok(metadata) = cargo_metadata::MetadataCommand::new().no_deps().exec() {
-            metadata
-        } else {
-            span_lint(cx, WILDCARD_DEPENDENCIES, DUMMY_SP, "could not read cargo metadata");
-            return;
-        };
+        let metadata = unwrap_cargo_metadata!(cx, WILDCARD_DEPENDENCIES, false);
 
         for dep in &metadata.packages[0].dependencies {
             // VersionReq::any() does not work

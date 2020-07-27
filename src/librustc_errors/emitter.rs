@@ -31,6 +31,9 @@ use std::path::Path;
 use termcolor::{Ansi, BufferWriter, ColorChoice, ColorSpec, StandardStream};
 use termcolor::{Buffer, Color, WriteColor};
 
+/// Default column width, used in tests and when terminal dimensions cannot be determined.
+const DEFAULT_COLUMN_WIDTH: usize = 140;
+
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
@@ -74,7 +77,8 @@ struct Margin {
     pub computed_left: usize,
     /// The end of the line to be displayed.
     pub computed_right: usize,
-    /// The current width of the terminal. 140 by default and in tests.
+    /// The current width of the terminal. Uses value of `DEFAULT_COLUMN_WIDTH` constant by default
+    /// and in tests.
     pub column_width: usize,
     /// The end column of a span label, including the span. Doesn't account for labels not in the
     /// same line as the span.
@@ -1414,11 +1418,11 @@ impl EmitterWriter {
                 let column_width = if let Some(width) = self.terminal_width {
                     width.saturating_sub(code_offset)
                 } else if self.ui_testing {
-                    140
+                    DEFAULT_COLUMN_WIDTH
                 } else {
                     termize::dimensions()
                         .map(|(w, _)| w.saturating_sub(code_offset))
-                        .unwrap_or(usize::MAX)
+                        .unwrap_or(DEFAULT_COLUMN_WIDTH)
                 };
 
                 let margin = Margin::new(

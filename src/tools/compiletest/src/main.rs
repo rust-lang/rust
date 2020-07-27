@@ -1,6 +1,4 @@
 #![crate_name = "compiletest"]
-#![feature(vec_remove_item)]
-#![deny(warnings)]
 // The `test` crate is the only unstable feature
 // allowed here, just to share similar code.
 #![feature(test)]
@@ -10,8 +8,6 @@ extern crate test;
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, Pretty, TestPaths};
 use crate::util::logv;
-use env_logger;
-use getopts;
 use getopts::Options;
 use log::*;
 use std::env;
@@ -57,6 +53,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
+        .optopt("", "rust-demangler-path", "path to rust-demangler to use in tests", "PATH")
         .reqopt("", "lldb-python", "path to python to use for doc tests", "PATH")
         .reqopt("", "docck-python", "path to python to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
@@ -169,14 +166,20 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let cdb = analyze_cdb(matches.opt_str("cdb"), &target);
     let (gdb, gdb_version, gdb_native_rust) =
         analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
-    let (lldb_version, lldb_native_rust) = extract_lldb_version(matches.opt_str("lldb-version"));
-
-    let color = match matches.opt_str("color").as_ref().map(|x| &**x) {
+    let (lldb_version, lldb_native_rust) = matches
+        .opt_str("lldb-version")
+        .as_deref()
+        .and_then(extract_lldb_version)
+        .map(|(v, b)| (Some(v), b))
+        .unwrap_or((None, false));
+    let color = match matches.opt_str("color").as_deref() {
         Some("auto") | None => ColorConfig::AutoColor,
         Some("always") => ColorConfig::AlwaysColor,
         Some("never") => ColorConfig::NeverColor,
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
+    let llvm_version =
+        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
@@ -186,6 +189,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
+        rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
         lldb_python: matches.opt_str("lldb-python").unwrap(),
         docck_python: matches.opt_str("docck-python").unwrap(),
         valgrind_path: matches.opt_str("valgrind-path"),
@@ -217,7 +221,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         gdb_native_rust,
         lldb_version,
         lldb_native_rust,
-        llvm_version: matches.opt_str("llvm-version"),
+        llvm_version,
         system_llvm: matches.opt_present("system-llvm"),
         android_cross_path,
         adb_path: opt_str2(matches.opt_str("adb-path")),
@@ -250,12 +254,13 @@ pub fn log_config(config: &Config) {
     logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
+    logv(c, format!("rust_demangler_path: {:?}", config.rust_demangler_path));
     logv(c, format!("src_base: {:?}", config.src_base.display()));
     logv(c, format!("build_base: {:?}", config.build_base.display()));
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
-    logv(c, format!("filter: {}", opt_str(&config.filter.as_ref().map(|re| re.to_owned()))));
+    logv(c, format!("filter: {}", opt_str(&config.filter)));
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(
         c,
@@ -404,17 +409,14 @@ fn configure_lldb(config: &Config) -> Option<Config> {
         return None;
     }
 
-    if let Some(lldb_version) = config.lldb_version.as_ref() {
-        if is_blacklisted_lldb_version(&lldb_version) {
-            println!(
-                "WARNING: The used version of LLDB ({}) has a \
-                 known issue that breaks debuginfo tests. See \
-                 issue #32520 for more information. Skipping all \
-                 LLDB-based tests!",
-                lldb_version
-            );
-            return None;
-        }
+    if let Some(350) = config.lldb_version {
+        println!(
+            "WARNING: The used version of LLDB (350) has a \
+             known issue that breaks debuginfo tests. See \
+             issue #32520 for more information. Skipping all \
+             LLDB-based tests!",
+        );
+        return None;
     }
 
     // Some older versions of LLDB seem to have problems with multiple
@@ -464,11 +466,13 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
 
     // Relevant pretty printer files
     let pretty_printer_files = [
-        "src/etc/debugger_pretty_printers_common.py",
+        "src/etc/rust_types.py",
         "src/etc/gdb_load_rust_pretty_printers.py",
-        "src/etc/gdb_rust_pretty_printing.py",
+        "src/etc/gdb_lookup.py",
+        "src/etc/gdb_providers.py",
         "src/etc/lldb_batchmode.py",
-        "src/etc/lldb_rust_formatters.py",
+        "src/etc/lldb_lookup.py",
+        "src/etc/lldb_providers.py",
     ];
     for file in &pretty_printer_files {
         let path = rust_src_dir.join(file);
@@ -481,6 +485,8 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(&rustdoc_path);
         stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
     }
+    // FIXME(richkadel): Do I need to add an `if let Some(rust_demangler_path) contribution to the
+    // stamp here as well?
 
     // Compiletest itself.
     stamp.add_dir(&rust_src_dir.join("src/tools/compiletest/"));
@@ -724,9 +730,7 @@ fn make_test_closure(
     let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
-    test::DynTestFn(Box::new(move || {
-        runtest::run(config, &testpaths, revision.as_ref().map(|s| s.as_str()))
-    }))
+    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths, revision.as_deref())))
 }
 
 /// Returns `true` if the given target is an Android target for the
@@ -842,75 +846,40 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     // This particular form is documented in the GNU coding standards:
     // https://www.gnu.org/prep/standards/html_node/_002d_002dversion.html#g_t_002d_002dversion
 
-    // don't start parsing in the middle of a number
-    let mut prev_was_digit = false;
-    let mut in_parens = false;
-    for (pos, c) in full_version_line.char_indices() {
-        if in_parens {
-            if c == ')' {
-                in_parens = false;
-            }
-            continue;
-        } else if c == '(' {
-            in_parens = true;
-            continue;
+    let mut splits = full_version_line.rsplit(' ');
+    let version_string = splits.next().unwrap();
+
+    let mut splits = version_string.split('.');
+    let major = splits.next().unwrap();
+    let minor = splits.next().unwrap();
+    let patch = splits.next();
+
+    let major: u32 = major.parse().unwrap();
+    let (minor, patch): (u32, u32) = match minor.find(not_a_digit) {
+        None => {
+            let minor = minor.parse().unwrap();
+            let patch: u32 = match patch {
+                Some(patch) => match patch.find(not_a_digit) {
+                    None => patch.parse().unwrap(),
+                    Some(idx) if idx > 3 => 0,
+                    Some(idx) => patch[..idx].parse().unwrap(),
+                },
+                None => 0,
+            };
+            (minor, patch)
         }
-
-        if prev_was_digit || !c.is_digit(10) {
-            prev_was_digit = c.is_digit(10);
-            continue;
+        // There is no patch version after minor-date (e.g. "4-2012").
+        Some(idx) => {
+            let minor = minor[..idx].parse().unwrap();
+            (minor, 0)
         }
+    };
 
-        prev_was_digit = true;
-
-        let line = &full_version_line[pos..];
-
-        let next_split = match line.find(|c: char| !c.is_digit(10)) {
-            Some(idx) => idx,
-            None => continue, // no minor version
-        };
-
-        if line.as_bytes()[next_split] != b'.' {
-            continue; // no minor version
-        }
-
-        let major = &line[..next_split];
-        let line = &line[next_split + 1..];
-
-        let (minor, patch) = match line.find(|c: char| !c.is_digit(10)) {
-            Some(idx) => {
-                if line.as_bytes()[idx] == b'.' {
-                    let patch = &line[idx + 1..];
-
-                    let patch_len =
-                        patch.find(|c: char| !c.is_digit(10)).unwrap_or_else(|| patch.len());
-                    let patch = &patch[..patch_len];
-                    let patch = if patch_len > 3 || patch_len == 0 { None } else { Some(patch) };
-
-                    (&line[..idx], patch)
-                } else {
-                    (&line[..idx], None)
-                }
-            }
-            None => (line, None),
-        };
-
-        if minor.is_empty() {
-            continue;
-        }
-
-        let major: u32 = major.parse().unwrap();
-        let minor: u32 = minor.parse().unwrap();
-        let patch: u32 = patch.unwrap_or("0").parse().unwrap();
-
-        return Some(((major * 1000) + minor) * 1000 + patch);
-    }
-
-    None
+    Some(((major * 1000) + minor) * 1000 + patch)
 }
 
 /// Returns (LLDB version, LLDB is rust-enabled)
-fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, bool) {
+fn extract_lldb_version(full_version_line: &str) -> Option<(u32, bool)> {
     // Extract the major LLDB version from the given version string.
     // LLDB version strings are different for Apple and non-Apple platforms.
     // The Apple variant looks like this:
@@ -919,7 +888,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
     // lldb-300.2.51 (new versions)
     //
     // We are only interested in the major version number, so this function
-    // will return `Some("179")` and `Some("300")` respectively.
+    // will return `Some(179)` and `Some(300)` respectively.
     //
     // Upstream versions look like:
     // lldb version 6.0.1
@@ -931,57 +900,24 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
     // normally fine because the only non-Apple version we test is
     // rust-enabled.
 
-    if let Some(ref full_version_line) = full_version_line {
-        if !full_version_line.trim().is_empty() {
-            let full_version_line = full_version_line.trim();
+    let full_version_line = full_version_line.trim();
 
-            for (pos, l) in full_version_line.char_indices() {
-                if l != 'l' && l != 'L' {
-                    continue;
-                }
-                if pos + 5 >= full_version_line.len() {
-                    continue;
-                }
-                let l = full_version_line[pos + 1..].chars().next().unwrap();
-                if l != 'l' && l != 'L' {
-                    continue;
-                }
-                let d = full_version_line[pos + 2..].chars().next().unwrap();
-                if d != 'd' && d != 'D' {
-                    continue;
-                }
-                let b = full_version_line[pos + 3..].chars().next().unwrap();
-                if b != 'b' && b != 'B' {
-                    continue;
-                }
-                let dash = full_version_line[pos + 4..].chars().next().unwrap();
-                if dash != '-' {
-                    continue;
-                }
-
-                let vers = full_version_line[pos + 5..]
-                    .chars()
-                    .take_while(|c| c.is_digit(10))
-                    .collect::<String>();
-                if !vers.is_empty() {
-                    return (Some(vers), full_version_line.contains("rust-enabled"));
-                }
-            }
-
-            if full_version_line.starts_with("lldb version ") {
-                let vers = full_version_line[13..]
-                    .chars()
-                    .take_while(|c| c.is_digit(10))
-                    .collect::<String>();
-                if !vers.is_empty() {
-                    return (Some(vers + "00"), full_version_line.contains("rust-enabled"));
-                }
-            }
+    if let Some(apple_ver) =
+        full_version_line.strip_prefix("LLDB-").or_else(|| full_version_line.strip_prefix("lldb-"))
+    {
+        if let Some(idx) = apple_ver.find(not_a_digit) {
+            let version: u32 = apple_ver[..idx].parse().unwrap();
+            return Some((version, full_version_line.contains("rust-enabled")));
+        }
+    } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ") {
+        if let Some(idx) = lldb_ver.find(not_a_digit) {
+            let version: u32 = lldb_ver[..idx].parse().unwrap();
+            return Some((version * 100, full_version_line.contains("rust-enabled")));
         }
     }
-    (None, false)
+    None
 }
 
-fn is_blacklisted_lldb_version(version: &str) -> bool {
-    version == "350"
+fn not_a_digit(c: char) -> bool {
+    !c.is_digit(10)
 }

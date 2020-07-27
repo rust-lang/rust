@@ -55,10 +55,10 @@ const METHODS_WITH_NEGATION: [(&str, &str); 2] = [("is_some", "is_none"), ("is_e
 
 declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, LOGIC_BUG]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
+impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
@@ -70,13 +70,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
 }
 
 struct NonminimalBoolVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 use quine_mc_cluskey::Bool;
 struct Hir2Qmm<'a, 'tcx, 'v> {
     terminals: Vec<&'v Expr<'v>>,
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
@@ -111,8 +111,12 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
             match &e.kind {
                 ExprKind::Unary(UnOp::UnNot, inner) => return Ok(Bool::Not(box self.run(inner)?)),
                 ExprKind::Binary(binop, lhs, rhs) => match &binop.node {
-                    BinOpKind::Or => return Ok(Bool::Or(self.extract(BinOpKind::Or, &[lhs, rhs], Vec::new())?)),
-                    BinOpKind::And => return Ok(Bool::And(self.extract(BinOpKind::And, &[lhs, rhs], Vec::new())?)),
+                    BinOpKind::Or => {
+                        return Ok(Bool::Or(self.extract(BinOpKind::Or, &[lhs, rhs], Vec::new())?));
+                    },
+                    BinOpKind::And => {
+                        return Ok(Bool::And(self.extract(BinOpKind::And, &[lhs, rhs], Vec::new())?));
+                    },
                     _ => (),
                 },
                 ExprKind::Lit(lit) => match lit.node {
@@ -155,7 +159,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
 
 struct SuggestContext<'a, 'tcx, 'v> {
     terminals: &'v [&'v Expr<'v>],
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     output: String,
 }
 
@@ -222,7 +226,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
     }
 }
 
-fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<String> {
+fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
     match &expr.kind {
         ExprKind::Binary(binop, lhs, rhs) => {
             if !implements_ord(cx, lhs) {
@@ -247,8 +251,8 @@ fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<String> {
                 ))
             })
         },
-        ExprKind::MethodCall(path, _, args) if args.len() == 1 => {
-            let type_of_receiver = cx.tables.expr_ty(&args[0]);
+        ExprKind::MethodCall(path, _, args, _) if args.len() == 1 => {
+            let type_of_receiver = cx.typeck_results().expr_ty(&args[0]);
             if !is_type_diagnostic_item(cx, type_of_receiver, sym!(option_type))
                 && !is_type_diagnostic_item(cx, type_of_receiver, sym!(result_type))
             {
@@ -268,7 +272,7 @@ fn simplify_not(cx: &LateContext<'_, '_>, expr: &Expr<'_>) -> Option<String> {
     }
 }
 
-fn suggest(cx: &LateContext<'_, '_>, suggestion: &Bool, terminals: &[&Expr<'_>]) -> String {
+fn suggest(cx: &LateContext<'_>, suggestion: &Bool, terminals: &[&Expr<'_>]) -> String {
     let mut suggest_context = SuggestContext {
         terminals,
         cx,
@@ -450,7 +454,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
                 self.bool_expr(e)
             },
             ExprKind::Unary(UnOp::UnNot, inner) => {
-                if self.cx.tables.node_types()[inner.hir_id].is_bool() {
+                if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
                     self.bool_expr(e);
                 } else {
                     walk_expr(self, e);
@@ -464,13 +468,13 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
     }
 }
 
-fn implements_ord<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &Expr<'_>) -> bool {
-    let ty = cx.tables.expr_ty(expr);
+fn implements_ord<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> bool {
+    let ty = cx.typeck_results().expr_ty(expr);
     get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]))
 }
 
 struct NotSimplificationVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {

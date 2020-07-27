@@ -80,7 +80,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
-        traits::type_marked_structural(self.id, self.span, &self.infcx, ty)
+        ty.is_structural_eq_shallow(self.infcx.tcx)
     }
 
     fn to_pat(
@@ -107,8 +107,15 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 cv.ty, structural
             );
 
+            // This can occur because const qualification treats all associated constants as
+            // opaque, whereas `search_for_structural_match_violation` tries to monomorphize them
+            // before it runs.
+            //
+            // FIXME(#73448): Find a way to bring const qualification into parity with
+            // `search_for_structural_match_violation`.
             if structural.is_none() && mir_structural_match_violation {
-                bug!("MIR const-checker found novel structural match violation");
+                warn!("MIR const-checker found novel structural match violation. See #73448.");
+                return inlined_const_as_pat;
             }
 
             if let Some(non_sm_ty) = structural {
@@ -129,6 +136,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     }
                     traits::NonStructuralMatchTy::Generator => {
                         "generators cannot be used in patterns".to_string()
+                    }
+                    traits::NonStructuralMatchTy::Closure => {
+                        "closures cannot be used in patterns".to_string()
                     }
                     traits::NonStructuralMatchTy::Param => {
                         bug!("use of a constant whose type is a parameter inside a pattern")
@@ -265,7 +275,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 PatKind::Variant {
                     adt_def,
                     substs,
-                    variant_index: destructured.variant,
+                    variant_index: destructured
+                        .variant
+                        .expect("destructed const of adt without variant id"),
                     subpatterns: field_pats(destructured.fields),
                 }
             }

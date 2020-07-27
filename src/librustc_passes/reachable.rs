@@ -60,10 +60,10 @@ fn method_might_be_inlined(
 }
 
 // Information needed while computing reachability.
-struct ReachableContext<'a, 'tcx> {
+struct ReachableContext<'tcx> {
     // The type context.
     tcx: TyCtxt<'tcx>,
-    tables: &'a ty::TypeckTables<'tcx>,
+    maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: HirIdSet,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
@@ -73,7 +73,7 @@ struct ReachableContext<'a, 'tcx> {
     any_library: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -81,18 +81,20 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let old_tables = self.tables;
-        self.tables = self.tcx.body_tables(body);
+        let old_maybe_typeck_results =
+            self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
         let body = self.tcx.hir().body(body);
         self.visit_body(body);
-        self.tables = old_tables;
+        self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let res = match expr.kind {
-            hir::ExprKind::Path(ref qpath) => Some(self.tables.qpath_res(qpath, expr.hir_id)),
+            hir::ExprKind::Path(ref qpath) => {
+                Some(self.typeck_results().qpath_res(qpath, expr.hir_id))
+            }
             hir::ExprKind::MethodCall(..) => self
-                .tables
+                .typeck_results()
                 .type_dependent_def(expr.hir_id)
                 .map(|(kind, def_id)| Res::Def(kind, def_id)),
             _ => None,
@@ -133,7 +135,16 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
+impl<'tcx> ReachableContext<'tcx> {
+    /// Gets the type-checking results for the current body.
+    /// As this will ICE if called outside bodies, only call when working with
+    /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[track_caller]
+    fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
+        self.maybe_typeck_results
+            .expect("`ReachableContext::typeck_results` called outside of body")
+    }
+
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
     fn def_id_represents_local_inlined_item(&self, def_id: DefId) -> bool {
@@ -180,7 +191,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             }
                         }
                     }
-                    hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(_) => false,
+                    hir::ImplItemKind::TyAlias(_) => false,
                 }
             }
             Some(_) => false,
@@ -289,7 +300,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         self.visit_nested_body(body)
                     }
                 }
-                hir::ImplItemKind::OpaqueTy(..) | hir::ImplItemKind::TyAlias(_) => {}
+                hir::ImplItemKind::TyAlias(_) => {}
             },
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(.., body, _, _), .. }) => {
                 self.visit_nested_body(body);
@@ -381,7 +392,7 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
         });
     let mut reachable_context = ReachableContext {
         tcx,
-        tables: &ty::TypeckTables::empty(None),
+        maybe_typeck_results: None,
         reachable_symbols: Default::default(),
         worklist: Vec::new(),
         any_library,
@@ -418,6 +429,6 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> &'tcx HirIdSet
     tcx.arena.alloc(reachable_context.reachable_symbols)
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers { reachable_set, ..*providers };
 }

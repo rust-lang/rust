@@ -29,6 +29,7 @@ use crate::Resolver;
 use rustc_ast::ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
+use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::pluralize;
 use rustc_middle::ty;
@@ -64,8 +65,9 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     fn check_import(&mut self, id: ast::NodeId) {
         let mut used = false;
         self.r.per_ns(|this, ns| used |= this.used_imports.contains(&(id, ns)));
+        let def_id = self.r.local_def_id(id);
         if !used {
-            if self.r.maybe_unused_trait_imports.contains(&id) {
+            if self.r.maybe_unused_trait_imports.contains(&def_id) {
                 // Check later.
                 return;
             }
@@ -73,7 +75,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
-            self.r.maybe_unused_trait_imports.remove(&id);
+            self.r.maybe_unused_trait_imports.remove(&def_id);
             if let Some(i) = self.unused_imports.get_mut(&self.base_id) {
                 i.unused.remove(&id);
             }
@@ -245,7 +247,8 @@ impl Resolver<'_> {
                     }
                 }
                 ImportKind::ExternCrate { .. } => {
-                    self.maybe_unused_extern_crates.push((import.id, import.span));
+                    let def_id = self.local_def_id(import.id);
+                    self.maybe_unused_extern_crates.push((def_id, import.span));
                 }
                 ImportKind::MacroUse => {
                     let msg = "unused `#[macro_use]` import";

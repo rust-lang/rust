@@ -43,18 +43,18 @@ declare_clippy_lint! {
 
 declare_lint_pass!(GetLastWithLen => [GET_LAST_WITH_LEN]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for GetLastWithLen {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Is a method call
-            if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
+            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
 
             // Method name is "get"
             if path.ident.name == sym!(get);
 
             // Argument 0 (the struct we're calling the method on) is a vector
             if let Some(struct_calling_on) = args.get(0);
-            let struct_ty = cx.tables.expr_ty(struct_calling_on);
+            let struct_ty = cx.typeck_results().expr_ty(struct_calling_on);
             if is_type_diagnostic_item(cx, struct_ty, sym!(vec_type));
 
             // Argument to "get" is a subtraction
@@ -69,7 +69,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
             ) = &get_index_arg.kind;
 
             // LHS of subtraction is "x.len()"
-            if let ExprKind::MethodCall(arg_lhs_path, _, lhs_args) = &lhs.kind;
+            if let ExprKind::MethodCall(arg_lhs_path, _, lhs_args, _) = &lhs.kind;
             if arg_lhs_path.ident.name == sym!(len);
             if let Some(arg_lhs_struct) = lhs_args.get(0);
 

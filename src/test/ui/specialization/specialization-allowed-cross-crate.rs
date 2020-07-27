@@ -5,7 +5,7 @@
 
 // aux-build:go_trait.rs
 
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 extern crate go_trait;
 

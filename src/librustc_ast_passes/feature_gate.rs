@@ -121,6 +121,14 @@ impl<'a> PostExpansionVisitor<'a> {
                     "amdgpu-kernel ABI is experimental and subject to change"
                 );
             }
+            "avr-interrupt" | "avr-non-blocking-interrupt" => {
+                gate_feature_post!(
+                    &self,
+                    abi_avr_interrupt,
+                    span,
+                    "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change"
+                );
+            }
             "efiapi" => {
                 gate_feature_post!(
                     &self,
@@ -245,6 +253,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     include => external_doc
                     cfg => doc_cfg
                     masked => doc_masked
+                    spotlight => doc_spotlight
                     alias => doc_alias
                     keyword => doc_keyword
                 );

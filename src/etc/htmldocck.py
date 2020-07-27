@@ -114,7 +114,10 @@ try:
     from html.parser import HTMLParser
 except ImportError:
     from HTMLParser import HTMLParser
-from xml.etree import cElementTree as ET
+try:
+    from xml.etree import cElementTree as ET
+except ImportError:
+    from xml.etree import ElementTree as ET
 
 try:
     from html.entities import name2codepoint
@@ -122,8 +125,8 @@ except ImportError:
     from htmlentitydefs import name2codepoint
 
 # "void elements" (no closing tag) from the HTML Standard section 12.1.2
-VOID_ELEMENTS = set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
-                     'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'])
+VOID_ELEMENTS = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
+                     'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'}
 
 # Python 2 -> 3 compatibility
 try:
@@ -143,7 +146,7 @@ class CustomHTMLParser(HTMLParser):
         self.__builder = target or ET.TreeBuilder()
 
     def handle_starttag(self, tag, attrs):
-        attrs = dict((k, v or '') for k, v in attrs)
+        attrs = {k: v or '' for k, v in attrs}
         self.__builder.start(tag, attrs)
         if tag in VOID_ELEMENTS:
             self.__builder.end(tag)
@@ -152,7 +155,7 @@ class CustomHTMLParser(HTMLParser):
         self.__builder.end(tag)
 
     def handle_startendtag(self, tag, attrs):
-        attrs = dict((k, v or '') for k, v in attrs)
+        attrs = {k: v or '' for k, v in attrs}
         self.__builder.start(tag, attrs)
         self.__builder.end(tag)
 

@@ -11,7 +11,7 @@ use crate::tokenstream::TokenTree;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, Span, DUMMY_SP};
 use std::borrow::Cow;
@@ -673,6 +673,62 @@ impl Token {
 
         Some(Token::new(kind, self.span.to(joint.span)))
     }
+
+    // See comments in `Nonterminal::to_tokenstream` for why we care about
+    // *probably* equal here rather than actual equality
+    crate fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
+        if mem::discriminant(&self.kind) != mem::discriminant(&other.kind) {
+            return false;
+        }
+        match (&self.kind, &other.kind) {
+            (&Eq, &Eq)
+            | (&Lt, &Lt)
+            | (&Le, &Le)
+            | (&EqEq, &EqEq)
+            | (&Ne, &Ne)
+            | (&Ge, &Ge)
+            | (&Gt, &Gt)
+            | (&AndAnd, &AndAnd)
+            | (&OrOr, &OrOr)
+            | (&Not, &Not)
+            | (&Tilde, &Tilde)
+            | (&At, &At)
+            | (&Dot, &Dot)
+            | (&DotDot, &DotDot)
+            | (&DotDotDot, &DotDotDot)
+            | (&DotDotEq, &DotDotEq)
+            | (&Comma, &Comma)
+            | (&Semi, &Semi)
+            | (&Colon, &Colon)
+            | (&ModSep, &ModSep)
+            | (&RArrow, &RArrow)
+            | (&LArrow, &LArrow)
+            | (&FatArrow, &FatArrow)
+            | (&Pound, &Pound)
+            | (&Dollar, &Dollar)
+            | (&Question, &Question)
+            | (&Whitespace, &Whitespace)
+            | (&Comment, &Comment)
+            | (&Eof, &Eof) => true,
+
+            (&BinOp(a), &BinOp(b)) | (&BinOpEq(a), &BinOpEq(b)) => a == b,
+
+            (&OpenDelim(a), &OpenDelim(b)) | (&CloseDelim(a), &CloseDelim(b)) => a == b,
+
+            (&DocComment(a), &DocComment(b)) | (&Shebang(a), &Shebang(b)) => a == b,
+
+            (&Literal(a), &Literal(b)) => a == b,
+
+            (&Lifetime(a), &Lifetime(b)) => a == b,
+            (&Ident(a, b), &Ident(c, d)) => {
+                b == d && (a == c || a == kw::DollarCrate || c == kw::DollarCrate)
+            }
+
+            (&Interpolated(..), &Interpolated(..)) => false,
+
+            _ => panic!("forgot to add a token?"),
+        }
+    }
 }
 
 impl PartialEq<TokenKind> for Token {
@@ -719,6 +775,26 @@ impl Nonterminal {
             NtVis(vis) => vis.span,
             NtTT(tt) => tt.span(),
         }
+    }
+
+    /// This nonterminal looks like some specific enums from
+    /// `proc-macro-hack` and `procedural-masquerade` crates.
+    /// We need to maintain some special pretty-printing behavior for them due to incorrect
+    /// asserts in old versions of those crates and their wide use in the ecosystem.
+    /// See issue #73345 for more details.
+    /// FIXME(#73933): Remove this eventually.
+    pub fn pretty_printing_compatibility_hack(&self) -> bool {
+        if let NtItem(item) = self {
+            let name = item.ident.name;
+            if name == sym::ProceduralMasqueradeDummyType || name == sym::ProcMacroHack {
+                if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
+                    if let [variant] = &*enum_def.variants {
+                        return variant.ident.name == sym::Input;
+                    }
+                }
+            }
+        }
+        false
     }
 }
 

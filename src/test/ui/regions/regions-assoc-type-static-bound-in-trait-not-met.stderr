@@ -14,8 +14,8 @@ note: ...so that the types are compatible
    |
 LL | impl<'a> Foo for &'a i32 {
    |          ^^^
-   = note: expected  `Foo`
-              found  `Foo`
+   = note: expected `Foo`
+              found `Foo`
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that the type `&i32` will meet its required lifetime bounds
   --> $DIR/regions-assoc-type-static-bound-in-trait-not-met.rs:9:10

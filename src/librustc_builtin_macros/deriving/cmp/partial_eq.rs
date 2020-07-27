@@ -69,9 +69,9 @@ pub fn expand_deriving_partial_eq(
             let attrs = vec![cx.attribute(inline)];
             MethodDef {
                 name: $name,
-                generics: LifetimeBounds::empty(),
+                generics: Bounds::empty(),
                 explicit_self: borrowed_explicit_self(),
-                args: vec![(borrowed_self(), "other")],
+                args: vec![(borrowed_self(), sym::other)],
                 ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
                 is_unsafe: false,
@@ -85,24 +85,24 @@ pub fn expand_deriving_partial_eq(
         cx,
         span,
         item,
-        path_std!(cx, marker::StructuralPartialEq),
+        path_std!(marker::StructuralPartialEq),
         push,
     );
 
     // avoid defining `ne` if we can
     // c-like enums, enums without any fields and structs without fields
     // can safely define only `eq`.
-    let mut methods = vec![md!("eq", cs_eq)];
+    let mut methods = vec![md!(sym::eq, cs_eq)];
     if !is_type_without_fields(item) {
-        methods.push(md!("ne", cs_ne));
+        methods.push(md!(sym::ne, cs_ne));
     }
 
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: path_std!(cx, cmp::PartialEq),
+        path: path_std!(cmp::PartialEq),
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods,

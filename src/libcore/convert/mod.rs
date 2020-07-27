@@ -18,8 +18,9 @@
 //! [`TryFrom<T>`][`TryFrom`] rather than [`Into<U>`][`Into`] or [`TryInto<U>`][`TryInto`],
 //! as [`From`] and [`TryFrom`] provide greater flexibility and offer
 //! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a
-//! blanket implementation in the standard library. Only implement [`Into`] or [`TryInto`]
-//! when a conversion to a type outside the current crate is required.
+//! blanket implementation in the standard library. When targeting a version prior to Rust 1.41, it
+//! may be necessary to implement [`Into`] or [`TryInto`] directly when converting to a type
+//! outside the current crate.
 //!
 //! # Generic Implementations
 //!
@@ -298,8 +299,10 @@ pub trait Into<T>: Sized {
 /// because implementing `From` automatically provides one with an implementation of [`Into`]
 /// thanks to the blanket implementation in the standard library.
 ///
-/// Only implement [`Into`] if a conversion to a type outside the current crate is required.
-/// `From` cannot do these type of conversions because of Rust's orphaning rules.
+/// Only implement [`Into`] when targeting a version prior to Rust 1.41 and converting to a type
+/// outside the current crate.
+/// `From` was not able to do these types of conversions in earlier versions because of Rust's
+/// orphaning rules.
 /// See [`Into`] for more details.
 ///
 /// Prefer using [`Into`] over using `From` when specifying trait bounds on a generic function.
@@ -374,6 +377,7 @@ pub trait Into<T>: Sized {
 /// [`Into`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
 /// [book]: ../../book/ch09-00-error-handling.html
+#[rustc_diagnostic_item = "from_trait"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(on(
     all(_Self = "&str", T = "std::string::String"),
@@ -673,7 +677,7 @@ impl AsRef<str> for str {
 ///
 ///
 /// However there is one case where `!` syntax can be used
-/// before `!` is stabilized as a full-fleged type: in the position of a function’s return type.
+/// before `!` is stabilized as a full-fledged type: in the position of a function’s return type.
 /// Specifically, it is possible implementations for two different function pointer types:
 ///
 /// ```

@@ -318,13 +318,32 @@ macro_rules! define_queries_inner {
             }
         }
 
+        #[allow(nonstandard_style)]
         pub mod queries {
             use std::marker::PhantomData;
 
-            $(#[allow(nonstandard_style)]
-            pub struct $name<$tcx> {
+            $(pub struct $name<$tcx> {
                 data: PhantomData<&$tcx ()>
             })*
+        }
+
+        // HACK(eddyb) this is like the `impl QueryConfig for queries::$name`
+        // below, but using type aliases instead of associated types, to bypass
+        // the limitations around normalizing under HRTB - for example, this:
+        // `for<'tcx> fn(...) -> <queries::$name<'tcx> as QueryConfig<TyCtxt<'tcx>>>::Value`
+        // doesn't currently normalize to `for<'tcx> fn(...) -> query_values::$name<'tcx>`.
+        // This is primarily used by the `provide!` macro in `rustc_metadata`.
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_keys {
+            use super::*;
+
+            $(pub type $name<$tcx> = $($K)*;)*
+        }
+        #[allow(nonstandard_style, unused_lifetimes)]
+        pub mod query_values {
+            use super::*;
+
+            $(pub type $name<$tcx> = $V;)*
         }
 
         $(impl<$tcx> QueryConfig<TyCtxt<$tcx>> for queries::$name<$tcx> {
@@ -478,13 +497,16 @@ macro_rules! define_queries_inner {
             input: ($(([$($modifiers)*] [$name] [$($K)*] [$V]))*)
         }
 
-        impl<$tcx> Copy for Providers<$tcx> {}
-        impl<$tcx> Clone for Providers<$tcx> {
+        impl Copy for Providers {}
+        impl Clone for Providers {
             fn clone(&self) -> Self { *self }
         }
     }
 }
 
+// FIXME(eddyb) this macro (and others?) use `$tcx` and `'tcx` interchangeably.
+// We should either not take `$tcx` at all and use `'tcx` everywhere, or use
+// `$tcx` everywhere (even if that isn't necessary due to lack of hygiene).
 macro_rules! define_queries_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
@@ -494,8 +516,8 @@ macro_rules! define_queries_struct {
             /// `DepGraph::try_mark_green()` and the query infrastructure.
             pub(crate) on_disk_cache: OnDiskCache<'tcx>,
 
-            providers: IndexVec<CrateNum, Providers<$tcx>>,
-            fallback_extern_providers: Box<Providers<$tcx>>,
+            providers: IndexVec<CrateNum, Providers>,
+            fallback_extern_providers: Box<Providers>,
 
             $($(#[$attr])*  $name: QueryState<
                 TyCtxt<$tcx>,
@@ -505,8 +527,8 @@ macro_rules! define_queries_struct {
 
         impl<$tcx> Queries<$tcx> {
             pub(crate) fn new(
-                providers: IndexVec<CrateNum, Providers<$tcx>>,
-                fallback_extern_providers: Providers<$tcx>,
+                providers: IndexVec<CrateNum, Providers>,
+                fallback_extern_providers: Providers,
                 on_disk_cache: OnDiskCache<'tcx>,
             ) -> Self {
                 Queries {
@@ -539,11 +561,11 @@ macro_rules! define_queries_struct {
 macro_rules! define_provider_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$name:ident] [$K:ty] [$R:ty]))*)) => {
-        pub struct Providers<$tcx> {
-            $(pub $name: fn(TyCtxt<$tcx>, $K) -> $R,)*
+        pub struct Providers {
+            $(pub $name: for<$tcx> fn(TyCtxt<$tcx>, $K) -> $R,)*
         }
 
-        impl<$tcx> Default for Providers<$tcx> {
+        impl Default for Providers {
             fn default() -> Self {
                 $(fn $name<$tcx>(_: TyCtxt<$tcx>, key: $K) -> $R {
                     bug!("`tcx.{}({:?})` unsupported by its crate",

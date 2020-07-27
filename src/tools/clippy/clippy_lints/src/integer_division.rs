@@ -15,10 +15,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// fn main() {
-    ///     let x = 3 / 2;
-    ///     println!("{}", x);
-    /// }
+    /// // Bad
+    /// let x = 3 / 2;
+    /// println!("{}", x);
+    ///
+    /// // Good
+    /// let x = 3f32 / 2f32;
+    /// println!("{}", x);
     /// ```
     pub INTEGER_DIVISION,
     restriction,
@@ -27,8 +30,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IntegerDivision => [INTEGER_DIVISION]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntegerDivision {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for IntegerDivision {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if is_integer_division(cx, expr) {
             span_lint_and_help(
                 cx,
@@ -42,12 +45,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IntegerDivision {
     }
 }
 
-fn is_integer_division<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) -> bool {
+fn is_integer_division<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) -> bool {
     if_chain! {
         if let hir::ExprKind::Binary(binop, left, right) = &expr.kind;
         if let hir::BinOpKind::Div = &binop.node;
         then {
-            let (left_ty, right_ty) = (cx.tables.expr_ty(left), cx.tables.expr_ty(right));
+            let (left_ty, right_ty) = (cx.typeck_results().expr_ty(left), cx.typeck_results().expr_ty(right));
             return left_ty.is_integral() && right_ty.is_integral();
         }
     }

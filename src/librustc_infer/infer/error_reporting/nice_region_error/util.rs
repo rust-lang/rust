@@ -3,24 +3,22 @@
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, DefIdTree, Region, Ty};
 use rustc_span::Span;
 
-// The struct contains the information about the anonymous region
-// we are searching for.
+/// Information about the anonymous region we are searching for.
 #[derive(Debug)]
 pub(super) struct AnonymousParamInfo<'tcx> {
-    // the parameter corresponding to the anonymous region
+    /// The parameter corresponding to the anonymous region.
     pub param: &'tcx hir::Param<'tcx>,
-    // the type corresponding to the anonymopus region parameter
+    /// The type corresponding to the anonymous region parameter.
     pub param_ty: Ty<'tcx>,
-    // the ty::BoundRegion corresponding to the anonymous region
+    /// The ty::BoundRegion corresponding to the anonymous region.
     pub bound_region: ty::BoundRegion,
-    // param_ty_span contains span of parameter type
+    /// The `Span` of the parameter type.
     pub param_ty_span: Span,
-    // corresponds to id the argument is the first parameter
-    // in the declaration
+    /// Signals that the argument is the first parameter in the declaration.
     pub is_first: bool,
 }
 
@@ -92,7 +90,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     // FIXME(#42703) - Need to handle certain cases here.
     pub(super) fn is_return_type_anon(
         &self,
-        scope_def_id: DefId,
+        scope_def_id: LocalDefId,
         br: ty::BoundRegion,
         decl: &hir::FnDecl<'_>,
     ) -> Option<Span> {
@@ -112,9 +110,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     // corresponds to self and if yes, we display E0312.
     // FIXME(#42700) - Need to format self properly to
     // enable E0621 for it.
-    pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
+    pub(super) fn is_self_anon(&self, is_first: bool, scope_def_id: LocalDefId) -> bool {
         is_first
-            && self.tcx().opt_associated_item(scope_def_id).map(|i| i.fn_has_self_parameter)
+            && self
+                .tcx()
+                .opt_associated_item(scope_def_id.to_def_id())
+                .map(|i| i.fn_has_self_parameter)
                 == Some(true)
     }
 }

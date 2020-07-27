@@ -84,11 +84,8 @@ impl<T: ?Sized> !Send for *mut T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented(
-    on(parent_trait = "std::path::Path", label = "borrow the `Path` instead"),
     message = "the size for values of type `{Self}` cannot be known at compilation time",
-    label = "doesn't have a size known at compile-time",
-    note = "to learn more, visit <https://doc.rust-lang.org/book/\
-            ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>"
+    label = "doesn't have a size known at compile-time"
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 #[rustc_specialization_trait]
@@ -692,23 +689,12 @@ mod impls {
     issue = "none",
     reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
 )]
-#[cfg_attr(not(bootstrap), lang = "discriminant_kind")]
+#[lang = "discriminant_kind"]
 pub trait DiscriminantKind {
-    /// The type of the dicriminant, which must satisfy the trait
+    /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
+    #[cfg_attr(not(bootstrap), lang = "discriminant_type")]
     type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
-}
-
-// Manually implement `DiscriminantKind` for all types during bootstrap
-// to reduce the required amount of conditional compilation.
-#[unstable(
-    feature = "discriminant_kind",
-    issue = "none",
-    reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
-)]
-#[cfg(bootstrap)]
-impl<T: ?Sized> DiscriminantKind for T {
-    type Discriminant = u64;
 }
 
 /// Compiler-internal trait used to determine whether a type contains

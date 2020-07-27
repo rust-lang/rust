@@ -100,7 +100,7 @@ fn main() {
         let r: u32 = simd_reduce_max(x);
         assert_eq!(r, 4_u32);
 
-        let t = u32::max_value();
+        let t = u32::MAX;
         let x = u32x4(t, t, t, t);
         let r: u32 = simd_reduce_and(x);
         assert_eq!(r, t);

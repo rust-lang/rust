@@ -333,6 +333,19 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
     /// in a different item, with `target_substs` as the base for
     /// the target impl/trait, with the source child-specific
     /// parameters (e.g., method parameters) on top of that base.
+    ///
+    /// For example given:
+    ///
+    /// ```no_run
+    /// trait X<S> { fn f<T>(); }
+    /// impl<U> X<U> for U { fn f<V>() {} }
+    /// ```
+    ///
+    /// * If `self` is `[Self, S, T]`: the identity substs of `f` in the trait.
+    /// * If `source_ancestor` is the def_id of the trait.
+    /// * If `target_substs` is `[U]`, the substs for the impl.
+    /// * Then we will return `[U, T]`, the subst for `f` in the impl that
+    ///   are needed for it to match the trait.
     pub fn rebase_onto(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -599,12 +612,12 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
     ///
     /// ```
     /// type Func<A> = fn(A);
-    /// type MetaFunc = for<'a> fn(Func<&'a int>)
+    /// type MetaFunc = for<'a> fn(Func<&'a i32>)
     /// ```
     ///
     /// The type `MetaFunc`, when fully expanded, will be
     ///
-    ///     for<'a> fn(fn(&'a int))
+    ///     for<'a> fn(fn(&'a i32))
     ///             ^~ ^~ ^~~
     ///             |  |  |
     ///             |  |  DebruijnIndex of 2
@@ -613,7 +626,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
     /// Here the `'a` lifetime is bound in the outer function, but appears as an argument of the
     /// inner one. Therefore, that appearance will have a DebruijnIndex of 2, because we must skip
     /// over the inner binder (remember that we count De Bruijn indices from 1). However, in the
-    /// definition of `MetaFunc`, the binder is not visible, so the type `&'a int` will have a
+    /// definition of `MetaFunc`, the binder is not visible, so the type `&'a i32` will have a
     /// De Bruijn index of 1. It's only during the substitution that we can see we must increase the
     /// depth by 1 to account for the binder that we passed through.
     ///
@@ -621,18 +634,18 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
     ///
     /// ```
     /// type FuncTuple<A> = (A,fn(A));
-    /// type MetaFuncTuple = for<'a> fn(FuncTuple<&'a int>)
+    /// type MetaFuncTuple = for<'a> fn(FuncTuple<&'a i32>)
     /// ```
     ///
     /// Here the final type will be:
     ///
-    ///     for<'a> fn((&'a int, fn(&'a int)))
+    ///     for<'a> fn((&'a i32, fn(&'a i32)))
     ///                 ^~~         ^~~
     ///                 |           |
     ///          DebruijnIndex of 1 |
     ///                      DebruijnIndex of 2
     ///
-    /// As indicated in the diagram, here the same type `&'a int` is substituted once, but in the
+    /// As indicated in the diagram, here the same type `&'a i32` is substituted once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
     fn shift_vars_through_binders<T: TypeFoldable<'tcx>>(&self, val: T) -> T {

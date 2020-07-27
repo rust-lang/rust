@@ -1,7 +1,9 @@
 //! This module defines the `DepNode` type which the compiler uses to represent
-//! nodes in the dependency graph. A `DepNode` consists of a `DepKind` (which
+//! nodes in the dependency graph.
+//!
+//! A `DepNode` consists of a `DepKind` (which
 //! specifies the kind of thing it represents, like a piece of HIR, MIR, etc)
-//! and a `Fingerprint`, a 128 bit hash value the exact meaning of which
+//! and a `Fingerprint`, a 128-bit hash value the exact meaning of which
 //! depends on the node's `DepKind`. Together, the kind and the fingerprint
 //! fully identify a dependency node, even across multiple compilation sessions.
 //! In other words, the value of the fingerprint does not depend on anything
@@ -11,9 +13,9 @@
 //! uniquely identify a given commit and has a few advantages:
 //!
 //! * A `DepNode` can simply be serialized to disk and loaded in another session
-//!   without the need to do any "rebasing (like we have to do for Spans and
-//!   NodeIds) or "retracing" like we had to do for `DefId` in earlier
-//!   implementations of the dependency graph.
+//!   without the need to do any "rebasing" (like we have to do for Spans and
+//!   NodeIds) or "retracing" (like we had to do for `DefId` in earlier
+//!   implementations of the dependency graph).
 //! * A `Fingerprint` is just a bunch of bits, which allows `DepNode` to
 //!   implement `Copy`, `Sync`, `Send`, `Freeze`, etc.
 //! * Since we just have a bit pattern, `DepNode` can be mapped from disk into
@@ -42,7 +44,7 @@
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
 //!
-//! The `DepConstructor` enum, together with `DepNode::new()` ensures that only
+//! The `DepConstructor` enum, together with `DepNode::new()`, ensures that only
 //! valid `DepNode` instances can be constructed. For example, the API does not
 //! allow for constructing parameterless `DepNode`s with anything other
 //! than a zeroed out fingerprint. More generally speaking, it relieves the
@@ -128,7 +130,7 @@ macro_rules! define_dep_nodes {
                             // tuple args
                             $({
                                 return <$tuple_arg_ty as DepNodeParams<TyCtxt<'_>>>
-                                    ::CAN_RECONSTRUCT_QUERY_KEY;
+                                    ::can_reconstruct_query_key();
                             })*
 
                             true
@@ -304,7 +306,10 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 ]);
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         tcx.def_path_hash(*self).0
@@ -320,7 +325,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         self.to_def_id().to_fingerprint(tcx)
@@ -336,7 +344,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for LocalDefId {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = true;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        true
+    }
 
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
@@ -353,7 +364,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for CrateNum {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        false
+    }
 
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full
@@ -375,7 +389,10 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for (DefId, DefId) {
 }
 
 impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
-    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+    #[inline]
+    fn can_reconstruct_query_key() -> bool {
+        false
+    }
 
     // We actually would not need to specialize the implementation of this
     // method but it's faster to combine the hashes than to instantiate a full

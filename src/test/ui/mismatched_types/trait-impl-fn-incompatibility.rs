@@ -1,5 +1,3 @@
-// rustc-env:RUST_NEW_ERROR_FORMAT
-
 trait Foo {
     fn foo(x: u16);
     fn bar(&mut self, bar: &mut Bar);

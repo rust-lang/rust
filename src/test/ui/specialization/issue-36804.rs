@@ -1,5 +1,5 @@
 // check-pass
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 pub struct Cloned<I>(I);
 

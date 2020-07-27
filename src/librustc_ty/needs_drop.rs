@@ -5,6 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::Limit;
 use rustc_span::DUMMY_SP;
 
 type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
@@ -30,7 +31,7 @@ struct NeedsDropTypes<'tcx, F> {
     /// if it needs drop. If the result depends on whether some other types
     /// need drop we push them onto the stack.
     unchecked_tys: Vec<(Ty<'tcx>, usize)>,
-    recursion_limit: usize,
+    recursion_limit: Limit,
     adt_components: F,
 }
 
@@ -66,7 +67,7 @@ where
         let tcx = self.tcx;
 
         while let Some((ty, level)) = self.unchecked_tys.pop() {
-            if level > self.recursion_limit {
+            if !self.recursion_limit.value_within_limit(level) {
                 // Not having a `Span` isn't great. But there's hopefully some other
                 // recursion limit error as well.
                 tcx.sess.span_err(
@@ -90,7 +91,7 @@ where
 
             for component in components {
                 match component.kind {
-                    _ if component.is_copy_modulo_regions(tcx, self.param_env, DUMMY_SP) => (),
+                    _ if component.is_copy_modulo_regions(tcx.at(DUMMY_SP), self.param_env) => (),
 
                     ty::Closure(_, substs) => {
                         for upvar_ty in substs.as_closure().upvar_tys() {
@@ -98,7 +99,7 @@ where
                         }
                     }
 
-                    ty::Generator(_, substs, _) => {
+                    ty::Generator(def_id, substs, _) => {
                         let substs = substs.as_generator();
                         for upvar_ty in substs.upvar_tys() {
                             queue_type(self, upvar_ty);
@@ -107,7 +108,13 @@ where
                         let witness = substs.witness();
                         let interior_tys = match &witness.kind {
                             ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
-                            _ => bug!(),
+                            _ => {
+                                tcx.sess.delay_span_bug(
+                                    tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP),
+                                    &format!("unexpected generator witness type {:?}", witness),
+                                );
+                                return Some(Err(AlwaysRequiresDrop));
+                            }
                         };
 
                         for interior_ty in interior_tys {
@@ -176,6 +183,6 @@ fn adt_drop_tys(tcx: TyCtxt<'_>, def_id: DefId) -> Result<&ty::List<Ty<'_>>, Alw
     res.map(|components| tcx.intern_type_list(&components))
 }
 
-pub(crate) fn provide(providers: &mut ty::query::Providers<'_>) {
+pub(crate) fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { needs_drop_raw, adt_drop_tys, ..*providers };
 }

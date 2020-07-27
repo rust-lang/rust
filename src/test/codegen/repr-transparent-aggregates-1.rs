@@ -3,10 +3,12 @@
 
 // min-system-llvm-version: 9.0
 // ignore-arm
+// ignore-aarch64
 // ignore-mips
 // ignore-mips64
 // ignore-powerpc
 // ignore-powerpc64
+// ignore-riscv64 see codegen/riscv-abi
 // ignore-windows
 // See repr-transparent.rs
 

@@ -183,7 +183,8 @@ impl char {
     #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
     #[inline]
     pub unsafe fn from_u32_unchecked(i: u32) -> char {
-        super::convert::from_u32_unchecked(i)
+        // SAFETY: the safety contract must be upheld by the caller.
+        unsafe { super::convert::from_u32_unchecked(i) }
     }
 
     /// Converts a digit in the given radix to a `char`.
@@ -229,16 +230,11 @@ impl char {
     ///
     /// Passing a large radix, causing a panic:
     ///
-    /// ```
-    /// use std::thread;
+    /// ```should_panic
     /// use std::char;
     ///
-    /// let result = thread::spawn(|| {
-    ///     // this panics
-    ///     let c = char::from_digit(1, 37);
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// // this panics
+    /// char::from_digit(1, 37);
     /// ```
     #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
     #[inline]
@@ -282,15 +278,9 @@ impl char {
     ///
     /// Passing a large radix, causing a panic:
     ///
-    /// ```
-    /// use std::thread;
-    ///
-    /// let result = thread::spawn(|| {
-    ///     // this panics
-    ///     '1'.is_digit(37);
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// ```should_panic
+    /// // this panics
+    /// '1'.is_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -337,14 +327,9 @@ impl char {
     ///
     /// Passing a large radix, causing a panic:
     ///
-    /// ```
-    /// use std::thread;
-    ///
-    /// let result = thread::spawn(|| {
-    ///     '1'.to_digit(37);
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// ```should_panic
+    /// // this panics
+    /// '1'.to_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -593,16 +578,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn len_utf8(self) -> usize {
-        let code = self as u32;
-        if code < MAX_ONE_B {
-            1
-        } else if code < MAX_TWO_B {
-            2
-        } else if code < MAX_THREE_B {
-            3
-        } else {
-            4
-        }
+        len_utf8(self as u32)
     }
 
     /// Returns the number of 16-bit code units this `char` would need if
@@ -655,51 +631,17 @@ impl char {
     ///
     /// A buffer that's too small:
     ///
-    /// ```
-    /// use std::thread;
+    /// ```should_panic
+    /// let mut b = [0; 1];
     ///
-    /// let result = thread::spawn(|| {
-    ///     let mut b = [0; 1];
-    ///
-    ///     // this panics
-    ///    'ß'.encode_utf8(&mut b);
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// // this panics
+    /// 'ß'.encode_utf8(&mut b);
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
-        let code = self as u32;
-        let len = self.len_utf8();
-        match (len, &mut dst[..]) {
-            (1, [a, ..]) => {
-                *a = code as u8;
-            }
-            (2, [a, b, ..]) => {
-                *a = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-                *b = (code & 0x3F) as u8 | TAG_CONT;
-            }
-            (3, [a, b, c, ..]) => {
-                *a = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-                *b = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-                *c = (code & 0x3F) as u8 | TAG_CONT;
-            }
-            (4, [a, b, c, d, ..]) => {
-                *a = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-                *b = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-                *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-                *d = (code & 0x3F) as u8 | TAG_CONT;
-            }
-            _ => panic!(
-                "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
-                len,
-                code,
-                dst.len(),
-            ),
-        };
-        // SAFETY: We just wrote UTF-8 content in, so converting to str is fine.
-        unsafe { from_utf8_unchecked_mut(&mut dst[..len]) }
+        // SAFETY: `char` is not a surrogate, so this is valid UTF-8.
+        unsafe { from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
     }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -724,43 +666,16 @@ impl char {
     ///
     /// A buffer that's too small:
     ///
-    /// ```
-    /// use std::thread;
+    /// ```should_panic
+    /// let mut b = [0; 1];
     ///
-    /// let result = thread::spawn(|| {
-    ///     let mut b = [0; 1];
-    ///
-    ///     // this panics
-    ///     '𝕊'.encode_utf16(&mut b);
-    /// }).join();
-    ///
-    /// assert!(result.is_err());
+    /// // this panics
+    /// '𝕊'.encode_utf16(&mut b);
     /// ```
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
-        let mut code = self as u32;
-        // SAFETY: each arm checks whether there are enough bits to write into
-        unsafe {
-            if (code & 0xFFFF) == code && !dst.is_empty() {
-                // The BMP falls through (assuming non-surrogate, as it should)
-                *dst.get_unchecked_mut(0) = code as u16;
-                slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
-            } else if dst.len() >= 2 {
-                // Supplementary planes break into surrogates.
-                code -= 0x1_0000;
-                *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
-                *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
-                slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
-            } else {
-                panic!(
-                    "encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
-                    from_u32_unchecked(code).len_utf16(),
-                    code,
-                    dst.len(),
-                )
-            }
-        }
+        encode_utf16_raw(self as u32, dst)
     }
 
     /// Returns `true` if this `char` has the `Alphabetic` property.
@@ -1670,6 +1585,103 @@ impl char {
         match *self {
             '\0'..='\x1F' | '\x7F' => true,
             _ => false,
+        }
+    }
+}
+
+#[inline]
+fn len_utf8(code: u32) -> usize {
+    if code < MAX_ONE_B {
+        1
+    } else if code < MAX_TWO_B {
+        2
+    } else if code < MAX_THREE_B {
+        3
+    } else {
+        4
+    }
+}
+
+/// Encodes a raw u32 value as UTF-8 into the provided byte buffer,
+/// and then returns the subslice of the buffer that contains the encoded character.
+///
+/// Unlike `char::encode_utf8`, this method also handles codepoints in the surrogate range.
+/// (Creating a `char` in the surrogate range is UB.)
+/// The result is valid [generalized UTF-8] but not valid UTF-8.
+///
+/// [generalized UTF-8]: https://simonsapin.github.io/wtf-8/#generalized-utf8
+///
+/// # Panics
+///
+/// Panics if the buffer is not large enough.
+/// A buffer of length four is large enough to encode any `char`.
+#[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+#[doc(hidden)]
+#[inline]
+pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
+    let len = len_utf8(code);
+    match (len, &mut dst[..]) {
+        (1, [a, ..]) => {
+            *a = code as u8;
+        }
+        (2, [a, b, ..]) => {
+            *a = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+            *b = (code & 0x3F) as u8 | TAG_CONT;
+        }
+        (3, [a, b, c, ..]) => {
+            *a = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+            *b = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+            *c = (code & 0x3F) as u8 | TAG_CONT;
+        }
+        (4, [a, b, c, d, ..]) => {
+            *a = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+            *b = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+            *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
+            *d = (code & 0x3F) as u8 | TAG_CONT;
+        }
+        _ => panic!(
+            "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+            len,
+            code,
+            dst.len(),
+        ),
+    };
+    &mut dst[..len]
+}
+
+/// Encodes a raw u32 value as UTF-16 into the provided `u16` buffer,
+/// and then returns the subslice of the buffer that contains the encoded character.
+///
+/// Unlike `char::encode_utf16`, this method also handles codepoints in the surrogate range.
+/// (Creating a `char` in the surrogate range is UB.)
+///
+/// # Panics
+///
+/// Panics if the buffer is not large enough.
+/// A buffer of length 2 is large enough to encode any `char`.
+#[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
+#[doc(hidden)]
+#[inline]
+pub fn encode_utf16_raw(mut code: u32, dst: &mut [u16]) -> &mut [u16] {
+    // SAFETY: each arm checks whether there are enough bits to write into
+    unsafe {
+        if (code & 0xFFFF) == code && !dst.is_empty() {
+            // The BMP falls through
+            *dst.get_unchecked_mut(0) = code as u16;
+            slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
+        } else if dst.len() >= 2 {
+            // Supplementary planes break into surrogates.
+            code -= 0x1_0000;
+            *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
+            *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
+            slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
+        } else {
+            panic!(
+                "encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
+                from_u32_unchecked(code).len_utf16(),
+                code,
+                dst.len(),
+            )
         }
     }
 }

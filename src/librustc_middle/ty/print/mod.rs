@@ -298,7 +298,7 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
         | ty::Opaque(..)
         | ty::Infer(_)
         | ty::Bound(..)
-        | ty::Error
+        | ty::Error(_)
         | ty::GeneratorWitness(..)
         | ty::Never
         | ty::Float(_) => None,

@@ -31,15 +31,15 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DeepCodeInspector => [DEEP_CODE_INSPECTION]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
         print_item(cx, item);
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         if !has_attr(cx.sess(), &item.attrs) {
             return;
         }
@@ -63,17 +63,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
             },
             hir::ImplItemKind::Fn(..) => println!("method"),
             hir::ImplItemKind::TyAlias(_) => println!("associated type"),
-            hir::ImplItemKind::OpaqueTy(_) => println!("existential type"),
         }
     }
-    // fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx
+    // fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx
     // hir::TraitItem) {
     // if !has_attr(&item.attrs) {
     // return;
     // }
     // }
     //
-    // fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx
+    // fn check_variant(&mut self, cx: &LateContext<'tcx>, var: &'tcx
     // hir::Variant, _:
     // &hir::Generics) {
     // if !has_attr(&var.node.attrs) {
@@ -81,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
     // }
     // }
     //
-    // fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx
+    // fn check_struct_field(&mut self, cx: &LateContext<'tcx>, field: &'tcx
     // hir::StructField) {
     // if !has_attr(&field.attrs) {
     // return;
@@ -89,14 +88,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
     // }
     //
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if !has_attr(cx.sess(), &expr.attrs) {
             return;
         }
         print_expr(cx, expr, 0);
     }
 
-    fn check_arm(&mut self, cx: &LateContext<'a, 'tcx>, arm: &'tcx hir::Arm<'_>) {
+    fn check_arm(&mut self, cx: &LateContext<'tcx>, arm: &'tcx hir::Arm<'_>) {
         if !has_attr(cx.sess(), &arm.attrs) {
             return;
         }
@@ -109,13 +108,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
         print_expr(cx, &arm.body, 1);
     }
 
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx hir::Stmt<'_>) {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
         if !has_attr(cx.sess(), stmt.kind.attrs()) {
             return;
         }
         match stmt.kind {
             hir::StmtKind::Local(ref local) => {
-                println!("local variable of type {}", cx.tables.node_type(local.hir_id));
+                println!("local variable of type {}", cx.typeck_results().node_type(local.hir_id));
                 println!("pattern:");
                 print_pat(cx, &local.pat, 0);
                 if let Some(ref e) = local.init {
@@ -127,7 +126,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
             hir::StmtKind::Expr(ref e) | hir::StmtKind::Semi(ref e) => print_expr(cx, e, 0),
         }
     }
-    // fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx
+    // fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx
     // hir::ForeignItem) {
     // if !has_attr(&item.attrs) {
     // return;
@@ -142,11 +141,15 @@ fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
 
 #[allow(clippy::similar_names)]
 #[allow(clippy::too_many_lines)]
-fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, indent: usize) {
+fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
-    println!("{}ty: {}", ind, cx.tables.expr_ty(expr));
-    println!("{}adjustments: {:?}", ind, cx.tables.adjustments().get(expr.hir_id));
+    println!("{}ty: {}", ind, cx.typeck_results().expr_ty(expr));
+    println!(
+        "{}adjustments: {:?}",
+        ind,
+        cx.typeck_results().adjustments().get(expr.hir_id)
+    );
     match expr.kind {
         hir::ExprKind::Box(ref e) => {
             println!("{}Box", ind);
@@ -167,7 +170,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, indent: usize) {
                 print_expr(cx, arg, indent + 1);
             }
         },
-        hir::ExprKind::MethodCall(ref path, _, args) => {
+        hir::ExprKind::MethodCall(ref path, _, args, _) => {
             println!("{}MethodCall", ind);
             println!("{}method name: {}", ind, path.ident.name);
             for arg in args {
@@ -289,21 +292,21 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}operands:", ind);
             for op in asm.operands {
                 match op {
-                    hir::InlineAsmOperand::In { expr, .. } => print_expr(cx, expr, indent + 1),
+                    hir::InlineAsmOperand::In { expr, .. }
+                    | hir::InlineAsmOperand::InOut { expr, .. }
+                    | hir::InlineAsmOperand::Const { expr }
+                    | hir::InlineAsmOperand::Sym { expr } => print_expr(cx, expr, indent + 1),
                     hir::InlineAsmOperand::Out { expr, .. } => {
                         if let Some(expr) = expr {
                             print_expr(cx, expr, indent + 1);
                         }
                     },
-                    hir::InlineAsmOperand::InOut { expr, .. } => print_expr(cx, expr, indent + 1),
                     hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                         print_expr(cx, in_expr, indent + 1);
                         if let Some(out_expr) = out_expr {
                             print_expr(cx, out_expr, indent + 1);
                         }
                     },
-                    hir::InlineAsmOperand::Const { expr } => print_expr(cx, expr, indent + 1),
-                    hir::InlineAsmOperand::Sym { expr } => print_expr(cx, expr, indent + 1),
                 }
             }
         },
@@ -349,7 +352,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr<'_>, indent: usize) {
     }
 }
 
-fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
+fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
     let did = cx.tcx.hir().local_def_id(item.hir_id);
     println!("item `{}`", item.ident.name);
     match item.vis.node {
@@ -426,7 +429,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item<'_>) {
 
 #[allow(clippy::similar_names)]
 #[allow(clippy::too_many_lines)]
-fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, indent: usize) {
+fn print_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
     match pat.kind {
@@ -538,7 +541,7 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat<'_>, indent: usize) {
     }
 }
 
-fn print_guard(cx: &LateContext<'_, '_>, guard: &hir::Guard<'_>, indent: usize) {
+fn print_guard(cx: &LateContext<'_>, guard: &hir::Guard<'_>, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
     match guard {

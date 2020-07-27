@@ -23,7 +23,7 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             features: "+vfp3,+neon".to_string(),
             cpu: "generic".to_string(),
-            abi_blacklist: super::arm_base::abi_blacklist(),
+            unsupported_abis: super::arm_base::unsupported_abis(),
             ..base
         },
     })

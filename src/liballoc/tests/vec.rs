@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::collections::TryReserveError::*;
+use std::fmt::Debug;
 use std::mem::size_of;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::vec::{Drain, IntoIter};
@@ -16,7 +17,7 @@ impl Drop for DropCounter<'_> {
 
 #[test]
 fn test_small_vec_struct() {
-    assert!(size_of::<Vec<u8>>() == size_of::<usize>() * 3);
+    assert_eq!(size_of::<Vec<u8>>(), size_of::<usize>() * 3);
 }
 
 #[test]
@@ -68,7 +69,7 @@ fn test_reserve() {
 
 #[test]
 fn test_zst_capacity() {
-    assert_eq!(Vec::<()>::new().capacity(), usize::max_value());
+    assert_eq!(Vec::<()>::new().capacity(), usize::MAX);
 }
 
 #[test]
@@ -129,21 +130,6 @@ fn test_extend_ref() {
 
     assert_eq!(v.len(), 7);
     assert_eq!(v, [1, 2, 3, 4, 5, 6, 7]);
-}
-
-#[test]
-fn test_remove_item() {
-    let mut v = vec![1, 2, 3];
-    v.remove_item(&1);
-
-    assert_eq!(v.len(), 2);
-    assert_eq!(v, [2, 3]);
-
-    let mut w = vec![1, 2, 3];
-    w.remove_item(&4);
-
-    assert_eq!(w.len(), 3);
-    w.remove_item(&4);
 }
 
 #[test]
@@ -563,19 +549,19 @@ fn test_drain_inclusive_range() {
 
 #[test]
 fn test_drain_max_vec_size() {
-    let mut v = Vec::<()>::with_capacity(usize::max_value());
+    let mut v = Vec::<()>::with_capacity(usize::MAX);
     unsafe {
-        v.set_len(usize::max_value());
+        v.set_len(usize::MAX);
     }
-    for _ in v.drain(usize::max_value() - 1..) {}
-    assert_eq!(v.len(), usize::max_value() - 1);
+    for _ in v.drain(usize::MAX - 1..) {}
+    assert_eq!(v.len(), usize::MAX - 1);
 
-    let mut v = Vec::<()>::with_capacity(usize::max_value());
+    let mut v = Vec::<()>::with_capacity(usize::MAX);
     unsafe {
-        v.set_len(usize::max_value());
+        v.set_len(usize::MAX);
     }
-    for _ in v.drain(usize::max_value() - 1..=usize::max_value() - 1) {}
-    assert_eq!(v.len(), usize::max_value() - 1);
+    for _ in v.drain(usize::MAX - 1..=usize::MAX - 1) {}
+    assert_eq!(v.len(), usize::MAX - 1);
 }
 
 #[test]
@@ -1587,4 +1573,57 @@ fn test_push_growth_strategy() {
             assert_eq!(v1025.capacity(), 64);
         }
     }
+}
+
+macro_rules! generate_assert_eq_vec_and_prim {
+    ($name:ident<$B:ident>($type:ty)) => {
+        fn $name<A: PartialEq<$B> + Debug, $B: Debug>(a: Vec<A>, b: $type) {
+            assert!(a == b);
+            assert_eq!(a, b);
+        }
+    };
+}
+
+generate_assert_eq_vec_and_prim! { assert_eq_vec_and_slice  <B>(&[B])   }
+generate_assert_eq_vec_and_prim! { assert_eq_vec_and_array_3<B>([B; 3]) }
+
+#[test]
+fn partialeq_vec_and_prim() {
+    assert_eq_vec_and_slice(vec![1, 2, 3], &[1, 2, 3]);
+    assert_eq_vec_and_array_3(vec![1, 2, 3], [1, 2, 3]);
+}
+
+macro_rules! assert_partial_eq_valid {
+    ($a2:ident, $a3:ident; $b2:ident, $b3: ident) => {
+        assert!($a2 == $b2);
+        assert!($a2 != $b3);
+        assert!($a3 != $b2);
+        assert!($a3 == $b3);
+        assert_eq!($a2, $b2);
+        assert_ne!($a2, $b3);
+        assert_ne!($a3, $b2);
+        assert_eq!($a3, $b3);
+    };
+}
+
+#[test]
+fn partialeq_vec_full() {
+    let vec2: Vec<_> = vec![1, 2];
+    let vec3: Vec<_> = vec![1, 2, 3];
+    let slice2: &[_] = &[1, 2];
+    let slice3: &[_] = &[1, 2, 3];
+    let slicemut2: &[_] = &mut [1, 2];
+    let slicemut3: &[_] = &mut [1, 2, 3];
+    let array2: [_; 2] = [1, 2];
+    let array3: [_; 3] = [1, 2, 3];
+    let arrayref2: &[_; 2] = &[1, 2];
+    let arrayref3: &[_; 3] = &[1, 2, 3];
+
+    assert_partial_eq_valid!(vec2,vec3; vec2,vec3);
+    assert_partial_eq_valid!(vec2,vec3; slice2,slice3);
+    assert_partial_eq_valid!(vec2,vec3; slicemut2,slicemut3);
+    assert_partial_eq_valid!(slice2,slice3; vec2,vec3);
+    assert_partial_eq_valid!(slicemut2,slicemut3; vec2,vec3);
+    assert_partial_eq_valid!(vec2,vec3; array2,array3);
+    assert_partial_eq_valid!(vec2,vec3; arrayref2,arrayref3);
 }

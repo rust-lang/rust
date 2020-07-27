@@ -813,6 +813,30 @@ fn test_iterator_peekable_rfold() {
     assert_eq!(i, xs.len());
 }
 
+#[test]
+fn test_iterator_peekable_next_if_eq() {
+    // first, try on references
+    let xs = vec!["Heart", "of", "Gold"];
+    let mut it = xs.into_iter().peekable();
+    // try before `peek()`
+    assert_eq!(it.next_if_eq(&"trillian"), None);
+    assert_eq!(it.next_if_eq(&"Heart"), Some("Heart"));
+    // try after peek()
+    assert_eq!(it.peek(), Some(&"of"));
+    assert_eq!(it.next_if_eq(&"of"), Some("of"));
+    assert_eq!(it.next_if_eq(&"zaphod"), None);
+    // make sure `next()` still behaves
+    assert_eq!(it.next(), Some("Gold"));
+
+    // make sure comparison works for owned values
+    let xs = vec![String::from("Ludicrous"), "speed".into()];
+    let mut it = xs.into_iter().peekable();
+    // make sure basic functionality works
+    assert_eq!(it.next_if_eq("Ludicrous"), Some("Ludicrous".into()));
+    assert_eq!(it.next_if_eq("speed"), Some("speed".into()));
+    assert_eq!(it.next_if_eq(""), None);
+}
+
 /// This is an iterator that follows the Iterator contract,
 /// but it is not fused. After having returned None once, it will start
 /// producing elements if .next() is called again.
@@ -1930,6 +1954,21 @@ fn test_range() {
         (-2..isize::MAX).size_hint(),
         (isize::MAX as usize + 2, Some(isize::MAX as usize + 2))
     );
+}
+
+#[test]
+fn test_char_range() {
+    use std::char;
+    // Miri is too slow
+    let from = if cfg!(miri) { char::from_u32(0xD800 - 10).unwrap() } else { '\0' };
+    let to = if cfg!(miri) { char::from_u32(0xDFFF + 10).unwrap() } else { char::MAX };
+    assert!((from..=to).eq((from as u32..=to as u32).filter_map(char::from_u32)));
+    assert!((from..=to).rev().eq((from as u32..=to as u32).filter_map(char::from_u32).rev()));
+
+    assert_eq!(('\u{D7FF}'..='\u{E000}').count(), 2);
+    assert_eq!(('\u{D7FF}'..='\u{E000}').size_hint(), (2, Some(2)));
+    assert_eq!(('\u{D7FF}'..'\u{E000}').count(), 1);
+    assert_eq!(('\u{D7FF}'..'\u{E000}').size_hint(), (1, Some(1)));
 }
 
 #[test]

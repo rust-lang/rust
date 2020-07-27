@@ -9,7 +9,7 @@
 // `InferredIndex` is a newtype'd int representing the index of such
 // a variable.
 
-use arena::TypedArena;
+use rustc_arena::TypedArena;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::HirIdMap;

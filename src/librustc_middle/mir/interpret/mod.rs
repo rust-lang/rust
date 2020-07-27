@@ -209,6 +209,7 @@ pub fn specialized_encode_alloc_id<'tcx, E: Encoder>(
             fn_instance.encode(encoder)?;
         }
         GlobalAlloc::Static(did) => {
+            assert!(!tcx.is_thread_local_static(did));
             // References to statics doesn't need to know about their allocations,
             // just about its `DefId`.
             AllocDiscriminant::Static.encode(encoder)?;
@@ -597,4 +598,13 @@ pub fn truncate(value: u128, size: Size) -> u128 {
     let shift = 128 - size;
     // Truncate (shift left to drop out leftover values, shift right to fill with zeroes).
     (value << shift) >> shift
+}
+
+/// Computes the unsigned absolute value without wrapping or panicking.
+#[inline]
+pub fn uabs(value: i64) -> u64 {
+    // The only tricky part here is if value == i64::MIN. In that case,
+    // wrapping_abs() returns i64::MIN == -2^63. Casting this value to a u64
+    // gives 2^63, the correct value.
+    value.wrapping_abs() as u64
 }

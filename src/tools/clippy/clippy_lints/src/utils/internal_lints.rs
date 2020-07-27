@@ -251,8 +251,8 @@ pub struct LintWithoutLintPass {
 
 impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if !run_lints(cx, &[DEFAULT_LINT], item.hir_id) {
             return;
         }
@@ -310,7 +310,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
         }
     }
 
-    fn check_crate_post(&mut self, cx: &LateContext<'a, 'tcx>, _: &'tcx Crate<'_>) {
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>, _: &'tcx Crate<'_>) {
         if !run_lints(cx, &[LINT_WITHOUT_LINT_PASS], CRATE_HIR_ID) {
             return;
         }
@@ -337,7 +337,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     }
 }
 
-fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty<'_>) -> bool {
+fn is_lint_ref_type<'tcx>(cx: &LateContext<'tcx>, ty: &Ty<'_>) -> bool {
     if let TyKind::Rptr(
         _,
         MutTy {
@@ -347,7 +347,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty<'_>) -> bool {
     ) = ty.kind
     {
         if let TyKind::Path(ref path) = inner.kind {
-            if let Res::Def(DefKind::Struct, def_id) = cx.tables.qpath_res(path, inner.hir_id) {
+            if let Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, inner.hir_id) {
                 return match_def_path(cx, def_id, &paths::LINT);
             }
         }
@@ -358,7 +358,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty<'_>) -> bool {
 
 struct LintCollector<'a, 'tcx> {
     output: &'a mut FxHashSet<Symbol>,
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
@@ -395,17 +395,17 @@ impl CompilerLintFunctions {
 
 impl_lint_pass!(CompilerLintFunctions => [COMPILER_LINT_FUNCTIONS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !run_lints(cx, &[COMPILER_LINT_FUNCTIONS], expr.hir_id) {
             return;
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
+            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
-            let ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
+            let ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&args[0]));
             if match_type(cx, ty, &paths::EARLY_CONTEXT)
                 || match_type(cx, ty, &paths::LATE_CONTEXT);
             then {
@@ -424,8 +424,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
 
 declare_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if !run_lints(cx, &[OUTER_EXPN_EXPN_DATA], expr.hir_id) {
             return;
         }
@@ -438,7 +438,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
             let args = arg_lists[1];
             if args.len() == 1;
             let self_arg = &args[0];
-            let self_ty = walk_ptrs_ty(cx.tables.expr_ty(self_arg));
+            let self_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(self_arg));
             if match_type(cx, self_ty, &paths::SYNTAX_CONTEXT);
             then {
                 span_lint_and_sugg(
@@ -474,8 +474,8 @@ fn is_trigger_fn(fn_kind: FnKind<'_>) -> bool {
 
 declare_lint_pass!(CollapsibleCalls => [COLLAPSIBLE_SPAN_LINT_CALLS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CollapsibleCalls {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if !run_lints(cx, &[COLLAPSIBLE_SPAN_LINT_CALLS], expr.hir_id) {
             return;
         }
@@ -491,7 +491,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CollapsibleCalls {
             let stmts = &block.stmts;
             if stmts.len() == 1 && block.expr.is_none();
             if let StmtKind::Semi(only_expr) = &stmts[0].kind;
-            if let ExprKind::MethodCall(ref ps, _, ref span_call_args) = &only_expr.kind;
+            if let ExprKind::MethodCall(ref ps, _, ref span_call_args, _) = &only_expr.kind;
             let and_then_snippets = get_and_then_snippets(cx, and_then_args);
             let mut sle = SpanlessEq::new(cx).ignore_fn();
             then {
@@ -529,10 +529,7 @@ struct AndThenSnippets<'a> {
     msg: Cow<'a, str>,
 }
 
-fn get_and_then_snippets<'a, 'hir>(
-    cx: &LateContext<'_, '_>,
-    and_then_snippets: &'hir [Expr<'hir>],
-) -> AndThenSnippets<'a> {
+fn get_and_then_snippets<'a, 'hir>(cx: &LateContext<'_>, and_then_snippets: &'hir [Expr<'hir>]) -> AndThenSnippets<'a> {
     let cx_snippet = snippet(cx, and_then_snippets[0].span, "cx");
     let lint_snippet = snippet(cx, and_then_snippets[1].span, "..");
     let span_snippet = snippet(cx, and_then_snippets[2].span, "span");
@@ -553,7 +550,7 @@ struct SpanSuggestionSnippets<'a> {
 }
 
 fn span_suggestion_snippets<'a, 'hir>(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     span_call_args: &'hir [Expr<'hir>],
 ) -> SpanSuggestionSnippets<'a> {
     let help_snippet = snippet(cx, span_call_args[2].span, r#""...""#);
@@ -568,7 +565,7 @@ fn span_suggestion_snippets<'a, 'hir>(
 }
 
 fn suggest_suggestion(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     expr: &Expr<'_>,
     and_then_snippets: &AndThenSnippets<'_>,
     span_suggestion_snippets: &SpanSuggestionSnippets<'_>,
@@ -594,7 +591,7 @@ fn suggest_suggestion(
 }
 
 fn suggest_help(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     expr: &Expr<'_>,
     and_then_snippets: &AndThenSnippets<'_>,
     help: &str,
@@ -626,7 +623,7 @@ fn suggest_help(
 }
 
 fn suggest_note(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     expr: &Expr<'_>,
     and_then_snippets: &AndThenSnippets<'_>,
     note: &str,

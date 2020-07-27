@@ -22,8 +22,7 @@
 #![allow(dead_code, missing_docs)]
 #![unstable(
     feature = "core_panic",
-    reason = "internal details of the implementation of the `panic!` \
-              and related macros",
+    reason = "internal details of the implementation of the `panic!` and related macros",
     issue = "none"
 )]
 
@@ -37,14 +36,9 @@ use crate::panic::{Location, PanicInfo};
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[track_caller]
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
-pub fn panic(expr: &str) -> ! {
+pub fn panic(expr: &'static str) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
-        // remove `unsafe` (and safety comment) on bootstrap bump
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-        // SAFETY: the `abort` intrinsic has no requirements to be called.
-        unsafe {
-            super::intrinsics::abort()
-        }
+        super::intrinsics::abort()
     }
 
     // Use Arguments::new_v1 instead of format_args!("{}", expr) to potentially
@@ -62,12 +56,7 @@ pub fn panic(expr: &str) -> ! {
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
 fn panic_bounds_check(index: usize, len: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
-        // remove `unsafe` (and safety comment) on bootstrap bump
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-        // SAFETY: the `abort` intrinsic has no requirements to be called.
-        unsafe {
-            super::intrinsics::abort()
-        }
+        super::intrinsics::abort()
     }
 
     panic!("index out of bounds: the len is {} but the index is {}", len, index)
@@ -80,12 +69,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[track_caller]
 pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
-        // remove `unsafe` (and safety comment) on bootstrap bump
-        #[cfg_attr(not(bootstrap), allow(unused_unsafe))]
-        // SAFETY: the `abort` intrinsic has no requirements to be called.
-        unsafe {
-            super::intrinsics::abort()
-        }
+        super::intrinsics::abort()
     }
 
     // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call

@@ -609,7 +609,6 @@ mod tests {
     use crate::sync::{Arc, Condvar, Mutex};
     use crate::thread;
     use crate::time::Duration;
-    use crate::u64;
 
     #[test]
     fn smoke() {
@@ -695,7 +694,6 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn wait_timeout_wait() {
         let m = Arc::new(Mutex::new(()));
         let c = Arc::new(Condvar::new());
@@ -715,7 +713,6 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn wait_timeout_while_wait() {
         let m = Arc::new(Mutex::new(()));
         let c = Arc::new(Condvar::new());
@@ -740,7 +737,6 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn wait_timeout_while_wake() {
         let pair = Arc::new((Mutex::new(false), Condvar::new()));
         let pair_copy = pair.clone();
@@ -764,7 +760,6 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
-    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn wait_timeout_wake() {
         let m = Arc::new(Mutex::new(()));
         let c = Arc::new(Condvar::new());

@@ -46,8 +46,8 @@ impl TypeRelation<'tcx> for Match<'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _: ty::Variance,
-        a: &T,
-        b: &T,
+        a: T,
+        b: T,
     ) -> RelateResult<'tcx, T> {
         self.relate(a, b)
     }
@@ -79,7 +79,7 @@ impl TypeRelation<'tcx> for Match<'tcx> {
                 Err(TypeError::Sorts(relate::expected_found(self, &a, &b)))
             }
 
-            (&ty::Error, _) | (_, &ty::Error) => Ok(self.tcx().types.err),
+            (&ty::Error(_), _) | (_, &ty::Error(_)) => Ok(self.tcx().ty_error()),
 
             _ => relate::super_relate_tys(self, a, b),
         }
@@ -112,8 +112,8 @@ impl TypeRelation<'tcx> for Match<'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: &ty::Binder<T>,
-        b: &ty::Binder<T>,
+        a: ty::Binder<T>,
+        b: ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>>
     where
         T: Relate<'tcx>,

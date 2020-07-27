@@ -29,8 +29,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         let lint_true = |is_debug: bool| {
             span_lint_and_help(
                 cx,
@@ -72,7 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
             }
             if_chain! {
                 if let ExprKind::Unary(_, ref lit) = e.kind;
-                if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables, lit);
+                if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.typeck_results(), lit);
                 if is_true;
                 then {
                     lint_true(true);
@@ -114,14 +114,14 @@ enum AssertKind {
 /// ```
 ///
 /// where `message` is any expression and `c` is a constant bool.
-fn match_assert_with_message<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) -> Option<AssertKind> {
+fn match_assert_with_message<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<AssertKind> {
     if_chain! {
         if let ExprKind::Match(ref expr, ref arms, _) = expr.kind;
         // matches { let _t = expr; _t }
         if let ExprKind::DropTemps(ref expr) = expr.kind;
         if let ExprKind::Unary(UnOp::UnNot, ref expr) = expr.kind;
         // bind the first argument of the `assert!` macro
-        if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.tables, expr);
+        if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.typeck_results(), expr);
         // arm 1 pattern
         if let PatKind::Lit(ref lit_expr) = arms[0].pat.kind;
         if let ExprKind::Lit(ref lit) = lit_expr.kind;

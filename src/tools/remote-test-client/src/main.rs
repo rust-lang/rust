@@ -5,8 +5,6 @@
 //! Here is also where we bake in the support to spawn the QEMU emulator as
 //! well.
 
-#![deny(warnings)]
-
 use std::env;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -44,7 +42,13 @@ fn main() {
             args.next().map(|s| s.into()),
         ),
         "push" => push(Path::new(&args.next().unwrap())),
-        "run" => run(args.next().unwrap(), args.collect()),
+        "run" => run(
+            args.next().and_then(|count| count.parse().ok()).unwrap(),
+            // the last required parameter must remain the executable
+            // path so that the client works as a cargo runner
+            args.next().unwrap(),
+            args.collect(),
+        ),
         "help" | "-h" | "--help" => help(),
         cmd => {
             println!("unknown command: {}", cmd);
@@ -101,13 +105,23 @@ fn start_android_emulator(server: &Path) {
     Command::new("adb").arg("shell").arg("/data/tmp/testd").spawn().unwrap();
 }
 
-fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path) {
+fn prepare_rootfs(target: &str, rootfs: &Path, server: &Path, rootfs_img: &Path) {
+    t!(fs::copy(server, rootfs.join("testd")));
+
+    match target {
+        "arm-unknown-linux-gnueabihf" | "aarch64-unknown-linux-gnu" => {
+            prepare_rootfs_cpio(rootfs, rootfs_img)
+        }
+        "riscv64gc-unknown-linux-gnu" => prepare_rootfs_ext4(rootfs, rootfs_img),
+        _ => panic!("{} is not supported", target),
+    }
+}
+
+fn prepare_rootfs_cpio(rootfs: &Path, rootfs_img: &Path) {
     // Generate a new rootfs image now that we've updated the test server
     // executable. This is the equivalent of:
     //
     //      find $rootfs -print 0 | cpio --null -o --format=newc > rootfs.img
-    t!(fs::copy(server, rootfs.join("testd")));
-    let rootfs_img = tmpdir.join("rootfs.img");
     let mut cmd = Command::new("cpio");
     cmd.arg("--null")
         .arg("-o")
@@ -121,6 +135,38 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
     thread::spawn(move || add_files(&mut stdin, &rootfs, &rootfs));
     t!(io::copy(&mut child.stdout.take().unwrap(), &mut t!(File::create(&rootfs_img))));
     assert!(t!(child.wait()).success());
+
+    fn add_files(w: &mut dyn Write, root: &Path, cur: &Path) {
+        for entry in t!(cur.read_dir()) {
+            let entry = t!(entry);
+            let path = entry.path();
+            let to_print = path.strip_prefix(root).unwrap();
+            t!(write!(w, "{}\u{0}", to_print.to_str().unwrap()));
+            if t!(entry.file_type()).is_dir() {
+                add_files(w, root, &path);
+            }
+        }
+    }
+}
+
+fn prepare_rootfs_ext4(rootfs: &Path, rootfs_img: &Path) {
+    let mut dd = Command::new("dd");
+    dd.arg("if=/dev/zero")
+        .arg(&format!("of={}", rootfs_img.to_string_lossy()))
+        .arg("bs=1M")
+        .arg("count=1024");
+    let mut dd_child = t!(dd.spawn());
+    assert!(t!(dd_child.wait()).success());
+
+    let mut mkfs = Command::new("mkfs.ext4");
+    mkfs.arg("-d").arg(rootfs).arg(rootfs_img);
+    let mut mkfs_child = t!(mkfs.spawn());
+    assert!(t!(mkfs_child.wait()).success());
+}
+
+fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path) {
+    let rootfs_img = &tmpdir.join("rootfs.img");
+    prepare_rootfs(target, rootfs, server, rootfs_img);
 
     // Start up the emulator, in the background
     match target {
@@ -164,19 +210,30 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg("virtio-net-device,netdev=net0,mac=00:00:00:00:00:00");
             t!(cmd.spawn());
         }
-        _ => panic!("cannot start emulator for: {}" < target),
-    }
-
-    fn add_files(w: &mut dyn Write, root: &Path, cur: &Path) {
-        for entry in t!(cur.read_dir()) {
-            let entry = t!(entry);
-            let path = entry.path();
-            let to_print = path.strip_prefix(root).unwrap();
-            t!(write!(w, "{}\u{0}", to_print.to_str().unwrap()));
-            if t!(entry.file_type()).is_dir() {
-                add_files(w, root, &path);
-            }
+        "riscv64gc-unknown-linux-gnu" => {
+            let mut cmd = Command::new("qemu-system-riscv64");
+            cmd.arg("-nographic")
+                .arg("-machine")
+                .arg("virt")
+                .arg("-m")
+                .arg("1024")
+                .arg("-bios")
+                .arg("none")
+                .arg("-kernel")
+                .arg("/tmp/bbl")
+                .arg("-append")
+                .arg("quiet console=ttyS0 root=/dev/vda rw")
+                .arg("-netdev")
+                .arg("user,id=net0,hostfwd=tcp::12345-:12345")
+                .arg("-device")
+                .arg("virtio-net-device,netdev=net0,mac=00:00:00:00:00:00")
+                .arg("-device")
+                .arg("virtio-blk-device,drive=hd0")
+                .arg("-drive")
+                .arg(&format!("file={},format=raw,id=hd0", &rootfs_img.to_string_lossy()));
+            t!(cmd.spawn());
         }
+        _ => panic!("cannot start emulator for: {}", target),
     }
 }
 
@@ -197,11 +254,13 @@ fn push(path: &Path) {
     println!("done pushing {:?}", path);
 }
 
-fn run(files: String, args: Vec<String>) {
+fn run(support_lib_count: usize, exe: String, all_args: Vec<String>) {
     let device_address = env::var(REMOTE_ADDR_ENV).unwrap_or(DEFAULT_ADDR.to_string());
     let client = t!(TcpStream::connect(device_address));
     let mut client = BufWriter::new(client);
     t!(client.write_all(b"run "));
+
+    let (support_libs, args) = all_args.split_at(support_lib_count);
 
     // Send over the args
     for arg in args {
@@ -216,7 +275,7 @@ fn run(files: String, args: Vec<String>) {
     // by the client.
     for (k, v) in env::vars() {
         match &k[..] {
-            "PATH" | "LD_LIBRARY_PATH" | "PWD" => continue,
+            "PATH" | "LD_LIBRARY_PATH" | "PWD" | "RUST_TEST_TMPDIR" => continue,
             _ => {}
         }
         t!(client.write_all(k.as_bytes()));
@@ -227,9 +286,7 @@ fn run(files: String, args: Vec<String>) {
     t!(client.write_all(&[0]));
 
     // Send over support libraries
-    let mut files = files.split(':');
-    let exe = files.next().unwrap();
-    for file in files.map(Path::new) {
+    for file in support_libs.iter().map(Path::new) {
         send(&file, &mut client);
     }
     t!(client.write_all(&[0]));
@@ -302,7 +359,8 @@ Usage: {0} <command> [<args>]
 Sub-commands:
     spawn-emulator <target> <server> <tmpdir> [rootfs]   See below
     push <path>                                          Copy <path> to emulator
-    run <files> [args...]                                Run program on emulator
+    run <support_lib_count> <file> [support_libs...] [args...]
+                                                         Run program on emulator
     help                                                 Display help message
 
 Spawning an emulator:
@@ -321,8 +379,8 @@ specified. The file at <path> is sent to this target.
 Executing commands on a running emulator:
 
 First the target emulator/adb session is connected to as for pushing files. Next
-the colon separated list of <files> is pushed to the target. Finally, the first
-file in <files> is executed in the emulator, preserving the current environment.
+the <file> and any specified support libs are pushed to the target. Finally, the
+<file> is executed in the emulator, preserving the current environment.
 That command's status code is returned.
 ",
         env::args().next().unwrap(),

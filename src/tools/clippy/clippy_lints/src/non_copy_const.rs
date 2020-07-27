@@ -109,8 +109,8 @@ impl Source {
     }
 }
 
-fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: Source) {
-    if ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP) || is_copy(cx, ty) {
+fn verify_ty_bound<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, source: Source) {
+    if ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env) || is_copy(cx, ty) {
         // An `UnsafeCell` is `!Copy`, and an `UnsafeCell` is also the only type which
         // is `!Freeze`, thus if our type is `Copy` we can be sure it must be `Freeze`
         // as well.
@@ -141,15 +141,15 @@ fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>, source: S
 
 declare_lint_pass!(NonCopyConst => [DECLARE_INTERIOR_MUTABLE_CONST, BORROW_INTERIOR_MUTABLE_CONST]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
         if let ItemKind::Const(hir_ty, ..) = &it.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             verify_ty_bound(cx, ty, Source::Item { item: it.span });
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, trait_item: &'tcx TraitItem<'_>) {
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Const(hir_ty, ..) = &trait_item.kind {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
             verify_ty_bound(
@@ -163,7 +163,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Const(hir_ty, ..) = &impl_item.kind {
             let item_hir_id = cx.tcx.hir().get_parent_node(impl_item.hir_id);
             let item = cx.tcx.hir().expect_item(item_hir_id);
@@ -182,7 +182,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
         }
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Path(qpath) = &expr.kind {
             // Only lint if we use the const item inside a function.
             if in_constant(cx, expr.hir_id) {
@@ -237,13 +237,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
             }
 
             let ty = if needs_check_adjustment {
-                let adjustments = cx.tables.expr_adjustments(dereferenced_expr);
-                if let Some(i) = adjustments.iter().position(|adj| match adj.kind {
-                    Adjust::Borrow(_) | Adjust::Deref(_) => true,
-                    _ => false,
-                }) {
+                let adjustments = cx.typeck_results().expr_adjustments(dereferenced_expr);
+                if let Some(i) = adjustments
+                    .iter()
+                    .position(|adj| matches!(adj.kind, Adjust::Borrow(_) | Adjust::Deref(_)))
+                {
                     if i == 0 {
-                        cx.tables.expr_ty(dereferenced_expr)
+                        cx.typeck_results().expr_ty(dereferenced_expr)
                     } else {
                         adjustments[i - 1].target
                     }
@@ -252,7 +252,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                     return;
                 }
             } else {
-                cx.tables.expr_ty(dereferenced_expr)
+                cx.typeck_results().expr_ty(dereferenced_expr)
             };
 
             verify_ty_bound(cx, ty, Source::Expr { expr: expr.span });

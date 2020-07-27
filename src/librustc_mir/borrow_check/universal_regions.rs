@@ -227,13 +227,12 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// known between those regions.
     pub fn new(
         infcx: &InferCtxt<'_, 'tcx>,
-        mir_def_id: LocalDefId,
+        mir_def: ty::WithOptConstParam<LocalDefId>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
         let tcx = infcx.tcx;
-        let mir_hir_id = tcx.hir().as_local_hir_id(mir_def_id);
-        UniversalRegionsBuilder { infcx, mir_def_id: mir_def_id.to_def_id(), mir_hir_id, param_env }
-            .build()
+        let mir_hir_id = tcx.hir().as_local_hir_id(mir_def.did);
+        UniversalRegionsBuilder { infcx, mir_def, mir_hir_id, param_env }.build()
     }
 
     /// Given a reference to a closure type, extracts all the values
@@ -389,7 +388,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 
 struct UniversalRegionsBuilder<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
-    mir_def_id: DefId,
+    mir_def: ty::WithOptConstParam<LocalDefId>,
     mir_hir_id: HirId,
     param_env: ty::ParamEnv<'tcx>,
 }
@@ -398,7 +397,7 @@ const FR: NLLRegionVariableOrigin = NLLRegionVariableOrigin::FreeRegion;
 
 impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
-        debug!("build(mir_def_id={:?})", self.mir_def_id);
+        debug!("build(mir_def={:?})", self.mir_def);
 
         let param_env = self.param_env;
         debug!("build: param_env={:?}", param_env);
@@ -418,7 +417,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let mut indices = self.compute_indices(fr_static, defining_ty);
         debug!("build: indices={:?}", indices);
 
-        let closure_base_def_id = self.infcx.tcx.closure_base_def_id(self.mir_def_id);
+        let closure_base_def_id = self.infcx.tcx.closure_base_def_id(self.mir_def.did.to_def_id());
 
         // If this is a closure or generator, then the late-bound regions from the enclosing
         // function are actually external regions to us. For example, here, 'a is not local
@@ -426,8 +425,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // fn foo<'a>() {
         //     let c = || { let x: &'a u32 = ...; }
         // }
-        if self.mir_def_id != closure_base_def_id {
-            self.infcx.replace_late_bound_regions_with_nll_infer_vars(self.mir_def_id, &mut indices)
+        if self.mir_def.did.to_def_id() != closure_base_def_id {
+            self.infcx
+                .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices)
         }
 
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
@@ -437,15 +437,15 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let first_local_index = self.infcx.num_region_vars();
         let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
             FR,
-            self.mir_def_id,
+            self.mir_def.did,
             &bound_inputs_and_output,
             &mut indices,
         );
         // Converse of above, if this is a function then the late-bound regions declared on its
         // signature are local to the fn.
-        if self.mir_def_id == closure_base_def_id {
+        if self.mir_def.did.to_def_id() == closure_base_def_id {
             self.infcx
-                .replace_late_bound_regions_with_nll_infer_vars(self.mir_def_id, &mut indices);
+                .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices);
         }
 
         let (unnormalized_output_ty, mut unnormalized_input_tys) =
@@ -457,7 +457,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             if self.infcx.tcx.fn_sig(def_id).c_variadic() {
                 let va_list_did = self.infcx.tcx.require_lang_item(
                     lang_items::VaListTypeLangItem,
-                    Some(self.infcx.tcx.def_span(self.mir_def_id)),
+                    Some(self.infcx.tcx.def_span(self.mir_def.did)),
                 );
                 let region = self
                     .infcx
@@ -508,14 +508,14 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     /// see `DefiningTy` for details.
     fn defining_ty(&self) -> DefiningTy<'tcx> {
         let tcx = self.infcx.tcx;
-        let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
+        let closure_base_def_id = tcx.closure_base_def_id(self.mir_def.did.to_def_id());
 
         match tcx.hir().body_owner_kind(self.mir_hir_id) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = if self.mir_def_id == closure_base_def_id {
+                let defining_ty = if self.mir_def.did.to_def_id() == closure_base_def_id {
                     tcx.type_of(closure_base_def_id)
                 } else {
-                    let tables = tcx.typeck_tables_of(self.mir_def_id.expect_local());
+                    let tables = tcx.typeck(self.mir_def.did);
                     tables.node_type(self.mir_hir_id)
                 };
 
@@ -531,20 +531,20 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     }
                     ty::FnDef(def_id, substs) => DefiningTy::FnDef(def_id, substs),
                     _ => span_bug!(
-                        tcx.def_span(self.mir_def_id),
+                        tcx.def_span(self.mir_def.did),
                         "expected defining type for `{:?}`: `{:?}`",
-                        self.mir_def_id,
+                        self.mir_def.did,
                         defining_ty
                     ),
                 }
             }
 
             BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
-                assert_eq!(closure_base_def_id, self.mir_def_id);
+                assert_eq!(self.mir_def.did.to_def_id(), closure_base_def_id);
                 let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
                 let substs =
                     self.infcx.replace_free_regions_with_nll_infer_vars(FR, &identity_substs);
-                DefiningTy::Const(self.mir_def_id, substs)
+                DefiningTy::Const(self.mir_def.did.to_def_id(), substs)
             }
         }
     }
@@ -559,7 +559,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> UniversalRegionIndices<'tcx> {
         let tcx = self.infcx.tcx;
-        let closure_base_def_id = tcx.closure_base_def_id(self.mir_def_id);
+        let closure_base_def_id = tcx.closure_base_def_id(self.mir_def.did.to_def_id());
         let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
         let fr_substs = match defining_ty {
             DefiningTy::Closure(_, ref substs) | DefiningTy::Generator(_, ref substs, _) => {
@@ -593,7 +593,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         match defining_ty {
             DefiningTy::Closure(def_id, substs) => {
-                assert_eq!(self.mir_def_id, def_id);
+                assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let closure_sig = substs.as_closure().sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
                 let closure_ty = tcx.closure_env_ty(def_id, substs).unwrap();
@@ -617,7 +617,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             DefiningTy::Generator(def_id, substs, movability) => {
-                assert_eq!(self.mir_def_id, def_id);
+                assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let resume_ty = substs.as_generator().resume_ty();
                 let output = substs.as_generator().return_ty();
                 let generator_ty = tcx.mk_generator(def_id, substs, movability);
@@ -635,8 +635,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             DefiningTy::Const(def_id, _) => {
                 // For a constant body, there are no inputs, and one
                 // "output" (the type of the constant).
-                assert_eq!(self.mir_def_id, def_id);
-                let ty = tcx.type_of(def_id);
+                assert_eq!(self.mir_def.did.to_def_id(), def_id);
+                let ty = tcx.type_of(self.mir_def.def_id_for_type_of());
                 let ty = indices.fold_to_region_vids(tcx, &ty);
                 ty::Binder::dummy(tcx.intern_type_list(&[ty]))
             }
@@ -656,7 +656,7 @@ trait InferCtxtExt<'tcx> {
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
         origin: NLLRegionVariableOrigin,
-        all_outlive_scope: DefId,
+        all_outlive_scope: LocalDefId,
         value: &ty::Binder<T>,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
@@ -665,7 +665,7 @@ trait InferCtxtExt<'tcx> {
 
     fn replace_late_bound_regions_with_nll_infer_vars(
         &self,
-        mir_def_id: DefId,
+        mir_def_id: LocalDefId,
         indices: &mut UniversalRegionIndices<'tcx>,
     );
 }
@@ -685,7 +685,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
         origin: NLLRegionVariableOrigin,
-        all_outlive_scope: DefId,
+        all_outlive_scope: LocalDefId,
         value: &ty::Binder<T>,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
@@ -699,7 +699,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
             debug!("replace_bound_regions_with_nll_infer_vars: br={:?}", br);
             let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                scope: all_outlive_scope,
+                scope: all_outlive_scope.to_def_id(),
                 bound_region: br,
             }));
             let region_vid = self.next_nll_region_var(origin);
@@ -724,11 +724,11 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     /// inputs vector.
     fn replace_late_bound_regions_with_nll_infer_vars(
         &self,
-        mir_def_id: DefId,
+        mir_def_id: LocalDefId,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) {
         debug!("replace_late_bound_regions_with_nll_infer_vars(mir_def_id={:?})", mir_def_id);
-        let closure_base_def_id = self.tcx.closure_base_def_id(mir_def_id);
+        let closure_base_def_id = self.tcx.closure_base_def_id(mir_def_id.to_def_id());
         for_each_late_bound_region_defined_on(self.tcx, closure_base_def_id, |r| {
             debug!("replace_late_bound_regions_with_nll_infer_vars: r={:?}", r);
             if !indices.indices.contains_key(&r) {

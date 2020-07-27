@@ -10,22 +10,6 @@
 //! things, particularly traits, which are used in almost every single Rust
 //! program.
 //!
-//! On a technical level, Rust inserts
-//!
-//! ```
-//! # #[allow(unused_extern_crates)]
-//! extern crate std;
-//! ```
-//!
-//! into the crate root of every crate, and
-//!
-//! ```
-//! # #[allow(unused_imports)]
-//! use std::prelude::v1::*;
-//! ```
-//!
-//! into every module.
-//!
 //! # Other preludes
 //!
 //! Preludes can be seen as a pattern to make using multiple types more

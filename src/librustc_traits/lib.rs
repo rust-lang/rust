@@ -22,7 +22,7 @@ mod type_op;
 
 use rustc_middle::ty::query::Providers;
 
-pub fn provide(p: &mut Providers<'_>) {
+pub fn provide(p: &mut Providers) {
     dropck_outlives::provide(p);
     evaluate_obligation::provide(p);
     implied_outlives_bounds::provide(p);

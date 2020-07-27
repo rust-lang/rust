@@ -1,0 +1,16 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/wf-impl-self-type.rs:5:14
+   |
+LL | impl Foo for Option<[u8]> {}
+   |              ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/libcore/option.rs:LL:COL
+   |
+LL | pub enum Option<T> {
+   |                 - required by this bound in `std::option::Option`
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

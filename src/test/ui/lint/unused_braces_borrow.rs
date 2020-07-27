@@ -1,13 +1,15 @@
 // check-pass
+// run-rustfix
+
 #![warn(unused_braces)]
 
 // changing `&{ expr }` to `&expr` changes the semantic of the program
 // so we should not warn this case
 
 #[repr(packed)]
-struct A {
-    a: u8,
-    b: u32,
+pub struct A {
+    pub a: u8,
+    pub b: u32,
 }
 
 fn consume<T>(_: T) {}

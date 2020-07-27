@@ -6,5 +6,5 @@
 
 fn main() {
     unsafe { llvm_asm!(".ascii \"Xen\0\""); }
-    //~^ ERROR: <inline asm>:1:9: error: expected string in '.ascii' directive
+    //~^ ERROR: expected string in '.ascii' directive
 }

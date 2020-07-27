@@ -2,7 +2,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_middle::mir::*;
 use rustc_middle::ty;
 use rustc_span::source_map::DesugaringKind;
-use rustc_span::{Span, Symbol};
+use rustc_span::{sym, Span};
 
 use crate::borrow_check::diagnostics::UseSpans;
 use crate::borrow_check::prefixes::PrefixSet;
@@ -331,7 +331,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 self.cannot_move_out_of_interior_noncopy(span, ty, None)
             }
             ty::Closure(def_id, closure_substs)
-                if def_id == self.mir_def_id && upvar_field.is_some() =>
+                if def_id.as_local() == Some(self.mir_def_id) && upvar_field.is_some() =>
             {
                 let closure_kind_ty = closure_substs.as_closure().kind_ty();
                 let closure_kind = closure_kind_ty.to_opt_closure_kind();
@@ -394,10 +394,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 | ty::Opaque(def_id, _) => def_id,
                 _ => return err,
             };
-            let is_option =
-                self.infcx.tcx.is_diagnostic_item(Symbol::intern("option_type"), def_id);
-            let is_result =
-                self.infcx.tcx.is_diagnostic_item(Symbol::intern("result_type"), def_id);
+            let is_option = self.infcx.tcx.is_diagnostic_item(sym::option_type, def_id);
+            let is_result = self.infcx.tcx.is_diagnostic_item(sym::result_type, def_id);
             if (is_option || is_result) && use_spans.map_or(true, |v| !v.for_closure()) {
                 err.span_suggestion(
                     span,
@@ -408,8 +406,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     format!("{}.as_ref()", snippet),
                     Applicability::MaybeIncorrect,
                 );
-            } else if span.is_desugaring(DesugaringKind::ForLoop)
-                && self.infcx.tcx.is_diagnostic_item(Symbol::intern("vec_type"), def_id)
+            } else if matches!(span.desugaring_kind(), Some(DesugaringKind::ForLoop(_)))
+                && self.infcx.tcx.is_diagnostic_item(sym::vec_type, def_id)
             {
                 // FIXME: suggest for anything that implements `IntoIterator`.
                 err.span_suggestion(

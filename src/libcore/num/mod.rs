@@ -21,6 +21,13 @@ macro_rules! try_opt {
     };
 }
 
+#[allow_internal_unstable(const_likely)]
+macro_rules! unlikely {
+    ($e: expr) => {
+        intrinsics::unlikely($e)
+    };
+}
+
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
         $(
@@ -74,7 +81,8 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 #[rustc_const_stable(feature = "nonzero", since = "1.34.0")]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
-                    Self(n)
+                    // SAFETY: this is guaranteed to be safe by the caller.
+                    unsafe { Self(n) }
                 }
 
                 /// Creates a non-zero if the given value is not zero.
@@ -457,13 +465,13 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "#![feature(leading_trailing_ones)]
-let n = -1", stringify!($SelfT), ";
+", $Feature, "let n = -1", stringify!($SelfT), ";
 
 assert_eq!(n.leading_ones(), ", stringify!($BITS), ");",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "leading_trailing_ones", issue = "57969")]
+            #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
+            #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn leading_ones(self) -> u32 {
                 (self as $UnsignedT).leading_ones()
@@ -478,13 +486,13 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "#![feature(leading_trailing_ones)]
-let n = 3", stringify!($SelfT), ";
+", $Feature, "let n = 3", stringify!($SelfT), ";
 
 assert_eq!(n.trailing_ones(), 2);",
 $EndFeature, "
 ```"),
-            #[unstable(feature = "leading_trailing_ones", issue = "57969")]
+            #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
+            #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn trailing_ones(self) -> u32 {
                 (self as $UnsignedT).trailing_ones()
@@ -745,14 +753,14 @@ $EndFeature, "
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
         doc_comment! {
-            concat!("Unchecked integer addition. Computes `self + rhs, assuming overflow
+            concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
-"::max_value()` or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -762,7 +770,9 @@ cannot occur. This results in undefined behavior when `self + rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
-                intrinsics::unchecked_add(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_add`.
+                unsafe { intrinsics::unchecked_add(self, rhs) }
             }
         }
 
@@ -787,14 +797,14 @@ $EndFeature, "
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
         doc_comment! {
-            concat!("Unchecked integer subtraction. Computes `self - rhs, assuming overflow
+            concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
-"::max_value()` or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -804,7 +814,9 @@ cannot occur. This results in undefined behavior when `self - rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
-                intrinsics::unchecked_sub(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_sub`.
+                unsafe { intrinsics::unchecked_sub(self, rhs) }
             }
         }
 
@@ -829,14 +841,14 @@ $EndFeature, "
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
         doc_comment! {
-            concat!("Unchecked integer multiplication. Computes `self * rhs, assuming overflow
+            concat!("Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
-"::max_value()` or `self * rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -846,7 +858,9 @@ cannot occur. This results in undefined behavior when `self * rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
-                intrinsics::unchecked_mul(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_mul`.
+                unsafe { intrinsics::unchecked_mul(self, rhs) }
             }
         }
 
@@ -871,7 +885,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     // SAFETY: div by zero and by INT_MIN have been checked above
@@ -900,7 +914,7 @@ assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     Some(self.div_euclid(rhs))
@@ -929,7 +943,7 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     // SAFETY: div by zero and by INT_MIN have been checked above
@@ -957,7 +971,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                if unlikely!(rhs == 0 || (self == Self::MIN && rhs == -1)) {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
@@ -983,7 +997,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -1007,7 +1021,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -1031,7 +1045,7 @@ $EndFeature, "
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -1081,6 +1095,9 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
+                if exp == 0 {
+                    return Some(1);
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -1091,15 +1108,11 @@ $EndFeature, "
                     exp /= 2;
                     base = try_opt!(base.checked_mul(base));
                 }
-
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = try_opt!(acc.checked_mul(base));
-                }
-
-                Some(acc)
+                Some(try_opt!(acc.checked_mul(base)))
             }
         }
 
@@ -1236,9 +1249,9 @@ $EndFeature, "
                 match self.checked_mul(rhs) {
                     Some(x) => x,
                     None => if (self < 0) == (rhs < 0) {
-                        Self::max_value()
+                        Self::MAX
                     } else {
-                        Self::min_value()
+                        Self::MIN
                     }
                 }
             }
@@ -1267,8 +1280,8 @@ $EndFeature, "
             pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
-                    None if self < 0 && exp % 2 == 1 => Self::min_value(),
-                    None => Self::max_value(),
+                    None if self < 0 && exp % 2 == 1 => Self::MIN,
+                    None => Self::MAX,
                 }
             }
         }
@@ -1578,7 +1591,6 @@ $EndFeature, "
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[allow(unused_attributes)]
-            #[allow_internal_unstable(const_if_match)]
             #[inline]
             pub const fn wrapping_abs(self) -> Self {
                  if self.is_negative() {
@@ -1609,6 +1621,9 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_pow(self, mut exp: u32) -> Self {
+                if exp == 0 {
+                    return 1;
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -1620,14 +1635,11 @@ $EndFeature, "
                     base = base.wrapping_mul(base);
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = acc.wrapping_mul(base);
-                }
-
-                acc
+                acc.wrapping_mul(base)
             }
         }
 
@@ -1738,7 +1750,7 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (self, true)
                 } else {
                     (self / rhs, false)
@@ -1771,7 +1783,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (self, true)
                 } else {
                     (self.div_euclid(rhs), false)
@@ -1805,7 +1817,7 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (0, true)
                 } else {
                     (self % rhs, false)
@@ -1838,7 +1850,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-                if self == Self::min_value() && rhs == -1 {
+                if unlikely!(self == Self::MIN && rhs == -1) {
                     (0, true)
                 } else {
                     (self.rem_euclid(rhs), false)
@@ -1867,10 +1879,9 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_neg(), (", stringify!($Self
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[allow(unused_attributes)]
-            #[allow_internal_unstable(const_if_match)]
             pub const fn overflowing_neg(self) -> (Self, bool) {
-                if self == Self::min_value() {
-                    (Self::min_value(), true)
+                if unlikely!(self == Self::MIN) {
+                    (Self::MIN, true)
                 } else {
                     (-self, false)
                 }
@@ -1952,7 +1963,7 @@ $EndFeature, "
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[inline]
             pub const fn overflowing_abs(self) -> (Self, bool) {
-                (self.wrapping_abs(), self == Self::min_value())
+                (self.wrapping_abs(), self == Self::MIN)
             }
         }
 
@@ -1977,6 +1988,9 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+                if exp == 0 {
+                    return (1,false);
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
                 let mut overflown = false;
@@ -1995,16 +2009,13 @@ $EndFeature, "
                     overflown |= r.1;
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    r = acc.overflowing_mul(base);
-                    acc = r.0;
-                    overflown |= r.1;
-                }
-
-                (acc, overflown)
+                r = acc.overflowing_mul(base);
+                r.1 |= overflown;
+                r
             }
         }
 
@@ -2028,6 +2039,9 @@ $EndFeature, "
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub const fn pow(self, mut exp: u32) -> Self {
+                if exp == 0 {
+                    return 1;
+                }
                 let mut base = self;
                 let mut acc = 1;
 
@@ -2039,14 +2053,11 @@ $EndFeature, "
                     base = base * base;
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = acc * base;
-                }
-
-                acc
+                acc * base
             }
         }
 
@@ -2160,7 +2171,6 @@ $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
             #[allow(unused_attributes)]
-            #[allow_internal_unstable(const_if_match)]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub const fn abs(self) -> Self {
@@ -2695,12 +2705,12 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "#![feature(leading_trailing_ones)]
-let n = !(", stringify!($SelfT), "::MAX >> 2);
+", $Feature, "let n = !(", stringify!($SelfT), "::MAX >> 2);
 
 assert_eq!(n.leading_ones(), 2);", $EndFeature, "
 ```"),
-            #[unstable(feature = "leading_trailing_ones", issue = "57969")]
+            #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
+            #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn leading_ones(self) -> u32 {
                 (!self).leading_zeros()
@@ -2716,12 +2726,12 @@ of `self`.
 Basic usage:
 
 ```
-", $Feature, "#![feature(leading_trailing_ones)]
-let n = 0b1010111", stringify!($SelfT), ";
+", $Feature, "let n = 0b1010111", stringify!($SelfT), ";
 
 assert_eq!(n.trailing_ones(), 3);", $EndFeature, "
 ```"),
-            #[unstable(feature = "leading_trailing_ones", issue = "57969")]
+            #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
+            #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
             #[inline]
             pub const fn trailing_ones(self) -> u32 {
                 (!self).trailing_zeros()
@@ -2981,14 +2991,14 @@ assert_eq!((", stringify!($SelfT), "::MAX - 2).checked_add(3), None);", $EndFeat
             #[inline]
             pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
         doc_comment! {
-            concat!("Unchecked integer addition. Computes `self + rhs, assuming overflow
+            concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self + rhs > ", stringify!($SelfT),
-"::max_value()` or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -2998,7 +3008,9 @@ cannot occur. This results in undefined behavior when `self + rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
-                intrinsics::unchecked_add(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_add`.
+                unsafe { intrinsics::unchecked_add(self, rhs) }
             }
         }
 
@@ -3021,14 +3033,14 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
             #[inline]
             pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
         doc_comment! {
-            concat!("Unchecked integer subtraction. Computes `self - rhs, assuming overflow
+            concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self - rhs > ", stringify!($SelfT),
-"::max_value()` or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -3038,7 +3050,9 @@ cannot occur. This results in undefined behavior when `self - rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
-                intrinsics::unchecked_sub(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_sub`.
+                unsafe { intrinsics::unchecked_sub(self, rhs) }
             }
         }
 
@@ -3061,14 +3075,14 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_mul(2), None);", $EndFeature, "
             #[inline]
             pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
         doc_comment! {
-            concat!("Unchecked integer multiplication. Computes `self * rhs, assuming overflow
+            concat!("Unchecked integer multiplication. Computes `self * rhs`, assuming overflow
 cannot occur. This results in undefined behavior when `self * rhs > ", stringify!($SelfT),
-"::max_value()` or `self * rhs < ", stringify!($SelfT), "::min_value()`."),
+"::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`."),
             #[unstable(
                 feature = "unchecked_math",
                 reason = "niche optimization path",
@@ -3078,7 +3092,9 @@ cannot occur. This results in undefined behavior when `self * rhs > ", stringify
                           without modifying the original"]
             #[inline]
             pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
-                intrinsics::unchecked_mul(self, rhs)
+                // SAFETY: the caller must uphold the safety contract for
+                // `unchecked_mul`.
+                unsafe { intrinsics::unchecked_mul(self, rhs) }
             }
         }
 
@@ -3100,11 +3116,12 @@ assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_div(self, rhs: Self) -> Option<Self> {
-                match rhs {
-                    0 => None,
+                if unlikely!(rhs == 0) {
+                    None
+                } else {
                     // SAFETY: div by zero has been checked above and unsigned types have no other
                     // failure modes for division
-                    rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
+                    Some(unsafe { intrinsics::unchecked_div(self, rhs) })
                 }
             }
         }
@@ -3127,7 +3144,7 @@ assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     Some(self.div_euclid(rhs))
@@ -3154,7 +3171,7 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     // SAFETY: div by zero has been checked above and unsigned types have no other
@@ -3182,7 +3199,7 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
                           without modifying the original"]
             #[inline]
             pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-                if rhs == 0 {
+                if unlikely!(rhs == 0) {
                     None
                 } else {
                     Some(self.rem_euclid(rhs))
@@ -3209,7 +3226,7 @@ assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
             #[inline]
             pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3232,7 +3249,7 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, 
             #[inline]
             pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3255,7 +3272,7 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, 
             #[inline]
             pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
-                if b {None} else {Some(a)}
+                if unlikely!(b) {None} else {Some(a)}
             }
         }
 
@@ -3277,6 +3294,9 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn checked_pow(self, mut exp: u32) -> Option<Self> {
+                if exp == 0 {
+                    return Some(1);
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -3288,14 +3308,12 @@ assert_eq!(", stringify!($SelfT), "::MAX.checked_pow(2), None);", $EndFeature, "
                     base = try_opt!(base.checked_mul(base));
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = try_opt!(acc.checked_mul(base));
-                }
 
-                Some(acc)
+                Some(try_opt!(acc.checked_mul(base)))
             }
         }
 
@@ -3309,7 +3327,8 @@ Basic usage:
 
 ```
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".saturating_add(1), 101);
-assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_add(127), ", stringify!($SelfT), "::MAX);",
+$EndFeature, "
 ```"),
 
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -3366,7 +3385,7 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
             pub const fn saturating_mul(self, rhs: Self) -> Self {
                 match self.checked_mul(rhs) {
                     Some(x) => x,
-                    None => Self::max_value(),
+                    None => Self::MAX,
                 }
             }
         }
@@ -3393,7 +3412,7 @@ $EndFeature, "
             pub const fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
                     Some(x) => x,
-                    None => Self::max_value(),
+                    None => Self::MAX,
                 }
             }
         }
@@ -3685,6 +3704,9 @@ assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_pow(self, mut exp: u32) -> Self {
+                if exp == 0 {
+                    return 1;
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
 
@@ -3696,14 +3718,11 @@ assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
                     base = base.wrapping_mul(base);
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    acc = acc.wrapping_mul(base);
-                }
-
-                acc
+                acc.wrapping_mul(base)
             }
         }
 
@@ -4010,6 +4029,9 @@ assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+                if exp == 0{
+                    return (1,false);
+                }
                 let mut base = self;
                 let mut acc: Self = 1;
                 let mut overflown = false;
@@ -4028,16 +4050,14 @@ assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
                     overflown |= r.1;
                 }
 
+                // since exp!=0, finally the exp must be 1.
                 // Deal with the final bit of the exponent separately, since
                 // squaring the base afterwards is not necessary and may cause a
                 // needless overflow.
-                if exp == 1 {
-                    r = acc.overflowing_mul(base);
-                    acc = r.0;
-                    overflown |= r.1;
-                }
+                r = acc.overflowing_mul(base);
+                r.1 |= overflown;
 
-                (acc, overflown)
+                r
             }
         }
 
@@ -4058,6 +4078,9 @@ Basic usage:
         #[inline]
         #[rustc_inherit_overflow_checks]
         pub const fn pow(self, mut exp: u32) -> Self {
+            if exp == 0 {
+                return 1;
+            }
             let mut base = self;
             let mut acc = 1;
 
@@ -4069,18 +4092,15 @@ Basic usage:
                 base = base * base;
             }
 
+            // since exp!=0, finally the exp must be 1.
             // Deal with the final bit of the exponent separately, since
             // squaring the base afterwards is not necessary and may cause a
             // needless overflow.
-            if exp == 1 {
-                acc = acc * base;
-            }
-
-            acc
+            acc * base
         }
     }
 
-            doc_comment! {
+        doc_comment! {
             concat!("Performs Euclidean division.
 
 Since, for the positive integers, all common
@@ -4178,7 +4198,7 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
             // (such as intel pre-haswell) have more efficient ctlz
             // intrinsics when the argument is non-zero.
             let z = unsafe { intrinsics::ctlz_nonzero(p) };
-            <$SelfT>::max_value() >> z
+            <$SelfT>::MAX >> z
         }
 
         doc_comment! {
@@ -5160,9 +5180,9 @@ trait FromStrRadixHelper: PartialOrd + Copy {
 macro_rules! doit {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
         #[inline]
-        fn min_value() -> Self { Self::min_value() }
+        fn min_value() -> Self { Self::MIN }
         #[inline]
-        fn max_value() -> Self { Self::max_value() }
+        fn max_value() -> Self { Self::MAX }
         #[inline]
         fn from_u32(u: u32) -> Self { u as Self }
         #[inline]

@@ -96,7 +96,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             ));
 
             match result {
-                Ok(Some(Vtable::VtableImpl(_))) => {
+                Ok(Some(ImplSource::ImplSourceUserDefined(_))) => {
                     debug!(
                         "find_auto_trait_generics({:?}): \
                          manual impl found, bailing out",
@@ -281,8 +281,8 @@ impl AutoTraitFinder<'tcx> {
             },
         }));
 
-        let computed_preds = param_env.caller_bounds.iter();
-        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds.iter().collect();
+        let computed_preds = param_env.caller_bounds().iter();
+        let mut user_computed_preds: FxHashSet<_> = user_env.caller_bounds().iter().collect();
 
         let mut new_env = param_env;
         let dummy_cause = ObligationCause::dummy();
@@ -304,11 +304,15 @@ impl AutoTraitFinder<'tcx> {
             let result = select.select(&obligation);
 
             match &result {
-                &Ok(Some(ref vtable)) => {
+                &Ok(Some(ref impl_source)) => {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
 
-                    if let Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) = vtable {
+                    if let ImplSource::ImplSourceUserDefined(ImplSourceUserDefinedData {
+                        impl_def_id,
+                        ..
+                    }) = impl_source
+                    {
                         // Blame 'tidy' for the weird bracket placement.
                         if infcx.tcx.impl_polarity(*impl_def_id) == ty::ImplPolarity::Negative {
                             debug!(
@@ -320,7 +324,7 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
 
-                    let obligations = vtable.clone().nested_obligations().into_iter();
+                    let obligations = impl_source.clone().nested_obligations().into_iter();
 
                     if !self.evaluate_nested_obligations(
                         ty,
@@ -364,12 +368,12 @@ impl AutoTraitFinder<'tcx> {
             )
             .map(|o| o.predicate);
             new_env =
-                ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal, None);
+                ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal(), None);
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_predicates(user_computed_preds.into_iter()),
-            user_env.reveal,
+            user_env.reveal(),
             None,
         );
         debug!(

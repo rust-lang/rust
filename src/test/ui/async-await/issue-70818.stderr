@@ -7,7 +7,6 @@ LL |
 LL |     async { (ty, ty1) }
    |     ------------------- this returned value is of type `impl std::future::Future`
    |
-   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `U`
 note: captured value is not `Send`
   --> $DIR/issue-70818.rs:6:18
    |

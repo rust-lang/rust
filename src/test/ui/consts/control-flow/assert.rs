@@ -1,17 +1,14 @@
-// Test that `assert` works only when both `const_if_match` and `const_panic` are enabled.
+// Test that `assert` works when `const_panic` is enabled.
 
-// revisions: stock if_match panic both
+// revisions: stock panic
 
-#![cfg_attr(any(both, if_match), feature(const_if_match))]
-#![cfg_attr(any(both, panic), feature(const_panic))]
+#![cfg_attr(panic, feature(const_panic))]
 
 const _: () = assert!(true);
-//[stock,panic]~^ ERROR `if` is not allowed in a `const`
-//[if_match]~^^ ERROR panicking in constants is unstable
+//[stock]~^ ERROR panicking in constants is unstable
 
 const _: () = assert!(false);
-//[stock,panic]~^ ERROR `if` is not allowed in a `const`
-//[if_match]~^^ ERROR panicking in constants is unstable
-//[both]~^^^ ERROR any use of this value will cause an error
+//[stock]~^ ERROR panicking in constants is unstable
+//[panic]~^^ ERROR any use of this value will cause an error
 
 fn main() {}

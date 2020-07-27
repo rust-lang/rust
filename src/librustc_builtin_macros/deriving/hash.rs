@@ -15,9 +15,9 @@ pub fn expand_deriving_hash(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let path = Path::new_(pathvec_std!(cx, hash::Hash), None, vec![], PathKind::Std);
+    let path = Path::new_(pathvec_std!(hash::Hash), None, vec![], PathKind::Std);
 
-    let typaram = "__H";
+    let typaram = sym::__H;
 
     let arg = Path::new_local(typaram);
     let hash_trait_def = TraitDef {
@@ -25,17 +25,14 @@ pub fn expand_deriving_hash(
         attributes: Vec::new(),
         path,
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds::empty(),
+        generics: Bounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-            name: "hash",
-            generics: LifetimeBounds {
-                lifetimes: Vec::new(),
-                bounds: vec![(typaram, vec![path_std!(cx, hash::Hasher)])],
-            },
+            name: sym::hash,
+            generics: Bounds { bounds: vec![(typaram, vec![path_std!(hash::Hasher)])] },
             explicit_self: borrowed_explicit_self(),
-            args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), "state")],
+            args: vec![(Ptr(Box::new(Literal(arg)), Borrowed(None, Mutability::Mut)), sym::state)],
             ret_ty: nil_ty(),
             attributes: vec![],
             is_unsafe: false,
@@ -73,7 +70,7 @@ fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructu
             let variant_value = deriving::call_intrinsic(
                 cx,
                 trait_span,
-                "discriminant_value",
+                sym::discriminant_value,
                 vec![cx.expr_self(trait_span)],
             );
 

@@ -18,7 +18,7 @@ use build_helper::{t, up_to_date};
 use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
-use crate::config::Config;
+use crate::config::{Config, TargetSelection};
 use crate::tool::{self, prepare_tool_cargo, SourceType, Tool};
 use crate::util::symlink_dir;
 
@@ -27,7 +27,7 @@ macro_rules! book {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
-            target: Interned<String>,
+            target: TargetSelection,
         }
 
         impl Step for $name {
@@ -101,7 +101,7 @@ fn is_explicit_request(builder: &Builder<'_>, path: &str) -> bool {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct UnstableBook {
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for UnstableBook {
@@ -129,7 +129,7 @@ impl Step for UnstableBook {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 struct RustbookSrc {
-    target: Interned<String>,
+    target: TargetSelection,
     name: Interned<String>,
     src: Interned<PathBuf>,
 }
@@ -156,7 +156,7 @@ impl Step for RustbookSrc {
         let index = out.join("index.html");
         let rustbook = builder.tool_exe(Tool::Rustbook);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
-        if up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
+        if builder.config.dry_run || up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
             return;
         }
         builder.info(&format!("Rustbook ({}) - {}", target, name));
@@ -169,7 +169,7 @@ impl Step for RustbookSrc {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct TheBook {
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for TheBook {
@@ -241,7 +241,7 @@ impl Step for TheBook {
 fn invoke_rustdoc(
     builder: &Builder<'_>,
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
     markdown: &str,
 ) {
     let out = builder.doc_out(target);
@@ -277,7 +277,7 @@ fn invoke_rustdoc(
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Standalone {
     compiler: Compiler,
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for Standalone {
@@ -386,7 +386,7 @@ impl Step for Standalone {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Std {
     pub stage: u32,
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for Std {
@@ -415,42 +415,22 @@ impl Step for Std {
         let compiler = builder.compiler(stage, builder.config.build);
 
         builder.ensure(compile::Std { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Std).join(target).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
 
-        // Here what we're doing is creating a *symlink* (directory junction on
-        // Windows) to the final output location. This is not done as an
-        // optimization but rather for correctness. We've got three trees of
-        // documentation, one for std, one for test, and one for rustc. It's then
-        // our job to merge them all together.
-        //
-        // Unfortunately rustbuild doesn't know nearly as well how to merge doc
-        // trees as rustdoc does itself, so instead of actually having three
-        // separate trees we just have rustdoc output to the same location across
-        // all of them.
-        //
-        // This way rustdoc generates output directly into the output, and rustdoc
-        // will also directly handle merging.
-        let my_out = builder.crate_doc_out(target);
-        t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
 
         let run_cargo_rustdoc_for = |package: &str| {
-            let mut cargo = builder.cargo(compiler, Mode::Std, target, "rustdoc");
+            let mut cargo =
+                builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustdoc");
             compile::std_cargo(builder, target, compiler.stage, &mut cargo);
 
-            // Keep a whitelist so we do not build internal stdlib crates, these will be
-            // build by the rustc step later if enabled.
-            cargo.arg("-p").arg(package);
-            // Create all crate output directories first to make sure rustdoc uses
-            // relative links.
-            // FIXME: Cargo should probably do this itself.
-            t!(fs::create_dir_all(out_dir.join(package)));
             cargo
+                .arg("-p")
+                .arg(package)
                 .arg("--")
                 .arg("--markdown-css")
                 .arg("rust.css")
                 .arg("--markdown-no-toc")
-                .arg("--generate-redirect-pages")
                 .arg("-Z")
                 .arg("unstable-options")
                 .arg("--resource-suffix")
@@ -460,11 +440,21 @@ impl Step for Std {
 
             builder.run(&mut cargo.into());
         };
-        let krates = ["alloc", "core", "std", "proc_macro", "test"];
+        // Only build the following crates. While we could just iterate over the
+        // folder structure, that would also build internal crates that we do
+        // not want to show in documentation. These crates will later be visited
+        // by the rustc step, so internal documentation will show them.
+        //
+        // Note that the order here is important! The crates need to be
+        // processed starting from the leaves, otherwise rustdoc will not
+        // create correct links between crates because rustdoc depends on the
+        // existence of the output directories to know if it should be a local
+        // or remote link.
+        let krates = ["core", "alloc", "std", "proc_macro", "test"];
         for krate in &krates {
             run_cargo_rustdoc_for(krate);
         }
-        builder.cp_r(&my_out, &out);
+        builder.cp_r(&out_dir, &out);
 
         // Look for src/libstd, src/libcore etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
@@ -485,7 +475,7 @@ impl Step for Std {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
     stage: u32,
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for Rustc {
@@ -517,8 +507,7 @@ impl Step for Rustc {
         let out = builder.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        // Get the correct compiler for this stage.
-        let compiler = builder.compiler_for(stage, builder.config.build, target);
+        let compiler = builder.compiler(stage, builder.config.build);
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
@@ -528,18 +517,19 @@ impl Step for Rustc {
         // Build rustc.
         builder.ensure(compile::Rustc { compiler, target });
 
-        // We do not symlink to the same shared folder that already contains std library
-        // documentation from previous steps as we do not want to include that.
-        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
+        // This uses a shared directory so that librustdoc documentation gets
+        // correctly built and merged with the rustc documentation. This is
+        // needed because rustdoc is built in a different directory from
+        // rustc. rustdoc needs to be able to see everything, for example when
+        // merging the search index, or generating local (relative) links.
+        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         // Build cargo command.
-        let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
-        cargo.env(
-            "RUSTDOCFLAGS",
-            "--document-private-items \
-            --enable-index-page -Zunstable-options",
-        );
+        let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
+        cargo.rustdocflag("--document-private-items");
+        cargo.rustdocflag("--enable-index-page");
+        cargo.rustdocflag("-Zunstable-options");
         compile::rustc_cargo(builder, &mut cargo, target);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -548,8 +538,8 @@ impl Step for Rustc {
         // Find dependencies for top level crates.
         let mut compiler_crates = HashSet::new();
         for root_crate in &["rustc_driver", "rustc_codegen_llvm", "rustc_codegen_ssa"] {
-            let interned_root_crate = INTERNER.intern_str(root_crate);
-            find_compiler_crates(builder, &interned_root_crate, &mut compiler_crates);
+            compiler_crates
+                .extend(builder.in_tree_crates(root_crate).into_iter().map(|krate| krate.name));
         }
 
         for krate in &compiler_crates {
@@ -564,26 +554,10 @@ impl Step for Rustc {
     }
 }
 
-fn find_compiler_crates(
-    builder: &Builder<'_>,
-    name: &Interned<String>,
-    crates: &mut HashSet<Interned<String>>,
-) {
-    // Add current crate.
-    crates.insert(*name);
-
-    // Look for dependencies.
-    for dep in builder.crates.get(name).unwrap().deps.iter() {
-        if builder.crates.get(dep).unwrap().is_local(builder) {
-            find_compiler_crates(builder, dep, crates);
-        }
-    }
-}
-
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustdoc {
     stage: u32,
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for Rustdoc {
@@ -614,8 +588,7 @@ impl Step for Rustdoc {
         let out = builder.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
 
-        // Get the correct compiler for this stage.
-        let compiler = builder.compiler_for(stage, builder.config.build, target);
+        let compiler = builder.compiler(stage, builder.config.build);
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
@@ -629,7 +602,7 @@ impl Step for Rustdoc {
         builder.ensure(tool::Rustdoc { compiler });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
-        let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
         t!(fs::create_dir_all(&out_dir));
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
@@ -649,14 +622,15 @@ impl Step for Rustdoc {
         cargo.arg("--no-deps");
         cargo.arg("-p").arg("rustdoc");
 
-        cargo.env("RUSTDOCFLAGS", "--document-private-items");
+        cargo.rustdocflag("--document-private-items");
         builder.run(&mut cargo.into());
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
-    target: Interned<String>,
+    pub compiler: Compiler,
+    pub target: TargetSelection,
 }
 
 impl Step for ErrorIndex {
@@ -670,25 +644,25 @@ impl Step for ErrorIndex {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(ErrorIndex { target: run.target });
+        let target = run.target;
+        // error_index_generator depends on librustdoc. Use the compiler that
+        // is normally used to build rustdoc for other documentation so that
+        // it shares the same artifacts.
+        let compiler =
+            run.builder.compiler_for(run.builder.top_stage, run.builder.config.build, target);
+        run.builder.ensure(ErrorIndex { compiler, target });
     }
 
     /// Generates the HTML rendered error-index by running the
     /// `error_index_generator` tool.
     fn run(self, builder: &Builder<'_>) {
-        let target = self.target;
-
-        builder.info(&format!("Documenting error index ({})", target));
-        let out = builder.doc_out(target);
+        builder.info(&format!("Documenting error index ({})", self.target));
+        let out = builder.doc_out(self.target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(2, builder.config.build);
-        let mut index = tool::ErrorIndex::command(builder, compiler);
+        let mut index = tool::ErrorIndex::command(builder, self.compiler);
         index.arg("html");
         index.arg(out.join("error-index.html"));
         index.arg(crate::channel::CFG_RELEASE_NUM);
-
-        // FIXME: shouldn't have to pass this env var
-        index.env("CFG_BUILD", &builder.config.build);
 
         builder.run(&mut index);
     }
@@ -696,7 +670,7 @@ impl Step for ErrorIndex {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct UnstableBookGen {
-    target: Interned<String>,
+    target: TargetSelection,
 }
 
 impl Step for UnstableBookGen {

@@ -37,6 +37,6 @@ fn main() {
         x: 5,
     };
 
-    s.dummy_foo();
     s.dummy_bar::<u32>();
+    s.dummy_foo();
 }

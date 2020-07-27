@@ -1,11 +1,16 @@
-error[E0621]: explicit lifetime required in the type of `ss`
+error[E0759]: `ss` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/object-lifetime-default-from-box-error.rs:18:5
    |
 LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
-   |             --------------- help: add explicit lifetime `'static` to the type of `ss`: `&mut SomeStruct<'static>`
+   |             --------------- this data with an anonymous lifetime `'_`...
 ...
 LL |     ss.r
-   |     ^^^^ lifetime `'static` required
+   |     ^^^^ ...is captured and required to live as long as `'static` here
+   |
+help: to declare that the trait object captures data from argument `ss`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait + '_> {
+   |                                                   ^^^^
 
 error[E0621]: explicit lifetime required in the type of `ss`
   --> $DIR/object-lifetime-default-from-box-error.rs:31:12
@@ -18,4 +23,5 @@ LL |     ss.r = b;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0621`.
+Some errors have detailed explanations: E0621, E0759.
+For more information about an error, try `rustc --explain E0621`.

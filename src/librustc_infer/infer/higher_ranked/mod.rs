@@ -11,8 +11,8 @@ use rustc_middle::ty::{self, Binder, TypeFoldable};
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     pub fn higher_ranked_sub<T>(
         &mut self,
-        a: &Binder<T>,
-        b: &Binder<T>,
+        a: Binder<T>,
+        b: Binder<T>,
         a_is_expected: bool,
     ) -> RelateResult<'tcx, Binder<T>>
     where
@@ -30,25 +30,23 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 
         let span = self.trace.cause.span;
 
-        self.infcx.commit_if_ok(|snapshot| {
+        self.infcx.commit_if_ok(|_| {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
-            let (b_prime, placeholder_map) = self.infcx.replace_bound_vars_with_placeholders(b);
+            let (b_prime, _) = self.infcx.replace_bound_vars_with_placeholders(&b);
 
             // Next, we instantiate each bound region in the subtype
             // with a fresh region variable. These region variables --
             // but no other pre-existing region variables -- can name
             // the placeholders.
             let (a_prime, _) =
-                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, a);
+                self.infcx.replace_bound_vars_with_fresh_vars(span, HigherRankedType, &a);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
 
             // Compare types now that bound regions have been replaced.
-            let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
-
-            self.infcx.leak_check(!a_is_expected, &placeholder_map, snapshot)?;
+            let result = self.sub(a_is_expected).relate(a_prime, b_prime)?;
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
@@ -63,14 +61,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// placeholder region. This is the first step of checking subtyping
     /// when higher-ranked things are involved.
     ///
-    /// **Important:** you must call this function from within a snapshot.
-    /// Moreover, before committing the snapshot, you must eventually call
-    /// either `plug_leaks` or `pop_placeholders` to remove the placeholder
-    /// regions. If you rollback the snapshot (or are using a probe), then
-    /// the pop occurs as part of the rollback, so an explicit call is not
-    /// needed (but is also permitted).
-    ///
-    /// For more information about how placeholders and HRTBs work, see
+    /// **Important:** You have to be careful to not leak these placeholders,
+    /// for more information about how placeholders and HRTBs work, see
     /// the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
@@ -81,7 +73,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let next_universe = self.create_next_universe();
+        // Figure out what the next universe will be, but don't actually create
+        // it until after we've done the substitution (in particular there may
+        // be no bound variables). This is a performance optimization, since the
+        // leak check for example can be skipped if no new universes are created
+        // (i.e., if there are no placeholders).
+        let next_universe = self.universe().next_universe();
 
         let fld_r = |br| {
             self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
@@ -109,6 +106,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t, fld_c);
 
+        // If there were higher-ranked regions to replace, then actually create
+        // the next universe (this avoids needlessly creating universes).
+        if !map.is_empty() {
+            let n_u = self.create_next_universe();
+            assert_eq!(n_u, next_universe);
+        }
+
         debug!(
             "replace_bound_vars_with_placeholders(\
              next_universe={:?}, \
@@ -125,7 +129,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn leak_check(
         &self,
         overly_polymorphic: bool,
-        placeholder_map: &PlaceholderMap<'tcx>,
         snapshot: &CombinedSnapshot<'_, 'tcx>,
     ) -> RelateResult<'tcx, ()> {
         // If the user gave `-Zno-leak-check`, or we have been
@@ -141,7 +144,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().leak_check(
             self.tcx,
             overly_polymorphic,
-            placeholder_map,
+            self.universe(),
             snapshot,
         )
     }

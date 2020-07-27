@@ -169,7 +169,7 @@ impl<'a> Parser<'a> {
                 // `PathStyle::Expr` is only provided at the root invocation and never in
                 // `parse_path_segment` to recurse and therefore can be checked to maintain
                 // this invariant.
-                self.check_trailing_angle_brackets(&segment, token::ModSep);
+                self.check_trailing_angle_brackets(&segment, &[&token::ModSep]);
             }
             segments.push(segment);
 
@@ -387,7 +387,7 @@ impl<'a> Parser<'a> {
 
     /// Parses (possibly empty) list of generic arguments / associated item constraints,
     /// possibly including trailing comma.
-    fn parse_angle_args(&mut self) -> PResult<'a, Vec<AngleBracketedArg>> {
+    pub(super) fn parse_angle_args(&mut self) -> PResult<'a, Vec<AngleBracketedArg>> {
         let mut args = Vec::new();
         while let Some(arg) = self.parse_angle_arg()? {
             args.push(arg);

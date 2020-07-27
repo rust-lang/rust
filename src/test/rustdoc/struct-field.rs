@@ -4,7 +4,7 @@
 
 // @has foo/index.html '//*[@class="docblock"]/p/a[@href="../foo/struct.Foo.html#structfield.bar"]' 'Foo::bar'
 // @has foo/index.html '//*[@class="docblock"]/p/a[@href="../foo/union.Bar.html#structfield.foo"]' 'Bar::foo'
-// @has foo/index.html '//*[@class="docblock"]/p/a[@href="../foo/enum.Uniooon.html#X.v"]' 'Uniooon::X'
+// @has foo/index.html '//*[@class="docblock"]/p/a[@href="../foo/enum.Uniooon.html#variant.X"]' 'Uniooon::X'
 
 //! Test with [Foo::bar], [Bar::foo], [Uniooon::X]
 

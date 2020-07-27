@@ -9,7 +9,7 @@ use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, RegionKind, RegionVid};
+use rustc_middle::ty::{self, InstanceDef, RegionKind, RegionVid};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -39,6 +39,7 @@ use crate::borrow_check::{
     renumber,
     type_check::{self, MirTypeckRegionConstraints, MirTypeckResults},
     universal_regions::UniversalRegions,
+    Upvar,
 };
 
 crate type PoloniusOutput = Output<RustcFacts>;
@@ -58,20 +59,20 @@ crate struct NllOutput<'tcx> {
 /// `compute_regions`.
 pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    def_id: DefId,
+    def: ty::WithOptConstParam<LocalDefId>,
     param_env: ty::ParamEnv<'tcx>,
     body: &mut Body<'tcx>,
     promoted: &mut IndexVec<Promoted, Body<'tcx>>,
 ) -> UniversalRegions<'tcx> {
-    debug!("replace_regions_in_mir(def_id={:?})", def_id);
+    debug!("replace_regions_in_mir(def={:?})", def);
 
     // Compute named region information. This also renumbers the inputs/outputs.
-    let universal_regions = UniversalRegions::new(infcx, def_id.expect_local(), param_env);
+    let universal_regions = UniversalRegions::new(infcx, def, param_env);
 
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
 
-    let source = MirSource::item(def_id);
+    let source = MirSource { instance: InstanceDef::Item(def.to_global()), promoted: None };
     mir_util::dump_mir(infcx.tcx, None, "renumber", &0, source, body, |_, _| Ok(()));
 
     universal_regions
@@ -166,6 +167,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     flow_inits: &mut ResultsCursor<'cx, 'tcx, MaybeInitializedPlaces<'cx, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
+    upvars: &[Upvar],
 ) -> NllOutput<'tcx> {
     let mut all_facts = AllFacts::enabled(infcx.tcx).then_some(AllFacts::default());
 
@@ -188,6 +190,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
             flow_inits,
             move_data,
             elements,
+            upvars,
         );
 
     if let Some(all_facts) = &mut all_facts {
@@ -314,7 +317,7 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     source: MirSource<'tcx>,
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'_>,
+    regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
 ) {
     if !mir_util::dump_enabled(infcx.tcx, "nll", source.def_id()) {
@@ -325,7 +328,7 @@ pub(super) fn dump_mir_results<'a, 'tcx>(
         match pass_where {
             // Before the CFG, dump out the values for each region variable.
             PassWhere::BeforeCFG => {
-                regioncx.dump_mir(out)?;
+                regioncx.dump_mir(infcx.tcx, out)?;
                 writeln!(out, "|")?;
 
                 if let Some(closure_region_requirements) = closure_region_requirements {

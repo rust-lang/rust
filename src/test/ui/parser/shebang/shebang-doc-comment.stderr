@@ -1,0 +1,8 @@
+error: expected `[`, found doc comment `///bin/bash`
+  --> $DIR/shebang-doc-comment.rs:1:3
+   |
+LL | #!///bin/bash
+   |   ^^^^^^^^^^^ expected `[`
+
+error: aborting due to previous error
+

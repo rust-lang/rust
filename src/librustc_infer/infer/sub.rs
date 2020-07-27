@@ -62,8 +62,8 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
-        a: &T,
-        b: &T,
+        a: T,
+        b: T,
     ) -> RelateResult<'tcx, T> {
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
@@ -119,9 +119,9 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
                 Ok(a)
             }
 
-            (&ty::Error, _) | (_, &ty::Error) => {
+            (&ty::Error(_), _) | (_, &ty::Error(_)) => {
                 infcx.set_tainted_by_errors();
-                Ok(self.tcx().types.err)
+                Ok(self.tcx().ty_error())
             }
 
             _ => {
@@ -162,8 +162,8 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: &ty::Binder<T>,
-        b: &ty::Binder<T>,
+        a: ty::Binder<T>,
+        b: ty::Binder<T>,
     ) -> RelateResult<'tcx, ty::Binder<T>>
     where
         T: Relate<'tcx>,

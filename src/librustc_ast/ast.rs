@@ -5,7 +5,7 @@
 //! additional metadata), and [`ItemKind`] (which represents a concrete type and contains
 //! information specific to the type of the item).
 //!
-//! Other module items that worth mentioning:
+//! Other module items worth mentioning:
 //! - [`Ty`] and [`TyKind`]: A parsed Rust type.
 //! - [`Expr`] and [`ExprKind`]: A parsed Rust expression.
 //! - [`Pat`] and [`PatKind`]: A parsed Rust pattern. Patterns are often dual to expressions.
@@ -335,6 +335,8 @@ pub enum GenericParamKind {
     },
     Const {
         ty: P<Ty>,
+        /// Span of the `const` keyword.
+        kw_span: Span,
     },
 }
 
@@ -362,7 +364,11 @@ impl Default for Generics {
     fn default() -> Generics {
         Generics {
             params: Vec::new(),
-            where_clause: WhereClause { predicates: Vec::new(), span: DUMMY_SP },
+            where_clause: WhereClause {
+                has_where_token: false,
+                predicates: Vec::new(),
+                span: DUMMY_SP,
+            },
             span: DUMMY_SP,
         }
     }
@@ -371,6 +377,11 @@ impl Default for Generics {
 /// A where-clause in a definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct WhereClause {
+    /// `true` if we ate a `where` token: this can happen
+    /// if we parsed no predicates (e.g. `struct Foo where {}
+    /// This allows us to accurately pretty-print
+    /// in `nt_to_tokenstream`
+    pub has_where_token: bool,
     pub predicates: Vec<WherePredicate>,
     pub span: Span,
 }
@@ -500,6 +511,9 @@ pub struct Block {
     pub span: Span,
 }
 
+/// A match pattern.
+///
+/// Patterns appear in match statements and some other contexts, such as `let` and `if let`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Pat {
     pub id: NodeId,
@@ -1165,7 +1179,9 @@ pub enum ExprKind {
     /// and the remaining elements are the rest of the arguments.
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprKind::MethodCall(PathSegment { foo, [Bar, Baz] }, [x, a, b, c, d])`.
-    MethodCall(PathSegment, Vec<P<Expr>>),
+    /// This `Span` is the span of the function, without the dot and receiver
+    /// (e.g. `foo(a, b)` in `x.foo(a, b)`
+    MethodCall(PathSegment, Vec<P<Expr>>, Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(Vec<P<Expr>>),
     /// A binary operation (e.g., `a + b`, `a * b`).
@@ -1252,7 +1268,7 @@ pub enum ExprKind {
     Ret(Option<P<Expr>>),
 
     /// Output of the `asm!()` macro.
-    InlineAsm(InlineAsm),
+    InlineAsm(P<InlineAsm>),
     /// Output of the `llvm_asm!()` macro.
     LlvmInlineAsm(P<LlvmInlineAsm>),
 
@@ -1849,15 +1865,6 @@ impl TyKind {
     pub fn is_unit(&self) -> bool {
         if let TyKind::Tup(ref tys) = *self { tys.is_empty() } else { false }
     }
-
-    /// HACK(type_alias_impl_trait, Centril): A temporary crutch used
-    /// in lowering to avoid making larger changes there and beyond.
-    pub fn opaque_top_hack(&self) -> Option<&GenericBounds> {
-        match self {
-            Self::ImplTrait(_, bounds) => Some(bounds),
-            _ => None,
-        }
-    }
 }
 
 /// Syntax used to declare a trait object.
@@ -1903,7 +1910,7 @@ impl fmt::Display for InlineAsmTemplatePiece {
                     match c {
                         '{' => f.write_str("{{")?,
                         '}' => f.write_str("}}")?,
-                        _ => write!(f, "{}", c.escape_debug())?,
+                        _ => c.fmt(f)?,
                     }
                 }
                 Ok(())
@@ -1971,6 +1978,7 @@ pub struct InlineAsm {
     pub template: Vec<InlineAsmTemplatePiece>,
     pub operands: Vec<(InlineAsmOperand, Span)>,
     pub options: InlineAsmOptions,
+    pub line_spans: Vec<Span>,
 }
 
 /// Inline assembly dialect.

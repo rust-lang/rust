@@ -74,7 +74,7 @@ impl<'a> Parser<'a> {
     }
 
     fn mk_doc_comment(&self, s: Symbol) -> ast::Attribute {
-        attr::mk_doc_comment(comments::doc_comment_style(&s.as_str()), s, self.token.span)
+        attr::mk_doc_comment(comments::doc_comment_style(s), s, self.token.span)
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.

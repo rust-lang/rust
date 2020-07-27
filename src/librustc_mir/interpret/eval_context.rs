@@ -15,7 +15,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
-    self, fold::BottomUpFolder, query::TyCtxtAt, subst::SubstsRef, Ty, TyCtxt, TypeFoldable,
+    self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::{source_map::DUMMY_SP, Span};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
@@ -24,6 +24,7 @@ use super::{
     Immediate, MPlaceTy, Machine, MemPlace, MemPlaceMeta, Memory, OpTy, Operand, Place, PlaceTy,
     ScalarMaybeUninit, StackPopJump,
 };
+use crate::transform::validate::equal_up_to_regions;
 use crate::util::storage::AlwaysLiveLocals;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -33,6 +34,8 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     pub machine: M,
 
     /// The results of the type checker, from rustc.
+    /// The span in this is the "root" of the evaluation, i.e., the const
+    /// we are evaluating (if this is CTFE).
     pub tcx: TyCtxtAt<'tcx>,
 
     /// Bounds in scope for polymorphic evaluations.
@@ -129,6 +132,10 @@ pub enum LocalValue<Tag = ()> {
 }
 
 impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
+    /// Read the local's value or error if the local is not yet live or not live anymore.
+    ///
+    /// Note: This may only be invoked from the `Machine::access_local` hook and not from
+    /// anywhere else. You may be invalidating machine invariants if you do!
     pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
             LocalValue::Dead => throw_ub!(DeadLocal),
@@ -141,6 +148,9 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
 
     /// Overwrite the local.  If the local can be overwritten in place, return a reference
     /// to do so; otherwise return the `MemPlace` to consult instead.
+    ///
+    /// Note: This may only be invoked from the `Machine::access_local_mut` hook and not from
+    /// anywhere else. You may be invalidating machine invariants if you do!
     pub fn access_mut(
         &mut self,
     ) -> InterpResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
@@ -171,15 +181,8 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
 
 impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// Return the `SourceInfo` of the current instruction.
-    pub fn current_source_info(&self) -> Option<mir::SourceInfo> {
-        self.loc.map(|loc| {
-            let block = &self.body.basic_blocks()[loc.block];
-            if loc.statement_index < block.statements.len() {
-                block.statements[loc.statement_index].source_info
-            } else {
-                block.terminator().source_info
-            }
-        })
+    pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
+        self.loc.map(|loc| self.body.source_info(loc))
     }
 }
 
@@ -209,7 +212,7 @@ where
     }
 }
 
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = InterpResult<'tcx, TyAndLayout<'tcx>>;
 
@@ -225,42 +228,27 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf for InterpCx<'mir, 'tcx, M> {
 /// This test should be symmetric, as it is primarily about layout compatibility.
 pub(super) fn mir_assign_valid_types<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
     src: TyAndLayout<'tcx>,
     dest: TyAndLayout<'tcx>,
 ) -> bool {
-    if src.ty == dest.ty {
-        // Equal types, all is good.
-        return true;
+    // Type-changing assignments can happen when subtyping is used. While
+    // all normal lifetimes are erased, higher-ranked types with their
+    // late-bound lifetimes are still around and can lead to type
+    // differences. So we compare ignoring lifetimes.
+    if equal_up_to_regions(tcx, param_env, src.ty, dest.ty) {
+        // Make sure the layout is equal, too -- just to be safe. Miri really
+        // needs layout equality. For performance reason we skip this check when
+        // the types are equal. Equal types *can* have different layouts when
+        // enum downcast is involved (as enum variants carry the type of the
+        // enum), but those should never occur in assignments.
+        if cfg!(debug_assertions) || src.ty != dest.ty {
+            assert_eq!(src.layout, dest.layout);
+        }
+        true
+    } else {
+        false
     }
-    if src.layout != dest.layout {
-        // Layout differs, definitely not equal.
-        // We do this here because Miri would *do the wrong thing* if we allowed layout-changing
-        // assignments.
-        return false;
-    }
-
-    // Type-changing assignments can happen for (at least) two reasons:
-    // 1. `&mut T` -> `&T` gets optimized from a reborrow to a mere assignment.
-    // 2. Subtyping is used. While all normal lifetimes are erased, higher-ranked types
-    //    with their late-bound lifetimes are still around and can lead to type differences.
-    // Normalize both of them away.
-    let normalize = |ty: Ty<'tcx>| {
-        ty.fold_with(&mut BottomUpFolder {
-            tcx,
-            // Normalize all references to immutable.
-            ty_op: |ty| match ty.kind {
-                ty::Ref(_, pointee, _) => tcx.mk_imm_ref(tcx.lifetimes.re_erased, pointee),
-                _ => ty,
-            },
-            // We just erase all late-bound lifetimes, but this is not fully correct (FIXME):
-            // lifetimes in invariant positions could matter (e.g. through associated types).
-            // We rely on the fact that layout was confirmed to be equal above.
-            lt_op: |_| tcx.lifetimes.re_erased,
-            // Leave consts unchanged.
-            ct_op: |ct| ct,
-        })
-    };
-    normalize(src.ty) == normalize(dest.ty)
 }
 
 /// Use the already known layout if given (but sanity check in debug mode),
@@ -268,6 +256,7 @@ pub(super) fn mir_assign_valid_types<'tcx>(
 #[cfg_attr(not(debug_assertions), inline(always))]
 pub(super) fn from_known_layout<'tcx>(
     tcx: TyCtxtAt<'tcx>,
+    param_env: ParamEnv<'tcx>,
     known_layout: Option<TyAndLayout<'tcx>>,
     compute: impl FnOnce() -> InterpResult<'tcx, TyAndLayout<'tcx>>,
 ) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
@@ -276,7 +265,7 @@ pub(super) fn from_known_layout<'tcx>(
         Some(known_layout) => {
             if cfg!(debug_assertions) {
                 let check_layout = compute()?;
-                if !mir_assign_valid_types(tcx.tcx, check_layout, known_layout) {
+                if !mir_assign_valid_types(tcx.tcx, param_env, check_layout, known_layout) {
                     span_bug!(
                         tcx.span,
                         "expected type differs from actual type.\nexpected: {:?}\nactual: {:?}",
@@ -292,14 +281,15 @@ pub(super) fn from_known_layout<'tcx>(
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn new(
-        tcx: TyCtxtAt<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        root_span: Span,
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
         memory_extra: M::MemoryExtra,
     ) -> Self {
         InterpCx {
             machine,
-            tcx,
+            tcx: tcx.at(root_span),
             param_env,
             memory: Memory::new(tcx, memory_extra),
             vtables: FxHashMap::default(),
@@ -307,9 +297,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn set_span(&mut self, span: Span) {
-        self.tcx.span = span;
-        self.memory.tcx.span = span;
+    pub fn cur_span(&self) -> Span {
+        self.stack()
+            .last()
+            .and_then(|f| f.current_source_info())
+            .map(|si| si.span)
+            .unwrap_or(self.tcx.span)
     }
 
     #[inline(always)]
@@ -392,7 +385,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(*self.tcx, self.param_env, DUMMY_SP)
+        ty.is_freeze(self.tcx, self.param_env)
     }
 
     pub fn load_mir(
@@ -401,24 +394,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
-        let did = instance.def_id();
-        if let Some(did) = did.as_local() {
-            if self.tcx.has_typeck_tables(did) {
-                if let Some(error_reported) = self.tcx.typeck_tables_of(did).tainted_by_errors {
+        let def = instance.with_opt_param();
+        if let Some(def) = def.as_local() {
+            if self.tcx.has_typeck_results(def.did) {
+                if let Some(error_reported) = self.tcx.typeck_opt_const_arg(def).tainted_by_errors {
                     throw_inval!(TypeckError(error_reported))
                 }
             }
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir(did)[promoted]);
+            return Ok(&self.tcx.promoted_mir_of_opt_const_arg(def)[promoted]);
         }
         match instance {
-            ty::InstanceDef::Item(def_id) => {
-                if self.tcx.is_mir_available(did) {
-                    Ok(self.tcx.optimized_mir(did))
+            ty::InstanceDef::Item(def) => {
+                if self.tcx.is_mir_available(def.did) {
+                    if let Some((did, param_did)) = def.as_const_arg() {
+                        Ok(self.tcx.optimized_mir_of_const_arg((did, param_did)))
+                    } else {
+                        Ok(self.tcx.optimized_mir(def.did))
+                    }
                 } else {
-                    throw_unsup!(NoMirFor(def_id))
+                    throw_unsup!(NoMirFor(def.did))
                 }
             }
             _ => Ok(self.tcx.instance_mir(instance)),
@@ -476,7 +473,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // have to support that case (mostly by skipping all caching).
         match frame.locals.get(local).and_then(|state| state.layout.get()) {
             None => {
-                let layout = from_known_layout(self.tcx, layout, || {
+                let layout = from_known_layout(self.tcx, self.param_env, layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty =
                         self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty);
@@ -537,7 +534,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if sized_size == Size::ZERO {
                             return Ok(None);
                         } else {
-                            bug!("Fields cannot be extern types, unless they are at offset 0")
+                            span_bug!(
+                                self.cur_span(),
+                                "Fields cannot be extern types, unless they are at offset 0"
+                            )
                         }
                     }
                 };
@@ -561,7 +561,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let size = size.align_to(align);
 
                 // Check if this brought us over the size limit.
-                if size.bytes() >= self.tcx.data_layout().obj_size_bound() {
+                if size.bytes() >= self.tcx.data_layout.obj_size_bound() {
                     throw_ub!(InvalidMeta("total size is bigger than largest supported object"));
                 }
                 Ok(Some((size, align)))
@@ -577,7 +577,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let elem = layout.field(self, 0)?;
 
                 // Make sure the slice is not too big.
-                let size = elem.size.checked_mul(len, &*self.tcx).ok_or_else(|| {
+                let size = elem.size.checked_mul(len, self).ok_or_else(|| {
                     err_ub!(InvalidMeta("slice is bigger than largest supported object"))
                 })?;
                 Ok(Some((size, elem.align.abi)))
@@ -585,7 +585,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             ty::Foreign(_) => Ok(None),
 
-            _ => bug!("size_and_align_of::<{:?}> not supported", layout.ty),
+            _ => span_bug!(self.cur_span(), "size_and_align_of::<{:?}> not supported", layout.ty),
         }
     }
     #[inline]
@@ -651,7 +651,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         M::after_stack_push(self)?;
         info!("ENTERING({}) {}", self.frame_idx(), self.frame().instance);
 
-        if self.stack().len() > self.tcx.sess.recursion_limit() {
+        if !self.tcx.sess.recursion_limit().value_within_limit(self.stack().len()) {
             throw_exhaust!(StackFrameLimitReached)
         } else {
             Ok(())

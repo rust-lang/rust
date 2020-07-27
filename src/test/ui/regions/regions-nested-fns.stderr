@@ -39,8 +39,8 @@ LL | |         if false { return ay; }
 LL | |         return z;
 LL | |     }));
    | |_____^
-   = note: expected  `&isize`
-              found  `&isize`
+   = note: expected `&isize`
+              found `&isize`
 
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
   --> $DIR/regions-nested-fns.rs:14:27

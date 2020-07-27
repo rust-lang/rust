@@ -76,7 +76,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
-        self.set_span(stmt.source_info.span);
 
         use rustc_middle::mir::StatementKind::*;
 
@@ -89,7 +88,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             SetDiscriminant { place, variant_index } => {
                 let dest = self.eval_place(**place)?;
-                self.write_discriminant_index(*variant_index, dest)?;
+                self.write_discriminant(*variant_index, dest)?;
             }
 
             // Mark locals as alive
@@ -141,6 +140,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         use rustc_middle::mir::Rvalue::*;
         match *rvalue {
+            ThreadLocalRef(did) => {
+                let id = M::thread_local_alloc_id(self, did)?;
+                let val = Scalar::Ptr(self.tag_global_base_pointer(id.into()));
+                self.write_scalar(val, dest)?;
+            }
+
             Use(ref operand) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
@@ -174,7 +179,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Aggregate(ref kind, ref operands) => {
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
-                        self.write_discriminant_index(variant_index, dest)?;
+                        self.write_discriminant(variant_index, dest)?;
                         if adt_def.is_enum() {
                             (self.place_downcast(dest, variant_index)?, active_field_index)
                         } else {
@@ -262,8 +267,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Discriminant(place) => {
                 let op = self.eval_place_to_op(place, None)?;
                 let discr_val = self.read_discriminant(op)?.0;
-                let size = dest.layout.size;
-                self.write_scalar(Scalar::from_uint(discr_val, size), dest)?;
+                self.write_scalar(discr_val, dest)?;
             }
         }
 
@@ -274,7 +278,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
-        self.set_span(terminator.source_info.span);
 
         self.eval_terminator(terminator)?;
         if !self.stack().is_empty() {

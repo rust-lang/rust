@@ -52,8 +52,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SuspiciousImpl => [SUSPICIOUS_ARITHMETIC_IMPL, SUSPICIOUS_OP_ASSIGN_IMPL]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let hir::ExprKind::Binary(binop, _, _) | hir::ExprKind::AssignOp(binop, ..) = expr.kind {
             match binop.node {
                 hir::BinOpKind::Eq
@@ -71,8 +71,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                 if let hir::Node::Expr(e) = cx.tcx.hir().get(parent_expr) {
                     match e.kind {
                         hir::ExprKind::Binary(..)
-                        | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
-                        | hir::ExprKind::Unary(hir::UnOp::UnNeg, _)
+                        | hir::ExprKind::Unary(hir::UnOp::UnNot | hir::UnOp::UnNeg, _)
                         | hir::ExprKind::AssignOp(..) => return,
                         _ => {},
                     }
@@ -148,7 +147,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
 }
 
 fn check_binop(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     binop: hir::BinOpKind,
     traits: &[&'static str],
@@ -185,14 +184,13 @@ struct BinaryExprVisitor {
     in_binary_expr: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for BinaryExprVisitor {
+impl<'tcx> Visitor<'tcx> for BinaryExprVisitor {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Binary(..)
-            | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
-            | hir::ExprKind::Unary(hir::UnOp::UnNeg, _)
+            | hir::ExprKind::Unary(hir::UnOp::UnNot | hir::UnOp::UnNeg, _)
             | hir::ExprKind::AssignOp(..) => self.in_binary_expr = true,
             _ => {},
         }

@@ -8,6 +8,7 @@
 //! extension traits of `std::os::$platform`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::OsString;
 use crate::fmt;
@@ -666,7 +667,8 @@ impl Read for File {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -711,7 +713,8 @@ impl Read for &File {
 
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+        // SAFETY: Read is guaranteed to work on uninitialized memory
+        unsafe { Initializer::nop() }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1033,8 +1036,16 @@ impl Metadata {
     /// [`is_dir`], and will be false for symlink metadata
     /// obtained from [`symlink_metadata`].
     ///
+    /// When the goal is simply to read from (or write to) the source, the most
+    /// reliable way to test the source can be read (or written to) is to open
+    /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
+    /// a Unix-like system for example. See [`File::open`] or
+    /// [`OpenOptions::open`] for more information.
+    ///
     /// [`is_dir`]: struct.Metadata.html#method.is_dir
     /// [`symlink_metadata`]: fn.symlink_metadata.html
+    /// [`File::open`]: struct.File.html#method.open
+    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
     ///
     /// # Examples
     ///
@@ -1307,8 +1318,16 @@ impl FileType {
     /// [`is_dir`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
     ///
+    /// When the goal is simply to read from (or write to) the source, the most
+    /// reliable way to test the source can be read (or written to) is to open
+    /// it. Only using `is_file` can break workflows like `diff <( prog_a )` on
+    /// a Unix-like system for example. See [`File::open`] or
+    /// [`OpenOptions::open`] for more information.
+    ///
     /// [`is_dir`]: struct.FileType.html#method.is_dir
     /// [`is_symlink`]: struct.FileType.html#method.is_symlink
+    /// [`File::open`]: struct.File.html#method.open
+    /// [`OpenOptions::open`]: struct.OpenOptions.html#method.open
     ///
     /// # Examples
     ///
@@ -1429,7 +1448,10 @@ impl DirEntry {
     /// Returns the metadata for the file that this entry points at.
     ///
     /// This function will not traverse symlinks if this entry points at a
-    /// symlink.
+    /// symlink. To traverse symlinks use [`fs::metadata`] or [`fs::File::metadata`].
+    ///
+    /// [`fs::metadata`]: fn.metadata.html
+    /// [`fs::File::metadata`]: struct.File.html#method.metadata
     ///
     /// # Platform-specific behavior
     ///

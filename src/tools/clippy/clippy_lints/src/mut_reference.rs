@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Detects giving a mutable reference to a function that only
+    /// **What it does:** Detects passing a mutable reference to a function that only
     /// requires an immutable reference.
     ///
     /// **Why is this bad?** The immutable reference rules out all other references
@@ -16,7 +16,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
+    /// // Bad
     /// my_vec.push(&mut value)
+    ///
+    /// // Good
+    /// my_vec.push(&value)
     /// ```
     pub UNNECESSARY_MUT_PASSED,
     style,
@@ -25,22 +29,22 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnnecessaryMutPassed => [UNNECESSARY_MUT_PASSED]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         match e.kind {
             ExprKind::Call(ref fn_expr, ref arguments) => {
                 if let ExprKind::Path(ref path) = fn_expr.kind {
                     check_arguments(
                         cx,
                         arguments,
-                        cx.tables.expr_ty(fn_expr),
+                        cx.typeck_results().expr_ty(fn_expr),
                         &rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false)),
                     );
                 }
             },
-            ExprKind::MethodCall(ref path, _, ref arguments) => {
-                let def_id = cx.tables.type_dependent_def_id(e.hir_id).unwrap();
-                let substs = cx.tables.node_substs(e.hir_id);
+            ExprKind::MethodCall(ref path, _, ref arguments, _) => {
+                let def_id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
+                let substs = cx.typeck_results().node_substs(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
                 check_arguments(cx, arguments, method_type, &path.ident.as_str())
             },
@@ -49,12 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
     }
 }
 
-fn check_arguments<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    arguments: &[Expr<'_>],
-    type_definition: Ty<'tcx>,
-    name: &str,
-) {
+fn check_arguments<'tcx>(cx: &LateContext<'tcx>, arguments: &[Expr<'_>], type_definition: Ty<'tcx>, name: &str) {
     match type_definition.kind {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();

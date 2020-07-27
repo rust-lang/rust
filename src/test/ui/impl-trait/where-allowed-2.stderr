@@ -1,10 +1,12 @@
-error[E0720]: opaque type expands to a recursive type
+error[E0720]: cannot resolve opaque type
   --> $DIR/where-allowed-2.rs:6:30
    |
 LL | fn in_adt_in_return() -> Vec<impl Debug> { panic!() }
-   |                              ^^^^^^^^^^ expands to a recursive type
+   |                              ^^^^^^^^^^    -------- this returned value is of `!` type
+   |                              |
+   |                              cannot resolve opaque type
    |
-   = note: type resolves to itself
+   = help: this error will resolve once the item's body returns a concrete type
 
 error: aborting due to previous error
 

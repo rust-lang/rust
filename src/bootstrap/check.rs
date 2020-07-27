@@ -1,15 +1,15 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
-use crate::cache::Interned;
 use crate::compile::{add_to_sysroot, run_cargo, rustc_cargo, std_cargo};
+use crate::config::TargetSelection;
 use crate::tool::{prepare_tool_cargo, SourceType};
 use crate::{Compiler, Mode};
 use std::path::PathBuf;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 fn args(kind: Kind) -> Vec<String> {
@@ -44,7 +44,13 @@ impl Step for Std {
         let target = self.target;
         let compiler = builder.compiler(0, builder.config.build);
 
-        let mut cargo = builder.cargo(compiler, Mode::Std, target, cargo_subcommand(builder.kind));
+        let mut cargo = builder.cargo(
+            compiler,
+            Mode::Std,
+            SourceType::InTree,
+            target,
+            cargo_subcommand(builder.kind),
+        );
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!("Checking std artifacts ({} -> {})", &compiler.host, target));
@@ -65,7 +71,7 @@ impl Step for Std {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
-    pub target: Interned<String>,
+    pub target: TargetSelection,
 }
 
 impl Step for Rustc {
@@ -92,8 +98,13 @@ impl Step for Rustc {
 
         builder.ensure(Std { target });
 
-        let mut cargo =
-            builder.cargo(compiler, Mode::Rustc, target, cargo_subcommand(builder.kind));
+        let mut cargo = builder.cargo(
+            compiler,
+            Mode::Rustc,
+            SourceType::InTree,
+            target,
+            cargo_subcommand(builder.kind),
+        );
         rustc_cargo(builder, &mut cargo, target);
 
         builder.info(&format!("Checking compiler artifacts ({} -> {})", &compiler.host, target));
@@ -113,10 +124,10 @@ impl Step for Rustc {
 }
 
 macro_rules! tool_check_step {
-    ($name:ident, $path:expr) => {
+    ($name:ident, $path:expr, $source_type:expr) => {
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
-            pub target: Interned<String>,
+            pub target: TargetSelection,
         }
 
         impl Step for $name {
@@ -145,15 +156,15 @@ macro_rules! tool_check_step {
                     target,
                     cargo_subcommand(builder.kind),
                     $path,
-                    SourceType::InTree,
+                    $source_type,
                     &[],
                 );
 
                 println!(
                     "Checking {} artifacts ({} -> {})",
                     stringify!($name).to_lowercase(),
-                    &compiler.host,
-                    target
+                    &compiler.host.triple,
+                    target.triple
                 );
                 run_cargo(
                     builder,
@@ -173,7 +184,7 @@ macro_rules! tool_check_step {
                 fn stamp(
                     builder: &Builder<'_>,
                     compiler: Compiler,
-                    target: Interned<String>,
+                    target: TargetSelection,
                 ) -> PathBuf {
                     builder
                         .cargo_out(compiler, Mode::ToolRustc, target)
@@ -184,17 +195,21 @@ macro_rules! tool_check_step {
     };
 }
 
-tool_check_step!(Rustdoc, "src/tools/rustdoc");
-tool_check_step!(Clippy, "src/tools/clippy");
+tool_check_step!(Rustdoc, "src/tools/rustdoc", SourceType::InTree);
+// Clippy is a hybrid. It is an external tool, but uses a git subtree instead
+// of a submodule. Since the SourceType only drives the deny-warnings
+// behavior, treat it as in-tree so that any new warnings in clippy will be
+// rejected.
+tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>) -> PathBuf {
+fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
     builder.cargo_out(compiler, Mode::Std, target).join(".libstd-check.stamp")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
 /// compiler for the specified target.
-fn librustc_stamp(builder: &Builder<'_>, compiler: Compiler, target: Interned<String>) -> PathBuf {
+fn librustc_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
     builder.cargo_out(compiler, Mode::Rustc, target).join(".librustc-check.stamp")
 }

@@ -1,13 +1,9 @@
-use crate::utils::{
-    constants, snippet_opt, snippet_with_applicability, span_lint, span_lint_and_help, span_lint_and_sugg,
-    span_lint_and_then,
-};
-use if_chain::if_chain;
+use crate::utils::{constants, snippet_opt, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use rustc_ast::ast::{
-    BindingMode, Block, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, Mutability,
-    NodeId, Pat, PatKind, StmtKind, UnOp,
+    BindingMode, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, Mutability,
+    NodeId, Pat, PatKind, UnOp,
 };
-use rustc_ast::visit::{walk_expr, FnKind, Visitor};
+use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
@@ -59,29 +55,15 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// fn foo(a: i32, _a: i32) {}
+    ///
+    /// // Good
+    /// fn bar(a: i32, _b: i32) {}
     /// ```
     pub DUPLICATE_UNDERSCORE_ARGUMENT,
     style,
     "function arguments having names which only differ by an underscore"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Detects closures called in the same expression where they
-    /// are defined.
-    ///
-    /// **Why is this bad?** It is unnecessarily adding to the expression's
-    /// complexity.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```rust,ignore
-    /// (|| 42)()
-    /// ```
-    pub REDUNDANT_CLOSURE_CALL,
-    complexity,
-    "throwaway closures called in the expression they are defined"
 }
 
 declare_clippy_lint! {
@@ -112,7 +94,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// let y = 0x1a9BAcD;
+    ///
+    /// // Good
+    /// let y = 0x1A9BACD;
     /// ```
     pub MIXED_CASE_HEX_LITERALS,
     style,
@@ -129,7 +115,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// let y = 123832i32;
+    ///
+    /// // Good
+    /// let y = 123832_i32;
     /// ```
     pub UNSEPARATED_LITERAL_SUFFIX,
     pedantic,
@@ -207,9 +197,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # let v = Some("abc");
     ///
+    /// // Bad
     /// match v {
     ///     Some(x) => (),
-    ///     y @ _ => (), // easier written as `y`,
+    ///     y @ _ => (),
+    /// }
+    ///
+    /// // Good
+    /// match v {
+    ///     Some(x) => (),
+    ///     y => (),
     /// }
     /// ```
     pub REDUNDANT_PATTERN,
@@ -235,16 +232,13 @@ declare_clippy_lint! {
     /// # struct TupleStruct(u32, u32, u32);
     /// # let t = TupleStruct(1, 2, 3);
     ///
+    /// // Bad
     /// match t {
     ///     TupleStruct(0, .., _) => (),
     ///     _ => (),
     /// }
-    /// ```
-    /// can be written as
-    /// ```rust
-    /// # struct TupleStruct(u32, u32, u32);
-    /// # let t = TupleStruct(1, 2, 3);
     ///
+    /// // Good
     /// match t {
     ///     TupleStruct(0, ..) => (),
     ///     _ => (),
@@ -258,7 +252,6 @@ declare_clippy_lint! {
 declare_lint_pass!(MiscEarlyLints => [
     UNNEEDED_FIELD_PATTERN,
     DUPLICATE_UNDERSCORE_ARGUMENT,
-    REDUNDANT_CLOSURE_CALL,
     DOUBLE_NEG,
     MIXED_CASE_HEX_LITERALS,
     UNSEPARATED_LITERAL_SUFFIX,
@@ -267,30 +260,6 @@ declare_lint_pass!(MiscEarlyLints => [
     REDUNDANT_PATTERN,
     UNNEEDED_WILDCARD_PATTERN,
 ]);
-
-// Used to find `return` statements or equivalents e.g., `?`
-struct ReturnVisitor {
-    found_return: bool,
-}
-
-impl ReturnVisitor {
-    #[must_use]
-    fn new() -> Self {
-        Self { found_return: false }
-    }
-}
-
-impl<'ast> Visitor<'ast> for ReturnVisitor {
-    fn visit_expr(&mut self, ex: &'ast Expr) {
-        if let ExprKind::Ret(_) = ex.kind {
-            self.found_return = true;
-        } else if let ExprKind::Try(_) = ex.kind {
-            self.found_return = true;
-        }
-
-        walk_expr(self, ex)
-    }
-}
 
 impl EarlyLintPass for MiscEarlyLints {
     fn check_generics(&mut self, cx: &EarlyContext<'_>, gen: &Generics) {
@@ -379,7 +348,7 @@ impl EarlyLintPass for MiscEarlyLints {
             let left_binding = match left {
                 BindingMode::ByRef(Mutability::Mut) => "ref mut ",
                 BindingMode::ByRef(Mutability::Not) => "ref ",
-                _ => "",
+                BindingMode::ByValue(..) => "",
             };
 
             if let PatKind::Wild = right.kind {
@@ -433,30 +402,6 @@ impl EarlyLintPass for MiscEarlyLints {
             return;
         }
         match expr.kind {
-            ExprKind::Call(ref paren, _) => {
-                if let ExprKind::Paren(ref closure) = paren.kind {
-                    if let ExprKind::Closure(_, _, _, ref decl, ref block, _) = closure.kind {
-                        let mut visitor = ReturnVisitor::new();
-                        visitor.visit_expr(block);
-                        if !visitor.found_return {
-                            span_lint_and_then(
-                                cx,
-                                REDUNDANT_CLOSURE_CALL,
-                                expr.span,
-                                "Try not to call a closure in the expression where it is declared.",
-                                |diag| {
-                                    if decl.inputs.is_empty() {
-                                        let mut app = Applicability::MachineApplicable;
-                                        let hint =
-                                            snippet_with_applicability(cx, block.span, "..", &mut app).into_owned();
-                                        diag.span_suggestion(expr.span, "Try doing something like: ", hint, app);
-                                    }
-                                },
-                            );
-                        }
-                    }
-                }
-            },
             ExprKind::Unary(UnOp::Neg, ref inner) => {
                 if let ExprKind::Unary(UnOp::Neg, _) = inner.kind {
                     span_lint(
@@ -469,31 +414,6 @@ impl EarlyLintPass for MiscEarlyLints {
             },
             ExprKind::Lit(ref lit) => Self::check_lit(cx, lit),
             _ => (),
-        }
-    }
-
-    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &Block) {
-        for w in block.stmts.windows(2) {
-            if_chain! {
-                if let StmtKind::Local(ref local) = w[0].kind;
-                if let Option::Some(ref t) = local.init;
-                if let ExprKind::Closure(..) = t.kind;
-                if let PatKind::Ident(_, ident, _) = local.pat.kind;
-                if let StmtKind::Semi(ref second) = w[1].kind;
-                if let ExprKind::Assign(_, ref call, _) = second.kind;
-                if let ExprKind::Call(ref closure, _) = call.kind;
-                if let ExprKind::Path(_, ref path) = closure.kind;
-                then {
-                    if ident == path.segments[0].ident {
-                        span_lint(
-                            cx,
-                            REDUNDANT_CLOSURE_CALL,
-                            second.span,
-                            "Closure called just once immediately after it was declared",
-                        );
-                    }
-                }
-            }
         }
     }
 }
@@ -621,28 +541,22 @@ fn check_unneeded_wildcard_pattern(cx: &EarlyContext<'_>, pat: &Pat) {
             );
         }
 
-        #[allow(clippy::trivially_copy_pass_by_ref)]
-        fn is_wild<P: std::ops::Deref<Target = Pat>>(pat: &&P) -> bool {
-            if let PatKind::Wild = pat.kind {
-                true
-            } else {
-                false
-            }
-        }
-
         if let Some(rest_index) = patterns.iter().position(|pat| pat.is_rest()) {
             if let Some((left_index, left_pat)) = patterns[..rest_index]
                 .iter()
                 .rev()
-                .take_while(is_wild)
+                .take_while(|pat| matches!(pat.kind, PatKind::Wild))
                 .enumerate()
                 .last()
             {
                 span_lint(cx, left_pat.span.until(patterns[rest_index].span), left_index == 0);
             }
 
-            if let Some((right_index, right_pat)) =
-                patterns[rest_index + 1..].iter().take_while(is_wild).enumerate().last()
+            if let Some((right_index, right_pat)) = patterns[rest_index + 1..]
+                .iter()
+                .take_while(|pat| matches!(pat.kind, PatKind::Wild))
+                .enumerate()
+                .last()
             {
                 span_lint(
                     cx,

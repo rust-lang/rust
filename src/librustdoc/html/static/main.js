@@ -91,6 +91,7 @@ function defocusSearchBar() {
 
     var disableShortcuts = getCurrentValue("rustdoc-disable-shortcuts") === "true";
     var search_input = getSearchInput();
+    var searchTimeout = null;
 
     // On the search screen, so you remain on the last tab you opened.
     //
@@ -99,12 +100,23 @@ function defocusSearchBar() {
     // 2 for "In Return Types"
     var currentTab = 0;
 
+    var mouseMovedAfterSearch = true;
+
     var titleBeforeSearch = document.title;
 
+    function clearInputTimeout() {
+        if (searchTimeout !== null) {
+            clearTimeout(searchTimeout);
+            searchTimeout = null;
+        }
+    }
+
     function getPageId() {
-        var id = document.location.href.split("#")[1];
-        if (id) {
-            return id.split("?")[0].split("&")[0];
+        if (window.location.hash) {
+            var tmp = window.location.hash.replace(/^#/, "");
+            if (tmp.length > 0) {
+                return tmp;
+            }
         }
         return null;
     }
@@ -154,6 +166,7 @@ function defocusSearchBar() {
         }
         addClass(main, "hidden");
         removeClass(search, "hidden");
+        mouseMovedAfterSearch = false;
     }
 
     function hideSearchResults(search) {
@@ -355,6 +368,7 @@ function defocusSearchBar() {
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
+            clearInputTimeout();
             ev.preventDefault();
             hideSearchResults(search);
             document.title = titleBeforeSearch;
@@ -414,6 +428,12 @@ function defocusSearchBar() {
 
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
+
+    function resetMouseMoved(ev) {
+        mouseMovedAfterSearch = true;
+    }
+
+    document.addEventListener("mousemove", resetMouseMoved);
 
     var handleSourceHighlight = (function() {
         var prev_line_id = 0;
@@ -997,12 +1017,13 @@ function defocusSearchBar() {
                 var aliases = [];
                 var crateAliases = [];
                 var i;
-                if (filterCrates !== undefined &&
-                        ALIASES[filterCrates] &&
-                        ALIASES[filterCrates][query.search]) {
-                    for (i = 0; i < ALIASES[crate][query.search].length; ++i) {
-                        aliases.push(
-                            createAliasFromItem(searchIndex[ALIASES[filterCrates][query.search]]));
+                if (filterCrates !== undefined) {
+                    if (ALIASES[filterCrates] && ALIASES[filterCrates][query.search]) {
+                        for (i = 0; i < ALIASES[filterCrates][query.search].length; ++i) {
+                            aliases.push(
+                                createAliasFromItem(
+                                    searchIndex[ALIASES[filterCrates][query.search][i]]));
+                        }
                     }
                 } else {
                     Object.keys(ALIASES).forEach(function(crate) {
@@ -1344,20 +1365,22 @@ function defocusSearchBar() {
                 }
             };
             var mouseover_func = function(e) {
-                var el = e.target;
-                // to retrieve the real "owner" of the event.
-                while (el.tagName !== "TR") {
-                    el = el.parentNode;
-                }
-                clearTimeout(hoverTimeout);
-                hoverTimeout = setTimeout(function() {
-                    onEachLazy(document.getElementsByClassName("search-results"), function(e) {
-                        onEachLazy(e.getElementsByClassName("result"), function(i_e) {
-                            removeClass(i_e, "highlighted");
+                if (mouseMovedAfterSearch) {
+                    var el = e.target;
+                    // to retrieve the real "owner" of the event.
+                    while (el.tagName !== "TR") {
+                        el = el.parentNode;
+                    }
+                    clearTimeout(hoverTimeout);
+                    hoverTimeout = setTimeout(function() {
+                        onEachLazy(document.getElementsByClassName("search-results"), function(e) {
+                            onEachLazy(e.getElementsByClassName("result"), function(i_e) {
+                                removeClass(i_e, "highlighted");
+                            });
                         });
-                    });
-                    addClass(el, "highlighted");
-                }, 20);
+                        addClass(el, "highlighted");
+                    }, 20);
+                }
             };
             onEachLazy(document.getElementsByClassName("search-results"), function(e) {
                 onEachLazy(e.getElementsByClassName("result"), function(i_e) {
@@ -1387,6 +1410,7 @@ function defocusSearchBar() {
 
                     addClass(actives[currentTab][0].previousElementSibling, "highlighted");
                     removeClass(actives[currentTab][0], "highlighted");
+                    e.preventDefault();
                 } else if (e.which === 40) { // down
                     if (!actives[currentTab].length) {
                         var results = document.getElementById("results").childNodes;
@@ -1400,6 +1424,7 @@ function defocusSearchBar() {
                         addClass(actives[currentTab][0].nextElementSibling, "highlighted");
                         removeClass(actives[currentTab][0], "highlighted");
                     }
+                    e.preventDefault();
                 } else if (e.which === 13) { // return
                     if (actives[currentTab].length) {
                         document.location.href =
@@ -1810,9 +1835,8 @@ function defocusSearchBar() {
         }
 
         function startSearch() {
-            var searchTimeout;
             var callback = function() {
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 if (search_input.value.length === 0) {
                     if (browserSupportsHistoryApi()) {
                         history.replaceState("", window.currentCrate + " - Rust", "?search=");
@@ -1826,7 +1850,7 @@ function defocusSearchBar() {
             search_input.oninput = callback;
             document.getElementsByClassName("search-form")[0].onsubmit = function(e) {
                 e.preventDefault();
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 search();
             };
             search_input.onchange = function(e) {
@@ -1835,7 +1859,7 @@ function defocusSearchBar() {
                     return;
                 }
                 // Do NOT e.preventDefault() here. It will prevent pasting.
-                clearTimeout(searchTimeout);
+                clearInputTimeout();
                 // zero-timeout necessary here because at the time of event handler execution the
                 // pasted content is not in the input field yet. Shouldn’t make any difference for
                 // change, though.
@@ -2219,8 +2243,7 @@ function defocusSearchBar() {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
 
-            if ((!relatedDoc && hasClass(docblock, "docblock") === false) ||
-                (pageId && document.getElementById(pageId))) {
+            if (!relatedDoc && hasClass(docblock, "docblock") === false) {
                 return;
             }
 
@@ -2340,6 +2363,7 @@ function defocusSearchBar() {
     (function() {
         var toggle = createSimpleToggle(false);
         var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
+        var hideImplementors = getCurrentValue("rustdoc-auto-collapse-implementors") !== "false";
         var pageId = getPageId();
 
         var func = function(e) {
@@ -2366,8 +2390,16 @@ function defocusSearchBar() {
             if (!next) {
                 return;
             }
-            if (next.getElementsByClassName("method").length > 0 && hasClass(e, "impl")) {
-                insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
+            if (hasClass(e, "impl") &&
+                (next.getElementsByClassName("method").length > 0 ||
+                 next.getElementsByClassName("associatedconstant").length > 0)) {
+                var newToggle = toggle.cloneNode(true);
+                insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
+                // In case the option "auto-collapse implementors" is not set to false, we collapse
+                // all implementors.
+                if (hideImplementors === true && e.parentNode.id === "implementors-list") {
+                    collapseDocs(newToggle, "hide", pageId);
+                }
             }
         };
 
@@ -2527,6 +2559,13 @@ function defocusSearchBar() {
 
         onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
         onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
+        var pageId = getPageId();
+
+        autoCollapse(pageId, getCurrentValue("rustdoc-collapse") === "true");
+
+        if (pageId !== null) {
+            expandSection(pageId);
+        }
     }());
 
     function createToggleWrapper(tog) {
@@ -2597,6 +2636,13 @@ function defocusSearchBar() {
         });
     }());
 
+    onEachLazy(document.getElementsByClassName("important-traits"), function(e) {
+        e.onclick = function() {
+            this.getElementsByClassName('important-traits-tooltiptext')[0]
+                .classList.toggle("force-tooltip");
+        };
+    });
+
     // In the search display, allows to switch between tabs.
     function printTab(nb) {
         if (nb === 0 || nb === 1 || nb === 2) {
@@ -2661,12 +2707,6 @@ function defocusSearchBar() {
     window.onresize = function() {
         hideSidebar();
     };
-
-    autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
-
-    if (window.location.hash && window.location.hash.length > 0) {
-        expandSection(window.location.hash.replace(/^#/, ""));
-    }
 
     if (main) {
         onEachLazy(main.getElementsByClassName("loading-content"), function(e) {

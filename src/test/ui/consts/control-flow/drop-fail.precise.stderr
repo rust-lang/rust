@@ -1,0 +1,15 @@
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:8:9
+   |
+LL |     let x = Some(Vec::new());
+   |         ^ constants cannot evaluate destructors
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/drop-fail.rs:39:9
+   |
+LL |     let mut tmp = None;
+   |         ^^^^^^^ constants cannot evaluate destructors
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

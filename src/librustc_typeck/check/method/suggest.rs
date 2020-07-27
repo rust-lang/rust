@@ -17,7 +17,7 @@ use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::{
     self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{source_map, FileName, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::Obligation;
@@ -158,9 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let path = self.tcx.def_path_str(trait_ref.def_id);
 
                             let ty = match item.kind {
-                                ty::AssocKind::Const
-                                | ty::AssocKind::Type
-                                | ty::AssocKind::OpaqueTy => rcvr_ty,
+                                ty::AssocKind::Const | ty::AssocKind::Type => rcvr_ty,
                                 ty::AssocKind::Fn => self
                                     .tcx
                                     .fn_sig(item.def_id)
@@ -610,7 +608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::Adt(def, _) => bound_spans.push((def_span(def.did), msg)),
                             // Point at the trait object that couldn't satisfy the bound.
                             ty::Dynamic(preds, _) => {
-                                for pred in *preds.skip_binder() {
+                                for pred in preds.skip_binder() {
                                     match pred {
                                         ty::ExistentialPredicate::Trait(tr) => {
                                             bound_spans.push((def_span(tr.def_id), msg.clone()))
@@ -731,7 +729,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let adt_def = actual.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggestion) = lev_distance::find_best_match_for_name(
                         adt_def.variants.iter().map(|s| &s.ident.name),
-                        &item_name.as_str(),
+                        item_name.name,
                         None,
                     ) {
                         err.span_suggestion(
@@ -745,7 +743,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let mut fallback_span = true;
                 let msg = "remove this method call";
-                if item_name.as_str() == "as_str" && actual.peel_refs().is_str() {
+                if item_name.name == sym::as_str && actual.peel_refs().is_str() {
                     if let SelfSource::MethodCall(expr) = source {
                         let call_expr =
                             self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
@@ -939,6 +937,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // legal to implement.
         let mut candidates = all_traits(self.tcx)
             .into_iter()
+            // Don't issue suggestions for unstable traits since they're
+            // unlikely to be implementable anyway
+            .filter(|info| match self.tcx.lookup_stability(info.def_id) {
+                Some(attr) => attr.level.is_stable(),
+                None => true,
+            })
             .filter(|info| {
                 // We approximate the coherence rules to only suggest
                 // traits that are legal to implement by requiring that
@@ -1039,24 +1043,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             // Obtain the span for `param` and use it for a structured suggestion.
             let mut suggested = false;
-            if let (Some(ref param), Some(ref table)) = (param_type, self.in_progress_tables) {
+            if let (Some(ref param), Some(ref table)) =
+                (param_type, self.in_progress_typeck_results)
+            {
                 let table_owner = table.borrow().hir_owner;
-                if let Some(table_owner) = table_owner {
-                    let generics = self.tcx.generics_of(table_owner.to_def_id());
-                    let type_param = generics.type_param(param, self.tcx);
-                    let hir = &self.tcx.hir();
-                    if let Some(def_id) = type_param.def_id.as_local() {
-                        let id = hir.as_local_hir_id(def_id);
-                        // Get the `hir::Param` to verify whether it already has any bounds.
-                        // We do this to avoid suggesting code that ends up as `T: FooBar`,
-                        // instead we suggest `T: Foo + Bar` in that case.
-                        match hir.get(id) {
-                            Node::GenericParam(ref param) => {
-                                let mut impl_trait = false;
-                                let has_bounds = if let hir::GenericParamKind::Type {
-                                    synthetic: Some(_),
-                                    ..
-                                } = &param.kind
+                let generics = self.tcx.generics_of(table_owner.to_def_id());
+                let type_param = generics.type_param(param, self.tcx);
+                let hir = &self.tcx.hir();
+                if let Some(def_id) = type_param.def_id.as_local() {
+                    let id = hir.as_local_hir_id(def_id);
+                    // Get the `hir::Param` to verify whether it already has any bounds.
+                    // We do this to avoid suggesting code that ends up as `T: FooBar`,
+                    // instead we suggest `T: Foo + Bar` in that case.
+                    match hir.get(id) {
+                        Node::GenericParam(ref param) => {
+                            let mut impl_trait = false;
+                            let has_bounds =
+                                if let hir::GenericParamKind::Type { synthetic: Some(_), .. } =
+                                    &param.kind
                                 {
                                     // We've found `fn foo(x: impl Trait)` instead of
                                     // `fn foo<T>(x: T)`. We want to suggest the correct
@@ -1067,64 +1071,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     param.bounds.get(0)
                                 };
-                                let sp = hir.span(id);
-                                let sp = if let Some(first_bound) = has_bounds {
-                                    // `sp` only covers `T`, change it so that it covers
-                                    // `T:` when appropriate
-                                    sp.until(first_bound.span())
-                                } else {
-                                    sp
-                                };
-                                let trait_def_ids: FxHashSet<DefId> = param
-                                    .bounds
-                                    .iter()
-                                    .filter_map(|bound| Some(bound.trait_ref()?.trait_def_id()?))
-                                    .collect();
-                                if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
-                                    err.span_suggestions(
-                                        sp,
-                                        &message(format!(
-                                            "restrict type parameter `{}` with",
-                                            param.name.ident(),
-                                        )),
-                                        candidates.iter().map(|t| {
-                                            format!(
-                                                "{}{} {}{}",
-                                                param.name.ident(),
-                                                if impl_trait { " +" } else { ":" },
-                                                self.tcx.def_path_str(t.def_id),
-                                                if has_bounds.is_some() { " + " } else { "" },
-                                            )
-                                        }),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
-                                suggested = true;
-                            }
-                            Node::Item(hir::Item {
-                                kind: hir::ItemKind::Trait(.., bounds, _),
-                                ident,
-                                ..
-                            }) => {
-                                let (sp, sep, article) = if bounds.is_empty() {
-                                    (ident.span.shrink_to_hi(), ":", "a")
-                                } else {
-                                    (bounds.last().unwrap().span().shrink_to_hi(), " +", "another")
-                                };
+                            let sp = hir.span(id);
+                            let sp = if let Some(first_bound) = has_bounds {
+                                // `sp` only covers `T`, change it so that it covers
+                                // `T:` when appropriate
+                                sp.until(first_bound.span())
+                            } else {
+                                sp
+                            };
+                            let trait_def_ids: FxHashSet<DefId> = param
+                                .bounds
+                                .iter()
+                                .filter_map(|bound| Some(bound.trait_ref()?.trait_def_id()?))
+                                .collect();
+                            if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
                                 err.span_suggestions(
                                     sp,
-                                    &message(format!("add {} supertrait for", article)),
+                                    &message(format!(
+                                        "restrict type parameter `{}` with",
+                                        param.name.ident(),
+                                    )),
                                     candidates.iter().map(|t| {
-                                        format!("{} {}", sep, self.tcx.def_path_str(t.def_id),)
+                                        format!(
+                                            "{}{} {}{}",
+                                            param.name.ident(),
+                                            if impl_trait { " +" } else { ":" },
+                                            self.tcx.def_path_str(t.def_id),
+                                            if has_bounds.is_some() { " + " } else { "" },
+                                        )
                                     }),
                                     Applicability::MaybeIncorrect,
                                 );
-                                suggested = true;
                             }
-                            _ => {}
+                            suggested = true;
                         }
+                        Node::Item(hir::Item {
+                            kind: hir::ItemKind::Trait(.., bounds, _),
+                            ident,
+                            ..
+                        }) => {
+                            let (sp, sep, article) = if bounds.is_empty() {
+                                (ident.span.shrink_to_hi(), ":", "a")
+                            } else {
+                                (bounds.last().unwrap().span().shrink_to_hi(), " +", "another")
+                            };
+                            err.span_suggestions(
+                                sp,
+                                &message(format!("add {} supertrait for", article)),
+                                candidates.iter().map(|t| {
+                                    format!("{} {}", sep, self.tcx.def_path_str(t.def_id),)
+                                }),
+                                Applicability::MaybeIncorrect,
+                            );
+                            suggested = true;
+                        }
+                        _ => {}
                     }
-                };
+                }
             }
 
             if !suggested {
@@ -1297,7 +1300,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
     traits
 }
 
-pub fn provide(providers: &mut ty::query::Providers<'_>) {
+pub fn provide(providers: &mut ty::query::Providers) {
     providers.all_traits = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         &tcx.arena.alloc(compute_all_traits(tcx))[..]

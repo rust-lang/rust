@@ -154,38 +154,6 @@ impl ItemType {
             ItemType::TraitAlias => "traitalias",
         }
     }
-
-    pub fn name_space(&self) -> &'static str {
-        match *self {
-            ItemType::Struct
-            | ItemType::Union
-            | ItemType::Enum
-            | ItemType::Module
-            | ItemType::Typedef
-            | ItemType::Trait
-            | ItemType::Primitive
-            | ItemType::AssocType
-            | ItemType::OpaqueTy
-            | ItemType::TraitAlias
-            | ItemType::ForeignType => NAMESPACE_TYPE,
-
-            ItemType::ExternCrate
-            | ItemType::Import
-            | ItemType::Function
-            | ItemType::Static
-            | ItemType::Impl
-            | ItemType::TyMethod
-            | ItemType::Method
-            | ItemType::StructField
-            | ItemType::Variant
-            | ItemType::Constant
-            | ItemType::AssocConst => NAMESPACE_VALUE,
-
-            ItemType::Macro | ItemType::ProcAttribute | ItemType::ProcDerive => NAMESPACE_MACRO,
-
-            ItemType::Keyword => NAMESPACE_KEYWORD,
-        }
-    }
 }
 
 impl fmt::Display for ItemType {
@@ -193,8 +161,3 @@ impl fmt::Display for ItemType {
         write!(f, "{}", self.as_str())
     }
 }
-
-pub const NAMESPACE_TYPE: &str = "t";
-pub const NAMESPACE_VALUE: &str = "v";
-pub const NAMESPACE_MACRO: &str = "m";
-pub const NAMESPACE_KEYWORD: &str = "k";

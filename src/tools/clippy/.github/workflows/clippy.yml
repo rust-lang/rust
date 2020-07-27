@@ -49,7 +49,7 @@ jobs:
       run: cargo update
 
     - name: Cache cargo dir
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
         path: ~/.cargo
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-${{ hashFiles('Cargo.lock') }}

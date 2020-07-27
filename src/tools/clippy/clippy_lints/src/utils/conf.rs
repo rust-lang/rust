@@ -106,8 +106,8 @@ macro_rules! define_Conf {
 
 pub use self::helpers::Conf;
 define_Conf! {
-    /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about
-    (blacklisted_names, "blacklisted_names": Vec<String>, ["foo", "bar", "baz", "quux"].iter().map(ToString::to_string).collect()),
+    /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
+    (blacklisted_names, "blacklisted_names": Vec<String>, ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
     /// Lint: COGNITIVE_COMPLEXITY. The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold, "cognitive_complexity_threshold": u64, 25),
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.
@@ -120,10 +120,12 @@ define_Conf! {
         "GPLv2", "GPLv3",
         "GitHub", "GitLab",
         "IPv4", "IPv6",
-        "JavaScript",
+        "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript",
         "NaN", "NaNs",
         "OAuth",
-        "OpenGL", "OpenSSH", "OpenSSL", "OpenStreetMap",
+        "OCaml",
+        "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap",
+        "TensorFlow",
         "TrueType",
         "iOS", "macOS",
         "TeX", "LaTeX", "BibTeX", "BibLaTeX",
@@ -154,6 +156,8 @@ define_Conf! {
     (array_size_threshold, "array_size_threshold": u64, 512_000),
     /// Lint: VEC_BOX. The size of the boxed type in bytes, where boxing in a `Vec` is allowed
     (vec_box_size_threshold, "vec_box_size_threshold": u64, 4096),
+    /// Lint: TYPE_REPETITION_IN_BOUNDS. The maximum number of bounds a trait can have to be linted
+    (max_trait_bounds, "max_trait_bounds": u64, 3),
     /// Lint: STRUCT_EXCESSIVE_BOOLS. The maximum number of bools a struct can have
     (max_struct_bools, "max_struct_bools": u64, 3),
     /// Lint: FN_PARAMS_EXCESSIVE_BOOLS. The maximum number of bools function parameters can have

@@ -1,7 +1,7 @@
 // run-pass
 
 #![feature(marker_trait_attr)]
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 #[marker]
 trait MyMarker {}

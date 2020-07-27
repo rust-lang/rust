@@ -269,6 +269,12 @@ function runSearch(query, expected, index, loaded, loadedFile, queryName) {
             break;
         }
         var entry = expected[key];
+
+        if (exact_check == true && entry.length !== results[key].length) {
+            error_text.push(queryName + "==> Expected exactly " + entry.length +
+                            " results but found " + results[key].length + " in '" + key + "'");
+        }
+
         var prev_pos = -1;
         for (var i = 0; i < entry.length; ++i) {
             var entry_pos = lookForEntry(entry[i], results[key]);
@@ -307,8 +313,11 @@ function checkResult(error_text, loadedFile, displaySuccess) {
 }
 
 function runChecks(testFile, loaded, index) {
-    var loadedFile = loadContent(
-        readFile(testFile) + 'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;');
+    var testFileContent = readFile(testFile) + 'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;';
+    if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
+        testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
+    }
+    var loadedFile = loadContent(testFileContent);
 
     const expected = loadedFile.EXPECTED;
     const query = loadedFile.QUERY;

@@ -25,31 +25,47 @@ declare_clippy_lint! {
     ///     BattenbergCake,
     /// }
     /// ```
+    /// Could be written as:
+    /// ```rust
+    /// enum Cake {
+    ///     BlackForest,
+    ///     Hummingbird,
+    ///     Battenberg,
+    /// }
+    /// ```
     pub ENUM_VARIANT_NAMES,
     style,
     "enums where all variants share a prefix/postfix"
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Detects enumeration variants that are prefixed or suffixed
-    /// by the same characters.
+    /// **What it does:** Detects public enumeration variants that are
+    /// prefixed or suffixed by the same characters.
     ///
-    /// **Why is this bad?** Enumeration variant names should specify their variant,
+    /// **Why is this bad?** Public enumeration variant names should specify their variant,
     /// not repeat the enumeration name.
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust
-    /// enum Cake {
+    /// pub enum Cake {
     ///     BlackForestCake,
     ///     HummingbirdCake,
     ///     BattenbergCake,
     /// }
     /// ```
+    /// Could be written as:
+    /// ```rust
+    /// pub enum Cake {
+    ///     BlackForest,
+    ///     Hummingbird,
+    ///     Battenberg,
+    /// }
+    /// ```
     pub PUB_ENUM_VARIANT_NAMES,
     pedantic,
-    "enums where all variants share a prefix/postfix"
+    "public enums where all variants share a prefix/postfix"
 }
 
 declare_clippy_lint! {
@@ -64,6 +80,12 @@ declare_clippy_lint! {
     /// ```rust
     /// mod cake {
     ///     struct BlackForestCake;
+    /// }
+    /// ```
+    /// Could be written as:
+    /// ```rust
+    /// mod cake {
+    ///     struct BlackForest;
     /// }
     /// ```
     pub MODULE_NAME_REPETITIONS,

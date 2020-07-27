@@ -10,7 +10,7 @@ use rustc_span::source_map::Span;
 declare_clippy_lint! {
     /// **What it does:** Checks for explicit `deref()` or `deref_mut()` method calls.
     ///
-    /// **Why is this bad?** Derefencing by `&*x` or `&mut *x` is clearer and more concise,
+    /// **Why is this bad?** Dereferencing by `&*x` or `&mut *x` is clearer and more concise,
     /// when not part of a method chain.
     ///
     /// **Example:**
@@ -38,11 +38,11 @@ declare_lint_pass!(Dereferencing => [
     EXPLICIT_DEREF_METHODS
 ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Dereferencing {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for Dereferencing {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();
-            if let ExprKind::MethodCall(ref method_name, _, ref args) = &expr.kind;
+            if let ExprKind::MethodCall(ref method_name, _, ref args, _) = &expr.kind;
             if args.len() == 1;
 
             then {
@@ -70,15 +70,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Dereferencing {
     }
 }
 
-fn lint_deref(cx: &LateContext<'_, '_>, method_name: &str, call_expr: &Expr<'_>, var_span: Span, expr_span: Span) {
+fn lint_deref(cx: &LateContext<'_>, method_name: &str, call_expr: &Expr<'_>, var_span: Span, expr_span: Span) {
     match method_name {
         "deref" => {
-            if cx
-                .tcx
-                .lang_items()
-                .deref_trait()
-                .map_or(false, |id| implements_trait(cx, cx.tables.expr_ty(&call_expr), id, &[]))
-            {
+            let impls_deref_trait = cx.tcx.lang_items().deref_trait().map_or(false, |id| {
+                implements_trait(cx, cx.typeck_results().expr_ty(&call_expr), id, &[])
+            });
+            if impls_deref_trait {
                 span_lint_and_sugg(
                     cx,
                     EXPLICIT_DEREF_METHODS,
@@ -91,12 +89,10 @@ fn lint_deref(cx: &LateContext<'_, '_>, method_name: &str, call_expr: &Expr<'_>,
             }
         },
         "deref_mut" => {
-            if cx
-                .tcx
-                .lang_items()
-                .deref_mut_trait()
-                .map_or(false, |id| implements_trait(cx, cx.tables.expr_ty(&call_expr), id, &[]))
-            {
+            let impls_deref_mut_trait = cx.tcx.lang_items().deref_mut_trait().map_or(false, |id| {
+                implements_trait(cx, cx.typeck_results().expr_ty(&call_expr), id, &[])
+            });
+            if impls_deref_mut_trait {
                 span_lint_and_sugg(
                     cx,
                     EXPLICIT_DEREF_METHODS,

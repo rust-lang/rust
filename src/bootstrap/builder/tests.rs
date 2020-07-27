@@ -1,5 +1,5 @@
 use super::*;
-use crate::config::Config;
+use crate::config::{Config, TargetSelection};
 use std::thread;
 
 use pretty_assertions::assert_eq;
@@ -17,16 +17,16 @@ fn configure(host: &[&str], target: &[&str]) -> Config {
         .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
     t!(fs::create_dir_all(&dir));
     config.out = dir;
-    config.build = INTERNER.intern_str("A");
+    config.build = TargetSelection::from_user("A");
     config.hosts = vec![config.build]
         .into_iter()
-        .chain(host.iter().map(|s| INTERNER.intern_str(s)))
+        .chain(host.iter().map(|s| TargetSelection::from_user(s)))
         .collect::<Vec<_>>();
     config.targets = config
         .hosts
         .clone()
         .into_iter()
-        .chain(target.iter().map(|s| INTERNER.intern_str(s)))
+        .chain(target.iter().map(|s| TargetSelection::from_user(s)))
         .collect::<Vec<_>>();
     config
 }
@@ -41,7 +41,7 @@ fn dist_baseline() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
+    let a = TargetSelection::from_user("A");
 
     assert_eq!(first(builder.cache.all::<dist::Docs>()), &[dist::Docs { host: a },]);
     assert_eq!(first(builder.cache.all::<dist::Mingw>()), &[dist::Mingw { host: a },]);
@@ -54,6 +54,11 @@ fn dist_baseline() {
         &[dist::Std { compiler: Compiler { host: a, stage: 1 }, target: a },]
     );
     assert_eq!(first(builder.cache.all::<dist::Src>()), &[dist::Src]);
+    // Make sure rustdoc is only built once.
+    assert_eq!(
+        first(builder.cache.all::<tool::Rustdoc>()),
+        &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },]
+    );
 }
 
 #[test]
@@ -62,8 +67,8 @@ fn dist_with_targets() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -93,8 +98,8 @@ fn dist_with_hosts() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -123,8 +128,8 @@ fn dist_with_hosts() {
 
 #[test]
 fn dist_only_cross_host() {
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
     let mut build = Build::new(configure(&["B"], &[]));
     build.config.docs = false;
     build.config.extended = true;
@@ -151,9 +156,9 @@ fn dist_with_targets_and_hosts() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
-    let c = INTERNER.intern_str("C");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
+    let c = TargetSelection::from_user("C");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -189,9 +194,9 @@ fn dist_with_target_flag() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
-    let c = INTERNER.intern_str("C");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
+    let c = TargetSelection::from_user("C");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -219,8 +224,8 @@ fn dist_with_same_targets_and_hosts() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Dist), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
 
     assert_eq!(
         first(builder.cache.all::<dist::Docs>()),
@@ -272,9 +277,9 @@ fn build_default() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
-    let c = INTERNER.intern_str("C");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
+    let c = TargetSelection::from_user("C");
 
     assert_eq!(
         first(builder.cache.all::<compile::Std>()),
@@ -313,9 +318,9 @@ fn build_with_target_flag() {
     let mut builder = Builder::new(&build);
     builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Build), &[]);
 
-    let a = INTERNER.intern_str("A");
-    let b = INTERNER.intern_str("B");
-    let c = INTERNER.intern_str("C");
+    let a = TargetSelection::from_user("A");
+    let b = TargetSelection::from_user("B");
+    let c = TargetSelection::from_user("C");
 
     assert_eq!(
         first(builder.cache.all::<compile::Std>()),
@@ -369,7 +374,7 @@ fn test_with_no_doc_stage0() {
     let build = Build::new(config);
     let mut builder = Builder::new(&build);
 
-    let host = INTERNER.intern_str("A");
+    let host = TargetSelection::from_user("A");
 
     builder
         .run_step_descriptions(&[StepDescription::from::<test::Crate>()], &["src/libstd".into()]);
@@ -413,4 +418,78 @@ fn test_exclude() {
 
     // Ensure other tests are not affected.
     assert!(builder.cache.contains::<test::RustdocUi>());
+}
+
+#[test]
+fn doc_default() {
+    let mut config = configure(&[], &[]);
+    config.compiler_docs = true;
+    config.cmd = Subcommand::Doc { paths: Vec::new(), open: false };
+    let build = Build::new(config);
+    let mut builder = Builder::new(&build);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
+    let a = TargetSelection::from_user("A");
+
+    // error_index_generator uses stage 1 to share rustdoc artifacts with the
+    // rustdoc tool.
+    assert_eq!(
+        first(builder.cache.all::<doc::ErrorIndex>()),
+        &[doc::ErrorIndex { compiler: Compiler { host: a, stage: 1 }, target: a },]
+    );
+    assert_eq!(
+        first(builder.cache.all::<tool::ErrorIndex>()),
+        &[tool::ErrorIndex { compiler: Compiler { host: a, stage: 1 } }]
+    );
+    // This is actually stage 1, but Rustdoc::run swaps out the compiler with
+    // stage minus 1 if --stage is not 0. Very confusing!
+    assert_eq!(
+        first(builder.cache.all::<tool::Rustdoc>()),
+        &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },]
+    );
+}
+
+#[test]
+fn test_docs() {
+    // Behavior of `x.py test` doing various documentation tests.
+    let mut config = configure(&[], &[]);
+    config.cmd = Subcommand::Test {
+        paths: vec![],
+        test_args: vec![],
+        rustc_args: vec![],
+        fail_fast: true,
+        doc_tests: DocTests::Yes,
+        bless: false,
+        compare_mode: None,
+        rustfix_coverage: false,
+        pass: None,
+    };
+    let build = Build::new(config);
+    let mut builder = Builder::new(&build);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
+    let a = TargetSelection::from_user("A");
+
+    // error_index_generator uses stage 1 to share rustdoc artifacts with the
+    // rustdoc tool.
+    assert_eq!(
+        first(builder.cache.all::<doc::ErrorIndex>()),
+        &[doc::ErrorIndex { compiler: Compiler { host: a, stage: 1 }, target: a },]
+    );
+    assert_eq!(
+        first(builder.cache.all::<tool::ErrorIndex>()),
+        &[tool::ErrorIndex { compiler: Compiler { host: a, stage: 1 } }]
+    );
+    // Unfortunately rustdoc is built twice. Once from stage1 for compiletest
+    // (and other things), and once from stage0 for std crates. Ideally it
+    // would only be built once. If someone wants to fix this, it might be
+    // worth investigating if it would be possible to test std from stage1.
+    // Note that the stages here are +1 than what they actually are because
+    // Rustdoc::run swaps out the compiler with stage minus 1 if --stage is
+    // not 0.
+    assert_eq!(
+        first(builder.cache.all::<tool::Rustdoc>()),
+        &[
+            tool::Rustdoc { compiler: Compiler { host: a, stage: 1 } },
+            tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },
+        ]
+    );
 }

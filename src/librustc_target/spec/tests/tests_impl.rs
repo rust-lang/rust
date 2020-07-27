@@ -16,8 +16,8 @@ pub(super) fn test_target(target: TargetResult) {
 impl Target {
     fn check_consistency(&self) {
         // Check that LLD with the given flavor is treated identically to the linker it emulates.
-        // If you target really needs to deviate from the rules below, whitelist it
-        // and document the reasons.
+        // If your target really needs to deviate from the rules below, except it and document the
+        // reasons.
         assert_eq!(
             self.linker_flavor == LinkerFlavor::Msvc
                 || self.linker_flavor == LinkerFlavor::Lld(LldFlavor::Link),
@@ -25,7 +25,6 @@ impl Target {
         );
         for args in &[
             &self.options.pre_link_args,
-            &self.options.pre_link_args_crt,
             &self.options.late_link_args,
             &self.options.late_link_args_dynamic,
             &self.options.late_link_args_static,
@@ -39,5 +38,10 @@ impl Target {
                 assert_eq!(self.options.lld_flavor, LldFlavor::Link);
             }
         }
+        assert!(
+            (self.options.pre_link_objects_fallback.is_empty()
+                && self.options.post_link_objects_fallback.is_empty())
+                || self.options.crt_objects_fallback.is_some()
+        );
     }
 }

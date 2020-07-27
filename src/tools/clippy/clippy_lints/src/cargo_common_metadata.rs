@@ -23,6 +23,7 @@ declare_clippy_lint! {
     /// [package]
     /// name = "clippy"
     /// version = "0.0.212"
+    /// authors = ["Someone <someone@rust-lang.org>"]
     /// description = "A bunch of helpful lints to avoid common pitfalls in Rust"
     /// repository = "https://github.com/rust-lang/rust-clippy"
     /// readme = "README.md"
@@ -35,13 +36,9 @@ declare_clippy_lint! {
     "common metadata is defined in `Cargo.toml`"
 }
 
-fn warning(cx: &LateContext<'_, '_>, message: &str) {
-    span_lint(cx, CARGO_COMMON_METADATA, DUMMY_SP, message);
-}
-
-fn missing_warning(cx: &LateContext<'_, '_>, package: &cargo_metadata::Package, field: &str) {
+fn missing_warning(cx: &LateContext<'_>, package: &cargo_metadata::Package, field: &str) {
     let message = format!("package `{}` is missing `{}` metadata", package.name, field);
-    warning(cx, &message);
+    span_lint(cx, CARGO_COMMON_METADATA, DUMMY_SP, &message);
 }
 
 fn is_empty_str(value: &Option<String>) -> bool {
@@ -59,18 +56,13 @@ fn is_empty_vec(value: &[String]) -> bool {
 
 declare_lint_pass!(CargoCommonMetadata => [CARGO_COMMON_METADATA]);
 
-impl LateLintPass<'_, '_> for CargoCommonMetadata {
-    fn check_crate(&mut self, cx: &LateContext<'_, '_>, _: &Crate<'_>) {
+impl LateLintPass<'_> for CargoCommonMetadata {
+    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
         if !run_lints(cx, &[CARGO_COMMON_METADATA], CRATE_HIR_ID) {
             return;
         }
 
-        let metadata = if let Ok(metadata) = cargo_metadata::MetadataCommand::new().no_deps().exec() {
-            metadata
-        } else {
-            warning(cx, "could not read cargo metadata");
-            return;
-        };
+        let metadata = unwrap_cargo_metadata!(cx, CARGO_COMMON_METADATA, false);
 
         for package in metadata.packages {
             if is_empty_vec(&package.authors) {

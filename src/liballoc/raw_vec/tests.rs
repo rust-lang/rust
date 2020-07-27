@@ -12,7 +12,6 @@ fn allocator_param() {
     //
     // Instead, this just checks that the `RawVec` methods do at
     // least go through the Allocator API when it reserves
-
     // storage.
 
     // A dumb allocator that consumes a fixed amount of fuel
@@ -35,7 +34,7 @@ fn allocator_param() {
             }
         }
         unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-            Global.dealloc(ptr, layout)
+            unsafe { Global.dealloc(ptr, layout) }
         }
     }
 

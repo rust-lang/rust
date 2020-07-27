@@ -16,8 +16,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![feature(or_patterns)]
-#![feature(str_strip)]
-#![feature(option_zip)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]
@@ -30,6 +28,7 @@ extern crate log;
 #[macro_use]
 extern crate rustc_middle;
 
+pub mod autoderef;
 pub mod infer;
 pub mod opaque_types;
 pub mod traits;

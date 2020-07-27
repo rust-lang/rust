@@ -1,5 +1,4 @@
 use rustc_ast::ast;
-use rustc_ast::with_globals;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_feature::UnstableFeatures;
@@ -46,14 +45,14 @@ pub struct TestOptions {
 pub fn run(options: Options) -> Result<(), String> {
     let input = config::Input::File(options.input.clone());
 
-    let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTE.name;
+    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
-    // In addition to those specific lints, we also need to whitelist those given through
+    // In addition to those specific lints, we also need to allow those given through
     // command line, otherwise they'll get ignored and we don't want that.
-    let whitelisted_lints = vec![invalid_codeblock_attribute_name.to_owned()];
+    let allowed_lints = vec![invalid_codeblock_attributes_name.to_owned()];
 
-    let (lint_opts, lint_caps) = init_lints(whitelisted_lints, options.lint_opts.clone(), |lint| {
-        if lint.name == invalid_codeblock_attribute_name {
+    let (lint_opts, lint_caps) = init_lints(allowed_lints, options.lint_opts.clone(), |lint| {
+        if lint.name == invalid_codeblock_attributes_name {
             None
         } else {
             Some((lint.name_lower(), lint::Allow))
@@ -114,7 +113,7 @@ pub fn run(options: Options) -> Result<(), String> {
                 options,
                 false,
                 opts,
-                Some(compiler.source_map().clone()),
+                Some(compiler.session().parse_sess.clone_source_map()),
                 None,
                 enable_per_target_ignores,
             );
@@ -166,7 +165,7 @@ pub fn run(options: Options) -> Result<(), String> {
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(krate: &::rustc_hir::Crate) -> TestOptions {
+fn scrape_test_config(krate: &::rustc_hir::Crate<'_>) -> TestOptions {
     use rustc_ast_pretty::pprust;
 
     let mut opts =
@@ -399,7 +398,7 @@ pub fn make_test(
     // Uses librustc_ast to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
-        with_globals(edition, || {
+        rustc_ast::with_session_globals(edition, || {
             use rustc_errors::emitter::EmitterWriter;
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
@@ -676,7 +675,11 @@ impl Collector {
     }
 
     fn generate_name(&self, line: usize, filename: &FileName) -> String {
-        format!("{} - {} (line {})", filename, self.names.join("::"), line)
+        let mut item_path = self.names.join("::");
+        if !item_path.is_empty() {
+            item_path.push(' ');
+        }
+        format!("{} - {}(line {})", filename, item_path, line)
     }
 
     pub fn set_position(&mut self, position: Span) {
@@ -688,7 +691,7 @@ impl Collector {
             let filename = source_map.span_to_filename(self.position);
             if let FileName::Real(ref filename) = filename {
                 if let Ok(cur_dir) = env::current_dir() {
-                    if let Ok(path) = filename.strip_prefix(&cur_dir) {
+                    if let Ok(path) = filename.local_path().strip_prefix(&cur_dir) {
                         return path.to_owned().into();
                     }
                 }
@@ -718,7 +721,7 @@ impl Tester for Collector {
         // FIXME(#44940): if doctests ever support path remapping, then this filename
         // needs to be the result of `SourceMap::span_to_unmapped_path`.
         let path = match &filename {
-            FileName::Real(path) => path.clone(),
+            FileName::Real(path) => path.local_path().to_path_buf(),
             _ => PathBuf::from(r"doctest.rs"),
         };
 
@@ -969,7 +972,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         intravisit::NestedVisitorMap::All(self.map)
     }
 
-    fn visit_item(&mut self, item: &'hir hir::Item) {
+    fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
         let name = if let hir::ItemKind::Impl { ref self_ty, .. } = item.kind {
             rustc_hir_pretty::id_to_string(&self.map, self_ty.hir_id)
         } else {
@@ -981,19 +984,19 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         });
     }
 
-    fn visit_trait_item(&mut self, item: &'hir hir::TraitItem) {
+    fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
         self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
-    fn visit_impl_item(&mut self, item: &'hir hir::ImplItem) {
+    fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
         self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }
 
-    fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
         self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
             intravisit::walk_foreign_item(this, item);
         });
@@ -1001,8 +1004,8 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
 
     fn visit_variant(
         &mut self,
-        v: &'hir hir::Variant,
-        g: &'hir hir::Generics,
+        v: &'hir hir::Variant<'_>,
+        g: &'hir hir::Generics<'_>,
         item_id: hir::HirId,
     ) {
         self.visit_testable(v.ident.to_string(), &v.attrs, v.id, v.span, |this| {
@@ -1010,13 +1013,13 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         });
     }
 
-    fn visit_struct_field(&mut self, f: &'hir hir::StructField) {
+    fn visit_struct_field(&mut self, f: &'hir hir::StructField<'_>) {
         self.visit_testable(f.ident.to_string(), &f.attrs, f.hir_id, f.span, |this| {
             intravisit::walk_struct_field(this, f);
         });
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef<'_>) {
         self.visit_testable(
             macro_def.ident.to_string(),
             &macro_def.attrs,

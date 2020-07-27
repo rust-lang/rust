@@ -5,7 +5,7 @@ LL | struct X {}
    | ----------- `X` defined here
 LL | fn main() {
 LL |     vec![X]; //…
-   |          ^ did you mean `X { /* fields */ }`?
+   |          ^ help: use struct literal syntax instead: `X {}`
 
 error: aborting due to previous error
 

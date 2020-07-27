@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-40000.rs:6:9
+   |
+LL |     foo(bar);
+   |         ^^^
+
+error: aborting due to previous error
+

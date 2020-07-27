@@ -199,7 +199,7 @@ impl Parse for Group {
 
 struct QueryModifiers {
     /// The description of the query.
-    desc: Option<(Option<Ident>, Punctuated<Expr, Token![,]>)>,
+    desc: (Option<Ident>, Punctuated<Expr, Token![,]>),
 
     /// Use this type for the in-memory cache.
     storage: Option<Type>,
@@ -295,6 +295,9 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
             }
         }
     }
+    let desc = desc.unwrap_or_else(|| {
+        panic!("no description provided for query `{}`", query.name);
+    });
     QueryModifiers {
         load_cached,
         storage,
@@ -319,7 +322,7 @@ fn add_query_description_impl(
     let key = &query.key.0;
 
     // Find out if we should cache the query on disk
-    let cache = modifiers.cache.as_ref().map(|(args, expr)| {
+    let cache = if let Some((args, expr)) = modifiers.cache.as_ref() {
         let try_load_from_disk = if let Some((tcx, id, block)) = modifiers.load_cached.as_ref() {
             // Use custom code to load the query from disk
             quote! {
@@ -373,36 +376,32 @@ fn add_query_description_impl(
 
             #try_load_from_disk
         }
-    });
+    } else {
+        if modifiers.load_cached.is_some() {
+            panic!("load_cached modifier on query `{}` without a cache modifier", name);
+        }
+        quote! {}
+    };
 
-    if cache.is_none() && modifiers.load_cached.is_some() {
-        panic!("load_cached modifier on query `{}` without a cache modifier", name);
-    }
+    let (tcx, desc) = modifiers.desc;
+    let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
 
-    let desc = modifiers.desc.as_ref().map(|(tcx, desc)| {
-        let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
-        quote! {
-            #[allow(unused_variables)]
-            fn describe(
-                #tcx: TyCtxt<'tcx>,
-                #key: #arg,
-            ) -> Cow<'static, str> {
-                format!(#desc).into()
-            }
+    let desc = quote! {
+        #[allow(unused_variables)]
+        fn describe(
+            #tcx: TyCtxt<'tcx>,
+            #key: #arg,
+        ) -> Cow<'static, str> {
+            format!(#desc).into()
+        }
+    };
+
+    impls.extend(quote! {
+        impl<'tcx> QueryDescription<TyCtxt<'tcx>> for queries::#name<'tcx> {
+            #desc
+            #cache
         }
     });
-
-    if desc.is_some() || cache.is_some() {
-        let cache = cache.unwrap_or(quote! {});
-        let desc = desc.unwrap_or(quote! {});
-
-        impls.extend(quote! {
-            impl<'tcx> QueryDescription<TyCtxt<'tcx>> for queries::#name<'tcx> {
-                #desc
-                #cache
-            }
-        });
-    }
 }
 
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
@@ -434,7 +433,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
                 try_load_from_on_disk_cache_stream.extend(quote! {
                     ::rustc_middle::dep_graph::DepKind::#name => {
-                        if <#arg as DepNodeParams<TyCtxt<'_>>>::CAN_RECONSTRUCT_QUERY_KEY {
+                        if <#arg as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
                             debug_assert!($tcx.dep_graph
                                             .node_color($dep_node)
                                             .map(|c| c.is_green())
@@ -491,7 +490,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             // Add a match arm to force the query given the dep node
             dep_node_force_stream.extend(quote! {
                 ::rustc_middle::dep_graph::DepKind::#name => {
-                    if <#arg as DepNodeParams<TyCtxt<'_>>>::CAN_RECONSTRUCT_QUERY_KEY {
+                    if <#arg as DepNodeParams<TyCtxt<'_>>>::can_reconstruct_query_key() {
                         if let Some(key) = <#arg as DepNodeParams<TyCtxt<'_>>>::recover($tcx, $dep_node) {
                             force_query::<crate::ty::query::queries::#name<'_>, _>(
                                 $tcx,

@@ -1,3 +1,12 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-52050.rs:1:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
 error[E0119]: conflicting implementations of trait `IntoPyDictPointer` for type `()`:
   --> $DIR/issue-52050.rs:28:1
    |
@@ -13,6 +22,6 @@ LL |   impl IntoPyDictPointer for ()
    |
    = note: upstream crates may add a new impl of trait `std::iter::Iterator` for type `()` in future versions
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0119`.

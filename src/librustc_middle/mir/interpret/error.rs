@@ -1,4 +1,4 @@
-use super::{AllocId, Pointer, RawConst, ScalarMaybeUninit};
+use super::{AllocId, Pointer, RawConst, Scalar};
 
 use crate::mir::interpret::ConstValue;
 use crate::ty::layout::LayoutError;
@@ -390,8 +390,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     InvalidBool(u8),
     /// Using a non-character `u32` as character.
     InvalidChar(u32),
-    /// An enum discriminant was set to a value which was outside the range of valid values.
-    InvalidDiscriminant(ScalarMaybeUninit),
+    /// The tag of an enum does not encode an actual discriminant.
+    InvalidTag(Scalar),
     /// Using a pointer-not-to-a-function as function pointer.
     InvalidFunctionPointer(Pointer),
     /// Using a string that is not valid UTF-8,
@@ -463,7 +463,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             InvalidChar(c) => {
                 write!(f, "interpreting an invalid 32-bit value as a char: 0x{:08x}", c)
             }
-            InvalidDiscriminant(val) => write!(f, "enum value has invalid discriminant: {}", val),
+            InvalidTag(val) => write!(f, "enum value has invalid tag: {}", val),
             InvalidFunctionPointer(p) => {
                 write!(f, "using {} as function pointer but it does not point to a function", p)
             }
@@ -513,6 +513,8 @@ pub enum UnsupportedOpInfo {
     //
     /// Encountered raw bytes where we needed a pointer.
     ReadBytesAsPointer,
+    /// Accessing thread local statics
+    ThreadLocalStatic(DefId),
 }
 
 impl fmt::Display for UnsupportedOpInfo {
@@ -521,11 +523,12 @@ impl fmt::Display for UnsupportedOpInfo {
         match self {
             Unsupported(ref msg) => write!(f, "{}", msg),
             ReadForeignStatic(did) => {
-                write!(f, "cannot read from foreign (extern) static {:?}", did)
+                write!(f, "cannot read from foreign (extern) static ({:?})", did)
             }
             NoMirFor(did) => write!(f, "no MIR body is available for {:?}", did),
             ReadPointerAsBytes => write!(f, "unable to turn pointer into raw bytes",),
             ReadBytesAsPointer => write!(f, "unable to turn bytes into a pointer"),
+            ThreadLocalStatic(did) => write!(f, "cannot access thread local static ({:?})", did),
         }
     }
 }

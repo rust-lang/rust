@@ -1,4 +1,3 @@
-use rustc_ast::ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
@@ -6,10 +5,15 @@ use rustc_driver::abort_on_err;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
-use rustc_hir::def::Namespace::TypeNS;
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
+use rustc_hir::def::{Namespace::TypeNS, Res};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::HirId;
+use rustc_hir::{
+    intravisit::{self, NestedVisitorMap, Visitor},
+    Path,
+};
 use rustc_interface::interface;
+use rustc_middle::hir::map::Map;
 use rustc_middle::middle::cstore::CrateStore;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -63,6 +67,8 @@ pub struct DocContext<'tcx> {
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
     pub auto_traits: Vec<DefId>,
+    /// The options given to rustdoc that could be relevant to a pass.
+    pub render_options: RenderOptions,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -192,8 +198,15 @@ pub fn new_handler(
                 Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
             Box::new(
-                JsonEmitter::stderr(None, source_map, pretty, json_rendered, false)
-                    .ui_testing(debugging_opts.ui_testing),
+                JsonEmitter::stderr(
+                    None,
+                    source_map,
+                    pretty,
+                    json_rendered,
+                    debugging_opts.terminal_width,
+                    false,
+                )
+                .ui_testing(debugging_opts.ui_testing),
             )
         }
     };
@@ -206,7 +219,7 @@ pub fn new_handler(
 
 /// This function is used to setup the lint initialization. By default, in rustdoc, everything
 /// is "allowed". Depending if we run in test mode or not, we want some of them to be at their
-/// default level. For example, the "INVALID_CODEBLOCK_ATTRIBUTE" lint is activated in both
+/// default level. For example, the "INVALID_CODEBLOCK_ATTRIBUTES" lint is activated in both
 /// modes.
 ///
 /// A little detail easy to forget is that there is a way to set the lint level for all lints
@@ -217,7 +230,7 @@ pub fn new_handler(
 ///  * Vector of tuples of lints' name and their associated "max" level
 ///  * HashMap of lint id with their associated "max" level
 pub fn init_lints<F>(
-    mut whitelisted_lints: Vec<String>,
+    mut allowed_lints: Vec<String>,
     lint_opts: Vec<(String, lint::Level)>,
     filter_call: F,
 ) -> (Vec<(String, lint::Level)>, FxHashMap<lint::LintId, lint::Level>)
@@ -226,8 +239,8 @@ where
 {
     let warnings_lint_name = lint::builtin::WARNINGS.name;
 
-    whitelisted_lints.push(warnings_lint_name.to_owned());
-    whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
+    allowed_lints.push(warnings_lint_name.to_owned());
+    allowed_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = || {
         lint::builtin::HardwiredLints::get_lints()
@@ -236,15 +249,23 @@ where
     };
 
     let lint_opts = lints()
-        .filter_map(|lint| if lint.name == warnings_lint_name { None } else { filter_call(lint) })
+        .filter_map(|lint| {
+            // Permit feature-gated lints to avoid feature errors when trying to
+            // allow all lints.
+            if lint.name == warnings_lint_name || lint.feature_gate.is_some() {
+                None
+            } else {
+                filter_call(lint)
+            }
+        })
         .chain(lint_opts.into_iter())
         .collect::<Vec<_>>();
 
     let lint_caps = lints()
         .filter_map(|lint| {
-            // We don't want to whitelist *all* lints so let's
-            // ignore those ones.
-            if whitelisted_lints.iter().any(|l| lint.name == l) {
+            // We don't want to allow *all* lints so let's ignore
+            // those ones.
+            if allowed_lints.iter().any(|l| lint.name == l) {
                 None
             } else {
                 Some((lint::LintId::of(lint), lint::Allow))
@@ -274,8 +295,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         describe_lints,
         lint_cap,
         mut default_passes,
-        mut document_private,
-        document_hidden,
         mut manual_passes,
         display_warnings,
         render_options,
@@ -301,22 +320,22 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
     let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
     let no_crate_level_docs = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name;
-    let invalid_codeblock_attribute_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTE.name;
+    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
-    // In addition to those specific lints, we also need to whitelist those given through
+    // In addition to those specific lints, we also need to allow those given through
     // command line, otherwise they'll get ignored and we don't want that.
-    let whitelisted_lints = vec![
+    let allowed_lints = vec![
         intra_link_resolution_failure_name.to_owned(),
         missing_docs.to_owned(),
         missing_doc_example.to_owned(),
         private_doc_tests.to_owned(),
         no_crate_level_docs.to_owned(),
-        invalid_codeblock_attribute_name.to_owned(),
+        invalid_codeblock_attributes_name.to_owned(),
     ];
 
-    let (lint_opts, lint_caps) = init_lints(whitelisted_lints, lint_opts, |lint| {
+    let (lint_opts, lint_caps) = init_lints(allowed_lints, lint_opts, |lint| {
         if lint.name == intra_link_resolution_failure_name
-            || lint.name == invalid_codeblock_attribute_name
+            || lint.name == invalid_codeblock_attributes_name
         {
             None
         } else {
@@ -358,11 +377,39 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         crate_name,
         lint_caps,
         register_lints: None,
-        override_queries: None,
+        override_queries: Some(|_sess, providers, _external_providers| {
+            // Most lints will require typechecking, so just don't run them.
+            providers.lint_mod = |_, _| {};
+            // Prevent `rustc_typeck::check_crate` from calling `typeck` on all bodies.
+            providers.typeck_item_bodies = |_, _| {};
+            // hack so that `used_trait_imports` won't try to call typeck
+            providers.used_trait_imports = |_, _| {
+                lazy_static! {
+                    static ref EMPTY_SET: FxHashSet<LocalDefId> = FxHashSet::default();
+                }
+                &EMPTY_SET
+            };
+            // In case typeck does end up being called, don't ICE in case there were name resolution errors
+            providers.typeck = move |tcx, def_id| {
+                // Closures' tables come from their outermost function,
+                // as they are part of the same "inference environment".
+                // This avoids emitting errors for the parent twice (see similar code in `typeck_with_fallback`)
+                let outer_def_id = tcx.closure_base_def_id(def_id.to_def_id()).expect_local();
+                if outer_def_id != def_id {
+                    return tcx.typeck(outer_def_id);
+                }
+
+                let hir = tcx.hir();
+                let body = hir.body(hir.body_owned_by(hir.as_local_hir_id(def_id)));
+                debug!("visiting body for {:?}", def_id);
+                EmitIgnoredResolutionErrors::new(tcx).visit_body(body);
+                (rustc_interface::DEFAULT_QUERY_PROVIDERS.typeck)(tcx, def_id)
+            };
+        }),
         registry: rustc_driver::diagnostics_registry(),
     };
 
-    interface::run_compiler_in_existing_thread_pool(config, |compiler| {
+    interface::create_compiler_and_run(config, |compiler| {
         compiler.enter(|queries| {
             let sess = compiler.session();
 
@@ -379,7 +426,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 resolver.borrow_mut().access(|resolver| {
                     for extern_name in &extern_names {
                         resolver
-                            .resolve_str_path_error(DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID)
+                            .resolve_str_path_error(
+                                DUMMY_SP,
+                                extern_name,
+                                TypeNS,
+                                LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
+                            )
                             .unwrap_or_else(|()| {
                                 panic!("Unable to resolve external crate {}", extern_name)
                             });
@@ -397,10 +449,17 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
             global_ctxt.enter(|tcx| {
-                tcx.analysis(LOCAL_CRATE).ok();
-
-                // Abort if there were any errors so far
-                sess.abort_if_errors();
+                // Certain queries assume that some checks were run elsewhere
+                // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
+                // so type-check everything other than function bodies in this crate before running lints.
+                // NOTE: this does not call `tcx.analysis()` so that we won't
+                // typeck function bodies or run the default rustc lints.
+                // (see `override_queries` in the `config`)
+                let _ = rustc_typeck::check_crate(tcx);
+                tcx.sess.abort_if_errors();
+                sess.time("missing_docs", || {
+                    rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
+                });
 
                 let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
                 // Convert from a HirId set to a DefId set since we don't always have easy access
@@ -436,6 +495,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         .cloned()
                         .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
                         .collect(),
+                    render_options,
                 };
                 debug!("crate: {:?}", tcx.hir().krate());
 
@@ -512,7 +572,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     }
 
                     if attr.is_word() && name == sym::document_private_items {
-                        document_private = true;
+                        ctxt.render_options.document_private = true;
                     }
                 }
 
@@ -532,9 +592,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 for p in passes {
                     let run = match p.condition {
                         Always => true,
-                        WhenDocumentPrivate => document_private,
-                        WhenNotDocumentPrivate => !document_private,
-                        WhenNotDocumentHidden => !document_hidden,
+                        WhenDocumentPrivate => ctxt.render_options.document_private,
+                        WhenNotDocumentPrivate => !ctxt.render_options.document_private,
+                        WhenNotDocumentHidden => !ctxt.render_options.document_hidden,
                     };
                     if run {
                         debug!("running pass {}", p.pass.name);
@@ -544,10 +604,66 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 ctxt.sess().abort_if_errors();
 
-                (krate, ctxt.renderinfo.into_inner(), render_options)
+                (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
             })
         })
     })
+}
+
+/// Due to https://github.com/rust-lang/rust/pull/73566,
+/// the name resolution pass may find errors that are never emitted.
+/// If typeck is called after this happens, then we'll get an ICE:
+/// 'Res::Error found but not reported'. To avoid this, emit the errors now.
+struct EmitIgnoredResolutionErrors<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> EmitIgnoredResolutionErrors<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self { tcx }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
+    type Map = Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        // We need to recurse into nested closures,
+        // since those will fallback to the parent for type checking.
+        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    }
+
+    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
+        debug!("visiting path {:?}", path);
+        if path.res == Res::Err {
+            // We have less context here than in rustc_resolve,
+            // so we can only emit the name and span.
+            // However we can give a hint that rustc_resolve will have more info.
+            let label = format!(
+                "could not resolve path `{}`",
+                path.segments
+                    .iter()
+                    .map(|segment| segment.ident.as_str().to_string())
+                    .collect::<Vec<_>>()
+                    .join("::")
+            );
+            let mut err = rustc_errors::struct_span_err!(
+                self.tcx.sess,
+                path.span,
+                E0433,
+                "failed to resolve: {}",
+                label
+            );
+            err.span_label(path.span, label);
+            err.note("this error was originally ignored because you are running `rustdoc`");
+            err.note("try running again with `rustc` or `cargo check` and you may get a more detailed error");
+            err.emit();
+        }
+        // We could have an outer resolution that succeeded,
+        // but with generic parameters that failed.
+        // Recurse into the segments so we catch those too.
+        intravisit::walk_path(self, path);
+    }
 }
 
 /// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter

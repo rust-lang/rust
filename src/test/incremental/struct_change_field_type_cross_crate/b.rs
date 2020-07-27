@@ -8,18 +8,18 @@ extern crate a;
 
 use a::*;
 
-#[rustc_dirty(label="typeck_tables_of", cfg="rpass2")]
+#[rustc_dirty(label="typeck", cfg="rpass2")]
 pub fn use_X() -> u32 {
     let x: X = X { x: 22 };
     x.x as u32
 }
 
-#[rustc_dirty(label="typeck_tables_of", cfg="rpass2")]
+#[rustc_dirty(label="typeck", cfg="rpass2")]
 pub fn use_EmbedX(embed: EmbedX) -> u32 {
     embed.x.x as u32
 }
 
-#[rustc_clean(label="typeck_tables_of", cfg="rpass2")]
+#[rustc_clean(label="typeck", cfg="rpass2")]
 pub fn use_Y() {
     let x: Y = Y { y: 'c' };
 }

@@ -59,7 +59,7 @@
 #[rustc_on_unimplemented(
     on(
         Args = "()",
-        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"
+        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
     ),
     message = "expected a `{Fn}<{Args}>` closure, found `{Self}`",
     label = "expected an `Fn<{Args}>` closure, found `{Self}`"
@@ -141,7 +141,7 @@ pub trait Fn<Args>: FnMut<Args> {
 #[rustc_on_unimplemented(
     on(
         Args = "()",
-        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"
+        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
     ),
     message = "expected a `{FnMut}<{Args}>` closure, found `{Self}`",
     label = "expected an `FnMut<{Args}>` closure, found `{Self}`"
@@ -160,7 +160,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 /// times. Because of this, if the only thing known about a type is that it
 /// implements `FnOnce`, it can only be called once.
 ///
-/// `FnOnce` is implemented automatically by closure that might consume captured
+/// `FnOnce` is implemented automatically by closures that might consume captured
 /// variables, as well as all types that implement [`FnMut`], e.g., (safe)
 /// [function pointers] (since `FnOnce` is a supertrait of [`FnMut`]).
 ///
@@ -215,7 +215,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 #[rustc_on_unimplemented(
     on(
         Args = "()",
-        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}"
+        note = "wrap the `{Self}` in a closure with no arguments: `|| {{ /* code */ }}`"
     ),
     message = "expected a `{FnOnce}<{Args}>` closure, found `{Self}`",
     label = "expected an `FnOnce<{Args}>` closure, found `{Self}`"
@@ -224,6 +224,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 #[must_use = "closures are lazy and do nothing unless called"]
 pub trait FnOnce<Args> {
     /// The returned type after the call operator is used.
+    #[lang = "fn_once_output"]
     #[stable(feature = "fn_once_output", since = "1.12.0")]
     type Output;
 

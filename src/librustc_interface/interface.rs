@@ -18,7 +18,7 @@ use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
 use rustc_session::{DiagnosticOutput, Session};
 use rustc_span::edition;
-use rustc_span::source_map::{FileLoader, FileName, SourceMap};
+use rustc_span::source_map::{FileLoader, FileName};
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
@@ -31,7 +31,6 @@ pub type Result<T> = result::Result<T, ErrorReported>;
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<Box<dyn CodegenBackend>>,
-    source_map: Lrc<SourceMap>,
     pub(crate) input: Input,
     pub(crate) input_path: Option<PathBuf>,
     pub(crate) output_dir: Option<PathBuf>,
@@ -39,7 +38,7 @@ pub struct Compiler {
     pub(crate) crate_name: Option<String>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries:
-        Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>,
+        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::Providers)>,
 }
 
 impl Compiler {
@@ -48,9 +47,6 @@ impl Compiler {
     }
     pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
         &self.codegen_backend
-    }
-    pub fn source_map(&self) -> &Lrc<SourceMap> {
-        &self.source_map
     }
     pub fn input(&self) -> &Input {
         &self.input
@@ -78,7 +74,7 @@ impl Compiler {
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
-    rustc_ast::with_default_globals(move || {
+    rustc_ast::with_default_session_globals(move || {
         let cfg = cfgspecs
             .into_iter()
             .map(|s| {
@@ -157,18 +153,15 @@ pub struct Config {
     ///
     /// The second parameter is local providers and the third parameter is external providers.
     pub override_queries:
-        Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>,
+        Option<fn(&Session, &mut ty::query::Providers, &mut ty::query::Providers)>,
 
     /// Registry of diagnostics codes.
     pub registry: Registry,
 }
 
-pub fn run_compiler_in_existing_thread_pool<R>(
-    config: Config,
-    f: impl FnOnce(&Compiler) -> R,
-) -> R {
+pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
     let registry = &config.registry;
-    let (sess, codegen_backend, source_map) = util::create_session(
+    let (sess, codegen_backend) = util::create_session(
         config.opts,
         config.crate_cfg,
         config.diagnostic_output,
@@ -181,7 +174,6 @@ pub fn run_compiler_in_existing_thread_pool<R>(
     let compiler = Compiler {
         sess,
         codegen_backend,
-        source_map,
         input: config.input,
         input_path: config.input_path,
         output_dir: config.output_dir,
@@ -191,32 +183,38 @@ pub fn run_compiler_in_existing_thread_pool<R>(
         override_queries: config.override_queries,
     };
 
-    let r = {
-        let _sess_abort_error = OnDrop(|| {
-            compiler.sess.finish_diagnostics(registry);
-        });
+    rustc_span::with_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
+        let r = {
+            let _sess_abort_error = OnDrop(|| {
+                compiler.sess.finish_diagnostics(registry);
+            });
 
-        f(&compiler)
-    };
+            f(&compiler)
+        };
 
-    let prof = compiler.sess.prof.clone();
-    prof.generic_activity("drop_compiler").run(move || drop(compiler));
-    r
+        let prof = compiler.sess.prof.clone();
+        prof.generic_activity("drop_compiler").run(move || drop(compiler));
+        r
+    })
 }
 
 pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
+    log::trace!("run_compiler");
     let stderr = config.stderr.take();
-    util::spawn_thread_pool(
+    util::setup_callbacks_and_run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.debugging_opts.threads,
         &stderr,
-        || run_compiler_in_existing_thread_pool(config, f),
+        || create_compiler_and_run(config, f),
     )
 }
 
-pub fn default_thread_pool<R: Send>(edition: edition::Edition, f: impl FnOnce() -> R + Send) -> R {
+pub fn setup_callbacks_and_run_in_default_thread_pool_with_globals<R: Send>(
+    edition: edition::Edition,
+    f: impl FnOnce() -> R + Send,
+) -> R {
     // the 1 here is duplicating code in config.opts.debugging_opts.threads
     // which also defaults to 1; it ultimately doesn't matter as the default
     // isn't threaded, and just ignores this parameter
-    util::spawn_thread_pool(edition, 1, &None, f)
+    util::setup_callbacks_and_run_in_thread_pool_with_globals(edition, 1, &None, f)
 }

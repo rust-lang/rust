@@ -1,7 +1,7 @@
 error[E0277]: `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator
-  --> $DIR/suggest-remove-refs-2.rs:4:19
+  --> $DIR/suggest-remove-refs-2.rs:6:19
    |
-LL |     for (i, n) in & & & & &v.iter().enumerate() {
+LL |     for (i, _) in & & & & &v.iter().enumerate() {
    |                   ---------^^^^^^^^^^^^^^^^^^^^
    |                   |
    |                   `&&&&&std::iter::Enumerate<std::slice::Iter<'_, {integer}>>` is not an iterator

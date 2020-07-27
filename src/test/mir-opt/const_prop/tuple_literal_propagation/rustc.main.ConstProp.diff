@@ -12,7 +12,7 @@
   
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/tuple_literal_propagation.rs:3:9: 3:10
-          _1 = (const 1u32, const 2u32);   // scope 0 at $DIR/tuple_literal_propagation.rs:3:13: 3:19
+          _1 = (const 1_u32, const 2_u32); // scope 0 at $DIR/tuple_literal_propagation.rs:3:13: 3:19
                                            // ty::Const
                                            // + ty: u32
                                            // + val: Value(Scalar(0x00000001))
@@ -30,7 +30,7 @@
           StorageLive(_2);                 // scope 1 at $DIR/tuple_literal_propagation.rs:5:5: 5:15
           StorageLive(_3);                 // scope 1 at $DIR/tuple_literal_propagation.rs:5:13: 5:14
 -         _3 = _1;                         // scope 1 at $DIR/tuple_literal_propagation.rs:5:13: 5:14
-+         _3 = (const 1u32, const 2u32);   // scope 1 at $DIR/tuple_literal_propagation.rs:5:13: 5:14
++         _3 = (const 1_u32, const 2_u32); // scope 1 at $DIR/tuple_literal_propagation.rs:5:13: 5:14
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000001))

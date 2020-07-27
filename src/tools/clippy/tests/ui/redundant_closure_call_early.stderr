@@ -1,0 +1,16 @@
+error: try not to call a closure in the expression where it is declared.
+  --> $DIR/redundant_closure_call_early.rs:9:17
+   |
+LL |     let mut k = (|m| m + 1)(i);
+   |                 ^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::redundant-closure-call` implied by `-D warnings`
+
+error: try not to call a closure in the expression where it is declared.
+  --> $DIR/redundant_closure_call_early.rs:12:9
+   |
+LL |     k = (|a, b| a * b)(1, 5);
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

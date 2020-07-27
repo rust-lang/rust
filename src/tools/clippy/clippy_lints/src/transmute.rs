@@ -293,17 +293,17 @@ static COLLECTIONS: &[&[&str]] = &[
     &paths::HASHSET,
     &paths::HASHMAP,
 ];
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
+impl<'tcx> LateLintPass<'tcx> for Transmute {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(ref path_expr, ref args) = e.kind;
             if let ExprKind::Path(ref qpath) = path_expr.kind;
-            if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id();
+            if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::TRANSMUTE);
             then {
-                let from_ty = cx.tables.expr_ty(&args[0]);
-                let to_ty = cx.tables.expr_ty(e);
+                let from_ty = cx.typeck_results().expr_ty(&args[0]);
+                let to_ty = cx.typeck_results().expr_ty(e);
 
                 match (&from_ty.kind, &to_ty.kind) {
                     _ if from_ty == to_ty => span_lint(
@@ -312,7 +312,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                         e.span,
                         &format!("transmute from a type (`{}`) to itself", from_ty),
                     ),
-                    (&ty::Ref(_, rty, rty_mutbl), &ty::RawPtr(ptr_ty)) => span_lint_and_then(
+                    (ty::Ref(_, rty, rty_mutbl), ty::RawPtr(ptr_ty)) => span_lint_and_then(
                         cx,
                         USELESS_TRANSMUTE,
                         e.span,
@@ -321,10 +321,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                 let rty_and_mut = ty::TypeAndMut {
                                     ty: rty,
-                                    mutbl: rty_mutbl,
+                                    mutbl: *rty_mutbl,
                                 };
 
-                                let sugg = if ptr_ty == rty_and_mut {
+                                let sugg = if *ptr_ty == rty_and_mut {
                                     arg.as_ty(to_ty)
                                 } else {
                                     arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
@@ -334,7 +334,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             }
                         },
                     ),
-                    (&ty::Int(_), &ty::RawPtr(_)) | (&ty::Uint(_), &ty::RawPtr(_)) => span_lint_and_then(
+                    (ty::Int(_) | ty::Uint(_), ty::RawPtr(_)) => span_lint_and_then(
                         cx,
                         USELESS_TRANSMUTE,
                         e.span,
@@ -350,16 +350,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             }
                         },
                     ),
-                    (&ty::Float(_), &ty::Ref(..))
-                    | (&ty::Float(_), &ty::RawPtr(_))
-                    | (&ty::Char, &ty::Ref(..))
-                    | (&ty::Char, &ty::RawPtr(_)) => span_lint(
+                    (ty::Float(_) | ty::Char, ty::Ref(..) | ty::RawPtr(_)) => span_lint(
                         cx,
                         WRONG_TRANSMUTE,
                         e.span,
                         &format!("transmute from a `{}` to a pointer", from_ty),
                     ),
-                    (&ty::RawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
+                    (ty::RawPtr(from_ptr), _) if from_ptr.ty == to_ty => span_lint(
                         cx,
                         CROSSPOINTER_TRANSMUTE,
                         e.span,
@@ -368,7 +365,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             from_ty, to_ty
                         ),
                     ),
-                    (_, &ty::RawPtr(to_ptr)) if to_ptr.ty == from_ty => span_lint(
+                    (_, ty::RawPtr(to_ptr)) if to_ptr.ty == from_ty => span_lint(
                         cx,
                         CROSSPOINTER_TRANSMUTE,
                         e.span,
@@ -377,7 +374,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             from_ty, to_ty
                         ),
                     ),
-                    (&ty::RawPtr(from_pty), &ty::Ref(_, to_ref_ty, mutbl)) => span_lint_and_then(
+                    (ty::RawPtr(from_pty), ty::Ref(_, to_ref_ty, mutbl)) => span_lint_and_then(
                         cx,
                         TRANSMUTE_PTR_TO_REF,
                         e.span,
@@ -388,13 +385,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                         ),
                         |diag| {
                             let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                            let (deref, cast) = if mutbl == Mutability::Mut {
+                            let (deref, cast) = if *mutbl == Mutability::Mut {
                                 ("&mut *", "*mut")
                             } else {
                                 ("&*", "*const")
                             };
 
-                            let arg = if from_pty.ty == to_ref_ty {
+                            let arg = if from_pty.ty == *to_ref_ty {
                                 arg
                             } else {
                                 arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))
@@ -408,7 +405,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             );
                         },
                     ),
-                    (&ty::Int(ast::IntTy::I32), &ty::Char) | (&ty::Uint(ast::UintTy::U32), &ty::Char) => {
+                    (ty::Int(ast::IntTy::I32) | ty::Uint(ast::UintTy::U32), &ty::Char) => {
                         span_lint_and_then(
                             cx,
                             TRANSMUTE_INT_TO_CHAR,
@@ -430,13 +427,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             },
                         )
                     },
-                    (&ty::Ref(_, ty_from, from_mutbl), &ty::Ref(_, ty_to, to_mutbl)) => {
+                    (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) => {
                         if_chain! {
                             if let (&ty::Slice(slice_ty), &ty::Str) = (&ty_from.kind, &ty_to.kind);
                             if let ty::Uint(ast::UintTy::U8) = slice_ty.kind;
                             if from_mutbl == to_mutbl;
                             then {
-                                let postfix = if from_mutbl == Mutability::Mut {
+                                let postfix = if *from_mutbl == Mutability::Mut {
                                     "_mut"
                                 } else {
                                     ""
@@ -465,13 +462,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                         |diag| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                             let ty_from_and_mut = ty::TypeAndMut {
                                                 ty: ty_from,
-                                                mutbl: from_mutbl
+                                                mutbl: *from_mutbl
                                             };
-                                            let ty_to_and_mut = ty::TypeAndMut { ty: ty_to, mutbl: to_mutbl };
+                                            let ty_to_and_mut = ty::TypeAndMut { ty: ty_to, mutbl: *to_mutbl };
                                             let sugg_paren = arg
                                                 .as_ty(cx.tcx.mk_ptr(ty_from_and_mut))
                                                 .as_ty(cx.tcx.mk_ptr(ty_to_and_mut));
-                                            let sugg = if to_mutbl == Mutability::Mut {
+                                            let sugg = if *to_mutbl == Mutability::Mut {
                                                 sugg_paren.mut_addr_deref()
                                             } else {
                                                 sugg_paren.addr_deref()
@@ -488,19 +485,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             }
                         }
                     },
-                    (&ty::RawPtr(_), &ty::RawPtr(to_ty)) => span_lint_and_then(
+                    (ty::RawPtr(_), ty::RawPtr(to_ty)) => span_lint_and_then(
                         cx,
                         TRANSMUTE_PTR_TO_PTR,
                         e.span,
                         "transmute from a pointer to a pointer",
                         |diag| {
                             if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                let sugg = arg.as_ty(cx.tcx.mk_ptr(to_ty));
+                                let sugg = arg.as_ty(cx.tcx.mk_ptr(*to_ty));
                                 diag.span_suggestion(e.span, "try", sugg.to_string(), Applicability::Unspecified);
                             }
                         },
                     ),
-                    (&ty::Int(ast::IntTy::I8), &ty::Bool) | (&ty::Uint(ast::UintTy::U8), &ty::Bool) => {
+                    (ty::Int(ast::IntTy::I8) | ty::Uint(ast::UintTy::U8), ty::Bool) => {
                         span_lint_and_then(
                             cx,
                             TRANSMUTE_INT_TO_BOOL,
@@ -518,7 +515,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             },
                         )
                     },
-                    (&ty::Int(_), &ty::Float(_)) | (&ty::Uint(_), &ty::Float(_)) => span_lint_and_then(
+                    (ty::Int(_) | ty::Uint(_), ty::Float(_)) => span_lint_and_then(
                         cx,
                         TRANSMUTE_INT_TO_FLOAT,
                         e.span,
@@ -541,7 +538,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             );
                         },
                     ),
-                    (&ty::Float(float_ty), &ty::Int(_)) | (&ty::Float(float_ty), &ty::Uint(_)) => span_lint_and_then(
+                    (ty::Float(float_ty), ty::Int(_) | ty::Uint(_)) => span_lint_and_then(
                         cx,
                         TRANSMUTE_FLOAT_TO_INT,
                         e.span,
@@ -585,7 +582,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                             );
                         },
                     ),
-                    (&ty::Adt(ref from_adt, ref from_substs), &ty::Adt(ref to_adt, ref to_substs)) => {
+                    (ty::Adt(from_adt, from_substs), ty::Adt(to_adt, to_substs)) => {
                         if from_adt.did != to_adt.did ||
                                 !COLLECTIONS.iter().any(|path| match_def_path(cx, to_adt.did, path)) {
                             return;
@@ -616,7 +613,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
 /// the type's `ToString` implementation. In weird cases it could lead to types
 /// with invalid `'_`
 /// lifetime, but it should be rare.
-fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath<'_>, to_ref_ty: Ty<'_>) -> String {
+fn get_type_snippet(cx: &LateContext<'_>, path: &QPath<'_>, to_ref_ty: Ty<'_>) -> String {
     let seg = last_path_segment(path);
     if_chain! {
         if let Some(ref params) = seg.args;
@@ -636,7 +633,7 @@ fn get_type_snippet(cx: &LateContext<'_, '_>, path: &QPath<'_>, to_ref_ty: Ty<'_
 
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment
-fn is_layout_incompatible<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
+fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
     let empty_param_env = ty::ParamEnv::empty();
     // check if `from` and `to` are normalizable to avoid ICE (#4968)
     if !(is_normalizable(cx, empty_param_env, from) && is_normalizable(cx, empty_param_env, to)) {

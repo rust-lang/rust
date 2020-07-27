@@ -8,13 +8,14 @@ fn unwrap(_1: std::option::Option<T>) -> T {
     let mut _4: !;                       // in scope 0 at $SRC_DIR/libstd/macros.rs:LL:COL
     let mut _5: isize;                   // in scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
     let mut _6: isize;                   // in scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
+    let mut _7: isize;                   // in scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
     scope 1 {
         debug x => _3;                   // in scope 1 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
     }
 
     bb0: {
         _2 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
-        switchInt(move _2) -> [0isize: bb1, 1isize: bb3, otherwise: bb2]; // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
+        switchInt(move _2) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:9: 9:16
     }
 
     bb1: {
@@ -42,16 +43,13 @@ fn unwrap(_1: std::option::Option<T>) -> T {
         StorageLive(_3);                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
         _3 = move ((_1 as Some).0: T);   // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:14: 9:15
         _0 = move _3;                    // scope 1 at $DIR/no-drop-for-inactive-variant.rs:9:20: 9:21
-        StorageDead(_3);                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:21: 9:22
-        _5 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
+        StorageDead(_3);                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:9:20: 9:21
+        _6 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
         return;                          // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:2: 12:2
     }
 
     bb4 (cleanup): {
-        drop(_1) -> bb5;                 // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
-    }
-
-    bb5 (cleanup): {
+        _5 = discriminant(_1);           // scope 0 at $DIR/no-drop-for-inactive-variant.rs:12:1: 12:2
         resume;                          // scope 0 at $DIR/no-drop-for-inactive-variant.rs:7:1: 12:2
     }
 }

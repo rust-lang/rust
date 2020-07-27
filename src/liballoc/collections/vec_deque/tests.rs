@@ -1,7 +1,5 @@
 use super::*;
 
-use test;
-
 #[bench]
 #[cfg_attr(miri, ignore)] // isolated Miri does not support benchmarks
 fn bench_push_back_100(b: &mut test::Bencher) {
@@ -243,6 +241,65 @@ fn test_remove() {
                 assert!(tester.tail < tester.cap());
                 assert!(tester.head < tester.cap());
                 assert_eq!(tester, expected);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_range() {
+    let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
+
+    let cap = tester.capacity();
+    for len in 0..=cap {
+        for tail in 0..=cap {
+            for start in 0..=len {
+                for end in start..=len {
+                    tester.tail = tail;
+                    tester.head = tail;
+                    for i in 0..len {
+                        tester.push_back(i);
+                    }
+
+                    // Check that we iterate over the correct values
+                    let range: VecDeque<_> = tester.range(start..end).copied().collect();
+                    let expected: VecDeque<_> = (start..end).collect();
+                    assert_eq!(range, expected);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn test_range_mut() {
+    let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
+
+    let cap = tester.capacity();
+    for len in 0..=cap {
+        for tail in 0..=cap {
+            for start in 0..=len {
+                for end in start..=len {
+                    tester.tail = tail;
+                    tester.head = tail;
+                    for i in 0..len {
+                        tester.push_back(i);
+                    }
+
+                    let head_was = tester.head;
+                    let tail_was = tester.tail;
+
+                    // Check that we iterate over the correct values
+                    let range: VecDeque<_> = tester.range_mut(start..end).map(|v| *v).collect();
+                    let expected: VecDeque<_> = (start..end).collect();
+                    assert_eq!(range, expected);
+
+                    // We shouldn't have changed the capacity or made the
+                    // head or tail out of bounds
+                    assert_eq!(tester.capacity(), cap);
+                    assert_eq!(tester.tail, tail_was);
+                    assert_eq!(tester.head, head_was);
+                }
             }
         }
     }

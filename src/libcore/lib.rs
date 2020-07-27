@@ -73,8 +73,6 @@
 #![feature(const_ascii_ctype_on_intrinsics)]
 #![feature(const_alloc_layout)]
 #![feature(const_discriminant)]
-#![feature(const_if_match)]
-#![feature(const_loop)]
 #![feature(const_checked_int_methods)]
 #![feature(const_euclidean_int_methods)]
 #![feature(const_overflowing_int_methods)]
@@ -85,14 +83,21 @@
 #![feature(const_panic)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
+#![feature(const_option)]
+#![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
+#![feature(const_raw_ptr_comparison)]
 #![feature(const_result)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_type_name)]
+#![feature(const_likely)]
+#![feature(const_unreachable_unchecked)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
+#![cfg_attr(not(bootstrap), feature(doc_spotlight))]
+#![feature(duration_consts_2)]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
@@ -116,12 +121,12 @@
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stmt_expr_attributes)]
-#![feature(track_caller)]
 #![feature(transparent_unions)]
 #![feature(unboxed_closures)]
 #![feature(unsized_locals)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
+#![feature(variant_count)]
 #![feature(doc_alias)]
 #![feature(mmx_target_feature)]
 #![feature(tbm_target_feature)]
@@ -136,7 +141,7 @@
 #![feature(rtm_target_feature)]
 #![feature(f16c_target_feature)]
 #![feature(hexagon_target_feature)]
-#![feature(const_transmute)]
+#![feature(const_fn_transmute)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
 #![feature(maybe_uninit_slice)]
@@ -144,8 +149,11 @@
 #![feature(associated_type_bounds)]
 #![feature(const_type_id)]
 #![feature(const_caller_location)]
-#![feature(option_zip)]
+#![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
+#![feature(unsafe_block_in_unsafe_fn)]
+#![deny(intra_doc_link_resolution_failure)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[prelude_import]
 #[allow(unused)]
@@ -232,6 +240,8 @@ pub mod char;
 pub mod ffi;
 #[cfg(not(test))] // See #65860
 pub mod iter;
+#[unstable(feature = "once_cell", issue = "74465")]
+pub mod lazy;
 pub mod option;
 pub mod panic;
 pub mod panicking;
@@ -276,7 +286,16 @@ pub mod primitive;
 // set up in such a way that directly pulling it here works such that the
 // crate uses the this crate as its libcore.
 #[path = "../stdarch/crates/core_arch/src/mod.rs"]
-#[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
+#[allow(
+    missing_docs,
+    missing_debug_implementations,
+    dead_code,
+    unused_imports,
+    unsafe_op_in_unsafe_fn
+)]
+// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
+// merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
+#[allow(clashing_extern_declarations)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 

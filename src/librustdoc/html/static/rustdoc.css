@@ -49,9 +49,9 @@
 }
 
 * {
-  -webkit-box-sizing: border-box;
-	 -moz-box-sizing: border-box;
-		  box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 /* This part handles the "default" theme being used depending on the system one. */
@@ -91,7 +91,8 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.important),
+h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -100,7 +101,11 @@ h1.fqn {
 	border-bottom: 1px dashed;
 	margin-top: 0;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h1.fqn > .in-band > a:hover {
+	text-decoration: underline;
+}
+h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
+h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	border-bottom: 1px solid;
 }
 h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
@@ -143,8 +148,11 @@ code, pre, a.test-arrow {
 	border-radius: 3px;
 	padding: 0 0.1em;
 }
-.docblock pre code, .docblock-short pre code {
+.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;
+}
+.docblock code.spotlight :last-child {
+	padding-bottom: 0.6em;
 }
 pre {
 	padding: 14px;
@@ -361,6 +369,7 @@ nav.sub {
 #results > table {
 	width: 100%;
 	table-layout: fixed;
+	margin-bottom: 40px;
 }
 
 .content pre.line-numbers {
@@ -519,7 +528,7 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div {
+.content .methods > div:not(.important-traits) {
 	margin-left: 40px;
 	margin-bottom: 15px;
 }
@@ -1075,10 +1084,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	font-size: 16px;
 }
 
-.tooltip:hover .tooltiptext {
-	display: inline;
-}
-
 .tooltip .tooltiptext::after {
 	content: " ";
 	position: absolute;
@@ -1089,18 +1094,56 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	border-style: solid;
 }
 
-.tooltip.compile_fail, .tooltip.ignore {
+.tooltip.compile_fail, .tooltip.should_panic, .tooltip.ignore {
 	font-weight: bold;
 	font-size: 20px;
 }
 
-.tooltip .tooltiptext {
+.important-traits-tooltip {
+	display: inline-block;
+	cursor: pointer;
+}
+
+.important-traits:hover .important-traits-tooltiptext,
+.important-traits .important-traits-tooltiptext.force-tooltip {
+	display: inline-block;
+}
+
+.important-traits .important-traits-tooltiptext {
+	display: none;
+	padding: 5px 3px 3px 3px;
+	border-radius: 6px;
+	margin-left: 5px;
+	z-index: 10;
+	font-size: 16px;
+	cursor: default;
+	position: absolute;
 	border: 1px solid;
-	font-weight: normal;
+}
+
+.important-traits-tooltip::after {
+	/* The margin on the tooltip does not capture hover events,
+	   this extends the area of hover enough so that mouse hover is not
+	   lost when moving the mouse to the tooltip */
+	content: "\00a0\00a0\00a0";
+}
+
+.important-traits .important, .important-traits .docblock {
+	margin: 0;
+}
+
+.important-traits .docblock code.content{
+	margin: 0;
+	padding: 0;
+	font-size: 20px;
+}
+
+/* Example code has the "Run" button that needs to be positioned relative to the pre */
+pre.rust.rust-example-rendered {
+	position: relative;
 }
 
 pre.rust {
-	position: relative;
 	tab-size: 4;
 	-moz-tab-size: 4;
 }
@@ -1138,6 +1181,18 @@ pre.rust {
 #titles > div > div.count {
 	display: inline-block;
 	font-size: 16px;
+}
+
+.important-traits {
+	cursor: pointer;
+	z-index: 2;
+	margin-left: 5px;
+}
+
+h4 > .important-traits {
+	position: absolute;
+	left: -44px;
+	top: 2px;
 }
 
 #all-types {
@@ -1235,6 +1290,16 @@ pre.rust {
 }
 
 /* Media Queries */
+
+@media (min-width: 701px) {
+	/* In case there is no documentation before a code block, we need to add some margin at the top
+	to prevent an overlay between the "collapse toggle" and the information tooltip.
+	However, it's needed needed with smaller screen width because the doc/code block is always put
+	"one line" below. */
+	.information:first-child > .tooltip {
+		margin-top: 16px;
+	}
+}
 
 @media (max-width: 700px) {
 	body {
@@ -1366,6 +1431,12 @@ pre.rust {
 		z-index: 1;
 	}
 
+	h4 > .important-traits {
+		position: absolute;
+		left: -22px;
+		top: 24px;
+	}
+
 	#titles > div > div.count {
 		float: left;
 		width: 100%;
@@ -1449,6 +1520,11 @@ pre.rust {
 
 	#main > .line-numbers {
 		margin-top: 0;
+	}
+
+	.important-traits .important-traits-tooltiptext {
+		left: 0;
+		top: 100%;
 	}
 }
 

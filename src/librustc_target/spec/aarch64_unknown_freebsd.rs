@@ -15,6 +15,6 @@ pub fn target() -> TargetResult {
         target_env: String::new(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
-        options: TargetOptions { abi_blacklist: super::arm_base::abi_blacklist(), ..base },
+        options: TargetOptions { unsupported_abis: super::arm_base::unsupported_abis(), ..base },
     })
 }

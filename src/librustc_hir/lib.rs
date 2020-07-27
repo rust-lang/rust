@@ -3,7 +3,6 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 #![feature(crate_visibility_modifier)]
-#![feature(const_if_match)]
 #![feature(const_fn)] // For the unsizing cast on `&[]`
 #![feature(const_panic)]
 #![feature(in_band_lifetimes)]
@@ -18,6 +17,7 @@ mod arena;
 pub mod def;
 pub mod definitions;
 pub use rustc_span::def_id;
+pub mod fake_lang_items;
 mod hir;
 pub mod hir_id;
 pub mod intravisit;

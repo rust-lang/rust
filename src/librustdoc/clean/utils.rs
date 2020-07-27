@@ -328,7 +328,7 @@ pub fn strip_path(path: &Path) -> Path {
     Path { global: path.global, res: path.res, segments }
 }
 
-pub fn qpath_to_string(p: &hir::QPath) -> String {
+pub fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, ref path) => &path.segments,
         hir::QPath::TypeRelative(_, ref segment) => return segment.ident.to_string(),
@@ -417,7 +417,7 @@ impl ToSource for rustc_span::Span {
     }
 }
 
-pub fn name_from_pat(p: &hir::Pat) -> String {
+pub fn name_from_pat(p: &hir::Pat<'_>) -> String {
     use rustc_hir::*;
     debug!("trying to get a name from pattern: {:?}", p);
 
@@ -466,12 +466,12 @@ pub fn name_from_pat(p: &hir::Pat) -> String {
 
 pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
-        ty::ConstKind::Unevaluated(def_id, _, promoted) => {
-            let mut s = if let Some(def_id) = def_id.as_local() {
-                let hir_id = cx.tcx.hir().as_local_hir_id(def_id);
+        ty::ConstKind::Unevaluated(def, _, promoted) => {
+            let mut s = if let Some(def) = def.as_local() {
+                let hir_id = cx.tcx.hir().as_local_hir_id(def.did);
                 print_const_expr(cx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
-                inline::print_inlined_const(cx, def_id)
+                inline::print_inlined_const(cx, def.did)
             };
             if let Some(promoted) = promoted {
                 s.push_str(&format!("::{:?}", promoted))
@@ -481,8 +481,8 @@ pub fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
         _ => {
             let mut s = n.to_string();
             // array lengths are obviously usize
-            if s.ends_with("usize") {
-                let n = s.len() - "usize".len();
+            if s.ends_with("_usize") {
+                let n = s.len() - "_usize".len();
                 s.truncate(n);
                 if s.ends_with(": ") {
                     let n = s.len() - ": ".len();

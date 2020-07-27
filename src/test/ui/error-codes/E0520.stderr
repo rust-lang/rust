@@ -1,5 +1,14 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/E0520.rs:1:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+
 error[E0520]: `fly` specializes an item from a parent `impl`, but that item is not marked `default`
-  --> $DIR/E0520.rs:16:5
+  --> $DIR/E0520.rs:17:5
    |
 LL | / impl<T: Clone> SpaceLlama for T {
 LL | |     fn fly(&self) {}
@@ -11,6 +20,6 @@ LL |       default fn fly(&self) {}
    |
    = note: to specialize, `fly` in the parent `impl` must be marked `default`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0520`.

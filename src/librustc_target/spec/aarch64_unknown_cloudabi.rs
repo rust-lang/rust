@@ -3,7 +3,7 @@ use crate::spec::{LinkerFlavor, Target, TargetResult};
 pub fn target() -> TargetResult {
     let mut base = super::cloudabi_base::opts();
     base.max_atomic_width = Some(128);
-    base.abi_blacklist = super::arm_base::abi_blacklist();
+    base.unsupported_abis = super::arm_base::unsupported_abis();
     base.linker = Some("aarch64-unknown-cloudabi-cc".to_string());
 
     Ok(Target {

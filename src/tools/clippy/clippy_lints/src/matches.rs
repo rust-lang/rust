@@ -13,14 +13,14 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
 use rustc_hir::{
-    Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, Node, Pat, PatKind,
-    QPath, RangeEnd,
+    Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Guard, Local, MatchSource, Mutability, Node, Pat,
+    PatKind, QPath, RangeEnd,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
+use rustc_span::source_map::{Span, Spanned};
 use std::cmp::Ordering;
 use std::collections::Bound;
 
@@ -36,9 +36,16 @@ declare_clippy_lint! {
     /// ```rust
     /// # fn bar(stool: &str) {}
     /// # let x = Some("abc");
+    ///
+    /// // Bad
     /// match x {
     ///     Some(ref foo) => bar(foo),
     ///     _ => (),
+    /// }
+    ///
+    /// // Good
+    /// if let Some(ref foo) = x {
+    ///     bar(foo);
     /// }
     /// ```
     pub SINGLE_MATCH,
@@ -97,10 +104,18 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust,ignore
+    /// // Bad
     /// match x {
     ///     &A(ref y) => foo(y),
     ///     &B => bar(),
     ///     _ => frob(&x),
+    /// }
+    ///
+    /// // Good
+    /// match *x {
+    ///     A(ref y) => foo(y),
+    ///     B => bar(),
+    ///     _ => frob(x),
     /// }
     /// ```
     pub MATCH_REF_PATS,
@@ -168,7 +183,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for arm which matches all errors with `Err(_)`
     /// and take drastic actions like `panic!`.
     ///
-    /// **Why is this bad?** It is generally a bad practice, just like
+    /// **Why is this bad?** It is generally a bad practice, similar to
     /// catching all exceptions in java with `catch(Exception)`
     ///
     /// **Known problems:** None.
@@ -182,7 +197,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub MATCH_WILD_ERR_ARM,
-    style,
+    pedantic,
     "a `match` with `Err(_)` arm and take drastic actions"
 }
 
@@ -197,10 +212,15 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let x: Option<()> = None;
+    ///
+    /// // Bad
     /// let r: Option<&()> = match x {
     ///     None => None,
     ///     Some(ref v) => Some(v),
     /// };
+    ///
+    /// // Good
+    /// let r: Option<&()> = x.as_ref();
     /// ```
     pub MATCH_AS_REF,
     complexity,
@@ -219,14 +239,54 @@ declare_clippy_lint! {
     /// ```rust
     /// # enum Foo { A(usize), B(usize) }
     /// # let x = Foo::B(1);
+    ///
+    /// // Bad
     /// match x {
-    ///     A => {},
+    ///     Foo::A(_) => {},
     ///     _ => {},
+    /// }
+    ///
+    /// // Good
+    /// match x {
+    ///     Foo::A(_) => {},
+    ///     Foo::B(_) => {},
     /// }
     /// ```
     pub WILDCARD_ENUM_MATCH_ARM,
     restriction,
     "a wildcard enum match arm using `_`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for wildcard enum matches for a single variant.
+    ///
+    /// **Why is this bad?** New enum variants added by library updates can be missed.
+    ///
+    /// **Known problems:** Suggested replacements may not use correct path to enum
+    /// if it's not present in the current scope.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// # enum Foo { A, B, C }
+    /// # let x = Foo::B;
+    /// // Bad
+    /// match x {
+    ///     Foo::A => {},
+    ///     Foo::B => {},
+    ///     _ => {},
+    /// }
+    ///
+    /// // Good
+    /// match x {
+    ///     Foo::A => {},
+    ///     Foo::B => {},
+    ///     Foo::C => {},
+    /// }
+    /// ```
+    pub MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
+    pedantic,
+    "a wildcard enum match for a single variant"
 }
 
 declare_clippy_lint! {
@@ -239,9 +299,16 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// match "foo" {
     ///     "a" => {},
     ///     "bar" | _ => {},
+    /// }
+    ///
+    /// // Good
+    /// match "foo" {
+    ///     "a" => {},
+    ///     _ => {},
     /// }
     /// ```
     pub WILDCARD_IN_OR_PATTERNS,
@@ -342,6 +409,74 @@ declare_clippy_lint! {
     "a match on a struct that binds all fields but still uses the wildcard pattern"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Lint for redundant pattern matching over `Result` or
+    /// `Option`
+    ///
+    /// **Why is this bad?** It's more concise and clear to just use the proper
+    /// utility function
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// if let Ok(_) = Ok::<i32, i32>(42) {}
+    /// if let Err(_) = Err::<i32, i32>(42) {}
+    /// if let None = None::<()> {}
+    /// if let Some(_) = Some(42) {}
+    /// match Ok::<i32, i32>(42) {
+    ///     Ok(_) => true,
+    ///     Err(_) => false,
+    /// };
+    /// ```
+    ///
+    /// The more idiomatic use would be:
+    ///
+    /// ```rust
+    /// if Ok::<i32, i32>(42).is_ok() {}
+    /// if Err::<i32, i32>(42).is_err() {}
+    /// if None::<()>.is_none() {}
+    /// if Some(42).is_some() {}
+    /// Ok::<i32, i32>(42).is_ok();
+    /// ```
+    pub REDUNDANT_PATTERN_MATCHING,
+    style,
+    "use the proper utility function avoiding an `if let`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for `match`  or `if let` expressions producing a
+    /// `bool` that could be written using `matches!`
+    ///
+    /// **Why is this bad?** Readability and needless complexity.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// let x = Some(5);
+    ///
+    /// // Bad
+    /// let a = match x {
+    ///     Some(0) => true,
+    ///     _ => false,
+    /// };
+    ///
+    /// let a = if let Some(0) = x {
+    ///     true
+    /// } else {
+    ///     false
+    /// };
+    ///
+    /// // Good
+    /// let a = matches!(x, Some(0));
+    /// ```
+    pub MATCH_LIKE_MATCHES_MACRO,
+    style,
+    "a match that could be written with the matches! macro"
+}
+
 #[derive(Default)]
 pub struct Matches {
     infallible_destructuring_match_linted: bool,
@@ -356,17 +491,24 @@ impl_lint_pass!(Matches => [
     MATCH_WILD_ERR_ARM,
     MATCH_AS_REF,
     WILDCARD_ENUM_MATCH_ARM,
+    MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
     WILDCARD_IN_OR_PATTERNS,
     MATCH_SINGLE_BINDING,
     INFALLIBLE_DESTRUCTURING_MATCH,
-    REST_PAT_IN_FULLY_BOUND_STRUCTS
+    REST_PAT_IN_FULLY_BOUND_STRUCTS,
+    REDUNDANT_PATTERN_MATCHING,
+    MATCH_LIKE_MATCHES_MACRO
 ]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for Matches {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
+
+        redundant_pattern_match::check(cx, expr);
+        check_match_like_matches(cx, expr);
+
         if let ExprKind::Match(ref ex, ref arms, MatchSource::Normal) = expr.kind {
             check_single_match(cx, ex, arms, expr);
             check_match_bool(cx, ex, arms, expr);
@@ -387,7 +529,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local<'_>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
         if_chain! {
             if !in_external_macro(cx.sess(), local.span);
             if !in_macro(local.span);
@@ -423,7 +565,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
         }
     }
 
-    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
+    fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         if_chain! {
             if !in_external_macro(cx.sess(), pat.span);
             if !in_macro(pat.span);
@@ -450,7 +592,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
 }
 
 #[rustfmt::skip]
-fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
         if in_macro(expr.span) {
             // Don't lint match expressions present in
@@ -462,17 +604,23 @@ fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
             // the lint noisy in unnecessary situations
             return;
         }
-        let els = remove_blocks(&arms[1].body);
-        let els = if is_unit_expr(els) {
+        let els = arms[1].body;
+        let els = if is_unit_expr(remove_blocks(els)) {
             None
-        } else if let ExprKind::Block(_, _) = els.kind {
-            // matches with blocks that contain statements are prettier as `if let + else`
-            Some(els)
+        } else if let ExprKind::Block(Block { stmts, expr: block_expr, .. }, _) = els.kind {
+            if stmts.len() == 1 && block_expr.is_none() || stmts.is_empty() && block_expr.is_some() {
+                // single statement/expr "else" block, don't lint
+                return;
+            } else {
+                // block with 2+ statements or 1 expr and 1+ statement
+                Some(els)
+            }
         } else {
-            // allow match arms with just expressions
-            return;
+            // not a block, don't lint
+            return; 
         };
-        let ty = cx.tables.expr_ty(ex);
+
+        let ty = cx.typeck_results().expr_ty(ex);
         if ty.kind != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
@@ -481,7 +629,7 @@ fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
 }
 
 fn check_single_match_single_pattern(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     ex: &Expr<'_>,
     arms: &[Arm<'_>],
     expr: &Expr<'_>,
@@ -493,7 +641,7 @@ fn check_single_match_single_pattern(
 }
 
 fn report_single_match_single_pattern(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     ex: &Expr<'_>,
     arms: &[Arm<'_>],
     expr: &Expr<'_>,
@@ -522,7 +670,7 @@ fn report_single_match_single_pattern(
 }
 
 fn check_single_match_opt_like(
-    cx: &LateContext<'_, '_>,
+    cx: &LateContext<'_>,
     ex: &Expr<'_>,
     arms: &[Arm<'_>],
     expr: &Expr<'_>,
@@ -562,9 +710,9 @@ fn check_single_match_opt_like(
     }
 }
 
-fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_match_bool(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     // Type of expression is `bool`.
-    if cx.tables.expr_ty(ex).kind == ty::Bool {
+    if cx.typeck_results().expr_ty(ex).kind == ty::Bool {
         span_lint_and_then(
             cx,
             MATCH_BOOL,
@@ -626,9 +774,9 @@ fn check_match_bool(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
     }
 }
 
-fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
-    if arms.len() >= 2 && cx.tables.expr_ty(ex).is_integral() {
-        let ranges = all_ranges(cx, arms, cx.tables.expr_ty(ex));
+fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
+    if arms.len() >= 2 && cx.typeck_results().expr_ty(ex).is_integral() {
+        let ranges = all_ranges(cx, arms, cx.typeck_results().expr_ty(ex));
         let type_ranges = type_ranges(&ranges);
         if !type_ranges.is_empty() {
             if let Some((start, end)) = overlapping(&type_ranges) {
@@ -645,8 +793,8 @@ fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr<'
     }
 }
 
-fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
-    let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
+fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+    let ex_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(ex));
     if is_type_diagnostic_item(cx, ex_ty, sym!(result_type)) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pat.kind {
@@ -676,7 +824,7 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
                                 arm.pat.span,
                                 &format!("`Err({})` matches all errors", &ident_bind_name),
                                 None,
-                                "match each error separately or use the error output",
+                                "match each error separately or use the error output, or use `.except(msg)` if the error case is unreachable",
                             );
                         }
                     }
@@ -686,8 +834,8 @@ fn check_wild_err_arm(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>])
     }
 }
 
-fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
-    let ty = cx.tables.expr_ty(ex);
+fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+    let ty = cx.typeck_results().expr_ty(ex);
     if !ty.is_enum() {
         // If there isn't a nice closed set of possible values that can be conveniently enumerated,
         // don't complain about not enumerating the mall.
@@ -729,9 +877,16 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
                 if let QPath::Resolved(_, p) = path {
                     missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
                 }
-            } else if let PatKind::TupleStruct(ref path, ..) = arm.pat.kind {
+            } else if let PatKind::TupleStruct(ref path, ref patterns, ..) = arm.pat.kind {
                 if let QPath::Resolved(_, p) = path {
-                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
+                    // Some simple checks for exhaustive patterns.
+                    // There is a room for improvements to detect more cases,
+                    // but it can be more expensive to do so.
+                    let is_pattern_exhaustive =
+                        |pat: &&Pat<'_>| matches!(pat.kind, PatKind::Wild | PatKind::Binding(.., None));
+                    if patterns.iter().all(is_pattern_exhaustive) {
+                        missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
+                    }
                 }
             }
         }
@@ -766,6 +921,19 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
             }
         }
 
+        if suggestion.len() == 1 {
+            // No need to check for non-exhaustive enum as in that case len would be greater than 1
+            span_lint_and_sugg(
+                cx,
+                MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
+                wildcard_span,
+                message,
+                "try this",
+                suggestion[0].clone(),
+                Applicability::MaybeIncorrect,
+            )
+        };
+
         span_lint_and_sugg(
             cx,
             WILDCARD_ENUM_MATCH_ARM,
@@ -773,7 +941,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_
             message,
             "try this",
             suggestion.join(" | "),
-            Applicability::MachineApplicable,
+            Applicability::MaybeIncorrect,
         )
     }
 }
@@ -791,7 +959,7 @@ fn is_panic_block(block: &Block<'_>) -> bool {
     }
 }
 
-fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_match_ref_pats(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if has_only_ref_pats(arms) {
         let mut suggs = Vec::with_capacity(arms.len() + 1);
         let (title, msg) = if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = ex.kind {
@@ -826,7 +994,7 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>
     }
 }
 
-fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
         let arm_ref: Option<BindingAnnotation> = if is_none_arm(&arms[0]) {
             is_ref_some_arm(&arms[1])
@@ -842,8 +1010,8 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
                 "as_mut"
             };
 
-            let output_ty = cx.tables.expr_ty(expr);
-            let input_ty = cx.tables.expr_ty(ex);
+            let output_ty = cx.typeck_results().expr_ty(expr);
+            let input_ty = cx.typeck_results().expr_ty(ex);
 
             let cast = if_chain! {
                 if let ty::Adt(_, substs) = input_ty.kind;
@@ -878,7 +1046,7 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr<'_>, arms: &[Arm<'_>],
     }
 }
 
-fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
+fn check_wild_in_or_pats(cx: &LateContext<'_>, arms: &[Arm<'_>]) {
     for arm in arms {
         if let PatKind::Or(ref fields) = arm.pat.kind {
             // look for multiple fields in this arm that contains at least one Wild pattern
@@ -896,7 +1064,80 @@ fn check_wild_in_or_pats(cx: &LateContext<'_, '_>, arms: &[Arm<'_>]) {
     }
 }
 
-fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+/// Lint a `match` or `if let .. { .. } else { .. }` expr that could be replaced by `matches!`
+fn check_match_like_matches<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    if let ExprKind::Match(ex, arms, ref match_source) = &expr.kind {
+        match match_source {
+            MatchSource::Normal => find_matches_sugg(cx, ex, arms, expr, false),
+            MatchSource::IfLetDesugar { .. } => find_matches_sugg(cx, ex, arms, expr, true),
+            _ => return,
+        }
+    }
+}
+
+/// Lint a `match` or desugared `if let` for replacement by `matches!`
+fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>, desugared: bool) {
+    if_chain! {
+        if arms.len() == 2;
+        if cx.typeck_results().expr_ty(expr).is_bool();
+        if is_wild(&arms[1].pat);
+        if let Some(first) = find_bool_lit(&arms[0].body.kind, desugared);
+        if let Some(second) = find_bool_lit(&arms[1].body.kind, desugared);
+        if first != second;
+        then {
+            let mut applicability = Applicability::MachineApplicable;
+
+            let pat_and_guard = if let Some(Guard::If(g)) = arms[0].guard {
+                format!("{} if {}", snippet_with_applicability(cx, arms[0].pat.span, "..", &mut applicability), snippet_with_applicability(cx, g.span, "..", &mut applicability))
+            } else {
+                format!("{}", snippet_with_applicability(cx, arms[0].pat.span, "..", &mut applicability))
+            };
+            span_lint_and_sugg(
+                cx,
+                MATCH_LIKE_MATCHES_MACRO,
+                expr.span,
+                &format!("{} expression looks like `matches!` macro", if desugared { "if let .. else" } else { "match" }),
+                "try this",
+                format!(
+                    "{}matches!({}, {})",
+                    if first { "" } else { "!" },
+                    snippet_with_applicability(cx, ex.span, "..", &mut applicability),
+                    pat_and_guard,
+                ),
+                applicability,
+            )
+        }
+    }
+}
+
+/// Extract a `bool` or `{ bool }`
+fn find_bool_lit(ex: &ExprKind<'_>, desugared: bool) -> Option<bool> {
+    match ex {
+        ExprKind::Lit(Spanned {
+            node: LitKind::Bool(b), ..
+        }) => Some(*b),
+        ExprKind::Block(
+            rustc_hir::Block {
+                stmts: &[],
+                expr: Some(exp),
+                ..
+            },
+            _,
+        ) if desugared => {
+            if let ExprKind::Lit(Spanned {
+                node: LitKind::Bool(b), ..
+            }) = exp.kind
+            {
+                Some(b)
+            } else {
+                None
+            }
+        },
+        _ => None,
+    }
+}
+
+fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
     }
@@ -913,13 +1154,13 @@ fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms:
     match match_body.kind {
         ExprKind::Block(block, _) => {
             // macro + expr_ty(body) == ()
-            if block.span.from_expansion() && cx.tables.expr_ty(&match_body).is_unit() {
+            if block.span.from_expansion() && cx.typeck_results().expr_ty(&match_body).is_unit() {
                 snippet_body.push(';');
             }
         },
         _ => {
             // expr_ty(body) == ()
-            if cx.tables.expr_ty(&match_body).is_unit() {
+            if cx.typeck_results().expr_ty(&match_body).is_unit() {
                 snippet_body.push(';');
             }
         },
@@ -992,7 +1233,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>, arms:
 }
 
 /// Returns true if the `ex` match expression is in a local (`let`) statement
-fn opt_parent_let<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>) -> Option<&'a Local<'a>> {
+fn opt_parent_let<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<&'a Local<'a>> {
     if_chain! {
         let map = &cx.tcx.hir();
         if let Some(Node::Expr(parent_arm_expr)) = map.find(map.get_parent_node(ex.hir_id));
@@ -1005,11 +1246,7 @@ fn opt_parent_let<'a>(cx: &LateContext<'_, 'a>, ex: &Expr<'a>) -> Option<&'a Loc
 }
 
 /// Gets all arms that are unbounded `PatRange`s.
-fn all_ranges<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    arms: &'tcx [Arm<'_>],
-    ty: Ty<'tcx>,
-) -> Vec<SpannedRange<Constant>> {
+fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>) -> Vec<SpannedRange<Constant>> {
     arms.iter()
         .flat_map(|arm| {
             if let Arm {
@@ -1018,11 +1255,11 @@ fn all_ranges<'a, 'tcx>(
             {
                 if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
                     let lhs = match lhs {
-                        Some(lhs) => constant(cx, cx.tables, lhs)?.0,
+                        Some(lhs) => constant(cx, cx.typeck_results(), lhs)?.0,
                         None => miri_to_const(ty.numeric_min_val(cx.tcx)?)?,
                     };
                     let rhs = match rhs {
-                        Some(rhs) => constant(cx, cx.tables, rhs)?.0,
+                        Some(rhs) => constant(cx, cx.typeck_results(), rhs)?.0,
                         None => miri_to_const(ty.numeric_max_val(cx.tcx)?)?,
                     };
                     let rhs = match range_end {
@@ -1036,7 +1273,7 @@ fn all_ranges<'a, 'tcx>(
                 }
 
                 if let PatKind::Lit(ref value) = pat.kind {
-                    let value = constant(cx, cx.tables, value)?.0;
+                    let value = constant(cx, cx.typeck_results(), value)?.0;
                     return Some(SpannedRange {
                         span: pat.span,
                         node: (value.clone(), Bound::Included(value)),
@@ -1090,10 +1327,7 @@ fn is_unit_expr(expr: &Expr<'_>) -> bool {
 
 // Checks if arm has the form `None => None`
 fn is_none_arm(arm: &Arm<'_>) -> bool {
-    match arm.pat.kind {
-        PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => true,
-        _ => false,
-    }
+    matches!(arm.pat.kind, PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE))
 }
 
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
@@ -1202,6 +1436,237 @@ where
     }
 
     None
+}
+
+mod redundant_pattern_match {
+    use super::REDUNDANT_PATTERN_MATCHING;
+    use crate::utils::{in_constant, match_qpath, match_trait_method, paths, snippet, span_lint_and_then};
+    use if_chain::if_chain;
+    use rustc_ast::ast::LitKind;
+    use rustc_errors::Applicability;
+    use rustc_hir::{Arm, Expr, ExprKind, HirId, MatchSource, PatKind, QPath};
+    use rustc_lint::LateContext;
+    use rustc_middle::ty;
+    use rustc_mir::const_eval::is_const_fn;
+    use rustc_span::source_map::Symbol;
+
+    pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if let ExprKind::Match(op, arms, ref match_source) = &expr.kind {
+            match match_source {
+                MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
+                MatchSource::IfLetDesugar { .. } => find_sugg_for_if_let(cx, expr, op, arms, "if"),
+                MatchSource::WhileLetDesugar => find_sugg_for_if_let(cx, expr, op, arms, "while"),
+                _ => {},
+            }
+        }
+    }
+
+    fn find_sugg_for_if_let<'tcx>(
+        cx: &LateContext<'tcx>,
+        expr: &'tcx Expr<'_>,
+        op: &Expr<'_>,
+        arms: &[Arm<'_>],
+        keyword: &'static str,
+    ) {
+        fn find_suggestion(cx: &LateContext<'_>, hir_id: HirId, path: &QPath<'_>) -> Option<&'static str> {
+            if match_qpath(path, &paths::RESULT_OK) && can_suggest(cx, hir_id, sym!(result_type), "is_ok") {
+                return Some("is_ok()");
+            }
+            if match_qpath(path, &paths::RESULT_ERR) && can_suggest(cx, hir_id, sym!(result_type), "is_err") {
+                return Some("is_err()");
+            }
+            if match_qpath(path, &paths::OPTION_SOME) && can_suggest(cx, hir_id, sym!(option_type), "is_some") {
+                return Some("is_some()");
+            }
+            if match_qpath(path, &paths::OPTION_NONE) && can_suggest(cx, hir_id, sym!(option_type), "is_none") {
+                return Some("is_none()");
+            }
+            None
+        }
+
+        let hir_id = expr.hir_id;
+        let good_method = match arms[0].pat.kind {
+            PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
+                if let PatKind::Wild = patterns[0].kind {
+                    find_suggestion(cx, hir_id, path)
+                } else {
+                    None
+                }
+            },
+            PatKind::Path(ref path) => find_suggestion(cx, hir_id, path),
+            _ => None,
+        };
+        let good_method = match good_method {
+            Some(method) => method,
+            None => return,
+        };
+
+        // check that `while_let_on_iterator` lint does not trigger
+        if_chain! {
+            if keyword == "while";
+            if let ExprKind::MethodCall(method_path, _, _, _) = op.kind;
+            if method_path.ident.name == sym!(next);
+            if match_trait_method(cx, op, &paths::ITERATOR);
+            then {
+                return;
+            }
+        }
+
+        let result_expr = match &op.kind {
+            ExprKind::AddrOf(_, _, borrowed) => borrowed,
+            _ => op,
+        };
+        span_lint_and_then(
+            cx,
+            REDUNDANT_PATTERN_MATCHING,
+            arms[0].pat.span,
+            &format!("redundant pattern matching, consider using `{}`", good_method),
+            |diag| {
+                // while let ... = ... { ... }
+                // ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                let expr_span = expr.span;
+
+                // while let ... = ... { ... }
+                //                 ^^^
+                let op_span = result_expr.span.source_callsite();
+
+                // while let ... = ... { ... }
+                // ^^^^^^^^^^^^^^^^^^^
+                let span = expr_span.until(op_span.shrink_to_hi());
+                diag.span_suggestion(
+                    span,
+                    "try this",
+                    format!("{} {}.{}", keyword, snippet(cx, op_span, "_"), good_method),
+                    Applicability::MachineApplicable, // snippet
+                );
+            },
+        );
+    }
+
+    fn find_sugg_for_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
+        if arms.len() == 2 {
+            let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
+
+            let hir_id = expr.hir_id;
+            let found_good_method = match node_pair {
+                (
+                    PatKind::TupleStruct(ref path_left, ref patterns_left, _),
+                    PatKind::TupleStruct(ref path_right, ref patterns_right, _),
+                ) if patterns_left.len() == 1 && patterns_right.len() == 1 => {
+                    if let (PatKind::Wild, PatKind::Wild) = (&patterns_left[0].kind, &patterns_right[0].kind) {
+                        find_good_method_for_match(
+                            arms,
+                            path_left,
+                            path_right,
+                            &paths::RESULT_OK,
+                            &paths::RESULT_ERR,
+                            "is_ok()",
+                            "is_err()",
+                            || can_suggest(cx, hir_id, sym!(result_type), "is_ok"),
+                            || can_suggest(cx, hir_id, sym!(result_type), "is_err"),
+                        )
+                    } else {
+                        None
+                    }
+                },
+                (PatKind::TupleStruct(ref path_left, ref patterns, _), PatKind::Path(ref path_right))
+                | (PatKind::Path(ref path_left), PatKind::TupleStruct(ref path_right, ref patterns, _))
+                    if patterns.len() == 1 =>
+                {
+                    if let PatKind::Wild = patterns[0].kind {
+                        find_good_method_for_match(
+                            arms,
+                            path_left,
+                            path_right,
+                            &paths::OPTION_SOME,
+                            &paths::OPTION_NONE,
+                            "is_some()",
+                            "is_none()",
+                            || can_suggest(cx, hir_id, sym!(option_type), "is_some"),
+                            || can_suggest(cx, hir_id, sym!(option_type), "is_none"),
+                        )
+                    } else {
+                        None
+                    }
+                },
+                _ => None,
+            };
+
+            if let Some(good_method) = found_good_method {
+                let span = expr.span.to(op.span);
+                let result_expr = match &op.kind {
+                    ExprKind::AddrOf(_, _, borrowed) => borrowed,
+                    _ => op,
+                };
+                span_lint_and_then(
+                    cx,
+                    REDUNDANT_PATTERN_MATCHING,
+                    expr.span,
+                    &format!("redundant pattern matching, consider using `{}`", good_method),
+                    |diag| {
+                        diag.span_suggestion(
+                            span,
+                            "try this",
+                            format!("{}.{}", snippet(cx, result_expr.span, "_"), good_method),
+                            Applicability::MaybeIncorrect, // snippet
+                        );
+                    },
+                );
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn find_good_method_for_match<'a>(
+        arms: &[Arm<'_>],
+        path_left: &QPath<'_>,
+        path_right: &QPath<'_>,
+        expected_left: &[&str],
+        expected_right: &[&str],
+        should_be_left: &'a str,
+        should_be_right: &'a str,
+        can_suggest_left: impl Fn() -> bool,
+        can_suggest_right: impl Fn() -> bool,
+    ) -> Option<&'a str> {
+        let body_node_pair = if match_qpath(path_left, expected_left) && match_qpath(path_right, expected_right) {
+            (&(*arms[0].body).kind, &(*arms[1].body).kind)
+        } else if match_qpath(path_right, expected_left) && match_qpath(path_left, expected_right) {
+            (&(*arms[1].body).kind, &(*arms[0].body).kind)
+        } else {
+            return None;
+        };
+
+        match body_node_pair {
+            (ExprKind::Lit(ref lit_left), ExprKind::Lit(ref lit_right)) => match (&lit_left.node, &lit_right.node) {
+                (LitKind::Bool(true), LitKind::Bool(false)) if can_suggest_left() => Some(should_be_left),
+                (LitKind::Bool(false), LitKind::Bool(true)) if can_suggest_right() => Some(should_be_right),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn can_suggest(cx: &LateContext<'_>, hir_id: HirId, diag_item: Symbol, name: &str) -> bool {
+        if !in_constant(cx, hir_id) {
+            return true;
+        }
+
+        // Avoid suggesting calls to non-`const fn`s in const contexts, see #5697.
+        cx.tcx
+            .get_diagnostic_item(diag_item)
+            .and_then(|def_id| {
+                cx.tcx.inherent_impls(def_id).iter().find_map(|imp| {
+                    cx.tcx
+                        .associated_items(*imp)
+                        .in_definition_order()
+                        .find_map(|item| match item.kind {
+                            ty::AssocKind::Fn if item.ident.name.as_str() == name => Some(item.def_id),
+                            _ => None,
+                        })
+                })
+            })
+            .map_or(false, |def_id| is_const_fn(cx.tcx, def_id))
+    }
 }
 
 #[test]

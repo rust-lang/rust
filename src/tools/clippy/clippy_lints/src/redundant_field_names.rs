@@ -2,6 +2,7 @@ use crate::utils::span_lint_and_sugg;
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -36,6 +37,9 @@ declare_lint_pass!(RedundantFieldNames => [REDUNDANT_FIELD_NAMES]);
 
 impl EarlyLintPass for RedundantFieldNames {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+        if in_external_macro(cx.sess, expr.span) {
+            return;
+        }
         if let ExprKind::Struct(_, ref fields, _) = expr.kind {
             for field in fields {
                 if field.is_shorthand {

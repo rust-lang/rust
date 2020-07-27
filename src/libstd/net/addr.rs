@@ -1,7 +1,8 @@
+use crate::cmp::Ordering;
 use crate::convert::TryInto;
 use crate::fmt;
 use crate::hash;
-use crate::io;
+use crate::io::{self, Write};
 use crate::iter;
 use crate::mem;
 use crate::net::{htons, ntohs, IpAddr, Ipv4Addr, Ipv6Addr};
@@ -36,7 +37,7 @@ use crate::vec;
 /// assert_eq!(socket.port(), 8080);
 /// assert_eq!(socket.is_ipv4(), true);
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SocketAddr {
     /// An IPv4 socket address.
@@ -599,7 +600,26 @@ impl fmt::Display for SocketAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddrV4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.ip(), self.port())
+        // Fast path: if there's no alignment stuff, write to the output buffer
+        // directly
+        if f.precision().is_none() && f.width().is_none() {
+            write!(f, "{}:{}", self.ip(), self.port())
+        } else {
+            const IPV4_SOCKET_BUF_LEN: usize = (3 * 4)  // the segments
+                + 3  // the separators
+                + 1 + 5; // the port
+            let mut buf = [0; IPV4_SOCKET_BUF_LEN];
+            let mut buf_slice = &mut buf[..];
+
+            // Unwrap is fine because writing to a sufficiently-sized
+            // buffer is infallible
+            write!(buf_slice, "{}:{}", self.ip(), self.port()).unwrap();
+            let len = IPV4_SOCKET_BUF_LEN - buf_slice.len();
+
+            // This unsafe is OK because we know what is being written to the buffer
+            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+            f.pad(buf)
+        }
     }
 }
 
@@ -613,7 +633,28 @@ impl fmt::Debug for SocketAddrV4 {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddrV6 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}]:{}", self.ip(), self.port())
+        // Fast path: if there's no alignment stuff, write to the output
+        // buffer directly
+        if f.precision().is_none() && f.width().is_none() {
+            write!(f, "[{}]:{}", self.ip(), self.port())
+        } else {
+            const IPV6_SOCKET_BUF_LEN: usize = (4 * 8)  // The address
+            + 7  // The colon separators
+            + 2  // The brackets
+            + 1 + 5; // The port
+
+            let mut buf = [0; IPV6_SOCKET_BUF_LEN];
+            let mut buf_slice = &mut buf[..];
+
+            // Unwrap is fine because writing to a sufficiently-sized
+            // buffer is infallible
+            write!(buf_slice, "[{}]:{}", self.ip(), self.port()).unwrap();
+            let len = IPV6_SOCKET_BUF_LEN - buf_slice.len();
+
+            // This unsafe is OK because we know what is being written to the buffer
+            let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+            f.pad(buf)
+        }
     }
 }
 
@@ -657,6 +698,34 @@ impl PartialEq for SocketAddrV6 {
 impl Eq for SocketAddrV4 {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for SocketAddrV6 {}
+
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl PartialOrd for SocketAddrV4 {
+    fn partial_cmp(&self, other: &SocketAddrV4) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl PartialOrd for SocketAddrV6 {
+    fn partial_cmp(&self, other: &SocketAddrV6) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl Ord for SocketAddrV4 {
+    fn cmp(&self, other: &SocketAddrV4) -> Ordering {
+        self.ip().cmp(other.ip()).then(self.port().cmp(&other.port()))
+    }
+}
+
+#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
+impl Ord for SocketAddrV6 {
+    fn cmp(&self, other: &SocketAddrV6) -> Ordering {
+        self.ip().cmp(other.ip()).then(self.port().cmp(&other.port()))
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for SocketAddrV4 {
@@ -895,6 +964,14 @@ impl ToSocketAddrs for (&str, u16) {
     }
 }
 
+#[stable(feature = "string_u16_to_socket_addrs", since = "1.46.0")]
+impl ToSocketAddrs for (String, u16) {
+    type Iter = vec::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
+        (&*self.0, self.1).to_socket_addrs()
+    }
+}
+
 // accepts strings like 'localhost:12345'
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToSocketAddrs for str {
@@ -1101,5 +1178,68 @@ mod tests {
         ));
         assert!(!v6.is_ipv4());
         assert!(v6.is_ipv6());
+    }
+
+    #[test]
+    fn socket_v4_to_str() {
+        let socket = SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 8080);
+
+        assert_eq!(format!("{}", socket), "192.168.0.1:8080");
+        assert_eq!(format!("{:<20}", socket), "192.168.0.1:8080    ");
+        assert_eq!(format!("{:>20}", socket), "    192.168.0.1:8080");
+        assert_eq!(format!("{:^20}", socket), "  192.168.0.1:8080  ");
+        assert_eq!(format!("{:.10}", socket), "192.168.0.");
+    }
+
+    #[test]
+    fn socket_v6_to_str() {
+        let socket: SocketAddrV6 = "[2a02:6b8:0:1::1]:53".parse().unwrap();
+
+        assert_eq!(format!("{}", socket), "[2a02:6b8:0:1::1]:53");
+        assert_eq!(format!("{:<24}", socket), "[2a02:6b8:0:1::1]:53    ");
+        assert_eq!(format!("{:>24}", socket), "    [2a02:6b8:0:1::1]:53");
+        assert_eq!(format!("{:^24}", socket), "  [2a02:6b8:0:1::1]:53  ");
+        assert_eq!(format!("{:.15}", socket), "[2a02:6b8:0:1::");
+    }
+
+    #[test]
+    fn compare() {
+        let v4_1 = "224.120.45.1:23456".parse::<SocketAddrV4>().unwrap();
+        let v4_2 = "224.210.103.5:12345".parse::<SocketAddrV4>().unwrap();
+        let v4_3 = "224.210.103.5:23456".parse::<SocketAddrV4>().unwrap();
+        let v6_1 = "[2001:db8:f00::1002]:23456".parse::<SocketAddrV6>().unwrap();
+        let v6_2 = "[2001:db8:f00::2001]:12345".parse::<SocketAddrV6>().unwrap();
+        let v6_3 = "[2001:db8:f00::2001]:23456".parse::<SocketAddrV6>().unwrap();
+
+        // equality
+        assert_eq!(v4_1, v4_1);
+        assert_eq!(v6_1, v6_1);
+        assert_eq!(SocketAddr::V4(v4_1), SocketAddr::V4(v4_1));
+        assert_eq!(SocketAddr::V6(v6_1), SocketAddr::V6(v6_1));
+        assert!(v4_1 != v4_2);
+        assert!(v6_1 != v6_2);
+
+        // compare different addresses
+        assert!(v4_1 < v4_2);
+        assert!(v6_1 < v6_2);
+        assert!(v4_2 > v4_1);
+        assert!(v6_2 > v6_1);
+
+        // compare the same address with different ports
+        assert!(v4_2 < v4_3);
+        assert!(v6_2 < v6_3);
+        assert!(v4_3 > v4_2);
+        assert!(v6_3 > v6_2);
+
+        // compare different addresses with the same port
+        assert!(v4_1 < v4_3);
+        assert!(v6_1 < v6_3);
+        assert!(v4_3 > v4_1);
+        assert!(v6_3 > v6_1);
+
+        // compare with an inferred right-hand side
+        assert_eq!(v4_1, "224.120.45.1:23456".parse().unwrap());
+        assert_eq!(v6_1, "[2001:db8:f00::1002]:23456".parse().unwrap());
+        assert_eq!(SocketAddr::V4(v4_1), "224.120.45.1:23456".parse().unwrap());
     }
 }

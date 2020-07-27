@@ -5,13 +5,15 @@ body {
 	color: black;
 }
 
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
+h4:not(.method):not(.type):not(.tymethod) {
 	color: black;
 }
 h1.fqn {
 	border-bottom-color: #D5D5D5;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
+h4:not(.method):not(.type):not(.tymethod) {
 	border-bottom-color: #DDDDDD;
 }
 
@@ -41,6 +43,10 @@ pre {
 
 .sidebar {
 	scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
+}
+
+.logo-container > img {
+	filter: drop-shadow(0 0 5px #aaa);
 }
 
 /* Improve the scrollbar display on webkit-based browsers */
@@ -173,10 +179,6 @@ a {
 	color: #3873AD;
 }
 
-.stab.internal a {
-	color: #304FFE;
-}
-
 a.test-arrow {
 	color: #f5f5f5;
 }
@@ -215,7 +217,6 @@ a.test-arrow {
 }
 
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
-.stab.internal { background: #FFB9B3; border-color: #B71C1C; }
 .stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
 .stab.portability { background: #C4ECFF; border-color: #7BA5DB; }
 
@@ -268,6 +269,7 @@ a.test-arrow:hover{
 
 :target > code, :target > .in-band {
 	background: #FDFFD3;
+	border-right: 3px solid #ffb44c;
 }
 
 pre.compile_fail {
@@ -275,6 +277,14 @@ pre.compile_fail {
 }
 
 pre.compile_fail:hover, .information:hover + pre.compile_fail {
+	border-left: 2px solid #f00;
+}
+
+pre.should_panic {
+	border-left: 2px solid rgba(255,0,0,.5);
+}
+
+pre.should_panic:hover, .information:hover + pre.should_panic {
 	border-left: 2px solid #f00;
 }
 
@@ -291,6 +301,14 @@ pre.ignore:hover, .information:hover + pre.ignore {
 }
 
 .information > .compile_fail:hover {
+	color: #f00;
+}
+
+.tooltip.should_panic {
+	color: rgba(255,0,0,.5);
+}
+
+.information > .should_panic:hover {
 	color: #f00;
 }
 
@@ -313,6 +331,11 @@ pre.ignore:hover, .information:hover + pre.ignore {
 
 .tooltip .tooltiptext::after {
 	border-color: transparent black transparent transparent;
+}
+
+.important-traits-tooltiptext {
+	background-color: #eee;
+	border-color: #999;
 }
 
 #titles > div:not(.selected) {

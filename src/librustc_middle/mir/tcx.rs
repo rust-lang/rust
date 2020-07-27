@@ -5,7 +5,6 @@
 
 use crate::mir::*;
 use crate::ty::subst::Subst;
-use crate::ty::util::IntTypeExt;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_target::abi::VariantIdx;
@@ -152,6 +151,13 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Repeat(ref operand, count) => {
                 tcx.mk_ty(ty::Array(operand.ty(local_decls, tcx), count))
             }
+            Rvalue::ThreadLocalRef(did) => {
+                if tcx.is_mutable_static(did) {
+                    tcx.mk_mut_ptr(tcx.type_of(did))
+                } else {
+                    tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.type_of(did))
+                }
+            }
             Rvalue::Ref(reg, bk, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 tcx.mk_ref(reg, ty::TypeAndMut { ty: place_ty, mutbl: bk.to_mutbl_lossy() })
@@ -174,17 +180,7 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.intern_tup(&[ty, tcx.types.bool])
             }
             Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
-            Rvalue::Discriminant(ref place) => {
-                let ty = place.ty(local_decls, tcx).ty;
-                match ty.kind {
-                    ty::Adt(adt_def, _) => adt_def.repr.discr_type().to_ty(tcx),
-                    ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
-                    _ => {
-                        // This can only be `0`, for now, so `u8` will suffice.
-                        tcx.types.u8
-                    }
-                }
-            }
+            Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
             Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
             Rvalue::NullaryOp(NullOp::SizeOf, _) => tcx.types.usize,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {

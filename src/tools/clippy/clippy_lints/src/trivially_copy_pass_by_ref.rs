@@ -58,7 +58,7 @@ pub struct TriviallyCopyPassByRef {
     limit: u64,
 }
 
-impl<'a, 'tcx> TriviallyCopyPassByRef {
+impl<'tcx> TriviallyCopyPassByRef {
     pub fn new(limit: Option<u64>, target: &SessionConfig) -> Self {
         let limit = limit.unwrap_or_else(|| {
             let bit_width = u64::from(target.ptr_width);
@@ -73,7 +73,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
         Self { limit }
     }
 
-    fn check_poly_fn(&mut self, cx: &LateContext<'_, 'tcx>, hir_id: HirId, decl: &FnDecl<'_>, span: Option<Span>) {
+    fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, hir_id: HirId, decl: &FnDecl<'_>, span: Option<Span>) {
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
@@ -125,8 +125,8 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
 
 impl_lint_pass!(TriviallyCopyPassByRef => [TRIVIALLY_COPY_PASS_BY_REF]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
-    fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem<'_>) {
+impl<'tcx> LateLintPass<'tcx> for TriviallyCopyPassByRef {
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         if item.span.from_expansion() {
             return;
         }
@@ -138,7 +138,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
 
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,
         _body: &'tcx Body<'_>,
@@ -161,7 +161,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
                 }
             },
             FnKind::Method(..) => (),
-            _ => return,
+            FnKind::Closure(..) => return,
         }
 
         // Exclude non-inherent impls

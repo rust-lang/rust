@@ -29,8 +29,8 @@ declare_lint_pass!(TransmutingNull => [TRANSMUTING_NULL]);
 
 const LINT_MSG: &str = "transmuting a known null pointer into a reference.";
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
             then {
 
                 // Catching transmute over constants that resolve to `null`.
-                let mut const_eval_context = constant_context(cx, cx.tables);
+                let mut const_eval_context = constant_context(cx, cx.typeck_results());
                 if_chain! {
                     if let ExprKind::Path(ref _qpath) = args[0].kind;
                     let x = const_eval_context.expr(&args[0]);

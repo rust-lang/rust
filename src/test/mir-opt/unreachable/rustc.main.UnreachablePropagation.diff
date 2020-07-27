@@ -30,7 +30,7 @@
   
       bb1: {
           _2 = discriminant(_1);           // scope 0 at $DIR/unreachable.rs:9:12: 9:20
--         switchInt(move _2) -> [1isize: bb3, otherwise: bb2]; // scope 0 at $DIR/unreachable.rs:9:12: 9:20
+-         switchInt(move _2) -> [1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/unreachable.rs:9:12: 9:20
 +         goto -> bb2;                     // scope 0 at $DIR/unreachable.rs:9:12: 9:20
       }
   
@@ -63,7 +63,7 @@
 -     }
 - 
 -     bb4: {
--         _4 = const 42i32;                // scope 2 at $DIR/unreachable.rs:15:13: 15:20
+-         _4 = const 42_i32;               // scope 2 at $DIR/unreachable.rs:15:13: 15:20
 -                                          // ty::Const
 -                                          // + ty: i32
 -                                          // + val: Value(Scalar(0x0000002a))
@@ -81,7 +81,7 @@
 -     }
 - 
 -     bb5: {
--         _4 = const 21i32;                // scope 2 at $DIR/unreachable.rs:13:13: 13:20
+-         _4 = const 21_i32;               // scope 2 at $DIR/unreachable.rs:13:13: 13:20
 -                                          // ty::Const
 -                                          // + ty: i32
 -                                          // + val: Value(Scalar(0x00000015))

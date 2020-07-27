@@ -219,7 +219,7 @@ impl SymbolMangler<'tcx> {
         lifetime_depths.end += lifetimes;
 
         self.binders.push(BinderLevel { lifetime_depths });
-        self = print_value(self, value.skip_binder())?;
+        self = print_value(self, value.as_ref().skip_binder())?;
         self.binders.pop();
 
         Ok(self)
@@ -345,7 +345,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Never => "z",
 
             // Placeholders (should be demangled as `_`).
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error => "p",
+            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => "p",
 
             _ => "",
         };
@@ -367,7 +367,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
 
             // Placeholders, also handled as part of basic types.
-            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error => {
+            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {
                 unreachable!()
             }
 

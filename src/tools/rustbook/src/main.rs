@@ -30,11 +30,6 @@ fn main() {
                 .about("Tests that a book's Rust code samples compile")
                 .arg_from_usage(dir_message),
         )
-        .subcommand(
-            SubCommand::with_name("linkcheck")
-                .about("Run linkcheck with mdBook 3")
-                .arg_from_usage(dir_message),
-        )
         .get_matches();
 
     // Check which subcomamnd the user ran...
@@ -49,98 +44,14 @@ fn main() {
                 handle_error(e);
             }
         }
-        ("linkcheck", Some(sub_matches)) => {
-            #[cfg(feature = "linkcheck")]
-            {
-                let (diags, files) = linkcheck(sub_matches).expect("Error while linkchecking.");
-                if !diags.is_empty() {
-                    let color = codespan_reporting::term::termcolor::ColorChoice::Auto;
-                    let mut writer =
-                        codespan_reporting::term::termcolor::StandardStream::stderr(color);
-                    let cfg = codespan_reporting::term::Config::default();
-
-                    for diag in diags {
-                        codespan_reporting::term::emit(&mut writer, &cfg, &files, &diag)
-                            .expect("Unable to emit linkcheck error.");
-                    }
-
-                    std::process::exit(101);
-                }
-            }
-
-            #[cfg(not(feature = "linkcheck"))]
-            {
-                // This avoids the `unused_binding` lint.
-                println!(
-                    "mdbook-linkcheck is disabled, but arguments were passed: {:?}",
-                    sub_matches
-                );
-            }
-        }
         (_, _) => unreachable!(),
     };
-}
-
-#[cfg(feature = "linkcheck")]
-pub fn linkcheck(
-    args: &ArgMatches<'_>,
-) -> Result<(Vec<codespan_reporting::diagnostic::Diagnostic>, codespan::Files), failure::Error> {
-    use mdbook_linkcheck::Reason;
-
-    let book_dir = get_book_dir(args);
-    let src_dir = book_dir.join("src");
-    let book = MDBook::load(&book_dir).unwrap();
-    let linkck_cfg = mdbook_linkcheck::get_config(&book.config)?;
-    let mut files = codespan::Files::new();
-    let target_files = mdbook_linkcheck::load_files_into_memory(&book.book, &mut files);
-    let cache = mdbook_linkcheck::Cache::default();
-
-    let (links, incomplete) = mdbook_linkcheck::extract_links(target_files, &files);
-
-    let outcome =
-        mdbook_linkcheck::validate(&links, &linkck_cfg, &src_dir, &cache, &files, incomplete)?;
-
-    let mut is_real_error = false;
-
-    for link in outcome.invalid_links.iter() {
-        match &link.reason {
-            Reason::FileNotFound | Reason::TraversesParentDirectories => {
-                is_real_error = true;
-            }
-            Reason::UnsuccessfulServerResponse(status) => {
-                if status.as_u16() == 429 {
-                    eprintln!("Received 429 (TOO_MANY_REQUESTS) for link `{}`", link.link.uri);
-                } else if status.is_client_error() {
-                    is_real_error = true;
-                } else {
-                    eprintln!("Unsuccessful server response for link `{}`", link.link.uri);
-                }
-            }
-            Reason::Client(err) => {
-                if err.is_timeout() {
-                    eprintln!("Timeout for link `{}`", link.link.uri);
-                } else if err.is_server_error() {
-                    eprintln!("Server error for link `{}`", link.link.uri);
-                } else if !err.is_http() {
-                    eprintln!("Non-HTTP-related error for link: {} {}", link.link.uri, err);
-                } else {
-                    is_real_error = true;
-                }
-            }
-        }
-    }
-
-    if is_real_error {
-        Ok((outcome.generate_diagnostics(&files, linkck_cfg.warning_policy), files))
-    } else {
-        Ok((vec![], files))
-    }
 }
 
 // Build command implementation
 pub fn build(args: &ArgMatches<'_>) -> Result3<()> {
     let book_dir = get_book_dir(args);
-    let mut book = MDBook::load(&book_dir)?;
+    let mut book = load_book(&book_dir)?;
 
     // Set this to allow us to catch bugs in advance.
     book.config.build.create_missing = false;
@@ -156,7 +67,7 @@ pub fn build(args: &ArgMatches<'_>) -> Result3<()> {
 
 fn test(args: &ArgMatches<'_>) -> Result3<()> {
     let book_dir = get_book_dir(args);
-    let mut book = MDBook::load(&book_dir)?;
+    let mut book = load_book(&book_dir)?;
     book.test(vec![])
 }
 
@@ -170,10 +81,16 @@ fn get_book_dir(args: &ArgMatches<'_>) -> PathBuf {
     }
 }
 
+fn load_book(book_dir: &Path) -> Result3<MDBook> {
+    let mut book = MDBook::load(book_dir)?;
+    book.config.set("output.html.input-404", "").unwrap();
+    Ok(book)
+}
+
 fn handle_error(error: mdbook::errors::Error) -> ! {
     eprintln!("Error: {}", error);
 
-    for cause in error.iter().skip(1) {
+    for cause in error.chain().skip(1) {
         eprintln!("\tCaused By: {}", cause);
     }
 

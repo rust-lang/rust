@@ -1,9 +1,9 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_lint_and_help};
+use crate::utils::{match_def_path, paths, span_lint, span_lint_and_help};
 use if_chain::if_chain;
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{Block, BorrowKind, Crate, Expr, ExprKind, HirId};
+use rustc_hir::{BorrowKind, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{BytePos, Span};
@@ -46,70 +46,21 @@ declare_clippy_lint! {
     "trivial regular expressions"
 }
 
-declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `regex!(_)` which (as of now) is
-    /// usually slower than `Regex::new(_)` unless called in a loop (which is a bad
-    /// idea anyway).
-    ///
-    /// **Why is this bad?** Performance, at least for now. The macro version is
-    /// likely to catch up long-term, but for now the dynamic version is faster.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```ignore
-    /// regex!("foo|bar")
-    /// ```
-    pub REGEX_MACRO,
-    style,
-    "use of `regex!(_)` instead of `Regex::new(_)`"
-}
-
 #[derive(Clone, Default)]
 pub struct Regex {
     spans: FxHashSet<Span>,
     last: Option<HirId>,
 }
 
-impl_lint_pass!(Regex => [INVALID_REGEX, REGEX_MACRO, TRIVIAL_REGEX]);
+impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
-    fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx Crate<'_>) {
-        self.spans.clear();
-    }
-
-    fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>) {
-        if_chain! {
-            if self.last.is_none();
-            if let Some(ref expr) = block.expr;
-            if match_type(cx, cx.tables.expr_ty(expr), &paths::REGEX);
-            if let Some(span) = is_expn_of(expr.span, "regex");
-            then {
-                if !self.spans.contains(&span) {
-                    span_lint(cx,
-                              REGEX_MACRO,
-                              span,
-                              "`regex!(_)` found. \
-                              Please use `Regex::new(_)`, which is faster for now.");
-                    self.spans.insert(span);
-                }
-                self.last = Some(block.hir_id);
-            }
-        }
-    }
-
-    fn check_block_post(&mut self, _: &LateContext<'a, 'tcx>, block: &'tcx Block<'_>) {
-        if self.last.map_or(false, |id| block.hir_id == id) {
-            self.last = None;
-        }
-    }
-
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for Regex {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Call(ref fun, ref args) = expr.kind;
             if let ExprKind::Path(ref qpath) = fun.kind;
             if args.len() == 1;
-            if let Some(def_id) = cx.tables.qpath_res(qpath, fun.hir_id).opt_def_id();
+            if let Some(def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
             then {
                 if match_def_path(cx, def_id, &paths::REGEX_NEW) ||
                    match_def_path(cx, def_id, &paths::REGEX_BUILDER_NEW) {
@@ -137,8 +88,8 @@ fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u16) -> Span {
     Span::new(start, end, base.ctxt())
 }
 
-fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
-    constant(cx, cx.tables, e).and_then(|(c, _)| match c {
+fn const_str<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<String> {
+    constant(cx, cx.typeck_results(), e).and_then(|(c, _)| match c {
         Constant::Str(s) => Some(s),
         _ => None,
     })
@@ -148,12 +99,7 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
     use regex_syntax::hir::Anchor::{EndText, StartText};
     use regex_syntax::hir::HirKind::{Alternation, Anchor, Concat, Empty, Literal};
 
-    let is_literal = |e: &[regex_syntax::hir::Hir]| {
-        e.iter().all(|e| match *e.kind() {
-            Literal(_) => true,
-            _ => false,
-        })
-    };
+    let is_literal = |e: &[regex_syntax::hir::Hir]| e.iter().all(|e| matches!(*e.kind(), Literal(_)));
 
     match *s.kind() {
         Empty | Anchor(_) => Some("the regex is unlikely to be useful as it is"),
@@ -183,7 +129,7 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
     }
 }
 
-fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
+fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     if_chain! {
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref expr) = expr.kind;
         if let ExprKind::Array(exprs) = expr.kind;
@@ -195,7 +141,7 @@ fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8: b
     }
 }
 
-fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
+fn check_regex<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     let mut parser = regex_syntax::ParserBuilder::new()
         .unicode(utf8)
         .allow_invalid_utf8(!utf8)

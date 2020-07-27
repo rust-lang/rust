@@ -4,10 +4,11 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
 use rustc_hir::{GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
+use rustc_middle::ty;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::util::ExplicitSelf;
-use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
+use rustc_middle::ty::{GenericParamDefKind, ToPredicate, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
@@ -78,26 +79,27 @@ fn compare_predicate_entailment<'tcx>(
     // `regionck_item` expects.
     let impl_m_hir_id = tcx.hir().as_local_hir_id(impl_m.def_id.expect_local());
 
-    let cause = ObligationCause {
-        span: impl_m_span,
-        body_id: impl_m_hir_id,
-        code: ObligationCauseCode::CompareImplMethodObligation {
+    // We sometimes modify the span further down.
+    let mut cause = ObligationCause::new(
+        impl_m_span,
+        impl_m_hir_id,
+        ObligationCauseCode::CompareImplMethodObligation {
             item_name: impl_m.ident.name,
             impl_item_def_id: impl_m.def_id,
             trait_item_def_id: trait_m.def_id,
         },
-    };
+    );
 
     // This code is best explained by example. Consider a trait:
     //
-    //     trait Trait<'t,T> {
-    //          fn method<'a,M>(t: &'t T, m: &'a M) -> Self;
+    //     trait Trait<'t, T> {
+    //         fn method<'a, M>(t: &'t T, m: &'a M) -> Self;
     //     }
     //
     // And an impl:
     //
     //     impl<'i, 'j, U> Trait<'j, &'i U> for Foo {
-    //          fn method<'b,N>(t: &'j &'i U, m: &'b N) -> Foo;
+    //          fn method<'b, N>(t: &'j &'i U, m: &'b N) -> Foo;
     //     }
     //
     // We wish to decide if those two method types are compatible.
@@ -115,9 +117,9 @@ fn compare_predicate_entailment<'tcx>(
     // regions (Note: but only early-bound regions, i.e., those
     // declared on the impl or used in type parameter bounds).
     //
-    //     impl_to_skol_substs = {'i => 'i0, U => U0, N => N0 }
+    //     impl_to_placeholder_substs = {'i => 'i0, U => U0, N => N0 }
     //
-    // Now we can apply skol_substs to the type of the impl method
+    // Now we can apply placeholder_substs to the type of the impl method
     // to yield a new function type in terms of our fresh, placeholder
     // types:
     //
@@ -126,11 +128,11 @@ fn compare_predicate_entailment<'tcx>(
     // We now want to extract and substitute the type of the *trait*
     // method and compare it. To do so, we must create a compound
     // substitution by combining trait_to_impl_substs and
-    // impl_to_skol_substs, and also adding a mapping for the method
+    // impl_to_placeholder_substs, and also adding a mapping for the method
     // type parameters. We extend the mapping to also include
     // the method parameters.
     //
-    //     trait_to_skol_substs = { T => &'i0 U0, Self => Foo, M => N0 }
+    //     trait_to_placeholder_substs = { T => &'i0 U0, Self => Foo, M => N0 }
     //
     // Applying this to the trait method type yields:
     //
@@ -144,20 +146,20 @@ fn compare_predicate_entailment<'tcx>(
     // satisfied by the implementation's method.
     //
     // We do this by creating a parameter environment which contains a
-    // substitution corresponding to impl_to_skol_substs. We then build
-    // trait_to_skol_substs and use it to convert the predicates contained
+    // substitution corresponding to impl_to_placeholder_substs. We then build
+    // trait_to_placeholder_substs and use it to convert the predicates contained
     // in the trait_m.generics to the placeholder form.
     //
     // Finally we register each of these predicates as an obligation in
     // a fresh FulfillmentCtxt, and invoke select_all_or_error.
 
     // Create mapping from impl to placeholder.
-    let impl_to_skol_substs = InternalSubsts::identity_for_item(tcx, impl_m.def_id);
+    let impl_to_placeholder_substs = InternalSubsts::identity_for_item(tcx, impl_m.def_id);
 
     // Create mapping from trait to placeholder.
-    let trait_to_skol_substs =
-        impl_to_skol_substs.rebase_onto(tcx, impl_m.container.id(), trait_to_impl_substs);
-    debug!("compare_impl_method: trait_to_skol_substs={:?}", trait_to_skol_substs);
+    let trait_to_placeholder_substs =
+        impl_to_placeholder_substs.rebase_onto(tcx, impl_m.container.id(), trait_to_impl_substs);
+    debug!("compare_impl_method: trait_to_placeholder_substs={:?}", trait_to_placeholder_substs);
 
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
@@ -193,7 +195,7 @@ fn compare_predicate_entailment<'tcx>(
     // if all constraints hold.
     hybrid_preds
         .predicates
-        .extend(trait_m_predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
+        .extend(trait_m_predicates.instantiate_own(tcx, trait_to_placeholder_substs).predicates);
 
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
@@ -215,11 +217,11 @@ fn compare_predicate_entailment<'tcx>(
         let inh = Inherited::new(infcx, impl_m.def_id.expect_local());
         let infcx = &inh.infcx;
 
-        debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds);
+        debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds());
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_skol_substs);
+        let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
         let (impl_m_own_bounds, _) = infcx.replace_bound_vars_with_fresh_vars(
             impl_m_span,
             infer::HigherRankedType,
@@ -260,7 +262,7 @@ fn compare_predicate_entailment<'tcx>(
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
         let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, &tcx.fn_sig(trait_m.def_id));
-        let trait_sig = trait_sig.subst(tcx, trait_to_skol_substs);
+        let trait_sig = trait_sig.subst(tcx, trait_to_placeholder_substs);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span, impl_m_hir_id, param_env, &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder::bind(trait_sig));
@@ -280,7 +282,7 @@ fn compare_predicate_entailment<'tcx>(
                 &infcx, param_env, &terr, &cause, impl_m, impl_sig, trait_m, trait_sig,
             );
 
-            let cause = ObligationCause { span: impl_err_span, ..cause };
+            cause.make_mut().span = impl_err_span;
 
             let mut diag = struct_span_err!(
                 tcx.sess,
@@ -499,7 +501,7 @@ fn compare_self_type<'tcx>(
             ty::ImplContainer(_) => impl_trait_ref.self_ty(),
             ty::TraitContainer(_) => tcx.types.self_param,
         };
-        let self_arg_ty = *tcx.fn_sig(method.def_id).input(0).skip_binder();
+        let self_arg_ty = tcx.fn_sig(method.def_id).input(0).skip_binder();
         let param_env = ty::ParamEnv::reveal_all();
 
         tcx.infer_ctxt().enter(|infcx| {
@@ -965,8 +967,11 @@ crate fn compare_const_impl<'tcx>(
         // Compute placeholder form of impl and trait const tys.
         let impl_ty = tcx.type_of(impl_c.def_id);
         let trait_ty = tcx.type_of(trait_c.def_id).subst(tcx, trait_to_impl_substs);
-        let mut cause = ObligationCause::misc(impl_c_span, impl_c_hir_id);
-        cause.code = ObligationCauseCode::CompareImplConstObligation;
+        let mut cause = ObligationCause::new(
+            impl_c_span,
+            impl_c_hir_id,
+            ObligationCauseCode::CompareImplConstObligation,
+        );
 
         // There is no "body" here, so just pass dummy id.
         let impl_ty =
@@ -992,7 +997,7 @@ crate fn compare_const_impl<'tcx>(
 
             // Locate the Span containing just the type of the offending impl
             match tcx.hir().expect_impl_item(impl_c_hir_id).kind {
-                ImplItemKind::Const(ref ty, _) => cause.span = ty.span,
+                ImplItemKind::Const(ref ty, _) => cause.make_mut().span = ty.span,
                 _ => bug!("{:?} is not a impl const", impl_c),
             }
 
@@ -1053,13 +1058,15 @@ crate fn compare_ty_impl<'tcx>(
     let _: Result<(), ErrorReported> = (|| {
         compare_number_of_generics(tcx, impl_ty, impl_ty_span, trait_ty, trait_item_span)?;
 
-        compare_type_predicate_entailment(tcx, impl_ty, impl_ty_span, trait_ty, impl_trait_ref)
+        compare_type_predicate_entailment(tcx, impl_ty, impl_ty_span, trait_ty, impl_trait_ref)?;
+
+        compare_projection_bounds(tcx, trait_ty, impl_ty, impl_ty_span, impl_trait_ref)
     })();
 }
 
 /// The equivalent of [compare_predicate_entailment], but for associated types
 /// instead of associated functions.
-fn compare_type_predicate_entailment(
+fn compare_type_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ty: &ty::AssocItem,
     impl_ty_span: Span,
@@ -1095,15 +1102,15 @@ fn compare_type_predicate_entailment(
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_ty_hir_id = tcx.hir().as_local_hir_id(impl_ty.def_id.expect_local());
-    let cause = ObligationCause {
-        span: impl_ty_span,
-        body_id: impl_ty_hir_id,
-        code: ObligationCauseCode::CompareImplTypeObligation {
+    let cause = ObligationCause::new(
+        impl_ty_span,
+        impl_ty_hir_id,
+        ObligationCauseCode::CompareImplTypeObligation {
             item_name: impl_ty.ident.name,
             impl_item_def_id: impl_ty.def_id,
             trait_item_def_id: trait_ty.def_id,
         },
-    };
+    );
 
     debug!("compare_type_predicate_entailment: trait_to_impl_substs={:?}", trait_to_impl_substs);
 
@@ -1133,7 +1140,7 @@ fn compare_type_predicate_entailment(
         let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
         let infcx = &inh.infcx;
 
-        debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds);
+        debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds());
 
         let mut selcx = traits::SelectionContext::new(&infcx);
 
@@ -1161,10 +1168,129 @@ fn compare_type_predicate_entailment(
     })
 }
 
+/// Validate that `ProjectionCandidate`s created for this associated type will
+/// be valid.
+///
+/// Usually given
+///
+/// trait X { type Y: Copy } impl X for T { type Y = S; }
+///
+/// We are able to normalize `<T as X>::U` to `S`, and so when we check the
+/// impl is well-formed we have to prove `S: Copy`.
+///
+/// For default associated types the normalization is not possible (the value
+/// from the impl could be overridden). We also can't normalize generic
+/// associated types (yet) because they contain bound parameters.
+fn compare_projection_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ty: &ty::AssocItem,
+    impl_ty: &ty::AssocItem,
+    impl_ty_span: Span,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+) -> Result<(), ErrorReported> {
+    let have_gats = tcx.features().generic_associated_types;
+    if impl_ty.defaultness.is_final() && !have_gats {
+        // For "final", non-generic associate type implementations, we
+        // don't need this as described above.
+        return Ok(());
+    }
+
+    // Given
+    //
+    // impl<A, B> Foo<u32> for (A, B) {
+    //     type Bar<C> =...
+    // }
+    //
+    // - `impl_substs` would be `[A, B, C]`
+    // - `rebased_substs` would be `[(A, B), u32, C]`, combining the substs from
+    //    the *trait* with the generic associated type parameters.
+    let impl_ty_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
+    let rebased_substs =
+        impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
+    let impl_ty_value = tcx.type_of(impl_ty.def_id);
+
+    let param_env = tcx.param_env(impl_ty.def_id);
+
+    // When checking something like
+    //
+    // trait X { type Y: PartialEq<<Self as X>::Y> }
+    // impl X for T { default type Y = S; }
+    //
+    // We will have to prove the bound S: PartialEq<<T as X>::Y>. In this case
+    // we want <T as X>::Y to normalize to S. This is valid because we are
+    // checking the default value specifically here. Add this equality to the
+    // ParamEnv for normalization specifically.
+    let normalize_param_env = {
+        let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
+        predicates.push(
+            ty::Binder::dummy(ty::ProjectionPredicate {
+                projection_ty: ty::ProjectionTy {
+                    item_def_id: trait_ty.def_id,
+                    substs: rebased_substs,
+                },
+                ty: impl_ty_value,
+            })
+            .to_predicate(tcx),
+        );
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), Reveal::UserFacing, None)
+    };
+
+    tcx.infer_ctxt().enter(move |infcx| {
+        let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
+        let infcx = &inh.infcx;
+        let mut selcx = traits::SelectionContext::new(&infcx);
+
+        let impl_ty_hir_id = tcx.hir().as_local_hir_id(impl_ty.def_id.expect_local());
+        let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
+        let cause = ObligationCause::new(
+            impl_ty_span,
+            impl_ty_hir_id,
+            ObligationCauseCode::ItemObligation(trait_ty.def_id),
+        );
+
+        let predicates = tcx.projection_predicates(trait_ty.def_id);
+        debug!("compare_projection_bounds: projection_predicates={:?}", predicates);
+
+        for predicate in predicates {
+            let concrete_ty_predicate = predicate.subst(tcx, rebased_substs);
+            debug!("compare_projection_bounds: concrete predicate = {:?}", concrete_ty_predicate);
+
+            let traits::Normalized { value: normalized_predicate, obligations } = traits::normalize(
+                &mut selcx,
+                normalize_param_env,
+                normalize_cause.clone(),
+                &concrete_ty_predicate,
+            );
+            debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
+
+            inh.register_predicates(obligations);
+            inh.register_predicate(traits::Obligation::new(
+                cause.clone(),
+                param_env,
+                normalized_predicate,
+            ));
+        }
+
+        // Check that all obligations are satisfied by the implementation's
+        // version.
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+            infcx.report_fulfillment_errors(errors, None, false);
+            return Err(ErrorReported);
+        }
+
+        // Finally, resolve all regions. This catches wily misuses of
+        // lifetime parameters.
+        let fcx = FnCtxt::new(&inh, param_env, impl_ty_hir_id);
+        fcx.regionck_item(impl_ty_hir_id, impl_ty_span, &[]);
+
+        Ok(())
+    })
+}
+
 fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
     match impl_item.kind {
         ty::AssocKind::Const => "const",
         ty::AssocKind::Fn => "method",
-        ty::AssocKind::Type | ty::AssocKind::OpaqueTy => "type",
+        ty::AssocKind::Type => "type",
     }
 }

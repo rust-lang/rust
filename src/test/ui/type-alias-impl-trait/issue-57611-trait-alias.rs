@@ -14,8 +14,8 @@ trait Foo {
 struct X;
 
 impl Foo for X {
-    type Bar = impl Baz<Self, Self>; //~ ERROR type mismatch in closure arguments
-    //~^ ERROR type mismatch resolving
+    type Bar = impl Baz<Self, Self>;
+    //~^ ERROR mismatched types
 
     fn bar(&self) -> Self::Bar {
         |x| x

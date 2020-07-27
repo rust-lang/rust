@@ -1,8 +1,6 @@
 use ArgumentType::*;
 use Position::*;
 
-use fmt_macros as parse;
-
 use rustc_ast::ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
@@ -10,6 +8,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
+use rustc_parse_format as parse;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
 
@@ -108,6 +107,9 @@ struct Context<'a, 'b> {
     arg_spans: Vec<Span>,
     /// All the formatting arguments that have formatting flags set, in order for diagnostics.
     arg_with_formatting: Vec<parse::FormatSpec<'a>>,
+
+    /// Whether this format string came from a string literal, as opposed to a macro.
+    is_literal: bool,
 }
 
 /// Parses the arguments from the given list of tokens, returning the diagnostic
@@ -278,6 +280,8 @@ impl<'a, 'b> Context<'a, 'b> {
                                 ("x", "LowerHex"),
                                 ("X", "UpperHex"),
                             ] {
+                                // FIXME: rustfix (`run-rustfix`) fails to apply suggestions.
+                                // > "Cannot replace slice of data that was already replaced"
                                 err.tool_only_span_suggestion(
                                     sp,
                                     &format!("use the `{}` trait", name),
@@ -499,10 +503,55 @@ impl<'a, 'b> Context<'a, 'b> {
                         self.verify_arg_type(Exact(idx), ty)
                     }
                     None => {
-                        let msg = format!("there is no argument named `{}`", name);
-                        let sp = *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp);
-                        let mut err = self.ecx.struct_span_err(sp, &msg[..]);
-                        err.emit();
+                        let capture_feature_enabled = self
+                            .ecx
+                            .ecfg
+                            .features
+                            .map_or(false, |features| features.format_args_capture);
+
+                        // For the moment capturing variables from format strings expanded from macros is
+                        // disabled (see RFC #2795)
+                        let can_capture = capture_feature_enabled && self.is_literal;
+
+                        if can_capture {
+                            // Treat this name as a variable to capture from the surrounding scope
+                            let idx = self.args.len();
+                            self.arg_types.push(Vec::new());
+                            self.arg_unique_types.push(Vec::new());
+                            self.args.push(
+                                self.ecx.expr_ident(self.fmtsp, Ident::new(name, self.fmtsp)),
+                            );
+                            self.names.insert(name, idx);
+                            self.verify_arg_type(Exact(idx), ty)
+                        } else {
+                            let msg = format!("there is no argument named `{}`", name);
+                            let sp = if self.is_literal {
+                                *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp)
+                            } else {
+                                self.fmtsp
+                            };
+                            let mut err = self.ecx.struct_span_err(sp, &msg[..]);
+
+                            if capture_feature_enabled && !self.is_literal {
+                                err.note(&format!(
+                                    "did you intend to capture a variable `{}` from \
+                                     the surrounding scope?",
+                                    name
+                                ));
+                                err.note(
+                                    "to avoid ambiguity, `format_args!` cannot capture variables \
+                                     when the format string is expanded from a macro",
+                                );
+                            } else if self.ecx.parse_sess().unstable_features.is_nightly_build() {
+                                err.help(&format!(
+                                    "if you intended to capture `{}` from the surrounding scope, add \
+                                     `#![feature(format_args_capture)]` to the crate attributes",
+                                    name
+                                ));
+                            }
+
+                            err.emit();
+                        }
                     }
                 }
             }
@@ -529,31 +578,31 @@ impl<'a, 'b> Context<'a, 'b> {
         self.count_args_index_offset = sofar;
     }
 
-    fn rtpath(ecx: &ExtCtxt<'_>, s: &str) -> Vec<Ident> {
-        ecx.std_path(&[sym::fmt, sym::rt, sym::v1, Symbol::intern(s)])
+    fn rtpath(ecx: &ExtCtxt<'_>, s: Symbol) -> Vec<Ident> {
+        ecx.std_path(&[sym::fmt, sym::rt, sym::v1, s])
     }
 
     fn build_count(&self, c: parse::Count) -> P<ast::Expr> {
         let sp = self.macsp;
         let count = |c, arg| {
-            let mut path = Context::rtpath(self.ecx, "Count");
-            path.push(self.ecx.ident_of(c, sp));
+            let mut path = Context::rtpath(self.ecx, sym::Count);
+            path.push(Ident::new(c, sp));
             match arg {
                 Some(arg) => self.ecx.expr_call_global(sp, path, vec![arg]),
                 None => self.ecx.expr_path(self.ecx.path_global(sp, path)),
             }
         };
         match c {
-            parse::CountIs(i) => count("Is", Some(self.ecx.expr_usize(sp, i))),
+            parse::CountIs(i) => count(sym::Is, Some(self.ecx.expr_usize(sp, i))),
             parse::CountIsParam(i) => {
                 // This needs mapping too, as `i` is referring to a macro
                 // argument. If `i` is not found in `count_positions` then
                 // the error had already been emitted elsewhere.
                 let i = self.count_positions.get(&i).cloned().unwrap_or(0)
                     + self.count_args_index_offset;
-                count("Param", Some(self.ecx.expr_usize(sp, i)))
+                count(sym::Param, Some(self.ecx.expr_usize(sp, i)))
             }
-            parse::CountImplied => count("Implied", None),
+            parse::CountImplied => count(sym::Implied, None),
             // should never be the case, names are already resolved
             parse::CountIsName(_) => panic!("should never happen"),
         }
@@ -641,40 +690,40 @@ impl<'a, 'b> Context<'a, 'b> {
                 // Build the format
                 let fill = self.ecx.expr_lit(sp, ast::LitKind::Char(fill));
                 let align = |name| {
-                    let mut p = Context::rtpath(self.ecx, "Alignment");
-                    p.push(self.ecx.ident_of(name, sp));
+                    let mut p = Context::rtpath(self.ecx, sym::Alignment);
+                    p.push(Ident::new(name, sp));
                     self.ecx.path_global(sp, p)
                 };
                 let align = match arg.format.align {
-                    parse::AlignLeft => align("Left"),
-                    parse::AlignRight => align("Right"),
-                    parse::AlignCenter => align("Center"),
-                    parse::AlignUnknown => align("Unknown"),
+                    parse::AlignLeft => align(sym::Left),
+                    parse::AlignRight => align(sym::Right),
+                    parse::AlignCenter => align(sym::Center),
+                    parse::AlignUnknown => align(sym::Unknown),
                 };
                 let align = self.ecx.expr_path(align);
                 let flags = self.ecx.expr_u32(sp, arg.format.flags);
                 let prec = self.build_count(arg.format.precision);
                 let width = self.build_count(arg.format.width);
-                let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "FormatSpec"));
+                let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, sym::FormatSpec));
                 let fmt = self.ecx.expr_struct(
                     sp,
                     path,
                     vec![
-                        self.ecx.field_imm(sp, self.ecx.ident_of("fill", sp), fill),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("align", sp), align),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("flags", sp), flags),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("precision", sp), prec),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("width", sp), width),
+                        self.ecx.field_imm(sp, Ident::new(sym::fill, sp), fill),
+                        self.ecx.field_imm(sp, Ident::new(sym::align, sp), align),
+                        self.ecx.field_imm(sp, Ident::new(sym::flags, sp), flags),
+                        self.ecx.field_imm(sp, Ident::new(sym::precision, sp), prec),
+                        self.ecx.field_imm(sp, Ident::new(sym::width, sp), width),
                     ],
                 );
 
-                let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "Argument"));
+                let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, sym::Argument));
                 Some(self.ecx.expr_struct(
                     sp,
                     path,
                     vec![
-                        self.ecx.field_imm(sp, self.ecx.ident_of("position", sp), pos),
-                        self.ecx.field_imm(sp, self.ecx.ident_of("format", sp), fmt),
+                        self.ecx.field_imm(sp, Ident::new(sym::position, sp), pos),
+                        self.ecx.field_imm(sp, Ident::new(sym::format, sp), fmt),
                     ],
                 ))
             }
@@ -691,7 +740,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let mut heads = Vec::with_capacity(self.args.len());
 
         let names_pos: Vec<_> = (0..self.args.len())
-            .map(|i| self.ecx.ident_of(&format!("arg{}", i), self.macsp))
+            .map(|i| Ident::from_str_and_span(&format!("arg{}", i), self.macsp))
             .collect();
 
         // First, build up the static array which will become our precompiled
@@ -952,6 +1001,7 @@ pub fn expand_preparsed_format_args(
         invalid_refs: Vec::new(),
         arg_spans,
         arg_with_formatting: Vec::new(),
+        is_literal: parser.is_literal,
     };
 
     // This needs to happen *after* the Parser has consumed all pieces to create all the spans

@@ -133,7 +133,7 @@ pub trait FileExt {
     /// Note that similar to [`File::write`], it is not an error to return a
     /// short write.
     ///
-    /// [`File::write`]: ../../../../std/fs/struct.File.html#write.v
+    /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write
     ///
     /// # Examples
     ///
@@ -242,7 +242,8 @@ pub trait PermissionsExt {
     ///     let permissions = metadata.permissions();
     ///
     ///     println!("permissions: {:o}", permissions.mode());
-    ///     Ok(()) }
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
@@ -262,7 +263,8 @@ pub trait PermissionsExt {
     ///
     ///     permissions.set_mode(0o644); // Read/write for owner and read for others.
     ///     assert_eq!(permissions.mode(), 0o644);
-    ///     Ok(()) }
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn set_mode(&mut self, mode: u32);
@@ -622,7 +624,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn ctime_nsec(&self) -> i64;
-    /// Returns the blocksize for filesystem I/O.
+    /// Returns the block size for filesystem I/O.
     ///
     /// # Examples
     ///
@@ -633,7 +635,7 @@ pub trait MetadataExt {
     ///
     /// fn main() -> io::Result<()> {
     ///     let meta = fs::metadata("some_file")?;
-    ///     let blocksize = meta.blksize();
+    ///     let block_size = meta.blksize();
     ///     Ok(())
     /// }
     /// ```

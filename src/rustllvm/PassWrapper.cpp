@@ -49,8 +49,10 @@ typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(Pass, LLVMPassRef)
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(TargetMachine, LLVMTargetMachineRef)
+#if LLVM_VERSION_LT(11, 0)
 DEFINE_STDCXX_CONVERSION_FUNCTIONS(PassManagerBuilder,
                                    LLVMPassManagerBuilderRef)
+#endif
 
 extern "C" void LLVMInitializePasses() {
   PassRegistry &Registry = *PassRegistry::getPassRegistry();
@@ -203,6 +205,12 @@ void LLVMRustAddLastExtensionPasses(
 #define SUBTARGET_AARCH64
 #endif
 
+#ifdef LLVM_COMPONENT_AVR
+#define SUBTARGET_AVR SUBTARGET(AVR)
+#else
+#define SUBTARGET_AVR
+#endif
+
 #ifdef LLVM_COMPONENT_MIPS
 #define SUBTARGET_MIPS SUBTARGET(Mips)
 #else
@@ -257,6 +265,7 @@ void LLVMRustAddLastExtensionPasses(
   SUBTARGET_X86                                                                \
   SUBTARGET_ARM                                                                \
   SUBTARGET_AARCH64                                                            \
+  SUBTARGET_AVR                                                                \
   SUBTARGET_MIPS                                                               \
   SUBTARGET_PPC                                                                \
   SUBTARGET_SYSTEMZ                                                            \
@@ -345,17 +354,17 @@ enum class LLVMRustPassBuilderOptLevel {
 static PassBuilder::OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
   switch (Level) {
   case LLVMRustPassBuilderOptLevel::O0:
-    return PassBuilder::O0;
+    return PassBuilder::OptimizationLevel::O0;
   case LLVMRustPassBuilderOptLevel::O1:
-    return PassBuilder::O1;
+    return PassBuilder::OptimizationLevel::O1;
   case LLVMRustPassBuilderOptLevel::O2:
-    return PassBuilder::O2;
+    return PassBuilder::OptimizationLevel::O2;
   case LLVMRustPassBuilderOptLevel::O3:
-    return PassBuilder::O3;
+    return PassBuilder::OptimizationLevel::O3;
   case LLVMRustPassBuilderOptLevel::Os:
-    return PassBuilder::Os;
+    return PassBuilder::OptimizationLevel::Os;
   case LLVMRustPassBuilderOptLevel::Oz:
-    return PassBuilder::Oz;
+    return PassBuilder::OptimizationLevel::Oz;
   default:
     report_fatal_error("Bad PassBuilderOptLevel.");
   }
@@ -426,6 +435,12 @@ extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef TM) {
   printf("Available features for this target:\n");
   for (auto &Feature : FeatTable)
     printf("    %-*s - %s.\n", MaxFeatLen, Feature.Key, Feature.Desc);
+  printf("\nRust-specific features:\n");
+  printf("    %-*s - %s.\n",
+    MaxFeatLen,
+    "crt-static",
+    "Enables libraries with C Run-time Libraries(CRT) to be statically linked"
+  );
   printf("\n");
 
   printf("Use +feature to enable a feature, or -feature to disable it.\n"
@@ -713,11 +728,12 @@ enum class LLVMRustOptStage {
 };
 
 struct LLVMRustSanitizerOptions {
-  bool SanitizeMemory;
-  bool SanitizeThread;
   bool SanitizeAddress;
-  bool SanitizeRecover;
-  int SanitizeMemoryTrackOrigins;
+  bool SanitizeAddressRecover;
+  bool SanitizeMemory;
+  bool SanitizeMemoryRecover;
+  int  SanitizeMemoryTrackOrigins;
+  bool SanitizeThread;
 };
 
 extern "C" void
@@ -791,8 +807,13 @@ LLVMRustOptimizeWithNewPassManager(
   // We manually collect pipeline callbacks so we can apply them at O0, where the
   // PassBuilder does not create a pipeline.
   std::vector<std::function<void(ModulePassManager &)>> PipelineStartEPCallbacks;
+#if LLVM_VERSION_GE(11, 0)
+  std::vector<std::function<void(ModulePassManager &, PassBuilder::OptimizationLevel)>>
+      OptimizerLastEPCallbacks;
+#else
   std::vector<std::function<void(FunctionPassManager &, PassBuilder::OptimizationLevel)>>
       OptimizerLastEPCallbacks;
+#endif
 
   if (VerifyIR) {
     PipelineStartEPCallbacks.push_back([VerifyIR](ModulePassManager &MPM) {
@@ -804,8 +825,16 @@ LLVMRustOptimizeWithNewPassManager(
     if (SanitizerOptions->SanitizeMemory) {
       MemorySanitizerOptions Options(
           SanitizerOptions->SanitizeMemoryTrackOrigins,
-          SanitizerOptions->SanitizeRecover,
+          SanitizerOptions->SanitizeMemoryRecover,
           /*CompileKernel=*/false);
+#if LLVM_VERSION_GE(11, 0)
+      OptimizerLastEPCallbacks.push_back(
+        [Options](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+          MPM.addPass(MemorySanitizerPass(Options));
+          MPM.addPass(createModuleToFunctionPassAdaptor(MemorySanitizerPass(Options)));
+        }
+      );
+#else
 #if LLVM_VERSION_GE(10, 0)
       PipelineStartEPCallbacks.push_back([Options](ModulePassManager &MPM) {
         MPM.addPass(MemorySanitizerPass(Options));
@@ -816,9 +845,18 @@ LLVMRustOptimizeWithNewPassManager(
           FPM.addPass(MemorySanitizerPass(Options));
         }
       );
+#endif
     }
 
     if (SanitizerOptions->SanitizeThread) {
+#if LLVM_VERSION_GE(11, 0)
+      OptimizerLastEPCallbacks.push_back(
+        [](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+          MPM.addPass(ThreadSanitizerPass());
+          MPM.addPass(createModuleToFunctionPassAdaptor(ThreadSanitizerPass()));
+        }
+      );
+#else
 #if LLVM_VERSION_GE(10, 0)
       PipelineStartEPCallbacks.push_back([](ModulePassManager &MPM) {
         MPM.addPass(ThreadSanitizerPass());
@@ -829,40 +867,59 @@ LLVMRustOptimizeWithNewPassManager(
           FPM.addPass(ThreadSanitizerPass());
         }
       );
+#endif
     }
 
     if (SanitizerOptions->SanitizeAddress) {
+#if LLVM_VERSION_GE(11, 0)
+      OptimizerLastEPCallbacks.push_back(
+        [SanitizerOptions](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+          MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
+          MPM.addPass(ModuleAddressSanitizerPass(
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
+          MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover,
+              /*UseAfterScope=*/true)));
+        }
+      );
+#else
       PipelineStartEPCallbacks.push_back([&](ModulePassManager &MPM) {
         MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
       });
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
           FPM.addPass(AddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeRecover,
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover,
               /*UseAfterScope=*/true));
         }
       );
       PipelineStartEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM) {
           MPM.addPass(ModuleAddressSanitizerPass(
-              /*CompileKernel=*/false, SanitizerOptions->SanitizeRecover));
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
         }
       );
+#endif
     }
   }
 
   ModulePassManager MPM(DebugPassManager);
   if (!NoPrepopulatePasses) {
-    if (OptLevel == PassBuilder::O0) {
+    if (OptLevel == PassBuilder::OptimizationLevel::O0) {
       for (const auto &C : PipelineStartEPCallbacks)
         C(MPM);
 
+#if LLVM_VERSION_GE(11, 0)
+      for (const auto &C : OptimizerLastEPCallbacks)
+        C(MPM, OptLevel);
+#else
       if (!OptimizerLastEPCallbacks.empty()) {
         FunctionPassManager FPM(DebugPassManager);
         for (const auto &C : OptimizerLastEPCallbacks)
           C(FPM, OptLevel);
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
       }
+#endif
 
       MPM.addPass(AlwaysInlinerPass(EmitLifetimeMarkers));
 
@@ -887,12 +944,17 @@ LLVMRustOptimizeWithNewPassManager(
         break;
       case LLVMRustOptStage::PreLinkThinLTO:
         MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel, DebugPassManager);
+#if LLVM_VERSION_GE(11, 0)
+        for (const auto &C : OptimizerLastEPCallbacks)
+          C(MPM, OptLevel);
+#else
         if (!OptimizerLastEPCallbacks.empty()) {
           FunctionPassManager FPM(DebugPassManager);
           for (const auto &C : OptimizerLastEPCallbacks)
             C(FPM, OptLevel);
           MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
         }
+#endif
         break;
       case LLVMRustOptStage::PreLinkFatLTO:
         MPM = PB.buildLTOPreLinkDefaultPipeline(OptLevel, DebugPassManager);
@@ -989,10 +1051,10 @@ public:
     const Value *Value;
     if (const CallInst *CI = dyn_cast<CallInst>(I)) {
       Name = "call";
-      Value = CI->getCalledValue();
+      Value = CI->getCalledOperand();
     } else if (const InvokeInst* II = dyn_cast<InvokeInst>(I)) {
       Name = "invoke";
-      Value = II->getCalledValue();
+      Value = II->getCalledOperand();
     } else {
       // Could demangle more operations, e. g.
       // `store %place, @function`.
@@ -1330,10 +1392,33 @@ LLVMRustFreeThinLTOData(LLVMRustThinLTOData *Data) {
 // `ProcessThinLTOModule` function. Here they're split up into separate steps
 // so rustc can save off the intermediate bytecode between each step.
 
+#if LLVM_VERSION_GE(11, 0)
+static bool
+clearDSOLocalOnDeclarations(Module &Mod, TargetMachine &TM) {
+  // When linking an ELF shared object, dso_local should be dropped. We
+  // conservatively do this for -fpic.
+  bool ClearDSOLocalOnDeclarations =
+      TM.getTargetTriple().isOSBinFormatELF() &&
+      TM.getRelocationModel() != Reloc::Static &&
+      Mod.getPIELevel() == PIELevel::Default;
+  return ClearDSOLocalOnDeclarations;
+}
+#endif
+
 extern "C" bool
-LLVMRustPrepareThinLTORename(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+LLVMRustPrepareThinLTORename(const LLVMRustThinLTOData *Data, LLVMModuleRef M,
+                             LLVMTargetMachineRef TM) {
   Module &Mod = *unwrap(M);
-  if (renameModuleForThinLTO(Mod, Data->Index)) {
+  TargetMachine &Target = *unwrap(TM);
+
+#if LLVM_VERSION_GE(11, 0)
+  bool ClearDSOLocal = clearDSOLocalOnDeclarations(Mod, Target);
+  bool error = renameModuleForThinLTO(Mod, Data->Index, ClearDSOLocal);
+#else
+  bool error = renameModuleForThinLTO(Mod, Data->Index);
+#endif
+
+  if (error) {
     LLVMRustSetLastError("renameModuleForThinLTO failed");
     return false;
   }
@@ -1357,8 +1442,10 @@ LLVMRustPrepareThinLTOInternalize(const LLVMRustThinLTOData *Data, LLVMModuleRef
 }
 
 extern "C" bool
-LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M,
+                             LLVMTargetMachineRef TM) {
   Module &Mod = *unwrap(M);
+  TargetMachine &Target = *unwrap(TM);
 
   const auto &ImportList = Data->ImportLists.lookup(Mod.getModuleIdentifier());
   auto Loader = [&](StringRef Identifier) {
@@ -1394,7 +1481,12 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
 
     return MOrErr;
   };
+#if LLVM_VERSION_GE(11, 0)
+  bool ClearDSOLocal = clearDSOLocalOnDeclarations(Mod, Target);
+  FunctionImporter Importer(Data->Index, Loader, ClearDSOLocal);
+#else
   FunctionImporter Importer(Data->Index, Loader);
+#endif
   Expected<bool> Result = Importer.importFunctions(Mod, ImportList);
   if (!Result) {
     LLVMRustSetLastError(toString(Result.takeError()).c_str());
@@ -1553,22 +1645,11 @@ LLVMRustThinLTOPatchDICompileUnit(LLVMModuleRef Mod, DICompileUnit *Unit) {
   }
 
   // Use LLVM's built-in `DebugInfoFinder` to find a bunch of debuginfo and
-  // process it recursively. Note that we specifically iterate over instructions
-  // to ensure we feed everything into it.
+  // process it recursively. Note that we used to specifically iterate over
+  // instructions to ensure we feed everything into it, but `processModule`
+  // started doing this the same way in LLVM 7 (commit d769eb36ab2b8).
   DebugInfoFinder Finder;
   Finder.processModule(*M);
-  for (Function &F : M->functions()) {
-    for (auto &FI : F) {
-      for (Instruction &BI : FI) {
-        if (auto Loc = BI.getDebugLoc())
-          Finder.processLocation(*M, Loc);
-        if (auto DVI = dyn_cast<DbgValueInst>(&BI))
-          Finder.processValue(*M, DVI);
-        if (auto DDI = dyn_cast<DbgDeclareInst>(&BI))
-          Finder.processDeclare(*M, DDI);
-      }
-    }
-  }
 
   // After we've found all our debuginfo, rewrite all subprograms to point to
   // the same `DICompileUnit`.

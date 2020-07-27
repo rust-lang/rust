@@ -14,7 +14,7 @@ use min_specialization::check_min_specialization;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
@@ -59,17 +59,17 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
     for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module).to_def_id());
+        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module));
     }
 }
 
-fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: DefId) {
+fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let min_specialization = tcx.features().min_specialization;
     tcx.hir()
         .visit_item_likes_in_module(module_def_id, &mut ImplWfCheck { tcx, min_specialization });
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_impl_wf, ..*providers };
 }
 
@@ -139,13 +139,6 @@ fn enforce_impl_params_are_constrained(
                     } else {
                         Vec::new()
                     }
-                }
-                ty::AssocKind::OpaqueTy => {
-                    // We don't know which lifetimes appear in the actual
-                    // opaque type, so use all of the lifetimes that appear
-                    // in the type's predicates.
-                    let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
-                    cgp::parameters_for(&predicates, true)
                 }
                 ty::AssocKind::Fn | ty::AssocKind::Const => Vec::new(),
             }

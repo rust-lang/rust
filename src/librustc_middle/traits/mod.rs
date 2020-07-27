@@ -20,20 +20,20 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
 
 use std::borrow::Cow;
-use std::fmt::Debug;
+use std::fmt;
+use std::ops::Deref;
 use std::rc::Rc;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 
 pub type ChalkCanonicalGoal<'tcx> = Canonical<'tcx, ChalkEnvironmentAndGoal<'tcx>>;
 
+pub use self::ImplSource::*;
 pub use self::ObligationCauseCode::*;
 pub use self::SelectionError::*;
-pub use self::Vtable::*;
 
 pub use self::chalk::{
-    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, RustDefId as ChalkRustDefId,
-    RustInterner as ChalkRustInterner,
+    ChalkEnvironmentAndGoal, ChalkEnvironmentClause, RustInterner as ChalkRustInterner,
 };
 
 /// Depending on the stage of compilation, we want projection to be
@@ -80,8 +80,39 @@ pub enum Reveal {
 }
 
 /// The reason why we incurred this obligation; used for error reporting.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+///
+/// As the happy path does not care about this struct, storing this on the heap
+/// ends up increasing performance.
+///
+/// We do not want to intern this as there are a lot of obligation causes which
+/// only live for a short period of time.
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ObligationCause<'tcx> {
+    /// `None` for `ObligationCause::dummy`, `Some` otherwise.
+    data: Option<Rc<ObligationCauseData<'tcx>>>,
+}
+
+const DUMMY_OBLIGATION_CAUSE_DATA: ObligationCauseData<'static> =
+    ObligationCauseData { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation };
+
+// Correctly format `ObligationCause::dummy`.
+impl<'tcx> fmt::Debug for ObligationCause<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ObligationCauseData::fmt(self, f)
+    }
+}
+
+impl Deref for ObligationCause<'tcx> {
+    type Target = ObligationCauseData<'tcx>;
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        self.data.as_deref().unwrap_or(&DUMMY_OBLIGATION_CAUSE_DATA)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ObligationCauseData<'tcx> {
     pub span: Span,
 
     /// The ID of the fn body that triggered this obligation. This is
@@ -102,15 +133,24 @@ impl<'tcx> ObligationCause<'tcx> {
         body_id: hir::HirId,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause { span, body_id, code }
+        ObligationCause { data: Some(Rc::new(ObligationCauseData { span, body_id, code })) }
     }
 
     pub fn misc(span: Span, body_id: hir::HirId) -> ObligationCause<'tcx> {
-        ObligationCause { span, body_id, code: MiscObligation }
+        ObligationCause::new(span, body_id, MiscObligation)
     }
 
+    pub fn dummy_with_span(span: Span) -> ObligationCause<'tcx> {
+        ObligationCause::new(span, hir::CRATE_HIR_ID, MiscObligation)
+    }
+
+    #[inline(always)]
     pub fn dummy() -> ObligationCause<'tcx> {
-        ObligationCause { span: DUMMY_SP, body_id: hir::CRATE_HIR_ID, code: MiscObligation }
+        ObligationCause { data: None }
+    }
+
+    pub fn make_mut(&mut self) -> &mut ObligationCauseData<'tcx> {
+        Rc::make_mut(self.data.get_or_insert_with(|| Rc::new(DUMMY_OBLIGATION_CAUSE_DATA)))
     }
 
     pub fn span(&self, tcx: TyCtxt<'tcx>) -> Span {
@@ -127,6 +167,13 @@ impl<'tcx> ObligationCause<'tcx> {
             _ => self.span,
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct UnifyReceiverContext<'tcx> {
+    pub assoc_item: ty::AssocItem,
+    pub param_env: ty::ParamEnv<'tcx>,
+    pub substs: SubstsRef<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -175,7 +222,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Type of each variable must be `Sized`.
     VariableType(hir::HirId),
     /// Argument type must be `Sized`.
-    SizedArgumentType,
+    SizedArgumentType(Option<Span>),
     /// Return type must be `Sized`.
     SizedReturnType,
     /// Yield type must be `Sized`.
@@ -189,6 +236,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
     FieldSized {
         adt_kind: AdtKind,
+        span: Span,
         last: bool,
     },
 
@@ -258,6 +306,8 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Method receiver
     MethodReceiver,
+
+    UnifyReceiver(Box<UnifyReceiverContext<'tcx>>),
 
     /// `return` with no expression
     ReturnNoExpression,
@@ -343,156 +393,153 @@ pub enum SelectionError<'tcx> {
 /// - `Err(e)`: error `e` occurred
 pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 
-/// Given the successful resolution of an obligation, the `Vtable`
-/// indicates where the vtable comes from. Note that while we call this
-/// a "vtable", it does not necessarily indicate dynamic dispatch at
-/// runtime. `Vtable` instances just tell the compiler where to find
-/// methods, but in generic code those methods are typically statically
-/// dispatched -- only when an object is constructed is a `Vtable`
-/// instance reified into an actual vtable.
+/// Given the successful resolution of an obligation, the `ImplSource`
+/// indicates where the impl comes from.
 ///
-/// For example, the vtable may be tied to a specific impl (case A),
+/// For example, the obligation may be satisfied by a specific impl (case A),
 /// or it may be relative to some bound that is in scope (case B).
 ///
 /// ```
 /// impl<T:Clone> Clone<T> for Option<T> { ... } // Impl_1
 /// impl<T:Clone> Clone<T> for Box<T> { ... }    // Impl_2
-/// impl Clone for int { ... }             // Impl_3
+/// impl Clone for i32 { ... }                   // Impl_3
 ///
-/// fn foo<T:Clone>(concrete: Option<Box<int>>,
-///                 param: T,
-///                 mixed: Option<T>) {
+/// fn foo<T: Clone>(concrete: Option<Box<i32>>, param: T, mixed: Option<T>) {
+///     // Case A: Vtable points at a specific impl. Only possible when
+///     // type is concretely known. If the impl itself has bounded
+///     // type parameters, Vtable will carry resolutions for those as well:
+///     concrete.clone(); // Vtable(Impl_1, [Vtable(Impl_2, [Vtable(Impl_3)])])
 ///
-///    // Case A: Vtable points at a specific impl. Only possible when
-///    // type is concretely known. If the impl itself has bounded
-///    // type parameters, Vtable will carry resolutions for those as well:
-///    concrete.clone(); // Vtable(Impl_1, [Vtable(Impl_2, [Vtable(Impl_3)])])
+///     // Case A: ImplSource points at a specific impl. Only possible when
+///     // type is concretely known. If the impl itself has bounded
+///     // type parameters, ImplSource will carry resolutions for those as well:
+///     concrete.clone(); // ImplSource(Impl_1, [ImplSource(Impl_2, [ImplSource(Impl_3)])])
 ///
-///    // Case B: Vtable must be provided by caller. This applies when
-///    // type is a type parameter.
-///    param.clone();    // VtableParam
+///     // Case B: ImplSource must be provided by caller. This applies when
+///     // type is a type parameter.
+///     param.clone();    // ImplSourceParam
 ///
-///    // Case C: A mix of cases A and B.
-///    mixed.clone();    // Vtable(Impl_1, [VtableParam])
+///     // Case C: A mix of cases A and B.
+///     mixed.clone();    // ImplSource(Impl_1, [ImplSourceParam])
 /// }
 /// ```
 ///
 /// ### The type parameter `N`
 ///
-/// See explanation on `VtableImplData`.
+/// See explanation on `ImplSourceUserDefinedData`.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub enum Vtable<'tcx, N> {
-    /// Vtable identifying a particular impl.
-    VtableImpl(VtableImplData<'tcx, N>),
+pub enum ImplSource<'tcx, N> {
+    /// ImplSource identifying a particular impl.
+    ImplSourceUserDefined(ImplSourceUserDefinedData<'tcx, N>),
 
-    /// Vtable for auto trait implementations.
+    /// ImplSource for auto trait implementations.
     /// This carries the information and nested obligations with regards
     /// to an auto implementation for a trait `Trait`. The nested obligations
     /// ensure the trait implementation holds for all the constituent types.
-    VtableAutoImpl(VtableAutoImplData<N>),
+    ImplSourceAutoImpl(ImplSourceAutoImplData<N>),
 
     /// Successful resolution to an obligation provided by the caller
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
     /// any).
-    VtableParam(Vec<N>),
+    ImplSourceParam(Vec<N>),
 
     /// Virtual calls through an object.
-    VtableObject(VtableObjectData<'tcx, N>),
+    ImplSourceObject(ImplSourceObjectData<'tcx, N>),
 
     /// Successful resolution for a builtin trait.
-    VtableBuiltin(VtableBuiltinData<N>),
+    ImplSourceBuiltin(ImplSourceBuiltinData<N>),
 
-    /// Vtable automatically generated for a closure. The `DefId` is the ID
-    /// of the closure expression. This is a `VtableImpl` in spirit, but the
+    /// ImplSource automatically generated for a closure. The `DefId` is the ID
+    /// of the closure expression. This is a `ImplSourceUserDefined` in spirit, but the
     /// impl is generated by the compiler and does not appear in the source.
-    VtableClosure(VtableClosureData<'tcx, N>),
+    ImplSourceClosure(ImplSourceClosureData<'tcx, N>),
 
     /// Same as above, but for a function pointer type with the given signature.
-    VtableFnPointer(VtableFnPointerData<'tcx, N>),
+    ImplSourceFnPointer(ImplSourceFnPointerData<'tcx, N>),
 
-    /// Vtable for a builtin `DeterminantKind` trait implementation.
-    VtableDiscriminantKind(VtableDiscriminantKindData),
+    /// ImplSource for a builtin `DeterminantKind` trait implementation.
+    ImplSourceDiscriminantKind(ImplSourceDiscriminantKindData),
 
-    /// Vtable automatically generated for a generator.
-    VtableGenerator(VtableGeneratorData<'tcx, N>),
+    /// ImplSource automatically generated for a generator.
+    ImplSourceGenerator(ImplSourceGeneratorData<'tcx, N>),
 
-    /// Vtable for a trait alias.
-    VtableTraitAlias(VtableTraitAliasData<'tcx, N>),
+    /// ImplSource for a trait alias.
+    ImplSourceTraitAlias(ImplSourceTraitAliasData<'tcx, N>),
 }
 
-impl<'tcx, N> Vtable<'tcx, N> {
+impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn nested_obligations(self) -> Vec<N> {
         match self {
-            VtableImpl(i) => i.nested,
-            VtableParam(n) => n,
-            VtableBuiltin(i) => i.nested,
-            VtableAutoImpl(d) => d.nested,
-            VtableClosure(c) => c.nested,
-            VtableGenerator(c) => c.nested,
-            VtableObject(d) => d.nested,
-            VtableFnPointer(d) => d.nested,
-            VtableDiscriminantKind(VtableDiscriminantKindData) => Vec::new(),
-            VtableTraitAlias(d) => d.nested,
+            ImplSourceUserDefined(i) => i.nested,
+            ImplSourceParam(n) => n,
+            ImplSourceBuiltin(i) => i.nested,
+            ImplSourceAutoImpl(d) => d.nested,
+            ImplSourceClosure(c) => c.nested,
+            ImplSourceGenerator(c) => c.nested,
+            ImplSourceObject(d) => d.nested,
+            ImplSourceFnPointer(d) => d.nested,
+            ImplSourceDiscriminantKind(ImplSourceDiscriminantKindData) => Vec::new(),
+            ImplSourceTraitAlias(d) => d.nested,
         }
     }
 
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match &self {
-            VtableImpl(i) => &i.nested[..],
-            VtableParam(n) => &n[..],
-            VtableBuiltin(i) => &i.nested[..],
-            VtableAutoImpl(d) => &d.nested[..],
-            VtableClosure(c) => &c.nested[..],
-            VtableGenerator(c) => &c.nested[..],
-            VtableObject(d) => &d.nested[..],
-            VtableFnPointer(d) => &d.nested[..],
-            VtableDiscriminantKind(VtableDiscriminantKindData) => &[],
-            VtableTraitAlias(d) => &d.nested[..],
+            ImplSourceUserDefined(i) => &i.nested[..],
+            ImplSourceParam(n) => &n[..],
+            ImplSourceBuiltin(i) => &i.nested[..],
+            ImplSourceAutoImpl(d) => &d.nested[..],
+            ImplSourceClosure(c) => &c.nested[..],
+            ImplSourceGenerator(c) => &c.nested[..],
+            ImplSourceObject(d) => &d.nested[..],
+            ImplSourceFnPointer(d) => &d.nested[..],
+            ImplSourceDiscriminantKind(ImplSourceDiscriminantKindData) => &[],
+            ImplSourceTraitAlias(d) => &d.nested[..],
         }
     }
 
-    pub fn map<M, F>(self, f: F) -> Vtable<'tcx, M>
+    pub fn map<M, F>(self, f: F) -> ImplSource<'tcx, M>
     where
         F: FnMut(N) -> M,
     {
         match self {
-            VtableImpl(i) => VtableImpl(VtableImplData {
+            ImplSourceUserDefined(i) => ImplSourceUserDefined(ImplSourceUserDefinedData {
                 impl_def_id: i.impl_def_id,
                 substs: i.substs,
                 nested: i.nested.into_iter().map(f).collect(),
             }),
-            VtableParam(n) => VtableParam(n.into_iter().map(f).collect()),
-            VtableBuiltin(i) => {
-                VtableBuiltin(VtableBuiltinData { nested: i.nested.into_iter().map(f).collect() })
-            }
-            VtableObject(o) => VtableObject(VtableObjectData {
+            ImplSourceParam(n) => ImplSourceParam(n.into_iter().map(f).collect()),
+            ImplSourceBuiltin(i) => ImplSourceBuiltin(ImplSourceBuiltinData {
+                nested: i.nested.into_iter().map(f).collect(),
+            }),
+            ImplSourceObject(o) => ImplSourceObject(ImplSourceObjectData {
                 upcast_trait_ref: o.upcast_trait_ref,
                 vtable_base: o.vtable_base,
                 nested: o.nested.into_iter().map(f).collect(),
             }),
-            VtableAutoImpl(d) => VtableAutoImpl(VtableAutoImplData {
+            ImplSourceAutoImpl(d) => ImplSourceAutoImpl(ImplSourceAutoImplData {
                 trait_def_id: d.trait_def_id,
                 nested: d.nested.into_iter().map(f).collect(),
             }),
-            VtableClosure(c) => VtableClosure(VtableClosureData {
+            ImplSourceClosure(c) => ImplSourceClosure(ImplSourceClosureData {
                 closure_def_id: c.closure_def_id,
                 substs: c.substs,
                 nested: c.nested.into_iter().map(f).collect(),
             }),
-            VtableGenerator(c) => VtableGenerator(VtableGeneratorData {
+            ImplSourceGenerator(c) => ImplSourceGenerator(ImplSourceGeneratorData {
                 generator_def_id: c.generator_def_id,
                 substs: c.substs,
                 nested: c.nested.into_iter().map(f).collect(),
             }),
-            VtableFnPointer(p) => VtableFnPointer(VtableFnPointerData {
+            ImplSourceFnPointer(p) => ImplSourceFnPointer(ImplSourceFnPointerData {
                 fn_ty: p.fn_ty,
                 nested: p.nested.into_iter().map(f).collect(),
             }),
-            VtableDiscriminantKind(VtableDiscriminantKindData) => {
-                VtableDiscriminantKind(VtableDiscriminantKindData)
+            ImplSourceDiscriminantKind(ImplSourceDiscriminantKindData) => {
+                ImplSourceDiscriminantKind(ImplSourceDiscriminantKindData)
             }
-            VtableTraitAlias(d) => VtableTraitAlias(VtableTraitAliasData {
+            ImplSourceTraitAlias(d) => ImplSourceTraitAlias(ImplSourceTraitAliasData {
                 alias_def_id: d.alias_def_id,
                 substs: d.substs,
                 nested: d.nested.into_iter().map(f).collect(),
@@ -512,14 +559,14 @@ impl<'tcx, N> Vtable<'tcx, N> {
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct VtableImplData<'tcx, N> {
+pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     pub nested: Vec<N>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct VtableGeneratorData<'tcx, N> {
+pub struct ImplSourceGeneratorData<'tcx, N> {
     pub generator_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     /// Nested obligations. This can be non-empty if the generator
@@ -528,7 +575,7 @@ pub struct VtableGeneratorData<'tcx, N> {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct VtableClosureData<'tcx, N> {
+pub struct ImplSourceClosureData<'tcx, N> {
     pub closure_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     /// Nested obligations. This can be non-empty if the closure
@@ -537,20 +584,18 @@ pub struct VtableClosureData<'tcx, N> {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct VtableAutoImplData<N> {
+pub struct ImplSourceAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct VtableBuiltinData<N> {
+pub struct ImplSourceBuiltinData<N> {
     pub nested: Vec<N>,
 }
 
-/// A vtable for some object-safe trait `Foo` automatically derived
-/// for the object type `Foo`.
 #[derive(PartialEq, Eq, Clone, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct VtableObjectData<'tcx, N> {
+pub struct ImplSourceObjectData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
 
@@ -563,17 +608,17 @@ pub struct VtableObjectData<'tcx, N> {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct VtableFnPointerData<'tcx, N> {
+pub struct ImplSourceFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>,
 }
 
 // FIXME(@lcnr): This should be  refactored and merged with other builtin vtables.
 #[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct VtableDiscriminantKindData;
+pub struct ImplSourceDiscriminantKindData;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
-pub struct VtableTraitAliasData<'tcx, N> {
+pub struct ImplSourceTraitAliasData<'tcx, N> {
     pub alias_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     pub nested: Vec<N>,

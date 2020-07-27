@@ -17,8 +17,14 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust,ignore
-    /// foo(&vec![1, 2])
+    /// ```rust
+    /// # fn foo(my_vec: &[u8]) {}
+    ///
+    /// // Bad
+    /// foo(&vec![1, 2]);
+    ///
+    /// // Good
+    /// foo(&[1, 2]);
     /// ```
     pub USELESS_VEC,
     perf,
@@ -27,11 +33,11 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UselessVec => [USELESS_VEC]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for UselessVec {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_chain! {
-            if let ty::Ref(_, ty, _) = cx.tables.expr_ty_adjusted(expr).kind;
+            if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(expr).kind;
             if let ty::Slice(..) = ty.kind;
             if let ExprKind::AddrOf(BorrowKind::Ref, _, ref addressee) = expr.kind;
             if let Some(vec_args) = higher::vec_macro(cx, addressee);
@@ -44,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
         if_chain! {
             if let Some((_, arg, _)) = higher::for_loop(expr);
             if let Some(vec_args) = higher::vec_macro(cx, arg);
-            if is_copy(cx, vec_type(cx.tables.expr_ty_adjusted(arg)));
+            if is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(arg)));
             then {
                 // report the error around the `vec!` not inside `<std macros>:`
                 let span = arg.span
@@ -60,11 +66,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
     }
 }
 
-fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
+fn check_vec_macro<'tcx>(cx: &LateContext<'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
     let mut applicability = Applicability::MachineApplicable;
     let snippet = match *vec_args {
         higher::VecArgs::Repeat(elem, len) => {
-            if constant(cx, cx.tables, len).is_some() {
+            if constant(cx, cx.typeck_results(), len).is_some() {
                 format!(
                     "&[{}; {}]",
                     snippet_with_applicability(cx, elem.span, "elem", &mut applicability),

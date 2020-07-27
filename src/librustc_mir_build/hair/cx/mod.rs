@@ -1,4 +1,4 @@
-//! This module contains the fcuntaiontliy to convert from the wacky tcx data
+//! This module contains the functionality to convert from the wacky tcx data
 //! structures into the HAIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
@@ -8,7 +8,7 @@ use crate::hair::*;
 use rustc_ast::ast;
 use rustc_ast::attr;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
@@ -33,7 +33,7 @@ crate struct Cx<'a, 'tcx> {
     crate identity_substs: &'tcx InternalSubsts<'tcx>,
 
     crate region_scope_tree: &'tcx region::ScopeTree,
-    crate tables: &'a ty::TypeckTables<'tcx>,
+    crate typeck_results: &'a ty::TypeckResults<'tcx>,
 
     /// This is `Constness::Const` if we are compiling a `static`,
     /// `const`, or the body of a `const fn`.
@@ -47,16 +47,16 @@ crate struct Cx<'a, 'tcx> {
 
     /// Whether this constant/function needs overflow checks.
     check_overflow: bool,
-
-    /// See field with the same name on `mir::Body`.
-    control_flow_destroyed: Vec<(Span, String)>,
 }
 
 impl<'a, 'tcx> Cx<'a, 'tcx> {
-    crate fn new(infcx: &'a InferCtxt<'a, 'tcx>, src_id: hir::HirId) -> Cx<'a, 'tcx> {
+    crate fn new(
+        infcx: &'a InferCtxt<'a, 'tcx>,
+        def: ty::WithOptConstParam<LocalDefId>,
+        src_id: hir::HirId,
+    ) -> Cx<'a, 'tcx> {
         let tcx = infcx.tcx;
-        let src_def_id = tcx.hir().local_def_id(src_id);
-        let tables = tcx.typeck_tables_of(src_def_id);
+        let typeck_results = tcx.typeck_opt_const_arg(def);
         let body_owner_kind = tcx.hir().body_owner_kind(src_id);
 
         let constness = match body_owner_kind {
@@ -81,20 +81,15 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             tcx,
             infcx,
             root_lint_level: src_id,
-            param_env: tcx.param_env(src_def_id),
-            identity_substs: InternalSubsts::identity_for_item(tcx, src_def_id.to_def_id()),
-            region_scope_tree: tcx.region_scope_tree(src_def_id),
-            tables,
+            param_env: tcx.param_env(def.did),
+            identity_substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+            region_scope_tree: tcx.region_scope_tree(def.did),
+            typeck_results,
             constness,
-            body_owner: src_def_id.to_def_id(),
+            body_owner: def.did.to_def_id(),
             body_owner_kind,
             check_overflow,
-            control_flow_destroyed: Vec::new(),
         }
-    }
-
-    crate fn control_flow_destroyed(self) -> Vec<(Span, String)> {
-        self.control_flow_destroyed
     }
 }
 
@@ -158,7 +153,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node),
         };
-        Pat::from_hir(self.tcx, self.param_env, self.tables(), p)
+        Pat::from_hir(self.tcx, self.param_env, self.typeck_results(), p)
     }
 
     crate fn trait_method(
@@ -196,8 +191,8 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         self.tcx
     }
 
-    crate fn tables(&self) -> &'a ty::TypeckTables<'tcx> {
-        self.tables
+    crate fn typeck_results(&self) -> &'a ty::TypeckResults<'tcx> {
+        self.typeck_results
     }
 
     crate fn check_overflow(&self) -> bool {
@@ -214,8 +209,8 @@ impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'_, 'tcx> {
         self.tcx()
     }
 
-    fn tables(&self) -> &ty::TypeckTables<'tcx> {
-        self.tables()
+    fn typeck_results(&self) -> &ty::TypeckResults<'tcx> {
+        self.typeck_results()
     }
 }
 

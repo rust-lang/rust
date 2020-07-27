@@ -69,7 +69,7 @@
 # the same format as above, but since these targets are experimental, they are
 # not built by default and the experimental Rust compilation targets that depend
 # on them will not work unless the user opts in to building them.
-#experimental-targets = ""
+#experimental-targets = "AVR"
 
 # Cap the number of parallel linker invocations when compiling LLVM.
 # This can be useful when building LLVM with debug info, which significantly
@@ -118,18 +118,24 @@
 # nightlies are already produced for. The current platform must be able to run
 # binaries of this build triple and the nightly will be used to bootstrap the
 # first compiler.
-#build = "x86_64-unknown-linux-gnu"    # defaults to your host platform
+#
+# Defaults to host platform
+#build = "x86_64-unknown-linux-gnu"
 
 # In addition to the build triple, other triples to produce full compiler
 # toolchains for. Each of these triples will be bootstrapped from the build
 # triple and then will continue to bootstrap themselves. This platform must
 # currently be able to run all of the triples provided here.
-#host = ["x86_64-unknown-linux-gnu"]   # defaults to just the build triple
+#
+# Defaults to just the build triple
+#host = ["x86_64-unknown-linux-gnu"]
 
 # In addition to all host triples, other triples to produce the standard library
 # for. Each host triple will be used to produce a copy of the standard library
 # for each target triple.
-#target = ["x86_64-unknown-linux-gnu"] # defaults to just the build triple
+#
+# Defaults to just the build triple
+#target = ["x86_64-unknown-linux-gnu"]
 
 # Use this directory to store build artifacts.
 # You can use "$ROOT" to indicate the root of the git repository.
@@ -174,7 +180,7 @@
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
 #
-# Defaults to the Python interpreter used to execute x.py.
+# Defaults to the Python interpreter used to execute x.py
 #python = "python"
 
 # Force Cargo to check that Cargo.lock describes the precise dependency
@@ -209,7 +215,8 @@
 # Build the sanitizer runtimes
 #sanitizers = false
 
-# Build the profiler runtime
+# Build the profiler runtime (required when compiling with options that depend
+# on this runtime, such as `-C profile-generate` or `-Z instrument-coverage`).
 #profiler = false
 
 # Indicates whether the native libraries linked into Cargo will be statically
@@ -311,30 +318,46 @@
 #codegen-units-std = 1
 
 # Whether or not debug assertions are enabled for the compiler and standard
-# library.
-#debug-assertions = debug
+# library. Debug assertions control the maximum log level used by rustc. When
+# enabled calls to `trace!` and `debug!` macros are preserved in the compiled
+# binary, otherwise they are omitted.
+#
+# Defaults to rust.debug value
+#debug-assertions = false
 
 # Whether or not debug assertions are enabled for the standard library.
 # Overrides the `debug-assertions` option, if defined.
-#debug-assertions-std = debug-assertions
+#
+# Defaults to rust.debug-assertions value
+#debug-assertions-std = false
 
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
-# `1` - line tables only
+# `1` - line tables only - sufficient to generate backtraces that include line
+#       information and inlined functions, set breakpoints at source code
+#       locations, and step through execution in a debugger.
 # `2` - full debug info with variable and type information
 # Can be overridden for specific subsets of Rust code (rustc, std or tools).
 # Debuginfo for tests run with compiletest is not controlled by this option
 # and needs to be enabled separately with `debuginfo-level-tests`.
-#debuginfo-level = if debug { 2 } else { 0 }
+#
+# Defaults to 2 if debug is true
+#debuginfo-level = 0
 
 # Debuginfo level for the compiler.
-#debuginfo-level-rustc = debuginfo-level
+#
+# Defaults to rust.debuginfo-level value
+#debuginfo-level-rustc = 0
 
 # Debuginfo level for the standard library.
-#debuginfo-level-std = debuginfo-level
+#
+# Defaults to rust.debuginfo-level value
+#debuginfo-level-std = 0
 
 # Debuginfo level for the tools.
-#debuginfo-level-tools = debuginfo-level
+#
+# Defaults to rust.debuginfo-level value
+#debuginfo-level-tools = 0
 
 # Debuginfo level for the test suites run with compiletest.
 # FIXME(#61117): Some tests fail when this option is enabled.
@@ -359,7 +382,7 @@
 # nightly features
 #channel = "dev"
 
-# The root location of the MUSL installation directory.
+# The root location of the musl installation directory.
 #musl-root = "..."
 
 # By default the `rustc` executable is built with `-Wl,-rpath` flags on Unix
@@ -368,8 +391,7 @@
 # desired in distributions, for example.
 #rpath = true
 
-# Emits extraneous output from tests to ensure that failures of the test
-# harness are debuggable just from logfiles.
+# Emits extra output from tests so test failures are debuggable just from logfiles.
 #verbose-tests = false
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag).
@@ -502,11 +524,14 @@
 # only use static libraries. If unset, the target's default linkage is used.
 #crt-static = false
 
-# The root location of the MUSL installation directory. The library directory
+# The root location of the musl installation directory. The library directory
 # will also need to contain libunwind.a for an unwinding implementation. Note
-# that this option only makes sense for MUSL targets that produce statically
+# that this option only makes sense for musl targets that produce statically
 # linked binaries
 #musl-root = "..."
+
+# The full path to the musl libdir.
+#musl-libdir = musl-root/lib
 
 # The root location of the `wasm32-wasi` sysroot.
 #wasi-root = "..."

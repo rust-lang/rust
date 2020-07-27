@@ -1,5 +1,5 @@
 fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
-    *x //~^ ERROR the trait bound `u32: std::future::Future` is not satisfied
+    *x //~^ ERROR `u32` is not a future
 }
 
 fn main() {

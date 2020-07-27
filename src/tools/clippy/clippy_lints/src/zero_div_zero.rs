@@ -14,7 +14,11 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// 0.0f32 / 0.0;
+    /// // Bad
+    /// let nan = 0.0f32 / 0.0;
+    ///
+    /// // Good
+    /// let nan = f32::NAN;
     /// ```
     pub ZERO_DIVIDED_BY_ZERO,
     complexity,
@@ -23,8 +27,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ZeroDiv => [ZERO_DIVIDED_BY_ZERO]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ZeroDiv {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // check for instances of 0.0/0.0
         if_chain! {
             if let ExprKind::Binary(ref op, ref left, ref right) = expr.kind;
@@ -32,8 +36,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ZeroDiv {
             // TODO - constant_simple does not fold many operations involving floats.
             // That's probably fine for this lint - it's pretty unlikely that someone would
             // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.
-            if let Some(lhs_value) = constant_simple(cx, cx.tables, left);
-            if let Some(rhs_value) = constant_simple(cx, cx.tables, right);
+            if let Some(lhs_value) = constant_simple(cx, cx.typeck_results(), left);
+            if let Some(rhs_value) = constant_simple(cx, cx.typeck_results(), right);
             if Constant::F32(0.0) == lhs_value || Constant::F64(0.0) == lhs_value;
             if Constant::F32(0.0) == rhs_value || Constant::F64(0.0) == rhs_value;
             then {

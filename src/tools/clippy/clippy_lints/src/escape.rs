@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_target::abi::LayoutOf;
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Place, PlaceBase};
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 use crate::utils::span_lint;
 
@@ -28,9 +28,16 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # fn foo(bar: usize) {}
+    ///
+    /// // Bad
     /// let x = Box::new(1);
     /// foo(*x);
     /// println!("{}", *x);
+    ///
+    /// // Good
+    /// let x = 1;
+    /// foo(x);
+    /// println!("{}", x);
     /// ```
     pub BOXED_LOCAL,
     perf,
@@ -42,17 +49,17 @@ fn is_non_trait_box(ty: Ty<'_>) -> bool {
 }
 
 struct EscapeDelegate<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     set: HirIdSet,
     too_large_for_stack: u64,
 }
 
 impl_lint_pass!(BoxedLocal => [BOXED_LOCAL]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
+impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'a, 'tcx>,
+        cx: &LateContext<'tcx>,
         _: intravisit::FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
@@ -77,7 +84,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
 
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
         cx.tcx.infer_ctxt().enter(|infcx| {
-            ExprUseVisitor::new(&mut v, &infcx, fn_def_id, cx.param_env, cx.tables).consume_body(body);
+            ExprUseVisitor::new(&mut v, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
         });
 
         for node in v.set {
@@ -98,16 +105,13 @@ fn is_argument(map: rustc_middle::hir::map::Map<'_>, id: HirId) -> bool {
         _ => return false,
     }
 
-    match map.find(map.get_parent_node(id)) {
-        Some(Node::Param(_)) => true,
-        _ => false,
-    }
+    matches!(map.find(map.get_parent_node(id)), Some(Node::Param(_)))
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
-    fn consume(&mut self, cmt: &Place<'tcx>, mode: ConsumeMode) {
-        if cmt.projections.is_empty() {
-            if let PlaceBase::Local(lid) = cmt.base {
+    fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, mode: ConsumeMode) {
+        if cmt.place.projections.is_empty() {
+            if let PlaceBase::Local(lid) = cmt.place.base {
                 if let ConsumeMode::Move = mode {
                     // moved out or in. clearly can't be localized
                     self.set.remove(&lid);
@@ -125,16 +129,16 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn borrow(&mut self, cmt: &Place<'tcx>, _: ty::BorrowKind) {
-        if cmt.projections.is_empty() {
-            if let PlaceBase::Local(lid) = cmt.base {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: ty::BorrowKind) {
+        if cmt.place.projections.is_empty() {
+            if let PlaceBase::Local(lid) = cmt.place.base {
                 self.set.remove(&lid);
             }
         }
     }
 
-    fn mutate(&mut self, cmt: &Place<'tcx>) {
-        if cmt.projections.is_empty() {
+    fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>) {
+        if cmt.place.projections.is_empty() {
             let map = &self.cx.tcx.hir();
             if is_argument(*map, cmt.hir_id) {
                 // Skip closure arguments
@@ -143,7 +147,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                     return;
                 }
 
-                if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
+                if is_non_trait_box(cmt.place.ty()) && !self.is_large_box(cmt.place.ty()) {
                     self.set.insert(cmt.hir_id);
                 }
                 return;

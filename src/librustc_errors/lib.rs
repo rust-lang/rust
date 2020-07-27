@@ -581,6 +581,11 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Help, msg)
     }
 
+    /// Construct a builder at the `Note` level with the `msg`.
+    pub fn struct_note_without_error(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, Level::Note, msg)
+    }
+
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: &str) -> FatalError {
         self.emit_diag_at_span(Diagnostic::new(Fatal, msg), span);
         FatalError
@@ -616,6 +621,7 @@ impl Handler {
         self.inner.borrow_mut().span_bug(span, msg)
     }
 
+    #[track_caller]
     pub fn delay_span_bug(&self, span: impl Into<MultiSpan>, msg: &str) {
         self.inner.borrow_mut().delay_span_bug(span, msg)
     }
@@ -868,6 +874,7 @@ impl HandlerInner {
         self.emit_diagnostic(diag.set_span(sp));
     }
 
+    #[track_caller]
     fn delay_span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) {
         // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
         // incrementing `err_count` by one, so we need to +1 the comparing.
@@ -878,6 +885,7 @@ impl HandlerInner {
         }
         let mut diagnostic = Diagnostic::new(Level::Bug, msg);
         diagnostic.set_span(sp.into());
+        diagnostic.note(&format!("delayed at {}", std::panic::Location::caller()));
         self.delay_as_bug(diagnostic)
     }
 

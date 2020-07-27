@@ -1,0 +1,67 @@
+// MIR for `main` 0 mir_map
+
+| User Type Annotations
+| 0: Canonical { max_universe: U0, variables: [], value: Ty(Void) } at $DIR/issue-72181-1.rs:16:12: 16:16
+| 1: Canonical { max_universe: U0, variables: [], value: Ty(Void) } at $DIR/issue-72181-1.rs:16:12: 16:16
+|
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/issue-72181-1.rs:15:11: 15:11
+    let mut _1: !;                       // in scope 0 at $DIR/issue-72181-1.rs:15:11: 21:2
+    let _2: Void as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/issue-72181-1.rs:16:9: 16:10
+    let mut _3: ();                      // in scope 0 at $DIR/issue-72181-1.rs:17:41: 17:43
+    let _4: !;                           // in scope 0 at $DIR/issue-72181-1.rs:20:5: 20:9
+    let mut _5: Void;                    // in scope 0 at $DIR/issue-72181-1.rs:20:7: 20:8
+    scope 1 {
+        debug v => _2;                   // in scope 1 at $DIR/issue-72181-1.rs:16:9: 16:10
+    }
+    scope 2 {
+    }
+
+    bb0: {
+        StorageLive(_2);                 // scope 0 at $DIR/issue-72181-1.rs:16:9: 16:10
+        StorageLive(_3);                 // scope 2 at $DIR/issue-72181-1.rs:17:41: 17:43
+        _3 = ();                         // scope 2 at $DIR/issue-72181-1.rs:17:41: 17:43
+        _2 = const std::intrinsics::transmute::<(), Void>(move _3) -> [return: bb2, unwind: bb1]; // scope 2 at $DIR/issue-72181-1.rs:17:9: 17:44
+                                         // ty::Const
+                                         // + ty: unsafe extern "rust-intrinsic" fn(()) -> Void {std::intrinsics::transmute::<(), Void>}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-72181-1.rs:17:9: 17:40
+                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(()) -> Void {std::intrinsics::transmute::<(), Void>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1 (cleanup): {
+        resume;                          // scope 0 at $DIR/issue-72181-1.rs:15:1: 21:2
+    }
+
+    bb2: {
+        StorageDead(_3);                 // scope 2 at $DIR/issue-72181-1.rs:17:43: 17:44
+        FakeRead(ForLet, _2);            // scope 0 at $DIR/issue-72181-1.rs:16:9: 16:10
+        AscribeUserType(_2, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at $DIR/issue-72181-1.rs:16:12: 16:16
+        StorageLive(_4);                 // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
+        StorageLive(_5);                 // scope 1 at $DIR/issue-72181-1.rs:20:7: 20:8
+        _5 = move _2;                    // scope 1 at $DIR/issue-72181-1.rs:20:7: 20:8
+        const f(move _5) -> bb1;         // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
+                                         // ty::Const
+                                         // + ty: fn(Void) -> ! {f}
+                                         // + val: Value(Scalar(<ZST>))
+                                         // mir::Constant
+                                         // + span: $DIR/issue-72181-1.rs:20:5: 20:6
+                                         // + literal: Const { ty: fn(Void) -> ! {f}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb3: {
+        StorageDead(_5);                 // scope 1 at $DIR/issue-72181-1.rs:20:8: 20:9
+        StorageDead(_4);                 // scope 1 at $DIR/issue-72181-1.rs:20:9: 20:10
+        StorageDead(_2);                 // scope 0 at $DIR/issue-72181-1.rs:21:1: 21:2
+        unreachable;                     // scope 0 at $DIR/issue-72181-1.rs:15:11: 21:2
+    }
+
+    bb4: {
+        goto -> bb5;                     // scope 0 at $DIR/issue-72181-1.rs:21:2: 21:2
+    }
+
+    bb5: {
+        return;                          // scope 0 at $DIR/issue-72181-1.rs:21:2: 21:2
+    }
+}

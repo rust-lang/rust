@@ -2,7 +2,7 @@ use rustc_ast::ast::{FloatTy, InlineAsmTemplatePiece, IntTy, UintTy};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
@@ -14,11 +14,11 @@ use rustc_target::abi::{Pointer, VariantIdx};
 use rustc_target::asm::{InlineAsmRegOrRegClass, InlineAsmType};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 
-fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: DefId) {
+fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut ItemVisitor { tcx }.as_deep_visitor());
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_intrinsics, ..*providers };
 }
 
@@ -28,7 +28,7 @@ struct ItemVisitor<'tcx> {
 
 struct ExprVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    tables: &'tcx ty::TypeckTables<'tcx>,
+    typeck_results: &'tcx ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -142,7 +142,7 @@ impl ExprVisitor<'tcx> {
         tied_input: Option<(&hir::Expr<'tcx>, Option<InlineAsmType>)>,
     ) -> Option<InlineAsmType> {
         // Check the type against the allowed types for inline asm.
-        let ty = self.tables.expr_ty_adjusted(expr);
+        let ty = self.typeck_results.expr_ty_adjusted(expr);
         let asm_ty_isize = match self.tcx.sess.target.ptr_width {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
@@ -150,7 +150,7 @@ impl ExprVisitor<'tcx> {
             _ => unreachable!(),
         };
         let asm_ty = match ty.kind {
-            ty::Never | ty::Error => return None,
+            ty::Never | ty::Error(_) => return None,
             ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::I8),
             ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Some(InlineAsmType::I16),
             ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Some(InlineAsmType::I32),
@@ -167,7 +167,7 @@ impl ExprVisitor<'tcx> {
                 let fields = &adt.non_enum_variant().fields;
                 let elem_ty = fields[0].ty(self.tcx, substs);
                 match elem_ty.kind {
-                    ty::Never | ty::Error => return None,
+                    ty::Never | ty::Error(_) => return None,
                     ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => {
                         Some(InlineAsmType::VecI8(fields.len() as u64))
                     }
@@ -214,7 +214,7 @@ impl ExprVisitor<'tcx> {
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
-        if !ty.is_copy_modulo_regions(self.tcx, self.param_env, DUMMY_SP) {
+        if !ty.is_copy_modulo_regions(self.tcx.at(DUMMY_SP), self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             err.note(&format!("`{}` does not implement the Copy trait", ty));
@@ -232,11 +232,11 @@ impl ExprVisitor<'tcx> {
         // size).
         if let Some((in_expr, Some(in_asm_ty))) = tied_input {
             if in_asm_ty != asm_ty {
-                let msg = &format!("incompatible types for asm inout argument");
+                let msg = "incompatible types for asm inout argument";
                 let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
                 err.span_label(
                     in_expr.span,
-                    &format!("type `{}`", self.tables.expr_ty_adjusted(in_expr)),
+                    &format!("type `{}`", self.typeck_results.expr_ty_adjusted(in_expr)),
                 );
                 err.span_label(expr.span, &format!("type `{}`", ty));
                 err.note(
@@ -373,7 +373,7 @@ impl ExprVisitor<'tcx> {
                     }
                 }
                 hir::InlineAsmOperand::Const { ref expr } => {
-                    let ty = self.tables.expr_ty_adjusted(expr);
+                    let ty = self.typeck_results.expr_ty_adjusted(expr);
                     match ty.kind {
                         ty::Int(_) | ty::Uint(_) | ty::Float(_) => {}
                         _ => {
@@ -400,8 +400,8 @@ impl Visitor<'tcx> for ItemVisitor<'tcx> {
         let owner_def_id = self.tcx.hir().body_owner_def_id(body_id);
         let body = self.tcx.hir().body(body_id);
         let param_env = self.tcx.param_env(owner_def_id.to_def_id());
-        let tables = self.tcx.typeck_tables_of(owner_def_id);
-        ExprVisitor { tcx: self.tcx, param_env, tables }.visit_body(body);
+        let typeck_results = self.tcx.typeck(owner_def_id);
+        ExprVisitor { tcx: self.tcx, param_env, typeck_results }.visit_body(body);
         self.visit_body(body);
     }
 }
@@ -416,13 +416,13 @@ impl Visitor<'tcx> for ExprVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             hir::ExprKind::Path(ref qpath) => {
-                let res = self.tables.qpath_res(qpath, expr.hir_id);
+                let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
                 if let Res::Def(DefKind::Fn, did) = res {
                     if self.def_id_is_transmute(did) {
-                        let typ = self.tables.node_type(expr.hir_id);
+                        let typ = self.typeck_results.node_type(expr.hir_id);
                         let sig = typ.fn_sig(self.tcx);
                         let from = sig.inputs().skip_binder()[0];
-                        let to = *sig.output().skip_binder();
+                        let to = sig.output().skip_binder();
                         self.check_transmute(expr.span, from, to);
                     }
                 }

@@ -5,11 +5,7 @@ LL |     type A<'a> where Self: 'static = (&'a ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `T: 'static`...
-note: ...so that the type `Fooy<T>` will meet its required lifetime bounds
-  --> $DIR/impl_bounds.rs:15:5
-   |
-LL |     type A<'a> where Self: 'static = (&'a ());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...so that the type `Fooy<T>` will meet its required lifetime bounds
 
 error[E0478]: lifetime bound not satisfied
   --> $DIR/impl_bounds.rs:17:5

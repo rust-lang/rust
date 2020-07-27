@@ -9,8 +9,6 @@ LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self>
 LL | pub trait Add<Rhs = Self> {
    |               --- required by this bound in `std::ops::Add`
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Self`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 help: consider further restricting `Self`
    |
 LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> + std::marker::Sized {}

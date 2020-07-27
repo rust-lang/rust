@@ -70,7 +70,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{self, is_aligned_and_not_null, is_nonoverlapping};
+use crate::intrinsics::{self, abort, is_aligned_and_not_null, is_nonoverlapping};
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -184,7 +184,9 @@ mod mut_ptr;
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
-    drop_in_place(to_drop)
+
+    // SAFETY: see comment above
+    unsafe { drop_in_place(to_drop) }
 }
 
 /// Creates a null raw pointer.
@@ -374,9 +376,15 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     let mut tmp = MaybeUninit::<T>::uninit();
 
     // Perform the swap
-    copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
-    copy(y, x, 1); // `x` and `y` may overlap
-    copy_nonoverlapping(tmp.as_ptr(), y, 1);
+    // SAFETY: the caller must guarantee that `x` and `y` are
+    // valid for writes and properly aligned. `tmp` cannot be
+    // overlapping either `x` or `y` because `tmp` was just allocated
+    // on the stack as a separate allocated object.
+    unsafe {
+        copy_nonoverlapping(x, tmp.as_mut_ptr(), 1);
+        copy(y, x, 1); // `x` and `y` may overlap
+        copy_nonoverlapping(tmp.as_ptr(), y, 1);
+    }
 }
 
 /// Swaps `count * size_of::<T>()` bytes between the two regions of memory
@@ -420,14 +428,21 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
 pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
-    debug_assert!(is_aligned_and_not_null(x), "attempt to swap unaligned or null pointer");
-    debug_assert!(is_aligned_and_not_null(y), "attempt to swap unaligned or null pointer");
-    debug_assert!(is_nonoverlapping(x, y, count), "attempt to swap overlapping memory");
+    if cfg!(debug_assertions)
+        && !(is_aligned_and_not_null(x)
+            && is_aligned_and_not_null(y)
+            && is_nonoverlapping(x, y, count))
+    {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
 
     let x = x as *mut u8;
     let y = y as *mut u8;
     let len = mem::size_of::<T>() * count;
-    swap_nonoverlapping_bytes(x, y, len)
+    // SAFETY: the caller must guarantee that `x` and `y` are
+    // valid for writes and properly aligned.
+    unsafe { swap_nonoverlapping_bytes(x, y, len) }
 }
 
 #[inline]
@@ -435,11 +450,16 @@ pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
     // For types smaller than the block optimization below,
     // just swap directly to avoid pessimizing codegen.
     if mem::size_of::<T>() < 32 {
-        let z = read(x);
-        copy_nonoverlapping(y, x, 1);
-        write(y, z);
+        // SAFETY: the caller must guarantee that `x` and `y` are valid
+        // for writes, properly aligned, and non-overlapping.
+        unsafe {
+            let z = read(x);
+            copy_nonoverlapping(y, x, 1);
+            write(y, z);
+        }
     } else {
-        swap_nonoverlapping(x, y, 1);
+        // SAFETY: the caller must uphold the safety contract for `swap_nonoverlapping`.
+        unsafe { swap_nonoverlapping(x, y, 1) };
     }
 }
 
@@ -466,14 +486,23 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
         // Declaring `t` here avoids aligning the stack when this loop is unused
         let mut t = mem::MaybeUninit::<Block>::uninit();
         let t = t.as_mut_ptr() as *mut u8;
-        let x = x.add(i);
-        let y = y.add(i);
 
-        // Swap a block of bytes of x & y, using t as a temporary buffer
-        // This should be optimized into efficient SIMD operations where available
-        copy_nonoverlapping(x, t, block_size);
-        copy_nonoverlapping(y, x, block_size);
-        copy_nonoverlapping(t, y, block_size);
+        // SAFETY: As `i < len`, and as the caller must guarantee that `x` and `y` are valid
+        // for `len` bytes, `x + i` and `y + i` must be valid adresses, which fulfills the
+        // safety contract for `add`.
+        //
+        // Also, the caller must guarantee that `x` and `y` are valid for writes, properly aligned,
+        // and non-overlapping, which fulfills the safety contract for `copy_nonoverlapping`.
+        unsafe {
+            let x = x.add(i);
+            let y = y.add(i);
+
+            // Swap a block of bytes of x & y, using t as a temporary buffer
+            // This should be optimized into efficient SIMD operations where available
+            copy_nonoverlapping(x, t, block_size);
+            copy_nonoverlapping(y, x, block_size);
+            copy_nonoverlapping(t, y, block_size);
+        }
         i += block_size;
     }
 
@@ -483,12 +512,16 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
         let rem = len - i;
 
         let t = t.as_mut_ptr() as *mut u8;
-        let x = x.add(i);
-        let y = y.add(i);
 
-        copy_nonoverlapping(x, t, rem);
-        copy_nonoverlapping(y, x, rem);
-        copy_nonoverlapping(t, y, rem);
+        // SAFETY: see previous safety comment.
+        unsafe {
+            let x = x.add(i);
+            let y = y.add(i);
+
+            copy_nonoverlapping(x, t, rem);
+            copy_nonoverlapping(y, x, rem);
+            copy_nonoverlapping(t, y, rem);
+        }
     }
 }
 
@@ -535,7 +568,13 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
-    mem::swap(&mut *dst, &mut src); // cannot overlap
+    // SAFETY: the caller must guarantee that `dst` is valid to be
+    // cast to a mutable reference (valid for writes, aligned, initialized),
+    // and cannot overlap `src` since `dst` must point to a distinct
+    // allocated object.
+    unsafe {
+        mem::swap(&mut *dst, &mut src); // cannot overlap
+    }
     src
 }
 
@@ -653,8 +692,16 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 pub unsafe fn read<T>(src: *const T) -> T {
     // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
-    copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-    tmp.assume_init()
+    // SAFETY: the caller must guarantee that `src` is valid for reads.
+    // `src` cannot overlap `tmp` because `tmp` was just allocated on
+    // the stack as a separate allocated object.
+    //
+    // Also, since we just wrote a valid value into `tmp`, it is guaranteed
+    // to be properly initialized.
+    unsafe {
+        copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+        tmp.assume_init()
+    }
 }
 
 /// Reads the value from `src` without moving it. This leaves the
@@ -747,8 +794,16 @@ pub unsafe fn read<T>(src: *const T) -> T {
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
     // `copy_nonoverlapping` takes care of debug_assert.
     let mut tmp = MaybeUninit::<T>::uninit();
-    copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, mem::size_of::<T>());
-    tmp.assume_init()
+    // SAFETY: the caller must guarantee that `src` is valid for reads.
+    // `src` cannot overlap `tmp` because `tmp` was just allocated on
+    // the stack as a separate allocated object.
+    //
+    // Also, since we just wrote a valid value into `tmp`, it is guaranteed
+    // to be properly initialized.
+    unsafe {
+        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, mem::size_of::<T>());
+        tmp.assume_init()
+    }
 }
 
 /// Overwrites a memory location with the given value without reading or
@@ -838,8 +893,12 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
-    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
-    intrinsics::move_val_init(&mut *dst, src)
+    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
+    // SAFETY: the caller must uphold the safety contract for `move_val_init`.
+    unsafe { intrinsics::move_val_init(&mut *dst, src) }
 }
 
 /// Overwrites a memory location with the given value without reading or
@@ -931,8 +990,13 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
-    // `copy_nonoverlapping` takes care of debug_assert.
-    copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
+    // SAFETY: the caller must guarantee that `dst` is valid for writes.
+    // `dst` cannot overlap `src` because the caller has mutable access
+    // to `dst` while `src` is owned by this function.
+    unsafe {
+        // `copy_nonoverlapping` takes care of debug_assert.
+        copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
+    }
     mem::forget(src);
 }
 
@@ -1003,8 +1067,12 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
-    debug_assert!(is_aligned_and_not_null(src), "attempt to read from unaligned or null pointer");
-    intrinsics::volatile_load(src)
+    if cfg!(debug_assertions) && !is_aligned_and_not_null(src) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
+    // SAFETY: the caller must uphold the safety contract for `volatile_load`.
+    unsafe { intrinsics::volatile_load(src) }
 }
 
 /// Performs a volatile write of a memory location with the given value without
@@ -1072,8 +1140,14 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
-    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
-    intrinsics::volatile_store(dst, src);
+    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
+        // Not panicking to keep codegen impact smaller.
+        abort();
+    }
+    // SAFETY: the caller must uphold the safety contract for `volatile_store`.
+    unsafe {
+        intrinsics::volatile_store(dst, src);
+    }
 }
 
 /// Align pointer `p`.
@@ -1128,7 +1202,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
                 //
                 // Note, that we use wrapping operations here intentionally – the original formula
                 // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
-                // usize::max_value()` instead, because we take the result `mod n` at the end
+                // usize::MAX` instead, because we take the result `mod n` at the end
                 // anyway.
                 inverse = inverse.wrapping_mul(2usize.wrapping_sub(x.wrapping_mul(inverse)));
                 if going_mod >= m {
@@ -1159,8 +1233,8 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     }
 
     let smoda = stride & a_minus_one;
-    // a is power-of-two so cannot be 0. stride = 0 is handled above.
-    let gcdpow = intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a));
+    // SAFETY: a is power-of-two so cannot be 0. stride = 0 is handled above.
+    let gcdpow = unsafe { intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a)) };
     let gcd = 1usize << gcdpow;
 
     if p as usize & (gcd.wrapping_sub(1)) == 0 {
@@ -1193,7 +1267,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     }
 
     // Cannot be aligned at all.
-    usize::max_value()
+    usize::MAX
 }
 
 /// Compares raw pointers for equality.
@@ -1345,14 +1419,24 @@ macro_rules! fnptr_impls_safety_abi {
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Pointer::fmt(&(*self as *const ()), f)
+                // HACK: The intermediate cast as usize is required for AVR
+                // so that the address space of the source function pointer
+                // is preserved in the final function pointer.
+                //
+                // https://github.com/avr-rust/rust/issues/143
+                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
             }
         }
 
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                fmt::Pointer::fmt(&(*self as *const ()), f)
+                // HACK: The intermediate cast as usize is required for AVR
+                // so that the address space of the source function pointer
+                // is preserved in the final function pointer.
+                //
+                // https://github.com/avr-rust/rust/issues/143
+                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
             }
         }
     }
@@ -1389,3 +1473,70 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I }
 fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J }
 fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K }
 fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
+
+/// Create a `const` raw pointer to a place, without creating an intermediate reference.
+///
+/// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
+/// and points to initialized data. For cases where those requirements do not hold,
+/// raw pointers should be used instead. However, `&expr as *const _` creates a reference
+/// before casting it to a raw pointer, and that reference is subject to the same rules
+/// as all other references. This macro can create a raw pointer *without* creating
+/// a reference first.
+///
+/// # Example
+///
+/// ```
+/// #![feature(raw_ref_macros)]
+/// use std::ptr;
+///
+/// #[repr(packed)]
+/// struct Packed {
+///     f1: u8,
+///     f2: u16,
+/// }
+///
+/// let packed = Packed { f1: 1, f2: 2 };
+/// // `&packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
+/// let raw_f2 = ptr::raw_const!(packed.f2);
+/// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
+/// ```
+#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[rustc_macro_transparency = "semitransparent"]
+#[allow_internal_unstable(raw_ref_op)]
+pub macro raw_const($e:expr) {
+    &raw const $e
+}
+
+/// Create a `mut` raw pointer to a place, without creating an intermediate reference.
+///
+/// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
+/// and points to initialized data. For cases where those requirements do not hold,
+/// raw pointers should be used instead. However, `&mut expr as *mut _` creates a reference
+/// before casting it to a raw pointer, and that reference is subject to the same rules
+/// as all other references. This macro can create a raw pointer *without* creating
+/// a reference first.
+///
+/// # Example
+///
+/// ```
+/// #![feature(raw_ref_macros)]
+/// use std::ptr;
+///
+/// #[repr(packed)]
+/// struct Packed {
+///     f1: u8,
+///     f2: u16,
+/// }
+///
+/// let mut packed = Packed { f1: 1, f2: 2 };
+/// // `&mut packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
+/// let raw_f2 = ptr::raw_mut!(packed.f2);
+/// unsafe { raw_f2.write_unaligned(42); }
+/// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
+/// ```
+#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[rustc_macro_transparency = "semitransparent"]
+#[allow_internal_unstable(raw_ref_op)]
+pub macro raw_mut($e:expr) {
+    &raw mut $e
+}

@@ -5,9 +5,12 @@ LL | struct T1 {
    | ^^^^^^^^^ recursive type has infinite size
 LL |     foo: isize,
 LL |     foolish: T1
-   |     ----------- recursive without indirection
+   |              -- recursive without indirection
    |
-   = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `T1` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `T1` representable
+   |
+LL |     foolish: Box<T1>
+   |              ^^^^  ^
 
 error: aborting due to previous error
 

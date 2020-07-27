@@ -5,6 +5,8 @@ LL | fn main() {
    |        - help: consider introducing lifetime `'a` here: `<'a>`
 LL |     0.clone::<'a>();
    |               ^^ undeclared lifetime
+   |
+   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error: aborting due to previous error
 

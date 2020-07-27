@@ -10,6 +10,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_ast::ast::Mutability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::AssertMessage;
+use rustc_session::Limit;
 use rustc_span::symbol::Symbol;
 
 use crate::interpret::{
@@ -109,8 +110,8 @@ pub struct MemoryExtra {
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
-    pub(super) fn new(const_eval_limit: usize) -> Self {
-        CompileTimeInterpreter { steps_remaining: const_eval_limit, stack: Vec::new() }
+    pub(super) fn new(const_eval_limit: Limit) -> Self {
+        CompileTimeInterpreter { steps_remaining: const_eval_limit.0, stack: Vec::new() }
     }
 }
 
@@ -190,11 +191,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         debug!("find_mir_or_eval_fn: {:?}", instance);
 
         // Only check non-glue functions
-        if let ty::InstanceDef::Item(def_id) = instance.def {
+        if let ty::InstanceDef::Item(def) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
-            if ecx.tcx.is_const_fn_raw(def_id) {
+            if ecx.tcx.is_const_fn_raw(def.did) {
                 // If this function is a `const fn` then under certain circumstances we
                 // can evaluate call via the query system, thus memoizing all future calls.
                 if ecx.try_eval_const_fn_call(instance, ret, args)? {
@@ -247,25 +248,19 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::AssertKind::*;
-        // Convert `AssertKind<Operand>` to `AssertKind<u64>`.
+        // Convert `AssertKind<Operand>` to `AssertKind<Scalar>`.
+        let eval_to_int =
+            |op| ecx.read_immediate(ecx.eval_operand(op, None)?).map(|x| x.to_const_int());
         let err = match msg {
             BoundsCheck { ref len, ref index } => {
-                let len = ecx
-                    .read_immediate(ecx.eval_operand(len, None)?)
-                    .expect("can't eval len")
-                    .to_scalar()?
-                    .to_machine_usize(&*ecx)?;
-                let index = ecx
-                    .read_immediate(ecx.eval_operand(index, None)?)
-                    .expect("can't eval index")
-                    .to_scalar()?
-                    .to_machine_usize(&*ecx)?;
+                let len = eval_to_int(len)?;
+                let index = eval_to_int(index)?;
                 BoundsCheck { len, index }
             }
-            Overflow(op) => Overflow(*op),
-            OverflowNeg => OverflowNeg,
-            DivisionByZero => DivisionByZero,
-            RemainderByZero => RemainderByZero,
+            Overflow(op, l, r) => Overflow(*op, eval_to_int(l)?, eval_to_int(r)?),
+            OverflowNeg(op) => OverflowNeg(eval_to_int(op)?),
+            DivisionByZero(op) => DivisionByZero(eval_to_int(op)?),
+            RemainderByZero(op) => RemainderByZero(eval_to_int(op)?),
             ResumedAfterReturn(generator_kind) => ResumedAfterReturn(*generator_kind),
             ResumedAfterPanic(generator_kind) => ResumedAfterPanic(*generator_kind),
         };

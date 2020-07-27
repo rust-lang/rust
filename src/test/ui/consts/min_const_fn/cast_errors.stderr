@@ -1,14 +1,5 @@
-error[E0723]: unsizing casts are not allowed in const fn
-  --> $DIR/cast_errors.rs:3:41
-   |
-LL | const fn unsize(x: &[u8; 3]) -> &[u8] { x }
-   |                                         ^
-   |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
-
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/cast_errors.rs:5:23
+  --> $DIR/cast_errors.rs:4:23
    |
 LL | const fn closure() -> fn() { || {} }
    |                       ^^^^
@@ -17,7 +8,7 @@ LL | const fn closure() -> fn() { || {} }
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/cast_errors.rs:8:5
+  --> $DIR/cast_errors.rs:7:5
    |
 LL |     (|| {}) as fn();
    |     ^^^^^^^^^^^^^^^
@@ -26,7 +17,7 @@ LL |     (|| {}) as fn();
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/cast_errors.rs:11:28
+  --> $DIR/cast_errors.rs:10:28
    |
 LL | const fn reify(f: fn()) -> unsafe fn() { f }
    |                            ^^^^^^^^^^^
@@ -35,7 +26,7 @@ LL | const fn reify(f: fn()) -> unsafe fn() { f }
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable
-  --> $DIR/cast_errors.rs:13:21
+  --> $DIR/cast_errors.rs:12:21
    |
 LL | const fn reify2() { main as unsafe fn(); }
    |                     ^^^^^^^^^^^^^^^^^^^
@@ -43,6 +34,6 @@ LL | const fn reify2() { main as unsafe fn(); }
    = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0723`.

@@ -337,14 +337,10 @@ Basic usage:
 #![feature(wrapping_int_impl)]
 use std::num::Wrapping;
 
-assert_eq!(<Wrapping<", stringify!($t), ">>::min_value(), ",
-"Wrapping(", stringify!($t), "::min_value()));
+assert_eq!(<Wrapping<", stringify!($t), ">>::MIN, Wrapping(", stringify!($t), "::MIN));
 ```"),
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                #[inline]
-                pub const fn min_value() -> Self {
-                    Wrapping(<$t>::min_value())
-                }
+                pub const MIN: Self = Self(<$t>::MIN);
             }
 
             doc_comment! {
@@ -358,14 +354,10 @@ Basic usage:
 #![feature(wrapping_int_impl)]
 use std::num::Wrapping;
 
-assert_eq!(<Wrapping<", stringify!($t), ">>::max_value(), ",
-"Wrapping(", stringify!($t), "::max_value()));
+assert_eq!(<Wrapping<", stringify!($t), ">>::MAX, Wrapping(", stringify!($t), "::MAX));
 ```"),
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                #[inline]
-                pub const fn max_value() -> Self {
-                    Wrapping(<$t>::max_value())
-                }
+                pub const MAX: Self = Self(<$t>::MAX);
             }
 
             doc_comment! {
@@ -702,7 +694,7 @@ Basic usage:
 #![feature(wrapping_int_impl)]
 use std::num::Wrapping;
 
-let n = Wrapping(", stringify!($t), "::max_value()) >> 2;
+let n = Wrapping(", stringify!($t), "::MAX) >> 2;
 
 assert_eq!(n.leading_zeros(), 3);
 ```"),
@@ -731,8 +723,7 @@ use std::num::Wrapping;
 
 assert_eq!(Wrapping(100", stringify!($t), ").abs(), Wrapping(100));
 assert_eq!(Wrapping(-100", stringify!($t), ").abs(), Wrapping(100));
-assert_eq!(Wrapping(", stringify!($t), "::min_value()).abs(), Wrapping(", stringify!($t),
-"::min_value()));
+assert_eq!(Wrapping(", stringify!($t), "::MIN).abs(), Wrapping(", stringify!($t), "::MIN));
 assert_eq!(Wrapping(-128i8).abs().0 as u8, 128u8);
 ```"),
                 #[inline]
@@ -831,7 +822,7 @@ Basic usage:
 #![feature(wrapping_int_impl)]
 use std::num::Wrapping;
 
-let n = Wrapping(", stringify!($t), "::max_value()) >> 2;
+let n = Wrapping(", stringify!($t), "::MAX) >> 2;
 
 assert_eq!(n.leading_zeros(), 2);
 ```"),

@@ -2,7 +2,8 @@ use std::error::Error;
 use std::fmt;
 
 use rustc_middle::mir::AssertKind;
-use rustc_span::Symbol;
+use rustc_middle::ty::ConstInt;
+use rustc_span::{Span, Symbol};
 
 use super::InterpCx;
 use crate::interpret::{ConstEvalErr, InterpErrorInfo, Machine};
@@ -13,7 +14,7 @@ pub enum ConstEvalErrKind {
     NeedsRfc(String),
     ConstAccessesStatic,
     ModifiedGlobal,
-    AssertFailure(AssertKind<u64>),
+    AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
 }
 
@@ -53,8 +54,9 @@ impl Error for ConstEvalErrKind {}
 pub fn error_to_const_error<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>(
     ecx: &InterpCx<'mir, 'tcx, M>,
     error: InterpErrorInfo<'tcx>,
+    span: Option<Span>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
     let stacktrace = ecx.generate_stacktrace();
-    ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
+    ConstEvalErr { error: error.kind, stacktrace, span: span.unwrap_or_else(|| ecx.cur_span()) }
 }

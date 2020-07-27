@@ -30,11 +30,10 @@ LL |     use std::fmt::Result;
    |
 LL |     use std::io::Result;
    |
-LL |     use std::prelude::v1::Result;
-   |
 LL |     use std::result::Result;
    |
-     and 1 other candidate
+LL |     use std::thread::Result;
+   |
 
 error[E0573]: expected type, found variant `Result`
   --> $DIR/issue-17546.rs:30:13
@@ -48,11 +47,10 @@ LL | use std::fmt::Result;
    |
 LL | use std::io::Result;
    |
-LL | use std::prelude::v1::Result;
-   |
 LL | use std::result::Result;
    |
-     and 1 other candidate
+LL | use std::thread::Result;
+   |
 
 error[E0573]: expected type, found variant `NoResult`
   --> $DIR/issue-17546.rs:35:15

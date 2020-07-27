@@ -24,6 +24,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::lint::LintDiagnosticBuilder;
@@ -37,6 +38,7 @@ use rustc_session::Session;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi::LayoutOf;
 
+use std::cell::Cell;
 use std::slice;
 
 /// Information about the registered lints.
@@ -392,8 +394,11 @@ impl LintStore {
                     let symbols =
                         self.by_name.keys().map(|name| Symbol::intern(&name)).collect::<Vec<_>>();
 
-                    let suggestion =
-                        find_best_match_for_name(symbols.iter(), &lint_name.to_lowercase(), None);
+                    let suggestion = find_best_match_for_name(
+                        symbols.iter(),
+                        Symbol::intern(&lint_name.to_lowercase()),
+                        None,
+                    );
 
                     CheckLintNameResult::NoLint(suggestion)
                 }
@@ -419,19 +424,24 @@ impl LintStore {
 }
 
 /// Context for lint checking after type checking.
-pub struct LateContext<'a, 'tcx> {
+pub struct LateContext<'tcx> {
     /// Type context we're checking in.
     pub tcx: TyCtxt<'tcx>,
 
-    /// Side-tables for the body we are in.
-    // FIXME: Make this lazy to avoid running the TypeckTables query?
-    pub tables: &'a ty::TypeckTables<'tcx>,
+    /// Current body, or `None` if outside a body.
+    pub enclosing_body: Option<hir::BodyId>,
+
+    /// Type-checking results for the current body. Access using the `typeck_results`
+    /// and `maybe_typeck_results` methods, which handle querying the typeck results on demand.
+    // FIXME(eddyb) move all the code accessing internal fields like this,
+    // to this module, to avoid exposing it to lint logic.
+    pub(super) cached_typeck_results: Cell<Option<&'tcx ty::TypeckResults<'tcx>>>,
 
     /// Parameter environment for the item we are in.
     pub param_env: ty::ParamEnv<'tcx>,
 
     /// Items accessible from the crate being checked.
-    pub access_levels: &'a AccessLevels,
+    pub access_levels: &'tcx AccessLevels,
 
     /// The store of registered lints and the lint levels.
     pub lint_store: &'tcx LintStore,
@@ -617,7 +627,7 @@ impl<'a> EarlyContext<'a> {
     }
 }
 
-impl LintContext for LateContext<'_, '_> {
+impl LintContext for LateContext<'_> {
     type PassObject = LateLintPassObject;
 
     /// Gets the overall compiler `Session` object.
@@ -666,7 +676,40 @@ impl LintContext for EarlyContext<'_> {
     }
 }
 
-impl<'a, 'tcx> LateContext<'a, 'tcx> {
+impl<'tcx> LateContext<'tcx> {
+    /// Gets the type-checking results for the current body,
+    /// or `None` if outside a body.
+    pub fn maybe_typeck_results(&self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
+        self.cached_typeck_results.get().or_else(|| {
+            self.enclosing_body.map(|body| {
+                let typeck_results = self.tcx.typeck_body(body);
+                self.cached_typeck_results.set(Some(typeck_results));
+                typeck_results
+            })
+        })
+    }
+
+    /// Gets the type-checking results for the current body.
+    /// As this will ICE if called outside bodies, only call when working with
+    /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
+    #[track_caller]
+    pub fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
+        self.maybe_typeck_results().expect("`LateContext::typeck_results` called outside of body")
+    }
+
+    /// Returns the final resolution of a `QPath`, or `Res::Err` if unavailable.
+    /// Unlike `.typeck_results().qpath_res(qpath, id)`, this can be used even outside
+    /// bodies (e.g. for paths in `hir::Ty`), without any risk of ICE-ing.
+    pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
+        match *qpath {
+            hir::QPath::Resolved(_, ref path) => path.res,
+            hir::QPath::TypeRelative(..) => self
+                .maybe_typeck_results()
+                .and_then(|typeck_results| typeck_results.type_dependent_def(id))
+                .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
+        }
+    }
+
     pub fn current_lint_root(&self) -> hir::HirId {
         self.last_node_with_lint_attrs
     }
@@ -809,7 +852,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LayoutOf for LateContext<'a, 'tcx> {
+impl<'tcx> LayoutOf for LateContext<'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 

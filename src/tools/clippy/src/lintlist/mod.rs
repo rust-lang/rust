@@ -81,6 +81,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "blacklisted_name",
     },
     Lint {
+        name: "blanket_clippy_restriction_lints",
+        group: "style",
+        desc: "enabling the complete restriction group",
+        deprecation: None,
+        module: "attrs",
+    },
+    Lint {
         name: "blocks_in_if_conditions",
         group: "style",
         desc: "useless or complex blocks that can be eliminated in conditions",
@@ -166,7 +173,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "cast_ptr_alignment",
-        group: "correctness",
+        group: "pedantic",
         desc: "cast from a pointer to a more-strictly-aligned pointer",
         deprecation: None,
         module: "types",
@@ -935,6 +942,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "loops",
     },
     Lint {
+        name: "iter_next_slice",
+        group: "style",
+        desc: "using `.iter().next()` on a sliced array, which can be shortened to just `.get()`",
+        deprecation: None,
+        module: "methods",
+    },
+    Lint {
         name: "iter_nth",
         group: "perf",
         desc: "using `.iter().nth()` on a standard library type with O(1) element access",
@@ -1016,7 +1030,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block",
         deprecation: None,
-        module: "returns",
+        module: "let_and_return",
     },
     Lint {
         name: "let_underscore_lock",
@@ -1138,6 +1152,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "methods",
     },
     Lint {
+        name: "map_identity",
+        group: "complexity",
+        desc: "using iterator.map(|x| x)",
+        deprecation: None,
+        module: "map_identity",
+    },
+    Lint {
         name: "map_unwrap_or",
         group: "pedantic",
         desc: "using `.map(f).unwrap_or(a)` or `.map(f).unwrap_or_else(func)`, which are more succinctly expressed as `map_or(a, f)` or `map_or_else(a, f)`",
@@ -1155,6 +1176,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         name: "match_bool",
         group: "pedantic",
         desc: "a `match` on a boolean expression instead of an `if..else` block",
+        deprecation: None,
+        module: "matches",
+    },
+    Lint {
+        name: "match_like_matches_macro",
+        group: "style",
+        desc: "a match that could be written with the matches! macro",
         deprecation: None,
         module: "matches",
     },
@@ -1195,8 +1223,15 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "match_wild_err_arm",
-        group: "style",
+        group: "pedantic",
         desc: "a `match` with `Err(_)` arm and take drastic actions",
+        deprecation: None,
+        module: "matches",
+    },
+    Lint {
+        name: "match_wildcard_for_single_variants",
+        group: "pedantic",
+        desc: "a wildcard enum match for a single variant",
         deprecation: None,
         module: "matches",
     },
@@ -1593,6 +1628,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "option_env_unwrap",
     },
     Lint {
+        name: "option_if_let_else",
+        group: "pedantic",
+        desc: "reimplementation of Option::map_or",
+        deprecation: None,
+        module: "option_if_let_else",
+    },
+    Lint {
         name: "option_map_or_none",
         group: "style",
         desc: "using `Option.map_or(None, f)`, which is more succinctly expressed as `and_then(f)`",
@@ -1670,6 +1712,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "path_buf_push_overwrite",
     },
     Lint {
+        name: "pattern_type_mismatch",
+        group: "restriction",
+        desc: "type of pattern does not match the expression type",
+        deprecation: None,
+        module: "pattern_type_mismatch",
+    },
+    Lint {
         name: "possible_missing_comma",
         group: "correctness",
         desc: "possible missing comma in array",
@@ -1728,7 +1777,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "pub_enum_variant_names",
         group: "pedantic",
-        desc: "enums where all variants share a prefix/postfix",
+        desc: "public enums where all variants share a prefix/postfix",
         deprecation: None,
         module: "enum_variants",
     },
@@ -1741,7 +1790,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     },
     Lint {
         name: "range_minus_one",
-        group: "complexity",
+        group: "pedantic",
         desc: "`x..=(y-1)` reads better as `x..y`",
         deprecation: None,
         module: "ranges",
@@ -1786,7 +1835,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "complexity",
         desc: "throwaway closures called in the expression they are defined",
         deprecation: None,
-        module: "misc_early",
+        module: "redundant_closure_call",
     },
     Lint {
         name: "redundant_closure_for_method_calls",
@@ -1814,7 +1863,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "style",
         desc: "use the proper utility function avoiding an `if let`",
         deprecation: None,
-        module: "redundant_pattern_matching",
+        module: "matches",
     },
     Lint {
         name: "redundant_pub_crate",
@@ -1838,11 +1887,11 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "reference",
     },
     Lint {
-        name: "regex_macro",
-        group: "style",
-        desc: "use of `regex!(_)` instead of `Regex::new(_)`",
+        name: "repeat_once",
+        group: "complexity",
+        desc: "using `.repeat(1)` instead of `String.clone()`, `str.to_string()` or `slice.to_vec()` ",
         deprecation: None,
-        module: "regex",
+        module: "repeat_once",
     },
     Lint {
         name: "rest_pat_in_fully_bound_structs",
@@ -2244,6 +2293,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "types",
     },
     Lint {
+        name: "unit_return_expecting_ord",
+        group: "correctness",
+        desc: "fn arguments of type Fn(...) -> Ord returning the unit type ().",
+        deprecation: None,
+        module: "unit_return_expecting_ord",
+    },
+    Lint {
         name: "unknown_clippy_lints",
         group: "style",
         desc: "unknown_lints for scoped Clippy lints",
@@ -2286,6 +2342,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "no_effect",
     },
     Lint {
+        name: "unnecessary_sort_by",
+        group: "complexity",
+        desc: "Use of `Vec::sort_by` when `Vec::sort_by_key` or `Vec::sort` would be clearer",
+        deprecation: None,
+        module: "unnecessary_sort_by",
+    },
+    Lint {
         name: "unnecessary_unwrap",
         group: "complexity",
         desc: "checks for calls of `unwrap[_err]()` that cannot fail",
@@ -2305,6 +2368,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)",
         deprecation: None,
         module: "misc_early",
+    },
+    Lint {
+        name: "unnested_or_patterns",
+        group: "pedantic",
+        desc: "unnested or-patterns, e.g., `Foo(Bar) | Foo(Baz) instead of `Foo(Bar | Baz)`",
+        deprecation: None,
+        module: "unnested_or_patterns",
     },
     Lint {
         name: "unreachable",
@@ -2414,7 +2484,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "useless_conversion",
         group: "complexity",
-        desc: "calls to `Into`/`From`/`IntoIter` that performs useless conversions to the same type",
+        desc: "calls to `Into`, `TryInto`, `From`, `TryFrom`, `IntoIter` that performs useless conversions to the same type",
         deprecation: None,
         module: "useless_conversion",
     },
@@ -2452,6 +2522,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "usage of `Vec<Box<T>>` where T: Sized, vector elements are already on the heap",
         deprecation: None,
         module: "types",
+    },
+    Lint {
+        name: "vec_resize_to_zero",
+        group: "correctness",
+        desc: "emptying a vector with `resize(0, an_int)` instead of `clear()` is probably an argument inversion mistake",
+        deprecation: None,
+        module: "vec_resize_to_zero",
     },
     Lint {
         name: "verbose_bit_mask",

@@ -31,6 +31,7 @@
 //! These methods return true to indicate that the visitor has found what it is
 //! looking for, and does not need to visit anything else.
 
+use crate::ty::structural_impls::PredicateVisitor;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -86,6 +87,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
     fn has_param_types_or_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)
+    }
+    fn has_infer_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_INFER)
     }
     fn has_infer_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
@@ -332,7 +336,7 @@ impl<'tcx> TyCtxt<'tcx> {
         {
             fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
                 self.outer_index.shift_in(1);
-                let result = t.skip_binder().visit_with(self);
+                let result = t.as_ref().skip_binder().visit_with(self);
                 self.outer_index.shift_out(1);
                 result
             }
@@ -554,7 +558,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let fld_c = |bound_ct, ty| {
             self.mk_const(ty::Const { val: ty::ConstKind::Bound(ty::INNERMOST, bound_ct), ty })
         };
-        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
+        self.replace_escaping_bound_vars(value.as_ref().skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces all escaping bound vars. The `fld_r` closure replaces escaping
@@ -613,7 +617,7 @@ impl<'tcx> TyCtxt<'tcx> {
         H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
-        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t, fld_c)
+        self.replace_escaping_bound_vars(value.as_ref().skip_binder(), fld_r, fld_t, fld_c)
     }
 
     /// Replaces any late-bound regions bound in `value` with
@@ -669,7 +673,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<'tcx>,
     {
         let mut collector = LateBoundRegionsCollector::new(just_constraint);
-        let result = value.skip_binder().visit_with(&mut collector);
+        let result = value.as_ref().skip_binder().visit_with(&mut collector);
         assert!(!result); // should never have stopped early
         collector.regions
     }
@@ -905,6 +909,12 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     }
 }
 
+impl<'tcx> PredicateVisitor<'tcx> for HasEscapingVarsVisitor {
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool {
+        predicate.inner.outer_exclusive_binder > self.outer_index
+    }
+}
+
 // FIXME: Optimize for checking for infer flags
 struct HasTypeFlagsVisitor {
     flags: ty::TypeFlags,
@@ -929,6 +939,15 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 }
 
+impl<'tcx> PredicateVisitor<'tcx> for HasTypeFlagsVisitor {
+    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> bool {
+        debug!(
+            "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} self.flags={:?}",
+            predicate, predicate.inner.flags, self.flags
+        );
+        predicate.inner.flags.intersects(self.flags)
+    }
+}
 /// Collects all the late-bound regions at the innermost binding level
 /// into a hash set.
 struct LateBoundRegionsCollector {

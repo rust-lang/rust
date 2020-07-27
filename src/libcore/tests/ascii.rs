@@ -343,3 +343,59 @@ fn test_is_ascii_control() {
         " ",
     );
 }
+
+// `is_ascii` does a good amount of pointer manipulation and has
+// alignment-dependent computation. This is all sanity-checked via
+// `debug_assert!`s, so we test various sizes/alignments thoroughly versus an
+// "obviously correct" baseline function.
+#[test]
+fn test_is_ascii_align_size_thoroughly() {
+    // The "obviously-correct" baseline mentioned above.
+    fn is_ascii_baseline(s: &[u8]) -> bool {
+        s.iter().all(|b| b.is_ascii())
+    }
+
+    // Helper to repeat `l` copies of `b0` followed by `l` copies of `b1`.
+    fn repeat_concat(b0: u8, b1: u8, l: usize) -> Vec<u8> {
+        use core::iter::repeat;
+        repeat(b0).take(l).chain(repeat(b1).take(l)).collect()
+    }
+
+    // Miri is too slow for much of this, and in miri `align_offset` always
+    // returns `usize::max_value()` anyway (at the moment), so we just test
+    // lightly.
+    let iter = if cfg!(miri) { 0..5 } else { 0..100 };
+
+    for i in iter {
+        #[cfg(not(miri))]
+        let cases = &[
+            b"a".repeat(i),
+            b"\0".repeat(i),
+            b"\x7f".repeat(i),
+            b"\x80".repeat(i),
+            b"\xff".repeat(i),
+            repeat_concat(b'a', 0x80u8, i),
+            repeat_concat(0x80u8, b'a', i),
+        ];
+
+        #[cfg(miri)]
+        let cases = &[repeat_concat(b'a', 0x80u8, i)];
+
+        for case in cases {
+            for pos in 0..=case.len() {
+                // Potentially misaligned head
+                let prefix = &case[pos..];
+                assert_eq!(is_ascii_baseline(prefix), prefix.is_ascii(),);
+
+                // Potentially misaligned tail
+                let suffix = &case[..case.len() - pos];
+
+                assert_eq!(is_ascii_baseline(suffix), suffix.is_ascii(),);
+
+                // Both head and tail are potentially misaligned
+                let mid = &case[(pos / 2)..(case.len() - (pos / 2))];
+                assert_eq!(is_ascii_baseline(mid), mid.is_ascii(),);
+            }
+        }
+    }
+}

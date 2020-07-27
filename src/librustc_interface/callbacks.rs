@@ -18,7 +18,7 @@ use std::fmt;
 fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     tls::with_opt(|tcx| {
         if let Some(tcx) = tcx {
-            write!(f, "{}", tcx.sess.source_map().span_to_string(span))
+            rustc_span::debug_with_source_map(span, f, tcx.sess.source_map())
         } else {
             rustc_span::default_span_debug(span, f)
         }

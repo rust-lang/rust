@@ -25,6 +25,7 @@ path = "../liballoc/tests/lib.rs"
 [[bench]]
 name = "collectionsbenches"
 path = "../liballoc/benches/lib.rs"
+test = true
 
 [[bench]]
 name = "vec_deque_append_bench"

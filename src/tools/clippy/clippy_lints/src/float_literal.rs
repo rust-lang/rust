@@ -58,10 +58,10 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FloatLiteral => [EXCESSIVE_PRECISION, LOSSY_FLOAT_LITERAL]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatLiteral {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
-            let ty = cx.tables.expr_ty(expr);
+            let ty = cx.typeck_results().expr_ty(expr);
             if let ty::Float(fty) = ty.kind;
             if let hir::ExprKind::Lit(ref lit) = expr.kind;
             if let LitKind::Float(sym, lit_float_ty) = lit.node;
@@ -77,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FloatLiteral {
                 let type_suffix = match lit_float_ty {
                     LitFloatType::Suffixed(FloatTy::F32) => Some("f32"),
                     LitFloatType::Suffixed(FloatTy::F64) => Some("f64"),
-                    _ => None
+                    LitFloatType::Unsuffixed => None
                 };
                 let (is_whole, mut float_str) = match fty {
                     FloatTy::F32 => {

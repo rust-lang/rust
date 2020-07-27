@@ -27,10 +27,10 @@ declare_clippy_lint! {
 
 declare_lint_pass!(OpenOptions => [NONSENSICAL_OPEN_OPTIONS]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OpenOptions {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(ref path, _, ref arguments) = e.kind {
-            let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
+impl<'tcx> LateLintPass<'tcx> for OpenOptions {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
+        if let ExprKind::MethodCall(ref path, _, ref arguments, _) = e.kind {
+            let obj_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&arguments[0]));
             if path.ident.name == sym!(open) && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
                 get_open_options(cx, &arguments[0], &mut options);
@@ -56,9 +56,9 @@ enum OpenOption {
     Append,
 }
 
-fn get_open_options(cx: &LateContext<'_, '_>, argument: &Expr<'_>, options: &mut Vec<(OpenOption, Argument)>) {
-    if let ExprKind::MethodCall(ref path, _, ref arguments) = argument.kind {
-        let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
+fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec<(OpenOption, Argument)>) {
+    if let ExprKind::MethodCall(ref path, _, ref arguments, _) = argument.kind {
+        let obj_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(&arguments[0]));
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
         if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 2 {
@@ -107,7 +107,7 @@ fn get_open_options(cx: &LateContext<'_, '_>, argument: &Expr<'_>, options: &mut
     }
 }
 
-fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument)], span: Span) {
+fn check_open_options(cx: &LateContext<'_>, options: &[(OpenOption, Argument)], span: Span) {
     let (mut create, mut append, mut truncate, mut read, mut write) = (false, false, false, false, false);
     let (mut create_arg, mut append_arg, mut truncate_arg, mut read_arg, mut write_arg) =
         (false, false, false, false, false);

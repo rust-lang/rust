@@ -52,8 +52,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapPass {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for HashMapPass {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Some((ref check, ref then_block, ref else_block)) = higher::if_block(&expr) {
             if let ExprKind::Unary(UnOp::UnNot, ref check) = check.kind {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
@@ -98,18 +98,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapPass {
     }
 }
 
-fn check_cond<'a, 'tcx, 'b>(
-    cx: &'a LateContext<'a, 'tcx>,
-    check: &'b Expr<'b>,
-) -> Option<(&'static str, &'b Expr<'b>, &'b Expr<'b>)> {
+fn check_cond<'a>(cx: &LateContext<'_>, check: &'a Expr<'a>) -> Option<(&'static str, &'a Expr<'a>, &'a Expr<'a>)> {
     if_chain! {
-        if let ExprKind::MethodCall(ref path, _, ref params) = check.kind;
+        if let ExprKind::MethodCall(ref path, _, ref params, _) = check.kind;
         if params.len() >= 2;
         if path.ident.name == sym!(contains_key);
         if let ExprKind::AddrOf(BorrowKind::Ref, _, ref key) = params[1].kind;
         then {
             let map = &params[0];
-            let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(map));
+            let obj_ty = walk_ptrs_ty(cx.typeck_results().expr_ty(map));
 
             return if match_type(cx, obj_ty, &paths::BTREEMAP) {
                 Some(("BTreeMap", map, key))
@@ -127,7 +124,7 @@ fn check_cond<'a, 'tcx, 'b>(
 }
 
 struct InsertVisitor<'a, 'tcx, 'b> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
     span: Span,
     ty: &'static str,
     map: &'b Expr<'b>,
@@ -140,7 +137,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(ref path, _, ref params) = expr.kind;
+            if let ExprKind::MethodCall(ref path, _, ref params, _) = expr.kind;
             if params.len() == 3;
             if path.ident.name == sym!(insert);
             if get_item_name(self.cx, self.map) == get_item_name(self.cx, &params[0]);

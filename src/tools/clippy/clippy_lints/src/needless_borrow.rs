@@ -18,12 +18,16 @@ declare_clippy_lint! {
     /// **Why is this bad?** Suggests that the receiver of the expression borrows
     /// the expression.
     ///
+    /// **Known problems:** None.
+    ///
     /// **Example:**
     /// ```rust
+    /// // Bad
     /// let x: &i32 = &&&&&&5;
-    /// ```
     ///
-    /// **Known problems:** None.
+    /// // Good
+    /// let x: &i32 = &5;
+    /// ```
     pub NEEDLESS_BORROW,
     nursery,
     "taking a reference that is going to be automatically dereferenced"
@@ -36,14 +40,14 @@ pub struct NeedlessBorrow {
 
 impl_lint_pass!(NeedlessBorrow => [NEEDLESS_BORROW]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() || self.derived_item.is_some() {
             return;
         }
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = e.kind {
-            if let ty::Ref(..) = cx.tables.expr_ty(inner).kind {
-                for adj3 in cx.tables.expr_adjustments(e).windows(3) {
+            if let ty::Ref(..) = cx.typeck_results().expr_ty(inner).kind {
+                for adj3 in cx.typeck_results().expr_adjustments(e).windows(3) {
                     if let [Adjustment {
                         kind: Adjust::Deref(_), ..
                     }, Adjustment {
@@ -75,13 +79,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
             }
         }
     }
-    fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat<'_>) {
+    fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         if pat.span.from_expansion() || self.derived_item.is_some() {
             return;
         }
         if_chain! {
             if let PatKind::Binding(BindingAnnotation::Ref, .., name, _) = pat.kind;
-            if let ty::Ref(_, tam, mutbl) = cx.tables.pat_ty(pat).kind;
+            if let ty::Ref(_, tam, mutbl) = cx.typeck_results().pat_ty(pat).kind;
             if mutbl == Mutability::Not;
             if let ty::Ref(_, _, mutbl) = tam.kind;
             // only lint immutable refs, because borrowed `&mut T` cannot be moved out
@@ -107,14 +111,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         }
     }
 
-    fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+    fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if item.attrs.iter().any(|a| a.check_name(sym!(automatically_derived))) {
             debug_assert!(self.derived_item.is_none());
             self.derived_item = Some(item.hir_id);
         }
     }
 
-    fn check_item_post(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item<'_>) {
+    fn check_item_post(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let Some(id) = self.derived_item {
             if item.hir_id == id {
                 self.derived_item = None;

@@ -7,11 +7,11 @@ use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::ast::{self, NodeId};
+use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, StabilityLevel};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_expand::base::SyntaxExtension;
-use rustc_expand::base::{self, Indeterminate, InvocationRes};
+use rustc_expand::base::{Indeterminate, InvocationRes, ResolverExpand, SyntaxExtension};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use rustc_feature::is_builtin_attr_name;
@@ -140,7 +140,7 @@ crate fn registered_attrs_and_tools(
     (registered_attrs, registered_tools)
 }
 
-impl<'a> base::Resolver for Resolver<'a> {
+impl<'a> ResolverExpand for Resolver<'a> {
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
     }
@@ -190,7 +190,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         )));
 
         let parent_scope = if let Some(module_id) = parent_module_id {
-            let parent_def_id = self.definitions.local_def_id(module_id);
+            let parent_def_id = self.local_def_id(module_id);
             self.definitions.add_parent_module_of_macro_def(expn_id, parent_def_id.to_def_id());
             self.module_map[&parent_def_id]
         } else {
@@ -288,7 +288,8 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         // Derives are not included when `invocations` are collected, so we have to add them here.
         let parent_scope = &ParentScope { derives, ..parent_scope };
-        let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, force)?;
+        let node_id = self.lint_node_id(eager_expansion_root);
+        let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, node_id, force)?;
 
         let span = invoc.span();
         invoc_id.set_expn_data(ext.expn_data(
@@ -333,9 +334,15 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn check_unused_macros(&mut self) {
-        for (&node_id, &span) in self.unused_macros.iter() {
+        for (_, &(node_id, span)) in self.unused_macros.iter() {
             self.lint_buffer.buffer_lint(UNUSED_MACROS, node_id, span, "unused macro definition");
         }
+    }
+
+    fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId {
+        self.invocation_parents
+            .get(&expn_id)
+            .map_or(ast::CRATE_NODE_ID, |id| self.def_id_to_node_id[*id])
     }
 
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool {
@@ -390,6 +397,7 @@ impl<'a> Resolver<'a> {
         path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'a>,
+        node_id: NodeId,
         force: bool,
     ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
         let (ext, res) = match self.resolve_macro_path(path, Some(kind), parent_scope, true, force)
@@ -416,9 +424,9 @@ impl<'a> Resolver<'a> {
 
         match res {
             Res::Def(DefKind::Macro(_), def_id) => {
-                if let Some(node_id) = self.definitions.as_local_node_id(def_id) {
-                    self.unused_macros.remove(&node_id);
-                    if self.proc_macro_stubs.contains(&node_id) {
+                if let Some(def_id) = def_id.as_local() {
+                    self.unused_macros.remove(&def_id);
+                    if self.proc_macro_stubs.contains(&def_id) {
                         self.session.span_err(
                             path.span,
                             "can't use a procedural macro from the same crate that defines it",
@@ -430,7 +438,7 @@ impl<'a> Resolver<'a> {
             _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
         };
 
-        self.check_stability_and_deprecation(&ext, path);
+        self.check_stability_and_deprecation(&ext, path, node_id);
 
         Ok(if ext.macro_kind() != kind {
             let expected = kind.descr_expected();
@@ -984,13 +992,17 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn check_stability_and_deprecation(&mut self, ext: &SyntaxExtension, path: &ast::Path) {
+    fn check_stability_and_deprecation(
+        &mut self,
+        ext: &SyntaxExtension,
+        path: &ast::Path,
+        node_id: NodeId,
+    ) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
             if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
                 let feature = stability.feature;
                 if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
-                    let node_id = ast::CRATE_NODE_ID;
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =
                         |lint, span, msg: &_| lint_buffer.buffer_lint(lint, node_id, span, msg);
@@ -1005,22 +1017,17 @@ impl<'a> Resolver<'a> {
                     );
                 }
             }
-            if let Some(depr) = &stability.rustc_depr {
-                let path = pprust::path_to_string(path);
-                let (message, lint) = stability::rustc_deprecation_message(depr, &path);
-                stability::early_report_deprecation(
-                    &mut self.lint_buffer,
-                    &message,
-                    depr.suggestion,
-                    lint,
-                    span,
-                );
-            }
         }
         if let Some(depr) = &ext.deprecation {
             let path = pprust::path_to_string(&path);
             let (message, lint) = stability::deprecation_message(depr, &path);
-            stability::early_report_deprecation(&mut self.lint_buffer, &message, None, lint, span);
+            stability::early_report_deprecation(
+                &mut self.lint_buffer,
+                &message,
+                depr.suggestion,
+                lint,
+                span,
+            );
         }
     }
 

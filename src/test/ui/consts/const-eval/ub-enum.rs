@@ -1,5 +1,5 @@
 // normalize-stderr-64bit "0x0000000000" -> "0x00"
-#![feature(const_transmute, never_type)]
+#![feature(never_type)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
@@ -88,9 +88,10 @@ const BAD_OPTION_CHAR: Option<(char, char)> = Some(('x', unsafe { mem::transmute
 //~^ ERROR is undefined behavior
 
 // All variants are uninhabited but also have data.
-const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem::transmute(1u64) };
+// Use `0` as constant to make behavior endianess-independent.
+const BAD_UNINHABITED_WITH_DATA1: Result<(i32, Never), (i32, !)> = unsafe { mem::transmute(0u64) };
 //~^ ERROR is undefined behavior
-const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(1u64) };
+const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem::transmute(0u64) };
 //~^ ERROR is undefined behavior
 
 fn main() {

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 use rustc_ast::ast;
 use rustc_data_structures::work_queue::WorkQueue;
+use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
@@ -49,6 +50,15 @@ where
         vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
     ) {
         visit_results(body, blocks, self, vis)
+    }
+
+    pub fn visit_reachable_with(
+        &self,
+        body: &'mir mir::Body<'tcx>,
+        vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = BitSet<A::Idx>>,
+    ) {
+        let blocks = mir::traversal::reachable(body);
+        visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
     }
 
     pub fn visit_in_rpo_with(
@@ -201,15 +211,6 @@ where
             for (bb, _) in traversal::postorder(body) {
                 dirty_queue.insert(bb);
             }
-        }
-
-        // Add blocks that are not reachable from START_BLOCK to the work queue. These blocks will
-        // be processed after the ones added above.
-        //
-        // FIXME(ecstaticmorse): Is this actually necessary? In principle, we shouldn't need to
-        // know the dataflow state in unreachable basic blocks.
-        for bb in body.basic_blocks().indices() {
-            dirty_queue.insert(bb);
         }
 
         let mut state = BitSet::new_empty(bits_per_block);

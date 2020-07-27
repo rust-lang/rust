@@ -2,9 +2,9 @@
 // being run when compiling with new LLVM pass manager and ThinLTO.
 // Note: The issue occurred only on non-zero opt-level.
 //
-// min-llvm-version 9.0
+// min-llvm-version: 9.0
 // needs-sanitizer-support
-// only-x86_64
+// needs-sanitizer-address
 //
 // no-prefer-dynamic
 // revisions: opt0 opt1

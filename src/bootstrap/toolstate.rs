@@ -272,6 +272,18 @@ impl Builder<'_> {
     /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
+        // If we're in a dry run setting we don't want to save toolstates as
+        // that means if we e.g. panic down the line it'll look like we tested
+        // everything (but we actually haven't).
+        if self.config.dry_run {
+            return;
+        }
+        // Toolstate isn't tracked for clippy, but since most tools do, we avoid
+        // checking in all the places we could save toolstate and just do so
+        // here.
+        if tool == "clippy-driver" {
+            return;
+        }
         if let Some(ref path) = self.config.save_toolstates {
             if let Some(parent) = path.parent() {
                 // Ensure the parent directory always exists

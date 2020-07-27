@@ -42,17 +42,17 @@ declare_clippy_lint! {
 
 declare_lint_pass!(MapClone => [MAP_CLONE]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
-    fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for MapClone {
+    fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
         if e.span.from_expansion() {
             return;
         }
 
         if_chain! {
-            if let hir::ExprKind::MethodCall(ref method, _, ref args) = e.kind;
+            if let hir::ExprKind::MethodCall(ref method, _, ref args, _) = e.kind;
             if args.len() == 2;
             if method.ident.as_str() == "map";
-            let ty = cx.tables.expr_ty(&args[0]);
+            let ty = cx.typeck_results().expr_ty(&args[0]);
             if is_type_diagnostic_item(cx, ty, sym!(option_type)) || match_trait_method(cx, e, &paths::ITERATOR);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
             let closure_body = cx.tcx.hir().body(body_id);
@@ -70,16 +70,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) {
-                                    if let ty::Ref(.., Mutability::Not) = cx.tables.expr_ty(inner).kind {
+                                    if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind {
                                         lint(cx, e.span, args[0].span, true);
                                     }
                                 }
                             },
-                            hir::ExprKind::MethodCall(ref method, _, ref obj) => {
+                            hir::ExprKind::MethodCall(ref method, _, ref obj, _) => {
                                 if ident_eq(name, &obj[0]) && method.ident.as_str() == "clone"
                                     && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
 
-                                    let obj_ty = cx.tables.expr_ty(&obj[0]);
+                                    let obj_ty = cx.typeck_results().expr_ty(&obj[0]);
                                     if let ty::Ref(_, ty, _) = obj_ty.kind {
                                         let copy = is_copy(cx, ty);
                                         lint(cx, e.span, args[0].span, copy);
@@ -106,7 +106,7 @@ fn ident_eq(name: Ident, path: &hir::Expr<'_>) -> bool {
     }
 }
 
-fn lint_needless_cloning(cx: &LateContext<'_, '_>, root: Span, receiver: Span) {
+fn lint_needless_cloning(cx: &LateContext<'_>, root: Span, receiver: Span) {
     span_lint_and_sugg(
         cx,
         MAP_CLONE,
@@ -118,7 +118,7 @@ fn lint_needless_cloning(cx: &LateContext<'_, '_>, root: Span, receiver: Span) {
     )
 }
 
-fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span, copied: bool) {
+fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
     let mut applicability = Applicability::MachineApplicable;
     if copied {
         span_lint_and_sugg(

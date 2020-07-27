@@ -1,8 +1,9 @@
-//! Algorithm citation:
-//! A Simple, Fast Dominance Algorithm.
-//! Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy
-//! Rice Computer Science TS-06-33870
-//! <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>
+//! Finding the dominators in a control-flow graph.
+//!
+//! Algorithm based on Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy,
+//! "A Simple, Fast Dominance Algorithm",
+//! Rice Computer Science TS-06-33870,
+//! <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>.
 
 use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;

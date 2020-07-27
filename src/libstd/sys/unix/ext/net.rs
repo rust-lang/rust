@@ -2,9 +2,6 @@
 
 //! Unix-specific networking functionality
 
-#[cfg(unix)]
-use libc;
-
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
 #[allow(non_camel_case_types)]
@@ -1090,7 +1087,7 @@ impl<'a> Iterator for Incoming<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::max_value(), None)
+        (usize::MAX, None)
     }
 }
 

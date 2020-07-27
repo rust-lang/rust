@@ -9,7 +9,7 @@ use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, DelimToken, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::util::{classify, comments};
 use rustc_span::edition::Edition;
@@ -148,9 +148,14 @@ pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
     printer.s.eof()
 }
 
-// This makes comma-separated lists look slightly nicer,
-// and also addresses a specific regression described in issue #63896.
+// This makes printed token streams look slightly nicer,
+// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
+    if let TokenTree::Token(token) = prev {
+        if let token::DocComment(s) = token.kind {
+            return !s.as_str().starts_with("//");
+        }
+    }
     match tt {
         TokenTree::Token(token) => match token.kind {
             token::Comma => false,
@@ -163,7 +168,14 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
             },
             _ => true,
         },
-        _ => true,
+        TokenTree::Delimited(_, DelimToken::Bracket, _) => match prev {
+            TokenTree::Token(token) => match token.kind {
+                token::Pound => false,
+                _ => true,
+            },
+            _ => true,
+        },
+        TokenTree::Delimited(..) => true,
     }
 }
 
@@ -245,7 +257,7 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
         token::CloseDelim(token::Bracket) => "]".to_string(),
         token::OpenDelim(token::Brace) => "{".to_string(),
         token::CloseDelim(token::Brace) => "}".to_string(),
-        token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim) => " ".to_string(),
+        token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim) => "".to_string(),
         token::Pound => "#".to_string(),
         token::Dollar => "$".to_string(),
         token::Question => "?".to_string(),
@@ -293,7 +305,7 @@ pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
         token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(e, is_raw).to_string(),
         token::NtLifetime(e) => e.to_string(),
         token::NtLiteral(ref e) => expr_to_string(e),
-        token::NtTT(ref tree) => tt_to_string(tree.clone()),
+        token::NtTT(ref tree) => tt_to_string(tree),
         token::NtVis(ref e) => vis_to_string(e),
     }
 }
@@ -314,11 +326,11 @@ pub fn expr_to_string(e: &ast::Expr) -> String {
     to_string(|s| s.print_expr(e))
 }
 
-pub fn tt_to_string(tt: tokenstream::TokenTree) -> String {
+pub fn tt_to_string(tt: &TokenTree) -> String {
     to_string(|s| s.print_tt(tt, false))
 }
 
-pub fn tts_to_string(tokens: TokenStream) -> String {
+pub fn tts_to_string(tokens: &TokenStream) -> String {
     to_string(|s| s.print_tts(tokens, false))
 }
 
@@ -438,9 +450,20 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_comment(&mut self, cmnt: &comments::Comment) {
         match cmnt.style {
             comments::Mixed => {
-                assert_eq!(cmnt.lines.len(), 1);
                 self.zerobreak();
-                self.word(cmnt.lines[0].clone());
+                if let Some((last, lines)) = cmnt.lines.split_last() {
+                    self.ibox(0);
+
+                    for line in lines {
+                        self.word(line.clone());
+                        self.hardbreak()
+                    }
+
+                    self.word(last.clone());
+                    self.space();
+
+                    self.end();
+                }
                 self.zerobreak()
             }
             comments::Isolated => {
@@ -508,6 +531,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
         };
         self.word(st)
+    }
+
+    fn print_symbol(&mut self, sym: Symbol, style: ast::StrStyle) {
+        self.print_string(&sym.as_str(), style);
     }
 
     fn print_inner_attributes(&mut self, attrs: &[ast::Attribute]) {
@@ -585,7 +612,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 false,
                 None,
                 delim.to_token(),
-                tokens.clone(),
+                tokens,
                 true,
                 span,
             ),
@@ -594,7 +621,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 if let MacArgs::Eq(_, tokens) = &item.args {
                     self.space();
                     self.word_space("=");
-                    self.print_tts(tokens.clone(), true);
+                    self.print_tts(tokens, true);
                 }
             }
         }
@@ -635,9 +662,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     /// appropriate macro, transcribe back into the grammar we just parsed from,
     /// and then pretty-print the resulting AST nodes (so, e.g., we print
     /// expression arguments as expressions). It can be done! I think.
-    fn print_tt(&mut self, tt: tokenstream::TokenTree, convert_dollar_crate: bool) {
+    fn print_tt(&mut self, tt: &TokenTree, convert_dollar_crate: bool) {
         match tt {
-            TokenTree::Token(ref token) => {
+            TokenTree::Token(token) => {
                 self.word(token_to_string_ext(&token, convert_dollar_crate));
                 if let token::DocComment(..) = token.kind {
                     self.hardbreak()
@@ -648,7 +675,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     None,
                     false,
                     None,
-                    delim,
+                    *delim,
                     tts,
                     convert_dollar_crate,
                     dspan.entire(),
@@ -657,14 +684,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn print_tts(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
-        let mut iter = tts.into_trees().peekable();
+    fn print_tts(&mut self, tts: &TokenStream, convert_dollar_crate: bool) {
+        let mut iter = tts.trees().peekable();
         while let Some(tt) = iter.next() {
-            let show_space =
-                if let Some(next) = iter.peek() { tt_prepend_space(next, &tt) } else { false };
-            self.print_tt(tt, convert_dollar_crate);
-            if show_space {
-                self.space();
+            self.print_tt(&tt, convert_dollar_crate);
+            if let Some(next) = iter.peek() {
+                if tt_prepend_space(next, &tt) {
+                    self.space();
+                }
             }
         }
     }
@@ -675,7 +702,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         has_bang: bool,
         ident: Option<Ident>,
         delim: DelimToken,
-        tts: TokenStream,
+        tts: &TokenStream,
         convert_dollar_crate: bool,
         span: Span,
     ) {
@@ -1253,7 +1280,7 @@ impl<'a> State<'a> {
                     has_bang,
                     Some(item.ident),
                     macro_def.body.delim(),
-                    macro_def.body.inner_tokens(),
+                    &macro_def.body.inner_tokens(),
                     true,
                     item.span,
                 );
@@ -1577,7 +1604,7 @@ impl<'a> State<'a> {
             true,
             None,
             m.args.delim(),
-            m.args.inner_tokens(),
+            &m.args.inner_tokens(),
             true,
             m.span(),
         );
@@ -1818,7 +1845,7 @@ impl<'a> State<'a> {
             ast::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(func, &args[..]);
             }
-            ast::ExprKind::MethodCall(ref segment, ref args) => {
+            ast::ExprKind::MethodCall(ref segment, ref args, _) => {
                 self.print_expr_method_call(segment, &args[..]);
             }
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
@@ -2038,7 +2065,7 @@ impl<'a> State<'a> {
                         let print_reg_or_class = |s: &mut Self, r: &InlineAsmRegOrRegClass| match r
                         {
                             InlineAsmRegOrRegClass::Reg(r) => {
-                                s.print_string(&r.as_str(), ast::StrStyle::Cooked)
+                                s.print_symbol(*r, ast::StrStyle::Cooked)
                             }
                             InlineAsmRegOrRegClass::RegClass(r) => s.word(r.to_string()),
                         };
@@ -2132,7 +2159,7 @@ impl<'a> State<'a> {
             ast::ExprKind::LlvmInlineAsm(ref a) => {
                 self.s.word("llvm_asm!");
                 self.popen();
-                self.print_string(&a.asm.as_str(), a.asm_str_style);
+                self.print_symbol(a.asm, a.asm_str_style);
                 self.word_space(":");
 
                 self.commasep(Inconsistent, &a.outputs, |s, out| {
@@ -2152,7 +2179,7 @@ impl<'a> State<'a> {
                 self.word_space(":");
 
                 self.commasep(Inconsistent, &a.inputs, |s, &(co, ref o)| {
-                    s.print_string(&co.as_str(), ast::StrStyle::Cooked);
+                    s.print_symbol(co, ast::StrStyle::Cooked);
                     s.popen();
                     s.print_expr(o);
                     s.pclose();
@@ -2160,8 +2187,8 @@ impl<'a> State<'a> {
                 self.s.space();
                 self.word_space(":");
 
-                self.commasep(Inconsistent, &a.clobbers, |s, co| {
-                    s.print_string(&co.as_str(), ast::StrStyle::Cooked);
+                self.commasep(Inconsistent, &a.clobbers, |s, &co| {
+                    s.print_symbol(co, ast::StrStyle::Cooked);
                 });
 
                 let mut options = vec![];
@@ -2578,7 +2605,7 @@ impl<'a> State<'a> {
                         s.print_type(default)
                     }
                 }
-                ast::GenericParamKind::Const { ref ty } => {
+                ast::GenericParamKind::Const { ref ty, kw_span: _ } => {
                     s.word_space("const");
                     s.print_ident(param.ident);
                     s.s.space();
@@ -2593,7 +2620,7 @@ impl<'a> State<'a> {
     }
 
     crate fn print_where_clause(&mut self, where_clause: &ast::WhereClause) {
-        if where_clause.predicates.is_empty() {
+        if where_clause.predicates.is_empty() && !where_clause.has_where_token {
             return;
         }
 
@@ -2739,7 +2766,11 @@ impl<'a> State<'a> {
         }
         let generics = ast::Generics {
             params: Vec::new(),
-            where_clause: ast::WhereClause { predicates: Vec::new(), span: rustc_span::DUMMY_SP },
+            where_clause: ast::WhereClause {
+                has_where_token: false,
+                predicates: Vec::new(),
+                span: rustc_span::DUMMY_SP,
+            },
             span: rustc_span::DUMMY_SP,
         };
         let header = ast::FnHeader { unsafety, ext, ..ast::FnHeader::default() };

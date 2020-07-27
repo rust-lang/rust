@@ -6,34 +6,57 @@ LL |     eq(foo::<u8>, bar::<u8>);
    |
    = note: expected fn item `fn(_) -> _ {foo::<u8>}`
               found fn item `fn(_) -> _ {bar::<u8>}`
+   = note: different `fn` items always have unique types, even if their signatures are the same
+   = help: change the expected type to be function pointer `fn(isize) -> isize`
+   = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `foo::<u8> as fn(isize) -> isize`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-item-type.rs:19:19
+  --> $DIR/fn-item-type.rs:22:19
    |
 LL |     eq(foo::<u8>, foo::<i8>);
    |                   ^^^^^^^^^ expected `u8`, found `i8`
    |
    = note: expected fn item `fn(_) -> _ {foo::<u8>}`
               found fn item `fn(_) -> _ {foo::<i8>}`
+   = note: different `fn` items always have unique types, even if their signatures are the same
+   = help: change the expected type to be function pointer `fn(isize) -> isize`
+   = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `foo::<u8> as fn(isize) -> isize`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-item-type.rs:23:23
+  --> $DIR/fn-item-type.rs:29:23
    |
 LL |     eq(bar::<String>, bar::<Vec<u8>>);
    |                       ^^^^^^^^^^^^^^ expected struct `std::string::String`, found struct `std::vec::Vec`
    |
    = note: expected fn item `fn(_) -> _ {bar::<std::string::String>}`
               found fn item `fn(_) -> _ {bar::<std::vec::Vec<u8>>}`
+   = note: different `fn` items always have unique types, even if their signatures are the same
+   = help: change the expected type to be function pointer `fn(isize) -> isize`
+   = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `bar::<std::string::String> as fn(isize) -> isize`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-item-type.rs:30:26
+  --> $DIR/fn-item-type.rs:39:26
    |
 LL |     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
    |                          ^^^^^^^^^^^^^^^^^ expected `u8`, found `u16`
    |
    = note: expected fn item `fn() {<u8 as Foo>::foo}`
               found fn item `fn() {<u16 as Foo>::foo}`
+   = note: different `fn` items always have unique types, even if their signatures are the same
+   = help: change the expected type to be function pointer `fn()`
+   = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `<u8 as Foo>::foo as fn()`
 
-error: aborting due to 4 previous errors
+error[E0308]: mismatched types
+  --> $DIR/fn-item-type.rs:46:19
+   |
+LL |     eq(foo::<u8>, bar::<u8> as fn(isize) -> isize);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected fn item, found fn pointer
+   |
+   = note: expected fn item `fn(_) -> _ {foo::<u8>}`
+           found fn pointer `fn(_) -> _`
+   = help: change the expected type to be function pointer `fn(isize) -> isize`
+   = help: if the expected type is due to type inference, cast the expected `fn` to a function pointer: `foo::<u8> as fn(isize) -> isize`
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

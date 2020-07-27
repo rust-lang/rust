@@ -6,7 +6,7 @@ use rustc_ast::expand::is_proc_macro_attr;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast_pretty::pprust;
-use rustc_expand::base::{ExtCtxt, Resolver};
+use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::AstPass;
@@ -52,7 +52,7 @@ struct CollectProcMacros<'a> {
 
 pub fn inject(
     sess: &ParseSess,
-    resolver: &mut dyn Resolver,
+    resolver: &mut dyn ResolverExpand,
     mut krate: ast::Crate,
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
@@ -384,12 +384,12 @@ fn mk_decls(
     let proc_macro = Ident::new(sym::proc_macro, span);
     let krate = cx.item(span, proc_macro, Vec::new(), ast::ItemKind::ExternCrate(None));
 
-    let bridge = cx.ident_of("bridge", span);
-    let client = cx.ident_of("client", span);
-    let proc_macro_ty = cx.ident_of("ProcMacro", span);
-    let custom_derive = cx.ident_of("custom_derive", span);
-    let attr = cx.ident_of("attr", span);
-    let bang = cx.ident_of("bang", span);
+    let bridge = Ident::new(sym::bridge, span);
+    let client = Ident::new(sym::client, span);
+    let proc_macro_ty = Ident::new(sym::ProcMacro, span);
+    let custom_derive = Ident::new(sym::custom_derive, span);
+    let attr = Ident::new(sym::attr, span);
+    let bang = Ident::new(sym::bang, span);
 
     let krate_ref = RefCell::new(ast_krate);
 
@@ -447,7 +447,7 @@ fn mk_decls(
     let decls_static = cx
         .item_static(
             span,
-            cx.ident_of("_DECLS", span),
+            Ident::new(sym::_DECLS, span),
             cx.ty_rptr(
                 span,
                 cx.ty(

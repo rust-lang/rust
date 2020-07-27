@@ -6,7 +6,6 @@ use crate::query::caches::QueryCache;
 use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryState};
 use rustc_data_structures::profiling::ProfileCategory;
-use rustc_span::def_id::DefId;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use std::borrow::Cow;
@@ -131,26 +130,4 @@ where
         cache_on_disk: Q::cache_on_disk,
         try_load_from_disk: Q::try_load_from_disk,
     };
-}
-
-impl<CTX: QueryContext, M> QueryDescription<CTX> for M
-where
-    M: QueryAccessors<CTX, Key = DefId>,
-{
-    default fn describe(tcx: CTX, def_id: DefId) -> Cow<'static, str> {
-        if !tcx.verbose() {
-            format!("processing `{}`", tcx.def_path_str(def_id)).into()
-        } else {
-            let name = ::std::any::type_name::<M>();
-            format!("processing {:?} with query `{}`", def_id, name).into()
-        }
-    }
-
-    default fn cache_on_disk(_: CTX, _: &Self::Key, _: Option<&Self::Value>) -> bool {
-        false
-    }
-
-    default fn try_load_from_disk(_: CTX, _: SerializedDepNodeIndex) -> Option<Self::Value> {
-        panic!("QueryDescription::load_from_disk() called for an unsupported query.")
-    }
 }

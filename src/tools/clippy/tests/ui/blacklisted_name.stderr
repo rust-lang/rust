@@ -12,77 +12,77 @@ error: use of a blacklisted/placeholder name `foo`
 LL |     let foo = 42;
    |         ^^^
 
-error: use of a blacklisted/placeholder name `bar`
-  --> $DIR/blacklisted_name.rs:15:9
-   |
-LL |     let bar = 42;
-   |         ^^^
-
 error: use of a blacklisted/placeholder name `baz`
-  --> $DIR/blacklisted_name.rs:16:9
+  --> $DIR/blacklisted_name.rs:15:9
    |
 LL |     let baz = 42;
    |         ^^^
 
-error: use of a blacklisted/placeholder name `foo`
-  --> $DIR/blacklisted_name.rs:22:10
+error: use of a blacklisted/placeholder name `quux`
+  --> $DIR/blacklisted_name.rs:16:9
    |
-LL |         (foo, Some(bar), baz @ Some(_)) => (),
+LL |     let quux = 42;
+   |         ^^^^
+
+error: use of a blacklisted/placeholder name `foo`
+  --> $DIR/blacklisted_name.rs:27:10
+   |
+LL |         (foo, Some(baz), quux @ Some(_)) => (),
    |          ^^^
 
-error: use of a blacklisted/placeholder name `bar`
-  --> $DIR/blacklisted_name.rs:22:20
+error: use of a blacklisted/placeholder name `baz`
+  --> $DIR/blacklisted_name.rs:27:20
    |
-LL |         (foo, Some(bar), baz @ Some(_)) => (),
+LL |         (foo, Some(baz), quux @ Some(_)) => (),
    |                    ^^^
 
-error: use of a blacklisted/placeholder name `baz`
-  --> $DIR/blacklisted_name.rs:22:26
+error: use of a blacklisted/placeholder name `quux`
+  --> $DIR/blacklisted_name.rs:27:26
    |
-LL |         (foo, Some(bar), baz @ Some(_)) => (),
-   |                          ^^^
+LL |         (foo, Some(baz), quux @ Some(_)) => (),
+   |                          ^^^^
 
 error: use of a blacklisted/placeholder name `foo`
-  --> $DIR/blacklisted_name.rs:27:19
+  --> $DIR/blacklisted_name.rs:32:19
    |
 LL | fn issue_1647(mut foo: u8) {
    |                   ^^^
 
-error: use of a blacklisted/placeholder name `bar`
-  --> $DIR/blacklisted_name.rs:28:13
-   |
-LL |     let mut bar = 0;
-   |             ^^^
-
 error: use of a blacklisted/placeholder name `baz`
-  --> $DIR/blacklisted_name.rs:29:21
-   |
-LL |     if let Some(mut baz) = Some(42) {}
-   |                     ^^^
-
-error: use of a blacklisted/placeholder name `bar`
   --> $DIR/blacklisted_name.rs:33:13
    |
-LL |     let ref bar = 0;
+LL |     let mut baz = 0;
    |             ^^^
 
-error: use of a blacklisted/placeholder name `baz`
+error: use of a blacklisted/placeholder name `quux`
   --> $DIR/blacklisted_name.rs:34:21
    |
-LL |     if let Some(ref baz) = Some(42) {}
-   |                     ^^^
-
-error: use of a blacklisted/placeholder name `bar`
-  --> $DIR/blacklisted_name.rs:38:17
-   |
-LL |     let ref mut bar = 0;
-   |                 ^^^
+LL |     if let Some(mut quux) = Some(42) {}
+   |                     ^^^^
 
 error: use of a blacklisted/placeholder name `baz`
-  --> $DIR/blacklisted_name.rs:39:25
+  --> $DIR/blacklisted_name.rs:38:13
    |
-LL |     if let Some(ref mut baz) = Some(42) {}
-   |                         ^^^
+LL |     let ref baz = 0;
+   |             ^^^
+
+error: use of a blacklisted/placeholder name `quux`
+  --> $DIR/blacklisted_name.rs:39:21
+   |
+LL |     if let Some(ref quux) = Some(42) {}
+   |                     ^^^^
+
+error: use of a blacklisted/placeholder name `baz`
+  --> $DIR/blacklisted_name.rs:43:17
+   |
+LL |     let ref mut baz = 0;
+   |                 ^^^
+
+error: use of a blacklisted/placeholder name `quux`
+  --> $DIR/blacklisted_name.rs:44:25
+   |
+LL |     if let Some(ref mut quux) = Some(42) {}
+   |                         ^^^^
 
 error: aborting due to 14 previous errors
 

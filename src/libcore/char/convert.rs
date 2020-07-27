@@ -99,7 +99,8 @@ pub fn from_u32(i: u32) -> Option<char> {
 #[inline]
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
 pub unsafe fn from_u32_unchecked(i: u32) -> char {
-    transmute(i)
+    // SAFETY: the caller must guarantee that `i` is a valid char value.
+    if cfg!(debug_assertions) { char::from_u32(i).unwrap() } else { unsafe { transmute(i) } }
 }
 
 #[stable(feature = "char_convert", since = "1.13.0")]
@@ -218,7 +219,7 @@ impl TryFrom<u32> for char {
             Err(CharTryFromError(()))
         } else {
             // SAFETY: checked that it's a legal unicode value
-            Ok(unsafe { from_u32_unchecked(i) })
+            Ok(unsafe { transmute(i) })
         }
     }
 }
@@ -278,16 +279,11 @@ impl fmt::Display for CharTryFromError {
 ///
 /// Passing a large radix, causing a panic:
 ///
-/// ```
-/// use std::thread;
+/// ```should_panic
 /// use std::char;
 ///
-/// let result = thread::spawn(|| {
-///     // this panics
-///     let c = char::from_digit(1, 37);
-/// }).join();
-///
-/// assert!(result.is_err());
+/// // this panics
+/// let c = char::from_digit(1, 37);
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]

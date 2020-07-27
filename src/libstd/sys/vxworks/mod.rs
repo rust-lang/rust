@@ -13,7 +13,6 @@ pub mod cmath;
 pub mod condvar;
 pub mod env;
 pub mod ext;
-pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
 pub mod io;
@@ -29,7 +28,8 @@ pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
-pub mod thread_local;
+pub mod thread_local_dtor;
+pub mod thread_local_key;
 pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;

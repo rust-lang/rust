@@ -292,3 +292,20 @@ impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ExactSizeIterator for ReversePostorder<'a, 'tcx> {}
+
+/// Returns an iterator over all basic blocks reachable from the `START_BLOCK` in no particular
+/// order.
+///
+/// This is clearer than writing `preorder` in cases where the order doesn't matter.
+pub fn reachable<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+) -> impl 'a + Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> {
+    preorder(body)
+}
+
+/// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
+pub fn reachable_as_bitset(body: &Body<'tcx>) -> BitSet<BasicBlock> {
+    let mut iter = preorder(body);
+    (&mut iter).for_each(drop);
+    iter.visited
+}

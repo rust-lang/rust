@@ -13,7 +13,7 @@
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
 //! let md = Markdown(s, &[], &mut id_map, ErrorCodes::Yes, Edition::Edition2015, &None);
-//! let html = md.to_string();
+//! let html = md.into_string();
 //! // ... something using html
 //! ```
 
@@ -192,6 +192,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
         let compile_fail;
+        let should_panic;
         let ignore;
         let edition;
         if let Some(Event::Start(Tag::CodeBlock(kind))) = event {
@@ -205,6 +206,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 return Some(Event::Start(Tag::CodeBlock(kind)));
             }
             compile_fail = parse_result.compile_fail;
+            should_panic = parse_result.should_panic;
             ignore = parse_result.ignore;
             edition = parse_result.edition;
         } else {
@@ -280,6 +282,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             Some(("This example is not tested".to_owned(), "ignore"))
         } else if compile_fail {
             Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+        } else if should_panic {
+            Some(("This example panics".to_owned(), "should_panic"))
         } else if explicit_edition {
             Some((format!("This code runs with edition {}", edition), "edition"))
         } else {
@@ -288,13 +292,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
         if let Some((s1, s2)) = tooltip {
             s.push_str(&highlight::render_with_highlighting(
-                &text,
+                text,
                 Some(&format!(
                     "rust-example-rendered{}",
                     if ignore != Ignore::None {
                         " ignore"
                     } else if compile_fail {
                         " compile_fail"
+                    } else if should_panic {
+                        " should_panic"
                     } else if explicit_edition {
                         " edition "
                     } else {
@@ -307,13 +313,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             Some(Event::Html(s.into()))
         } else {
             s.push_str(&highlight::render_with_highlighting(
-                &text,
+                text,
                 Some(&format!(
                     "rust-example-rendered{}",
                     if ignore != Ignore::None {
                         " ignore"
                     } else if compile_fail {
                         " compile_fail"
+                    } else if should_panic {
+                        " should_panic"
                     } else if explicit_edition {
                         " edition "
                     } else {
@@ -657,7 +665,7 @@ impl<'a, 'b> ExtraInfo<'a, 'b> {
             (None, None) => return,
         };
         self.tcx.struct_span_lint_hir(
-            lint::builtin::INVALID_CODEBLOCK_ATTRIBUTE,
+            lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES,
             hir_id,
             self.sp,
             |lint| {
@@ -840,7 +848,7 @@ impl LangString {
 }
 
 impl Markdown<'_> {
-    pub fn to_string(self) -> String {
+    pub fn into_string(self) -> String {
         let Markdown(md, links, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
@@ -870,7 +878,7 @@ impl Markdown<'_> {
 }
 
 impl MarkdownWithToc<'_> {
-    pub fn to_string(self) -> String {
+    pub fn into_string(self) -> String {
         let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
 
         let p = Parser::new_ext(md, opts());
@@ -891,7 +899,7 @@ impl MarkdownWithToc<'_> {
 }
 
 impl MarkdownHtml<'_> {
-    pub fn to_string(self) -> String {
+    pub fn into_string(self) -> String {
         let MarkdownHtml(md, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
@@ -918,7 +926,7 @@ impl MarkdownHtml<'_> {
 }
 
 impl MarkdownSummaryLine<'_> {
-    pub fn to_string(self) -> String {
+    pub fn into_string(self) -> String {
         let MarkdownSummaryLine(md, links) = self;
         // This is actually common enough to special-case
         if md.is_empty() {

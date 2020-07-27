@@ -1,10 +1,10 @@
 // run-pass
 
 const ADD_A: u32 = 200u32.wrapping_add(55);
-const ADD_B: u32 = 200u32.wrapping_add(u32::max_value());
+const ADD_B: u32 = 200u32.wrapping_add(u32::MAX);
 
 const SUB_A: u32 = 100u32.wrapping_sub(100);
-const SUB_B: u32 = 100u32.wrapping_sub(u32::max_value());
+const SUB_B: u32 = 100u32.wrapping_sub(u32::MAX);
 
 const MUL_A: u8 = 10u8.wrapping_mul(12);
 const MUL_B: u8 = 25u8.wrapping_mul(12);
@@ -20,7 +20,7 @@ const NEG_B: u32 = 1234567890u32.wrapping_neg();
 
 const ABS_POS: i32 = 10i32.wrapping_abs();
 const ABS_NEG: i32 = (-10i32).wrapping_abs();
-const ABS_MIN: i32 = i32::min_value().wrapping_abs();
+const ABS_MIN: i32 = i32::MIN.wrapping_abs();
 
 fn main() {
     assert_eq!(ADD_A, 255);
@@ -43,5 +43,5 @@ fn main() {
 
     assert_eq!(ABS_POS, 10);
     assert_eq!(ABS_NEG, 10);
-    assert_eq!(ABS_MIN, i32::min_value());
+    assert_eq!(ABS_MIN, i32::MIN);
 }

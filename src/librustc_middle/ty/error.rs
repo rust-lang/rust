@@ -57,7 +57,6 @@ pub enum TypeError<'tcx> {
     /// type).
     CyclicTy(Ty<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
-    ProjectionBoundsLength(ExpectedFound<usize>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
     ObjectUnsafeCoercion(DefId),
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
@@ -174,13 +173,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                     tcx.def_path_str(values.found)
                 )
             }),
-            ProjectionBoundsLength(ref values) => write!(
-                f,
-                "expected {} associated type binding{}, found {}",
-                values.expected,
-                pluralize!(values.expected),
-                values.found
-            ),
             ExistentialMismatch(ref values) => report_maybe_different(
                 f,
                 &format!("trait `{}`", values.expected),
@@ -216,7 +208,6 @@ impl<'tcx> TypeError<'tcx> {
             | RegionsPlaceholderMismatch
             | Traits(_)
             | ProjectionMismatched(_)
-            | ProjectionBoundsLength(_)
             | ExistentialMismatch(_)
             | ConstMismatch(_)
             | IntrinsicCast
@@ -286,14 +277,14 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Projection(_) => "associated type".into(),
             ty::Param(p) => format!("type parameter `{}`", p).into(),
             ty::Opaque(..) => "opaque type".into(),
-            ty::Error => "type error".into(),
+            ty::Error(_) => "type error".into(),
         }
     }
 
     pub fn prefix_string(&self) -> Cow<'static, str> {
         match self.kind {
             ty::Infer(_)
-            | ty::Error
+            | ty::Error(_)
             | ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -814,7 +805,7 @@ fn foo(&self) -> Self::T { String::new() }
                 // FIXME: account for `#![feature(specialization)]`
                 for item in &items[..] {
                     match item.kind {
-                        hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
+                        hir::AssocItemKind::Type => {
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } = item.defaultness
@@ -838,7 +829,7 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     match item.kind {
-                        hir::AssocItemKind::Type | hir::AssocItemKind::OpaqueTy => {
+                        hir::AssocItemKind::Type => {
                             if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
                                 db.span_label(item.span, "expected this associated type");
                                 return true;

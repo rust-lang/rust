@@ -3,7 +3,7 @@ use rustc_ast::util::comments;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError};
 use rustc_lexer::Base;
-use rustc_lexer::{unescape, LexRawStrError, UnvalidatedRawStr, ValidatedRawStr};
+use rustc_lexer::{unescape, RawStrError};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Pos, Span};
@@ -49,13 +49,12 @@ impl<'a> StringReader<'a> {
         // Make sure external source is loaded first, before accessing it.
         // While this can't show up during normal parsing, `retokenize` may
         // be called with a source file from an external crate.
-        sess.source_map().ensure_source_file_source_present(source_file.clone());
+        sess.source_map().ensure_source_file_source_present(Lrc::clone(&source_file));
 
-        // FIXME(eddyb) use `Lrc<str>` or similar to avoid cloning the `String`.
         let src = if let Some(src) = &source_file.src {
-            src.clone()
+            Lrc::clone(&src)
         } else if let Some(src) = source_file.external_src.borrow().get_source() {
-            src.clone()
+            Lrc::clone(&src)
         } else {
             sess.span_diagnostic
                 .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
@@ -125,10 +124,7 @@ impl<'a> StringReader<'a> {
 
         debug!("try_next_token: {:?}({:?})", token.kind, self.str_from(start));
 
-        // This could use `?`, but that makes code significantly (10-20%) slower.
-        // https://github.com/rust-lang/rust/issues/37939
         let kind = self.cook_lexer_token(token.kind, start);
-
         let span = self.mk_sp(start, self.pos);
         Token::new(kind, span)
     }
@@ -151,15 +147,6 @@ impl<'a> StringReader<'a> {
     /// Report a lexical error spanning [`from_pos`, `to_pos`).
     fn err_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) {
         self.err_span(self.mk_sp(from_pos, to_pos), m)
-    }
-
-    fn struct_span_fatal(
-        &self,
-        from_pos: BytePos,
-        to_pos: BytePos,
-        m: &str,
-    ) -> DiagnosticBuilder<'a> {
-        self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), m)
     }
 
     fn struct_fatal_span_char(
@@ -204,7 +191,15 @@ impl<'a> StringReader<'a> {
                         "unterminated block comment"
                     };
                     let last_bpos = self.pos;
-                    self.fatal_span_(start, last_bpos, msg).raise();
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start, last_bpos),
+                            msg,
+                            error_code!(E0758),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
 
                 if is_doc_comment {
@@ -330,50 +325,80 @@ impl<'a> StringReader<'a> {
         let (lit_kind, mode, prefix_len, postfix_len) = match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated character literal").raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start, suffix_start),
+                            "unterminated character literal",
+                            error_code!(E0762),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
                 (token::Char, Mode::Char, 1, 1) // ' '
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start + BytePos(1), suffix_start, "unterminated byte constant")
-                        .raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start + BytePos(1), suffix_start),
+                            "unterminated byte constant",
+                            error_code!(E0763),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
                 (token::Byte, Mode::Byte, 2, 1) // b' '
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.fatal_span_(start, suffix_start, "unterminated double quote string")
-                        .raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start, suffix_start),
+                            "unterminated double quote string",
+                            error_code!(E0765),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
                 (token::Str, Mode::Str, 1, 1) // " "
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
-                    self.fatal_span_(
-                        start + BytePos(1),
-                        suffix_start,
-                        "unterminated double quote byte string",
-                    )
-                    .raise()
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(start + BytePos(1), suffix_start),
+                            "unterminated double quote byte string",
+                            error_code!(E0766),
+                        )
+                        .emit();
+                    FatalError.raise();
                 }
                 (token::ByteStr, Mode::ByteStr, 2, 1) // b" "
             }
-            rustc_lexer::LiteralKind::RawStr(unvalidated_raw_str) => {
-                let valid_raw_str = self.validate_and_report_errors(start, unvalidated_raw_str);
-                let n_hashes = valid_raw_str.num_hashes();
+            rustc_lexer::LiteralKind::RawStr { n_hashes, err } => {
+                self.report_raw_str_error(start, err);
                 let n = u32::from(n_hashes);
                 (token::StrRaw(n_hashes), Mode::RawStr, 2 + n, 1 + n) // r##" "##
             }
-            rustc_lexer::LiteralKind::RawByteStr(unvalidated_raw_str) => {
-                let validated_raw_str = self.validate_and_report_errors(start, unvalidated_raw_str);
-                let n_hashes = validated_raw_str.num_hashes();
+            rustc_lexer::LiteralKind::RawByteStr { n_hashes, err } => {
+                self.report_raw_str_error(start, err);
                 let n = u32::from(n_hashes);
                 (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n) // br##" "##
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
                 return if empty_int {
-                    self.err_span_(start, suffix_start, "no valid digits found for number");
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_err_with_code(
+                            self.mk_sp(start, suffix_start),
+                            "no valid digits found for number",
+                            error_code!(E0768),
+                        )
+                        .emit();
                     (token::Integer, sym::integer(0))
                 } else {
                     self.validate_int_literal(base, start, suffix_start);
@@ -382,12 +407,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
                 if empty_exponent {
-                    let mut err = self.struct_span_fatal(
-                        start,
-                        self.pos,
-                        "expected at least one digit in exponent",
-                    );
-                    err.emit();
+                    self.err_span_(start, self.pos, "expected at least one digit in exponent");
                 }
 
                 match base {
@@ -413,7 +433,7 @@ impl<'a> StringReader<'a> {
         let content_end = suffix_start - BytePos(postfix_len);
         let id = self.symbol_from_to(content_start, content_end);
         self.validate_literal_escape(mode, content_start, content_end);
-        return (lit_kind, id);
+        (lit_kind, id)
     }
 
     pub fn pos(&self) -> BytePos {
@@ -459,33 +479,25 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn validate_and_report_errors(
-        &self,
-        start: BytePos,
-        unvalidated_raw_str: UnvalidatedRawStr,
-    ) -> ValidatedRawStr {
-        match unvalidated_raw_str.validate() {
-            Err(LexRawStrError::InvalidStarter) => self.report_non_started_raw_string(start),
-            Err(LexRawStrError::NoTerminator { expected, found, possible_terminator_offset }) => {
-                self.report_unterminated_raw_string(
-                    start,
-                    expected,
-                    possible_terminator_offset,
-                    found,
-                )
+    fn report_raw_str_error(&self, start: BytePos, opt_err: Option<RawStrError>) {
+        match opt_err {
+            Some(RawStrError::InvalidStarter { bad_char }) => {
+                self.report_non_started_raw_string(start, bad_char)
             }
-            Err(LexRawStrError::TooManyDelimiters) => self.report_too_many_hashes(start),
-            Ok(valid) => valid,
+            Some(RawStrError::NoTerminator { expected, found, possible_terminator_offset }) => self
+                .report_unterminated_raw_string(start, expected, possible_terminator_offset, found),
+            Some(RawStrError::TooManyDelimiters { found }) => {
+                self.report_too_many_hashes(start, found)
+            }
+            None => (),
         }
     }
 
-    fn report_non_started_raw_string(&self, start: BytePos) -> ! {
-        let bad_char = self.str_from(start).chars().last().unwrap();
+    fn report_non_started_raw_string(&self, start: BytePos, bad_char: char) -> ! {
         self.struct_fatal_span_char(
             start,
             self.pos,
-            "found invalid character; only `#` is allowed \
-                 in raw string delimitation",
+            "found invalid character; only `#` is allowed in raw string delimitation",
             bad_char,
         )
         .emit();
@@ -530,11 +542,17 @@ impl<'a> StringReader<'a> {
         FatalError.raise()
     }
 
-    fn report_too_many_hashes(&self, start: BytePos) -> ! {
+    /// Note: It was decided to not add a test case, because it would be to big.
+    /// https://github.com/rust-lang/rust/pull/50296#issuecomment-392135180
+    fn report_too_many_hashes(&self, start: BytePos, found: usize) -> ! {
         self.fatal_span_(
             start,
             self.pos,
-            "too many `#` symbols: raw strings may be delimited by up to 65535 `#` symbols",
+            &format!(
+                "too many `#` symbols: raw strings may be delimited \
+                by up to 65535 `#` symbols, but found {}",
+                found
+            ),
         )
         .raise();
     }

@@ -5,7 +5,7 @@
 // See https://internals.rust-lang.org/t/rfc-compiler-refactoring-spans/1357/28
 
 use crate::hygiene::SyntaxContext;
-use crate::GLOBALS;
+use crate::SESSION_GLOBALS;
 use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -136,5 +136,5 @@ impl SpanInterner {
 // If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
 fn with_span_interner<T, F: FnOnce(&mut SpanInterner) -> T>(f: F) -> T {
-    GLOBALS.with(|globals| f(&mut *globals.span_interner.lock()))
+    SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.span_interner.lock()))
 }

@@ -225,17 +225,17 @@ impl<T> LinkedList<T> {
     /// maintain validity of aliasing pointers.
     #[inline]
     unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {
-        let node = node.as_mut(); // this one is ours now, we can create an &mut.
+        let node = unsafe { node.as_mut() }; // this one is ours now, we can create an &mut.
 
         // Not creating new mutable (unique!) references overlapping `element`.
         match node.prev {
-            Some(prev) => (*prev.as_ptr()).next = node.next,
+            Some(prev) => unsafe { (*prev.as_ptr()).next = node.next },
             // this node is the head node
             None => self.head = node.next,
         };
 
         match node.next {
-            Some(next) => (*next.as_ptr()).prev = node.prev,
+            Some(next) => unsafe { (*next.as_ptr()).prev = node.prev },
             // this node is the tail node
             None => self.tail = node.prev,
         };
@@ -258,17 +258,23 @@ impl<T> LinkedList<T> {
         // This method takes care not to create multiple mutable references to whole nodes at the same time,
         // to maintain validity of aliasing pointers into `element`.
         if let Some(mut existing_prev) = existing_prev {
-            existing_prev.as_mut().next = Some(splice_start);
+            unsafe {
+                existing_prev.as_mut().next = Some(splice_start);
+            }
         } else {
             self.head = Some(splice_start);
         }
         if let Some(mut existing_next) = existing_next {
-            existing_next.as_mut().prev = Some(splice_end);
+            unsafe {
+                existing_next.as_mut().prev = Some(splice_end);
+            }
         } else {
             self.tail = Some(splice_end);
         }
-        splice_start.as_mut().prev = existing_prev;
-        splice_end.as_mut().next = existing_next;
+        unsafe {
+            splice_start.as_mut().prev = existing_prev;
+            splice_end.as_mut().next = existing_next;
+        }
 
         self.len += splice_length;
     }
@@ -297,9 +303,13 @@ impl<T> LinkedList<T> {
         if let Some(mut split_node) = split_node {
             let first_part_head;
             let first_part_tail;
-            first_part_tail = split_node.as_mut().prev.take();
+            unsafe {
+                first_part_tail = split_node.as_mut().prev.take();
+            }
             if let Some(mut tail) = first_part_tail {
-                tail.as_mut().next = None;
+                unsafe {
+                    tail.as_mut().next = None;
+                }
                 first_part_head = self.head;
             } else {
                 first_part_head = None;
@@ -333,9 +343,13 @@ impl<T> LinkedList<T> {
         if let Some(mut split_node) = split_node {
             let second_part_head;
             let second_part_tail;
-            second_part_head = split_node.as_mut().next.take();
+            unsafe {
+                second_part_head = split_node.as_mut().next.take();
+            }
             if let Some(mut head) = second_part_head {
-                head.as_mut().prev = None;
+                unsafe {
+                    head.as_mut().prev = None;
+                }
                 second_part_tail = self.tail;
             } else {
                 second_part_tail = None;
@@ -390,7 +404,7 @@ impl<T> LinkedList<T> {
     /// This reuses all the nodes from `other` and moves them into `self`. After
     /// this operation, `other` becomes empty.
     ///
-    /// This operation should compute in `O(1)` time and `O(1)` memory.
+    /// This operation should compute in *O*(1) time and *O*(1) memory.
     ///
     /// # Examples
     ///
@@ -547,7 +561,7 @@ impl<T> LinkedList<T> {
 
     /// Returns `true` if the `LinkedList` is empty.
     ///
-    /// This operation should compute in `O(1)` time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -568,7 +582,7 @@ impl<T> LinkedList<T> {
 
     /// Returns the length of the `LinkedList`.
     ///
-    /// This operation should compute in `O(1)` time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -594,7 +608,7 @@ impl<T> LinkedList<T> {
 
     /// Removes all elements from the `LinkedList`.
     ///
-    /// This operation should compute in `O(n)` time.
+    /// This operation should compute in *O*(*n*) time.
     ///
     /// # Examples
     ///
@@ -737,7 +751,7 @@ impl<T> LinkedList<T> {
 
     /// Adds an element first in the list.
     ///
-    /// This operation should compute in `O(1)` time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -760,7 +774,7 @@ impl<T> LinkedList<T> {
     /// Removes the first element and returns it, or `None` if the list is
     /// empty.
     ///
-    /// This operation should compute in `O(1)` time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -783,7 +797,7 @@ impl<T> LinkedList<T> {
 
     /// Appends an element to the back of a list.
     ///
-    /// This operation should compute in `O(1)` time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -803,7 +817,7 @@ impl<T> LinkedList<T> {
     /// Removes the last element from a list and returns it, or `None` if
     /// it is empty.
     ///
-    /// This operation should compute in `O(1)` time.
+    /// This operation should compute in *O*(1) time.
     ///
     /// # Examples
     ///
@@ -824,7 +838,7 @@ impl<T> LinkedList<T> {
     /// Splits the list into two at the given index. Returns everything after the given index,
     /// including the index.
     ///
-    /// This operation should compute in `O(n)` time.
+    /// This operation should compute in *O*(*n*) time.
     ///
     /// # Panics
     ///
@@ -880,7 +894,7 @@ impl<T> LinkedList<T> {
 
     /// Removes the element at the given index and returns it.
     ///
-    /// This operation should compute in `O(n)` time.
+    /// This operation should compute in *O*(*n*) time.
     ///
     /// # Panics
     /// Panics if at >= len
@@ -1748,6 +1762,11 @@ impl<T> Extend<T> for LinkedList<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<I>>::spec_extend(self, iter);
     }
+
+    #[inline]
+    fn extend_one(&mut self, elem: T) {
+        self.push_back(elem);
+    }
 }
 
 impl<I: IntoIterator> SpecExtend<I> for LinkedList<I::Item> {
@@ -1766,6 +1785,11 @@ impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
 impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &elem: &'a T) {
+        self.push_back(elem);
     }
 }
 

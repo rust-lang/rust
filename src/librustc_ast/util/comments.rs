@@ -2,7 +2,7 @@ pub use CommentStyle::*;
 
 use crate::ast;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, CharPos, FileName, Pos};
+use rustc_span::{BytePos, CharPos, FileName, Pos, Symbol};
 
 use log::debug;
 
@@ -52,7 +52,8 @@ pub fn is_doc_comment(s: &str) -> bool {
         || s.starts_with("/*!")
 }
 
-pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
+pub fn doc_comment_style(comment: Symbol) -> ast::AttrStyle {
+    let comment = &comment.as_str();
     assert!(is_doc_comment(comment));
     if comment.starts_with("//!") || comment.starts_with("/*!") {
         ast::AttrStyle::Inner
@@ -61,7 +62,9 @@ pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
     }
 }
 
-pub fn strip_doc_comment_decoration(comment: &str) -> String {
+pub fn strip_doc_comment_decoration(comment: Symbol) -> String {
+    let comment = &comment.as_str();
+
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: Vec<String>) -> Vec<String> {
         let mut i = 0;

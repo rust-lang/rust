@@ -25,13 +25,13 @@ pub(super) fn relate_types<'tcx>(
     category: ConstraintCategory,
     borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
 ) -> Fallible<()> {
-    debug!("eq_types(a={:?}, b={:?}, locations={:?})", a, b, locations);
+    debug!("relate_types(a={:?}, v={:?}, b={:?}, locations={:?})", a, v, b, locations);
     TypeRelating::new(
         infcx,
         NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
         v,
     )
-    .relate(&a, &b)?;
+    .relate(a, b)?;
     Ok(())
 }
 

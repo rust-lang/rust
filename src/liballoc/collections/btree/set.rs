@@ -22,10 +22,9 @@ use super::Recover;
 /// to any other item, as determined by the [`Ord`] trait, changes while it is in the set. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
 ///
-/// [`BTreeMap`]: struct.BTreeMap.html
-/// [`Ord`]: ../../std/cmp/trait.Ord.html
-/// [`Cell`]: ../../std/cell/struct.Cell.html
-/// [`RefCell`]: ../../std/cell/struct.RefCell.html
+/// [`Ord`]: core::cmp::Ord
+/// [`Cell`]: core::cell::Cell
+/// [`RefCell`]: core::cell::RefCell
 ///
 /// # Examples
 ///
@@ -78,8 +77,7 @@ impl<T: Clone> Clone for BTreeSet<T> {
 /// This `struct` is created by the [`iter`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`iter`]: struct.BTreeSet.html#method.iter
+/// [`iter`]: BTreeSet::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>,
@@ -97,8 +95,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 /// This `struct` is created by the [`into_iter`] method on [`BTreeSet`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`into_iter`]: struct.BTreeSet.html#method.into_iter
+/// [`into_iter`]: BTreeSet#method.into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IntoIter<T> {
@@ -110,8 +107,7 @@ pub struct IntoIter<T> {
 /// This `struct` is created by the [`range`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`range`]: struct.BTreeSet.html#method.range
+/// [`range`]: BTreeSet::range
 #[derive(Debug)]
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
@@ -194,8 +190,7 @@ where
 /// This `struct` is created by the [`difference`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`difference`]: struct.BTreeSet.html#method.difference
+/// [`difference`]: BTreeSet::difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a> {
     inner: DifferenceInner<'a, T>,
@@ -227,8 +222,7 @@ impl<T: fmt::Debug> fmt::Debug for Difference<'_, T> {
 /// This `struct` is created by the [`symmetric_difference`] method on
 /// [`BTreeSet`]. See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`symmetric_difference`]: struct.BTreeSet.html#method.symmetric_difference
+/// [`symmetric_difference`]: BTreeSet::symmetric_difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a>(MergeIterInner<Iter<'a, T>>);
 
@@ -244,8 +238,7 @@ impl<T: fmt::Debug> fmt::Debug for SymmetricDifference<'_, T> {
 /// This `struct` is created by the [`intersection`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`intersection`]: struct.BTreeSet.html#method.intersection
+/// [`intersection`]: BTreeSet::intersection
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a> {
     inner: IntersectionInner<'a, T>,
@@ -277,8 +270,7 @@ impl<T: fmt::Debug> fmt::Debug for Intersection<'_, T> {
 /// This `struct` is created by the [`union`] method on [`BTreeSet`].
 /// See its documentation for more.
 ///
-/// [`BTreeSet`]: struct.BTreeSet.html
-/// [`union`]: struct.BTreeSet.html#method.union
+/// [`union`]: BTreeSet::union
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a>(MergeIterInner<Iter<'a, T>>);
 
@@ -1152,12 +1144,22 @@ impl<T: Ord> Extend<T> for BTreeSet<T> {
             self.insert(elem);
         });
     }
+
+    #[inline]
+    fn extend_one(&mut self, elem: T) {
+        self.insert(elem);
+    }
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BTreeSet<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, &elem: &'a T) {
+        self.insert(elem);
     }
 }
 
@@ -1281,10 +1283,20 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
     fn last(mut self) -> Option<&'a T> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<&'a T> {
         self.next_back()
     }
 }
@@ -1311,6 +1323,7 @@ impl<T> Iterator for IntoIter<T> {
     fn next(&mut self) -> Option<T> {
         self.iter.next().map(|(k, _)| k)
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
@@ -1347,6 +1360,14 @@ impl<'a, T> Iterator for Range<'a, T> {
     }
 
     fn last(mut self) -> Option<&'a T> {
+        self.next_back()
+    }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
+    }
+
+    fn max(mut self) -> Option<&'a T> {
         self.next_back()
     }
 }
@@ -1419,6 +1440,10 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
         };
         (self_len.saturating_sub(other_len), Some(self_len))
     }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1449,6 +1474,10 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
         // and T is an empty type, the storage overhead of sets limits
         // the number of elements to less than half the range of usize.
         (0, Some(a_len + b_len))
+    }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
     }
 }
 
@@ -1506,6 +1535,10 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
             IntersectionInner::Answer(Some(_)) => (1, Some(1)),
         }
     }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1530,6 +1563,10 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
         let (a_len, b_len) = self.0.lens();
         // No checked_add - see SymmetricDifference::size_hint.
         (max(a_len, b_len), Some(a_len + b_len))
+    }
+
+    fn min(mut self) -> Option<&'a T> {
+        self.next()
     }
 }
 

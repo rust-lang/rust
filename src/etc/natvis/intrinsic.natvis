@@ -21,4 +21,128 @@
       </ArrayItems>
     </Expand>
   </Type>
+  <Type Name="tuple&lt;&gt;">
+    <DisplayString>()</DisplayString>
+  </Type>
+  <Type Name="tuple&lt;*&gt;">
+    <DisplayString>({__0})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*&gt;">
+    <DisplayString>({__0}, {__1})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+      <Item Name="[7]">__7</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*,*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7}, {__8})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+      <Item Name="[7]">__7</Item>
+      <Item Name="[8]">__8</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*,*,*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7}, {__8}, {__9})</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+      <Item Name="[7]">__7</Item>
+      <Item Name="[8]">__8</Item>
+      <Item Name="[9]">__9</Item>
+    </Expand>
+  </Type>
+  <Type Name="tuple&lt;*,*,*,*,*,*,*,*,*,*,*&gt;">
+    <DisplayString>({__0}, {__1}, {__2}, {__3}, {__4}, {__5}, {__6}, {__7}, {__8}, {__9}, ...)</DisplayString>
+    <Expand>
+      <Item Name="[0]">__0</Item>
+      <Item Name="[1]">__1</Item>
+      <Item Name="[2]">__2</Item>
+      <Item Name="[3]">__3</Item>
+      <Item Name="[4]">__4</Item>
+      <Item Name="[5]">__5</Item>
+      <Item Name="[6]">__6</Item>
+      <Item Name="[7]">__7</Item>
+      <Item Name="[8]">__8</Item>
+      <Item Name="[9]">__9</Item>
+      <Synthetic Name="[...]"><DisplayString>...</DisplayString></Synthetic>
+    </Expand>
+  </Type>
 </AutoVisualizer>

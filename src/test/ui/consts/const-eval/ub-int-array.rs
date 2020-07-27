@@ -1,4 +1,3 @@
-#![feature(const_transmute)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
 
 //! Test the "array of int" fast path in validity checking, and in particular whether it

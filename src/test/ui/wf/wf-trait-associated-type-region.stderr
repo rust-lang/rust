@@ -5,11 +5,7 @@ LL |     type Type2 = &'a Self::Type1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `<Self as SomeTrait<'a>>::Type1: 'a`...
-note: ...so that the reference type `&'a <Self as SomeTrait<'a>>::Type1` does not outlive the data it points at
-  --> $DIR/wf-trait-associated-type-region.rs:9:5
-   |
-LL |     type Type2 = &'a Self::Type1;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...so that the reference type `&'a <Self as SomeTrait<'a>>::Type1` does not outlive the data it points at
 
 error: aborting due to previous error
 

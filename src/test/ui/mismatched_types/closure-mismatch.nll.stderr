@@ -1,0 +1,14 @@
+error: higher-ranked subtype error
+  --> $DIR/closure-mismatch.rs:8:5
+   |
+LL |     baz(|_| ());
+   |     ^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/closure-mismatch.rs:8:5
+   |
+LL |     baz(|_| ());
+   |     ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

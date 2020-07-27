@@ -5,10 +5,31 @@ set -e
 export MSYS_NO_PATHCONV=1
 
 script=`cd $(dirname $0) && pwd`/`basename $0`
-image=$1
 
-docker_dir="`dirname $script`"
-ci_dir="`dirname $docker_dir`"
+image=""
+dev=0
+
+while [[ $# -gt 0 ]]
+do
+  case "$1" in
+    --dev)
+      dev=1
+      ;;
+    *)
+      if [ -n "$image" ]
+      then
+        echo "expected single argument for the image name"
+        exit 1
+      fi
+      image="$1"
+      ;;
+  esac
+  shift
+done
+
+script_dir="`dirname $script`"
+docker_dir="${script_dir}/host-$(uname -m)"
+ci_dir="`dirname $script_dir`"
 src_dir="`dirname $ci_dir`"
 root_dir="`dirname $src_dir`"
 
@@ -31,10 +52,14 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       rm -f "$copied_files"
       for i in $(sed -n -e 's/^COPY \(.*\) .*$/\1/p' "$docker_dir/$image/Dockerfile"); do
         # List the file names
-        find "$docker_dir/$i" -type f >> $copied_files
+        find "$script_dir/$i" -type f >> $copied_files
       done
       # Sort the file names and cat the content into the hash key
       sort $copied_files | xargs cat >> $hash_key
+
+      # Include the architecture in the hash key, since our Linux CI does not
+      # only run in x86_64 machines.
+      uname -m >> $hash_key
 
       docker --version >> $hash_key
       cksum=$(sha512sum $hash_key | \
@@ -53,10 +78,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
 
     dockerfile="$docker_dir/$image/Dockerfile"
     if [ -x /usr/bin/cygpath ]; then
-        context="`cygpath -w $docker_dir`"
+        context="`cygpath -w $script_dir`"
         dockerfile="`cygpath -w $dockerfile`"
     else
-        context="$docker_dir"
+        context="$script_dir"
     fi
     retry docker \
       build \
@@ -94,14 +119,36 @@ elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
         exit 1
     fi
     # Transform changes the context of disabled Dockerfiles to match the enabled ones
-    tar --transform 's#^./disabled/#./#' -C $docker_dir -c . | docker \
+    tar --transform 's#disabled/#./#' -C $script_dir -c . | docker \
       build \
       --rm \
       -t rust-ci \
-      -f "$image/Dockerfile" \
+      -f "host-$(uname -m)/$image/Dockerfile" \
       -
 else
     echo Invalid image: $image
+
+    # Check whether the image exists for other architectures
+    for arch_dir in "${script_dir}"/host-*; do
+        # Avoid checking non-directories and the current host architecture directory
+        if ! [[ -d "${arch_dir}" ]]; then
+            continue
+        fi
+        if [[ "${arch_dir}" = "${docker_dir}" ]]; then
+            continue
+        fi
+
+        arch_name="$(basename "${arch_dir}" | sed 's/^host-//')"
+        if [[ -f "${arch_dir}/${image}/Dockerfile" ]]; then
+            echo "Note: the image exists for the ${arch_name} host architecture"
+        elif [[ -f "${arch_dir}/disabled/${image}/Dockerfile" ]]; then
+            echo "Note: the disabled image exists for the ${arch_name} host architecture"
+        else
+            continue
+        fi
+        echo "Note: the current host architecture is $(uname -m)"
+    done
+
     exit 1
 fi
 
@@ -163,6 +210,15 @@ else
   args="$args --env LOCAL_USER_ID=`id -u`"
 fi
 
+if [ "$dev" = "1" ]
+then
+  # Interactive + TTY
+  args="$args -it"
+  command="/bin/bash"
+else
+  command="/checkout/src/ci/run.sh"
+fi
+
 docker \
   run \
   --workdir /checkout/obj \
@@ -183,7 +239,7 @@ docker \
   --init \
   --rm \
   rust-ci \
-  /checkout/src/ci/run.sh
+  $command
 
 if [ -f /.dockerenv ]; then
   rm -rf $objdir

@@ -1,3 +1,4 @@
+use crate::char;
 use crate::convert::TryFrom;
 use crate::mem;
 use crate::ops::{self, Add, Sub, Try};
@@ -31,7 +32,7 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
     /// * `steps_between(&a, &b) == Some(n)` only if `a <= b`
     ///   * Corollary: `steps_between(&a, &b) == Some(0)` if and only if `a == b`
     ///   * Note that `a <= b` does _not_ imply `steps_between(&a, &b) != None`;
-    ///     this is the case wheen it would require more than `usize::MAX` steps to get to `b`
+    ///     this is the case when it would require more than `usize::MAX` steps to get to `b`
     /// * `steps_between(&a, &b) == None` if `a > b`
     fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 
@@ -188,12 +189,14 @@ macro_rules! step_identical_methods {
     () => {
         #[inline]
         unsafe fn forward_unchecked(start: Self, n: usize) -> Self {
-            start.unchecked_add(n as Self)
+            // SAFETY: the caller has to guarantee that `start + n` doesn't overflow.
+            unsafe { start.unchecked_add(n as Self) }
         }
 
         #[inline]
         unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
-            start.unchecked_sub(n as Self)
+            // SAFETY: the caller has to guarantee that `start - n` doesn't overflow.
+            unsafe { start.unchecked_sub(n as Self) }
         }
 
         #[inline]
@@ -400,6 +403,85 @@ step_integer_impls! {
     wider than usize: [u32 i32], [u64 i64], [u128 i128];
 }
 
+#[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+unsafe impl Step for char {
+    #[inline]
+    fn steps_between(&start: &char, &end: &char) -> Option<usize> {
+        let start = start as u32;
+        let end = end as u32;
+        if start <= end {
+            let count = end - start;
+            if start < 0xD800 && 0xE000 <= end {
+                usize::try_from(count - 0x800).ok()
+            } else {
+                usize::try_from(count).ok()
+            }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn forward_checked(start: char, count: usize) -> Option<char> {
+        let start = start as u32;
+        let mut res = Step::forward_checked(start, count)?;
+        if start < 0xD800 && 0xD800 <= res {
+            res = Step::forward_checked(res, 0x800)?;
+        }
+        if res <= char::MAX as u32 {
+            // SAFETY: res is a valid unicode scalar
+            // (below 0x110000 and not in 0xD800..0xE000)
+            Some(unsafe { char::from_u32_unchecked(res) })
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn backward_checked(start: char, count: usize) -> Option<char> {
+        let start = start as u32;
+        let mut res = Step::backward_checked(start, count)?;
+        if start >= 0xE000 && 0xE000 > res {
+            res = Step::backward_checked(res, 0x800)?;
+        }
+        // SAFETY: res is a valid unicode scalar
+        // (below 0x110000 and not in 0xD800..0xE000)
+        Some(unsafe { char::from_u32_unchecked(res) })
+    }
+
+    #[inline]
+    unsafe fn forward_unchecked(start: char, count: usize) -> char {
+        let start = start as u32;
+        // SAFETY: the caller must guarantee that this doesn't overflow
+        // the range of values for a char.
+        let mut res = unsafe { Step::forward_unchecked(start, count) };
+        if start < 0xD800 && 0xD800 <= res {
+            // SAFETY: the caller must guarantee that this doesn't overflow
+            // the range of values for a char.
+            res = unsafe { Step::forward_unchecked(res, 0x800) };
+        }
+        // SAFETY: because of the previous contract, this is guaranteed
+        // by the caller to be a valid char.
+        unsafe { char::from_u32_unchecked(res) }
+    }
+
+    #[inline]
+    unsafe fn backward_unchecked(start: char, count: usize) -> char {
+        let start = start as u32;
+        // SAFETY: the caller must guarantee that this doesn't overflow
+        // the range of values for a char.
+        let mut res = unsafe { Step::backward_unchecked(start, count) };
+        if start >= 0xE000 && 0xE000 > res {
+            // SAFETY: the caller must guarantee that this doesn't overflow
+            // the range of values for a char.
+            res = unsafe { Step::backward_unchecked(res, 0x800) };
+        }
+        // SAFETY: because of the previous contract, this is guaranteed
+        // by the caller to be a valid char.
+        unsafe { char::from_u32_unchecked(res) }
+    }
+}
+
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -422,9 +504,6 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
             // SAFETY: just checked precondition
-            // We use the unchecked version here, because
-            // this helps LLVM vectorize loops for some ranges
-            // that don't get vectorized otherwise.
             let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
             Some(mem::replace(&mut self.start, n))
         } else {
@@ -446,7 +525,8 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn nth(&mut self, n: usize) -> Option<A> {
         if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
             if plus_n < self.end {
-                self.start = Step::forward(plus_n.clone(), 1);
+                // SAFETY: just checked precondition
+                self.start = unsafe { Step::forward_unchecked(plus_n.clone(), 1) };
                 return Some(plus_n);
             }
         }
@@ -507,7 +587,8 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
-            self.end = Step::backward(self.end.clone(), 1);
+            // SAFETY: just checked precondition
+            self.end = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
             Some(self.end.clone())
         } else {
             None
@@ -518,7 +599,8 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     fn nth_back(&mut self, n: usize) -> Option<A> {
         if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
             if minus_n > self.start {
-                self.end = Step::backward(minus_n, 1);
+                // SAFETY: just checked precondition
+                self.end = unsafe { Step::backward_unchecked(minus_n, 1) };
                 return Some(self.end.clone());
             }
         }
@@ -551,15 +633,7 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        // If we would jump over the maximum value, panic immediately.
-        // This is consistent with behavior before the Step redesign,
-        // even though it's inconsistent with n `next` calls.
-        // To get consistent behavior, change it to use `forward` instead.
-        // This change should go through FCP separately to the redesign, so is for now left as a
-        // FIXME: make this consistent
-        let plus_n =
-            Step::forward_checked(self.start.clone(), n).expect("overflow in RangeFrom::nth");
-        // The final step should always be debug-checked.
+        let plus_n = Step::forward(self.start.clone(), n);
         self.start = Step::forward(plus_n.clone(), 1);
         Some(plus_n)
     }
@@ -582,7 +656,8 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         }
         let is_iterating = self.start < self.end;
         Some(if is_iterating {
-            let n = Step::forward(self.start.clone(), 1);
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
             mem::replace(&mut self.start, n)
         } else {
             self.exhausted = true;
@@ -644,7 +719,8 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         let mut accum = init;
 
         while self.start < self.end {
-            let n = Step::forward(self.start.clone(), 1);
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
             let n = mem::replace(&mut self.start, n);
             accum = f(accum, n)?;
         }
@@ -697,7 +773,8 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         }
         let is_iterating = self.start < self.end;
         Some(if is_iterating {
-            let n = Step::backward(self.end.clone(), 1);
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
             mem::replace(&mut self.end, n)
         } else {
             self.exhausted = true;
@@ -747,7 +824,8 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         let mut accum = init;
 
         while self.start < self.end {
-            let n = Step::backward(self.end.clone(), 1);
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
             let n = mem::replace(&mut self.end, n);
             accum = f(accum, n)?;
         }

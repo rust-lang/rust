@@ -156,5 +156,11 @@ error: this `.into_iter()` call is equivalent to `.iter()` and will not move the
 LL |     let _ = std::path::PathBuf::from("12/34").into_iter(); //~ ERROR equivalent to .iter()
    |                                               ^^^^^^^^^ help: call directly: `iter`
 
-error: aborting due to 26 previous errors
+error: this `.into_iter()` call is equivalent to `.iter()` and will not move the `array`
+  --> $DIR/into_iter_on_ref.rs:44:26
+   |
+LL |     let _ = (&[1, 2, 3]).into_iter().next(); //~ WARN equivalent to .iter()
+   |                          ^^^^^^^^^ help: call directly: `iter`
+
+error: aborting due to 27 previous errors
 

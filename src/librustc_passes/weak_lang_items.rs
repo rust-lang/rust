@@ -3,10 +3,11 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::fake_lang_items::FAKE_ITEMS_REFS;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::lang_items;
 use rustc_hir::weak_lang_items::WEAK_ITEMS_REFS;
-use rustc_middle::middle::lang_items::whitelisted;
+use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 use rustc_span::symbol::Symbol;
@@ -57,7 +58,7 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
     }
 
     for (name, &item) in WEAK_ITEMS_REFS.iter() {
-        if missing.contains(&item) && !whitelisted(tcx, item) && items.require(item).is_err() {
+        if missing.contains(&item) && required(tcx, item) && items.require(item).is_err() {
             if item == lang_items::PanicImplLangItem {
                 tcx.sess.err("`#[panic_handler]` function required, but not found");
             } else if item == lang_items::OomLangItem {
@@ -70,10 +71,19 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
 }
 
 impl<'a, 'tcx> Context<'a, 'tcx> {
-    fn register(&mut self, name: Symbol, span: Span) {
+    fn register(&mut self, name: Symbol, span: Span, hir_id: hir::HirId) {
         if let Some(&item) = WEAK_ITEMS_REFS.get(&name) {
             if self.items.require(item).is_err() {
                 self.items.missing.push(item);
+            }
+        } else if let Some(&item) = FAKE_ITEMS_REFS.get(&name) {
+            // Ensure "fake lang items" are registered. These are `extern` lang items that are
+            // injected into the MIR automatically (such as source code coverage counters), but are
+            // never actually linked; therefore, unlike "weak lang items", they cannot by registered
+            // when used, because they never appear to be used.
+            if self.items.items[item as usize].is_none() {
+                let item_def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
+                self.items.items[item as usize] = Some(item_def_id);
             }
         } else {
             struct_span_err!(self.tcx.sess, span, E0264, "unknown external lang item: `{}`", name)
@@ -91,7 +101,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem<'_>) {
         if let Some((lang_item, _)) = hir::lang_items::extract(&i.attrs) {
-            self.register(lang_item, i.span);
+            self.register(lang_item, i.span, i.hir_id);
         }
         intravisit::walk_foreign_item(self, i)
     }

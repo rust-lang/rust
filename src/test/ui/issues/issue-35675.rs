@@ -33,7 +33,7 @@ fn qux() -> Some {
 fn main() {}
 
 mod x {
-    enum Enum {
+    pub enum Enum {
         Variant1,
         Variant2(),
         Variant3(usize),

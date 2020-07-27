@@ -24,9 +24,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Goto { target } => self.go_to_block(target),
 
-            SwitchInt { ref discr, ref values, ref targets, .. } => {
+            SwitchInt { ref discr, ref values, ref targets, switch_ty } => {
                 let discr = self.read_immediate(self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
+                assert_eq!(discr.layout.ty, switch_ty);
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 assert!(!targets.is_empty());
@@ -50,14 +51,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call { ref func, ref args, destination, ref cleanup, .. } => {
+            Call { ref func, ref args, destination, ref cleanup, from_hir_call: _, fn_span: _ } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
-                        let fn_ptr = self.read_scalar(func)?.not_undef()?;
+                        let fn_ptr = self.read_scalar(func)?.check_init()?;
                         let fn_val = self.memory.get_fn(fn_ptr)?;
                         (fn_val, caller_abi)
                     }
@@ -84,10 +85,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Drop { location, target, unwind } => {
-                let place = self.eval_place(location)?;
+            Drop { place, target, unwind } => {
+                let place = self.eval_place(place)?;
                 let ty = place.layout.ty;
-                trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
+                trace!("TerminatorKind::drop: {:?}, type {}", place, ty);
 
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
                 self.drop_in_place(place, instance, target, unwind)?;
@@ -123,7 +124,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // These should never occur for MIR we actually run.
             DropAndReplace { .. }
-            | FalseEdges { .. }
+            | FalseEdge { .. }
             | FalseUnwind { .. }
             | Yield { .. }
             | GeneratorDrop => span_bug!(
@@ -220,12 +221,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // ABI check
         {
             let callee_abi = {
-                let instance_ty = instance.ty_env(*self.tcx, self.param_env);
+                let instance_ty = instance.ty(*self.tcx, self.param_env);
                 match instance_ty.kind {
                     ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
                     ty::Closure(..) => Abi::RustCall,
                     ty::Generator(..) => Abi::Rust,
-                    _ => bug!("unexpected callee ty: {:?}", instance_ty),
+                    _ => span_bug!(self.cur_span(), "unexpected callee ty: {:?}", instance_ty),
                 }
             };
             let normalize_abi = |abi| match abi {

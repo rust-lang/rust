@@ -3,18 +3,15 @@
 //! This module implements the command-line parsing of the build system which
 //! has various flags to configure how it's run.
 
-use std::fs;
+use std::env;
 use std::path::PathBuf;
 use std::process;
 
 use getopts::Options;
 
 use crate::builder::Builder;
-use crate::config::Config;
-use crate::metadata;
+use crate::config::{Config, TargetSelection};
 use crate::{Build, DocTests};
-
-use crate::cache::{Interned, INTERNER};
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
@@ -23,8 +20,8 @@ pub struct Flags {
     pub stage: Option<u32>,
     pub keep_stage: Vec<u32>,
 
-    pub host: Vec<Interned<String>>,
-    pub target: Vec<Interned<String>>,
+    pub host: Vec<TargetSelection>,
+    pub target: Vec<TargetSelection>,
     pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
@@ -149,7 +146,12 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
             "N",
         );
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
-        opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
+        let j_msg = format!(
+            "number of jobs to run in parallel; \
+             defaults to {} (this host's logical CPU count)",
+            num_cpus::get()
+        );
+        opts.optopt("j", "jobs", &j_msg, "JOBS");
         opts.optflag("h", "help", "print this help message");
         opts.optopt(
             "",
@@ -433,19 +435,12 @@ Arguments:
         // Get any optional paths which occur after the subcommand
         let paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
-        let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
-            if fs::metadata("config.toml").is_ok() {
-                Some(PathBuf::from("config.toml"))
-            } else {
-                None
-            }
-        });
+        let cfg_file = env::var_os("BOOTSTRAP_CONFIG").map(PathBuf::from);
 
         // All subcommands except `clean` can have an optional "Available paths" section
         if matches.opt_present("verbose") {
             let config = Config::parse(&["build".to_string()]);
-            let mut build = Build::new(config);
-            metadata::build(&mut build);
+            let build = Build::new(config);
 
             let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
             extra_help.push_str(maybe_rules_help.unwrap_or_default().as_str());
@@ -536,11 +531,11 @@ Arguments:
                 .collect(),
             host: split(&matches.opt_strs("host"))
                 .into_iter()
-                .map(|x| INTERNER.intern_string(x))
+                .map(|x| TargetSelection::from_user(&x))
                 .collect::<Vec<_>>(),
             target: split(&matches.opt_strs("target"))
                 .into_iter()
-                .map(|x| INTERNER.intern_string(x))
+                .map(|x| TargetSelection::from_user(&x))
                 .collect::<Vec<_>>(),
             config: cfg_file,
             jobs: matches.opt_str("jobs").map(|j| j.parse().expect("`jobs` should be a number")),

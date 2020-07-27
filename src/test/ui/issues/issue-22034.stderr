@@ -5,7 +5,7 @@ LL |         &mut *(ptr as *mut dyn Fn())
    |                ^^^ expected an `Fn<()>` closure, found `()`
    |
    = help: the trait `std::ops::Fn<()>` is not implemented for `()`
-   = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }
+   = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
    = note: required for the cast to the object type `dyn std::ops::Fn()`
 
 error: aborting due to previous error

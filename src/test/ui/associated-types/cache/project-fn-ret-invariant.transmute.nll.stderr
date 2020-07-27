@@ -1,11 +1,11 @@
 error: lifetime may not live long enough
-  --> $DIR/project-fn-ret-invariant.rs:48:4
+  --> $DIR/project-fn-ret-invariant.rs:49:5
    |
-LL | fn baz<'a,'b>(x: Type<'a>) -> Type<'static> {
+LL | fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
    |        -- lifetime `'a` defined here
 ...
-LL |    bar(foo, x)
-   |    ^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+LL |     bar(foo, x)
+   |     ^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
    |
    = help: consider replacing `'a` with `'static`
 

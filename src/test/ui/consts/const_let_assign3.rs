@@ -13,14 +13,14 @@ impl S {
 
 const FOO: S = {
     let mut s = S { state: 42 };
-    s.foo(3); //~ ERROR references in constants may only refer to immutable values
+    s.foo(3); //~ ERROR mutable references are not allowed in constants
     s
 };
 
 type Array = [u32; {
     let mut x = 2;
     let y = &mut x;
-//~^ ERROR references in constants may only refer to immutable values
+//~^ ERROR mutable references are not allowed in constants
     *y = 42;
 //~^ ERROR constant contains unimplemented expression type
     *y

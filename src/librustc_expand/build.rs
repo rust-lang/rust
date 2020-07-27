@@ -272,7 +272,7 @@ impl<'a> ExtCtxt<'a> {
     ) -> P<ast::Expr> {
         args.insert(0, expr);
         let segment = ast::PathSegment::from_ident(ident.with_span_pos(span));
-        self.expr(span, ast::ExprKind::MethodCall(segment, args))
+        self.expr(span, ast::ExprKind::MethodCall(segment, args, span))
     }
     pub fn expr_block(&self, b: P<ast::Block>) -> P<ast::Expr> {
         self.expr(b.span, ast::ExprKind::Block(b, None))
@@ -368,7 +368,7 @@ impl<'a> ExtCtxt<'a> {
         let err = self.std_path(&[sym::result, sym::Result, sym::Err]);
         let err_path = self.path_global(sp, err);
 
-        let binding_variable = self.ident_of("__try_var", sp);
+        let binding_variable = Ident::new(sym::__try_var, sp);
         let binding_pat = self.pat_ident(sp, binding_variable);
         let binding_expr = self.expr_ident(sp, binding_variable);
 

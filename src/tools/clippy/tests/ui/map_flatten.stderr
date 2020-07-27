@@ -1,5 +1,5 @@
 error: called `map(..).flatten()` on an `Iterator`. This is more succinctly expressed by calling `.flat_map(..)`
-  --> $DIR/map_flatten.rs:7:21
+  --> $DIR/map_flatten.rs:8:21
    |
 LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| 0..x).flatten().collect();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `flat_map` instead: `vec![5_i8; 6].into_iter().flat_map(|x| 0..x)`
@@ -7,7 +7,7 @@ LL |     let _: Vec<_> = vec![5_i8; 6].into_iter().map(|x| 0..x).flatten().colle
    = note: `-D clippy::map-flatten` implied by `-D warnings`
 
 error: called `map(..).flatten()` on an `Option`. This is more succinctly expressed by calling `.and_then(..)`
-  --> $DIR/map_flatten.rs:8:24
+  --> $DIR/map_flatten.rs:9:24
    |
 LL |     let _: Option<_> = (Some(Some(1))).map(|x| x).flatten();
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `and_then` instead: `(Some(Some(1))).and_then(|x| x)`

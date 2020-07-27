@@ -5,9 +5,10 @@ use rustc_ast::ast::{
 use rustc_ast::attr;
 use rustc_ast::visit::{walk_block, walk_expr, walk_pat, Visitor};
 use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{Ident, SymbolStr};
+use rustc_span::symbol::{Ident, Symbol};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -74,10 +75,10 @@ pub struct NonExpressiveNames {
 impl_lint_pass!(NonExpressiveNames => [SIMILAR_NAMES, MANY_SINGLE_CHAR_NAMES, JUST_UNDERSCORES_AND_DIGITS]);
 
 struct ExistingName {
-    interned: SymbolStr,
+    interned: Symbol,
     span: Span,
     len: usize,
-    whitelist: &'static [&'static str],
+    exemptions: &'static [&'static str],
 }
 
 struct SimilarNamesLocalVisitor<'a, 'tcx> {
@@ -116,7 +117,7 @@ impl<'a, 'tcx> SimilarNamesLocalVisitor<'a, 'tcx> {
 // this list contains lists of names that are allowed to be similar
 // the assumption is that no name is ever contained in multiple lists.
 #[rustfmt::skip]
-const WHITELIST: &[&[&str]] = &[
+const ALLOWED_TO_BE_SIMILAR: &[&[&str]] = &[
     &["parsed", "parser"],
     &["lhs", "rhs"],
     &["tx", "rx"],
@@ -131,7 +132,11 @@ struct SimilarNamesNameVisitor<'a, 'tcx, 'b>(&'b mut SimilarNamesLocalVisitor<'a
 impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
     fn visit_pat(&mut self, pat: &'tcx Pat) {
         match pat.kind {
-            PatKind::Ident(_, ident, _) => self.check_ident(ident),
+            PatKind::Ident(_, ident, _) => {
+                if !pat.span.from_expansion() {
+                    self.check_ident(ident);
+                }
+            },
             PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
                     if !field.is_shorthand {
@@ -151,17 +156,17 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
 }
 
 #[must_use]
-fn get_whitelist(interned_name: &str) -> Option<&'static [&'static str]> {
-    for &allow in WHITELIST {
-        if whitelisted(interned_name, allow) {
-            return Some(allow);
+fn get_exemptions(interned_name: &str) -> Option<&'static [&'static str]> {
+    for &list in ALLOWED_TO_BE_SIMILAR {
+        if allowed_to_be_similar(interned_name, list) {
+            return Some(list);
         }
     }
     None
 }
 
 #[must_use]
-fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
+fn allowed_to_be_similar(interned_name: &str, list: &[&str]) -> bool {
     list.iter()
         .any(|&name| interned_name.starts_with(name) || interned_name.ends_with(name))
 }
@@ -207,24 +212,29 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             return;
         }
         for existing_name in &self.0.names {
-            if whitelisted(&interned_name, existing_name.whitelist) {
+            if allowed_to_be_similar(&interned_name, existing_name.exemptions) {
                 continue;
             }
             let mut split_at = None;
             match existing_name.len.cmp(&count) {
                 Ordering::Greater => {
-                    if existing_name.len - count != 1 || levenstein_not_1(&interned_name, &existing_name.interned) {
+                    if existing_name.len - count != 1
+                        || levenstein_not_1(&interned_name, &existing_name.interned.as_str())
+                    {
                         continue;
                     }
                 },
                 Ordering::Less => {
-                    if count - existing_name.len != 1 || levenstein_not_1(&existing_name.interned, &interned_name) {
+                    if count - existing_name.len != 1
+                        || levenstein_not_1(&existing_name.interned.as_str(), &interned_name)
+                    {
                         continue;
                     }
                 },
                 Ordering::Equal => {
                     let mut interned_chars = interned_name.chars();
-                    let mut existing_chars = existing_name.interned.chars();
+                    let interned_str = existing_name.interned.as_str();
+                    let mut existing_chars = interned_str.chars();
                     let first_i = interned_chars.next().expect("we know we have at least one char");
                     let first_e = existing_chars.next().expect("we know we have at least one char");
                     let eq_or_numeric = |(a, b): (char, char)| a == b || a.is_numeric() && b.is_numeric();
@@ -296,8 +306,8 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             return;
         }
         self.0.names.push(ExistingName {
-            whitelist: get_whitelist(&interned_name).unwrap_or(&[]),
-            interned: interned_name,
+            exemptions: get_exemptions(&interned_name).unwrap_or(&[]),
+            interned: ident.name,
             span: ident.span,
             len: count,
         });
@@ -354,12 +364,20 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
 
 impl EarlyLintPass for NonExpressiveNames {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
+        if in_external_macro(cx.sess, item.span) {
+            return;
+        }
+
         if let ItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
 
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, item: &AssocItem) {
+        if in_external_macro(cx.sess, item.span) {
+            return;
+        }
+
         if let AssocItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }

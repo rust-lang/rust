@@ -15,7 +15,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{SymbolName, TyCtxt};
-use rustc_session::config::{CrateType, Sanitizer};
+use rustc_session::config::{CrateType, SanitizerSet};
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types())
@@ -89,10 +89,12 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
                 | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) => {
                     let def_id = tcx.hir().local_def_id(hir_id);
                     let generics = tcx.generics_of(def_id);
-                    if !generics.requires_monomorphization(tcx) &&
-                        // Functions marked with #[inline] are only ever codegened
-                        // with "internal" linkage and are never exported.
-                        !Instance::mono(tcx, def_id.to_def_id()).def.generates_cgu_internal_copy(tcx)
+                    if !generics.requires_monomorphization(tcx)
+                        // Functions marked with #[inline] are codegened with "internal"
+                        // linkage and are not exported unless marked with an extern
+                        // inidicator
+                        && (!Instance::mono(tcx, def_id.to_def_id()).def.generates_cgu_internal_copy(tcx)
+                            || tcx.codegen_fn_attrs(def_id.to_def_id()).contains_extern_indicator())
                     {
                         Some(def_id)
                     } else {
@@ -105,7 +107,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
         })
         .map(|def_id| {
             let export_level = if special_runtime_crate {
-                let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name.as_str();
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())).name;
                 // We can probably do better here by just ensuring that
                 // it has hidden visibility rather than public
                 // visibility, as this is primarily here to ensure it's
@@ -113,13 +115,12 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
                 //
                 // In general though we won't link right if these
                 // symbols are stripped, and LTO currently strips them.
-                if name == "rust_eh_personality"
-                    || name == "rust_eh_register_frames"
-                    || name == "rust_eh_unregister_frames"
-                {
-                    SymbolExportLevel::C
-                } else {
-                    SymbolExportLevel::Rust
+                match name {
+                    "rust_eh_personality"
+                    | "rust_eh_register_frames"
+                    | "rust_eh_unregister_frames" =>
+                        SymbolExportLevel::C,
+                    _ => SymbolExportLevel::Rust,
                 }
             } else {
                 symbol_export_level(tcx, def_id.to_def_id())
@@ -159,9 +160,9 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
 }
 
 fn exported_symbols_provider_local(
-    tcx: TyCtxt<'_>,
+    tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
-) -> &'tcx [(ExportedSymbol<'_>, SymbolExportLevel)] {
+) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
@@ -175,7 +176,7 @@ fn exported_symbols_provider_local(
         .collect();
 
     if tcx.entry_fn(LOCAL_CRATE).is_some() {
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new("main"));
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, "main"));
 
         symbols.push((exported_symbol, SymbolExportLevel::C));
     }
@@ -183,7 +184,7 @@ fn exported_symbols_provider_local(
     if tcx.allocator_kind().is_some() {
         for method in ALLOCATOR_METHODS {
             let symbol_name = format!("__rust_{}", method.name);
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
             symbols.push((exported_symbol, SymbolExportLevel::Rust));
         }
@@ -197,24 +198,35 @@ fn exported_symbols_provider_local(
             ["__llvm_profile_raw_version", "__llvm_profile_filename"];
 
         symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (exported_symbol, SymbolExportLevel::C)
         }));
     }
 
-    if let Some(Sanitizer::Memory) = tcx.sess.opts.debugging_opts.sanitizer {
+    if tcx.sess.opts.debugging_opts.instrument_coverage {
+        // Similar to PGO profiling, preserve symbols used by LLVM InstrProf coverage profiling.
+        const COVERAGE_WEAK_SYMBOLS: [&str; 3] =
+            ["__llvm_profile_filename", "__llvm_coverage_mapping", "__llvm_covmap"];
+
+        symbols.extend(COVERAGE_WEAK_SYMBOLS.iter().map(|sym| {
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
+            (exported_symbol, SymbolExportLevel::C)
+        }));
+    }
+
+    if tcx.sess.opts.debugging_opts.sanitizer.contains(SanitizerSet::MEMORY) {
         // Similar to profiling, preserve weak msan symbol during LTO.
         const MSAN_WEAK_SYMBOLS: [&str; 2] = ["__msan_track_origins", "__msan_keep_going"];
 
         symbols.extend(MSAN_WEAK_SYMBOLS.iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (exported_symbol, SymbolExportLevel::C)
         }));
     }
 
     if tcx.sess.crate_types().contains(&CrateType::Dylib) {
         let symbol_name = metadata_symbol_name(tcx);
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
         symbols.push((exported_symbol, SymbolExportLevel::Rust));
     }
@@ -247,9 +259,9 @@ fn exported_symbols_provider_local(
             }
 
             match *mono_item {
-                MonoItem::Fn(Instance { def: InstanceDef::Item(def_id), substs }) => {
+                MonoItem::Fn(Instance { def: InstanceDef::Item(def), substs }) => {
                     if substs.non_erasable_generics().next().is_some() {
-                        let symbol = ExportedSymbol::Generic(def_id, substs);
+                        let symbol = ExportedSymbol::Generic(def.did, substs);
                         symbols.push((symbol, SymbolExportLevel::Rust));
                     }
                 }
@@ -364,7 +376,7 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> b
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
+pub fn provide(providers: &mut Providers) {
     providers.reachable_non_generics = reachable_non_generics_provider;
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_local;
     providers.exported_symbols = exported_symbols_provider_local;
@@ -373,7 +385,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.upstream_drop_glue_for = upstream_drop_glue_for_provider;
 }
 
-pub fn provide_extern(providers: &mut Providers<'_>) {
+pub fn provide_extern(providers: &mut Providers) {
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
 }

@@ -20,9 +20,28 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// struct Foo(i32);
+    ///
+    /// // Bad
     /// impl From<String> for Foo {
     ///     fn from(s: String) -> Self {
     ///         Foo(s.parse().unwrap())
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// ```rust
+    /// // Good
+    /// struct Foo(i32);
+    ///
+    /// use std::convert::TryFrom;
+    /// impl TryFrom<String> for Foo {
+    ///     type Error = ();
+    ///     fn try_from(s: String) -> Result<Self, Self::Error> {
+    ///         if let Ok(parsed) = s.parse() {
+    ///             Ok(Foo(parsed))
+    ///         } else {
+    ///             Err(())
+    ///         }
     ///     }
     /// }
     /// ```
@@ -33,8 +52,8 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FallibleImplFrom => [FALLIBLE_IMPL_FROM]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
-    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item<'_>) {
+impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         // check for `impl From<???> for ..`
         let impl_def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if_chain! {
@@ -48,13 +67,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
     }
 }
 
-fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef<'_>]) {
+fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef<'_>]) {
     use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
     use rustc_hir::{Expr, ExprKind, ImplItemKind, QPath};
 
     struct FindPanicUnwrap<'a, 'tcx> {
-        lcx: &'a LateContext<'a, 'tcx>,
-        tables: &'tcx ty::TypeckTables<'tcx>,
+        lcx: &'a LateContext<'tcx>,
+        typeck_results: &'tcx ty::TypeckResults<'tcx>,
         result: Vec<Span>,
     }
 
@@ -77,7 +96,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
 
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-                let reciever_ty = walk_ptrs_ty(self.tables.expr_ty(&arglists[0][0]));
+                let reciever_ty = walk_ptrs_ty(self.typeck_results.expr_ty(&arglists[0][0]));
                 if is_type_diagnostic_item(self.lcx, reciever_ty, sym!(option_type))
                     || is_type_diagnostic_item(self.lcx, reciever_ty, sym!(result_type))
                 {
@@ -105,7 +124,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                 let impl_item_def_id = cx.tcx.hir().local_def_id(impl_item.id.hir_id);
                 let mut fpu = FindPanicUnwrap {
                     lcx: cx,
-                    tables: cx.tcx.typeck_tables_of(impl_item_def_id),
+                    typeck_results: cx.tcx.typeck(impl_item_def_id),
                     result: Vec::new(),
                 };
                 fpu.visit_expr(&body.value);
@@ -120,7 +139,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                         move |diag| {
                             diag.help(
                                 "`From` is intended for infallible conversions only. \
-                                 Use `TryFrom` if there's a possibility for the conversion to fail.");
+                                Use `TryFrom` if there's a possibility for the conversion to fail.");
                             diag.span_note(fpu.result, "potential failure(s)");
                         });
                 }

@@ -9,6 +9,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_span::hygiene::ForLoopLoc;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_target::asm;
@@ -39,7 +40,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let f = self.lower_expr(f);
                     hir::ExprKind::Call(f, self.lower_exprs(args))
                 }
-                ExprKind::MethodCall(ref seg, ref args) => {
+                ExprKind::MethodCall(ref seg, ref args, span) => {
                     let hir_seg = self.arena.alloc(self.lower_path_segment(
                         e.span,
                         seg,
@@ -50,7 +51,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         None,
                     ));
                     let args = self.lower_exprs(args);
-                    hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args)
+                    hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args, span)
                 }
                 ExprKind::Binary(binop, ref lhs, ref rhs) => {
                     let binop = self.lower_binop(binop);
@@ -526,7 +527,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Ident::with_dummy_span(sym::_task_context),
             hir::BindingAnnotation::Mutable,
         );
-        let param = hir::Param { attrs: &[], hir_id: self.next_id(), pat, span };
+        let param = hir::Param { attrs: &[], hir_id: self.next_id(), pat, ty_span: span, span };
         let params = arena_vec![self; param];
 
         let body_id = self.lower_body(move |this| {
@@ -974,20 +975,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_expr_asm(&mut self, sp: Span, asm: &InlineAsm) -> hir::ExprKind<'hir> {
-        let asm_arch = if let Some(asm_arch) = self.sess.asm_arch {
-            asm_arch
-        } else {
+        if self.sess.asm_arch.is_none() {
             struct_span_err!(self.sess, sp, E0472, "asm! is unsupported on this target").emit();
-            return hir::ExprKind::Err;
-        };
-        if asm.options.contains(InlineAsmOptions::ATT_SYNTAX) {
-            match asm_arch {
-                asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64 => {}
-                _ => self
-                    .sess
-                    .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
-                    .emit(),
-            }
+        }
+        if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
+            && !matches!(
+                self.sess.asm_arch,
+                Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64)
+            )
+        {
+            self.sess
+                .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
+                .emit();
         }
 
         // Lower operands to HIR, filter_map skips any operands with invalid
@@ -1001,10 +1000,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Some(match reg {
                         InlineAsmRegOrRegClass::Reg(s) => asm::InlineAsmRegOrRegClass::Reg(
                             asm::InlineAsmReg::parse(
-                                asm_arch,
-                                |feature| {
-                                    self.sess.target_features.contains(&Symbol::intern(feature))
-                                },
+                                sess.asm_arch?,
+                                |feature| sess.target_features.contains(&Symbol::intern(feature)),
+                                &sess.target.target,
                                 s,
                             )
                             .map_err(|e| {
@@ -1015,7 +1013,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ),
                         InlineAsmRegOrRegClass::RegClass(s) => {
                             asm::InlineAsmRegOrRegClass::RegClass(
-                                asm::InlineAsmRegClass::parse(asm_arch, s)
+                                asm::InlineAsmRegClass::parse(sess.asm_arch?, s)
                                     .map_err(|e| {
                                         let msg = format!(
                                             "invalid register class `{}`: {}",
@@ -1029,33 +1027,38 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
                     })
                 };
-                let op = match op {
-                    InlineAsmOperand::In { reg, expr } => hir::InlineAsmOperand::In {
-                        reg: lower_reg(*reg)?,
+
+                // lower_reg is executed last because we need to lower all
+                // sub-expressions even if we throw them away later.
+                let op = match *op {
+                    InlineAsmOperand::In { reg, ref expr } => hir::InlineAsmOperand::In {
                         expr: self.lower_expr_mut(expr),
+                        reg: lower_reg(reg)?,
                     },
-                    InlineAsmOperand::Out { reg, late, expr } => hir::InlineAsmOperand::Out {
-                        reg: lower_reg(*reg)?,
-                        late: *late,
+                    InlineAsmOperand::Out { reg, late, ref expr } => hir::InlineAsmOperand::Out {
+                        late,
                         expr: expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                        reg: lower_reg(reg)?,
                     },
-                    InlineAsmOperand::InOut { reg, late, expr } => hir::InlineAsmOperand::InOut {
-                        reg: lower_reg(*reg)?,
-                        late: *late,
-                        expr: self.lower_expr_mut(expr),
-                    },
-                    InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
-                        hir::InlineAsmOperand::SplitInOut {
-                            reg: lower_reg(*reg)?,
-                            late: *late,
-                            in_expr: self.lower_expr_mut(in_expr),
-                            out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                    InlineAsmOperand::InOut { reg, late, ref expr } => {
+                        hir::InlineAsmOperand::InOut {
+                            late,
+                            expr: self.lower_expr_mut(expr),
+                            reg: lower_reg(reg)?,
                         }
                     }
-                    InlineAsmOperand::Const { expr } => {
+                    InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
+                        hir::InlineAsmOperand::SplitInOut {
+                            late,
+                            in_expr: self.lower_expr_mut(in_expr),
+                            out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
+                            reg: lower_reg(reg)?,
+                        }
+                    }
+                    InlineAsmOperand::Const { ref expr } => {
                         hir::InlineAsmOperand::Const { expr: self.lower_expr_mut(expr) }
                     }
-                    InlineAsmOperand::Sym { expr } => {
+                    InlineAsmOperand::Sym { ref expr } => {
                         hir::InlineAsmOperand::Sym { expr: self.lower_expr_mut(expr) }
                     }
                 };
@@ -1069,6 +1072,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         // Validate template modifiers against the register classes for the operands
+        let asm_arch = sess.asm_arch.unwrap();
         for p in &asm.template {
             if let InlineAsmTemplatePiece::Placeholder {
                 operand_idx,
@@ -1235,10 +1239,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                             ) => {
                                                 assert!(!*late);
                                                 let out_op_sp = if input { op_sp2 } else { op_sp };
-                                                let msg = &format!(
-                                                    "use `lateout` instead of \
-                                                     `out` to avoid conflict"
-                                                );
+                                                let msg = "use `lateout` instead of \
+                                                     `out` to avoid conflict";
                                                 err.span_help(out_op_sp, msg);
                                             }
                                             _ => {}
@@ -1265,7 +1267,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let operands = self.arena.alloc_from_iter(operands);
         let template = self.arena.alloc_from_iter(asm.template.iter().cloned());
-        let hir_asm = hir::InlineAsm { template, operands, options: asm.options };
+        let line_spans = self.arena.alloc_slice(&asm.line_spans[..]);
+        let hir_asm = hir::InlineAsm { template, operands, options: asm.options, line_spans };
         hir::ExprKind::InlineAsm(self.arena.alloc(hir_asm))
     }
 
@@ -1359,9 +1362,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Block,
         opt_label: Option<Label>,
     ) -> hir::Expr<'hir> {
+        let orig_head_span = head.span;
         // expand <head>
         let mut head = self.lower_expr_mut(head);
-        let desugared_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
+        let desugared_span = self.mark_span_with_reason(
+            DesugaringKind::ForLoop(ForLoopLoc::Head),
+            orig_head_span,
+            None,
+        );
         head.span = desugared_span;
 
         let iter = Ident::with_dummy_span(sym::iter);
@@ -1456,10 +1464,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
 
+        let into_iter_span = self.mark_span_with_reason(
+            DesugaringKind::ForLoop(ForLoopLoc::IntoIter),
+            orig_head_span,
+            None,
+        );
+
         // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
         let into_iter_expr = {
             let into_iter_path = &[sym::iter, sym::IntoIterator, sym::into_iter];
-            self.expr_call_std_path(desugared_span, into_iter_path, arena_vec![self; head])
+            self.expr_call_std_path(into_iter_span, into_iter_path, arena_vec![self; head])
         };
 
         let match_expr = self.arena.alloc(self.expr_match(

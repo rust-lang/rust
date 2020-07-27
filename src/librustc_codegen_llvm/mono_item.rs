@@ -10,7 +10,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 pub use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::layout::FnAbiExt;
-use rustc_middle::ty::{Instance, TypeFoldable};
+use rustc_middle::ty::{self, Instance, TypeFoldable};
 use rustc_target::abi::LayoutOf;
 
 impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -22,7 +22,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         symbol_name: &str,
     ) {
         let instance = Instance::mono(self.tcx, def_id);
-        let ty = instance.monomorphic_ty(self.tcx);
+        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
         let llty = self.layout_of(ty).llvm_type(self);
 
         let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {
@@ -47,7 +47,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         visibility: Visibility,
         symbol_name: &str,
     ) {
-        assert!(!instance.substs.needs_infer() && !instance.substs.has_param_types_or_consts());
+        assert!(!instance.substs.needs_infer());
 
         let fn_abi = FnAbi::of_instance(self, instance, &[]);
         let lldecl = self.declare_fn(symbol_name, &fn_abi);

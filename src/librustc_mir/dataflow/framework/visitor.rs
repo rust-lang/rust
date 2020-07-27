@@ -16,7 +16,13 @@ pub fn visit_results<F, V>(
 {
     let mut state = results.new_flow_state(body);
 
+    #[cfg(debug_assertions)]
+    let reachable_blocks = mir::traversal::reachable_as_bitset(body);
+
     for block in blocks {
+        #[cfg(debug_assertions)]
+        assert!(reachable_blocks.contains(block));
+
         let block_data = &body[block];
         V::Direction::visit_results_in_block(&mut state, block, block_data, results, vis);
     }

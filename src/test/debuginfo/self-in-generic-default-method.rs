@@ -63,7 +63,7 @@
 
 // STACK BY REF
 // lldb-command:print *self
-// lldbg-check:[...]$0 = Struct { x: 987 }
+// lldbg-check:[...]$0 = { x = 987 }
 // lldbr-check:(self_in_generic_default_method::Struct) *self = Struct { x: 987 }
 // lldb-command:print arg1
 // lldbg-check:[...]$1 = -1
@@ -75,7 +75,7 @@
 
 // STACK BY VAL
 // lldb-command:print self
-// lldbg-check:[...]$3 = Struct { x: 987 }
+// lldbg-check:[...]$3 = { x = 987 }
 // lldbr-check:(self_in_generic_default_method::Struct) self = Struct { x: 987 }
 // lldb-command:print arg1
 // lldbg-check:[...]$4 = -3
@@ -87,7 +87,7 @@
 
 // OWNED BY REF
 // lldb-command:print *self
-// lldbg-check:[...]$6 = Struct { x: 879 }
+// lldbg-check:[...]$6 = { x = 879 }
 // lldbr-check:(self_in_generic_default_method::Struct) *self = Struct { x: 879 }
 // lldb-command:print arg1
 // lldbg-check:[...]$7 = -5
@@ -99,7 +99,7 @@
 
 // OWNED BY VAL
 // lldb-command:print self
-// lldbg-check:[...]$9 = Struct { x: 879 }
+// lldbg-check:[...]$9 = { x = 879 }
 // lldbr-check:(self_in_generic_default_method::Struct) self = Struct { x: 879 }
 // lldb-command:print arg1
 // lldbg-check:[...]$10 = -7
@@ -111,7 +111,7 @@
 
 // OWNED MOVED
 // lldb-command:print *self
-// lldbg-check:[...]$12 = Struct { x: 879 }
+// lldbg-check:[...]$12 = { x = 879 }
 // lldbr-check:(self_in_generic_default_method::Struct) *self = Struct { x: 879 }
 // lldb-command:print arg1
 // lldbg-check:[...]$13 = -9

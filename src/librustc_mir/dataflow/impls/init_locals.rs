@@ -33,9 +33,6 @@ impl dataflow::AnalysisDomain<'tcx> for MaybeInitializedLocals {
 }
 
 impl dataflow::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
-    // The generator transform relies on the fact that this analysis does **not** use "before"
-    // effects.
-
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,

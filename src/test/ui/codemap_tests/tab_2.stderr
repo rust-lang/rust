@@ -1,4 +1,4 @@
-error: unterminated double quote string
+error[E0765]: unterminated double quote string
   --> $DIR/tab_2.rs:4:7
    |
 LL |                   """;
@@ -8,3 +8,4 @@ LL | | }
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0765`.

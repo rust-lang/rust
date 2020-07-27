@@ -13,7 +13,7 @@ fn main() {
         asm!("{}" foo);
         //~^ ERROR expected token: `,`
         asm!("{}", foo);
-        //~^ ERROR expected one of
+        //~^ ERROR expected operand, options, or additional template string
         asm!("{}", in foo);
         //~^ ERROR expected `(`, found `foo`
         asm!("{}", in(reg foo));
@@ -34,11 +34,6 @@ fn main() {
         //~^ ERROR expected one of
         asm!("", options(nomem, foo));
         //~^ ERROR expected one of
-        asm!("", options(), options());
-        //~^ ERROR asm options cannot be specified multiple times
-        asm!("", options(), options(), options());
-        //~^ ERROR asm options cannot be specified multiple times
-        //~^^ ERROR asm options cannot be specified multiple times
         asm!("{}", options(), const foo);
         //~^ ERROR arguments are not allowed after options
         asm!("{a}", a = const foo, a = const bar);
@@ -52,5 +47,13 @@ fn main() {
         //~^ ERROR named arguments cannot follow explicit register arguments
         asm!("{1}", in("eax") foo, const bar);
         //~^ ERROR positional arguments cannot follow named arguments or explicit register arguments
+        asm!("", options(), "");
+        //~^ ERROR expected one of
+        asm!("{}", in(reg) foo, "{}", out(reg) foo);
+        //~^ ERROR expected one of
+        asm!(format!("{{{}}}", 0), in(reg) foo);
+        //~^ ERROR asm template must be a string literal
+        asm!("{1}", format!("{{{}}}", 0), in(reg) foo, out(reg) bar);
+        //~^ ERROR asm template must be a string literal
     }
 }

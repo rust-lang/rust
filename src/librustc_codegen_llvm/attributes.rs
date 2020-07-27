@@ -11,7 +11,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::{OptLevel, Sanitizer};
+use rustc_session::config::{OptLevel, SanitizerSet};
 use rustc_session::Session;
 
 use crate::attributes;
@@ -45,26 +45,16 @@ fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
 
 /// Apply LLVM sanitize attributes.
 #[inline]
-pub fn sanitize(cx: &CodegenCx<'ll, '_>, codegen_fn_flags: CodegenFnAttrFlags, llfn: &'ll Value) {
-    if let Some(ref sanitizer) = cx.tcx.sess.opts.debugging_opts.sanitizer {
-        match *sanitizer {
-            Sanitizer::Address => {
-                if !codegen_fn_flags.contains(CodegenFnAttrFlags::NO_SANITIZE_ADDRESS) {
-                    llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
-                }
-            }
-            Sanitizer::Memory => {
-                if !codegen_fn_flags.contains(CodegenFnAttrFlags::NO_SANITIZE_MEMORY) {
-                    llvm::Attribute::SanitizeMemory.apply_llfn(Function, llfn);
-                }
-            }
-            Sanitizer::Thread => {
-                if !codegen_fn_flags.contains(CodegenFnAttrFlags::NO_SANITIZE_THREAD) {
-                    llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
-                }
-            }
-            Sanitizer::Leak => {}
-        }
+pub fn sanitize(cx: &CodegenCx<'ll, '_>, no_sanitize: SanitizerSet, llfn: &'ll Value) {
+    let enabled = cx.tcx.sess.opts.debugging_opts.sanitizer - no_sanitize;
+    if enabled.contains(SanitizerSet::ADDRESS) {
+        llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
+    }
+    if enabled.contains(SanitizerSet::MEMORY) {
+        llvm::Attribute::SanitizeMemory.apply_llfn(Function, llfn);
+    }
+    if enabled.contains(SanitizerSet::THREAD) {
+        llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
     }
 }
 
@@ -123,9 +113,14 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
-    match cx.sess().opts.debugging_opts.sanitizer {
-        Some(Sanitizer::Address | Sanitizer::Thread) => return,
-        _ => {}
+    if cx
+        .sess()
+        .opts
+        .debugging_opts
+        .sanitizer
+        .intersects(SanitizerSet::ADDRESS | SanitizerSet::THREAD)
+    {
+        return;
     }
 
     // probestack doesn't play nice either with `-C profile-generate`.
@@ -137,6 +132,9 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().opts.debugging_opts.profile {
         return;
     }
+
+    // FIXME(richkadel): Make sure probestack plays nice with `-Z instrument-coverage`
+    // or disable it if not, similar to above early exits.
 
     // Flag our internal `__rust_probestack` function as the stack probe symbol.
     // This is defined in the `compiler-builtins` crate for each architecture.
@@ -268,7 +266,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // Windows we end up still needing the `uwtable` attribute even if the `-C
     // panic=abort` flag is passed.
     //
-    // You can also find more info on why Windows is whitelisted here in:
+    // You can also find more info on why Windows always requires uwtables here:
     //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
     if cx.sess().must_emit_unwind_tables() {
         attributes::emit_uwtable(llfn, true);
@@ -296,7 +294,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR) {
         Attribute::NoAlias.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
     }
-    sanitize(cx, codegen_fn_attrs.flags, llfn);
+    sanitize(cx, codegen_fn_attrs.no_sanitize, llfn);
 
     // Always annotate functions with the target-cpu they are compiled for.
     // Without this, ThinLTO won't inline Rust functions into Clang generated
@@ -347,15 +345,15 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     }
 }
 
-pub fn provide(providers: &mut Providers<'_>) {
-    providers.target_features_whitelist = |tcx, cnum| {
+pub fn provide(providers: &mut Providers) {
+    providers.supported_target_features = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         if tcx.sess.opts.actually_rustdoc {
             // rustdoc needs to be able to document functions that use all the features, so
-            // whitelist them all
+            // provide them all.
             llvm_util::all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
         } else {
-            llvm_util::target_feature_whitelist(tcx.sess)
+            llvm_util::supported_target_features(tcx.sess)
                 .iter()
                 .map(|&(a, b)| (a.to_string(), b))
                 .collect()
@@ -365,7 +363,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     provide_extern(providers);
 }
 
-pub fn provide_extern(providers: &mut Providers<'_>) {
+pub fn provide_extern(providers: &mut Providers) {
     providers.wasm_import_module_map = |tcx, cnum| {
         // Build up a map from DefId to a `NativeLib` structure, where
         // `NativeLib` internally contains information about

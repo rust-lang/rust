@@ -112,12 +112,8 @@ declare_lint_pass!(Formatting => [
 impl EarlyLintPass for Formatting {
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &Block) {
         for w in block.stmts.windows(2) {
-            match (&w[0].kind, &w[1].kind) {
-                (&StmtKind::Expr(ref first), &StmtKind::Expr(ref second))
-                | (&StmtKind::Expr(ref first), &StmtKind::Semi(ref second)) => {
-                    check_missing_else(cx, first, second);
-                },
-                _ => (),
+            if let (StmtKind::Expr(first), StmtKind::Expr(second) | StmtKind::Semi(second)) = (&w[0].kind, &w[1].kind) {
+                check_missing_else(cx, first, second);
             }
         }
     }
@@ -309,18 +305,10 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
 }
 
 fn is_block(expr: &Expr) -> bool {
-    if let ExprKind::Block(..) = expr.kind {
-        true
-    } else {
-        false
-    }
+    matches!(expr.kind, ExprKind::Block(..))
 }
 
 /// Check if the expression is an `if` or `if let`
 fn is_if(expr: &Expr) -> bool {
-    if let ExprKind::If(..) = expr.kind {
-        true
-    } else {
-        false
-    }
+    matches!(expr.kind, ExprKind::If(..))
 }

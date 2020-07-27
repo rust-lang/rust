@@ -12,14 +12,16 @@ anything, feel free to ask questions on issues or visit the `#clippy` on [Discor
 
 All contributors are expected to follow the [Rust Code of Conduct].
 
-* [Getting started](#getting-started)
-  * [Finding something to fix/improve](#finding-something-to-fiximprove)
-* [Writing code](#writing-code)
-* [How Clippy works](#how-clippy-works)
-* [Fixing nightly build failures](#fixing-build-failures-caused-by-rust)
-* [Issue and PR Triage](#issue-and-pr-triage)
-* [Bors and Homu](#bors-and-homu)
-* [Contributions](#contributions)
+- [Contributing to Clippy](#contributing-to-clippy)
+  - [Getting started](#getting-started)
+    - [Finding something to fix/improve](#finding-something-to-fiximprove)
+  - [Writing code](#writing-code)
+  - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
+  - [How Clippy works](#how-clippy-works)
+  - [Fixing build failures caused by Rust](#fixing-build-failures-caused-by-rust)
+  - [Issue and PR triage](#issue-and-pr-triage)
+  - [Bors and Homu](#bors-and-homu)
+  - [Contributions](#contributions)
 
 [Discord]: https://discord.gg/rust-lang
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
@@ -91,6 +93,24 @@ quick read.
 [rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
 [rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
 
+## Getting code-completion for rustc internals to work
+
+Unfortunately, [`rust-analyzer`][ra_homepage] does not (yet?) understand how Clippy uses compiler-internals 
+using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not 
+available via a `rustup` component at the time of writing.  
+To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via  
+`git clone https://github.com/rust-lang/rust/`.  
+Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies 
+which rust-analyzer will be able to understand.  
+Run `cargo dev ra-setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo 
+you just cloned.  
+The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to 
+Clippys `Cargo.toml`s and should allow rust-analyzer to understand most of the types that Clippy uses.
+Just make sure to remove the dependencies again before finally making a pull request!
+
+[ra_homepage]: https://rust-analyzer.github.io/
+[rustc_repo]: https://github.com/rust-lang/rust/
+
 ## How Clippy works
 
 [`clippy_lints/src/lib.rs`][lint_crate_entry] imports all the different lint modules and registers in the [`LintStore`].
@@ -155,47 +175,77 @@ That's why the `else_if_without_else` example uses the `register_early_pass` fun
 
 ## Fixing build failures caused by Rust
 
-Clippy will sometimes fail to build from source because building it depends on unstable internal Rust features. Most of
-the times we have to adapt to the changes and only very rarely there's an actual bug in Rust. Fixing build failures
-caused by Rust updates, can be a good way to learn about Rust internals.
+Clippy currently gets built with `rustc` of the `rust-lang/rust` `master`
+branch. Most of the times we have to adapt to the changes and only very rarely
+there's an actual bug in Rust.
 
-In order to find out why Clippy does not work properly with a new Rust commit, you can use the [rust-toolstate commit
-history][toolstate_commit_history]. You will then have to look for the last commit that contains
-`test-pass -> build-fail` or `test-pass -> test-fail` for the `clippy-driver` component.
-[Here][toolstate_commit] is an example.
+If you decide to make Clippy work again with a Rust commit that breaks it, you
+have to sync the `rust-lang/rust-clippy` repository with the `subtree` copy of
+Clippy in the `rust-lang/rust` repository.
 
-The commit message contains a link to the PR. The PRs are usually small enough to discover the breaking API change and
-if they are bigger, they likely include some discussion that may help you to fix Clippy.
+For general information about `subtree`s in the Rust repository see [Rust's
+`CONTRIBUTING.md`][subtree].
 
-To check if Clippy is available for a specific target platform, you can check
-the [rustup component history][rustup_component_history].
+Here is a TL;DR version of the sync process (all of the following commands have
+to be run inside the `rust` directory):
 
-If you decide to make Clippy work again with a Rust commit that breaks it,
-you probably want to install the latest Rust from master locally and run Clippy
-using that version of Rust.
+1. Clone the [`rust-lang/rust`] repository
+2. Sync the changes to the rust-copy of Clippy to your Clippy fork:
+    ```bash
+    # Make sure to change `your-github-name` to your github name in the following command
+    git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
+    ```
+    _Note:_ This will directly push to the remote repository. You can also push
+    to your local copy by replacing the remote address with `/path/to/rust-clippy`
+    directory.
 
-You can set up the master toolchain by running `./setup-toolchain.sh`. That script will install
-[rustup-toolchain-install-master][rtim] and master toolchain, then run `rustup override set master`.
+    _Note:_ Most of the time you have to create a merge commit in the
+    `rust-clippy` repo (this has to be done in the Clippy repo, not in the
+    rust-copy of Clippy):
+    ```bash
+    git fetch origin && git fetch upstream
+    git checkout sync-from-rust
+    git merge upstream/master
+    ```
+3. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
+   accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
+   ~~annoy~~ ask them in the [Discord] channel.)
+4. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
+    ```bash
+    git checkout -b sync-from-clippy
+    git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy master
+    ```
+5. Open a PR to [`rust-lang/rust`]
 
-After fixing the build failure on this repository, we can submit a pull request
-to [`rust-lang/rust`] to fix the toolstate.
-
-To submit a pull request, you should follow these steps:
+Also, you may want to define remotes, so you don't have to type out the remote
+addresses on every sync. You can do this with the following commands (these
+commands still have to be run inside the `rust` directory):
 
 ```bash
-# Assuming you already cloned the rust-lang/rust repo and you're in the correct directory
-git submodule update --remote src/tools/clippy
-cargo update -p clippy
-git add -u
-git commit -m "Update Clippy"
-./x.py test -i --stage 1 src/tools/clippy # This is optional and should succeed anyway
-# Open a PR in rust-lang/rust
+# Set clippy-upstream remote for pulls
+$ git remote add clippy-upstream https://github.com/rust-lang/rust-clippy
+# Make sure to not push to the upstream repo
+$ git remote set-url --push clippy-upstream DISABLED
+# Set clippy-origin remote to your fork for pushes
+$ git remote add clippy-origin git@github.com:your-github-name/rust-clippy
+# Set a local remote
+$ git remote add clippy-local /path/to/rust-clippy
 ```
 
-[rustup_component_history]: https://rust-lang.github.io/rustup-components-history
-[toolstate_commit_history]: https://github.com/rust-lang-nursery/rust-toolstate/commits/master
-[toolstate_commit]: https://github.com/rust-lang-nursery/rust-toolstate/commit/aad74d8294e198a7cf8ac81a91aebb7f3bbcf727
-[rtim]: https://github.com/kennytm/rustup-toolchain-install-master
+You can then sync with the remote names from above, e.g.:
+
+```bash
+$ git subtree push -P src/tools/clippy clippy-local sync-from-rust
+```
+
+_Note:_ The first time running `git subtree push` a cache has to be built. This
+involves going through the complete Clippy history once. For this you have to
+increase the stack limit though, which you can do with `ulimit -s 60000`. For
+this to work, you will need the fix of `git subtree` available
+[here][gitgitgadget-pr].
+
+[gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
+[subtree]: https://rustc-dev-guide.rust-lang.org/contributing.html#external-dependencies-subtree
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
 
 ## Issue and PR triage

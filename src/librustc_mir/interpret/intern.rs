@@ -111,7 +111,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     if let InternMode::Static(mutability) = mode {
         // For this, we need to take into account `UnsafeCell`. When `ty` is `None`, we assume
         // no interior mutability.
-        let frozen = ty.map_or(true, |ty| ty.is_freeze(ecx.tcx.tcx, ecx.param_env, ecx.tcx.span));
+        let frozen = ty.map_or(true, |ty| ty.is_freeze(ecx.tcx, ecx.param_env));
         // For statics, allocation mutability is the combination of the place mutability and
         // the type mutability.
         // The entire allocation needs to be mutable if it contains an `UnsafeCell` anywhere.
@@ -253,8 +253,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx>> ValueVisitor<'mir
                         // caused (by somehow getting a mutable reference in a `const`).
                         if ref_mutability == Mutability::Mut {
                             match referenced_ty.kind {
-                                ty::Array(_, n)
-                                    if n.eval_usize(tcx.tcx, self.ecx.param_env) == 0 => {}
+                                ty::Array(_, n) if n.eval_usize(*tcx, self.ecx.param_env) == 0 => {}
                                 ty::Slice(_)
                                     if mplace.meta.unwrap_meta().to_machine_usize(self.ecx)?
                                         == 0 => {}
@@ -294,7 +293,6 @@ pub enum InternKind {
     Static(hir::Mutability),
     Constant,
     Promoted,
-    ConstProp,
 }
 
 /// Intern `ret` and everything it references.
@@ -315,9 +313,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     let base_intern_mode = match intern_kind {
         InternKind::Static(mutbl) => InternMode::Static(mutbl),
         // FIXME: what about array lengths, array initializers?
-        InternKind::Constant | InternKind::ConstProp | InternKind::Promoted => {
-            InternMode::ConstBase
-        }
+        InternKind::Constant | InternKind::Promoted => InternMode::ConstBase,
     };
 
     // Type based interning.
@@ -359,7 +355,10 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
             Err(error) => {
                 ecx.tcx.sess.delay_span_bug(
                     ecx.tcx.span,
-                    "error during interning should later cause validation failure",
+                    &format!(
+                        "error during interning should later cause validation failure: {}",
+                        error
+                    ),
                 );
                 // Some errors shouldn't come up because creating them causes
                 // an allocation, which we should avoid. When that happens,
@@ -400,7 +399,7 @@ pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
                     // immutability is so important.
                     alloc.mutability = Mutability::Not;
                 }
-                InternKind::Constant | InternKind::ConstProp => {
+                InternKind::Constant => {
                     // If it's a constant, we should not have any "leftovers" as everything
                     // is tracked by const-checking.
                     // FIXME: downgrade this to a warning? It rejects some legitimate consts,

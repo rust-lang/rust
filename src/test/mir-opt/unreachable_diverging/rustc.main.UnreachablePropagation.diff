@@ -38,7 +38,7 @@
   
       bb1: {
           _3 = discriminant(_2);           // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
-          switchInt(move _3) -> [1isize: bb3, otherwise: bb2]; // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
+          switchInt(move _3) -> [1_isize: bb3, otherwise: bb2]; // scope 1 at $DIR/unreachable_diverging.rs:14:12: 14:22
       }
   
       bb2: {

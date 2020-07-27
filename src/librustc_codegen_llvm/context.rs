@@ -1,5 +1,6 @@
 use crate::attributes;
 use crate::callee::get_fn;
+use crate::coverageinfo;
 use crate::debuginfo;
 use crate::llvm;
 use crate::llvm_util;
@@ -77,6 +78,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: &'ll Type,
 
+    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'tcx>>,
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
@@ -186,14 +188,19 @@ pub unsafe fn create_module(
         llvm::LLVMRustAddModuleFlag(llmod, avoid_plt, 1);
     }
 
-    // Set module flags to enable Windows Control Flow Guard (/guard:cf) metadata
-    // only (`cfguard=1`) or metadata and checks (`cfguard=2`).
-    match sess.opts.debugging_opts.control_flow_guard {
-        CFGuard::Disabled => {}
-        CFGuard::NoChecks => {
-            llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 1)
+    // Control Flow Guard is currently only supported by the MSVC linker on Windows.
+    if sess.target.target.options.is_like_msvc {
+        match sess.opts.cg.control_flow_guard {
+            CFGuard::Disabled => {}
+            CFGuard::NoChecks => {
+                // Set `cfguard=1` module flag to emit metadata only.
+                llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 1)
+            }
+            CFGuard::Checks => {
+                // Set `cfguard=2` module flag to emit metadata and checks.
+                llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 2)
+            }
         }
-        CFGuard::Checks => llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 2),
     }
 
     llmod
@@ -256,6 +263,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
+        let coverage_cx = if tcx.sess.opts.debugging_opts.instrument_coverage {
+            let covctx = coverageinfo::CrateCoverageContext::new();
+            Some(covctx)
+        } else {
+            None
+        };
+
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CrateDebugContext::new(llmod);
             debuginfo::metadata::compile_unit_metadata(tcx, &codegen_unit.name().as_str(), &dctx);
@@ -285,6 +299,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             scalar_lltypes: Default::default(),
             pointee_infos: Default::default(),
             isize_ty,
+            coverage_cx,
             dbg_cx,
             eh_personality: Cell::new(None),
             rust_try_fn: Cell::new(None),
@@ -295,6 +310,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
     crate fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
         &self.statics_to_rauw
+    }
+
+    #[inline]
+    pub fn coverage_context(&'a self) -> &'a coverageinfo::CrateCoverageContext<'tcx> {
+        self.coverage_cx.as_ref().unwrap()
     }
 }
 
@@ -481,6 +501,23 @@ impl CodegenCx<'b, 'tcx> {
             t_v4f64: t_f64, 4;
             t_v8f64: t_f64, 8;
         }
+
+        ifn!("llvm.wasm.trunc.saturate.unsigned.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.wasm.trunc.saturate.unsigned.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.wasm.trunc.saturate.unsigned.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.wasm.trunc.saturate.unsigned.i64.f64", fn(t_f64) -> t_i64);
+        ifn!("llvm.wasm.trunc.saturate.signed.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.wasm.trunc.saturate.signed.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.wasm.trunc.saturate.signed.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.wasm.trunc.saturate.signed.i64.f64", fn(t_f64) -> t_i64);
+        ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.wasm.trunc.unsigned.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.wasm.trunc.unsigned.i64.f64", fn(t_f64) -> t_i64);
+        ifn!("llvm.wasm.trunc.signed.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.wasm.trunc.signed.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.wasm.trunc.signed.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.wasm.trunc.signed.i64.f64", fn(t_f64) -> t_i64);
 
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);
@@ -762,6 +799,10 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.va_start", fn(i8p) -> void);
         ifn!("llvm.va_end", fn(i8p) -> void);
         ifn!("llvm.va_copy", fn(i8p, i8p) -> void);
+
+        if self.sess().opts.debugging_opts.instrument_coverage {
+            ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
+        }
 
         if self.sess().opts.debuginfo != DebugInfo::None {
             ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);

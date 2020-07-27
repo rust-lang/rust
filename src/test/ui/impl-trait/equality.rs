@@ -1,4 +1,4 @@
-#![feature(specialization)]
+#![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
 trait Foo: Copy + ToString {}
 

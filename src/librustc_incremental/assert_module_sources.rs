@@ -62,11 +62,11 @@ impl AssertModuleSource<'tcx> {
         } else if attr.check_name(sym::rustc_partition_codegened) {
             (CguReuse::No, ComparisonKind::Exact)
         } else if attr.check_name(sym::rustc_expected_cgu_reuse) {
-            match &*self.field(attr, sym::kind).as_str() {
-                "no" => (CguReuse::No, ComparisonKind::Exact),
-                "pre-lto" => (CguReuse::PreLto, ComparisonKind::Exact),
-                "post-lto" => (CguReuse::PostLto, ComparisonKind::Exact),
-                "any" => (CguReuse::PreLto, ComparisonKind::AtLeast),
+            match self.field(attr, sym::kind) {
+                sym::no => (CguReuse::No, ComparisonKind::Exact),
+                sym::pre_dash_lto => (CguReuse::PreLto, ComparisonKind::Exact),
+                sym::post_dash_lto => (CguReuse::PostLto, ComparisonKind::Exact),
+                sym::any => (CguReuse::PreLto, ComparisonKind::AtLeast),
                 other => {
                     self.tcx.sess.span_fatal(
                         attr.span,
@@ -139,7 +139,7 @@ impl AssertModuleSource<'tcx> {
         }
 
         self.tcx.sess.cgu_reuse_tracker.set_expectation(
-            &cgu_name.as_str(),
+            cgu_name,
             &user_path,
             attr.span,
             expected_reuse,

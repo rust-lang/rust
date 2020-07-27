@@ -1,13 +1,16 @@
 #[doc(include = "panic.md")]
 #[macro_export]
-#[allow_internal_unstable(core_panic, track_caller)]
+#[allow_internal_unstable(core_panic, const_caller_location)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
     );
-    ($msg:expr) => (
+    ($msg:literal) => (
         $crate::panicking::panic($msg)
+    );
+    ($msg:expr) => (
+        $crate::panic!("{}", $crate::convert::identity::<&str>($msg))
     );
     ($msg:expr,) => (
         $crate::panic!($msg)
@@ -151,7 +154,7 @@ macro_rules! assert_ne {
 /// An unchecked assertion allows a program in an inconsistent state to keep
 /// running, which might have unexpected consequences but does not introduce
 /// unsafety as long as this only happens in safe code. The performance cost
-/// of assertions, is however, not measurable in general. Replacing [`assert!`]
+/// of assertions, however, is not measurable in general. Replacing [`assert!`]
 /// with `debug_assert!` is thus only encouraged after thorough profiling, and
 /// more importantly, only in safe code!
 ///
@@ -1044,7 +1047,7 @@ pub(crate) mod builtin {
         };
     }
 
-    /// Includes a utf8-encoded file as a string.
+    /// Includes a UTF-8 encoded file as a string.
     ///
     /// The file is located relative to the current file (similarly to how
     /// modules are found). The provided path is interpreted in a platform-specific
@@ -1315,7 +1318,7 @@ pub(crate) mod builtin {
     #[unstable(
         feature = "llvm_asm",
         issue = "70173",
-        reason = "LLVM-style inline assembly will never be stabilized, prefer using asm! instead"
+        reason = "prefer using the new asm! syntax instead"
     )]
     #[rustc_builtin_macro]
     #[macro_export]

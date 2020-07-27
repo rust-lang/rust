@@ -536,7 +536,8 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     /// Create an `IndexVec` with `n` elements, where the value of each
-    /// element is the result of `func(i)`
+    /// element is the result of `func(i)`. (The underlying vector will
+    /// be allocated only once, with a capacity of at least `n`.)
     #[inline]
     pub fn from_fn_n(func: impl FnMut(I) -> T, n: usize) -> Self {
         let indices = (0..n).map(I::new);
@@ -735,6 +736,16 @@ impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
     #[inline]
     fn extend<J: IntoIterator<Item = T>>(&mut self, iter: J) {
         self.raw.extend(iter);
+    }
+
+    #[inline]
+    fn extend_one(&mut self, item: T) {
+        self.raw.push(item);
+    }
+
+    #[inline]
+    fn extend_reserve(&mut self, additional: usize) {
+        self.raw.reserve(additional);
     }
 }
 

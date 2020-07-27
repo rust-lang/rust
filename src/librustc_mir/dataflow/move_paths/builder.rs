@@ -324,6 +324,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
     fn gather_rvalue(&mut self, rvalue: &Rvalue<'tcx>) {
         match *rvalue {
+            Rvalue::ThreadLocalRef(_) => {} // not-a-move
             Rvalue::Use(ref operand)
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
@@ -361,17 +362,16 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_terminator(&mut self, term: &Terminator<'tcx>) {
         match term.kind {
             TerminatorKind::Goto { target: _ }
-            | TerminatorKind::FalseEdges { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            // In some sense returning moves the return place into the current
-            // call's destination, however, since there are no statements after
-            // this that could possibly access the return place, this doesn't
-            // need recording.
-            | TerminatorKind::Return
             | TerminatorKind::Resume
             | TerminatorKind::Abort
             | TerminatorKind::GeneratorDrop
+            | TerminatorKind::FalseEdge { .. }
+            | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Unreachable => {}
+
+            TerminatorKind::Return => {
+                self.gather_move(Place::return_place());
+            }
 
             TerminatorKind::Assert { ref cond, .. } => {
                 self.gather_operand(cond);
@@ -387,13 +387,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 self.gather_init(place.as_ref(), InitKind::Deep);
             }
 
-            TerminatorKind::Drop { location, target: _, unwind: _ } => {
-                self.gather_move(location);
+            TerminatorKind::Drop { place, target: _, unwind: _ } => {
+                self.gather_move(place);
             }
-            TerminatorKind::DropAndReplace { location, ref value, .. } => {
-                self.create_move_path(location);
+            TerminatorKind::DropAndReplace { place, ref value, .. } => {
+                self.create_move_path(place);
                 self.gather_operand(value);
-                self.gather_init(location.as_ref(), InitKind::Deep);
+                self.gather_init(place.as_ref(), InitKind::Deep);
             }
             TerminatorKind::Call {
                 ref func,
@@ -401,6 +401,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 ref destination,
                 cleanup: _,
                 from_hir_call: _,
+                fn_span: _,
             } => {
                 self.gather_operand(func);
                 for arg in args {
@@ -411,7 +412,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
             }
-            TerminatorKind::InlineAsm { template: _, ref operands, options: _, destination: _ } => {
+            TerminatorKind::InlineAsm {
+                template: _,
+                ref operands,
+                options: _,
+                line_spans: _,
+                destination: _,
+            } => {
                 for op in operands {
                     match *op {
                         InlineAsmOperand::In { reg: _, ref value }
@@ -432,7 +439,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                             }
                         }
                         InlineAsmOperand::SymFn { value: _ }
-                        | InlineAsmOperand::SymStatic { value: _ } => {}
+                        | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }
                 }
             }

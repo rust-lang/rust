@@ -35,6 +35,6 @@ impl<'v> ItemLikeVisitor<'v> for Finder {
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
 }
 
-pub(crate) fn provide(providers: &mut Providers<'_>) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { proc_macro_decls_static, ..*providers };
 }

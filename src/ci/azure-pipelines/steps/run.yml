@@ -66,10 +66,6 @@ steps:
   displayName: Install wix
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
-- bash: src/ci/scripts/install-innosetup.sh
-  displayName: Install InnoSetup
-  condition: and(succeeded(), not(variables.SKIP_JOB))
-
 - bash: src/ci/scripts/symlink-build-dir.sh
   displayName: Ensure the build happens on a partition with enough space
   condition: and(succeeded(), not(variables.SKIP_JOB))
@@ -80,10 +76,6 @@ steps:
 
 - bash: src/ci/scripts/install-msys2.sh
   displayName: Install msys2
-  condition: and(succeeded(), not(variables.SKIP_JOB))
-
-- bash: src/ci/scripts/install-msys2-packages.sh
-  displayName: Install msys2 packages
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/install-mingw.sh

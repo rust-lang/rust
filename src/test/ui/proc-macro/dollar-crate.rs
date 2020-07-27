@@ -1,3 +1,4 @@
+// check-pass
 // edition:2018
 // aux-build:test-macros.rs
 // aux-build:dollar-crate-external.rs
@@ -5,6 +6,7 @@
 // Anonymize unstable non-dummy spans while still showing dummy spans `0..0`.
 // normalize-stdout-test "bytes\([^0]\w*\.\.(\w+)\)" -> "bytes(LO..$1)"
 // normalize-stdout-test "bytes\((\w+)\.\.[^0]\w*\)" -> "bytes($1..HI)"
+// normalize-stdout-test "#\d+" -> "#CTXT"
 
 #[macro_use]
 extern crate test_macros;
@@ -23,7 +25,7 @@ mod local {
             struct A($crate::S);
 
             #[derive(Print)]
-            struct D($crate::S); //~ ERROR the name `D` is defined multiple times
+            struct D($crate::S);
         };
     }
 
@@ -33,7 +35,7 @@ mod local {
 mod external {
     use crate::dollar_crate_external;
 
-    dollar_crate_external::external!(); //~ ERROR the name `D` is defined multiple times
+    dollar_crate_external::external!();
 }
 
 fn main() {}

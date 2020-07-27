@@ -11,9 +11,6 @@ LL |     mem::size_of::<U>();
    |
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
-   |
-   = help: the trait `std::marker::Sized` is not implemented for `U`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
   --> $DIR/trait-suggest-where-clause.rs:10:5
@@ -29,8 +26,6 @@ LL |     mem::size_of::<Misc<U>>();
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
    |
-   = help: within `Misc<U>`, the trait `std::marker::Sized` is not implemented for `U`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required because it appears within the type `Misc<U>`
 
 error[E0277]: the trait bound `u64: std::convert::From<T>` is not satisfied
@@ -69,7 +64,6 @@ LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
    |
    = help: the trait `std::marker::Sized` is not implemented for `[T]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
   --> $DIR/trait-suggest-where-clause.rs:31:5
@@ -83,7 +77,6 @@ LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
    |
    = help: the trait `std::marker::Sized` is not implemented for `[&U]`
-   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
 error: aborting due to 7 previous errors
 

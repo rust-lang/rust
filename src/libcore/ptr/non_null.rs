@@ -6,6 +6,7 @@ use crate::marker::Unsize;
 use crate::mem;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
+use crate::slice::SliceIndex;
 
 /// `*mut T` but non-zero and covariant.
 ///
@@ -87,7 +88,8 @@ impl<T: ?Sized> NonNull<T> {
     #[rustc_const_stable(feature = "const_nonnull_new_unchecked", since = "1.32.0")]
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        NonNull { pointer: ptr as _ }
+        // SAFETY: the caller must guarantee that `ptr` is non-null.
+        unsafe { NonNull { pointer: ptr as _ } }
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
@@ -118,7 +120,9 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub unsafe fn as_ref(&self) -> &T {
-        &*self.as_ptr()
+        // SAFETY: the caller must guarantee that `self` meets all the
+        // requirements for a reference.
+        unsafe { &*self.as_ptr() }
     }
 
     /// Mutably dereferences the content.
@@ -129,7 +133,9 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut T {
-        &mut *self.as_ptr()
+        // SAFETY: the caller must guarantee that `self` meets all the
+        // requirements for a mutable reference.
+        unsafe { &mut *self.as_ptr() }
     }
 
     /// Casts to a pointer of another type.
@@ -166,7 +172,7 @@ impl<T> NonNull<[T]> {
     /// assert_eq!(unsafe { slice.as_ref()[2] }, 7);
     /// ```
     ///
-    /// (Note that this example artifically demonstrates a use of this method,
+    /// (Note that this example artificially demonstrates a use of this method,
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
     #[unstable(feature = "nonnull_slice_from_raw_parts", issue = "71941")]
     #[rustc_const_unstable(feature = "const_nonnull_slice_from_raw_parts", issue = "71941")]
@@ -187,7 +193,6 @@ impl<T> NonNull<[T]> {
     ///
     /// ```rust
     /// #![feature(slice_ptr_len, nonnull_slice_from_raw_parts)]
-    ///
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
@@ -198,6 +203,57 @@ impl<T> NonNull<[T]> {
     #[inline]
     pub const fn len(self) -> usize {
         self.as_ptr().len()
+    }
+
+    /// Returns a non-null pointer to the slice's buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
+    /// assert_eq!(slice.as_non_null_ptr(), NonNull::new(1 as *mut i8).unwrap());
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
+    pub const fn as_non_null_ptr(self) -> NonNull<T> {
+        // SAFETY: We know `self` is non-null.
+        unsafe { NonNull::new_unchecked(self.as_ptr().as_mut_ptr()) }
+    }
+
+    /// Returns a raw pointer to an element or subslice, without doing bounds
+    /// checking.
+    ///
+    /// Calling this method with an out-of-bounds index or when `self` is not dereferencable
+    /// is *[undefined behavior]* even if the resulting pointer is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_ptr_get, nonnull_slice_from_raw_parts)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let x = &mut [1, 2, 4];
+    /// let x = NonNull::slice_from_raw_parts(NonNull::new(x.as_mut_ptr()).unwrap(), x.len());
+    ///
+    /// unsafe {
+    ///     assert_eq!(x.get_unchecked_mut(1).as_ptr(), x.as_non_null_ptr().as_ptr().add(1));
+    /// }
+    /// ```
+    #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[inline]
+    pub unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
+    where
+        I: SliceIndex<[T]>,
+    {
+        // SAFETY: the caller ensures that `self` is dereferencable and `index` in-bounds.
+        // As a consequence, the resulting pointer cannot be NULL.
+        unsafe { NonNull::new_unchecked(self.as_ptr().get_unchecked_mut(index)) }
     }
 }
 

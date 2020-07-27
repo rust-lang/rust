@@ -13,7 +13,7 @@
 - 
 -     bb1: {
           StorageLive(_2);                 // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
--         _2 = const bar() -> bb2;         // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
+-         _2 = const bar() -> bb3;         // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
 +         _2 = const bar() -> bb1;         // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
                                            // ty::Const
                                            // + ty: fn() -> bool {bar}
@@ -23,18 +23,22 @@
                                            // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }
       }
   
--     bb2: {
--         nop;                             // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
--         switchInt(_2) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+-     bb2 (cleanup): {
+-         resume;                          // scope 0 at $DIR/simplify_cfg.rs:5:1: 11:2
 +     bb1: {
 +         switchInt(_2) -> [false: bb2, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
       }
   
 -     bb3: {
--         goto -> bb5;                     // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+-         nop;                             // scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
+-         switchInt(_2) -> [false: bb5, otherwise: bb4]; // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
 -     }
 - 
 -     bb4: {
+-         goto -> bb6;                     // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
+-     }
+- 
+-     bb5: {
 +     bb2: {
           _1 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:7:9: 9:10
                                            // ty::Const
@@ -47,7 +51,7 @@
           goto -> bb0;                     // scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
       }
   
--     bb5: {
+-     bb6: {
 +     bb3: {
           _0 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
                                            // ty::Const
@@ -58,10 +62,6 @@
                                            // + literal: Const { ty: (), val: Value(Scalar(<ZST>)) }
           StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:10:5: 10:6
           return;                          // scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
--     }
-- 
--     bb6 (cleanup): {
--         resume;                          // scope 0 at $DIR/simplify_cfg.rs:5:1: 11:2
       }
   }
   

@@ -25,5 +25,5 @@ fn main() {
     //     yielding `fn(&!b u32)`, in a fresh universe U1
     //   - So we get `?a = !b` but the universe U0 assigned to `?a` cannot name `!b`.
 
-    foo::<()>(); //~ ERROR not satisfied
+    foo::<()>(); //~ ERROR implementation of `Trait` is not general enough
 }

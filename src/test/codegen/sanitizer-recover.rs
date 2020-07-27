@@ -1,9 +1,8 @@
 // Verifies that AddressSanitizer and MemorySanitizer
 // recovery mode can be enabled with -Zsanitizer-recover.
 //
-// needs-sanitizer-support
-// only-linux
-// only-x86_64
+// needs-sanitizer-address
+// needs-sanitizer-memory
 // revisions:ASAN ASAN-RECOVER MSAN MSAN-RECOVER MSAN-RECOVER-LTO
 // no-prefer-dynamic
 //
@@ -28,17 +27,17 @@
 // ASAN:               }
 //
 // MSAN-LABEL: define i32 @penguin(
-// MSAN:         call void @__msan_warning_noreturn()
+// MSAN:         call void @__msan_warning{{(_with_origin_noreturn\(i32 0\)|_noreturn\(\))}}
 // MSAN:         unreachable
 // MSAN:       }
 //
 // MSAN-RECOVER-LABEL: define i32 @penguin(
-// MSAN-RECOVER:         call void @__msan_warning()
+// MSAN-RECOVER:         call void @__msan_warning{{(_with_origin\(i32 0\)|\(\))}}
 // MSAN-RECOVER-NOT:     unreachable
 // MSAN-RECOVER:       }
 //
 // MSAN-RECOVER-LTO-LABEL: define i32 @penguin(
-// MSAN-RECOVER-LTO:          call void @__msan_warning()
+// MSAN-RECOVER-LTO:          call void @__msan_warning{{(_with_origin\(i32 0\)|\(\))}}
 // MSAN-RECOVER-LTO-NOT:      unreachable
 // MSAN-RECOVER-LTO:       }
 //

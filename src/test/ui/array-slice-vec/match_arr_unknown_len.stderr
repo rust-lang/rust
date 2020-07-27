@@ -11,7 +11,7 @@ error[E0308]: mismatched types
   --> $DIR/match_arr_unknown_len.rs:6:9
    |
 LL |         [1, 2] => true,
-   |         ^^^^^^ expected `2usize`, found `N`
+   |         ^^^^^^ expected `2_usize`, found `N`
    |
    = note: expected array `[u32; 2]`
               found array `[u32; N]`

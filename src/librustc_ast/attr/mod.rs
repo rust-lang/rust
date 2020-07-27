@@ -21,55 +21,61 @@ use log::debug;
 use std::iter;
 use std::ops::DerefMut;
 
-pub struct Globals {
+// Per-session global variables: this struct is stored in thread-local storage
+// in such a way that it is accessible without any kind of handle to all
+// threads within the compilation session, but is not accessible outside the
+// session.
+pub struct SessionGlobals {
     used_attrs: Lock<GrowableBitSet<AttrId>>,
     known_attrs: Lock<GrowableBitSet<AttrId>>,
-    rustc_span_globals: rustc_span::Globals,
+    span_session_globals: rustc_span::SessionGlobals,
 }
 
-impl Globals {
-    fn new(edition: Edition) -> Globals {
-        Globals {
+impl SessionGlobals {
+    fn new(edition: Edition) -> SessionGlobals {
+        SessionGlobals {
             // We have no idea how many attributes there will be, so just
             // initiate the vectors with 0 bits. We'll grow them as necessary.
             used_attrs: Lock::new(GrowableBitSet::new_empty()),
             known_attrs: Lock::new(GrowableBitSet::new_empty()),
-            rustc_span_globals: rustc_span::Globals::new(edition),
+            span_session_globals: rustc_span::SessionGlobals::new(edition),
         }
     }
 }
 
-pub fn with_globals<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
-    let globals = Globals::new(edition);
-    GLOBALS.set(&globals, || rustc_span::GLOBALS.set(&globals.rustc_span_globals, f))
+pub fn with_session_globals<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
+    let ast_session_globals = SessionGlobals::new(edition);
+    SESSION_GLOBALS.set(&ast_session_globals, || {
+        rustc_span::SESSION_GLOBALS.set(&ast_session_globals.span_session_globals, f)
+    })
 }
 
-pub fn with_default_globals<R>(f: impl FnOnce() -> R) -> R {
-    with_globals(DEFAULT_EDITION, f)
+pub fn with_default_session_globals<R>(f: impl FnOnce() -> R) -> R {
+    with_session_globals(DEFAULT_EDITION, f)
 }
 
-scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
+scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: SessionGlobals);
 
 pub fn mark_used(attr: &Attribute) {
     debug!("marking {:?} as used", attr);
-    GLOBALS.with(|globals| {
-        globals.used_attrs.lock().insert(attr.id);
+    SESSION_GLOBALS.with(|session_globals| {
+        session_globals.used_attrs.lock().insert(attr.id);
     });
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
-    GLOBALS.with(|globals| globals.used_attrs.lock().contains(attr.id))
+    SESSION_GLOBALS.with(|session_globals| session_globals.used_attrs.lock().contains(attr.id))
 }
 
 pub fn mark_known(attr: &Attribute) {
     debug!("marking {:?} as known", attr);
-    GLOBALS.with(|globals| {
-        globals.known_attrs.lock().insert(attr.id);
+    SESSION_GLOBALS.with(|session_globals| {
+        session_globals.known_attrs.lock().insert(attr.id);
     });
 }
 
 pub fn is_known(attr: &Attribute) -> bool {
-    GLOBALS.with(|globals| globals.known_attrs.lock().contains(attr.id))
+    SESSION_GLOBALS.with(|session_globals| session_globals.known_attrs.lock().contains(attr.id))
 }
 
 pub fn is_known_lint_tool(m_item: Ident) -> bool {
@@ -560,6 +566,9 @@ impl MetaItemKind {
         tokens: &mut impl Iterator<Item = TokenTree>,
     ) -> Option<MetaItemKind> {
         match tokens.next() {
+            Some(TokenTree::Delimited(_, token::NoDelim, inner_tokens)) => {
+                MetaItemKind::name_value_from_tokens(&mut inner_tokens.trees())
+            }
             Some(TokenTree::Token(token)) => {
                 Lit::from_token(&token).ok().map(MetaItemKind::NameValue)
             }
@@ -619,13 +628,20 @@ impl NestedMetaItem {
     where
         I: Iterator<Item = TokenTree>,
     {
-        if let Some(TokenTree::Token(token)) = tokens.peek() {
-            if let Ok(lit) = Lit::from_token(token) {
-                tokens.next();
-                return Some(NestedMetaItem::Literal(lit));
+        match tokens.peek() {
+            Some(TokenTree::Token(token)) => {
+                if let Ok(lit) = Lit::from_token(token) {
+                    tokens.next();
+                    return Some(NestedMetaItem::Literal(lit));
+                }
             }
+            Some(TokenTree::Delimited(_, token::NoDelim, inner_tokens)) => {
+                let inner_tokens = inner_tokens.clone();
+                tokens.next();
+                return NestedMetaItem::from_tokens(&mut inner_tokens.into_trees().peekable());
+            }
+            _ => {}
         }
-
         MetaItem::from_tokens(tokens).map(NestedMetaItem::MetaItem)
     }
 }

@@ -12,7 +12,7 @@ use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound}
 use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::mir::{
     Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
-    ConstraintCategory, Local, Location,
+    ConstraintCategory, Local, Location, ReturnConstraint,
 };
 use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
@@ -1114,6 +1114,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         lub
     }
 
+    /// Like `universal_upper_bound`, but returns an approximation more suitable
+    /// for diagnostics. If `r` contains multiple disjoint universal regions
+    /// (e.g. 'a and 'b in `fn foo<'a, 'b> { ... }`, we pick the lower-numbered region.
+    /// This corresponds to picking named regions over unnamed regions
+    /// (e.g. picking early-bound regions over a closure late-bound region).
+    ///
+    /// This means that the returned value may not be a true upper bound, since
+    /// only 'static is known to outlive disjoint universal regions.
+    /// Therefore, this method should only be used in diagnostic code,
+    /// where displaying *some* named universal region is better than
+    /// falling back to 'static.
+    pub(in crate::borrow_check) fn approx_universal_upper_bound(&self, r: RegionVid) -> RegionVid {
+        debug!("approx_universal_upper_bound(r={:?}={})", r, self.region_value_str(r));
+
+        // Find the smallest universal region that contains all other
+        // universal regions within `region`.
+        let mut lub = self.universal_regions.fr_fn_body;
+        let r_scc = self.constraint_sccs.scc(r);
+        let static_r = self.universal_regions.fr_static;
+        for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            let new_lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
+            debug!("approx_universal_upper_bound: ur={:?} lub={:?} new_lub={:?}", ur, lub, new_lub);
+            if ur != static_r && lub != static_r && new_lub == static_r {
+                lub = std::cmp::min(ur, lub);
+            } else {
+                lub = new_lub;
+            }
+        }
+
+        debug!("approx_universal_upper_bound: r={:?} lub={:?}", r, lub);
+
+        lub
+    }
+
     /// Tests if `test` is true when applied to `lower_bound` at
     /// `point`.
     fn eval_verify_bound(
@@ -2017,7 +2051,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     | ConstraintCategory::BoringNoLocation
                     | ConstraintCategory::Internal => false,
                     ConstraintCategory::TypeAnnotation
-                    | ConstraintCategory::Return
+                    | ConstraintCategory::Return(_)
                     | ConstraintCategory::Yield => true,
                     _ => constraint_sup_scc != target_scc,
                 }
@@ -2042,7 +2076,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
-                if categorized_path[i].0 == ConstraintCategory::Return
+                if matches!(categorized_path[i].0, ConstraintCategory::Return(_))
                     && next.0 == ConstraintCategory::OpaqueType
                 {
                     // The return expression is being influenced by the return type being
@@ -2050,6 +2084,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     return *next;
                 }
             }
+
+            if categorized_path[i].0 == ConstraintCategory::Return(ReturnConstraint::Normal) {
+                let field = categorized_path.iter().find_map(|p| {
+                    if let ConstraintCategory::ClosureUpvar(f) = p.0 { Some(f) } else { None }
+                });
+
+                if let Some(field) = field {
+                    categorized_path[i].0 =
+                        ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
+                }
+            }
+
             return categorized_path[i];
         }
 

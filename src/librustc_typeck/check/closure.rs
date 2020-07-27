@@ -188,7 +188,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::Infer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
             ty::FnPtr(sig) => {
-                let expected_sig = ExpectedSig { cause_span: None, sig: *sig.skip_binder() };
+                let expected_sig = ExpectedSig { cause_span: None, sig: sig.skip_binder() };
                 (Some(expected_sig), Some(ty::ClosureKind::Fn))
             }
             _ => (None, None),
@@ -416,7 +416,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Up till this point, we have ignored the annotations that the user
         // gave. This function will check that they unify successfully.
         // Along the way, it also writes out entries for types that the user
-        // wrote into our tables, which are then later used by the privacy
+        // wrote into our typeck results, which are then later used by the privacy
         // check.
         match self.check_supplied_sig_against_expectation(expr_def_id, decl, body, &closure_sigs) {
             Ok(infer_ok) => self.register_infer_ok_obligations(infer_ok),
@@ -501,7 +501,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for ((hir_ty, &supplied_ty), expected_ty) in decl
                 .inputs
                 .iter()
-                .zip(*supplied_sig.inputs().skip_binder()) // binder moved to (*) below
+                .zip(supplied_sig.inputs().skip_binder()) // binder moved to (*) below
                 .zip(expected_sigs.liberated_sig.inputs())
             // `liberated_sig` is E'.
             {
@@ -588,7 +588,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("supplied_sig_of_closure: result={:?}", result);
 
         let c_result = self.inh.infcx.canonicalize_response(&result);
-        self.tables.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
+        self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         result
     }
@@ -700,7 +700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.
             astconv.ast_ty_to_ty(a);
-            self.tcx.types.err
+            self.tcx.ty_error()
         });
 
         if let hir::FnRetTy::Return(ref output) = decl.output {
@@ -709,7 +709,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
             supplied_arguments,
-            self.tcx.types.err,
+            self.tcx.ty_error(),
             decl.c_variadic,
             hir::Unsafety::Normal,
             Abi::RustCall,

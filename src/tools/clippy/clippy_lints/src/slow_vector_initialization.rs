@@ -22,11 +22,17 @@ declare_clippy_lint! {
     /// ```rust
     /// # use core::iter::repeat;
     /// # let len = 4;
+    ///
+    /// // Bad
     /// let mut vec1 = Vec::with_capacity(len);
     /// vec1.resize(len, 0);
     ///
     /// let mut vec2 = Vec::with_capacity(len);
-    /// vec2.extend(repeat(0).take(len))
+    /// vec2.extend(repeat(0).take(len));
+    ///
+    /// // Good
+    /// let mut vec1 = vec![0; len];
+    /// let mut vec2 = vec![0; len];
     /// ```
     pub SLOW_VECTOR_INITIALIZATION,
     perf,
@@ -59,8 +65,8 @@ enum InitializationType<'tcx> {
     Resize(&'tcx Expr<'tcx>),
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SlowVectorInit {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr<'_>) {
+impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Matches initialization on reassignements. For example: `vec = Vec::with_capacity(100)`
         if_chain! {
             if let ExprKind::Assign(ref left, ref right, _) = expr.kind;
@@ -84,7 +90,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SlowVectorInit {
         }
     }
 
-    fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt<'_>) {
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
         if_chain! {
             if let StmtKind::Local(ref local) = stmt.kind;
@@ -124,7 +130,7 @@ impl SlowVectorInit {
     }
 
     /// Search initialization for the given vector
-    fn search_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, vec_alloc: VecAllocation<'tcx>, parent_node: HirId) {
+    fn search_initialization<'tcx>(cx: &LateContext<'tcx>, vec_alloc: VecAllocation<'tcx>, parent_node: HirId) {
         let enclosing_body = get_enclosing_block(cx, parent_node);
 
         if enclosing_body.is_none() {
@@ -146,7 +152,7 @@ impl SlowVectorInit {
     }
 
     fn lint_initialization<'tcx>(
-        cx: &LateContext<'_, 'tcx>,
+        cx: &LateContext<'tcx>,
         initialization: &InitializationType<'tcx>,
         vec_alloc: &VecAllocation<'_>,
     ) {
@@ -162,7 +168,7 @@ impl SlowVectorInit {
     }
 
     fn emit_lint<'tcx>(
-        cx: &LateContext<'_, 'tcx>,
+        cx: &LateContext<'tcx>,
         slow_fill: &Expr<'_>,
         vec_alloc: &VecAllocation<'_>,
         msg: &str,
@@ -184,7 +190,7 @@ impl SlowVectorInit {
 /// `VectorInitializationVisitor` searches for unsafe or slow vector initializations for the given
 /// vector.
 struct VectorInitializationVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'a, 'tcx>,
+    cx: &'a LateContext<'tcx>,
 
     /// Contains the information.
     vec_alloc: VecAllocation<'tcx>,
@@ -201,7 +207,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if self.initialization_found;
-            if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
+            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
             if let ExprKind::Path(ref qpath_subj) = args[0].kind;
             if match_qpath(&qpath_subj, &[&*self.vec_alloc.variable_name.as_str()]);
             if path.ident.name == sym!(extend);
@@ -218,7 +224,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if self.initialization_found;
-            if let ExprKind::MethodCall(ref path, _, ref args) = expr.kind;
+            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
             if let ExprKind::Path(ref qpath_subj) = args[0].kind;
             if match_qpath(&qpath_subj, &[&*self.vec_alloc.variable_name.as_str()]);
             if path.ident.name == sym!(resize);
@@ -240,7 +246,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&self, expr: &Expr<'_>) -> bool {
         if_chain! {
-            if let ExprKind::MethodCall(ref take_path, _, ref take_args) = expr.kind;
+            if let ExprKind::MethodCall(ref take_path, _, ref take_args, _) = expr.kind;
             if take_path.ident.name == sym!(take);
 
             // Check that take is applied to `repeat(0)`

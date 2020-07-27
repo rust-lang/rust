@@ -5,7 +5,7 @@
 #![feature(box_syntax)]
 #![feature(rustc_private)]
 
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 
 use rustc_serialize::{Encodable, Decodable};
 use rustc_serialize::json;

@@ -55,7 +55,8 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     where
         F: FnOnce(&mut Self),
     {
-        let push = self.context.builder.push(attrs, &self.context.lint_store);
+        let is_crate_node = id == ast::CRATE_NODE_ID;
+        let push = self.context.builder.push(attrs, &self.context.lint_store, is_crate_node);
         self.check_id(id);
         self.enter_attrs(attrs);
         f(self);

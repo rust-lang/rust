@@ -1,0 +1,33 @@
+error[E0271]: type mismatch resolving `for<'x> <UintStruct as TheTrait<&'x isize>>::A == &'x isize`
+  --> $DIR/associated-types-eq-hr.rs:87:5
+   |
+LL | fn foo<T>()
+   |    --- required by a bound in this
+LL | where
+LL |     T: for<'x> TheTrait<&'x isize, A = &'x isize>,
+   |                                    ------------- required by this bound in `foo`
+...
+LL |     foo::<UintStruct>();
+   |     ^^^^^^^^^^^^^^^^^ expected `isize`, found `usize`
+   |
+   = note: expected reference `&isize`
+              found reference `&usize`
+
+error[E0271]: type mismatch resolving `for<'x> <IntStruct as TheTrait<&'x isize>>::A == &'x usize`
+  --> $DIR/associated-types-eq-hr.rs:91:5
+   |
+LL | fn bar<T>()
+   |    --- required by a bound in this
+LL | where
+LL |     T: for<'x> TheTrait<&'x isize, A = &'x usize>,
+   |                                    ------------- required by this bound in `bar`
+...
+LL |     bar::<IntStruct>();
+   |     ^^^^^^^^^^^^^^^^ expected `usize`, found `isize`
+   |
+   = note: expected reference `&usize`
+              found reference `&isize`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.
