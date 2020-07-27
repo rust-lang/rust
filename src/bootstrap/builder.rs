@@ -540,6 +540,7 @@ impl<'a> Builder<'a> {
                 Kind::Check | Kind::Clippy | Kind::Fix | Kind::Run | Kind::Format => 0,
             }
         };
+
         Builder {
             build,
             top_stage,
@@ -566,7 +567,20 @@ impl<'a> Builder<'a> {
             Subcommand::Format { .. } | Subcommand::Clean { .. } => panic!(),
         };
 
-        Self::new_internal(build, kind, paths.to_owned())
+        let this = Self::new_internal(build, kind, paths.to_owned());
+
+        // CI should always run stage 2 builds, unless it specifically states otherwise
+        #[cfg(not(test))]
+        if build.config.stage.is_none() && build.ci_env != crate::CiEnv::None {
+            match kind {
+                Kind::Test | Kind::Doc | Kind::Build | Kind::Bench | Kind::Dist | Kind::Install => {
+                    assert_eq!(this.top_stage, 2)
+                }
+                _ => {}
+            }
+        }
+
+        this
     }
 
     pub fn execute_cli(&self) {
