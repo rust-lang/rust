@@ -348,6 +348,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return Ok(())
             }
         }
+        // The remaining dtors make some progress each time around the scheduler loop,
+        // until they return `false` to indicate that they are done.
+
         // The macOS thread wide destructor runs "before any TLS slots get
         // freed", so do that first.
         if this.schedule_macos_tls_dtor()? {

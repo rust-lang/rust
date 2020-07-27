@@ -162,7 +162,15 @@ fn report_msg<'tcx>(
     } else {
         tcx.sess.diagnostic().span_note_diag(span, title)
     };
-    err.span_label(span, span_msg);
+    // Show main message.
+    if span != DUMMY_SP {
+        err.span_label(span, span_msg);
+    } else {
+        // Make sure we show the message even when it is a dummy span.
+        err.note(&span_msg);
+        err.note("(no span available)");
+    }
+    // Show help messages.
     if !helps.is_empty() {
         // Add visual separator before backtrace.
         helps.last_mut().unwrap().push_str("\n");
@@ -198,7 +206,7 @@ pub fn register_diagnostic(e: NonHaltingDiagnostic) {
 /// after a step was taken.
 pub struct TopFrameInfo<'tcx> {
     stack_size: usize,
-    instance: ty::Instance<'tcx>,
+    instance: Option<ty::Instance<'tcx>>,
     span: Span,
 }
 
@@ -209,11 +217,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         DIAGNOSTICS.with(|diagnostics| assert!(diagnostics.borrow().is_empty()));
 
         let this = self.eval_context_ref();
+        if this.active_thread_stack().is_empty() {
+            // Diagnostics can happen even with the emoty stack (e.g. deallocation thread-local statics).
+            return TopFrameInfo { stack_size: 0, instance: None, span: DUMMY_SP };
+        }
         let frame = this.frame();
 
         TopFrameInfo {
             stack_size: this.active_thread_stack().len(),
-            instance: frame.instance,
+            instance: Some(frame.instance),
             span: frame.current_source_info().map_or(DUMMY_SP, |si| si.span),
         }
     }
@@ -237,15 +249,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if stacktrace.len() < info.stack_size {
                 assert!(stacktrace.len() == info.stack_size-1, "we should never pop more than one frame at once");
                 let frame_info = FrameInfo {
-                    instance: info.instance,
+                    instance: info.instance.unwrap(),
                     span: info.span,
                     lint_root: None,
                 };
                 stacktrace.insert(0, frame_info);
-            } else {
+            } else if let Some(instance) = info.instance {
                 // Adjust topmost frame.
                 stacktrace[0].span = info.span;
-                assert_eq!(stacktrace[0].instance, info.instance, "we should not pop and push a frame in one step");
+                assert_eq!(stacktrace[0].instance, instance, "we should not pop and push a frame in one step");
             }
 
             // Show diagnostics.
