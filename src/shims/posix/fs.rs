@@ -81,7 +81,7 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let path_scalar = this.read_scalar(path_op)?.not_undef()?;
+        let path_scalar = this.read_scalar(path_op)?.check_init()?;
         let path = this.read_path_from_c_str(path_scalar)?.into_owned();
 
         let metadata = match FileMetadata::from_path(this, &path, follow_symlink)? {
@@ -334,7 +334,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
 
-        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
 
         let fd = options.open(&path).map(|file| {
             let fh = &mut this.machine.file_handler;
@@ -558,7 +558,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("unlink")?;
 
-        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
 
         let result = remove_file(path).map(|_| 0);
         this.try_unwrap_io_result(result)
@@ -588,8 +588,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("symlink")?;
 
-        let target = this.read_path_from_c_str(this.read_scalar(target_op)?.not_undef()?)?;
-        let linkpath = this.read_path_from_c_str(this.read_scalar(linkpath_op)?.not_undef()?)?;
+        let target = this.read_path_from_c_str(this.read_scalar(target_op)?.check_init()?)?;
+        let linkpath = this.read_path_from_c_str(this.read_scalar(linkpath_op)?.check_init()?)?;
 
         let result = create_link(&target, &linkpath).map(|_| 0);
         this.try_unwrap_io_result(result)
@@ -651,8 +651,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.assert_target_os("linux", "statx");
         this.check_no_isolation("statx")?;
 
-        let statxbuf_scalar = this.read_scalar(statxbuf_op)?.not_undef()?;
-        let pathname_scalar = this.read_scalar(pathname_op)?.not_undef()?;
+        let statxbuf_scalar = this.read_scalar(statxbuf_op)?.check_init()?;
+        let pathname_scalar = this.read_scalar(pathname_op)?.check_init()?;
 
         // If the statxbuf or pathname pointers are null, the function fails with `EFAULT`.
         if this.is_null(statxbuf_scalar)? || this.is_null(pathname_scalar)? {
@@ -810,8 +810,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("rename")?;
 
-        let oldpath_scalar = this.read_scalar(oldpath_op)?.not_undef()?;
-        let newpath_scalar = this.read_scalar(newpath_op)?.not_undef()?;
+        let oldpath_scalar = this.read_scalar(oldpath_op)?.check_init()?;
+        let newpath_scalar = this.read_scalar(newpath_op)?.check_init()?;
 
         if this.is_null(oldpath_scalar)? || this.is_null(newpath_scalar)? {
             let efault = this.eval_libc("EFAULT")?;
@@ -838,12 +838,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         #[cfg_attr(not(unix), allow(unused_variables))]
         let mode = if this.tcx.sess.target.target.target_os == "macos" {
-            u32::from(this.read_scalar(mode_op)?.not_undef()?.to_u16()?)
+            u32::from(this.read_scalar(mode_op)?.check_init()?.to_u16()?)
         } else {
             this.read_scalar(mode_op)?.to_u32()?
         };
 
-        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
 
         #[cfg_attr(not(unix), allow(unused_mut))]
         let mut builder = DirBuilder::new();
@@ -869,7 +869,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("rmdir")?;
 
-        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
 
         let result = remove_dir(path).map(|_| 0i32);
 
@@ -881,7 +881,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("opendir")?;
 
-        let name = this.read_path_from_c_str(this.read_scalar(name_op)?.not_undef()?)?;
+        let name = this.read_path_from_c_str(this.read_scalar(name_op)?.check_init()?)?;
 
         let result = read_dir(name);
 

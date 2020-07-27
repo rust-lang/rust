@@ -29,7 +29,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             thread_info_place.into(),
         )?;
 
-        let fn_ptr = this.read_scalar(start_routine)?.not_undef()?;
+        let fn_ptr = this.read_scalar(start_routine)?.check_init()?;
         let instance = this.memory.get_fn(fn_ptr)?.as_instance()?;
 
         let func_arg = this.read_immediate(arg)?;
@@ -59,7 +59,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        if !this.is_null(this.read_scalar(retval)?.not_undef()?)? {
+        if !this.is_null(this.read_scalar(retval)?.check_init()?)? {
             // FIXME: implement reading the thread function's return place.
             throw_unsup_format!("Miri supports pthread_join only with retval==NULL");
         }
@@ -99,7 +99,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let option = this.read_scalar(option)?.to_i32()?;
         if option == this.eval_libc_i32("PR_SET_NAME")? {
-            let address = this.read_scalar(arg2)?.not_undef()?;
+            let address = this.read_scalar(arg2)?.check_init()?;
             let mut name = this.memory.read_c_str(address)?.to_owned();
             // The name should be no more than 16 bytes, including the null
             // byte. Since `read_c_str` returns the string without the null
@@ -107,7 +107,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             name.truncate(15);
             this.set_active_thread_name(name);
         } else if option == this.eval_libc_i32("PR_GET_NAME")? {
-            let address = this.read_scalar(arg2)?.not_undef()?;
+            let address = this.read_scalar(arg2)?.check_init()?;
             let mut name = this.get_active_thread_name().to_vec();
             name.push(0u8);
             assert!(name.len() <= 16);

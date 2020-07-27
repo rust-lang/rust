@@ -32,11 +32,11 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 #[rustfmt::skip]
                 let eq = match (*left, *right) {
                     (Immediate::Scalar(left), Immediate::Scalar(right)) => {
-                        self.ptr_eq(left.not_undef()?, right.not_undef()?)?
+                        self.ptr_eq(left.check_init()?, right.check_init()?)?
                     }
                     (Immediate::ScalarPair(left1, left2), Immediate::ScalarPair(right1, right2)) => {
-                        self.ptr_eq(left1.not_undef()?, right1.not_undef()?)?
-                            && self.ptr_eq(left2.not_undef()?, right2.not_undef()?)?
+                        self.ptr_eq(left1.check_init()?, right1.check_init()?)?
+                            && self.ptr_eq(left2.check_init()?, right2.check_init()?)?
                     }
                     _ => bug!("Type system should not allow comparing Scalar with ScalarPair"),
                 };

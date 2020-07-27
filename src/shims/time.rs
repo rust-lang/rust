@@ -62,7 +62,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("gettimeofday")?;
 
         // Using tz is obsolete and should always be null
-        let tz = this.read_scalar(tz_op)?.not_undef()?;
+        let tz = this.read_scalar(tz_op)?.check_init()?;
         if !this.is_null(tz)? {
             let einval = this.eval_libc("EINVAL")?;
             this.set_last_error(einval)?;

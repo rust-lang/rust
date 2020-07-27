@@ -67,7 +67,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[handle, buf, n, written_ptr, overlapped] = check_arg_count(args)?;
                 this.read_scalar(overlapped)?.to_machine_usize(this)?; // this is a poiner, that we ignore
                 let handle = this.read_scalar(handle)?.to_machine_isize(this)?;
-                let buf = this.read_scalar(buf)?.not_undef()?;
+                let buf = this.read_scalar(buf)?.check_init()?;
                 let n = this.read_scalar(n)?.to_u32()?;
                 let written_place = this.deref_operand(written_ptr)?;
                 // Spec says to always write `0` first.
@@ -111,7 +111,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[handle, flags, ptr] = check_arg_count(args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 this.read_scalar(flags)?.to_u32()?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 this.free(ptr, MiriMemoryKind::WinHeap)?;
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
@@ -119,7 +119,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[handle, flags, ptr, size] = check_arg_count(args)?;
                 this.read_scalar(handle)?.to_machine_isize(this)?;
                 this.read_scalar(flags)?.to_u32()?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;
                 this.write_scalar(res, dest)?;
@@ -128,7 +128,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // errno
             "SetLastError" => {
                 let &[error] = check_arg_count(args)?;
-                let error = this.read_scalar(error)?.not_undef()?;
+                let error = this.read_scalar(error)?.check_init()?;
                 this.set_last_error(error)?;
             }
             "GetLastError" => {
@@ -172,7 +172,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[key, new_ptr] = check_arg_count(args)?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.get_active_thread();
-                let new_ptr = this.read_scalar(new_ptr)?.not_undef()?;
+                let new_ptr = this.read_scalar(new_ptr)?.check_init()?;
                 this.machine.tls.store_tls(key, active_thread, this.test_null(new_ptr)?)?;
 
                 // Return success (`1`).
@@ -212,7 +212,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 #[allow(non_snake_case)]
                 let &[hModule, lpProcName] = check_arg_count(args)?;
                 this.read_scalar(hModule)?.to_machine_isize(this)?;
-                let name = this.memory.read_c_str(this.read_scalar(lpProcName)?.not_undef()?)?;
+                let name = this.memory.read_c_str(this.read_scalar(lpProcName)?.check_init()?)?;
                 if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.target.target_os)? {
                     let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
                     this.write_scalar(Scalar::from(ptr), dest)?;
@@ -225,7 +225,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "SystemFunction036" => {
                 // The actual name of 'RtlGenRandom'
                 let &[ptr, len] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 let len = this.read_scalar(len)?.to_u32()?;
                 this.gen_random(ptr, len.into())?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
