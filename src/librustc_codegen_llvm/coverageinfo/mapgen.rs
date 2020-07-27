@@ -24,7 +24,7 @@ use std::ffi::CString;
 /// replicated for Rust's Coverage Map.
 pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     let function_coverage_map = cx.coverage_context().take_function_coverage_map();
-    if function_coverage_map.len() == 0 {
+    if function_coverage_map.is_empty() {
         // This module has no functions with coverage instrumentation
         return;
     }
@@ -81,7 +81,7 @@ struct CoverageMapGenerator {
 
 impl CoverageMapGenerator {
     fn new() -> Self {
-        Self { filenames: Vec::new(), filename_to_index: FxHashMap::<CString, u32>::default() }
+        Self { filenames: Vec::new(), filename_to_index: FxHashMap::default() }
     }
 
     /// Using the `expressions` and `counter_regions` collected for the current function, generate
@@ -95,7 +95,7 @@ impl CoverageMapGenerator {
         coverage_mappings_buffer: &RustString,
     ) {
         let mut counter_regions = counter_regions.collect::<Vec<_>>();
-        if counter_regions.len() == 0 {
+        if counter_regions.is_empty() {
             return;
         }
 
@@ -109,7 +109,7 @@ impl CoverageMapGenerator {
         // `file_id` (indexing files referenced by the current function), and construct the
         // function-specific `virtual_file_mapping` from `file_id` to its index in the module's
         // `filenames` array.
-        counter_regions.sort_by_key(|(_counter, region)| *region);
+        counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
         for (counter, region) in counter_regions {
             let (file_path, start_line, start_col, end_line, end_col) = region.file_start_and_end();
             let same_file = current_file_path.as_ref().map_or(false, |p| p == file_path);

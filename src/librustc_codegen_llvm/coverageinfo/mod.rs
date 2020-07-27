@@ -110,36 +110,37 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-/// Aligns to C++ struct llvm::coverage::Counter::CounterKind.
-/// The order of discrimiators is important.
+/// Aligns with [llvm::coverage::CounterMappingRegion::RegionKind](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L205-L221)
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 enum RegionKind {
     /// A CodeRegion associates some code with a counter
-    CodeRegion,
+    CodeRegion = 0,
 
     /// An ExpansionRegion represents a file expansion region that associates
     /// a source range with the expansion of a virtual source file, such as
     /// for a macro instantiation or #include file.
-    ExpansionRegion,
+    ExpansionRegion = 1,
 
     /// A SkippedRegion represents a source range with code that was skipped
     /// by a preprocessor or similar means.
-    SkippedRegion,
+    SkippedRegion = 2,
 
     /// A GapRegion is like a CodeRegion, but its count is only set as the
     /// line execution count when its the only region in the line.
-    GapRegion,
+    GapRegion = 3,
 }
 
 /// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the
-/// coverage map in accordance with LLVM's "Coverage Mapping Format". The struct composes fields
-/// representing the `Counter` type and value(s) (injected counter ID, or expression type and
-/// operands), the source file (an indirect index into a "filenames array", encoded separately),
-/// and source location (start and end positions of the represented code region).
+/// coverage map, in accordance with the
+/// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/llvmorg-8.0.0/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
+/// The struct composes fields representing the `Counter` type and value(s) (injected counter ID,
+/// or expression type and operands), the source file (an indirect index into a "filenames array",
+/// encoded separately), and source location (start and end positions of the represented code
+/// region).
 ///
-/// Aligns to C++ struct llvm::coverage::CounterMappingRegion.
-/// The order of fields is important.
+/// Aligns with [llvm::coverage::CounterMappingRegion](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L223-L226)
+/// Important: The Rust struct layout (order and types of fields) must match its C++ counterpart.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct CounterMappingRegion {

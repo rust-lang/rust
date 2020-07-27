@@ -7,26 +7,28 @@ use std::cmp::{Ord, Ordering};
 use std::fmt;
 use std::path::PathBuf;
 
-/// Aligns to C++ struct llvm::coverage::Counter::CounterKind.
-/// The order of discriminators is important.
+/// Aligns with [llvm::coverage::Counter::CounterKind](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L91)
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 enum CounterKind {
-    Zero,
-    CounterValueReference,
-    Expression,
+    Zero = 0,
+    CounterValueReference = 1,
+    Expression = 2,
 }
 
-/// Aligns to C++ struct llvm::coverage::Counter. Note that `id` has
-/// different interpretations, depending on the `kind`:
+/// A reference to an instance of an abstract "counter" that will yield a value in a coverage
+/// report. Note that `id` has different interpretations, depending on the `kind`:
 ///   * For `CounterKind::Zero`, `id` is assumed to be `0`
 ///   * For `CounterKind::CounterValueReference`,  `id` matches the `counter_id` of the injected
 ///     instrumentation counter (the `index` argument to the LLVM intrinsic `instrprof.increment()`)
-///   * For `CounterKind::Expression`, `id` is the index into the array of counter expressions.
-/// The order of fields is important.
+///   * For `CounterKind::Expression`, `id` is the index into the coverage map's array of counter
+///     expressions.
+/// Aligns with [llvm::coverage::Counter](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L98-L99)
+/// Important: The Rust struct layout (order and types of fields) must match its C++ counterpart.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct Counter {
+    // Important: The layout (order and types of fields) must match its C++ counterpart.
     kind: CounterKind,
     id: u32,
 }
@@ -45,21 +47,19 @@ impl Counter {
     }
 }
 
-/// Aligns to C++ struct llvm::coverage::CounterExpression::ExprKind.
-/// The order of discriminators is important.
+/// Aligns with [llvm::coverage::CounterExpression::ExprKind](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L146)
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub enum ExprKind {
-    Subtract,
-    Add,
+    Subtract = 0,
+    Add = 1,
 }
 
-/// Aligns to C++ struct llvm::coverage::CounterExpression.
-/// The order of fields is important.
+/// Aligns with [llvm::coverage::CounterExpression](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L147-L148)
+/// Important: The Rust struct layout (order and types of fields) must match its C++ counterpart.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct CounterExpression {
-    // Note the field order is important.
     kind: ExprKind,
     lhs: Counter,
     rhs: Counter,
