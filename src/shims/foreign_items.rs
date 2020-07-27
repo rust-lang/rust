@@ -200,7 +200,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Miri-specific extern functions
             "miri_static_root" => {
                 let &[ptr] = check_arg_count(args)?;
-                let ptr = this.read_scalar(ptr)?.not_undef()?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
                 let ptr = this.force_ptr(ptr)?;
                 if ptr.offset != Size::ZERO {
                     throw_unsup_format!("pointer passed to miri_static_root must point to beginning of an allocated block");
