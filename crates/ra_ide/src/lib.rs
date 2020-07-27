@@ -105,7 +105,7 @@ pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
-    pub fix: Option<Fix>,
+    pub fix: Option<(Fix, TextRange)>,
 }
 
 #[derive(Debug)]

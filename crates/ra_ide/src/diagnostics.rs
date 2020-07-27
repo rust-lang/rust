@@ -60,14 +60,16 @@ pub(crate) fn diagnostics(
                 FileSystemEdit::CreateFile { anchor: original_file, dst: d.candidate.clone() }
                     .into(),
             );
+            let range = sema.diagnostics_range(d).range;
             res.borrow_mut().push(Diagnostic {
-                range: sema.diagnostics_range(d).range,
+                range,
                 message: d.message(),
                 severity: Severity::Error,
-                fix: Some(fix),
+                fix: Some((fix, range)),
             })
         })
         .on::<hir::diagnostics::MissingFields, _>(|d| {
+            let range = sema.diagnostics_range(d).range;
             // Note that although we could add a diagnostics to
             // fill the missing tuple field, e.g :
             // `struct A(usize);`
@@ -91,11 +93,15 @@ pub(crate) fn diagnostics(
                         .into_text_edit(&mut builder);
                     builder.finish()
                 };
-                Some(Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()))
+                Some((
+                    Fix::new("Fill struct fields", SourceFileEdit { file_id, edit }.into()),
+                    range,
+                ))
             };
 
             res.borrow_mut().push(Diagnostic {
-                range: sema.diagnostics_range(d).range,
+                // TODO kb use a smaller range here
+                range,
                 message: d.message(),
                 severity: Severity::Error,
                 fix,
@@ -106,20 +112,21 @@ pub(crate) fn diagnostics(
             let replacement = format!("Ok({})", node.syntax());
             let edit = TextEdit::replace(node.syntax().text_range(), replacement);
             let source_change = SourceFileEdit { file_id, edit }.into();
-            let fix = Fix::new("Wrap with ok", source_change);
+            let range = sema.diagnostics_range(d).range;
             res.borrow_mut().push(Diagnostic {
-                range: sema.diagnostics_range(d).range,
+                range,
                 message: d.message(),
                 severity: Severity::Error,
-                fix: Some(fix),
+                fix: Some((Fix::new("Wrap with ok", source_change), range)),
             })
         })
         .on::<hir::diagnostics::NoSuchField, _>(|d| {
+            let range = sema.diagnostics_range(d).range;
             res.borrow_mut().push(Diagnostic {
-                range: sema.diagnostics_range(d).range,
+                range,
                 message: d.message(),
                 severity: Severity::Error,
-                fix: missing_struct_field_fix(&sema, file_id, d),
+                fix: missing_struct_field_fix(&sema, file_id, d).map(|fix| (fix, range)),
             })
         })
         // Only collect experimental diagnostics when they're enabled.
@@ -222,24 +229,24 @@ fn check_unnecessary_braces_in_use_statement(
 ) -> Option<()> {
     let use_tree_list = ast::UseTreeList::cast(node.clone())?;
     if let Some((single_use_tree,)) = use_tree_list.use_trees().collect_tuple() {
-        let range = use_tree_list.syntax().text_range();
+        let use_range = use_tree_list.syntax().text_range();
         let edit =
             text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(&single_use_tree)
                 .unwrap_or_else(|| {
                     let to_replace = single_use_tree.syntax().text().to_string();
                     let mut edit_builder = TextEditBuilder::default();
-                    edit_builder.delete(range);
-                    edit_builder.insert(range.start(), to_replace);
+                    edit_builder.delete(use_range);
+                    edit_builder.insert(use_range.start(), to_replace);
                     edit_builder.finish()
                 });
 
         acc.push(Diagnostic {
-            range,
+            range: use_range,
             message: "Unnecessary braces in use statement".to_string(),
             severity: Severity::WeakWarning,
-            fix: Some(Fix::new(
-                "Remove unnecessary braces",
-                SourceFileEdit { file_id, edit }.into(),
+            fix: Some((
+                Fix::new("Remove unnecessary braces", SourceFileEdit { file_id, edit }.into()),
+                use_range,
             )),
         });
     }
@@ -254,8 +261,7 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
     if single_use_tree.path()?.segment()?.syntax().first_child_or_token()?.kind() == T![self] {
         let start = use_tree_list_node.prev_sibling_or_token()?.text_range().start();
         let end = use_tree_list_node.text_range().end();
-        let range = TextRange::new(start, end);
-        return Some(TextEdit::delete(range));
+        return Some(TextEdit::delete(TextRange::new(start, end)));
     }
     None
 }
@@ -278,13 +284,17 @@ fn check_struct_shorthand_initialization(
                 edit_builder.insert(record_field.syntax().text_range().start(), field_name);
                 let edit = edit_builder.finish();
 
+                let field_range = record_field.syntax().text_range();
                 acc.push(Diagnostic {
-                    range: record_field.syntax().text_range(),
+                    range: field_range,
                     message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,
-                    fix: Some(Fix::new(
-                        "Use struct shorthand initialization",
-                        SourceFileEdit { file_id, edit }.into(),
+                    fix: Some((
+                        Fix::new(
+                            "Use struct shorthand initialization",
+                            SourceFileEdit { file_id, edit }.into(),
+                        ),
+                        field_range,
                     )),
                 });
             }
@@ -304,14 +314,14 @@ mod tests {
     /// Takes a multi-file input fixture with annotated cursor positions,
     /// and checks that:
     ///  * a diagnostic is produced
-    ///  * this diagnostic touches the input cursor position
+    ///  * this diagnostic fix touches the input cursor position
     ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
     fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
         let after = trim_indent(ra_fixture_after);
 
         let (analysis, file_position) = analysis_and_position(ra_fixture_before);
         let diagnostic = analysis.diagnostics(file_position.file_id, true).unwrap().pop().unwrap();
-        let mut fix = diagnostic.fix.unwrap();
+        let (mut fix, fix_range) = diagnostic.fix.unwrap();
         let edit = fix.source_change.source_file_edits.pop().unwrap().edit;
         let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
         let actual = {
@@ -322,10 +332,9 @@ mod tests {
 
         assert_eq_text!(&after, &actual);
         assert!(
-            diagnostic.range.start() <= file_position.offset
-                && diagnostic.range.end() >= file_position.offset,
-            "diagnostic range {:?} does not touch cursor position {:?}",
-            diagnostic.range,
+            fix_range.start() <= file_position.offset && fix_range.end() >= file_position.offset,
+            "diagnostic fix range {:?} does not touch cursor position {:?}",
+            fix_range,
             file_position.offset
         );
     }
@@ -337,7 +346,7 @@ mod tests {
         let (analysis, file_pos) = analysis_and_position(ra_fixture_before);
         let current_file_id = file_pos.file_id;
         let diagnostic = analysis.diagnostics(current_file_id, true).unwrap().pop().unwrap();
-        let mut fix = diagnostic.fix.unwrap();
+        let mut fix = diagnostic.fix.unwrap().0;
         let edit = fix.source_change.source_file_edits.pop().unwrap();
         let changed_file_id = edit.file_id;
         let before = analysis.file_text(changed_file_id).unwrap();
@@ -628,21 +637,24 @@ fn test_fn() {
                         range: 0..8,
                         severity: Error,
                         fix: Some(
-                            Fix {
-                                label: "Create module",
-                                source_change: SourceChange {
-                                    source_file_edits: [],
-                                    file_system_edits: [
-                                        CreateFile {
-                                            anchor: FileId(
-                                                1,
-                                            ),
-                                            dst: "foo.rs",
-                                        },
-                                    ],
-                                    is_snippet: false,
+                            (
+                                Fix {
+                                    label: "Create module",
+                                    source_change: SourceChange {
+                                        source_file_edits: [],
+                                        file_system_edits: [
+                                            CreateFile {
+                                                anchor: FileId(
+                                                    1,
+                                                ),
+                                                dst: "foo.rs",
+                                            },
+                                        ],
+                                        is_snippet: false,
+                                    },
                                 },
-                            },
+                                0..8,
+                            ),
                         ),
                     },
                 ]

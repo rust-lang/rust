@@ -775,9 +775,9 @@ fn handle_fixes(
 
     let fixes_from_diagnostics = diagnostics
         .into_iter()
-        .filter_map(|d| Some((d.range, d.fix?)))
-        .filter(|(diag_range, _fix)| diag_range.intersect(range).is_some())
-        .map(|(_range, fix)| fix);
+        .filter_map(|d| d.fix)
+        .filter(|(_fix, fix_range)| fix_range.intersect(range).is_some())
+        .map(|(fix, _range)| fix);
     for fix in fixes_from_diagnostics {
         let title = fix.label;
         let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
