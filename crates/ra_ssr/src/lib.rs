@@ -51,8 +51,7 @@ pub struct MatchFinder<'db> {
     /// Our source of information about the user's code.
     sema: Semantics<'db, ra_ide_db::RootDatabase>,
     rules: Vec<ResolvedRule>,
-    scope: hir::SemanticsScope<'db>,
-    hygiene: hir::Hygiene,
+    resolution_scope: resolving::ResolutionScope<'db>,
 }
 
 impl<'db> MatchFinder<'db> {
@@ -63,21 +62,8 @@ impl<'db> MatchFinder<'db> {
         lookup_context: FilePosition,
     ) -> MatchFinder<'db> {
         let sema = Semantics::new(db);
-        let file = sema.parse(lookup_context.file_id);
-        // Find a node at the requested position, falling back to the whole file.
-        let node = file
-            .syntax()
-            .token_at_offset(lookup_context.offset)
-            .left_biased()
-            .map(|token| token.parent())
-            .unwrap_or_else(|| file.syntax().clone());
-        let scope = sema.scope(&node);
-        MatchFinder {
-            sema: Semantics::new(db),
-            rules: Vec::new(),
-            scope,
-            hygiene: hir::Hygiene::new(db, lookup_context.file_id.into()),
-        }
+        let resolution_scope = resolving::ResolutionScope::new(&sema, lookup_context);
+        MatchFinder { sema: Semantics::new(db), rules: Vec::new(), resolution_scope }
     }
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
@@ -106,8 +92,7 @@ impl<'db> MatchFinder<'db> {
         for parsed_rule in rule.parsed_rules {
             self.rules.push(ResolvedRule::new(
                 parsed_rule,
-                &self.scope,
-                &self.hygiene,
+                &self.resolution_scope,
                 self.rules.len(),
             )?);
         }
@@ -140,8 +125,7 @@ impl<'db> MatchFinder<'db> {
         for parsed_rule in pattern.parsed_rules {
             self.rules.push(ResolvedRule::new(
                 parsed_rule,
-                &self.scope,
-                &self.hygiene,
+                &self.resolution_scope,
                 self.rules.len(),
             )?);
         }

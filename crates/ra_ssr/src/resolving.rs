@@ -3,9 +3,15 @@
 use crate::errors::error;
 use crate::{parsing, SsrError};
 use parsing::Placeholder;
+use ra_db::FilePosition;
 use ra_syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};
 use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::mark;
+
+pub(crate) struct ResolutionScope<'db> {
+    scope: hir::SemanticsScope<'db>,
+    hygiene: hir::Hygiene,
+}
 
 pub(crate) struct ResolvedRule {
     pub(crate) pattern: ResolvedPattern,
@@ -30,12 +36,11 @@ pub(crate) struct ResolvedPath {
 impl ResolvedRule {
     pub(crate) fn new(
         rule: parsing::ParsedRule,
-        scope: &hir::SemanticsScope,
-        hygiene: &hir::Hygiene,
+        resolution_scope: &ResolutionScope,
         index: usize,
     ) -> Result<ResolvedRule, SsrError> {
         let resolver =
-            Resolver { scope, hygiene, placeholders_by_stand_in: rule.placeholders_by_stand_in };
+            Resolver { resolution_scope, placeholders_by_stand_in: rule.placeholders_by_stand_in };
         let resolved_template = if let Some(template) = rule.template {
             Some(resolver.resolve_pattern_tree(template)?)
         } else {
@@ -57,8 +62,7 @@ impl ResolvedRule {
 }
 
 struct Resolver<'a, 'db> {
-    scope: &'a hir::SemanticsScope<'db>,
-    hygiene: &'a hir::Hygiene,
+    resolution_scope: &'a ResolutionScope<'db>,
     placeholders_by_stand_in: FxHashMap<SmolStr, parsing::Placeholder>,
 }
 
@@ -104,6 +108,7 @@ impl Resolver<'_, '_> {
                 && !self.path_contains_placeholder(&path)
             {
                 let resolution = self
+                    .resolution_scope
                     .resolve_path(&path)
                     .ok_or_else(|| error!("Failed to resolve path `{}`", node.text()))?;
                 resolved_paths.insert(node, ResolvedPath { resolution, depth });
@@ -131,9 +136,32 @@ impl Resolver<'_, '_> {
         }
         false
     }
+}
+
+impl<'db> ResolutionScope<'db> {
+    pub(crate) fn new(
+        sema: &hir::Semantics<'db, ra_ide_db::RootDatabase>,
+        lookup_context: FilePosition,
+    ) -> ResolutionScope<'db> {
+        use ra_syntax::ast::AstNode;
+        let file = sema.parse(lookup_context.file_id);
+        // Find a node at the requested position, falling back to the whole file.
+        let node = file
+            .syntax()
+            .token_at_offset(lookup_context.offset)
+            .left_biased()
+            .map(|token| token.parent())
+            .unwrap_or_else(|| file.syntax().clone());
+        let node = pick_node_for_resolution(node);
+        let scope = sema.scope(&node);
+        ResolutionScope {
+            scope,
+            hygiene: hir::Hygiene::new(sema.db, lookup_context.file_id.into()),
+        }
+    }
 
     fn resolve_path(&self, path: &ast::Path) -> Option<hir::PathResolution> {
-        let hir_path = hir::Path::from_src(path.clone(), self.hygiene)?;
+        let hir_path = hir::Path::from_src(path.clone(), &self.hygiene)?;
         // First try resolving the whole path. This will work for things like
         // `std::collections::HashMap`, but will fail for things like
         // `std::collections::HashMap::new`.
@@ -156,6 +184,33 @@ impl Resolver<'_, '_> {
             None
         }
     }
+}
+
+/// Returns a suitable node for resolving paths in the current scope. If we create a scope based on
+/// a statement node, then we can't resolve local variables that were defined in the current scope
+/// (only in parent scopes). So we find another node, ideally a child of the statement where local
+/// variable resolution is permitted.
+fn pick_node_for_resolution(node: SyntaxNode) -> SyntaxNode {
+    match node.kind() {
+        SyntaxKind::EXPR_STMT => {
+            if let Some(n) = node.first_child() {
+                mark::hit!(cursor_after_semicolon);
+                return n;
+            }
+        }
+        SyntaxKind::LET_STMT | SyntaxKind::BIND_PAT => {
+            if let Some(next) = node.next_sibling() {
+                return pick_node_for_resolution(next);
+            }
+        }
+        SyntaxKind::NAME => {
+            if let Some(parent) = node.parent() {
+                return pick_node_for_resolution(parent);
+            }
+        }
+        _ => {}
+    }
+    node
 }
 
 /// Returns whether `path` or any of its qualifiers contains type arguments.

@@ -885,3 +885,40 @@ fn ufcs_matches_method_call() {
         "#]],
     );
 }
+
+#[test]
+fn replace_local_variable_reference() {
+    // The pattern references a local variable `foo` in the block containing the cursor. We should
+    // only replace references to this variable `foo`, not other variables that just happen to have
+    // the same name.
+    mark::check!(cursor_after_semicolon);
+    assert_ssr_transform(
+        "foo + $a ==>> $a - foo",
+        r#"
+            fn bar1() -> i32 {
+                let mut res = 0;
+                let foo = 5;
+                res += foo + 1;
+                let foo = 10;
+                res += foo + 2;<|>
+                res += foo + 3;
+                let foo = 15;
+                res += foo + 4;
+                res
+            }
+            "#,
+        expect![[r#"
+            fn bar1() -> i32 {
+                let mut res = 0;
+                let foo = 5;
+                res += foo + 1;
+                let foo = 10;
+                res += 2 - foo;
+                res += 3 - foo;
+                let foo = 15;
+                res += foo + 4;
+                res
+            }
+        "#]],
+    )
+}
