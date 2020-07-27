@@ -110,8 +110,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                     self.sink.push(MissingFields {
                         file: source_ptr.file_id,
                         field_list: AstPtr::new(&field_list),
+                        field_list_parent_path: record_lit.path().map(|path| AstPtr::new(&path)),
                         missed_fields,
-                        list_parent_path: record_lit.path().map(|path| AstPtr::new(&path)),
                     })
                 }
             }
@@ -141,6 +141,9 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                         self.sink.push(MissingPatFields {
                             file: source_ptr.file_id,
                             field_list: AstPtr::new(&field_list),
+                            field_list_parent_path: record_pat
+                                .path()
+                                .map(|path| AstPtr::new(&path)),
                             missed_fields,
                         })
                     }

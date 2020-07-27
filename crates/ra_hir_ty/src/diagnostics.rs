@@ -59,8 +59,8 @@ impl AstDiagnostic for NoSuchField {
 pub struct MissingFields {
     pub file: HirFileId,
     pub field_list: AstPtr<ast::RecordExprFieldList>,
+    pub field_list_parent_path: Option<AstPtr<ast::Path>>,
     pub missed_fields: Vec<Name>,
-    pub list_parent_path: Option<AstPtr<ast::Path>>,
 }
 
 impl Diagnostic for MissingFields {
@@ -76,7 +76,7 @@ impl Diagnostic for MissingFields {
     }
 
     fn source(&self) -> InFile<SyntaxNodePtr> {
-        self.list_parent_path
+        self.field_list_parent_path
             .clone()
             .map(|path| InFile { file_id: self.file, value: path.into() })
             .unwrap_or_else(|| self.fix_source())
@@ -100,6 +100,7 @@ impl AstDiagnostic for MissingFields {
 pub struct MissingPatFields {
     pub file: HirFileId,
     pub field_list: AstPtr<ast::RecordPatFieldList>,
+    pub field_list_parent_path: Option<AstPtr<ast::Path>>,
     pub missed_fields: Vec<Name>,
 }
 
@@ -113,6 +114,12 @@ impl Diagnostic for MissingPatFields {
     }
     fn fix_source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.field_list.clone().into() }
+    }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        self.field_list_parent_path
+            .clone()
+            .map(|path| InFile { file_id: self.file, value: path.into() })
+            .unwrap_or_else(|| self.fix_source())
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -327,41 +334,6 @@ mod tests {
     }
 
     #[test]
-    fn structure_name_highlighted_for_missing_fields() {
-        check_diagnostics(
-            r#"
-struct Beefy {
-    one: i32,
-    two: i32,
-    three: i32,
-    four: i32,
-    five: i32,
-    six: i32,
-    seven: i32,
-    eight: i32,
-    nine: i32,
-    ten: i32,
-}
-fn baz() {
-    let zz = Beefy {
-           //^^^^^ Missing structure fields:
-           //    |    - seven
-        one: (),
-        two: (),
-        three: (),
-        four: (),
-        five: (),
-        six: (),
-        eight: (),
-        nine: (),
-        ten: (),
-    };
-}
-"#,
-        );
-    }
-
-    #[test]
     fn no_such_field_diagnostics() {
         check_diagnostics(
             r#"
@@ -491,8 +463,8 @@ impl Foo {
 struct S { foo: i32, bar: () }
 fn baz(s: S) {
     let S { foo: _ } = s;
-        //^^^^^^^^^^ Missing structure fields:
-        //         | - bar
+      //^ Missing structure fields:
+      //| - bar
 }
 "#,
         );
