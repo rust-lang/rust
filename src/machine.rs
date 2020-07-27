@@ -64,7 +64,10 @@ pub enum MiriMemoryKind {
     Global,
     /// Memory for extern statics.
     /// This memory may leak.
-    ExternGlobal,
+    ExternStatic,
+    /// Memory for thread-local statics.
+    /// This memory may leak.
+    Tls,
 }
 
 impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
@@ -80,7 +83,7 @@ impl MayLeak for MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             Rust | C | WinHeap | Env => false,
-            Machine | Global | ExternGlobal => true,
+            Machine | Global | ExternStatic | Tls => true,
         }
     }
 }
@@ -94,8 +97,9 @@ impl fmt::Display for MiriMemoryKind {
             WinHeap => write!(f, "Windows heap"),
             Machine => write!(f, "machine-managed memory"),
             Env => write!(f, "environment variable"),
-            Global => write!(f, "global"),
-            ExternGlobal => write!(f, "extern global"),
+            Global => write!(f, "global (static or const)"),
+            ExternStatic => write!(f, "extern static"),
+            Tls =>  write!(f, "thread-local static"),
         }
     }
 }
@@ -175,7 +179,7 @@ impl MemoryExtra {
                 // "__cxa_thread_atexit_impl"
                 // This should be all-zero, pointer-sized.
                 let layout = this.machine.layouts.usize;
-                let place = this.allocate(layout, MiriMemoryKind::ExternGlobal.into());
+                let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into());
                 this.write_scalar(Scalar::from_machine_usize(0, this), place.into())?;
                 Self::add_extern_static(this, "__cxa_thread_atexit_impl", place.ptr);
                 // "environ"
@@ -185,7 +189,7 @@ impl MemoryExtra {
                 // "_tls_used"
                 // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
                 let layout = this.machine.layouts.u8;
-                let place = this.allocate(layout, MiriMemoryKind::ExternGlobal.into());
+                let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into());
                 this.write_scalar(Scalar::from_u8(0), place.into())?;
                 Self::add_extern_static(this, "_tls_used", place.ptr);
             }

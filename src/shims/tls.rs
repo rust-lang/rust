@@ -364,7 +364,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // All dtors done!
         this.machine.tls.delete_all_thread_tls(active_thread);
-        this.thread_terminated();
+        this.thread_terminated()?;
 
         Ok(())
     }

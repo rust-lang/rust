@@ -410,18 +410,31 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         None
     }
 
-    /// Handles thread termination of the active thread: wakes up threads joining on this one,
-    /// and deallocated thread-local statics.
-    ///
-    /// This is called from `tls.rs` after handling the TLS dtors.
-    fn thread_terminated(&mut self) {
+    /// Wakes up threads joining on the active one and deallocates thread-local statics.
+    /// The `AllocId` that can now be freed is returned.
+    fn thread_terminated(&mut self) -> Vec<AllocId> {
+        let mut free_tls_statics = Vec::new();
+        {
+            let mut thread_local_statics = self.thread_local_alloc_ids.borrow_mut();
+            thread_local_statics.retain(|&(_def_id, thread), &mut alloc_id| {
+                if thread != self.active_thread {
+                    // Keep this static around.
+                    return true;
+                }
+                // Delete this static from the map and from memory.
+                // We cannot free directly here as we cannot use `?` in this context.
+                free_tls_statics.push(alloc_id);
+                return false;
+            });
+        }
+        // Check if we need to unblock any threads.
         for (i, thread) in self.threads.iter_enumerated_mut() {
-            // Check if we need to unblock any threads.
             if thread.state == ThreadState::BlockedOnJoin(self.active_thread) {
                 trace!("unblocking {:?} because {:?} terminated", i, self.active_thread);
                 thread.state = ThreadState::Enabled;
             }
         }
+        return free_tls_statics;
     }
 
     /// Decide which action to take next and on which thread.
@@ -503,8 +516,8 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
-    fn get_or_create_thread_local_alloc_id(&self, def_id: DefId) -> InterpResult<'tcx, AllocId> {
-        let this = self.eval_context_ref();
+    fn get_or_create_thread_local_alloc_id(&mut self, def_id: DefId) -> InterpResult<'tcx, AllocId> {
+        let this = self.eval_context_mut();
         let tcx = this.tcx;
         if let Some(new_alloc_id) = this.machine.threads.get_thread_local_alloc_id(def_id) {
             // We already have a thread-specific allocation id for this
@@ -513,21 +526,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             // We need to allocate a thread-specific allocation id for this
             // thread-local static.
-            //
-            // At first, we compute the initial value for this static.
-            // Then we store the retrieved allocation back into the `alloc_map`
-            // to get a fresh allocation id, which we can use as a
-            // thread-specific allocation id for the thread-local static.
-            // On first access to that allocation, it will be copied over to the machine memory.
+            // First, we compute the initial value for this static.
             if tcx.is_foreign_item(def_id) {
                 throw_unsup_format!("foreign thread-local statics are not supported");
             }
             let allocation = interpret::get_static(*tcx, def_id)?;
-            // Create a new allocation id for the same allocation in this hacky
-            // way. Internally, `alloc_map` deduplicates allocations, but this
-            // is fine because Miri will make a copy before a first mutable
-            // access.
-            let new_alloc_id = tcx.create_memory_alloc(allocation);
+            // Create a fresh allocation with this content.
+            let new_alloc_id = this.memory.allocate_with(allocation.clone(), MiriMemoryKind::Tls.into()).alloc_id;
             this.machine.threads.set_thread_local_alloc_id(def_id, new_alloc_id);
             Ok(new_alloc_id)
         }
@@ -668,8 +673,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.machine.threads.schedule()
     }
 
+    /// Handles thread termination of the active thread: wakes up threads joining on this one,
+    /// and deallocated thread-local statics.
+    ///
+    /// This is called from `tls.rs` after handling the TLS dtors.
     #[inline]
-    fn thread_terminated(&mut self) {
-        self.eval_context_mut().machine.threads.thread_terminated()
+    fn thread_terminated(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        for alloc_id in this.machine.threads.thread_terminated() {
+            let ptr = this.memory.global_base_pointer(alloc_id.into())?;
+            this.memory.deallocate(ptr, None, MiriMemoryKind::Tls.into())?;
+        }
+        Ok(())
     }
 }
