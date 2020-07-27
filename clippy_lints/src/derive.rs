@@ -1,6 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
-    get_trait_def_id, is_automatically_derived, is_copy, match_path, span_lint_and_help, span_lint_and_note, span_lint_and_then,
+    get_trait_def_id, is_automatically_derived, is_copy, match_path, span_lint_and_help, span_lint_and_note,
+    span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
@@ -154,7 +155,12 @@ declare_clippy_lint! {
     "deriving `serde::Deserialize` on a type that has methods using `unsafe`"
 }
 
-declare_lint_pass!(Derive => [EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ, DERIVE_ORD_XOR_PARTIAL_ORD, UNSAFE_DERIVE_DESERIALIZE]);
+declare_lint_pass!(Derive => [
+    EXPL_IMPL_CLONE_ON_COPY,
+    DERIVE_HASH_XOR_EQ,
+    DERIVE_ORD_XOR_PARTIAL_ORD,
+    UNSAFE_DERIVE_DESERIALIZE
+]);
 
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
