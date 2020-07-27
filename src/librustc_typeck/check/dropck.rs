@@ -43,6 +43,10 @@ pub fn check_restricted_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<()
         if dtor_predicates.predicates.is_empty() {
             Ok(())
         } else {
+            // FIXME(negative_impls): Improve the diagnostics for `T: Sized` here.
+            //
+            // In this case the problem is not that there are unexpected where bounds,
+            // but instead, that a parameter is missing `T: ?Sized`.
             tcx.sess.span_err(
                 tcx.def_span(drop_impl_did),
                 &format!("negative impls on {} must not contain where bounds", s),
