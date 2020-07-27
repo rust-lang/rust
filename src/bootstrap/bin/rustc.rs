@@ -186,13 +186,6 @@ fn main() {
     std::process::exit(code);
 }
 
-#[cfg(unix)]
-fn exec_cmd(cmd: &mut Command) -> io::Result<i32> {
-    use std::os::unix::process::CommandExt;
-    Err(cmd.exec())
-}
-
-#[cfg(not(unix))]
 fn exec_cmd(cmd: &mut Command) -> io::Result<i32> {
     cmd.status().map(|status| status.code().unwrap())
 }
