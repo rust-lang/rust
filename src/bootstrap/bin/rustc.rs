@@ -152,7 +152,7 @@ fn main() {
             Ok(s) if s.success() => std::process::exit(0),
             e => e,
         };
-        println!("\nDid not run successfully: {:?}\n{:?}\n-------------", e, cmd);
+        println!("\nDid not run successfully: {}\n{:?}\n-------------", e, cmd);
         status_code(&mut on_fail).expect("could not run the backup command");
         std::process::exit(1);
     }
