@@ -3,53 +3,79 @@
     {
       "files": [
         {
+          "filename": "/usr/local/google/home/richkadel/rust/src/libstd/macros.rs",
+          "summary": {
+            "functions": {
+              "count": 2,
+              "covered": 2,
+              "percent": 100
+            },
+            "instantiations": {
+              "count": 3,
+              "covered": 2,
+              "percent": 66.66666666666666
+            },
+            "lines": {
+              "count": 4,
+              "covered": 4,
+              "percent": 100
+            },
+            "regions": {
+              "count": 14,
+              "covered": 11,
+              "notcovered": 3,
+              "percent": 78.57142857142857
+            }
+          }
+        },
+        {
           "filename": "main.rs",
           "summary": {
             "functions": {
-              "count": 7,
-              "covered": 5,
-              "percent": 71.42857142857143
+              "count": 4,
+              "covered": 0,
+              "percent": 0
             },
             "instantiations": {
-              "count": 8,
-              "covered": 6,
-              "percent": 75
+              "count": 5,
+              "covered": 0,
+              "percent": 0
             },
             "lines": {
-              "count": 30,
-              "covered": 25,
-              "percent": 83.33333333333334
+              "count": 21,
+              "covered": 15,
+              "percent": 71.42857142857143
             },
             "regions": {
-              "count": 7,
-              "covered": 5,
-              "notcovered": 2,
-              "percent": 71.42857142857143
+              "count": 27,
+              "covered": 17,
+              "notcovered": 10,
+              "percent": 62.96296296296296
             }
           }
         }
       ],
       "totals": {
         "functions": {
-          "count": 7,
-          "covered": 5,
-          "percent": 71.42857142857143
+          "count": 6,
+          "covered": 2,
+          "percent": 33.33333333333333
         },
         "instantiations": {
           "count": 8,
-          "covered": 6,
-          "percent": 75
+          "covered": 2,
+          "percent": 25
         },
         "lines": {
-          "count": 30,
-          "covered": 25,
-          "percent": 83.33333333333334
+          "count": 25,
+          "covered": 19,
+          "percent": 76
         },
         "regions": {
-          "count": 7,
-          "covered": 5,
-          "notcovered": 2,
-          "percent": 71.42857142857143
+          "count": 41,
+          "covered": 28,
+          "notcovered": 13,
+          "percent": 68.29268292682927
         }
       }
     }

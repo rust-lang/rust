@@ -174,21 +174,27 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let body_span = self.hir_body.value.span;
         debug!("instrumenting {:?}, span: {:?}", self.mir_def_id, body_span);
 
-        // FIXME(richkadel): As a first step, counters are only injected at the top of each
-        // function. The complete solution will inject counters at each conditional code branch.
-        let _ignore = mir_body;
-        let id = self.next_counter();
-        let function_source_hash = self.function_source_hash();
-        let code_region = body_span;
-        let scope = rustc_middle::mir::OUTERMOST_SOURCE_SCOPE;
-        let is_cleanup = false;
-        let next_block = rustc_middle::mir::START_BLOCK;
-        self.inject_call(
-            self.make_counter(id, function_source_hash, code_region),
-            scope,
-            is_cleanup,
-            next_block,
-        );
+        // Experimentally: Instrument every block (including cleanup).
+        let mut source_info_by_bb = Vec::with_capacity(mir_body.basic_blocks().len());
+        for (bb, data) in traversal::preorder(mir_body) {
+            debug!("Injecting before: {:?}", data);
+            let source_info = self.get_block_source_info(data);
+            let scope = source_info.scope;
+            let code_region = source_info.span;
+            source_info_by_bb.push((code_region, scope, data.is_cleanup, bb));
+        }
+
+        // Inject counters for the selected code regions
+        for (code_region, scope, is_cleanup, next_block) in source_info_by_bb {
+            let id = self.next_counter();
+            let function_source_hash = self.function_source_hash();
+            self.inject_call(
+                self.make_counter(id, function_source_hash, code_region),
+                scope,
+                is_cleanup,
+                next_block,
+            );
+        }
 
         // FIXME(richkadel): The next step to implement source based coverage analysis will be
         // instrumenting branches within functions, and some regions will be counted by "counter
@@ -333,6 +339,33 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // To insert the `new_block` in front of the first block in the counted branch (the
         // `next_block`), just swap the indexes, leaving the rest of the graph unchanged.
         self.mir_body.basic_blocks_mut().swap(next_block, new_block);
+    }
+
+    fn get_block_source_info(&self, data: &BasicBlockData<'tcx>) -> SourceInfo {
+        if let Some(statement) = data.statements.get(0) {
+            let start = &statement.source_info;
+            let end = &data.terminator().source_info;
+            let scope = if start.scope == end.scope {
+                start.scope
+            } else if self.mir_body.is_sub_scope(start.scope, end.scope) {
+                end.scope
+            } else if self.mir_body.is_sub_scope(end.scope, start.scope) {
+                start.scope
+            } else {
+                rustc_middle::mir::OUTERMOST_SOURCE_SCOPE
+            };
+            let span = start.span.to(end.span);
+            // FIXME(richkadel): See the embedded `FIXME` comments in `Span::to()`, and note,
+            // the function may return only the span of `start` or `end`, if the contexts are
+            // not equal. When attempting to encompass the `Span`s of `BasicBlock`s, as is
+            // done here, it is apparently not unusual to have different contexts. Upcoming
+            // (near term) iterations of coverage injection will be more deliberate about
+            // selecting the spans for code regions, from the analysis of `Statement`s and
+            // `Terminator`s, so this issue should be revisited at that time.
+            SourceInfo { span, scope }
+        } else {
+            data.terminator().source_info
+        }
     }
 
     fn const_u32(&self, value: u32, span: Span) -> Operand<'tcx> {
