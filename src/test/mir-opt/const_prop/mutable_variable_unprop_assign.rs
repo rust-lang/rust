@@ -1,6 +1,6 @@
 // compile-flags: -O
 
-// EMIT_MIR rustc.main.ConstProp.diff
+// EMIT_MIR mutable_variable_unprop_assign.main.ConstProp.diff
 fn main() {
     let a = foo();
     let mut x: (i32, i32) = (1, 2);

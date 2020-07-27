@@ -4,7 +4,7 @@ fn main() {
     println!("{}", test(&()));
 }
 
-// EMIT_MIR rustc.test.Inline.after.mir
+// EMIT_MIR inline_trait_method.test.Inline.after.mir
 fn test(x: &dyn X) -> u32 {
     x.y()
 }

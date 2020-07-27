@@ -14,7 +14,7 @@ trait Foo {
 }
 
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
-// EMIT_MIR rustc.{{impl}}-{{constant}}.SimplifyCfg-qualify-consts.after.mir
+// EMIT_MIR issue_41697.{{impl}}-{{constant}}.SimplifyCfg-qualify-consts.after.mir
 impl Foo for [u8; 1+1] {
     fn get(&self) -> [u8; 2] {
         *self

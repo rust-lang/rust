@@ -8,7 +8,7 @@ struct Temp {
 
 fn use_u8(_: u8) {}
 
-// EMIT_MIR rustc.main.SimplifyLocals.diff
+// EMIT_MIR simplify_locals_removes_unused_consts.main.SimplifyLocals.diff
 fn main() {
     let ((), ()) = ((), ());
     use_zst(((), ()));
