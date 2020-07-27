@@ -16,7 +16,7 @@
 
 use std::{any::Any, fmt};
 
-use ra_syntax::SyntaxNodePtr;
+use ra_syntax::{SyntaxNode, SyntaxNodePtr};
 
 use crate::{db::AstDatabase, InFile};
 
@@ -38,6 +38,11 @@ pub trait AstDiagnostic {
 }
 
 impl dyn Diagnostic {
+    pub fn syntax_node(&self, db: &impl AstDatabase) -> SyntaxNode {
+        let node = db.parse_or_expand(self.source().file_id).unwrap();
+        self.source().value.to_node(&node)
+    }
+
     pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {
         self.as_any().downcast_ref()
     }

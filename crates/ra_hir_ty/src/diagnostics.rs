@@ -262,10 +262,7 @@ impl AstDiagnostic for MismatchedArgCount {
 #[cfg(test)]
 mod tests {
     use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId};
-    use hir_expand::{
-        db::AstDatabase,
-        diagnostics::{Diagnostic, DiagnosticSinkBuilder},
-    };
+    use hir_expand::diagnostics::{Diagnostic, DiagnosticSinkBuilder};
     use ra_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
     use ra_syntax::{TextRange, TextSize};
     use rustc_hash::FxHashMap;
@@ -310,12 +307,11 @@ mod tests {
 
         let mut actual: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
         db.diagnostics(|d| {
-            // FXIME: macros...
-            let source = d.source();
-            let root = db.parse_or_expand(source.file_id).unwrap();
-            let range = source.value.to_node(&root).text_range();
+            // FIXME: macros...
+            let file_id = d.source().file_id.original_file(&db);
+            let range = d.syntax_node(&db).text_range();
             let message = d.message().to_owned();
-            actual.entry(source.file_id.original_file(&db)).or_default().push((range, message));
+            actual.entry(file_id).or_default().push((range, message));
         });
 
         for (file_id, diags) in actual.iter_mut() {
