@@ -1,6 +1,6 @@
 use crate::utils::paths;
 use crate::utils::{
-    is_automatically_derived, is_copy, match_path, span_lint_and_help, span_lint_and_note, span_lint_and_then,
+    get_trait_def_id, is_automatically_derived, is_copy, match_path, span_lint_and_help, span_lint_and_note, span_lint_and_then,
 };
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
@@ -211,9 +211,10 @@ fn check_ord_pord<'tcx>(
     ord_is_automatically_derived: bool,
 ) {
     if_chain! {
-        if match_path(&trait_ref.path, &paths::ORD);
+        if let Some(ord_trait_def_id) = get_trait_def_id(cx, &paths::ORD);
         if let Some(pord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait();
         if let Some(def_id) = &trait_ref.trait_def_id();
+        if *def_id == ord_trait_def_id;
         if !def_id.is_local();
         then {
             // Look for the PartialOrd implementations for `ty`
