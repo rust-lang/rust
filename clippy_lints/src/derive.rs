@@ -44,20 +44,50 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:**
+    /// **What it does:** Checks for deriving `Ord` but implementing `PartialOrd`
+    /// explicitly or vice versa.
     ///
-    /// **Why is this bad?**
+    /// **Why is this bad?** The implementation of these traits must agree (for
+    /// example for use with `sort`) so it’s probably a bad idea to use a
+    /// default-generated `Ord` implementation with an explicitly defined
+    /// `PartialOrd`. In particular, the following must hold for any type
+    /// implementing `Ord`:
+    ///
+    /// ```text
+    /// k1.cmp(&k2) == k1.partial_cmp(&k2).unwrap()
+    /// ```
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
     ///
-    /// ```rust
-    /// // example code where clippy issues a warning
+    /// ```rust,ignore
+    /// #[derive(Ord, PartialEq, Eq)]
+    /// struct Foo;
+    ///
+    /// impl PartialOrd for Foo {
+    ///     ...
+    /// }
     /// ```
     /// Use instead:
-    /// ```rust
-    /// // example code which does not raise clippy warning
+    /// ```rust,ignore
+    /// #[derive(PartialEq, Eq)]
+    /// struct Foo;
+    ///
+    /// impl PartialOrd for Foo {
+    ///     fn partial_cmp(&self, other: &Foo) -> Option<Ordering> {
+    ///        Some(self.cmp(other))
+    ///     }
+    /// }
+    ///
+    /// impl Ord for Foo {
+    ///     ...
+    /// }
+    /// ```
+    /// or, if you don't need a custom ordering:
+    /// ```rust,ignore
+    /// #[derive(Ord, PartialOrd, PartialEq, Eq)]
+    /// struct Foo;
     /// ```
     pub DERIVE_ORD_XOR_PARTIAL_ORD,
     correctness,
