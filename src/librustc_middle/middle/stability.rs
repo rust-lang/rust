@@ -166,29 +166,31 @@ pub fn deprecation_in_effect(is_since_rustc_version: bool, since: Option<&str>) 
 
 pub fn deprecation_suggestion(
     diag: &mut DiagnosticBuilder<'_>,
+    kind: &str,
     suggestion: Option<Symbol>,
     span: Span,
 ) {
     if let Some(suggestion) = suggestion {
         diag.span_suggestion(
             span,
-            "replace the use of the deprecated item",
+            &format!("replace the use of the deprecated {}", kind),
             suggestion.to_string(),
             Applicability::MachineApplicable,
         );
     }
 }
 
-pub fn deprecation_message(depr: &Deprecation, path: &str) -> (String, &'static Lint) {
+pub fn deprecation_message(depr: &Deprecation, kind: &str, path: &str) -> (String, &'static Lint) {
     let (message, lint) = if deprecation_in_effect(
         depr.is_since_rustc_version,
         depr.since.map(Symbol::as_str).as_deref(),
     ) {
-        (format!("use of deprecated item '{}'", path), DEPRECATED)
+        (format!("use of deprecated {} `{}`", kind, path), DEPRECATED)
     } else {
         (
             format!(
-                "use of item '{}' that will be deprecated in future version {}",
+                "use of {} `{}` that will be deprecated in future version {}",
+                kind,
                 path,
                 depr.since.unwrap()
             ),
@@ -224,6 +226,7 @@ fn late_report_deprecation(
     lint: &'static Lint,
     span: Span,
     hir_id: HirId,
+    def_id: DefId,
 ) {
     if span.in_derive_expansion() {
         return;
@@ -232,7 +235,8 @@ fn late_report_deprecation(
     tcx.struct_span_lint_hir(lint, hir_id, span, |lint| {
         let mut diag = lint.build(message);
         if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
-            deprecation_suggestion(&mut diag, suggestion, span);
+            let kind = tcx.def_kind(def_id).descr(def_id);
+            deprecation_suggestion(&mut diag, kind, suggestion, span);
         }
         diag.emit()
     });
@@ -304,8 +308,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 // #[rustc_deprecated] however wants to emit down the whole
                 // hierarchy.
                 if !skip || depr_entry.attr.is_since_rustc_version {
-                    let (message, lint) =
-                        deprecation_message(&depr_entry.attr, &self.def_path_str(def_id));
+                    let path = &self.def_path_str(def_id);
+                    let kind = self.def_kind(def_id).descr(def_id);
+                    let (message, lint) = deprecation_message(&depr_entry.attr, kind, path);
                     late_report_deprecation(
                         self,
                         &message,
@@ -313,6 +318,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         lint,
                         span,
                         id,
+                        def_id,
                     );
                 }
             };

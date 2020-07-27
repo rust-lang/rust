@@ -1,4 +1,4 @@
-error: use of deprecated item 'lint_stability::deprecated_text': text
+error: use of deprecated function `lint_stability::deprecated_text`: text
   --> $DIR/lint-stability3.rs:13:5
    |
 LL |     macro_test_arg_nested!(deprecated_text);
