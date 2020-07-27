@@ -99,6 +99,7 @@ fn foo(n: usize) {
 ",
         );
     }
+
     #[test]
     fn test_remove_dbg_with_brackets_and_braces() {
         check_assist(remove_dbg, "dbg![<|>1 + 1]", "1 + 1");
@@ -113,7 +114,7 @@ fn foo(n: usize) {
     }
 
     #[test]
-    fn remove_dbg_target() {
+    fn test_remove_dbg_target() {
         check_assist_target(
             remove_dbg,
             "
@@ -128,7 +129,7 @@ fn foo(n: usize) {
     }
 
     #[test]
-    fn remove_dbg_leave_semicolon() {
+    fn test_remove_dbg_keep_semicolon() {
         // https://github.com/rust-analyzer/rust-analyzer/issues/5129#issuecomment-651399779
         // not quite though
         let code = "
@@ -141,10 +142,35 @@ let res = 1 * 20; // needless comment
     }
 
     #[test]
-    fn remove_dbg_keep_expression() {
+    fn test_remove_dbg_keep_expression() {
         let code = "
 let res = <|>dbg!(a + b).foo();";
         let expected = "let res = (a + b).foo();";
+        check_assist(remove_dbg, code, expected);
+    }
+
+    #[test]
+    fn test_remove_dbg_from_inside_fn() {
+        let code = "
+fn square(x: u32) -> u32 {
+    x * x
+}
+
+fn main() {
+    let x = square(dbg<|>!(5 + 10));
+    println!(\"{}\", x);
+}";
+
+        let expected = "
+fn square(x: u32) -> u32 {
+    x * x
+}
+
+fn main() {
+    let x = square(5 + 10);
+    println!(\"{}\", x);
+}";
+        check_assist_target(remove_dbg, code, "dbg!(5 + 10)");
         check_assist(remove_dbg, code, expected);
     }
 }
