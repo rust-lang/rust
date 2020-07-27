@@ -251,7 +251,6 @@
 
 use crate::cmp;
 use crate::fmt;
-use crate::mem;
 use crate::memchr;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
@@ -1435,12 +1434,15 @@ pub trait Write {
     /// ```
     #[unstable(feature = "write_all_vectored", issue = "70436")]
     fn write_all_vectored(&mut self, mut bufs: &mut [IoSlice<'_>]) -> Result<()> {
+        // Guarantee that bufs is empty if it contains no data,
+        // to avoid calling write_vectored if there is no data to be written.
+        bufs = IoSlice::advance(bufs, 0);
         while !bufs.is_empty() {
             match self.write_vectored(bufs) {
                 Ok(0) => {
                     return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
                 }
-                Ok(n) => bufs = IoSlice::advance(mem::take(&mut bufs), n),
+                Ok(n) => bufs = IoSlice::advance(bufs, n),
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             }
@@ -2958,6 +2960,7 @@ mod tests {
         #[rustfmt::skip] // Becomes unreadable otherwise.
         let tests: Vec<(_, &'static [u8])> = vec![
             (vec![], &[]),
+            (vec![IoSlice::new(&[]), IoSlice::new(&[])], &[]),
             (vec![IoSlice::new(&[1])], &[1]),
             (vec![IoSlice::new(&[1, 2])], &[1, 2]),
             (vec![IoSlice::new(&[1, 2, 3])], &[1, 2, 3]),
