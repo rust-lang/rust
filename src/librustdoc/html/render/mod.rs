@@ -228,7 +228,7 @@ impl Serialize for IndexItem {
 
 /// A type used for the search index.
 #[derive(Debug)]
-pub struct RenderType {
+crate struct RenderType {
     ty: Option<DefId>,
     idx: Option<usize>,
     name: Option<String>,
@@ -259,7 +259,7 @@ impl Serialize for RenderType {
 
 /// A type used for the search index.
 #[derive(Debug)]
-pub struct Generic {
+crate struct Generic {
     name: String,
     defid: Option<DefId>,
     idx: Option<usize>,
@@ -313,7 +313,7 @@ impl Serialize for IndexItemFunctionType {
 }
 
 #[derive(Debug)]
-pub struct TypeWithKind {
+crate struct TypeWithKind {
     ty: RenderType,
     kind: TypeKind,
 }

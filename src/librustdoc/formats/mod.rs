@@ -2,7 +2,7 @@ pub mod cache;
 pub mod item_type;
 pub mod renderer;
 
-pub use renderer::{FormatRenderer, Renderer};
+pub use renderer::{run_format, FormatRenderer};
 
 use rustc_span::def_id::DefId;
 

@@ -502,9 +502,9 @@ fn main_options(options: config::Options) -> i32 {
         info!("going to format");
         let (error_format, edition, debugging_options) = diag_opts;
         let diag = core::new_handler(error_format, None, &debugging_options);
-        match formats::Renderer::new()
-            .run::<html::render::Context>(krate, renderopts, renderinfo, &diag, edition)
-        {
+        match formats::run_format::<html::render::Context>(
+            krate, renderopts, renderinfo, &diag, edition,
+        ) {
             Ok(_) => rustc_driver::EXIT_SUCCESS,
             Err(e) => {
                 diag.struct_err(&format!("couldn't generate documentation: {}", e.error))

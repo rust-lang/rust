@@ -148,29 +148,19 @@ impl Cache {
             external_paths.into_iter().map(|(k, (v, t))| (k, (v, ItemType::from(t)))).collect();
 
         let mut cache = Cache {
-            impls: Default::default(),
             external_paths,
             exact_paths,
-            paths: Default::default(),
-            implementors: Default::default(),
-            stack: Vec::new(),
-            parent_stack: Vec::new(),
-            search_index: Vec::new(),
             parent_is_trait_impl: false,
-            extern_locations: Default::default(),
-            primitive_locations: Default::default(),
             stripped_mod: false,
             access_levels,
             crate_version: krate.version.take(),
             document_private,
-            orphan_impl_items: Vec::new(),
-            orphan_trait_impls: Vec::new(),
             traits: krate.external_traits.replace(Default::default()),
             deref_trait_did,
             deref_mut_trait_did,
             owned_box_did,
             masked_crates: mem::take(&mut krate.masked_crates),
-            aliases: Default::default(),
+            ..Cache::default()
         };
 
         // Cache where all our extern crates are located
@@ -211,7 +201,7 @@ impl Cache {
         for (trait_did, dids, impl_) in cache.orphan_trait_impls.drain(..) {
             if cache.traits.contains_key(&trait_did) {
                 for did in dids {
-                    cache.impls.entry(did).or_insert(vec![]).push(impl_.clone());
+                    cache.impls.entry(did).or_default().push(impl_.clone());
                 }
             }
         }
