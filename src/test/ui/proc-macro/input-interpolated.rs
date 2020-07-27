@@ -1,6 +1,7 @@
 // Check what token streams proc macros see when interpolated tokens are passed to them as input.
 
 // check-pass
+// normalize-stdout-test "#\d+" -> "#CTXT"
 // aux-build:test-macros.rs
 
 #[macro_use]

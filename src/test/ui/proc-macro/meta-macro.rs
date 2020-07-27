@@ -2,6 +2,7 @@
 // aux-build:meta-macro.rs
 // edition:2018
 // compile-flags: -Z span-debug
+// normalize-stdout-test "#\d+" -> "#CTXT"
 // run-pass
 
 extern crate meta_macro;

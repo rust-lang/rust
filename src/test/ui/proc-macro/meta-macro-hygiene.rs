@@ -1,8 +1,9 @@
 // aux-build:make-macro.rs
 // aux-build:meta-macro.rs
 // edition:2018
-// compile-flags: -Z span-debug -Z unpretty=expanded,hygiene -Z macro-backtrace
+// compile-flags: -Z span-debug -Z macro-backtrace
 // check-pass
+// normalize-stdout-test "#\d+" -> "#CTXT"
 // normalize-stdout-test "\d+#" -> "0#"
 //
 // We don't care about symbol ids, so we set them all to 0

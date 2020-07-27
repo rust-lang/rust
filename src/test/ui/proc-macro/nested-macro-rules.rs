@@ -2,6 +2,7 @@
 // aux-build:nested-macro-rules.rs
 // aux-build:test-macros.rs
 // compile-flags: -Z span-debug
+// normalize-stdout-test "#\d+" -> "#CTXT"
 // edition:2018
 
 extern crate nested_macro_rules;
