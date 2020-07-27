@@ -52,6 +52,10 @@ use std::thread;
 macro_rules! with_api {
     ($S:ident, $self:ident, $m:ident) => {
         $m! {
+            FreeFunctions {
+                fn drop($self: $S::FreeFunctions);
+                fn track_env_var(var: &str, value: Option<&str>);
+            },
             TokenStream {
                 fn drop($self: $S::TokenStream);
                 fn clone($self: &$S::TokenStream) -> $S::TokenStream;
