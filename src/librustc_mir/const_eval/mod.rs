@@ -41,7 +41,7 @@ pub(crate) fn destructure_const<'tcx>(
 ) -> mir::DestructuredConst<'tcx> {
     trace!("destructure_const: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.eval_const_to_op(val, None).unwrap();
+    let op = ecx.const_to_op(val, None).unwrap();
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match val.ty.kind {

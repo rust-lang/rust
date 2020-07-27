@@ -323,14 +323,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
-    /// the *canonical* machine pointer to the allocation.  Must never be used
-    /// for any other pointers!
+    /// the machine pointer to the allocation.  Must never be used
+    /// for any other pointers, nor for TLS statics.
     ///
-    /// This represents a *direct* access to that memory, as opposed to access
-    /// through a pointer that was created by the program.
+    /// Using the resulting pointer represents a *direct* access to that memory
+    /// (e.g. by directly using a `static`),
+    /// as opposed to access through a pointer that was created by the program.
+    ///
+    /// This function can fail only if `ptr` points to an `extern static`.
     #[inline(always)]
-    pub fn tag_global_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
-        self.memory.tag_global_base_pointer(ptr)
+    pub fn global_base_pointer(&self, ptr: Pointer) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
+        self.memory.global_base_pointer(ptr)
     }
 
     #[inline(always)]
@@ -845,12 +848,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let val = self.tcx.const_eval_global_id(param_env, gid, Some(self.tcx.span))?;
 
-        // Even though `ecx.const_eval` is called from `eval_const_to_op` we can never have a
+        // Even though `ecx.const_eval` is called from `const_to_op` we can never have a
         // recursion deeper than one level, because the `tcx.const_eval` above is guaranteed to not
-        // return `ConstValue::Unevaluated`, which is the only way that `eval_const_to_op` will call
+        // return `ConstValue::Unevaluated`, which is the only way that `const_to_op` will call
         // `ecx.const_eval`.
         let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
-        self.eval_const_to_op(&const_, None)
+        self.const_to_op(&const_, None)
     }
 
     pub fn const_eval_raw(
