@@ -365,7 +365,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         group: "correctness",
         desc: "default lint description",
         deprecation: None,
-        module: "derive_ord_xor_partial_ord",
+        module: "derive",
     },
     Lint {
         name: "diverging_sub_expression",

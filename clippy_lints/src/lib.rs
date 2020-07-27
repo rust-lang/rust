@@ -173,7 +173,6 @@ mod dbg_macro;
 mod default_trait_access;
 mod dereference;
 mod derive;
-mod derive_ord_xor_partial_ord;
 mod doc;
 mod double_comparison;
 mod double_parens;
@@ -514,9 +513,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &default_trait_access::DEFAULT_TRAIT_ACCESS,
         &dereference::EXPLICIT_DEREF_METHODS,
         &derive::DERIVE_HASH_XOR_EQ,
+        &derive::DERIVE_ORD_XOR_PARTIAL_ORD,
         &derive::EXPL_IMPL_CLONE_ON_COPY,
         &derive::UNSAFE_DERIVE_DESERIALIZE,
-        &derive_ord_xor_partial_ord::DERIVE_ORD_XOR_PARTIAL_ORD,
         &doc::DOC_MARKDOWN,
         &doc::MISSING_ERRORS_DOC,
         &doc::MISSING_SAFETY_DOC,
@@ -1232,7 +1231,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
-        LintId::of(&derive_ord_xor_partial_ord::DERIVE_ORD_XOR_PARTIAL_ORD),
+        LintId::of(&derive::DERIVE_ORD_XOR_PARTIAL_ORD),
         LintId::of(&doc::MISSING_SAFETY_DOC),
         LintId::of(&doc::NEEDLESS_DOCTEST_MAIN),
         LintId::of(&double_comparison::DOUBLE_COMPARISONS),
@@ -1651,7 +1650,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
-        LintId::of(&derive_ord_xor_partial_ord::DERIVE_ORD_XOR_PARTIAL_ORD),
+        LintId::of(&derive::DERIVE_ORD_XOR_PARTIAL_ORD),
         LintId::of(&drop_bounds::DROP_BOUNDS),
         LintId::of(&drop_forget_ref::DROP_COPY),
         LintId::of(&drop_forget_ref::DROP_REF),

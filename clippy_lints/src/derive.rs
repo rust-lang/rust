@@ -44,6 +44,27 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:**
+    ///
+    /// **Why is this bad?**
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // example code where clippy issues a warning
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// // example code which does not raise clippy warning
+    /// ```
+    pub DERIVE_ORD_XOR_PARTIAL_ORD,
+    correctness,
+    "default lint description"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for explicit `Clone` implementations for `Copy`
     /// types.
     ///
@@ -103,7 +124,7 @@ declare_clippy_lint! {
     "deriving `serde::Deserialize` on a type that has methods using `unsafe`"
 }
 
-declare_lint_pass!(Derive => [EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ, UNSAFE_DERIVE_DESERIALIZE]);
+declare_lint_pass!(Derive => [EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ, DERIVE_ORD_XOR_PARTIAL_ORD, UNSAFE_DERIVE_DESERIALIZE]);
 
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
