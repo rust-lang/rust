@@ -623,7 +623,7 @@ impl<'test> TestCx<'test> {
             .arg("-L")
             .arg(&aux_dir)
             .args(&self.props.compile_flags)
-            .envs(self.props.exec_env.clone());
+            .envs(self.props.rustc_env.clone());
         self.maybe_add_external_args(
             &mut rustc,
             self.split_maybe_args(&self.config.target_rustcflags),
