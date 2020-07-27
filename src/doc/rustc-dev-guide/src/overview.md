@@ -87,10 +87,10 @@ we'll talk about that later.
 - We then begin what is vaguely called _code generation_ or _codegen_.
   - The [code generation stage (codegen)][codegen] is when higher level
     representations of source are turned into an executable binary. `rustc`
-      uses LLVM for code generation.  The first step is the MIR is then
-    converted to LLVM Intermediate Representation (LLVM IR). This is where
-    the MIR is actually monomorphized, according to the list we created in
-    the previous step.
+    uses LLVM for code generation. The first step is to convert the MIR
+    to LLVM Intermediate Representation (LLVM IR). This is where the MIR
+    is actually monomorphized, according to the list we created in the
+    previous step.
   - The LLVM IR is passed to LLVM, which does a lot more optimizations on it.
     It then emits machine code. It is basically assembly code with additional
     low-level types and annotations added. (e.g. an ELF object or wasm).
