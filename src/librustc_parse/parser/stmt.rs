@@ -21,7 +21,7 @@ use std::mem;
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
-    pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
+    pub(super) fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
         Ok(self.parse_stmt_without_recovery().unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
@@ -247,7 +247,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a block. No inner attributes are allowed.
-    pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
+    pub(super) fn parse_block(&mut self) -> PResult<'a, P<Block>> {
         let (attrs, block) = self.parse_inner_attrs_and_block()?;
         if let [.., last] = &*attrs {
             self.error_on_forbidden_inner_attr(last.span, DEFAULT_INNER_ATTR_FORBIDDEN);

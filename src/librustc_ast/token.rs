@@ -760,6 +760,44 @@ pub enum Nonterminal {
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(Nonterminal, 40);
 
+#[derive(Copy, Clone)]
+pub enum NonterminalKind {
+    Item,
+    Block,
+    Stmt,
+    Pat,
+    Expr,
+    Ty,
+    Ident,
+    Lifetime,
+    Literal,
+    Meta,
+    Path,
+    Vis,
+    TT,
+}
+
+impl NonterminalKind {
+    pub fn from_symbol(symbol: Symbol) -> Option<NonterminalKind> {
+        Some(match symbol {
+            sym::item => NonterminalKind::Item,
+            sym::block => NonterminalKind::Block,
+            sym::stmt => NonterminalKind::Stmt,
+            sym::pat => NonterminalKind::Pat,
+            sym::expr => NonterminalKind::Expr,
+            sym::ty => NonterminalKind::Ty,
+            sym::ident => NonterminalKind::Ident,
+            sym::lifetime => NonterminalKind::Lifetime,
+            sym::literal => NonterminalKind::Literal,
+            sym::meta => NonterminalKind::Meta,
+            sym::path => NonterminalKind::Path,
+            sym::vis => NonterminalKind::Vis,
+            sym::tt => NonterminalKind::TT,
+            _ => return None,
+        })
+    }
+}
+
 impl Nonterminal {
     fn span(&self) -> Span {
         match self {

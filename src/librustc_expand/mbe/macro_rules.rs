@@ -9,7 +9,7 @@ use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast::ast;
-use rustc_ast::token::{self, NtTT, Token, TokenKind::*};
+use rustc_ast::token::{self, NonterminalKind, NtTT, Token, TokenKind::*};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
@@ -1228,23 +1228,7 @@ fn is_legal_fragment_specifier(
      * for checking against feature gates. See past versions of
      * this function.
      */
-    match frag_name {
-        sym::item
-        | sym::block
-        | sym::stmt
-        | sym::expr
-        | sym::pat
-        | sym::lifetime
-        | sym::path
-        | sym::ty
-        | sym::ident
-        | sym::meta
-        | sym::tt
-        | sym::vis
-        | sym::literal
-        | kw::Invalid => true,
-        _ => false,
-    }
+    NonterminalKind::from_symbol(frag_name).is_some() || frag_name == kw::Invalid
 }
 
 fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
