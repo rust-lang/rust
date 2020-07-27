@@ -173,8 +173,14 @@ impl fmt::Display for PanicInfo<'_> {
 ///
 /// panic!("Normal panic");
 /// ```
+///
+/// # Comparisons
+///
+/// Comparisons for equality and ordering are made in file, line, then column priority.
+/// Files are compared as strings, not `Path`, which could be unexpected.
+/// See [`Location::file`]'s documentation for more discussion.
 #[lang = "panic_location"]
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct Location<'a> {
     file: &'a str,
@@ -245,6 +251,22 @@ impl<'a> Location<'a> {
     }
 
     /// Returns the name of the source file from which the panic originated.
+    ///
+    /// # `&str`, not `&Path`
+    ///
+    /// The returned name refers to a source path on the compiling system, but it isn't valid to
+    /// represent this directly as a `&Path`. The compiled code may run on a different system with
+    /// a different `Path` implementation than the system providing the contents and this library
+    /// does not currently have a different "host path" type.
+    ///
+    /// The most surprising behavior occurs when "the same" file is reachable via multiple paths in
+    /// the module system (usually using the `#[path = "..."]` attribute or similar), which can
+    /// cause what appears to be identical code to return differing values from this function.
+    ///
+    /// # Cross-compilation
+    ///
+    /// This value is not suitable for passing to `Path::new` or similar constructors when the host
+    /// platform and target platform differ.
     ///
     /// # Examples
     ///
