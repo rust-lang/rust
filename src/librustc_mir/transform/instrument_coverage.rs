@@ -1,23 +1,37 @@
 use crate::transform::{MirPass, MirSource};
+use crate::util::pretty;
+
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_index::bit_set::BitSet;
 use rustc_middle::hir;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{BasicBlock, Coverage, CoverageInfo, Location, Statement, StatementKind};
+use rustc_middle::mir::{
+    BasicBlock, BasicBlockData, Coverage, CoverageInfo, Location, Statement, StatementKind,
+    Terminator, TerminatorKind,
+};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
-use rustc_span::{FileName, Pos, RealFileName, Span, Symbol};
+use rustc_span::{BytePos, FileName, Pos, RealFileName, Span, Symbol};
 
-/// Inserts call to count_code_region() as a placeholder to be replaced during code generation with
-/// the intrinsic llvm.instrprof.increment.
+use std::fs;
+use std::io::{self, Write};
+use std::iter::Peekable;
+
+/// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
+/// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
+/// to construct the coverage map.
 pub struct InstrumentCoverage;
 
-/// The `query` provider for `CoverageInfo`, requested by `codegen_intrinsic_call()` when
-/// constructing the arguments for `llvm.instrprof.increment`.
+const INDENT: &str = "    ";
+const NEW_LINE_SPAN: &str = "</span>\n<span class=\"line\">";
+
+/// The `query` provider for `CoverageInfo`, requested by `codegen_coverage()` (to inject each
+/// counter) and `FunctionCoverage::new()` (to extract the coverage map metadata from the MIR).
 pub(crate) fn provide(providers: &mut Providers) {
     providers.coverageinfo = |tcx, def_id| coverageinfo_from_mir(tcx, def_id);
 }
@@ -43,8 +57,8 @@ impl Visitor<'_> for CoverageVisitor {
     }
 }
 
-fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, mir_def_id: DefId) -> CoverageInfo {
-    let mir_body = tcx.optimized_mir(mir_def_id);
+fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo {
+    let mir_body = tcx.optimized_mir(def_id);
 
     // The `num_counters` argument to `llvm.instrprof.increment` is the number of injected
     // counters, with each counter having a counter ID from `0..num_counters-1`. MIR optimization
@@ -63,18 +77,30 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, mir_def_id: DefId) -> Coverage
 }
 
 impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, mir_body: &mut mir::Body<'tcx>) {
+    fn run_pass(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        mir_source: MirSource<'tcx>,
+        mir_body: &mut mir::Body<'tcx>,
+    ) {
         // If the InstrumentCoverage pass is called on promoted MIRs, skip them.
         // See: https://github.com/rust-lang/rust/pull/73011#discussion_r438317601
-        if src.promoted.is_none() {
-            Instrumentor::new(tcx, src, mir_body).inject_counters();
+        if mir_source.promoted.is_none() {
+            Instrumentor::new(&self.name(), tcx, mir_source, mir_body).inject_counters();
         }
     }
 }
 
+#[derive(Clone)]
+struct CoverageRegion {
+    pub span: Span,
+    pub blocks: Vec<BasicBlock>,
+}
+
 struct Instrumentor<'a, 'tcx> {
+    pass_name: &'a str,
     tcx: TyCtxt<'tcx>,
-    mir_def_id: DefId,
+    mir_source: MirSource<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
     hir_body: &'tcx rustc_hir::Body<'tcx>,
     function_source_hash: Option<u64>,
@@ -83,12 +109,17 @@ struct Instrumentor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
-        let mir_def_id = src.def_id();
-        let hir_body = hir_body(tcx, mir_def_id);
+    fn new(
+        pass_name: &'a str,
+        tcx: TyCtxt<'tcx>,
+        mir_source: MirSource<'tcx>,
+        mir_body: &'a mut mir::Body<'tcx>,
+    ) -> Self {
+        let hir_body = hir_body(tcx, mir_source.def_id());
         Self {
+            pass_name,
             tcx,
-            mir_def_id,
+            mir_source,
             mir_body,
             hir_body,
             function_source_hash: None,
@@ -127,19 +158,113 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     }
 
     fn inject_counters(&mut self) {
+        let tcx = self.tcx;
+        let def_id = self.mir_source.def_id();
+        let mir_body = &self.mir_body;
         let body_span = self.hir_body.value.span;
-        debug!("instrumenting {:?}, span: {:?}", self.mir_def_id, body_span);
+        debug!(
+            "instrumenting {:?}, span: {}",
+            def_id,
+            tcx.sess.source_map().span_to_string(body_span)
+        );
 
-        // FIXME(richkadel): As a first step, counters are only injected at the top of each
-        // function. The complete solution will inject counters at each conditional code branch.
-        let block = rustc_middle::mir::START_BLOCK;
-        let counter = self.make_counter();
-        self.inject_statement(counter, body_span, block);
+        if !tcx.sess.opts.debugging_opts.experimental_coverage {
+            // Coverage at the function level should be accurate. This is the default implementation
+            // if `-Z experimental-coverage` is *NOT* enabled.
+            let block = rustc_middle::mir::START_BLOCK;
+            let counter = self.make_counter();
+            self.inject_statement(counter, body_span, block);
+            return;
+        }
+        // FIXME(richkadel): else if `-Z experimental-coverage` *IS* enabled: Efforts are still in
+        // progress to identify the correct code region spans and associated counters to generate
+        // accurate Rust coverage reports.
 
-        // FIXME(richkadel): The next step to implement source based coverage analysis will be
-        // instrumenting branches within functions, and some regions will be counted by "counter
-        // expression". The function to inject counter expression is implemented. Replace this
-        // "fake use" with real use.
+        let block_span = |data: &BasicBlockData<'tcx>| {
+            // The default span will be the `Terminator` span; but until we have a smarter solution,
+            // the coverage region also incorporates at least the statements in this BasicBlock as
+            // well. Extend the span to encompass all, if possible.
+            // FIXME(richkadel): Assuming the terminator's span is already known to be contained in `body_span`.
+            let mut span = data.terminator().source_info.span;
+            // FIXME(richkadel): It's looking unlikely that we should compute a span from MIR
+            // spans, but if we do keep something like this logic, we will need a smarter way
+            // to combine `Statement`s and/or `Terminator`s with `Span`s from different
+            // files.
+            for statement_span in data.statements.iter().map(|statement| statement.source_info.span)
+            {
+                // Only combine Spans from the function's body_span.
+                if body_span.contains(statement_span) {
+                    span = span.to(statement_span);
+                }
+            }
+            span
+        };
+
+        // Traverse the CFG but ignore anything following an `unwind`
+        let cfg_without_unwind = ShortCircuitPreorder::new(mir_body, |term_kind| {
+            let mut successors = term_kind.successors();
+            match &term_kind {
+                // SwitchInt successors are never unwind, and all of them should be traversed
+                TerminatorKind::SwitchInt { .. } => successors,
+                // For all other kinds, return only the first successor, if any, and ignore unwinds
+                _ => successors.next().into_iter().chain(&[]),
+            }
+        });
+
+        const INJECT_COUNTERS_AT_BRANCH_BLOCKS_ONLY: bool = false;
+
+        let mut coverage_regions = Vec::with_capacity(cfg_without_unwind.size_hint().0);
+        for (bb, data) in cfg_without_unwind {
+            if INJECT_COUNTERS_AT_BRANCH_BLOCKS_ONLY {
+                // Additional filtering, if enabled
+                match data.terminator().kind {
+                    TerminatorKind::Goto { .. }
+                    | TerminatorKind::Return { .. }
+                    | TerminatorKind::Abort
+                    | TerminatorKind::FalseEdge { .. }
+                    | TerminatorKind::Assert { .. }
+                    | TerminatorKind::Yield { .. }
+                    | TerminatorKind::SwitchInt { .. } => {}
+                    _ => continue,
+                }
+            }
+
+            if !body_span.contains(data.terminator().source_info.span) {
+                continue;
+            }
+
+            // FIXME(richkadel): Regions will soon contain multiple blocks.
+            let mut blocks = Vec::new();
+            blocks.push(bb);
+            let span = block_span(data);
+            coverage_regions.push(CoverageRegion { span, blocks });
+        }
+
+        let coverage_regions_to_dump = if pretty::dump_enabled(tcx, self.pass_name, def_id) {
+            Some(coverage_regions.clone())
+        } else {
+            None
+        };
+
+        // Inject counters for the selected spans
+        for CoverageRegion { span, blocks } in coverage_regions {
+            debug!(
+                "Injecting counter at: {:?}:\n{}\n==========",
+                span,
+                tcx.sess.source_map().span_to_snippet(span).expect("Error getting source for span"),
+            );
+            let counter = self.make_counter();
+            self.inject_statement(counter, span, blocks[0]);
+        }
+
+        if let Some(coverage_regions_to_dump) = coverage_regions_to_dump {
+            self.dump_spans(fn_span(tcx, def_id), coverage_regions_to_dump)
+                .expect("Unexpected IO error dumping coverage spans as HTML");
+        }
+
+        // FIXME(richkadel): Some regions will be counted by "counter expression". Counter
+        // expressions are supported, but are not yet generated. When they are, remove this `fake_use`
+        // block.
         let fake_use = false;
         if fake_use {
             let add = false;
@@ -193,6 +318,357 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         };
         data.statements.push(statement);
     }
+
+    fn dump_spans(
+        &self,
+        body_span: Span,
+        mut coverage_regions_to_dump: Vec<CoverageRegion>,
+    ) -> io::Result<()> {
+        let tcx = self.tcx;
+        let mut file =
+            pretty::create_dump_file(tcx, "html", None, self.pass_name, &0, self.mir_source)?;
+        let header = r#"<!DOCTYPE html>
+<html>
+<head>
+    <title>coverage_of_if_else - Code Regions</title>
+    <style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+        hue-rotate(calc(var(--index) * 25deg))
+        saturate(calc(100% - (var(--index) * 2%)))
+        brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+    </style>
+</head>
+<body>"#;
+
+        let footer = r#"
+</body>
+</html>"#;
+
+        writeln!(file, "{}", header)?;
+        let mut next_pos = body_span.lo();
+        let end_pos = body_span.hi();
+        let source_map = tcx.sess.source_map();
+        let start = source_map.lookup_char_pos(next_pos);
+        write!(
+            file,
+            r#"<div class="code" style="counter-reset: line {}"><span class="line">{}"#,
+            start.line - 1,
+            " ".repeat(start.col.to_usize())
+        )?;
+        coverage_regions_to_dump.sort_unstable_by(|a, b| {
+            let a = a.span;
+            let b = b.span;
+            if a.lo() == b.lo() {
+                // Sort hi() in reverse order so shorter spans are attempted after longer spans.
+                // This should give shorter spans a higher "layer", so they are not covered by
+                // the longer spans.
+                b.hi().partial_cmp(&a.hi())
+            } else {
+                a.lo().partial_cmp(&b.lo())
+            }
+            .unwrap()
+        });
+        let mut ordered_coverage_regions = coverage_regions_to_dump.iter().peekable();
+        let mut alt = false;
+        while ordered_coverage_regions.peek().is_some() {
+            next_pos = self.write_coverage_regions(
+                next_pos,
+                &mut ordered_coverage_regions,
+                false,
+                1,
+                &mut file,
+            )?;
+            alt = !alt;
+        }
+        if next_pos < end_pos {
+            self.write_coverage_gap(next_pos, end_pos, &mut file)?;
+        }
+        write!(file, r#"</span></div>"#)?;
+        writeln!(file, "{}", footer)?;
+        Ok(())
+    }
+
+    /// Recursively process each ordered span. Spans that overlap will have progressively varying
+    /// styles, such as increased padding for each overlap. Non-overlapping adjacent spans will
+    /// have alternating style choices, to help distinguish between them if, visually adjacent.
+    /// The `layer` is incremented for each overlap, and the `alt` bool alternates between true
+    /// and false, for each adjacent non-overlapping span. Source code between the spans (code
+    /// that is not in any coverage region) has neutral styling.
+    fn write_coverage_regions<'b>(
+        &self,
+        next_pos: BytePos,
+        ordered_coverage_regions: &mut Peekable<impl Iterator<Item = &'b CoverageRegion>>,
+        alt: bool,
+        layer: usize,
+        file: &mut io::BufWriter<fs::File>,
+    ) -> io::Result<BytePos> {
+        let coverage_region =
+            ordered_coverage_regions.next().expect("ordered_coverage_regions should have some");
+        if next_pos < coverage_region.span.lo() {
+            self.write_coverage_gap(next_pos, coverage_region.span.lo(), file)?;
+        }
+        let mut remaining_span = coverage_region.span;
+        let mut subalt = false;
+        loop {
+            let next_coverage_region = match ordered_coverage_regions.peek() {
+                None => break,
+                Some(coverage_region) => *coverage_region,
+            };
+            if !next_coverage_region.span.overlaps(remaining_span) {
+                break;
+            }
+            self.write_span(
+                Some(coverage_region),
+                remaining_span.until(next_coverage_region.span),
+                alt,
+                layer,
+                file,
+            )?;
+            let next_pos = self.write_coverage_regions(
+                next_coverage_region.span.lo(),
+                ordered_coverage_regions,
+                subalt,
+                layer + 1,
+                file,
+            )?;
+            subalt = !subalt;
+            if next_pos < remaining_span.hi() {
+                remaining_span = remaining_span.with_lo(next_pos);
+            } else {
+                return Ok(next_pos);
+            }
+        }
+        self.write_span(Some(coverage_region), remaining_span, alt, layer, file)
+    }
+
+    fn write_coverage_gap(
+        &self,
+        lo: BytePos,
+        hi: BytePos,
+        file: &mut io::BufWriter<fs::File>,
+    ) -> io::Result<BytePos> {
+        self.write_span(None, Span::with_root_ctxt(lo, hi), false, 0, file)
+    }
+
+    fn write_span(
+        &self,
+        coverage_region: Option<&CoverageRegion>,
+        span: Span,
+        alt: bool,
+        layer: usize,
+        file: &mut io::BufWriter<fs::File>,
+    ) -> io::Result<BytePos> {
+        let tcx = self.tcx;
+        let source_map = tcx.sess.source_map();
+        let snippet = source_map.span_to_snippet(span).expect("expected valid span");
+        let labeled_snippet = if let Some(coverage_region) = coverage_region {
+            let first_bb = coverage_region.blocks[0];
+            if span.is_empty() {
+                format!(r#"<span class="annotation">@{}</span>"#, first_bb.index(),)
+            } else {
+                format!(
+                    r#"<span class="annotation">@{}:</span> {}"#,
+                    first_bb.index(),
+                    escape_html(&snippet),
+                )
+            }
+        } else {
+            snippet
+        };
+        let maybe_alt = if layer > 0 {
+            if alt { " odd" } else { " even" }
+        } else {
+            ""
+        };
+        let maybe_tooltip = if let Some(coverage_region) = coverage_region {
+            format!(" title=\"{}\"", escape_html(&self.make_tooltip_text(coverage_region)))
+        } else {
+            "".to_owned()
+        };
+        if layer == 1 {
+            write!(file, "<span>")?;
+        }
+        for (i, line) in labeled_snippet.lines().enumerate() {
+            if i > 0 {
+                write!(file, "{}", NEW_LINE_SPAN)?;
+            }
+            write!(
+                file,
+                r#"<span class="code{}" style="--layer: {}"{}>{}</span>"#,
+                maybe_alt, layer, maybe_tooltip, line
+            )?;
+        }
+        if layer == 1 {
+            write!(file, "</span>")?;
+        }
+        Ok(span.hi())
+    }
+
+    fn make_tooltip_text(&self, coverage_region: &CoverageRegion) -> String {
+        const INCLUDE_COVERAGE_STATEMENTS: bool = false;
+        let tcx = self.tcx;
+        let source_map = tcx.sess.source_map();
+        let mut text = Vec::new();
+        for (i, &bb) in coverage_region.blocks.iter().enumerate() {
+            if i > 0 {
+                text.push("\n".to_owned());
+            }
+            text.push(format!("{:?}: {}:", bb, &source_map.span_to_string(coverage_region.span)));
+            let data = &self.mir_body.basic_blocks()[bb];
+            for statement in &data.statements {
+                let statement_string = match statement.kind {
+                    StatementKind::Coverage(box ref coverage) => match coverage.kind {
+                        CoverageKind::Counter { id, .. } => {
+                            if !INCLUDE_COVERAGE_STATEMENTS {
+                                continue;
+                            }
+                            format!("increment counter #{}", id.index())
+                        }
+                        CoverageKind::Expression { id, lhs, op, rhs } => {
+                            if !INCLUDE_COVERAGE_STATEMENTS {
+                                continue;
+                            }
+                            format!(
+                                "expression #{} = {} {} {}",
+                                id.index(),
+                                lhs.index(),
+                                if op == Op::Add { "+" } else { "-" },
+                                rhs.index()
+                            )
+                        }
+                        CoverageKind::Unreachable => {
+                            if !INCLUDE_COVERAGE_STATEMENTS {
+                                continue;
+                            }
+                            format!("unreachable")
+                        }
+                    },
+                    _ => format!("{:?}", statement),
+                };
+                let source_range = self.source_range_no_file(&statement.source_info.span);
+                text.push(format!(
+                    "\n{}{}: {}: {}",
+                    INDENT,
+                    source_range,
+                    statement_kind_name(statement),
+                    statement_string
+                ));
+            }
+            let term = data.terminator();
+            let source_range = self.source_range_no_file(&term.source_info.span);
+            text.push(format!(
+                "\n{}{}: {}: {:?}",
+                INDENT,
+                source_range,
+                terminator_kind_name(term),
+                term.kind
+            ));
+        }
+        text.join("")
+    }
+
+    fn source_range_no_file(&self, span: &Span) -> String {
+        let source_map = self.tcx.sess.source_map();
+        let start = source_map.lookup_char_pos(span.lo());
+        let end = source_map.lookup_char_pos(span.hi());
+        format!(
+            "{}:{}-{}:{}",
+            start.line,
+            start.col.to_usize() + 1,
+            end.line,
+            end.col.to_usize() + 1
+        )
+    }
+}
+
+fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
+    use StatementKind::*;
+    match statement.kind {
+        Assign(..) => "Assign",
+        FakeRead(..) => "FakeRead",
+        SetDiscriminant { .. } => "SetDiscriminant",
+        StorageLive(..) => "StorageLive",
+        StorageDead(..) => "StorageDead",
+        LlvmInlineAsm(..) => "LlvmInlineAsm",
+        Retag(..) => "Retag",
+        AscribeUserType(..) => "AscribeUserType",
+        Coverage(..) => "Coverage",
+        Nop => "Nop",
+    }
+}
+
+fn terminator_kind_name(term: &Terminator<'_>) -> &'static str {
+    use TerminatorKind::*;
+    match term.kind {
+        Goto { .. } => "Goto",
+        SwitchInt { .. } => "SwitchInt",
+        Resume => "Resume",
+        Abort => "Abort",
+        Return => "Return",
+        Unreachable => "Unreachable",
+        Drop { .. } => "Drop",
+        DropAndReplace { .. } => "DropAndReplace",
+        Call { .. } => "Call",
+        Assert { .. } => "Assert",
+        Yield { .. } => "Yield",
+        GeneratorDrop => "GeneratorDrop",
+        FalseEdge { .. } => "FalseEdge",
+        FalseUnwind { .. } => "FalseUnwind",
+        InlineAsm { .. } => "InlineAsm",
+    }
+}
+
+fn escape_html(s: &str) -> String {
+    s.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 }
 
 /// Convert the Span into its file name, start line and column, and end line and column
@@ -226,8 +702,14 @@ fn make_code_region<'tcx>(tcx: TyCtxt<'tcx>, span: &Span) -> CodeRegion {
     }
 }
 
+fn fn_span<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Span {
+    let hir_id =
+        tcx.hir().local_def_id_to_hir_id(def_id.as_local().expect("expected DefId is local"));
+    tcx.hir().span(hir_id)
+}
+
 fn hir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx rustc_hir::Body<'tcx> {
-    let hir_node = tcx.hir().get_if_local(def_id).expect("DefId is local");
+    let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
     let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
     tcx.hir().body(fn_body_id)
 }
@@ -244,4 +726,62 @@ fn hash(
     let mut stable_hasher = StableHasher::new();
     node.hash_stable(hcx, &mut stable_hasher);
     stable_hasher.finish()
+}
+
+pub struct ShortCircuitPreorder<
+    'a,
+    'tcx,
+    F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>,
+> {
+    body: &'a mir::Body<'tcx>,
+    visited: BitSet<BasicBlock>,
+    worklist: Vec<BasicBlock>,
+    filtered_successors: F,
+}
+
+impl<'a, 'tcx, F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>>
+    ShortCircuitPreorder<'a, 'tcx, F>
+{
+    pub fn new(
+        body: &'a mir::Body<'tcx>,
+        filtered_successors: F,
+    ) -> ShortCircuitPreorder<'a, 'tcx, F> {
+        let worklist = vec![mir::START_BLOCK];
+
+        ShortCircuitPreorder {
+            body,
+            visited: BitSet::new_empty(body.basic_blocks().len()),
+            worklist,
+            filtered_successors,
+        }
+    }
+}
+
+impl<'a: 'tcx, 'tcx, F: Fn(&'tcx TerminatorKind<'tcx>) -> mir::Successors<'tcx>> Iterator
+    for ShortCircuitPreorder<'a, 'tcx, F>
+{
+    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
+
+    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
+        while let Some(idx) = self.worklist.pop() {
+            if !self.visited.insert(idx) {
+                continue;
+            }
+
+            let data = &self.body[idx];
+
+            if let Some(ref term) = data.terminator {
+                self.worklist.extend((self.filtered_successors)(&term.kind));
+            }
+
+            return Some((idx, data));
+        }
+
+        None
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = self.body.basic_blocks().len() - self.visited.count();
+        (size, Some(size))
+    }
 }

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>coverage_of_if_else - Code Regions</title>
+    <style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+        hue-rotate(calc(var(--index) * 25deg))
+        saturate(calc(100% - (var(--index) * 2%)))
+        brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+    </style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 27"><span class="line"><span class="code" style="--layer: 0">fn main() {</span></span>
+<span class="line"><span class="code" style="--layer: 0">    let less = 1;</span></span>
+<span class="line"><span class="code" style="--layer: 0">    let more = 100;</span></span>
+<span class="line"><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="bb2: testprog.rs:32:5: 37:6:
+    32:5-37:6: FalseEdge: falseEdge -&gt; [real: bb4, imaginary: bb3]"><span class="annotation">@2</span></span></span><span class="code even" style="--layer: 2" title="bb8: testprog.rs:32:5: 37:6:
+    34:86-34:87: StorageDead: StorageDead(_17)
+    34:86-34:87: StorageDead: StorageDead(_14)
+    34:86-34:87: StorageDead: StorageDead(_13)
+    34:87-34:88: StorageDead: StorageDead(_12)
+    32:20-35:6: Assign: _0 = const ()
+    32:5-37:6: Goto: goto -&gt; bb11"><span class="annotation">@8</span></span><span class="code even" style="--layer: 3" title="bb10: testprog.rs:32:5: 37:6:
+    36:94-36:95: StorageDead: StorageDead(_20)
+    36:94-36:95: StorageDead: StorageDead(_19)
+    36:95-36:96: StorageDead: StorageDead(_18)
+    35:12-37:6: Assign: _0 = const ()
+    32:5-37:6: Goto: goto -&gt; bb11"><span class="annotation">@10:</span> if </span><span class="code even" style="--layer: 4" title="bb0: testprog.rs:32:8: 32:19:
+    29:9-29:13: StorageLive: StorageLive(_1)
+    29:16-29:17: Assign: _1 = const 1_i32
+    29:9-29:13: FakeRead: FakeRead(ForLet, _1)
+    30:9-30:13: StorageLive: StorageLive(_2)
+    30:16-30:19: Assign: _2 = const 100_i32
+    30:9-30:13: FakeRead: FakeRead(ForLet, _2)
+    32:8-32:19: StorageLive: StorageLive(_3)
+    32:8-32:12: StorageLive: StorageLive(_4)
+    32:8-32:12: Assign: _4 = _1
+    32:15-32:19: StorageLive: StorageLive(_5)
+    32:15-32:19: Assign: _5 = _2
+    32:8-32:19: Assign: _3 = Lt(move _4, move _5)
+    32:18-32:19: StorageDead: StorageDead(_5)
+    32:18-32:19: StorageDead: StorageDead(_4)
+    32:8-32:19: FakeRead: FakeRead(ForMatchedPlace, _3)
+    32:5-37:6: SwitchInt: switchInt(_3) -&gt; [false: bb3, otherwise: bb2]"><span class="annotation">@0:</span> less &lt; more</span><span class="code even" style="--layer: 3" title="bb10: testprog.rs:32:5: 37:6:
+    36:94-36:95: StorageDead: StorageDead(_20)
+    36:94-36:95: StorageDead: StorageDead(_19)
+    36:95-36:96: StorageDead: StorageDead(_18)
+    35:12-37:6: Assign: _0 = const ()
+    32:5-37:6: Goto: goto -&gt; bb11"><span class="annotation">@10:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb10: testprog.rs:32:5: 37:6:
+    36:94-36:95: StorageDead: StorageDead(_20)
+    36:94-36:95: StorageDead: StorageDead(_19)
+    36:95-36:96: StorageDead: StorageDead(_18)
+    35:12-37:6: Assign: _0 = const ()
+    32:5-37:6: Goto: goto -&gt; bb11">        </span><span class="code odd" style="--layer: 4" title="bb4: testprog.rs:33:9: 33:87:
+    33:9-33:87: StorageLive: StorageLive(_6)
+    33:19-33:35: StorageLive: StorageLive(_7)
+    33:19-33:35: Call: _7 = will_be_called() -&gt; [return: bb5, unwind: bb1]"><span class="annotation">@4</span></span><span class="code even" style="--layer: 5" title="bb5: testprog.rs:33:9: 33:87:
+    33:37-33:48: StorageLive: StorageLive(_8)
+    33:37-33:41: StorageLive: StorageLive(_9)
+    33:37-33:41: Assign: _9 = _1
+    33:44-33:48: StorageLive: StorageLive(_10)
+    33:44-33:48: Assign: _10 = _2
+    33:37-33:48: Assign: _8 = Lt(move _9, move _10)
+    33:47-33:48: StorageDead: StorageDead(_10)
+    33:47-33:48: StorageDead: StorageDead(_9)
+    33:50-33:86: StorageLive: StorageLive(_11)
+    33:50-33:86: Assign: _11 = [closure@testprog.rs:33:50: 33:86]
+    33:9-33:87: Call: _6 = wrap_with::&lt;[closure@testprog.rs:33:50: 33:86], &amp;str&gt;(move _7, move _8, move _11) -&gt; [return: bb6, unwind: bb1]"><span class="annotation">@5:</span> wrap_with(will_be_called(), less &lt; more, |inner| print(&quot; ***&quot;, inner, &quot;*** &quot;)</span><span class="code even" style="--layer: 6" title="bb6: testprog.rs:33:86: 34:87:
+    33:86-33:87: StorageDead: StorageDead(_11)
+    33:86-33:87: StorageDead: StorageDead(_8)
+    33:86-33:87: StorageDead: StorageDead(_7)
+    33:87-33:88: StorageDead: StorageDead(_6)
+    34:9-34:87: StorageLive: StorageLive(_12)
+    34:19-34:35: StorageLive: StorageLive(_13)
+    34:19-34:35: Call: _13 = will_be_called() -&gt; [return: bb7, unwind: bb1]"><span class="annotation">@6:</span> );</span></span>
+<span class="line"><span class="code even" style="--layer: 6" title="bb6: testprog.rs:33:86: 34:87:
+    33:86-33:87: StorageDead: StorageDead(_11)
+    33:86-33:87: StorageDead: StorageDead(_8)
+    33:86-33:87: StorageDead: StorageDead(_7)
+    33:87-33:88: StorageDead: StorageDead(_6)
+    34:9-34:87: StorageLive: StorageLive(_12)
+    34:19-34:35: StorageLive: StorageLive(_13)
+    34:19-34:35: Call: _13 = will_be_called() -&gt; [return: bb7, unwind: bb1]">        </span><span class="code even" style="--layer: 7" title="bb7: testprog.rs:34:9: 34:87:
+    34:37-34:48: StorageLive: StorageLive(_14)
+    34:37-34:41: StorageLive: StorageLive(_15)
+    34:37-34:41: Assign: _15 = _2
+    34:44-34:48: StorageLive: StorageLive(_16)
+    34:44-34:48: Assign: _16 = _1
+    34:37-34:48: Assign: _14 = Lt(move _15, move _16)
+    34:47-34:48: StorageDead: StorageDead(_16)
+    34:47-34:48: StorageDead: StorageDead(_15)
+    34:50-34:86: StorageLive: StorageLive(_17)
+    34:50-34:86: Assign: _17 = [closure@testprog.rs:34:50: 34:86]
+    34:9-34:87: Call: _12 = wrap_with::&lt;[closure@testprog.rs:34:50: 34:86], &amp;str&gt;(move _13, move _14, move _17) -&gt; [return: bb8, unwind: bb1]"><span class="annotation">@7:</span> wrap_with(will_be_called(), more &lt; less, |inner| print(&quot; ***&quot;, inner, &quot;*** &quot;))</span><span class="code even" style="--layer: 3" title="bb10: testprog.rs:32:5: 37:6:
+    36:94-36:95: StorageDead: StorageDead(_20)
+    36:94-36:95: StorageDead: StorageDead(_19)
+    36:95-36:96: StorageDead: StorageDead(_18)
+    35:12-37:6: Assign: _0 = const ()
+    32:5-37:6: Goto: goto -&gt; bb11"><span class="annotation">@10:</span> ;</span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb10: testprog.rs:32:5: 37:6:
+    36:94-36:95: StorageDead: StorageDead(_20)
+    36:94-36:95: StorageDead: StorageDead(_19)
+    36:95-36:96: StorageDead: StorageDead(_18)
+    35:12-37:6: Assign: _0 = const ()
+    32:5-37:6: Goto: goto -&gt; bb11">    } else {</span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb10: testprog.rs:32:5: 37:6:
+    36:94-36:95: StorageDead: StorageDead(_20)
+    36:94-36:95: StorageDead: StorageDead(_19)
+    36:95-36:96: StorageDead: StorageDead(_18)
+    35:12-37:6: Assign: _0 = const ()
+    32:5-37:6: Goto: goto -&gt; bb11">        </span><span class="code even" style="--layer: 4" title="bb3: testprog.rs:36:9: 36:95:
+    36:9-36:95: StorageLive: StorageLive(_18)
+    36:19-36:39: StorageLive: StorageLive(_19)
+    36:19-36:39: Call: _19 = will_not_be_called() -&gt; [return: bb9, unwind: bb1]"><span class="annotation">@3</span></span><span class="code even" style="--layer: 5" title="bb9: testprog.rs:36:9: 36:95:
+    36:47-36:94: StorageLive: StorageLive(_20)
+    36:47-36:94: Assign: _20 = [closure@testprog.rs:36:47: 36:94]
+    36:9-36:95: Call: _18 = wrap_with::&lt;[closure@testprog.rs:36:47: 36:94], bool&gt;(move _19, const true, move _20) -&gt; [return: bb10, unwind: bb1]"><span class="annotation">@9:</span> wrap_with(will_not_be_called(), true, |inner| print(&quot;wrapped result is: &quot;, inner, &quot;&quot;))</span><span class="code even" style="--layer: 3" title="bb10: testprog.rs:32:5: 37:6:
+    36:94-36:95: StorageDead: StorageDead(_20)
+    36:94-36:95: StorageDead: StorageDead(_19)
+    36:95-36:96: StorageDead: StorageDead(_18)
+    35:12-37:6: Assign: _0 = const ()
+    32:5-37:6: Goto: goto -&gt; bb11"><span class="annotation">@10:</span> ;</span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb10: testprog.rs:32:5: 37:6:
+    36:94-36:95: StorageDead: StorageDead(_20)
+    36:94-36:95: StorageDead: StorageDead(_19)
+    36:95-36:96: StorageDead: StorageDead(_18)
+    35:12-37:6: Assign: _0 = const ()
+    32:5-37:6: Goto: goto -&gt; bb11">    }</span><span class="code" style="--layer: 0"></span><span><span class="code even" style="--layer: 1" title="bb11: testprog.rs:38:1: 38:2:
+    38:1-38:2: StorageDead: StorageDead(_2)
+    38:1-38:2: StorageDead: StorageDead(_1)
+    38:1-38:2: StorageDead: StorageDead(_3)
+    38:2-38:2: Return: return"><span class="annotation">@11:</span> }</span></span></span></div>
+</body>
+</html>

@@ -1,0 +1,55 @@
+    1|       |pub fn will_be_called() -> &'static str {
+    2|       |    let val = "called";
+    3|       |    println!("{}", val);
+    4|      2|    val
+    5|      2|}
+    6|       |
+    7|       |pub fn will_not_be_called() -> bool {
+    8|       |    println!("should not have been called");
+    9|       |    false
+   10|       |}
+   11|       |
+   12|       |pub fn print<T>(left: &str, value: T, right: &str)
+   13|       |where
+   14|       |    T: std::fmt::Display,
+   15|      1|{
+   16|      1|    println!("{}{}{}", left, value, right);
+   17|      1|}
+   18|      1|
+   19|      1|pub fn wrap_with<F, T>(inner: T, should_wrap: bool, wrapper: F)
+   20|      1|where
+   21|      1|    F: FnOnce(&T)
+   22|      1|{
+   23|      3|    if should_wrap {
+                     ^2
+   24|      3|        wrapper(&inner)
+                      ^1
+   25|      3|    }
+   26|      4|}
+  ------------------
+  | testprog[317d481089b8c8fe]::wrap_with::<testprog[317d481089b8c8fe]::main::{closure#0}, &str>:
+  |   23|      2|    if should_wrap {
+  |                     ^1
+  |   24|      2|        wrapper(&inner)
+  |                      ^1
+  |   25|      2|    }
+  |   26|      2|}
+  ------------------
+  | Unexecuted instantiation: testprog[317d481089b8c8fe]::wrap_with::<testprog[317d481089b8c8fe]::main::{closure#1}, &str>
+  ------------------
+   27|      2|
+   28|      2|fn main() {
+   29|      2|    let less = 1;
+   30|      2|    let more = 100;
+   31|      2|
+   32|      2|    if less < more {
+                     ^1
+   33|      2|        wrap_with(will_be_called(), less < more, |inner| print(" ***", inner, "*** "));
+                                                                       ^1                         ^1^1
+   34|      1|        wrap_with(will_be_called(), more < less, |inner| print(" ***", inner, "*** "));
+                                                                       ^0                         ^0
+   35|      2|    } else {
+   36|      2|        wrap_with(will_not_be_called(), true, |inner| print("wrapped result is: ", inner, ""));
+   37|      2|    }
+   38|      1|}
+

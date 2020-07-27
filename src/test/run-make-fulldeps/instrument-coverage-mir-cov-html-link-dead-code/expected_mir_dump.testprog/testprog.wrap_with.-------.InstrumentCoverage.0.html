@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>coverage_of_if_else - Code Regions</title>
+    <style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+        hue-rotate(calc(var(--index) * 25deg))
+        saturate(calc(100% - (var(--index) * 2%)))
+        brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+    </style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 18"><span class="line"><span class="code" style="--layer: 0">pub fn wrap_with<F, T>(inner: T, should_wrap: bool, wrapper: F)</span></span>
+<span class="line"><span class="code" style="--layer: 0">where</span></span>
+<span class="line"><span class="code" style="--layer: 0">    F: FnOnce(&T)</span></span>
+<span class="line"><span class="code" style="--layer: 0">{</span></span>
+<span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="bb2: testprog.rs:23:5: 25:6:
+    23:5-25:6: FalseEdge: falseEdge -&gt; [real: bb4, imaginary: bb3]"><span class="annotation">@2</span></span></span><span class="code even" style="--layer: 2" title="bb5: testprog.rs:23:5: 25:6:
+    24:23-24:24: StorageDead: StorageDead(_7)
+    24:23-24:24: StorageDead: StorageDead(_6)
+    24:23-24:24: StorageDead: StorageDead(_5)
+    25:5-25:6: StorageDead: StorageDead(_8)
+    23:5-25:6: Goto: goto -&gt; bb9"><span class="annotation">@5</span></span><span class="code even" style="--layer: 3" title="bb3: testprog.rs:23:5: 25:6:
+    23:5-25:6: Assign: _0 = const ()
+    23:5-25:6: Goto: goto -&gt; bb9"><span class="annotation">@3:</span> if </span><span class="code even" style="--layer: 4" title="bb0: testprog.rs:23:8: 23:19:
+    23:8-23:19: StorageLive: StorageLive(_4)
+    23:8-23:19: Assign: _4 = _2
+    23:8-23:19: FakeRead: FakeRead(ForMatchedPlace, _4)
+    23:5-25:6: SwitchInt: switchInt(_4) -&gt; [false: bb3, otherwise: bb2]"><span class="annotation">@0:</span> should_wrap</span><span class="code even" style="--layer: 3" title="bb3: testprog.rs:23:5: 25:6:
+    23:5-25:6: Assign: _0 = const ()
+    23:5-25:6: Goto: goto -&gt; bb9"><span class="annotation">@3:</span>  {</span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb3: testprog.rs:23:5: 25:6:
+    23:5-25:6: Assign: _0 = const ()
+    23:5-25:6: Goto: goto -&gt; bb9">        </span><span class="code odd" style="--layer: 4" title="bb4: testprog.rs:24:9: 24:24:
+    24:9-24:16: StorageLive: StorageLive(_5)
+    24:9-24:16: Assign: _5 = move _3
+    24:9-24:24: StorageLive: StorageLive(_6)
+    24:17-24:23: StorageLive: StorageLive(_7)
+    24:17-24:23: StorageLive: StorageLive(_8)
+    24:17-24:23: Assign: _8 = &amp;_1
+    24:17-24:23: Assign: _7 = &amp;(*_8)
+    24:9-24:24: Assign: _6 = (move _7,)
+    24:9-24:24: Call: _0 = &lt;F as std::ops::FnOnce&lt;(&amp;T,)&gt;&gt;::call_once(move _5, move _6) -&gt; [return: bb5, unwind: bb8]"><span class="annotation">@4:</span> wrapper(&amp;inner)</span><span class="code even" style="--layer: 3" title="bb3: testprog.rs:23:5: 25:6:
+    23:5-25:6: Assign: _0 = const ()
+    23:5-25:6: Goto: goto -&gt; bb9"><span class="annotation">@3:</span> </span></span>
+<span class="line"><span class="code even" style="--layer: 3" title="bb3: testprog.rs:23:5: 25:6:
+    23:5-25:6: Assign: _0 = const ()
+    23:5-25:6: Goto: goto -&gt; bb9">    }</span><span class="code" style="--layer: 0"></span><span><span class="code even" style="--layer: 1" title="bb9: testprog.rs:26:1: 26:2:
+    26:1-26:2: StorageDead: StorageDead(_4)
+    26:1-26:2: Drop: drop(_3) -&gt; [return: bb10, unwind: bb6]"><span class="annotation">@9</span></span></span><span class="code even" style="--layer: 2" title="bb10: testprog.rs:26:1: 26:2:
+    26:1-26:2: Drop: drop(_1) -&gt; [return: bb11, unwind: bb1]"><span class="annotation">@10:</span> }</span><span><span class="code even" style="--layer: 1" title="bb11: testprog.rs:26:2: 26:2:
+    26:2-26:2: Return: return"><span class="annotation">@11</span></span></span></span></div>
+</body>
+</html>

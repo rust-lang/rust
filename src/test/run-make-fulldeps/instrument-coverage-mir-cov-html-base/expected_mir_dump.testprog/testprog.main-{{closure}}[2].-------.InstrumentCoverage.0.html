@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>coverage_of_if_else - Code Regions</title>
+    <style>
+    .line {
+        counter-increment: line;
+    }
+    .line:before {
+        content: counter(line) ": ";
+        font-family: Menlo, Monaco, monospace;
+        font-style: italic;
+        width: 3.8em;
+        display: inline-block;
+        text-align: right;
+        filter: opacity(50%);
+        -webkit-user-select: none;
+    }
+    .code {
+        color: #dddddd;
+        background-color: #222222;
+        font-family: Menlo, Monaco, monospace;
+        line-height: 1.4em;
+        border-bottom: 2px solid #222222;
+        white-space: pre;
+        display: inline-block;
+    }
+    .odd {
+        background-color: #55bbff;
+        color: #223311;
+    }
+    .even {
+        background-color: #ee7756;
+        color: #551133;
+    }
+    .code {
+        --index: calc(var(--layer) - 1);
+        padding-top: calc(var(--index) * 0.15em);
+        filter:
+        hue-rotate(calc(var(--index) * 25deg))
+        saturate(calc(100% - (var(--index) * 2%)))
+        brightness(calc(100% - (var(--index) * 1.5%)));
+    }
+    .annotation {
+        color: #4444ff;
+        font-family: monospace;
+        font-style: italic;
+        display: none;
+        -webkit-user-select: none;
+    }
+    body:active .annotation {
+        /* requires holding mouse down anywhere on the page */
+        display: inline-block;
+    }
+    span:hover .annotation {
+        /* requires hover over a span ONLY on its first line */
+        display: inline-block;
+    }
+    </style>
+</head>
+<body>
+<div class="code" style="counter-reset: line 35"><span class="line">                                              <span class="code" style="--layer: 0">|inner| </span><span><span class="code even" style="--layer: 1" title="bb0: testprog.rs:36:55: 36:94:
+    36:61-36:82: StorageLive: StorageLive(_3)
+    36:61-36:82: StorageLive: StorageLive(_4)
+    36:61-36:82: Assign: _4 = const &quot;wrapped result is: &quot;
+    36:61-36:82: Assign: _3 = &amp;(*_4)
+    36:84-36:89: StorageLive: StorageLive(_5)
+    36:84-36:89: Assign: _5 = _2
+    36:91-36:93: StorageLive: StorageLive(_6)
+    36:91-36:93: StorageLive: StorageLive(_7)
+    36:91-36:93: Assign: _7 = const &quot;&quot;
+    36:91-36:93: Assign: _6 = &amp;(*_7)
+    36:55-36:94: Call: _0 = print::&lt;&amp;bool&gt;(move _3, move _5, move _6) -&gt; [return: bb2, unwind: bb1]"><span class="annotation">@0:</span> print(&quot;wrapped result is: &quot;, inner, &quot;&quot;</span></span><span class="code even" style="--layer: 2" title="bb2: testprog.rs:36:93: 36:94:
+    36:93-36:94: StorageDead: StorageDead(_7)
+    36:93-36:94: StorageDead: StorageDead(_6)
+    36:93-36:94: StorageDead: StorageDead(_5)
+    36:93-36:94: StorageDead: StorageDead(_4)
+    36:93-36:94: StorageDead: StorageDead(_3)
+    36:94-36:94: Return: return"><span class="annotation">@2:</span> )</span></span></div>
+</body>
+</html>

@@ -851,6 +851,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "in addition to `.mir` files, create graphviz `.dot` files (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
+    experimental_coverage: bool = (false, parse_bool, [TRACKED],
+        "enable and extend the `-Z instrument-coverage` function-level coverage \
+        feature, adding additional experimental (likely inaccurate) counters and \
+        code regions (used by `rustc` compiler developers to test new coverage \
+        counter placements) (default: no)"),
     fewer_names: bool = (false, parse_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
@@ -885,9 +890,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`, \
         and is mutually exclusive with `-C profile-generate`/`-C profile-use`); \
-        implies `-C link-dead-code` (unless explicitly disabled)` and \
-        `-Z symbol-mangling-version=v0`; and disables/overrides some optimization \
-        options (default: no)"),
+        implies `-C link-dead-code` (unless targeting MSVC, or explicitly disabled) \
+        and `-Z symbol-mangling-version=v0`; and disables/overrides some Rust \
+        optimizations (default: no)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],

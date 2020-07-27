@@ -190,7 +190,7 @@ pub fn partition<'tcx>(
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
-    if tcx.sess.opts.cg.link_dead_code != Some(true) {
+    if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         partitioner.internalize_symbols(tcx, &mut post_inlining, inlining_map);
     }
@@ -327,7 +327,7 @@ fn collect_and_partition_mono_items<'tcx>(
             }
         }
         None => {
-            if tcx.sess.opts.cg.link_dead_code == Some(true) {
+            if tcx.sess.link_dead_code() {
                 MonoItemCollectionMode::Eager
             } else {
                 MonoItemCollectionMode::Lazy

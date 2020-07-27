@@ -1709,6 +1709,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    if debugging_opts.experimental_coverage {
+        debugging_opts.instrument_coverage = true;
+    }
+
     if debugging_opts.instrument_coverage {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             early_error(
@@ -1718,20 +1722,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             );
         }
 
-        // `-Z instrument-coverage` implies:
-        //   * `-Z symbol-mangling-version=v0` - to ensure consistent and reversible name mangling.
-        //     Note, LLVM coverage tools can analyze coverage over multiple runs, including some
-        //     changes to source code; so mangled names must be consistent across compilations.
-        //   * `-C link-dead-code` - so unexecuted code is still counted as zero, rather than be
-        //     optimized out. Note that instrumenting dead code can be explicitly disabled with:
-        //         `-Z instrument-coverage -C link-dead-code=no`.
+        // `-Z instrument-coverage` implies `-Z symbol-mangling-version=v0` - to ensure consistent
+        // and reversible name mangling. Note, LLVM coverage tools can analyze coverage over
+        // multiple runs, including some changes to source code; so mangled names must be consistent
+        // across compilations.
         debugging_opts.symbol_mangling_version = SymbolManglingVersion::V0;
-        if cg.link_dead_code == None {
-            // FIXME(richkadel): Investigate if the `instrument-coverage` implementation can
-            // inject ["zero counters"](https://llvm.org/docs/CoverageMappingFormat.html#counter)
-            // in the coverage map when "dead code" is removed, rather than forcing `link-dead-code`.
-            cg.link_dead_code = Some(true);
-        }
     }
 
     if !cg.embed_bitcode {
