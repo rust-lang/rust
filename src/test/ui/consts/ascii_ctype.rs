@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(const_ascii_ctype_on_intrinsics)]
-
 macro_rules! suite {
     ( $( $fn:ident => [$a:ident, $A:ident, $nine:ident, $dot:ident, $space:ident]; )* ) => {
         $(
