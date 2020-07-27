@@ -1,9 +1,10 @@
 #![feature(negative_impls)]
 
-// Test a negative impl for a trait requires `T: ?Sized`.
+// Test that negative impls for a trait requires `T: ?Sized`.
 
 trait MyTrait {}
 
-impl<T> !MyTrait for T {} //~ ERROR auto traits must not contain where bounds
+impl<T> !MyTrait for T {}
+//~^ ERROR negative impls on type parameters must not contain where bounds
 
 fn main() {}

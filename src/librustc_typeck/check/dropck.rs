@@ -34,10 +34,24 @@ use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt
 pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorReported> {
     check_restricted_impl(tcx, drop_impl_did)
 }
+
 pub fn check_restricted_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
-    match dtor_self_type.kind {
+
+    let check_empty_where_bounds = |s| {
+        if dtor_predicates.predicates.is_empty() {
+            Ok(())
+        } else {
+            tcx.sess.span_err(
+                tcx.def_span(drop_impl_did),
+                &format!("negative impls on {} must not contain where bounds", s),
+            );
+            Err(ErrorReported)
+        }
+    };
+
+    let kind_str = match dtor_self_type.kind {
         ty::Adt(adt_def, self_to_impl_substs) => {
             ensure_drop_params_and_item_params_correspond(
                 tcx,
@@ -46,29 +60,82 @@ pub fn check_restricted_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<()
                 adt_def.did,
             )?;
 
-            ensure_drop_predicates_are_implied_by_item_defn(
+            return ensure_drop_predicates_are_implied_by_item_defn(
                 tcx,
                 drop_impl_did.expect_local(),
                 dtor_predicates,
                 adt_def.did,
                 self_to_impl_substs,
-            )
+            );
         }
-        _ => {
+        _ if tcx.lang_items().drop_trait()
+            == Some(tcx.impl_trait_ref(drop_impl_did).unwrap().def_id) =>
+        {
             // Destructors only work on nominal types. This was
-            // already checked by coherence, for auto impls we
-            // simply check that there are no bounds here.
-            if dtor_predicates.predicates.is_empty() {
-                Ok(())
-            } else {
-                tcx.sess.span_err(
-                    tcx.def_span(drop_impl_did),
-                    "auto traits must not contain where bounds",
-                );
-                Err(ErrorReported)
-            }
+            // already checked by coherence, but compilation may
+            // not have been terminated.
+            tcx.sess.delay_span_bug(
+                tcx.def_span(drop_impl_did),
+                &format!("should have been rejected by coherence check: {}", dtor_self_type),
+            );
+            return Err(ErrorReported);
         }
-    }
+        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => {
+            return check_empty_where_bounds("primitive types");
+        }
+        ty::Foreign(_) => {
+            return check_empty_where_bounds("foreign types");
+        }
+        ty::Array(..) => {
+            // FIXME: Support negative impls for `[T; N]` where `T: Sized` is the only predicate.
+            "arrays"
+        }
+        ty::Slice(..) => {
+            // FIXME: Support negative impls for `[T]` where `T: Sized` is the only predicate.
+            "slices"
+        }
+        ty::RawPtr(..) => {
+            return check_empty_where_bounds("raw pointers");
+        }
+        ty::Ref(..) => {
+            return check_empty_where_bounds("references");
+        }
+        ty::FnPtr(..) => {
+            // In case we ever get variadic functions allowing this would mean that we have
+            // specialized negative impls on stable.
+            "function pointers"
+        }
+        ty::Dynamic(..) => {
+            return check_empty_where_bounds("trait objects");
+        }
+        ty::Never => {
+            return check_empty_where_bounds("`!`");
+        }
+        ty::Tuple(..) => {
+            // In case we ever get variadic tuples allowing this would mean that we have
+            // specialized negative impls on stable.
+            "tuples"
+        }
+        ty::Projection(..) => "projections",
+        ty::Opaque(..) => "opaque types",
+        ty::Param(..) => {
+            return check_empty_where_bounds("type parameters");
+        }
+        ty::Error(..) => return Ok(()),
+        ty::FnDef(..)
+        | ty::Closure(..)
+        | ty::Generator(..)
+        | ty::GeneratorWitness(..)
+        | ty::Bound(..)
+        | ty::Placeholder(..)
+        | ty::Infer(..) => bug!("unexpected impl self ty: {:?}", dtor_self_type),
+    };
+
+    tcx.sess.span_err(
+        tcx.def_span(drop_impl_did),
+        &format!("negative impls are not allowed for {}", kind_str),
+    );
+    Err(ErrorReported)
 }
 
 fn ensure_drop_params_and_item_params_correspond<'tcx>(

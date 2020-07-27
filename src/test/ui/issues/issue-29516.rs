@@ -3,8 +3,7 @@
 
 auto trait NotSame {}
 
-impl<A> !NotSame for (A, A) {} //~ ERROR auto traits must not contain where bounds
-// FIXME: Consider allowing (A, B) with `A: Sized`.
+impl<A> !NotSame for (A, A) {} //~ ERROR negative impls are not allowed for tuples
 
 trait OneOfEach {}
 
