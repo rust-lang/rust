@@ -4,7 +4,7 @@
 // pretty-expanded FIXME #23616
 #![feature(allocator_api)]
 
-use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout};
+use std::alloc::{handle_alloc_error, AllocRef, Global, Layout};
 use std::ptr::NonNull;
 
 struct arena(());
@@ -25,9 +25,7 @@ struct Ccx {
 fn alloc(_bcx: &arena) -> &Bcx<'_> {
     unsafe {
         let layout = Layout::new::<Bcx>();
-        let memory = Global
-            .alloc(layout, AllocInit::Uninitialized)
-            .unwrap_or_else(|_| handle_alloc_error(layout));
+        let memory = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
         &*(memory.ptr.as_ptr() as *const _)
     }
 }

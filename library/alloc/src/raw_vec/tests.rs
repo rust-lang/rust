@@ -20,12 +20,12 @@ fn allocator_param() {
         fuel: usize,
     }
     unsafe impl AllocRef for BoundedAlloc {
-        fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
+        fn alloc(&mut self, layout: Layout) -> Result<MemoryBlock, AllocErr> {
             let size = layout.size();
             if size > self.fuel {
                 return Err(AllocErr);
             }
-            match Global.alloc(layout, init) {
+            match Global.alloc(layout) {
                 ok @ Ok(_) => {
                     self.fuel -= size;
                     ok

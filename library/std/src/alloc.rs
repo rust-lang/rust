@@ -140,16 +140,27 @@ pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
-    fn alloc(&mut self, layout: Layout, init: AllocInit) -> Result<MemoryBlock, AllocErr> {
+    fn alloc(&mut self, layout: Layout) -> Result<MemoryBlock, AllocErr> {
         unsafe {
             let size = layout.size();
             if size == 0 {
                 Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
             } else {
-                let raw_ptr = match init {
-                    AllocInit::Uninitialized => GlobalAlloc::alloc(self, layout),
-                    AllocInit::Zeroed => GlobalAlloc::alloc_zeroed(self, layout),
-                };
+                let raw_ptr = GlobalAlloc::alloc(self, layout);
+                let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
+                Ok(MemoryBlock { ptr, size })
+            }
+        }
+    }
+
+    #[inline]
+    fn alloc_zeroed(&mut self, layout: Layout) -> Result<MemoryBlock, AllocErr> {
+        unsafe {
+            let size = layout.size();
+            if size == 0 {
+                Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
+            } else {
+                let raw_ptr = GlobalAlloc::alloc_zeroed(self, layout);
                 let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
                 Ok(MemoryBlock { ptr, size })
             }
@@ -171,8 +182,6 @@ unsafe impl AllocRef for System {
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-        placement: ReallocPlacement,
-        init: AllocInit,
     ) -> Result<MemoryBlock, AllocErr> {
         let size = layout.size();
         debug_assert!(
@@ -184,41 +193,86 @@ unsafe impl AllocRef for System {
             return Ok(MemoryBlock { ptr, size });
         }
 
-        match placement {
-            ReallocPlacement::InPlace => Err(AllocErr),
-            ReallocPlacement::MayMove if layout.size() == 0 => {
-                let new_layout =
-                    // SAFETY: The new size and layout alignement guarantees
-                    // are transfered to the caller (they come from parameters).
-                    //
-                    // See the preconditions for `Layout::from_size_align` to
-                    // see what must be checked.
-                    unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
-                self.alloc(new_layout, init)
-            }
-            ReallocPlacement::MayMove => {
-                // SAFETY:
+        if layout.size() == 0 {
+            let new_layout =
+                // SAFETY: The new size and layout alignement guarantees
+                // are transfered to the caller (they come from parameters).
                 //
-                // The safety guarantees are explained in the documentation
-                // for the `GlobalAlloc` trait and its `dealloc` method.
-                //
-                // `realloc` probably checks for `new_size > size` or something
-                // similar.
-                //
-                // For the guarantees about `init_offset`, see its documentation:
-                // `ptr` is assumed valid (and checked for non-NUL) and
-                // `memory.size` is set to `new_size` so the offset being `size`
-                // is valid.
-                let memory = unsafe {
-                    intrinsics::assume(new_size > size);
-                    let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
-                    let memory =
-                        MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size };
-                    init.init_offset(memory, size);
-                    memory
-                };
+                // See the preconditions for `Layout::from_size_align` to
+                // see what must be checked.
+                unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
+            self.alloc(new_layout)
+        } else {
+            // SAFETY:
+            //
+            // The safety guarantees are explained in the documentation
+            // for the `GlobalAlloc` trait and its `dealloc` method.
+            //
+            // `realloc` probably checks for `new_size > size` or something
+            // similar.
+            //
+            // For the guarantees about `init_offset`, see its documentation:
+            // `ptr` is assumed valid (and checked for non-NUL) and
+            // `memory.size` is set to `new_size` so the offset being `size`
+            // is valid.
+            unsafe {
+                intrinsics::assume(new_size > size);
+                let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
+                let memory =
+                    MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size };
                 Ok(memory)
             }
+        }
+    }
+
+    #[inline]
+    unsafe fn grow_zeroed(
+        &mut self,
+        ptr: NonNull<u8>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<MemoryBlock, AllocErr> {
+        let size = layout.size();
+        debug_assert!(
+            new_size >= size,
+            "`new_size` must be greater than or equal to `memory.size()`"
+        );
+
+        if size == new_size {
+            return Ok(MemoryBlock { ptr, size });
+        }
+
+        if layout.size() == 0 {
+            let new_layout =
+                // SAFETY: The new size and layout alignement guarantees
+                // are transfered to the caller (they come from parameters).
+                //
+                // See the preconditions for `Layout::from_size_align` to
+                // see what must be checked.
+                unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
+            self.alloc_zeroed(new_layout)
+        } else {
+            // SAFETY:
+            //
+            // The safety guarantees are explained in the documentation
+            // for the `GlobalAlloc` trait and its `dealloc` method.
+            //
+            // `realloc` probably checks for `new_size > size` or something
+            // similar.
+            //
+            // For the guarantees about `init_offset`, see its documentation:
+            // `ptr` is assumed valid (and checked for non-NUL) and
+            // `memory.size` is set to `new_size` so the offset being `size`
+            // is valid.
+            let memory = unsafe {
+                intrinsics::assume(new_size > size);
+                let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
+                let memory =
+                    MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size };
+                memory.ptr.as_ptr().add(size).write_bytes(0, memory.size - size);
+                memory
+            };
+            Ok(memory)
         }
     }
 
@@ -228,7 +282,6 @@ unsafe impl AllocRef for System {
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-        placement: ReallocPlacement,
     ) -> Result<MemoryBlock, AllocErr> {
         let size = layout.size();
         debug_assert!(
@@ -240,32 +293,28 @@ unsafe impl AllocRef for System {
             return Ok(MemoryBlock { ptr, size });
         }
 
-        match placement {
-            ReallocPlacement::InPlace => Err(AllocErr),
-            ReallocPlacement::MayMove if new_size == 0 => {
-                // SAFETY: see `GlobalAlloc::dealloc` for the guarantees that
-                // must be respected. `ptr` and `layout` are parameters and so
-                // those guarantees must be checked by the caller.
-                unsafe { self.dealloc(ptr, layout) };
-                Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
-            }
-            ReallocPlacement::MayMove => {
-                // SAFETY:
-                //
-                // See `GlobalAlloc::realloc` for more informations about the
-                // guarantees expected by this method. `ptr`, `layout` and
-                // `new_size` are parameters and the responsability for their
-                // correctness is left to the caller.
-                //
-                // `realloc` probably checks for `new_size < size` or something
-                // similar.
-                let memory = unsafe {
-                    intrinsics::assume(new_size < size);
-                    let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
-                    MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size }
-                };
-                Ok(memory)
-            }
+        if new_size == 0 {
+            // SAFETY: see `GlobalAlloc::dealloc` for the guarantees that
+            // must be respected. `ptr` and `layout` are parameters and so
+            // those guarantees must be checked by the caller.
+            unsafe { self.dealloc(ptr, layout) };
+            Ok(MemoryBlock { ptr: layout.dangling(), size: 0 })
+        } else {
+            // SAFETY:
+            //
+            // See `GlobalAlloc::realloc` for more informations about the
+            // guarantees expected by this method. `ptr`, `layout` and
+            // `new_size` are parameters and the responsability for their
+            // correctness is left to the caller.
+            //
+            // `realloc` probably checks for `new_size < size` or something
+            // similar.
+            let memory = unsafe {
+                intrinsics::assume(new_size < size);
+                let ptr = GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size);
+                MemoryBlock { ptr: NonNull::new(ptr).ok_or(AllocErr)?, size: new_size }
+            };
+            Ok(memory)
         }
     }
 }

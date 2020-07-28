@@ -8,9 +8,8 @@ use test::Bencher;
 fn allocate_zeroed() {
     unsafe {
         let layout = Layout::from_size_align(1024, 1).unwrap();
-        let memory = Global
-            .alloc(layout.clone(), AllocInit::Zeroed)
-            .unwrap_or_else(|_| handle_alloc_error(layout));
+        let memory =
+            Global.alloc_zeroed(layout.clone()).unwrap_or_else(|_| handle_alloc_error(layout));
 
         let mut i = memory.ptr.cast::<u8>().as_ptr();
         let end = i.add(layout.size());
