@@ -10,7 +10,7 @@
 fn foo(_a: (), _b: &bool) {}
 
 fn bar() {
-    || {
+    || { //~ WARN unused generator that must be used
         let b = true;
         foo(yield, &b);
     };

@@ -1,0 +1,14 @@
+warning: unused generator that must be used
+  --> $DIR/yield-subtype.rs:11:5
+   |
+LL | /     || {
+LL | |         yield a;
+LL | |         yield b;
+LL | |     };
+   | |______^
+   |
+   = note: `#[warn(unused_must_use)]` on by default
+   = note: generators are lazy and do nothing unless resumed
+
+warning: 1 warning emitted
+
