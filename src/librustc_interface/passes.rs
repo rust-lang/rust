@@ -2,7 +2,7 @@ use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
 use crate::util;
 
-use log::{info, log_enabled, warn};
+use log::{info, warn};
 use once_cell::sync::Lazy;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self, ast, visit};
@@ -1015,10 +1015,7 @@ pub fn start_codegen<'tcx>(
     tcx: TyCtxt<'tcx>,
     outputs: &OutputFilenames,
 ) -> Box<dyn Any> {
-    if log_enabled!(::log::Level::Info) {
-        println!("Pre-codegen");
-        tcx.print_debug_stats();
-    }
+    info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
     let (metadata, need_metadata_module) = encode_and_write_metadata(tcx, outputs);
 
@@ -1026,10 +1023,7 @@ pub fn start_codegen<'tcx>(
         codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
     });
 
-    if log_enabled!(::log::Level::Info) {
-        println!("Post-codegen");
-        tcx.print_debug_stats();
-    }
+    info!("Post-codegen\n{:?}", tcx.debug_stats());
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
         if let Err(e) = mir::transform::dump_mir::emit_mir(tcx, outputs) {

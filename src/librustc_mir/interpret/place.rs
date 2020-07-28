@@ -648,7 +648,7 @@ where
             place_ty = self.place_projection(place_ty, &elem)?
         }
 
-        self.dump_place(place_ty.place);
+        trace!("{:?}", self.dump_place(place_ty.place));
         // Sanity-check the type we ended up with.
         debug_assert!(mir_assign_valid_types(
             *self.tcx,

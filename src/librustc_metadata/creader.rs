@@ -26,7 +26,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
-use log::{debug, info, log_enabled};
+use log::{debug, info};
 use proc_macro::bridge::client::ProcMacro;
 use std::path::Path;
 use std::{cmp, env, fs};
@@ -82,24 +82,38 @@ impl std::ops::Deref for CrateMetadataRef<'_> {
     }
 }
 
-fn dump_crates(cstore: &CStore) {
-    info!("resolved crates:");
-    cstore.iter_crate_data(|cnum, data| {
-        info!("  name: {}", data.name());
-        info!("  cnum: {}", cnum);
-        info!("  hash: {}", data.hash());
-        info!("  reqd: {:?}", data.dep_kind());
-        let CrateSource { dylib, rlib, rmeta } = data.source();
-        if let Some(dylib) = dylib {
-            info!("  dylib: {}", dylib.0.display());
-        }
-        if let Some(rlib) = rlib {
-            info!("   rlib: {}", rlib.0.display());
-        }
-        if let Some(rmeta) = rmeta {
-            info!("   rmeta: {}", rmeta.0.display());
-        }
-    });
+struct CrateDump<'a>(&'a CStore);
+
+fn crate_dump(cstore: &'a CStore) -> impl std::fmt::Debug + 'a {
+    CrateDump(cstore)
+}
+
+impl<'a> std::fmt::Debug for CrateDump<'a> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(fmt, "resolved crates:")?;
+        let mut res = Ok(());
+        self.0.iter_crate_data(|cnum, data| {
+            res = res.and(
+                try {
+                    writeln!(fmt, "  name: {}", data.name())?;
+                    writeln!(fmt, "  cnum: {}", cnum)?;
+                    writeln!(fmt, "  hash: {}", data.hash())?;
+                    writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
+                    let CrateSource { dylib, rlib, rmeta } = data.source();
+                    if let Some(dylib) = dylib {
+                        writeln!(fmt, "  dylib: {}", dylib.0.display())?;
+                    }
+                    if let Some(rlib) = rlib {
+                        writeln!(fmt, "   rlib: {}", rlib.0.display())?;
+                    }
+                    if let Some(rmeta) = rmeta {
+                        writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
+                    }
+                },
+            );
+        });
+        res
+    }
 }
 
 impl CStore {
@@ -864,9 +878,7 @@ impl<'a> CrateLoader<'a> {
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 
-        if log_enabled!(log::Level::Info) {
-            dump_crates(&self.cstore);
-        }
+        info!("{:?}", crate_dump(&self.cstore));
 
         self.report_unused_deps(krate);
     }

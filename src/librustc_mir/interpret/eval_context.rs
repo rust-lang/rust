@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::fmt::Write;
 use std::mem;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -728,7 +727,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if let Some(return_place) = frame.return_place {
                 let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
                 self.copy_op_transmute(op, return_place)?;
-                self.dump_place(*return_place);
+                trace!("{:?}", self.dump_place(*return_place));
             } else {
                 throw_ub!(Unreachable);
             }
@@ -823,9 +822,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // All locals have a backing allocation, even if the allocation is empty
             // due to the local having ZST type.
             let ptr = ptr.assert_ptr();
-            if log_enabled!(::log::Level::Trace) {
-                self.memory.dump_alloc(ptr.alloc_id);
-            }
+            trace!("{:?}", self.memory.dump_alloc(ptr.alloc_id));
             self.memory.deallocate_local(ptr)?;
         };
         Ok(())
@@ -881,69 +878,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.raw_const_to_mplace(val)
     }
 
-    pub fn dump_place(&self, place: Place<M::PointerTag>) {
-        // Debug output
-        if !log_enabled!(::log::Level::Trace) {
-            return;
-        }
-        match place {
-            Place::Local { frame, local } => {
-                let mut allocs = Vec::new();
-                let mut msg = format!("{:?}", local);
-                if frame != self.frame_idx() {
-                    write!(msg, " ({} frames up)", self.frame_idx() - frame).unwrap();
-                }
-                write!(msg, ":").unwrap();
-
-                match self.stack()[frame].locals[local].value {
-                    LocalValue::Dead => write!(msg, " is dead").unwrap(),
-                    LocalValue::Uninitialized => write!(msg, " is uninitialized").unwrap(),
-                    LocalValue::Live(Operand::Indirect(mplace)) => match mplace.ptr {
-                        Scalar::Ptr(ptr) => {
-                            write!(
-                                msg,
-                                " by align({}){} ref:",
-                                mplace.align.bytes(),
-                                match mplace.meta {
-                                    MemPlaceMeta::Meta(meta) => format!(" meta({:?})", meta),
-                                    MemPlaceMeta::Poison | MemPlaceMeta::None => String::new(),
-                                }
-                            )
-                            .unwrap();
-                            allocs.push(ptr.alloc_id);
-                        }
-                        ptr => write!(msg, " by integral ref: {:?}", ptr).unwrap(),
-                    },
-                    LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
-                        write!(msg, " {:?}", val).unwrap();
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val {
-                            allocs.push(ptr.alloc_id);
-                        }
-                    }
-                    LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
-                        write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val1 {
-                            allocs.push(ptr.alloc_id);
-                        }
-                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val2 {
-                            allocs.push(ptr.alloc_id);
-                        }
-                    }
-                }
-
-                trace!("{}", msg);
-                self.memory.dump_allocs(allocs);
-            }
-            Place::Ptr(mplace) => match mplace.ptr {
-                Scalar::Ptr(ptr) => {
-                    trace!("by align({}) ref:", mplace.align.bytes());
-                    self.memory.dump_alloc(ptr.alloc_id);
-                }
-                ptr => trace!(" integral by ref: {:?}", ptr),
-            },
-        }
+    #[must_use]
+    pub fn dump_place(&'a self, place: Place<M::PointerTag>) -> PlacePrinter<'a, 'mir, 'tcx, M> {
+        PlacePrinter { ecx: self, place }
     }
 
+    #[must_use]
     pub fn generate_stacktrace(&self) -> Vec<FrameInfo<'tcx>> {
         let mut frames = Vec::new();
         for frame in self.stack().iter().rev() {
@@ -960,6 +900,76 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("generate stacktrace: {:#?}", frames);
         frames
+    }
+}
+
+#[doc(hidden)]
+/// Helper struct for the `dump_place` function.
+pub struct PlacePrinter<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+    ecx: &'a InterpCx<'mir, 'tcx, M>,
+    place: Place<M::PointerTag>,
+}
+
+impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
+    for PlacePrinter<'a, 'mir, 'tcx, M>
+{
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.place {
+            Place::Local { frame, local } => {
+                let mut allocs = Vec::new();
+                write!(fmt, "{:?}", local)?;
+                if frame != self.ecx.frame_idx() {
+                    write!(fmt, " ({} frames up)", self.ecx.frame_idx() - frame)?;
+                }
+                write!(fmt, ":")?;
+
+                match self.ecx.stack()[frame].locals[local].value {
+                    LocalValue::Dead => write!(fmt, " is dead")?,
+                    LocalValue::Uninitialized => write!(fmt, " is uninitialized")?,
+                    LocalValue::Live(Operand::Indirect(mplace)) => match mplace.ptr {
+                        Scalar::Ptr(ptr) => {
+                            write!(
+                                fmt,
+                                " by align({}){} ref:",
+                                mplace.align.bytes(),
+                                match mplace.meta {
+                                    MemPlaceMeta::Meta(meta) => format!(" meta({:?})", meta),
+                                    MemPlaceMeta::Poison | MemPlaceMeta::None => String::new(),
+                                }
+                            )?;
+                            allocs.push(ptr.alloc_id);
+                        }
+                        ptr => write!(fmt, " by integral ref: {:?}", ptr)?,
+                    },
+                    LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
+                        write!(fmt, " {:?}", val)?;
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val {
+                            allocs.push(ptr.alloc_id);
+                        }
+                    }
+                    LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
+                        write!(fmt, " ({:?}, {:?})", val1, val2)?;
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val1 {
+                            allocs.push(ptr.alloc_id);
+                        }
+                        if let ScalarMaybeUninit::Scalar(Scalar::Ptr(ptr)) = val2 {
+                            allocs.push(ptr.alloc_id);
+                        }
+                    }
+                }
+
+                write!(fmt, ": {:?}", self.ecx.memory.dump_allocs(allocs))
+            }
+            Place::Ptr(mplace) => match mplace.ptr {
+                Scalar::Ptr(ptr) => write!(
+                    fmt,
+                    "by align({}) ref: {:?}",
+                    mplace.align.bytes(),
+                    self.ecx.memory.dump_alloc(ptr.alloc_id)
+                ),
+                ptr => write!(fmt, " integral by ref: {:?}", ptr),
+            },
+        }
     }
 }
 
