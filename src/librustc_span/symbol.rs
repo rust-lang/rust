@@ -1043,6 +1043,7 @@ symbols! {
         stop_after_dataflow,
         str,
         str_alloc,
+        string_type,
         stringify,
         struct_field_attributes,
         struct_inherit,
