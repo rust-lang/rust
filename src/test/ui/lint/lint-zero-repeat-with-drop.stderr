@@ -1,0 +1,79 @@
+error: used a type with a destructor in a zero-length repeat expression
+  --> $DIR/lint-zero-repeat-with-drop.rs:14:13
+   |
+LL |     let _ = [not_copy(); 0];
+   |             ^^^^^^^^^^^^^^^ help: consider using an empty array expression: `[]`
+   |
+note: the lint level is defined here
+  --> $DIR/lint-zero-repeat-with-drop.rs:3:9
+   |
+LL | #![deny(zero_repeat_with_drop)]
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   = note: the value used here has type `T`, which may have a destructor
+   = note: a length of zero is used, which will cause the value to be dropped in a strange location
+
+error: used a type with a destructor in a zero-length repeat expression
+  --> $DIR/lint-zero-repeat-with-drop.rs:15:13
+   |
+LL |     let _ = [not_copy(); 1 - 1];
+   |             ^^^^^^^^^^^^^^^^^^^ help: consider using an empty array expression: `[]`
+   |
+   = note: the value used here has type `T`, which may have a destructor
+   = note: a length of zero is used, which will cause the value to be dropped in a strange location
+
+error: used a type with a destructor in a zero-length repeat expression
+  --> $DIR/lint-zero-repeat-with-drop.rs:16:13
+   |
+LL |     let _ = [not_copy(); ZERO];
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using an empty array expression: `[]`
+   |
+   = note: the value used here has type `T`, which may have a destructor
+   = note: a length of zero is used, which will cause the value to be dropped in a strange location
+
+error: used a type with a destructor in a zero-length repeat expression
+  --> $DIR/lint-zero-repeat-with-drop.rs:17:13
+   |
+LL |     let _ = [Some(not_copy()); 0];
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using an empty array expression: `[]`
+   |
+   = note: the value used here has type `std::option::Option<T>`, which may have a destructor
+   = note: a length of zero is used, which will cause the value to be dropped in a strange location
+
+error: used a type with a destructor in a zero-length repeat expression
+  --> $DIR/lint-zero-repeat-with-drop.rs:18:13
+   |
+LL |     let _ = [None::<T>; 0];
+   |             ^^^^^^^^^^^^^^ help: consider using an empty array expression: `[]`
+   |
+   = note: the value used here has type `std::option::Option<T>`, which may have a destructor
+   = note: a length of zero is used, which will cause the value to be dropped in a strange location
+
+error: used a type with a destructor in a zero-length repeat expression
+  --> $DIR/lint-zero-repeat-with-drop.rs:19:13
+   |
+LL |     let _ = [make_val(not_copy()); 0];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using an empty array expression: `[]`
+   |
+   = note: the value used here has type `T`, which may have a destructor
+   = note: a length of zero is used, which will cause the value to be dropped in a strange location
+
+error: used a type with a destructor in a zero-length repeat expression
+  --> $DIR/lint-zero-repeat-with-drop.rs:20:13
+   |
+LL |     let _ = [String::new(); 0];
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using an empty array expression: `[]`
+   |
+   = note: the value used here has type `std::string::String`, which may have a destructor
+   = note: a length of zero is used, which will cause the value to be dropped in a strange location
+
+error: used a type with a destructor in a zero-length repeat expression
+  --> $DIR/lint-zero-repeat-with-drop.rs:21:13
+   |
+LL |     let _ = [WithDropGlue(String::new()); 0];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using an empty array expression: `[]`
+   |
+   = note: the value used here has type `WithDropGlue`, which may have a destructor
+   = note: a length of zero is used, which will cause the value to be dropped in a strange location
+
+error: aborting due to 8 previous errors
+

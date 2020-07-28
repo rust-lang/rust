@@ -7,7 +7,7 @@ use either::Either;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::{CoerceUnsizedTraitLangItem, CopyTraitLangItem, SizedTraitLangItem};
@@ -30,6 +30,7 @@ use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPredicate, Ty,
     TyCtxt, UserType, UserTypeAnnotationIndex, WithConstness,
 };
+use rustc_session::lint::builtin::ZERO_REPEAT_WITH_DROP;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -1993,7 +1994,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // than 1.
                 // If the length is larger than 1, the repeat expression will need to copy the
                 // element, so we require the `Copy` trait.
-                if len.try_eval_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
+                let len_val = len.try_eval_usize(tcx, self.param_env);
+                if len_val.map_or(true, |len| len > 1) {
                     if let Operand::Move(_) = operand {
                         // While this is located in `nll::typeck` this error is not an NLL error, it's
                         // a required check to make sure that repeated elements implement `Copy`.
@@ -2037,6 +2039,35 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 false,
                             );
                         }
+                    }
+                } else if let Some(0) = len_val {
+                    let ty = operand.ty(body, tcx);
+                    if ty.needs_drop(tcx, self.param_env) {
+                        let source_info = body.source_info(location);
+                        let lint_root = match &body.source_scopes[source_info.scope].local_data {
+                            ClearCrossCrate::Set(data) => data.lint_root,
+                            _ => tcx.hir().as_local_hir_id(self.mir_def_id),
+                        };
+
+                        tcx.struct_span_lint_hir(
+                            ZERO_REPEAT_WITH_DROP,
+                            lint_root,
+                            source_info.span,
+                            |lint| {
+                                lint
+                                    .build("used a type with a destructor in a zero-length repeat expression")
+                                    .note(&format!("the value used here has type `{}`, which may have a destructor", ty))
+                                    .note("a length of zero is used, which will cause the value to be dropped in a strange location")
+                                    .span_suggestion(
+                                        source_info.span,
+                                        "consider using an empty array expression",
+                                        "[]".to_string(),
+                                        Applicability::MaybeIncorrect
+                                    )
+                                    .emit();
+
+                            }
+                        );
                     }
                 }
             }

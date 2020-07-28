@@ -549,6 +549,12 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    pub ZERO_REPEAT_WITH_DROP,
+    Warn,
+    "detects using a type with a destructor in an zero-length array repeat expression"
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -623,6 +629,7 @@ declare_lint_pass! {
         UNSAFE_OP_IN_UNSAFE_FN,
         INCOMPLETE_INCLUDE,
         CENUM_IMPL_DROP_CAST,
+        ZERO_REPEAT_WITH_DROP,
     ]
 }
 
