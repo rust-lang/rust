@@ -748,7 +748,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     ty::FnPtr(fn_sig) => {
                         // At this point, we are calling a function by raw pointer because
                         // we know that it is const
-                        if fn_sig.constness() == hir::Constness::Const {
+                        if self.ccx.tcx.features().const_fn_pointer &&
+                          fn_sig.constness() == hir::Constness::Const {
                             return;
                         }
                         self.check_op(ops::FnCallIndirect);
