@@ -232,7 +232,7 @@ impl StepDescription {
                 }
 
                 if !attempted_run {
-                    panic!("Error: no rules matched {}.", path.display());
+                    panic!("error: no rules matched {}", path.display());
                 }
             }
         }
@@ -501,16 +501,7 @@ impl<'a> Builder<'a> {
             _ => return None,
         };
 
-        let builder = Builder {
-            build,
-            top_stage: build.config.stage.unwrap_or(2),
-            kind,
-            cache: Cache::new(),
-            stack: RefCell::new(Vec::new()),
-            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
-            paths: vec![],
-        };
-
+        let builder = Self::new_internal(build, kind, vec![]);
         let builder = &builder;
         let mut should_run = ShouldRun::new(builder);
         for desc in Builder::get_step_descriptions(builder.kind) {
@@ -535,6 +526,32 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
+    fn new_internal(build: &Build, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
+        let top_stage = if let Some(explicit_stage) = build.config.stage {
+            explicit_stage
+        } else {
+            // See https://github.com/rust-lang/compiler-team/issues/326
+            match kind {
+                Kind::Doc => 0,
+                Kind::Build | Kind::Test => 1,
+                Kind::Bench | Kind::Dist | Kind::Install => 2,
+                // These are all bootstrap tools, which don't depend on the compiler.
+                // The stage we pass shouldn't matter, but use 0 just in case.
+                Kind::Check | Kind::Clippy | Kind::Fix | Kind::Run | Kind::Format => 0,
+            }
+        };
+
+        Builder {
+            build,
+            top_stage,
+            kind,
+            cache: Cache::new(),
+            stack: RefCell::new(Vec::new()),
+            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
+            paths,
+        }
+    }
+
     pub fn new(build: &Build) -> Builder<'_> {
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
@@ -550,15 +567,20 @@ impl<'a> Builder<'a> {
             Subcommand::Format { .. } | Subcommand::Clean { .. } => panic!(),
         };
 
-        Builder {
-            build,
-            top_stage: build.config.stage.unwrap_or(2),
-            kind,
-            cache: Cache::new(),
-            stack: RefCell::new(Vec::new()),
-            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
-            paths: paths.to_owned(),
+        let this = Self::new_internal(build, kind, paths.to_owned());
+
+        // CI should always run stage 2 builds, unless it specifically states otherwise
+        #[cfg(not(test))]
+        if build.config.stage.is_none() && build.ci_env != crate::CiEnv::None {
+            match kind {
+                Kind::Test | Kind::Doc | Kind::Build | Kind::Bench | Kind::Dist | Kind::Install => {
+                    assert_eq!(this.top_stage, 2)
+                }
+                Kind::Check | Kind::Clippy | Kind::Fix | Kind::Run | Kind::Format => {}
+            }
         }
+
+        this
     }
 
     pub fn execute_cli(&self) {

@@ -341,7 +341,10 @@
 # Debuginfo for tests run with compiletest is not controlled by this option
 # and needs to be enabled separately with `debuginfo-level-tests`.
 #
-# Defaults to 2 if debug is true
+# Note that debuginfo-level = 2 generates several gigabytes of debuginfo
+# and will slow down the linking process significantly.
+#
+# Defaults to 1 if debug is true
 #debuginfo-level = 0
 
 # Debuginfo level for the compiler.

@@ -406,7 +406,7 @@ jobs:
             os: windows-latest-xl
           - name: x86_64-msvc-cargo
             env:
-              SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
+              SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-lld"
               VCVARS_BAT: vcvars64.bat
               NO_DEBUG_ASSERTIONS: 1
@@ -598,7 +598,7 @@ jobs:
             os: macos-latest
           - name: x86_64-apple
             env:
-              SCRIPT: "./x.py test"
+              SCRIPT: "./x.py --stage 2 test"
               RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.8

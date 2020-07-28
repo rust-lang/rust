@@ -31,7 +31,7 @@ ENV TARGETS=arm-linux-androideabi
 
 ENV RUST_CONFIGURE_ARGS --arm-linux-androideabi-ndk=/android/ndk/arm-14
 
-ENV SCRIPT python3 ../x.py test --target $TARGETS
+ENV SCRIPT python3 ../x.py --stage 2 test --target $TARGETS
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
