@@ -1173,7 +1173,7 @@ impl GetDefId for Type {
     fn def_id(&self) -> Option<DefId> {
         match *self {
             ResolvedPath { did, .. } => Some(did),
-            Primitive(p) => cache().primitive_locations.get(&p).cloned(),
+            Primitive(p) => super::primitives().get(&p).cloned(),
             BorrowedRef { type_: box Generic(..), .. } => {
                 Primitive(PrimitiveType::Reference).def_id()
             }

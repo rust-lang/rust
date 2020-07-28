@@ -28,10 +28,12 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, Pos};
 use rustc_typeck::hir_ty_to_ty;
 
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::default::Default;
 use std::hash::Hash;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::{mem, vec};
 
 use crate::core::{self, DocContext, ImplTraitParam};
@@ -47,6 +49,13 @@ pub use self::types::SelfTy::*;
 pub use self::types::Type::*;
 pub use self::types::Visibility::{Inherited, Public};
 pub use self::types::*;
+
+thread_local!(static PRIMITIVES: RefCell<Arc<FxHashMap<PrimitiveType, DefId>>> =
+    Default::default());
+
+crate fn primitives() -> Arc<FxHashMap<PrimitiveType, DefId>> {
+    PRIMITIVES.with(|c| c.borrow().clone())
+}
 
 const FN_OUTPUT_NAME: &str = "Output";
 
@@ -126,7 +135,7 @@ impl Clean<ExternalCrate> for CrateNum {
             }
             None
         };
-        let primitives = if root.is_local() {
+        let primitives: Vec<(DefId, PrimitiveType, Attributes)> = if root.is_local() {
             cx.tcx
                 .hir()
                 .krate()
@@ -161,6 +170,13 @@ impl Clean<ExternalCrate> for CrateNum {
                 .filter_map(as_primitive)
                 .collect()
         };
+        PRIMITIVES.with(|v| {
+            let mut tmp = v.borrow_mut();
+            let stored_primitives = Arc::make_mut(&mut *tmp);
+            for (prim, did) in primitives.iter().map(|x| (x.1, x.0)) {
+                stored_primitives.insert(prim, did);
+            }
+        });
 
         let as_keyword = |res: Res| {
             if let Res::Def(DefKind::Mod, def_id) = res {
