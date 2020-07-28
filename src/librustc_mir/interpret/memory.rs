@@ -741,13 +741,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
             for &(_, target_id) in alloc.relocations().values() {
                 allocs_to_print.push_back(target_id);
             }
-            // This vec dance is necessary, because there is no trait
-            // that supports writing to files and to `std::fmt::Formatter` at the
-            // same time.
-            let mut v = Vec::new();
-            pretty::write_allocation(tcx, alloc, &mut v).unwrap();
-            let s = String::from_utf8(v).unwrap();
-            fmt.write_str(&s)
+            write!(fmt, "{}", pretty::display_allocation(tcx, alloc))
         }
 
         let mut allocs_to_print: VecDeque<_> = self.allocs.iter().copied().collect();
