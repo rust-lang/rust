@@ -1052,6 +1052,30 @@ impl Expr {
         }
     }
 
+    /// Is this expr either `N`, or `{ N }`.
+    ///
+    /// If this is not the case, name resolution does not resolve `N` when using
+    /// `feature(min_const_generics)` as more complex expressions are not supported.
+    pub fn is_potential_trivial_const_param(&self) -> bool {
+        let this = if let ExprKind::Block(ref block, None) = self.kind {
+            if block.stmts.len() == 1 {
+                if let StmtKind::Expr(ref expr) = block.stmts[0].kind { expr } else { self }
+            } else {
+                self
+            }
+        } else {
+            self
+        };
+
+        if let ExprKind::Path(None, ref path) = this.kind {
+            if path.segments.len() == 1 && path.segments[0].args.is_none() {
+                return true;
+            }
+        }
+
+        false
+    }
+
     pub fn to_bound(&self) -> Option<GenericBound> {
         match &self.kind {
             ExprKind::Path(None, path) => Some(GenericBound::Trait(
