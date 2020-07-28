@@ -253,7 +253,8 @@ impl Drop for Server {
 }
 
 fn recv_timeout(receiver: &Receiver<Message>) -> Option<Message> {
-    let timeout = Duration::from_secs(120);
+    let timeout =
+        if cfg!(target_os = "macos") { Duration::from_secs(300) } else { Duration::from_secs(120) };
     select! {
         recv(receiver) -> msg => msg.ok(),
         recv(after(timeout)) -> _ => panic!("timed out"),
