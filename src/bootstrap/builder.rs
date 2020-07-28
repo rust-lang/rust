@@ -576,7 +576,7 @@ impl<'a> Builder<'a> {
                 Kind::Test | Kind::Doc | Kind::Build | Kind::Bench | Kind::Dist | Kind::Install => {
                     assert_eq!(this.top_stage, 2)
                 }
-                _ => {}
+                Kind::Check | Kind::Clippy | Kind::Fix | Kind::Run | Kind::Format => {}
             }
         }
 
