@@ -6,10 +6,11 @@ use std::path::Path;
 /// List of allowed sources for packages.
 const ALLOWED_SOURCES: &[&str] = &["\"registry+https://github.com/rust-lang/crates.io-index\""];
 
-/// Checks for external package sources.
-pub fn check(path: &Path, bad: &mut bool) {
-    // `Cargo.lock` of rust (tidy runs inside `src/`).
-    let path = path.join("../Cargo.lock");
+/// Checks for external package sources. `root` is the path to the directory that contains the
+/// workspace `Cargo.toml`.
+pub fn check(root: &Path, bad: &mut bool) {
+    // `Cargo.lock` of rust.
+    let path = root.join("Cargo.lock");
 
     // Open and read the whole file.
     let cargo_lock = t!(fs::read_to_string(&path));

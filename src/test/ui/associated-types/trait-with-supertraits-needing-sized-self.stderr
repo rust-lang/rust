@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `Self` cannot be known at compilation 
 LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> {}
    |                      ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    | 
-  ::: $SRC_DIR/libcore/ops/arith.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
 LL | pub trait Add<Rhs = Self> {
    |               --- required by this bound in `std::ops::Add`

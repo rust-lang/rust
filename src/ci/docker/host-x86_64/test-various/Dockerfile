@@ -46,7 +46,7 @@ ENV WASM_SCRIPT python3 /checkout/x.py test --target $WASM_TARGETS \
   src/test/compile-fail \
   src/test/mir-opt \
   src/test/codegen-units \
-  src/libcore
+  library/core
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py test --target $NVPTX_TARGETS \

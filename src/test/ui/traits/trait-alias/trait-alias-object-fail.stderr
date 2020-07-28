@@ -4,7 +4,7 @@ error[E0038]: the trait `std::cmp::Eq` cannot be made into an object
 LL |     let _: &dyn EqAlias = &123;
    |             ^^^^^^^^^^^ the trait `std::cmp::Eq` cannot be made into an object
    | 
-  ::: $SRC_DIR/libcore/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
    |
 LL | pub trait Eq: PartialEq<Self> {
    |               --------------- the trait cannot be made into an object because it uses `Self` as a type parameter in this

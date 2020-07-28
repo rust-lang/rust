@@ -73,7 +73,7 @@ error: cannot find derive macro `Dlone` in this scope
 LL | #[derive(Dlone)]
    |          ^^^^^ help: a derive macro with a similar name exists: `Clone`
    | 
-  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL | pub macro Clone($item:item) {
    | --------------------------- similarly named derive macro `Clone` defined here
@@ -84,7 +84,7 @@ error: cannot find derive macro `Dlone` in this scope
 LL | #[derive(Dlone)]
    |          ^^^^^ help: a derive macro with a similar name exists: `Clone`
    | 
-  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL | pub macro Clone($item:item) {
    | --------------------------- similarly named derive macro `Clone` defined here

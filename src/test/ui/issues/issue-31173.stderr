@@ -13,7 +13,7 @@ error[E0599]: no method named `collect` found for struct `std::iter::Cloned<std:
 LL |         .collect();
    |          ^^^^^^^ method not found in `std::iter::Cloned<std::iter::TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:6:39: 9:6 found_e:_]>>`
    | 
-  ::: $SRC_DIR/libcore/iter/adapters/mod.rs:LL:COL
+  ::: $SRC_DIR/core/src/iter/adapters/mod.rs:LL:COL
    |
 LL | pub struct Cloned<I> {
    | -------------------- doesn't satisfy `_: std::iter::Iterator`

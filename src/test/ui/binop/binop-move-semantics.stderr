@@ -12,7 +12,7 @@ LL | |     x;
    |       `x` moved due to usage in operator
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
 LL |     fn add(self, rhs: Rhs) -> Self::Output;
    |            ^^^^

@@ -5,7 +5,7 @@ LL |     let _ = std::thread::thread_info::current_thread();
    |                          ^^^^^^^^^^^ private module
    |
 note: the module `thread_info` is defined here
-  --> $SRC_DIR/libstd/thread/mod.rs:LL:COL
+  --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
    |
 LL | use crate::sys_common::thread_info;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

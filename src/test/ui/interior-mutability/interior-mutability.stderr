@@ -4,7 +4,7 @@ error[E0277]: the type `std::cell::UnsafeCell<i32>` may contain interior mutabil
 LL |     catch_unwind(|| { x.set(23); });
    |     ^^^^^^^^^^^^ `std::cell::UnsafeCell<i32>` may contain interior mutability and a reference may not be safely transferrable across a catch_unwind boundary
    | 
-  ::: $SRC_DIR/libstd/panic.rs:LL:COL
+  ::: $SRC_DIR/std/src/panic.rs:LL:COL
    |
 LL | pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
    |                                        ---------- required by this bound in `std::panic::catch_unwind`

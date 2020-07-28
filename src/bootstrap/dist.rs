@@ -688,7 +688,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/libstd")
+        run.path("library/std")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -895,7 +895,15 @@ impl Step for Analysis {
     }
 }
 
-fn copy_src_dirs(builder: &Builder<'_>, src_dirs: &[&str], exclude_dirs: &[&str], dst_dir: &Path) {
+/// Use the `builder` to make a filtered copy of `base`/X for X in (`src_dirs` - `exclude_dirs`) to
+/// `dst_dir`.
+fn copy_src_dirs(
+    builder: &Builder<'_>,
+    base: &Path,
+    src_dirs: &[&str],
+    exclude_dirs: &[&str],
+    dst_dir: &Path,
+) {
     fn filter_fn(exclude_dirs: &[&str], dir: &str, path: &Path) -> bool {
         let spath = match path.to_str() {
             Some(path) => path,
@@ -968,8 +976,7 @@ fn copy_src_dirs(builder: &Builder<'_>, src_dirs: &[&str], exclude_dirs: &[&str]
     for item in src_dirs {
         let dst = &dst_dir.join(item);
         t!(fs::create_dir_all(dst));
-        builder
-            .cp_filtered(&builder.src.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
+        builder.cp_filtered(&base.join(item), dst, &|path| filter_fn(exclude_dirs, item, path));
     }
 }
 
@@ -996,32 +1003,20 @@ impl Step for Src {
         let image = tmpdir(builder).join(format!("{}-image", name));
         let _ = fs::remove_dir_all(&image);
 
-        let dst = image.join("lib/rustlib/src");
-        let dst_src = dst.join("rust");
+        // A lot of tools expect the rust-src component to be entirely in this directory, so if you
+        // change that (e.g. by adding another directory `lib/rustlib/src/foo` or
+        // `lib/rustlib/src/rust/foo`), you will need to go around hunting for implicit assumptions
+        // and fix them...
+        //
+        // NOTE: if you update the paths here, you also should update the "virtual" path
+        // translation code in `imported_source_files` in `src/librustc_metadata/rmeta/decoder.rs`
+        let dst_src = image.join("lib/rustlib/src/rust");
         t!(fs::create_dir_all(&dst_src));
 
         let src_files = ["Cargo.lock"];
         // This is the reduced set of paths which will become the rust-src component
-        // (essentially libstd and all of its path dependencies)
-        let std_src_dirs = [
-            "src/build_helper",
-            "src/liballoc",
-            "src/libcore",
-            "src/libpanic_abort",
-            "src/libpanic_unwind",
-            "src/libstd",
-            "src/libunwind",
-            "src/libtest",
-            "src/libterm",
-            "src/libprofiler_builtins",
-            "src/stdarch",
-            "src/libproc_macro",
-            "src/tools/rustc-std-workspace-core",
-            "src/tools/rustc-std-workspace-alloc",
-            "src/tools/rustc-std-workspace-std",
-        ];
-
-        copy_src_dirs(builder, &std_src_dirs[..], &[], &dst_src);
+        // (essentially libstd and all of its path dependencies).
+        copy_src_dirs(builder, &builder.src, &["library"], &[], &dst_src);
         for file in src_files.iter() {
             builder.copy(&builder.src.join(file), &dst_src.join(file));
         }
@@ -1091,9 +1086,9 @@ impl Step for PlainSourceTarball {
             "Cargo.toml",
             "Cargo.lock",
         ];
-        let src_dirs = ["src"];
+        let src_dirs = ["src", "library"];
 
-        copy_src_dirs(builder, &src_dirs[..], &[], &plain_dst_src);
+        copy_src_dirs(builder, &builder.src, &src_dirs, &[], &plain_dst_src);
 
         // Copy the files normally
         for item in &src_files {

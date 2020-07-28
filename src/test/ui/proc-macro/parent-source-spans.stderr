@@ -145,7 +145,7 @@ LL |     parent_source_spans!($($tokens)*);
 LL |     one!("hello", "world");
    |     ----------------------- in this macro invocation
    | 
-  ::: $SRC_DIR/libcore/result.rs:LL:COL
+  ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
@@ -161,7 +161,7 @@ LL |     parent_source_spans!($($tokens)*);
 LL |     two!("yay", "rust");
    |     -------------------- in this macro invocation
    | 
-  ::: $SRC_DIR/libcore/result.rs:LL:COL
+  ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
@@ -177,7 +177,7 @@ LL |     parent_source_spans!($($tokens)*);
 LL |     three!("hip", "hop");
    |     --------------------- in this macro invocation
    | 
-  ::: $SRC_DIR/libcore/result.rs:LL:COL
+  ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     --------------------------------------------------- similarly named tuple variant `Ok` defined here

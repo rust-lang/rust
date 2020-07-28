@@ -4,7 +4,7 @@ error[E0004]: non-exhaustive patterns: `Some(Private { misc: true, .. })` not co
 LL |     match private::DATA {
    |           ^^^^^^^^^^^^^ pattern `Some(Private { misc: true, .. })` not covered
    | 
-  ::: $SRC_DIR/libcore/option.rs:LL:COL
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
    |
 LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     ---- not covered

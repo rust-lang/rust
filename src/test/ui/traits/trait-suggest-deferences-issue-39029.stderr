@@ -7,7 +7,7 @@ LL |     let _errors = TcpListener::bind(&bad);
    |                                     the trait `std::net::ToSocketAddrs` is not implemented for `NoToSocketAddrs`
    |                                     help: consider adding dereference here: `&*bad`
    | 
-  ::: $SRC_DIR/libstd/net/tcp.rs:LL:COL
+  ::: $SRC_DIR/std/src/net/tcp.rs:LL:COL
    |
 LL |     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
    |                    ------------- required by this bound in `std::net::TcpListener::bind`

@@ -4,7 +4,7 @@ error: cannot find macro `printlx` in this scope
 LL |     printlx!("oh noes!");
    |     ^^^^^^^ help: a macro with a similar name exists: `println`
    | 
-  ::: $SRC_DIR/libstd/macros.rs:LL:COL
+  ::: $SRC_DIR/std/src/macros.rs:LL:COL
    |
 LL | macro_rules! println {
    | -------------------- similarly named macro `println` defined here

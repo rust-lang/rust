@@ -22,7 +22,7 @@ error[E0277]: the trait bound `Test1: std::clone::Clone` is not satisfied
 LL | #[derive(Copy(Bad))]
    |          ^^^^ the trait `std::clone::Clone` is not implemented for `Test1`
    | 
-  ::: $SRC_DIR/libcore/marker.rs:LL:COL
+  ::: $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub trait Copy: Clone {
    |                 ----- required by this bound in `std::marker::Copy`
@@ -35,7 +35,7 @@ error[E0277]: the trait bound `Test2: std::clone::Clone` is not satisfied
 LL | #[derive(Copy="bad")]
    |          ^^^^ the trait `std::clone::Clone` is not implemented for `Test2`
    | 
-  ::: $SRC_DIR/libcore/marker.rs:LL:COL
+  ::: $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub trait Copy: Clone {
    |                 ----- required by this bound in `std::marker::Copy`

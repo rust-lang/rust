@@ -1,11 +1,11 @@
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
 LL |           unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                    |
    |                    ptr_offset_from cannot compute offset of pointers into different allocations.
-   |                    inside `std::ptr::const_ptr::<impl *const Struct>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |                    inside `std::ptr::const_ptr::<impl *const Struct>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                    inside `DIFFERENT_ALLOC` at $DIR/offset_from_ub.rs:17:27
    | 
   ::: $DIR/offset_from_ub.rs:11:1
@@ -22,13 +22,13 @@ LL | | };
    = note: `#[deny(const_err)]` on by default
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
 LL |           unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                    |
    |                    unable to turn bytes into a pointer
-   |                    inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |                    inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                    inside `NOT_PTR` at $DIR/offset_from_ub.rs:23:14
    | 
   ::: $DIR/offset_from_ub.rs:21:1
@@ -40,13 +40,13 @@ LL | | };
    | |__-
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
 LL |           unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                    |
    |                    exact_div: 1_isize cannot be divided by 2_isize without remainder
-   |                    inside `std::ptr::const_ptr::<impl *const u16>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |                    inside `std::ptr::const_ptr::<impl *const u16>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                    inside `NOT_MULTIPLE_OF_SIZE` at $DIR/offset_from_ub.rs:31:14
    | 
   ::: $DIR/offset_from_ub.rs:26:1
@@ -61,13 +61,13 @@ LL | | };
    | |__-
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
 LL |           unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                    |
    |                    inbounds test failed: 0x0 is not a valid pointer
-   |                    inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |                    inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                    inside `OFFSET_FROM_NULL` at $DIR/offset_from_ub.rs:37:14
    | 
   ::: $DIR/offset_from_ub.rs:34:1
@@ -80,13 +80,13 @@ LL | | };
    | |__-
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
 LL |           unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                    |
    |                    unable to turn bytes into a pointer
-   |                    inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/libcore/ptr/const_ptr.rs:LL:COL
+   |                    inside `std::ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                    inside `DIFFERENT_INT` at $DIR/offset_from_ub.rs:44:14
    | 
   ::: $DIR/offset_from_ub.rs:40:1

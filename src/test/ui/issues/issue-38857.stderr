@@ -11,7 +11,7 @@ LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!()
    |                  ^^^ private module
    |
 note: the module `sys` is defined here
-  --> $SRC_DIR/libstd/lib.rs:LL:COL
+  --> $SRC_DIR/std/src/lib.rs:LL:COL
    |
 LL | mod sys;
    | ^^^^^^^^

@@ -13,7 +13,7 @@ LL | struct NotClone;
 LL |     Bar::<NotClone> { x: 1 }.clone();
    |                              ^^^^^ method not found in `Bar<NotClone>`
    | 
-  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL |     fn clone(&self) -> Self;
    |        -----

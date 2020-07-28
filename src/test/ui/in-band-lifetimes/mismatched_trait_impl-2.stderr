@@ -4,7 +4,7 @@ error: `impl` item signature doesn't match `trait` item signature
 LL |     fn deref(&self) -> &dyn Trait {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&Struct) -> &dyn Trait`
    | 
-  ::: $SRC_DIR/libcore/ops/deref.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/deref.rs:LL:COL
    |
 LL |     fn deref(&self) -> &Self::Target;
    |     --------------------------------- expected `fn(&Struct) -> &(dyn Trait + 'static)`

@@ -14,6 +14,7 @@ ignore = [
     "src/test",
 
     # do not format submodules
+    "library/stdarch",
     "src/doc/book",
     "src/doc/edition-guide",
     "src/doc/embedded-book",
@@ -22,15 +23,14 @@ ignore = [
     "src/doc/rust-by-example",
     "src/doc/rustc-dev-guide",
     "src/llvm-project",
-    "src/stdarch",
     "src/tools/cargo",
     "src/tools/clippy",
     "src/tools/miri",
     "src/tools/rls",
     "src/tools/rust-analyzer",
-    "src/tools/rust-installer",
     "src/tools/rustfmt",
+    "src/tools/rust-installer",
 
     # We do not format this file as it is externally sourced and auto-generated.
-    "src/libstd/sys/cloudabi/abi/cloudabi.rs",
+    "library/std/src/sys/cloudabi/abi/cloudabi.rs",
 ]

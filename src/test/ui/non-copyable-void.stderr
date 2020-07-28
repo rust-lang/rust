@@ -4,7 +4,7 @@ error[E0599]: no method named `clone` found for enum `libc::c_void` in the curre
 LL |         let _z = (*y).clone();
    |                       ^^^^^ method not found in `libc::c_void`
    | 
-  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL |     fn clone(&self) -> Self;
    |        -----

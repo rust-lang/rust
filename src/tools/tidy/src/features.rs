@@ -71,15 +71,19 @@ pub fn collect_lib_features(base_src_path: &Path) -> Features {
     lib_features
 }
 
-pub fn check(path: &Path, bad: &mut bool, verbose: bool) -> CollectedFeatures {
-    let mut features = collect_lang_features(path, bad);
+pub fn check(src_path: &Path, lib_path: &Path, bad: &mut bool, verbose: bool) -> CollectedFeatures {
+    let mut features = collect_lang_features(src_path, bad);
     assert!(!features.is_empty());
 
-    let lib_features = get_and_check_lib_features(path, bad, &features);
+    let lib_features = get_and_check_lib_features(lib_path, bad, &features);
     assert!(!lib_features.is_empty());
 
     super::walk_many(
-        &[&path.join("test/ui"), &path.join("test/ui-fulldeps"), &path.join("test/compile-fail")],
+        &[
+            &src_path.join("test/ui"),
+            &src_path.join("test/ui-fulldeps"),
+            &src_path.join("test/compile-fail"),
+        ],
         &mut |path| super::filter_dirs(path),
         &mut |entry, contents| {
             let file = entry.path();

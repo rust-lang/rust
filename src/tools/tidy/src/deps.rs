@@ -183,11 +183,12 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
 
 /// Dependency checks.
 ///
-/// `path` is path to the `src` directory, `cargo` is path to the cargo executable.
-pub fn check(path: &Path, cargo: &Path, bad: &mut bool) {
+/// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
+/// to the cargo executable.
+pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     let mut cmd = cargo_metadata::MetadataCommand::new();
     cmd.cargo_path(cargo)
-        .manifest_path(path.parent().unwrap().join("Cargo.toml"))
+        .manifest_path(root.join("Cargo.toml"))
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let metadata = t!(cmd.exec());
     check_exceptions(&metadata, bad);

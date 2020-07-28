@@ -1232,7 +1232,7 @@ pub fn build_session(
         }
 
         // Only use this directory if it has a file we can expect to always find.
-        if candidate.join("src/libstd/lib.rs").is_file() { Some(candidate) } else { None }
+        if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
     };
 
     let asm_arch = if target_cfg.target.options.allow_asm {

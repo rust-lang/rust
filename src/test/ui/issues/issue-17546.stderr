@@ -4,7 +4,7 @@ error[E0573]: expected type, found variant `NoResult`
 LL |     fn new() -> NoResult<MyEnum, String> {
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^
    | 
-  ::: $SRC_DIR/libcore/result.rs:LL:COL
+  ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL | pub enum Result<T, E> {
    | --------------------- similarly named enum `Result` defined here
@@ -58,7 +58,7 @@ error[E0573]: expected type, found variant `NoResult`
 LL | fn newer() -> NoResult<foo::MyEnum, String> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    | 
-  ::: $SRC_DIR/libcore/result.rs:LL:COL
+  ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL | pub enum Result<T, E> {
    | --------------------- similarly named enum `Result` defined here

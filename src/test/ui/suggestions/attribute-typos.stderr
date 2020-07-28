@@ -16,7 +16,7 @@ error: cannot find attribute `tests` in this scope
 LL | #[tests]
    |   ^^^^^ help: an attribute macro with a similar name exists: `test`
    | 
-  ::: $SRC_DIR/libcore/macros/mod.rs:LL:COL
+  ::: $SRC_DIR/core/src/macros/mod.rs:LL:COL
    |
 LL |     pub macro test($item:item) {
    |     -------------------------- similarly named attribute macro `test` defined here

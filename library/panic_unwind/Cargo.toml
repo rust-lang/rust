@@ -1,0 +1,18 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "panic_unwind"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+alloc = { path = "../alloc" }
+core = { path = "../core" }
+libc = { version = "0.2", default-features = false }
+unwind = { path = "../unwind" }
+compiler_builtins = "0.1.0"
+cfg-if = "0.1.8"

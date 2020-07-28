@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `[u8]` cannot be known at compilation 
 LL | impl Foo for Option<[u8]> {}
    |              ^^^^^^^^^^^^ doesn't have a size known at compile-time
    | 
-  ::: $SRC_DIR/libcore/option.rs:LL:COL
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
    |
 LL | pub enum Option<T> {
    |                 - required by this bound in `std::option::Option`

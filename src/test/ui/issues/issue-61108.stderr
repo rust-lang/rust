@@ -13,7 +13,7 @@ LL |     bad_letters.push('s');
    |     ^^^^^^^^^^^ value borrowed here after move
    |
 note: this function consumes the receiver `self` by taking ownership of it, which moves `bad_letters`
-  --> $SRC_DIR/libcore/iter/traits/collect.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^

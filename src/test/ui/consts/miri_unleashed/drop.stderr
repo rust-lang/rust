@@ -1,5 +1,5 @@
 error[E0080]: could not evaluate static initializer
-  --> $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
 LL | / pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 LL | |     // Code here does not matter - this is replaced by the
@@ -11,7 +11,7 @@ LL | | }
    | | ^
    | | |
    | |_calling non-const function `<std::vec::Vec<i32> as std::ops::Drop>::drop`
-   |   inside `std::intrinsics::drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $SRC_DIR/libcore/ptr/mod.rs:LL:COL
+   |   inside `std::intrinsics::drop_in_place::<std::vec::Vec<i32>> - shim(Some(std::vec::Vec<i32>))` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    | 
   ::: $DIR/drop.rs:18:1
    |

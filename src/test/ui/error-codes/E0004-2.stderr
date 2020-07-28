@@ -4,7 +4,7 @@ error[E0004]: non-exhaustive patterns: `None` and `Some(_)` not covered
 LL |     match x { }
    |           ^ patterns `None` and `Some(_)` not covered
    | 
-  ::: $SRC_DIR/libcore/option.rs:LL:COL
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
    |
 LL |     None,
    |     ---- not covered

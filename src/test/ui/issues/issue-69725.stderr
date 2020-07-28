@@ -9,7 +9,7 @@ LL |     let _ = Struct::<A>::new().clone();
 LL | pub struct Struct<A>(A);
    | ------------------------ doesn't satisfy `issue_69725::Struct<A>: std::clone::Clone`
    | 
-  ::: $SRC_DIR/libcore/clone.rs:LL:COL
+  ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
 LL |     fn clone(&self) -> Self;
    |        -----

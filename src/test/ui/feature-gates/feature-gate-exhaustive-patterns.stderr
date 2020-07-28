@@ -4,7 +4,7 @@ error[E0005]: refutable pattern in local binding: `Err(_)` not covered
 LL |     let Ok(_x) = foo();
    |         ^^^^^^ pattern `Err(_)` not covered
    | 
-  ::: $SRC_DIR/libcore/result.rs:LL:COL
+  ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
    |     --- not covered

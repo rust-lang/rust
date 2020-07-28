@@ -7,7 +7,7 @@ LL |     val.0;
    |     ^^^^^ value used here after move
    |
 note: this function consumes the receiver `self` by taking ownership of it, which moves `val.0`
-  --> $SRC_DIR/libcore/iter/traits/collect.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
@@ -108,7 +108,7 @@ LL |     foo_add;
    |     ^^^^^^^ value used here after move
    |
 note: calling this operator moves the left-hand side
-  --> $SRC_DIR/libcore/ops/arith.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
 LL |     fn add(self, rhs: Rhs) -> Self::Output;
    |            ^^^^

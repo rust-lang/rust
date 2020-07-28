@@ -1503,6 +1503,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn imported_source_files(&self, sess: &Session) -> &'a [ImportedSourceFile] {
         // Translate the virtual `/rustc/$hash` prefix back to a real directory
         // that should hold actual sources, where possible.
+        //
+        // NOTE: if you update this, you might need to also update bootstrap's code for generating
+        // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
         let virtual_rust_source_base_dir = option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR")
             .map(Path::new)
             .filter(|_| {
@@ -1528,7 +1531,36 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         if let rustc_span::RealFileName::Named(one_path) = old_name {
                             if let Ok(rest) = one_path.strip_prefix(virtual_dir) {
                                 let virtual_name = one_path.clone();
-                                let new_path = real_dir.join(rest);
+
+                                // The std library crates are in
+                                // `$sysroot/lib/rustlib/src/rust/library`, whereas other crates
+                                // may be in `$sysroot/lib/rustlib/src/rust/` directly. So we
+                                // detect crates from the std libs and handle them specially.
+                                const STD_LIBS: &[&str] = &[
+                                    "core",
+                                    "alloc",
+                                    "std",
+                                    "test",
+                                    "term",
+                                    "unwind",
+                                    "proc_macro",
+                                    "panic_abort",
+                                    "panic_unwind",
+                                    "profiler_builtins",
+                                    "rtstartup",
+                                    "rustc-std-workspace-core",
+                                    "rustc-std-workspace-alloc",
+                                    "rustc-std-workspace-std",
+                                    "backtrace",
+                                ];
+                                let is_std_lib = STD_LIBS.iter().any(|l| rest.starts_with(l));
+
+                                let new_path = if is_std_lib {
+                                    real_dir.join("library").join(rest)
+                                } else {
+                                    real_dir.join(rest)
+                                };
+
                                 debug!(
                                     "try_to_translate_virtual_to_real: `{}` -> `{}`",
                                     virtual_name.display(),
