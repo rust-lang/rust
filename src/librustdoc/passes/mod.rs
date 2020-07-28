@@ -312,12 +312,7 @@ impl DocFolder for ImportStripper {
     }
 }
 
-pub fn look_for_tests<'tcx>(
-    cx: &DocContext<'tcx>,
-    dox: &str,
-    item: &Item,
-    check_missing_code: bool,
-) {
+pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     let hir_id = match cx.as_local_hir_id(item.def_id) {
         Some(hir_id) => hir_id,
         None => {
@@ -340,12 +335,24 @@ pub fn look_for_tests<'tcx>(
 
     find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
 
-    if check_missing_code && tests.found_tests == 0 {
-        let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
-        cx.tcx.struct_span_lint_hir(lint::builtin::MISSING_DOC_CODE_EXAMPLES, hir_id, sp, |lint| {
-            lint.build("missing code example in this documentation").emit()
-        });
-    } else if !check_missing_code
+    if tests.found_tests == 0 {
+        use clean::ItemEnum::*;
+
+        let should_report = match item.inner {
+            ExternCrateItem(_, _) | ImportItem(_) | PrimitiveItem(_) | KeywordItem(_) => false,
+            _ => true,
+        };
+        if should_report {
+            debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
+            let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
+            cx.tcx.struct_span_lint_hir(
+                lint::builtin::MISSING_DOC_CODE_EXAMPLES,
+                hir_id,
+                sp,
+                |lint| lint.build("missing code example in this documentation").emit(),
+            );
+        }
+    } else if rustc_feature::UnstableFeatures::from_environment().is_nightly_build()
         && tests.found_tests > 0
         && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
     {

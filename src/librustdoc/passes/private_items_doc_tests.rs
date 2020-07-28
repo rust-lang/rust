@@ -30,7 +30,7 @@ impl<'a, 'tcx> DocFolder for PrivateItemDocTestLinter<'a, 'tcx> {
         let cx = self.cx;
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
 
-        look_for_tests(&cx, &dox, &item, false);
+        look_for_tests(&cx, &dox, &item);
 
         self.fold_item_recur(item)
     }

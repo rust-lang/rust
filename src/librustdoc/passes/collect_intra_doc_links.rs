@@ -23,7 +23,7 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::markdown_links;
-use crate::passes::{look_for_tests, Pass};
+use crate::passes::Pass;
 
 use super::span_of_attrs;
 
@@ -507,8 +507,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         let cx = self.cx;
         let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
         trace!("got documentation '{}'", dox);
-
-        look_for_tests(&cx, &dox, &item, true);
 
         // find item's parent to resolve `Self` in item's docs below
         let parent_name = self.cx.as_local_hir_id(item.def_id).and_then(|item_hir| {
