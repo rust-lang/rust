@@ -2167,6 +2167,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "misc",
     },
     Lint {
+        name: "trait_duplication_in_bounds",
+        group: "pedantic",
+        desc: "Check if the same trait bounds are specifed twice during a function declaration",
+        deprecation: None,
+        module: "trait_bounds",
+    },
+    Lint {
         name: "transmute_bytes_to_str",
         group: "complexity",
         desc: "transmutes from a `&[u8]` to a `&str`",
