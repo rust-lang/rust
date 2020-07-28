@@ -1,5 +1,5 @@
 //! Benchmarking module.
-pub use std::hint::black_box;
+pub use std::hint::pretend_used as black_box;
 
 use super::{
     event::CompletedTest, helpers::sink::Sink, options::BenchMode, test_result::TestResult,

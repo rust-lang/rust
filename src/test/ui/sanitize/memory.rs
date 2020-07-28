@@ -15,7 +15,7 @@
 #![feature(start)]
 #![feature(test)]
 
-use std::hint::black_box;
+use std::hint::pretend_used;
 use std::mem::MaybeUninit;
 
 #[inline(never)]
@@ -23,7 +23,7 @@ use std::mem::MaybeUninit;
 fn random() -> [isize; 32] {
     let r = unsafe { MaybeUninit::uninit().assume_init() };
     // Avoid optimizing everything out.
-    black_box(r)
+    pretend_used(r)
 }
 
 #[inline(never)]

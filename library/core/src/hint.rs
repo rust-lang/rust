@@ -96,23 +96,25 @@ pub fn spin_loop() {
     }
 }
 
-/// An identity function that *__hints__* to the compiler to be maximally pessimistic about what
-/// `black_box` could do.
+/// An identity function that suggests to the compiler that the given value is used in some
+/// arbitrary, unspecified way.
 ///
 /// [`std::convert::identity`]: https://doc.rust-lang.org/core/convert/fn.identity.html
 ///
-/// Unlike [`std::convert::identity`], a Rust compiler is encouraged to assume that `black_box` can
-/// use `x` in any possible valid way that Rust code is allowed to without introducing undefined
-/// behavior in the calling code. This property makes `black_box` useful for writing code in which
-/// certain optimizations are not desired, such as benchmarks.
+/// Unlike [`std::convert::identity`], a Rust compiler is encouraged to assume that `pretend_used`
+/// may use `x` in any possible valid way that Rust code is allowed to without introducing
+/// undefined behavior in the calling code. This property makes `pretend_used` useful for writing
+/// code in which certain optimizations are not desired, such as benchmarks. For example, if an
+/// expression whose value is never used is passed through `pretend_used`, the compiler is
+/// encouraged to compute the value of that expression rather than eliminate it as dead code.
 ///
-/// Note however, that `black_box` is only (and can only be) provided on a "best-effort" basis. The
-/// extent to which it can block optimisations may vary depending upon the platform and code-gen
-/// backend used. Programs cannot rely on `black_box` for *correctness* in any way.
+/// Note however, that `pretend_used` is only (and can only be) provided on a "best-effort" basis.
+/// The extent to which it can block optimisations may vary depending upon the platform and
+/// code-gen backend used. Programs cannot rely on `pretend_used` for *correctness* in any way.
 #[inline]
 #[unstable(feature = "test", issue = "50297")]
 #[allow(unreachable_code)] // this makes #[cfg] a bit easier below.
-pub fn black_box<T>(dummy: T) -> T {
+pub fn pretend_used<T>(dummy: T) -> T {
     // We need to "use" the argument in some way LLVM can't introspect, and on
     // targets that support it we can typically leverage inline assembly to do
     // this. LLVM's interpretation of inline assembly is that it's, well, a black

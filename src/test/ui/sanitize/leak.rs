@@ -8,14 +8,14 @@
 
 #![feature(test)]
 
-use std::hint::black_box;
+use std::hint::pretend_used;
 use std::mem;
 
 fn main() {
     for _ in 0..10 {
         let xs = vec![1, 2, 3];
         // Prevent compiler from removing the memory allocation.
-        let xs = black_box(xs);
+        let xs = pretend_used(xs);
         mem::forget(xs);
     }
 }
