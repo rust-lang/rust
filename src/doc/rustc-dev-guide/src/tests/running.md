@@ -7,7 +7,7 @@ you will almost never want to use! – is as follows:
 ./x.py test
 ```
 
-This will build the full stage 2 compiler and then run the whole test
+This will build the stage 1 compiler and then run the whole test
 suite. You probably don't want to do this very often, because it takes
 a very long time, and anyway bors / travis will do it for you. (Often,
 I will run this command in the background after opening a PR that I
@@ -29,35 +29,34 @@ If you are building gdb from source, you will need to configure with
 ## Running a subset of the test suites
 
 When working on a specific PR, you will usually want to run a smaller
-set of tests, and with a stage 1 build. For example, a good "smoke
-test" that can be used after modifying rustc to see if things are
-generally working correctly would be the following:
+set of tests. For example, a good "smoke test" that can be used after
+modifying rustc to see if things are generally working correctly would be the
+following:
 
 ```bash
-./x.py test --stage 1 src/test/{ui,compile-fail}
+./x.py test src/test/{ui,compile-fail}
 ```
 
-This will run the `ui` and `compile-fail` test suites,
-and only with the stage 1 build. Of course, the choice of test suites
-is somewhat arbitrary, and may not suit the task you are doing. For
-example, if you are hacking on debuginfo, you may be better off with
-the debuginfo test suite:
+This will run the `ui` and `compile-fail` test suites. Of course, the choice
+of test suites is somewhat arbitrary, and may not suit the task you are
+doing. For example, if you are hacking on debuginfo, you may be better off
+with the debuginfo test suite:
 
 ```bash
-./x.py test --stage 1 src/test/debuginfo
+./x.py test src/test/debuginfo
 ```
 
 If you only need to test a specific subdirectory of tests for any
 given test suite, you can pass that directory to `x.py test`:
 
 ```bash
-./x.py test --stage 1 src/test/ui/const-generics
+./x.py test src/test/ui/const-generics
 ```
 
 Likewise, you can test a single file by passing its path:
 
 ```bash
-./x.py test --stage 1 src/test/ui/const-generics/const-test.rs
+./x.py test src/test/ui/const-generics/const-test.rs
 ```
 
 ### Run only the tidy script
@@ -81,7 +80,7 @@ Likewise, you can test a single file by passing its path:
 ### Run tests on the standard library using a stage 1 compiler
 
 ```bash
->   ./x.py test src/libstd --stage 1
+>   ./x.py test src/libstd
 ```
 
 By listing which test suites you want to run you avoid having to run
@@ -99,7 +98,7 @@ you may pass the full file path to achieve this, or alternatively one
 may invoke `x.py` with the `--test-args` option:
 
 ```bash
-./x.py test --stage 1 src/test/ui --test-args issue-1234
+./x.py test src/test/ui --test-args issue-1234
 ```
 
 Under the hood, the test runner invokes the standard rust test runner
@@ -114,7 +113,7 @@ making a new test, you can pass `--bless` to the test subcommand. E.g.
 if some tests in `src/test/ui` are failing, you can run
 
 ```text
-./x.py test --stage 1 src/test/ui --bless
+./x.py test src/test/ui --bless
 ```
 
 to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
@@ -130,7 +129,7 @@ exists in the test file. For example, you can run all the tests in
 `src/test/ui` as `check-pass`:
 
 ```bash
-./x.py test --stage 1 src/test/ui --pass check
+./x.py test src/test/ui --pass check
 ```
 
 By passing `--pass $mode`, you can reduce the testing time. For each
@@ -144,7 +143,7 @@ You can further enable the `--incremental` flag to save additional
 time in subsequent rebuilds:
 
 ```bash
-./x.py test --stage 1 src/test/ui --incremental --test-args issue-1234
+./x.py test src/test/ui --incremental --test-args issue-1234
 ```
 
 If you don't want to include the flag with every command, you can

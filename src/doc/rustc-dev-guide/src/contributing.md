@@ -361,12 +361,12 @@ You can find documentation style guidelines in [RFC 1574][rfc1574].
 
 [rfc1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
 
-In many cases, you don't need a full `./x.py doc`, which will build the entire
-stage 2 compiler and compile the various books published on
+In many cases, you don't need a full `./x.py doc --stage 2`, which will build
+the entire stage 2 compiler and compile the various books published on
 [doc.rust-lang.org][docs]. When updating documentation for the standard library,
-first try `./x.py doc --stage 0 src/libstd`. If that fails, or if you need to
-see the output from the latest version of `rustdoc`, use `--stage 1` instead of
-`--stage 0`. Results should appear in `build/$TARGET/crate-docs`.
+first try `./x.py doc src/libstd`. If that fails, or if you need to
+see the output from the latest version of `rustdoc`, add `--stage 1`.
+Results should appear in `build/$TARGET/crate-docs`.
 
 [docs]: https://doc.rust-lang.org
 

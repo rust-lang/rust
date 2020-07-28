@@ -58,13 +58,13 @@ don't work (but that is easily detected and fixed).
 
 The sequence of commands you want is as follows:
 
-- Initial build: `./x.py build -i --stage 1 src/libstd`
+- Initial build: `./x.py build -i src/libstd`
   - As [documented above](#command), this will build a functional
     stage1 compiler as part of running all stage0 commands (which include
     building a `libstd` compatible with the stage1 compiler) as well as the
     first few steps of the "stage 1 actions" up to "stage1 (sysroot stage1)
     builds libstd".
-- Subsequent builds: `./x.py build -i --stage 1 src/libstd --keep-stage 1`
+- Subsequent builds: `./x.py build -i src/libstd --keep-stage 1`
   - Note that we added the `--keep-stage 1` flag here
 
 As mentioned, the effect of `--keep-stage 1` is that we just *assume* that the
@@ -84,8 +84,8 @@ rebuild.  That ought to fix the problem.
 
 You can also use `--keep-stage 1` when running tests. Something like this:
 
-- Initial test run: `./x.py test -i --stage 1 src/test/ui`
-- Subsequent test run: `./x.py test -i --stage 1 src/test/ui --keep-stage 1`
+- Initial test run: `./x.py test -i src/test/ui`
+- Subsequent test run: `./x.py test -i src/test/ui --keep-stage 1`
 
 ## Fine-tuning optimizations
 

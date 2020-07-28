@@ -30,7 +30,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 
 ## Cheat sheet
 
-* Use `./x.py build --stage 1 src/libstd src/tools/rustdoc` to make a usable
+* Use `./x.py build` to make a usable
   rustdoc you can run on other projects.
   * Add `src/libtest` to be able to use `rustdoc --test`.
   * If you've used `rustup toolchain link local /path/to/build/$TARGET/stage1`
@@ -41,7 +41,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   * The completed docs will be available in `build/$TARGET/doc/std`, though the
     bundle is meant to be used as though you would copy out the `doc` folder to
     a web server, since that's where the CSS/JS and landing page are.
-* Use `x.py test --stage 1 src/test/rustdoc*` to run the tests using a stage1 rustdoc.
+* Use `x.py test src/test/rustdoc*` to run the tests using a stage1 rustdoc.
   * See [rustdoc internals] for more information about tests.
 * Most of the HTML printing code is in `html/format.rs` and `html/render.rs`.
   It's in a bunch of `fmt::Display` implementations and supplementary

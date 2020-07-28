@@ -175,19 +175,19 @@ should still read the rest of the section:
 | Command | When to use it |
 | --- | --- |
 | `x.py check` | Quick check to see if things compile; rust-analyzer can run this automatically for you |
-| `x.py build --stage 0 src/libstd` | Build only the standard library, without building the compiler |
-| `x.py build --stage 1 src/libstd` | Build just the 1st stage of the compiler, along with the standard library; this is faster than building stage 2 and usually good enough |
-| `x.py build --stage 1 --keep-stage 1 src/libstd` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
-| `x.py test --stage 1 [--keep-stage 1]` | Run the test suite using the stage1 compiler |
-| `x.py test --stage 1 --bless [--keep-stage 1]` | Run the test suite using the stage1 compiler _and_ update expected test output. |
-| `x.py build` | Do a full 2-stage build. You almost never want to do this. |
-| `x.py test` | Do a full 2-stage build and run all tests. You almost never want to do this. |
+| `x.py build --stage 0 [src/libstd]` | Build only the standard library, without building the compiler |
+| `x.py build src/libstd` | Build just the 1st stage of the compiler, along with the standard library; this is faster than building stage 2 and usually good enough |
+| `x.py build --keep-stage 1 src/libstd` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
+| `x.py test [--keep-stage 1]` | Run the test suite using the stage1 compiler |
+| `x.py test --bless [--keep-stage 1]` | Run the test suite using the stage1 compiler _and_ update expected test output. |
+| `x.py build --stage 2 src/rustc` | Do a full 2-stage build. You almost never want to do this. |
+| `x.py test --stage 2` | Do a full 2-stage build and run all tests. You almost never want to do this. |
 
 To do a full 2-stage build of the whole compiler, you should run this (after
 updating `config.toml` as mentioned above):
 
 ```sh
-./x.py build
+./x.py build --stage 2 src/rustc
 ```
 
 In the process, this will also necessarily build the standard libraries, and it
@@ -203,10 +203,10 @@ For most contributions, you only need to build stage 1, which saves a lot of tim
 
 ```sh
 # Build the compiler (stage 1)
-./x.py build --stage 1 src/libstd
+./x.py build src/libstd
 
 # Subsequent builds
-./x.py build --stage 1 --keep-stage 1 src/libstd
+./x.py build --keep-stage 1 src/libstd
 ```
 
 This will take a while, especially the first time. Be wary of accidentally
@@ -228,17 +228,17 @@ different test suites [in this chapter][testing].
 
 ```sh
 # First build
-./x.py test --stage 1 src/test/ui
+./x.py test src/test/ui
 
 # Subsequent builds
-./x.py test --stage 1 src/test/ui --keep-stage 1
+./x.py test src/test/ui --keep-stage 1
 ```
 
 If your changes impact test output, you can use `--bless` to automatically
 update the `.stderr` files of the affected tests:
 
 ```sh
-./x.py test --stage 1 src/test/ui --keep-stage 1 --bless
+./x.py test src/test/ui --keep-stage 1 --bless
 ```
 
 While working on the compiler, it can be helpful to see if the code just
@@ -290,7 +290,7 @@ planning to use a recently added nightly feature. Instead, you can just build
 stage 0, which uses the current beta compiler.
 
 ```sh
-./x.py build --stage 0 src/libstd
+./x.py build --stage 0
 ```
 
 ```sh
@@ -303,17 +303,15 @@ stage 0, which uses the current beta compiler.
 
 `rustdoc` uses `rustc` internals (and, of course, the standard library), so you
 will have to build the compiler and `std` once before you can build `rustdoc`.
-As before, you can use `./x.py build` to do this.
-
-However, in practice, stage 1 should be sufficient. The first time you build,
+As before, you can use `./x.py build` to do this. The first time you build,
 the stage-1 compiler will also be built.
 
 ```sh
 # First build
-./x.py build --stage 1 src/tools/rustdoc
+./x.py build
 
 # Subsequent builds
-./x.py build --stage 1 --keep-stage 1 src/tools/rustdoc
+./x.py build --keep-stage 1
 ```
 
 As with the compiler, you can do a fast check build:
@@ -326,13 +324,13 @@ Rustdoc has two types of tests: content tests and UI tests.
 
 ```sh
 # Content tests
-./x.py test --stage 1 src/test/rustdoc
+./x.py test src/test/rustdoc
 
 # UI tests
-./x.py test --stage 1 src/test/rustdoc-ui
+./x.py test src/test/rustdoc-ui
 
 # Both at once
-./x.py test --stage 1 src/test/rustdoc src/test/rustdoc-ui
+./x.py test src/test/rustdoc src/test/rustdoc-ui
 ```
 
 ### Contributing code to other Rust projects

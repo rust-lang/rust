@@ -20,7 +20,7 @@ address [issue 42678](https://github.com/rust-lang/rust/issues/42678).
 Compile the compiler, up to at least stage 1:
 
 ```
-python x.py --stage 1
+x.py build src/libstd
 ```
 
 ### 2. Run `rustc`, with flags

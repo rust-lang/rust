@@ -62,19 +62,6 @@ debug = true
 # compiler.
 codegen-units = 0
 
-# Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
-# `0` - no debug info
-# `1` - line tables only - sufficient to generate backtraces that include line
-#       information and inlined functions, set breakpoints at source code
-#       locations, and step through execution in a debugger.
-# `2` - full debug info with variable and type information
-# Can be overridden for specific subsets of Rust code (rustc, std or tools).
-# Debuginfo for tests run with compiletest is not controlled by this option
-# and needs to be enabled separately with `debuginfo-level-tests`.
-#
-# Defaults to 2 if debug is true
-debuginfo-level = 1
-
 # Whether to always use incremental compilation when building rustc
 incremental = true
 
@@ -147,10 +134,9 @@ To read more about the bootstrap process, [read this chapter][bootstrap].
 
 ## Building the Compiler
 
-To build a compiler, run `./x.py build`. This will do the whole bootstrapping
-process described above, producing a usable compiler toolchain from the source
-code you have checked out. This takes a long time, so it is not usually what
-you want to actually run (more on this later).
+To build a compiler, run `./x.py build`. This will build up to the stage1 compiler,
+including `rustdoc`, producing a usable compiler toolchain from the source
+code you have checked out.
 
 Note that building will require a relatively large amount of storage space.
 You may want to have upwards of 10 or 15 gigabytes available to build the compiler.
@@ -190,7 +176,7 @@ Once you've created a config.toml, you are now ready to run
 probably the best "go to" command for building a local rust:
 
 ```bash
-./x.py build -i --stage 1 src/libstd
+./x.py build -i src/libstd
 ```
 
 This may *look* like it only builds `libstd`, but that is not the case.
@@ -220,8 +206,8 @@ there is a (hacky) workaround.  See [the section on "recommended
 workflows"](./suggested.md) below.
 
 Note that this whole command just gives you a subset of the full `rustc`
-build. The **full** `rustc` build (what you get if you just say `./x.py
-build`) has quite a few more steps:
+build. The **full** `rustc` build (what you get if you say `./x.py build
+--stage 2 src/rustc`) has quite a few more steps:
 
 - Build `librustc` and `rustc` with the stage1 compiler.
   - The resulting compiler here is called the "stage2" compiler.
@@ -242,12 +228,6 @@ Build the libcore and libproc_macro library only
 
 ```bash
 ./x.py build src/libcore src/libproc_macro
-```
-
-Build only libcore up to Stage 1
-
-```bash
-./x.py build src/libcore --stage 1
 ```
 
 Sometimes you might just want to test if the part you’re working on can
@@ -296,16 +276,16 @@ Here are a few other useful `x.py` commands. We'll cover some of them in detail
 in other sections:
 
 - Building things:
-  - `./x.py build --stage 1` – builds everything using the stage 1 compiler,
+  - `./x.py build` – builds everything using the stage 1 compiler,
     not just up to `libstd`
-  - `./x.py build` – builds the stage2 compiler
+  - `./x.py build --stage 2` – builds the stage2 compiler
 - Running tests (see the [section on running tests](../tests/running.html) for
   more details):
-  - `./x.py test --stage 1 src/libstd` – runs the `#[test]` tests from `libstd`
-  - `./x.py test --stage 1 src/test/ui` – runs the `ui` test suite
-  - `./x.py test --stage 1 src/test/ui/const-generics` - runs all the tests in
+  - `./x.py test src/libstd` – runs the `#[test]` tests from `libstd`
+  - `./x.py test src/test/ui` – runs the `ui` test suite
+  - `./x.py test src/test/ui/const-generics` - runs all the tests in
   the `const-generics/` subdirectory of the `ui` test suite
-  - `./x.py test --stage 1 src/test/ui/const-generics/const-types.rs` - runs
+  - `./x.py test src/test/ui/const-generics/const-types.rs` - runs
   the single test `const-types.rs` from the `ui` test suite
 
 ### Cleaning out build directories
