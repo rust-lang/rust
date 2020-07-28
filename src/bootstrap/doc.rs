@@ -693,6 +693,7 @@ impl Step for UnstableBookGen {
         builder.create_dir(&out);
         builder.remove_dir(&out);
         let mut cmd = builder.tool_cmd(Tool::UnstableBookGen);
+        cmd.arg(builder.src.join("library"));
         cmd.arg(builder.src.join("src"));
         cmd.arg(out);
 
