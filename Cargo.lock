@@ -435,9 +435,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-derive"
-version = "0.14.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d463e01905d607e181de72e8608721d3269f29176c9a14ce037011316ae7131d"
+checksum = "654c611946ba2629c5028cb7708687af975faf2c29d731824cb294c873df4697"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -446,22 +446,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "chalk-engine"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efaf428f5398d36284f79690cf988762b7c091249f50a6c11db613a46c057000"
-dependencies = [
- "chalk-derive",
- "chalk-ir",
- "rustc-hash",
- "tracing",
-]
-
-[[package]]
 name = "chalk-ir"
-version = "0.14.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd3fdc1e9f68498ffe80f4a23b0b95f1ca6fb21d5a4c9b0c085fab3ca712bdbe"
+checksum = "0a5341fbc654ca886b73b804a36aebf0e621057ccc1a68e9815b5b39b3ac9ae8"
 dependencies = [
  "chalk-derive",
  "lazy_static",
@@ -469,25 +457,26 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.14.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b9fd4102807b7ebe8fb034fa0f488c5656e1966d3261b558b81a08d519cdb29"
+checksum = "281f82facd2538997fbe52132b1941ed213d266748215c31d15f62a8664429ad"
 dependencies = [
  "chalk-derive",
- "chalk-engine",
  "chalk-ir",
  "ena",
  "itertools 0.9.0",
  "petgraph",
  "rustc-hash",
  "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
 name = "chrono"
-version = "0.4.6"
+version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45912881121cb26fad7c38c17ba7daa18764771836b34fab7d3fbd93ed633878"
+checksum = "c74d84029116787153e02106bf53e66828452a4b325cc8652b788b5967c0a0b6"
 dependencies = [
  "num-integer",
  "num-traits",
@@ -4630,12 +4619,11 @@ version = "0.1.0"
 
 [[package]]
 name = "time"
-version = "0.1.42"
+version = "0.1.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db8dcfca086c1143c9270ac42a2bbd8a7ee477b78ac8e45b19abfb0cbede4b6f"
+checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
 dependencies = [
  "libc",
- "redox_syscall",
  "winapi 0.3.8",
 ]
 
@@ -4933,6 +4921,60 @@ dependencies = [
  "sharded-slab",
  "smallvec 1.4.0",
  "tracing-core",
+]
+
+name = "tracing-log"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e0f8c7178e13481ff6765bd169b33e8d554c5d2bbede5e32c356194be02b9b9"
+dependencies = [
+ "lazy_static",
+ "log",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-serde"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6ccba2f8f16e0ed268fc765d9b7ff22e965e7185d32f8f1ec8294fe17d86e79"
+dependencies = [
+ "serde",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-subscriber"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4f5dd7095c2481b7b3cbed71c8de53085fb3542bc3c2b4c73cba43e8f11c7ba"
+dependencies = [
+ "ansi_term 0.12.1",
+ "chrono",
+ "lazy_static",
+ "matchers",
+ "regex",
+ "serde",
+ "serde_json",
+ "sharded-slab",
+ "smallvec 1.4.0",
+ "tracing-core",
+ "tracing-log",
+ "tracing-serde",
+]
+
+[[package]]
+name = "tracing-tree"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37ee7f0f53ed2093971a698db799ef56a2dfd89b32e3aeb5165f0e637a02be04"
+dependencies = [
+ "ansi_term 0.12.1",
+ "atty",
+ "chrono",
+ "termcolor",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
