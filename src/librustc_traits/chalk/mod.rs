@@ -81,7 +81,10 @@ crate fn evaluate_goal<'tcx>(
         universes: max_universe + 1,
     };
 
-    let solver_choice = chalk_solve::SolverChoice::SLG { max_size: 32, expected_answers: None };
+    let solver_choice = chalk_integration::SolverChoice::SLG {
+        max_size: 32,
+        expected_answers: None,
+    };
     let mut solver = solver_choice.into_solver::<ChalkRustInterner<'tcx>>();
 
     let db = ChalkRustIrDatabase { tcx, interner };
