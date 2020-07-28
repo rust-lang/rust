@@ -15,6 +15,7 @@ serde_json = "1.0"
 rustfix = "0.5.0"
 lazy_static = "1.0"
 walkdir = "2"
+glob = "0.3.0"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

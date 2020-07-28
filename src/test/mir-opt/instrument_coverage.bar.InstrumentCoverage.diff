@@ -7,7 +7,7 @@
   
       bb0: {
 +         StorageLive(_1);                 // scope 0 at $DIR/instrument_coverage.rs:18:18: 18:18
-+         _1 = const std::intrinsics::count_code_region(const 10208505205182607101_u64, const 0_u32, const 501_u32, const 513_u32) -> bb2; // scope 0 at $DIR/instrument_coverage.rs:18:18: 18:18
++         _1 = const std::intrinsics::count_code_region(const 10208505205182607101_u64, const 0_u32, const 529_u32, const 541_u32) -> bb2; // scope 0 at $DIR/instrument_coverage.rs:18:18: 18:18
 +                                          // ty::Const
 +                                          // + ty: unsafe extern "rust-intrinsic" fn(u64, u32, u32, u32) {std::intrinsics::count_code_region}
 +                                          // + val: Value(Scalar(<ZST>))
@@ -28,16 +28,16 @@
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
 +                                          // ty::Const
 +                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x000001f5))
++                                          // + val: Value(Scalar(0x00000211))
 +                                          // mir::Constant
 +                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x000001f5)) }
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000211)) }
 +                                          // ty::Const
 +                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x00000201))
++                                          // + val: Value(Scalar(0x0000021d))
 +                                          // mir::Constant
 +                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000201)) }
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000021d)) }
 +     }
 + 
 +     bb1 (cleanup): {

@@ -197,8 +197,15 @@ fn dump_path(
     };
 
     let file_name = format!(
-        "{}.{}{}{}{}.{}.{}.{}", crate_name,
-        item_name, shim_disambiguator, promotion_id, pass_num, pass_name, disambiguator, extension,
+        "{}.{}{}{}{}.{}.{}.{}",
+        crate_name,
+        item_name,
+        shim_disambiguator,
+        promotion_id,
+        pass_num,
+        pass_name,
+        disambiguator,
+        extension,
     );
 
     file_path.push(&file_name);
