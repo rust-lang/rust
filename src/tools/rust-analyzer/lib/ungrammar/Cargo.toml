@@ -1,0 +1,11 @@
+[package]
+name = "ungrammar"
+description = "A DSL for describing concrete syntax trees"
+version = "1.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/matklad/ungrammar"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+# nope
