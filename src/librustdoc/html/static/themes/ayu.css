@@ -197,9 +197,8 @@ pre {
 	color: #a37acc;
 }
 
-pre.rust .comment, pre.rust .doccomment {
-	color: #788797;
-}
+pre.rust .comment { color: #788797; }
+pre.rust .doccomment { color: #a1ac88; }
 
 nav:not(.sidebar) {
 	border-bottom-color: #424c57;
