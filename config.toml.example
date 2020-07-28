@@ -453,8 +453,7 @@
 # instead of LLVM's default of 100.
 #thin-lto-import-instr-limit = 100
 
-# Map all debuginfo paths for libstd and crates to `/rust/$sha/$crate/...`,
-# generally only set for releases
+# Map debuginfo paths to `/rust/$sha/...`, generally only set for releases
 #remap-debuginfo = false
 
 # Link the compiler against `jemalloc`, where on Linux and OSX it should
