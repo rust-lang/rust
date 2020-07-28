@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
                         cx,
                         NEG_CMP_OP_ON_PARTIAL_ORD,
                         expr.span,
-                        "The use of negated comparison operators on partially ordered \
+                        "the use of negated comparison operators on partially ordered \
                         types produces code that is hard to read and refactor. Please \
                         consider using the `partial_cmp` method instead, to make it \
                         clear that the two values could be incomparable."
