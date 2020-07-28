@@ -3,7 +3,6 @@
 
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::middle::privacy::AccessLevels;
-use rustc_session::lint;
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use std::mem;
 use std::ops::Range;
@@ -12,7 +11,6 @@ use self::Condition::*;
 use crate::clean::{self, GetDefId, Item};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
-use crate::html::markdown::{find_testable_code, ErrorCodes, LangString};
 
 mod collapse_docs;
 pub use self::collapse_docs::COLLAPSE_DOCS;
@@ -309,59 +307,6 @@ impl DocFolder for ImportStripper {
             }
             _ => self.fold_item_recur(i),
         }
-    }
-}
-
-pub fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
-    let hir_id = match cx.as_local_hir_id(item.def_id) {
-        Some(hir_id) => hir_id,
-        None => {
-            // If non-local, no need to check anything.
-            return;
-        }
-    };
-
-    struct Tests {
-        found_tests: usize,
-    }
-
-    impl crate::test::Tester for Tests {
-        fn add_test(&mut self, _: String, _: LangString, _: usize) {
-            self.found_tests += 1;
-        }
-    }
-
-    let mut tests = Tests { found_tests: 0 };
-
-    find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
-
-    if tests.found_tests == 0 {
-        use clean::ItemEnum::*;
-
-        let should_report = match item.inner {
-            ExternCrateItem(_, _) | ImportItem(_) | PrimitiveItem(_) | KeywordItem(_) => false,
-            _ => true,
-        };
-        if should_report {
-            debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
-            let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
-            cx.tcx.struct_span_lint_hir(
-                lint::builtin::MISSING_DOC_CODE_EXAMPLES,
-                hir_id,
-                sp,
-                |lint| lint.build("missing code example in this documentation").emit(),
-            );
-        }
-    } else if rustc_feature::UnstableFeatures::from_environment().is_nightly_build()
-        && tests.found_tests > 0
-        && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
-    {
-        cx.tcx.struct_span_lint_hir(
-            lint::builtin::PRIVATE_DOC_TESTS,
-            hir_id,
-            span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
-            |lint| lint.build("documentation test in private item").emit(),
-        );
     }
 }
 
