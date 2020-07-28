@@ -409,6 +409,12 @@ impl Read for Stdin {
     }
 }
 
+impl StdinLock<'_> {
+    pub(crate) fn as_mut_buf(&mut self) -> &mut BufReader<impl Read> {
+        &mut self.inner
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for StdinLock<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {

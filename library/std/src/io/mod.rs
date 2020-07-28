@@ -266,6 +266,8 @@ pub use self::buffered::IntoInnerError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::{BufReader, BufWriter, LineWriter};
 #[stable(feature = "rust1", since = "1.0.0")]
+pub use self::copy::copy;
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::cursor::Cursor;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::error::{Error, ErrorKind, Result};
@@ -279,9 +281,12 @@ pub use self::stdio::{_eprint, _print};
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::util::{copy, empty, repeat, sink, Empty, Repeat, Sink};
+pub use self::util::{empty, repeat, sink, Empty, Repeat, Sink};
+
+pub(crate) use self::copy::generic_copy;
 
 mod buffered;
+mod copy;
 mod cursor;
 mod error;
 mod impls;

@@ -1191,6 +1191,21 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    let (mut reader, reader_metadata) = open_from(from)?;
+    let max_len = u64::MAX;
+    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
+
+    copy_regular_files(&mut reader, &mut writer, max_len)
+}
+
+/// linux-specific implementation that will attempt to use copy_file_range for copy offloading
+/// as the name says, it only works on regular files
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub(crate) fn copy_regular_files(
+    reader: &mut crate::fs::File,
+    writer: &mut crate::fs::File,
+    max_len: u64,
+) -> io::Result<u64> {
     use crate::cmp;
     use crate::sync::atomic::{AtomicBool, Ordering};
 
@@ -1208,10 +1223,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     ) -> libc::c_long {
         libc::syscall(libc::SYS_copy_file_range, fd_in, off_in, fd_out, off_out, len, flags)
     }
-
-    let (mut reader, reader_metadata) = open_from(from)?;
-    let max_len = u64::MAX;
-    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
     let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
     let mut written = 0u64;
@@ -1249,7 +1260,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                 // - reading virtual files from the proc filesystem which appear to have 0 size
                 //   but are not empty. noted in coreutils to affect kernels at least up to 5.6.19.
                 // - copying from an overlay filesystem in docker. reported to occur on fedora 32.
-                return io::copy(&mut reader, &mut writer);
+                return io::copy(reader, writer);
             }
             Ok(0) => return Ok(written), // reached EOF
             Ok(ret) => written += ret as u64,
@@ -1265,7 +1276,59 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                         // - copy_file_range is disallowed, for example by seccomp (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         assert_eq!(written, 0);
-                        return io::copy(&mut reader, &mut writer);
+                        return io::generic_copy(reader, writer);
+                    }
+                    _ => return Err(err),
+                }
+            }
+        }
+    }
+    Ok(written)
+}
+
+pub(crate) enum SpliceMode {
+    Sendfile,
+    Splice,
+}
+
+/// performs splice or sendfile between file descriptors
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub(crate) fn sendfile_splice(
+    mode: SpliceMode,
+    reader: &mut crate::fs::File,
+    writer: &mut crate::fs::File,
+    len: u64,
+) -> io::Result<u64> {
+    let mut written = 0u64;
+    while written < len {
+        let chunk_size = crate::cmp::min(len - written, 0x7ffff000_u64) as usize;
+
+        let result = match mode {
+            SpliceMode::Sendfile => cvt(unsafe {
+                libc::sendfile(writer.as_raw_fd(), reader.as_raw_fd(), ptr::null_mut(), chunk_size)
+            }),
+            SpliceMode::Splice => cvt(unsafe {
+                libc::splice(
+                    reader.as_raw_fd(),
+                    ptr::null_mut(),
+                    writer.as_raw_fd(),
+                    ptr::null_mut(),
+                    chunk_size,
+                    0,
+                )
+            }),
+        };
+
+        match result {
+            Ok(0) => break, // EOF
+            Ok(ret) => written += ret as u64,
+            Err(err) => {
+                match err.raw_os_error() {
+                    Some(os_err) if os_err == libc::EINVAL => {
+                        // Try fallback io::copy if splice/sendfile do not support this particular
+                        // file descritor (EINVAL)
+                        assert_eq!(written, 0);
+                        return io::generic_copy(reader, writer);
                     }
                     _ => return Err(err),
                 }
