@@ -546,9 +546,7 @@ mod dist {
         );
     }
 
-    //FIXME(mark-i-m): reinstate this test when things are fixed...
-    //#[test]
-    #[allow(dead_code)]
+    #[test]
     fn test_docs() {
         // Behavior of `x.py test` doing various documentation tests.
         let mut config = configure(&[], &[]);
