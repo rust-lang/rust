@@ -3743,14 +3743,9 @@ pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
 // This intrinsic has no corresponding instruction.
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extract_epi8(a: __m256i, imm8: i32) -> i32 {
-    let a = a.as_u8x32();
-    macro_rules! call {
-        ($imm5:expr) => {
-            simd_extract::<_, u8>(a, $imm5) as i32
-        };
-    }
-    constify_imm5!(imm8, call)
+pub unsafe fn _mm256_extract_epi8(a: __m256i, imm8: i32) -> i8 {
+    let imm8 = (imm8 & 31) as u32;
+    simd_extract(a.as_i8x32(), imm8 as u32)
 }
 
 /// Extracts a 16-bit integer from `a`, selected with `imm8`. Returns a 32-bit
@@ -3764,14 +3759,9 @@ pub unsafe fn _mm256_extract_epi8(a: __m256i, imm8: i32) -> i32 {
 // This intrinsic has no corresponding instruction.
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extract_epi16(a: __m256i, imm8: i32) -> i32 {
-    let a = a.as_u16x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            simd_extract::<_, u16>(a, $imm4) as i32
-        };
-    }
-    constify_imm4!((imm8 & 15), call)
+pub unsafe fn _mm256_extract_epi16(a: __m256i, imm8: i32) -> i16 {
+    let imm8 = (imm8 & 15) as u32;
+    simd_extract(a.as_i16x16(), imm8)
 }
 
 /// Extracts a 32-bit integer from `a`, selected with `imm8`.
@@ -6130,7 +6120,7 @@ mod tests {
         );
         let r1 = _mm256_extract_epi8(a, 0);
         let r2 = _mm256_extract_epi8(a, 35);
-        assert_eq!(r1, 0xFF);
+        assert_eq!(r1, -1);
         assert_eq!(r2, 3);
     }
 
@@ -6143,7 +6133,7 @@ mod tests {
         );
         let r1 = _mm256_extract_epi16(a, 0);
         let r2 = _mm256_extract_epi16(a, 19);
-        assert_eq!(r1, 0xFFFF);
+        assert_eq!(r1, -1);
         assert_eq!(r2, 3);
     }
 
