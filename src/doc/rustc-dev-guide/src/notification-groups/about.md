@@ -16,6 +16,15 @@ search for existing issues that haven't been claimed yet.
 
 [claim the issue]: https://github.com/rust-lang/triagebot/wiki/Assignment
 
+## List of notification groups
+
+Here's the list of the notification groups:
+- [ARM](./arm.md)
+- [Cleanup Crew](./cleanup-crew.md)
+- [LLVM](./llvm.md)
+- [RISC-V](./risc-v.md)
+- [Windows](./windows.md)
+
 ## What issues are a good fit for notification groups?
 
 Notification groups tend to get pinged on **isolated** bugs,
@@ -48,10 +57,11 @@ cargo run add-person $your_user_name
 
 Example PRs:
 
+* [Example of adding yourself to the ARM group.](https://github.com/rust-lang/team/pull/358)
 * [Example of adding yourself to the Cleanup Crew.](https://github.com/rust-lang/team/pull/221)
 * [Example of adding yourself to the LLVM group.](https://github.com/rust-lang/team/pull/140)
+* [Example of adding yourself to the RISC-V group.](https://github.com/rust-lang/team/pull/394)
 * [Example of adding yourself to the Windows group.](https://github.com/rust-lang/team/pull/348)
-* [Example of adding yourself to the ARM group.](https://github.com/rust-lang/team/pull/358)
 
 ## Tagging an issue for a notification group
 

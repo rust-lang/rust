@@ -37,10 +37,11 @@
 - [Stabilizing Features](./stabilization_guide.md)
 - [Coding conventions](./conventions.md)
 - [Notification groups](notification-groups/about.md)
-    - ["Cleanup Crew"](notification-groups/cleanup-crew.md)
-    - [LLVM](notification-groups/llvm.md)
-    - [Windows](notification-groups/windows.md)
     - [ARM](notification-groups/arm.md)
+    - [Cleanup Crew](notification-groups/cleanup-crew.md)
+    - [LLVM](notification-groups/llvm.md)
+    - [RISC-V](notification-groups/risc-v.md)
+    - [Windows](notification-groups/windows.md)
 - [Licenses](./licenses.md)
 
 # High-level Compiler Architecture

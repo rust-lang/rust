@@ -8,7 +8,7 @@ This list will be used to ask for help both in diagnosing and testing
 Windows-related issues as well as suggestions on how to resolve
 interesting questions regarding our Windows support.
 
-The group also has an associated Zulip stream (`#t-compiler/windows`)
+The group also has an associated Zulip stream ([`#t-compiler/windows`])
 where people can go to pose questions and discuss Windows-specific
 topics.
 
@@ -18,13 +18,14 @@ the group for advice in determining the best course of action:
 
 * Which versions of MinGW should we support?
 * Should we remove the legacy InnoSetup GUI installer? [#72569]
-* What names should we use for static libraries on Windows? [#29520] 
+* What names should we use for static libraries on Windows? [#29520]
 
 So, if you are interested in participating, please sign up for the
-Windows group! To do so, you open a PR against the [rust-lang/team]
+Windows group! To do so, open a PR against the [rust-lang/team]
 repository. Just [follow this example][eg], but change the username to
 your own!
 
+[`#t-compiler/windows`]: https://rust-lang.zulipchat.com/#streams/242869/t-compiler.2Fwindows
 [rust-lang/team]: https://github.com/rust-lang/team
 [eg]: https://github.com/rust-lang/team/pull/348/
 [#72569]: https://github.com/rust-lang/rust/pull/72569
