@@ -22,4 +22,4 @@ COPY host-x86_64/x86_64-gnu-tools/checktools.sh /tmp/
 ENV RUST_CONFIGURE_ARGS \
   --build=x86_64-unknown-linux-gnu \
   --save-toolstates=/tmp/toolstate/toolstates.json
-ENV SCRIPT /tmp/checktools.sh ../x.py --stage 2
+ENV SCRIPT /tmp/checktools.sh ../x.py
