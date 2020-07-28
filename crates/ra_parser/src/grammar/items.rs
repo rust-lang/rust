@@ -304,7 +304,13 @@ fn extern_crate_item(p: &mut Parser, m: Marker) {
     p.bump(T![extern]);
     assert!(p.at(T![crate]));
     p.bump(T![crate]);
-    name_ref(p);
+
+    if p.at(T![self]) {
+        p.bump(T![self]);
+    } else {
+        name_ref(p);
+    }
+
     opt_alias(p);
     p.expect(T![;]);
     m.complete(p, EXTERN_CRATE_ITEM);
