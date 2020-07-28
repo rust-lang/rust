@@ -8,9 +8,66 @@ use crate::sys_common::AsInner;
 
 use libc::{c_int, c_void};
 
+// Android's libc allows for file descriptors to be marked with a tag that marks ownership.
+// If a tagged file descriptor is closed with the wrong tag, either a backtrace is printed to logs,
+// or the process aborts, depending on process configuration.
+#[cfg(target_os = "android")]
+mod android {
+    use crate::sync::atomic::{AtomicU64, Ordering};
+    use libc::c_int;
+
+    #[derive(Debug)]
+    pub struct CloseTag(u64);
+
+    static FD_TAG: AtomicU64 = AtomicU64::new(0);
+
+    fn next_tag() -> u64 {
+        // The most significant 8 bits of the tag are used to identify the type of the owner, as
+        // a debugging aid. The value 13 has been reserved to identify Rust-owned fds.
+        let tag = FD_TAG.fetch_add(1, Ordering::Relaxed);
+        tag | 13 << 56
+    }
+
+    impl CloseTag {
+        pub fn tag(fd: c_int) -> CloseTag {
+            weak!(fn android_fdsan_exchange_owner_tag(c_int, u64, u64) -> u64);
+            match android_fdsan_exchange_owner_tag.get() {
+                Some(f) => {
+                    let tag = next_tag();
+                    let prev = unsafe { f(fd, 0, tag) };
+                    if prev != 0 {
+                        panic!("attempted to take ownership of an already-owned file descriptor");
+                    }
+                    CloseTag(tag)
+                }
+
+                None => CloseTag(0),
+            }
+        }
+
+        pub fn close(&mut self, fd: c_int) {
+            weak!(fn android_fdsan_close_with_tag(c_int, u64) -> c_int);
+            match android_fdsan_close_with_tag.get() {
+                Some(f) => unsafe {
+                    f(fd, self.0);
+                },
+
+                None => {
+                    assert_eq!(self.0, 0);
+                    unsafe {
+                        libc::close(fd);
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct FileDesc {
     fd: c_int,
+    #[cfg(target_os = "android")]
+    tag: android::CloseTag,
 }
 
 // The maximum read limit on most POSIX-like systems is `SSIZE_MAX`,
@@ -27,6 +84,12 @@ const READ_LIMIT: usize = c_int::MAX as usize - 1;
 const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
 impl FileDesc {
+    #[cfg(target_os = "android")]
+    pub fn new(fd: c_int) -> FileDesc {
+        FileDesc { fd, tag: android::CloseTag::tag(fd) }
+    }
+
+    #[cfg(not(target_os = "android"))]
     pub fn new(fd: c_int) -> FileDesc {
         FileDesc { fd }
     }
@@ -247,6 +310,12 @@ impl AsInner<c_int> for FileDesc {
 }
 
 impl Drop for FileDesc {
+    #[cfg(target_os = "android")]
+    fn drop(&mut self) {
+        self.tag.close(self.fd);
+    }
+
+    #[cfg(not(target_os = "android"))]
     fn drop(&mut self) {
         // Note that errors are ignored when closing a file descriptor. The
         // reason for this is that if an error occurs we don't actually know if
