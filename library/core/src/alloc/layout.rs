@@ -4,10 +4,6 @@ use crate::mem;
 use crate::num::NonZeroUsize;
 use crate::ptr::NonNull;
 
-const fn size_align<T>() -> (usize, usize) {
-    (mem::size_of::<T>(), mem::align_of::<T>())
-}
-
 /// Layout of a block of memory.
 ///
 /// An instance of `Layout` describes a particular layout of memory.
@@ -115,12 +111,11 @@ impl Layout {
     #[rustc_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
     #[inline]
     pub const fn new<T>() -> Self {
-        let (size, align) = size_align::<T>();
         // SAFETY: the align is guaranteed by Rust to be a power of two and
         // the size+align combo is guaranteed to fit in our address space. As a
         // result use the unchecked constructor here to avoid inserting code
         // that panics if it isn't optimized well enough.
-        unsafe { Layout::from_size_align_unchecked(size, align) }
+        unsafe { Layout::from_size_align_unchecked(mem::size_of::<T>(), mem::align_of::<T>()) }
     }
 
     /// Produces layout describing a record that could be used to
