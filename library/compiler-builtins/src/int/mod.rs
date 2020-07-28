@@ -13,10 +13,13 @@ macro_rules! os_ty {
 }
 
 pub mod addsub;
+pub mod leading_zeros;
 pub mod mul;
 pub mod sdiv;
 pub mod shift;
 pub mod udiv;
+
+pub use self::leading_zeros::__clzsi2;
 
 /// Trait for some basic operations on integers
 pub(crate) trait Int:
@@ -300,69 +303,3 @@ macro_rules! impl_wide_int {
 
 impl_wide_int!(u32, u64, 32);
 impl_wide_int!(u64, u128, 64);
-
-intrinsics! {
-    #[maybe_use_optimized_c_shim]
-    #[cfg(any(
-        target_pointer_width = "16",
-        target_pointer_width = "32",
-        target_pointer_width = "64"
-    ))]
-    pub extern "C" fn __clzsi2(x: usize) -> usize {
-        // TODO: const this? Would require const-if
-        // Note(Lokathor): the `intrinsics!` macro can't process mut inputs
-        let mut x = x;
-        let mut y: usize;
-        let mut n: usize = {
-            #[cfg(target_pointer_width = "64")]
-            {
-                64
-            }
-            #[cfg(target_pointer_width = "32")]
-            {
-                32
-            }
-            #[cfg(target_pointer_width = "16")]
-            {
-                16
-            }
-        };
-        #[cfg(target_pointer_width = "64")]
-        {
-            y = x >> 32;
-            if y != 0 {
-                n -= 32;
-                x = y;
-            }
-        }
-        #[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
-        {
-            y = x >> 16;
-            if y != 0 {
-                n -= 16;
-                x = y;
-            }
-        }
-        y = x >> 8;
-        if y != 0 {
-            n -= 8;
-            x = y;
-        }
-        y = x >> 4;
-        if y != 0 {
-            n -= 4;
-            x = y;
-        }
-        y = x >> 2;
-        if y != 0 {
-            n -= 2;
-            x = y;
-        }
-        y = x >> 1;
-        if y != 0 {
-            n - 2
-        } else {
-            n - x
-        }
-    }
-}
