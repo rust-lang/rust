@@ -346,6 +346,7 @@ struct VariantData {
     discr: ty::VariantDiscr,
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     ctor: Option<DefIndex>,
+    is_non_exhaustive: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
