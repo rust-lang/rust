@@ -38,7 +38,7 @@ pub struct DecodeUtf16Error {
 /// ];
 ///
 /// assert_eq!(
-///     decode_utf16(v.iter().cloned())
+///     decode_utf16(v)
 ///         .map(|r| r.map_err(|e| e.unpaired_surrogate()))
 ///         .collect::<Vec<_>>(),
 ///     vec![
@@ -62,7 +62,7 @@ pub struct DecodeUtf16Error {
 /// ];
 ///
 /// assert_eq!(
-///     decode_utf16(v.iter().cloned())
+///     decode_utf16(v)
 ///        .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
 ///        .collect::<String>(),
 ///     "𝄞mus�ic�"

@@ -497,7 +497,7 @@ fn test_drain() {
 #[test]
 fn test_from_iter() {
     let v = vec![1, 2, 3, 4, 5, 6, 7];
-    let deq: VecDeque<_> = v.iter().cloned().collect();
+    let deq: VecDeque<_> = v.iter().copied().collect();
     let u: Vec<_> = deq.iter().cloned().collect();
     assert_eq!(u, v);
 
@@ -648,7 +648,7 @@ fn test_show() {
     let ringbuf: VecDeque<_> = (0..10).collect();
     assert_eq!(format!("{:?}", ringbuf), "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
-    let ringbuf: VecDeque<_> = vec!["just", "one", "test", "more"].iter().cloned().collect();
+    let ringbuf: VecDeque<_> = vec!["just", "one", "test", "more"].into_iter().collect();
     assert_eq!(format!("{:?}", ringbuf), "[\"just\", \"one\", \"test\", \"more\"]");
 }
 
@@ -1462,7 +1462,7 @@ fn test_rotate_left_random() {
     let n = 12;
     let mut v: VecDeque<_> = (0..n).collect();
     let mut total_shift = 0;
-    for shift in shifts.iter().cloned() {
+    for shift in shifts {
         v.rotate_left(shift);
         total_shift += shift;
         for i in 0..n {
@@ -1480,7 +1480,7 @@ fn test_rotate_right_random() {
     let n = 12;
     let mut v: VecDeque<_> = (0..n).collect();
     let mut total_shift = 0;
-    for shift in shifts.iter().cloned() {
+    for shift in shifts {
         v.rotate_right(shift);
         total_shift += shift;
         for i in 0..n {
@@ -1514,7 +1514,7 @@ fn test_try_fold_unit() {
 
 #[test]
 fn test_try_fold_unit_none() {
-    let v: std::collections::VecDeque<()> = [(); 10].iter().cloned().collect();
+    let v: std::collections::VecDeque<()> = [(); 10].into_iter().collect();
     let mut iter = v.into_iter();
     assert!(iter.try_fold((), |_, _| None).is_none());
     assert_eq!(iter.len(), 9);

@@ -458,7 +458,7 @@ fn test_partition() {
 fn test_zip_unzip() {
     let z1 = vec![(1, 4), (2, 5), (3, 6)];
 
-    let (left, right): (Vec<_>, Vec<_>) = z1.iter().cloned().unzip();
+    let (left, right): (Vec<_>, Vec<_>) = z1.into_iter().unzip();
 
     assert_eq!((1, 4), (left[0], right[0]));
     assert_eq!((2, 5), (left[1], right[1]));
@@ -793,7 +793,7 @@ fn test_drain_leak() {
 fn test_splice() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(2..4, a.iter().cloned());
+    v.splice(2..4, a.into_iter());
     assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
     v.splice(1..3, Some(20));
     assert_eq!(v, &[1, 20, 11, 12, 5]);
@@ -803,7 +803,7 @@ fn test_splice() {
 fn test_splice_inclusive_range() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    let t1: Vec<_> = v.splice(2..=3, a.iter().cloned()).collect();
+    let t1: Vec<_> = v.splice(2..=3, a.into_iter()).collect();
     assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
     assert_eq!(t1, &[3, 4]);
     let t2: Vec<_> = v.splice(1..=2, Some(20)).collect();
@@ -816,7 +816,7 @@ fn test_splice_inclusive_range() {
 fn test_splice_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(5..6, a.iter().cloned());
+    v.splice(5..6, a.into_iter());
 }
 
 #[test]
@@ -824,14 +824,14 @@ fn test_splice_out_of_bounds() {
 fn test_splice_inclusive_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    v.splice(5..=5, a.iter().cloned());
+    v.splice(5..=5, a.into_iter());
 }
 
 #[test]
 fn test_splice_items_zero_sized() {
     let mut vec = vec![(), (), ()];
     let vec2 = vec![];
-    let t: Vec<_> = vec.splice(1..2, vec2.iter().cloned()).collect();
+    let t: Vec<_> = vec.splice(1..2, vec2.into_iter()).collect();
     assert_eq!(vec, &[(), ()]);
     assert_eq!(t, &[()]);
 }
@@ -848,7 +848,7 @@ fn test_splice_unbounded() {
 fn test_splice_forget() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    std::mem::forget(v.splice(2..4, a.iter().cloned()));
+    std::mem::forget(v.splice(2..4, a.into_iter()));
     assert_eq!(v, &[1, 2]);
 }
 

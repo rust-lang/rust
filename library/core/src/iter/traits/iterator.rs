@@ -1749,14 +1749,14 @@ pub trait Iterator {
     /// ```
     /// let results = [Ok(1), Err("nope"), Ok(3), Err("bad")];
     ///
-    /// let result: Result<Vec<_>, &str> = results.iter().cloned().collect();
+    /// let result: Result<Vec<_>, &str> = results.into_iter().collect();
     ///
     /// // gives us the first error
     /// assert_eq!(Err("nope"), result);
     ///
     /// let results = [Ok(1), Ok(3)];
     ///
-    /// let result: Result<Vec<_>, &str> = results.iter().cloned().collect();
+    /// let result: Result<Vec<_>, &str> = results.into_iter().collect();
     ///
     /// // gives us the list of answers
     /// assert_eq!(Ok(vec![1, 3]), result);
@@ -2016,7 +2016,7 @@ pub trait Iterator {
     /// let res = data.iter().try_for_each(|x| writeln!(stdout(), "{}", x));
     /// assert!(res.is_ok());
     ///
-    /// let mut it = data.iter().cloned();
+    /// let mut it = data.into_iter();
     /// let res = it.try_for_each(|x| rename(x, Path::new(x).with_extension("old")));
     /// assert!(res.is_err());
     /// // It short-circuited, so the remaining items are still in the iterator:
@@ -2774,7 +2774,7 @@ pub trait Iterator {
     /// ```
     /// let a = [(1, 2), (3, 4)];
     ///
-    /// let (left, right): (Vec<_>, Vec<_>) = a.iter().cloned().unzip();
+    /// let (left, right): (Vec<_>, Vec<_>) = a.into_iter().unzip();
     ///
     /// assert_eq!(left, [1, 3]);
     /// assert_eq!(right, [2, 4]);
@@ -2853,7 +2853,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let v_cloned: Vec<_> = a.iter().cloned().collect();
+    /// let v_cloned: Vec<_> = a.into_iter().collect();
     ///
     /// // cloned is the same as .map(|&x| x), for integers
     /// let v_map: Vec<_> = a.iter().map(|&x| x).collect();

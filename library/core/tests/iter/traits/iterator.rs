@@ -74,8 +74,8 @@ fn test_cmp_by() {
     use core::cmp::Ordering;
 
     let f = |x: i32, y: i32| (x * x).cmp(&y);
-    let xs = || [1, 2, 3, 4].iter().copied();
-    let ys = || [1, 4, 16].iter().copied();
+    let xs = || [1, 2, 3, 4].into_iter();
+    let ys = || [1, 4, 16].into_iter();
 
     assert_eq!(xs().cmp_by(ys(), f), Ordering::Less);
     assert_eq!(ys().cmp_by(xs(), f), Ordering::Greater);
@@ -90,8 +90,8 @@ fn test_partial_cmp_by() {
     use core::cmp::Ordering;
 
     let f = |x: i32, y: i32| (x * x).partial_cmp(&y);
-    let xs = || [1, 2, 3, 4].iter().copied();
-    let ys = || [1, 4, 16].iter().copied();
+    let xs = || [1, 2, 3, 4].into_iter();
+    let ys = || [1, 4, 16].into_iter();
 
     assert_eq!(xs().partial_cmp_by(ys(), f), Some(Ordering::Less));
     assert_eq!(ys().partial_cmp_by(xs(), f), Some(Ordering::Greater));
@@ -101,8 +101,8 @@ fn test_partial_cmp_by() {
     assert_eq!(xs().partial_cmp_by(ys().take(2), f), Some(Ordering::Greater));
 
     let f = |x: f64, y: f64| (x * x).partial_cmp(&y);
-    let xs = || [1.0, 2.0, 3.0, 4.0].iter().copied();
-    let ys = || [1.0, 4.0, f64::NAN, 16.0].iter().copied();
+    let xs = || [1.0, 2.0, 3.0, 4.0].into_iter();
+    let ys = || [1.0, 4.0, f64::NAN, 16.0].into_iter();
 
     assert_eq!(xs().partial_cmp_by(ys(), f), None);
     assert_eq!(ys().partial_cmp_by(xs(), f), Some(Ordering::Greater));
@@ -111,8 +111,8 @@ fn test_partial_cmp_by() {
 #[test]
 fn test_eq_by() {
     let f = |x: i32, y: i32| x * x == y;
-    let xs = || [1, 2, 3, 4].iter().copied();
-    let ys = || [1, 4, 9, 16].iter().copied();
+    let xs = || [1, 2, 3, 4].into_iter();
+    let ys = || [1, 4, 9, 16].into_iter();
 
     assert!(xs().eq_by(ys(), f));
     assert!(!ys().eq_by(xs(), f));

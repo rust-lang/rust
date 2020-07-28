@@ -264,7 +264,7 @@ fn test_empty_peek_mut() {
 fn test_from_iter() {
     let xs = vec![9, 8, 7, 6, 5, 4, 3, 2, 1];
 
-    let mut q: BinaryHeap<_> = xs.iter().rev().cloned().collect();
+    let mut q: BinaryHeap<_> = xs.iter().rev().copied().collect();
 
     for &x in &xs {
         assert_eq!(q.pop().unwrap(), x);
@@ -273,7 +273,7 @@ fn test_from_iter() {
 
 #[test]
 fn test_drain() {
-    let mut q: BinaryHeap<_> = [9, 8, 7, 6, 5, 4, 3, 2, 1].iter().cloned().collect();
+    let mut q: BinaryHeap<_> = [9, 8, 7, 6, 5, 4, 3, 2, 1].into_iter().collect();
 
     assert_eq!(q.drain().take(5).count(), 5);
 
@@ -282,7 +282,7 @@ fn test_drain() {
 
 #[test]
 fn test_drain_sorted() {
-    let mut q: BinaryHeap<_> = [9, 8, 7, 6, 5, 4, 3, 2, 1].iter().cloned().collect();
+    let mut q: BinaryHeap<_> = [9, 8, 7, 6, 5, 4, 3, 2, 1].into_iter().collect();
 
     assert_eq!(q.drain_sorted().take(5).collect::<Vec<_>>(), vec![9, 8, 7, 6, 5]);
 

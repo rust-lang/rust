@@ -231,12 +231,12 @@ fn test_peek_try_folds() {
     assert_eq!(iter.peek(), Some(&1));
     assert_eq!(iter.try_rfold(7, f), (1..20).try_rfold(7, f));
 
-    let mut iter = [100, 20, 30, 40, 50, 60, 70].iter().cloned().peekable();
+    let mut iter = [100, 20, 30, 40, 50, 60, 70].into_iter().peekable();
     assert_eq!(iter.peek(), Some(&100));
     assert_eq!(iter.try_fold(0, i8::checked_add), None);
     assert_eq!(iter.peek(), Some(&40));
 
-    let mut iter = [100, 20, 30, 40, 50, 60, 70].iter().cloned().peekable();
+    let mut iter = [100, 20, 30, 40, 50, 60, 70].into_iter().peekable();
     assert_eq!(iter.peek(), Some(&100));
     assert_eq!(iter.try_rfold(0, i8::checked_add), None);
     assert_eq!(iter.peek(), Some(&100));

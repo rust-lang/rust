@@ -154,8 +154,7 @@ fn test_from_utf16() {
         (String::from("\u{20000}"), vec![0xD840, 0xDC00]),
     ];
 
-    for p in &pairs {
-        let (s, u) = (*p).clone();
+    for (s, u) in pairs {
         let s_as_utf16 = s.encode_utf16().collect::<Vec<u16>>();
         let u_as_string = String::from_utf16(&u).unwrap();
 

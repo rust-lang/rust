@@ -574,7 +574,7 @@ fn test_from_iter() {
 fn test_size_hint() {
     let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
-    let map: HashMap<_, _> = xs.iter().cloned().collect();
+    let map: HashMap<_, _> = xs.into_iter().collect();
 
     let mut iter = map.iter();
 
@@ -587,7 +587,7 @@ fn test_size_hint() {
 fn test_iter_len() {
     let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
-    let map: HashMap<_, _> = xs.iter().cloned().collect();
+    let map: HashMap<_, _> = xs.into_iter().collect();
 
     let mut iter = map.iter();
 
@@ -600,7 +600,7 @@ fn test_iter_len() {
 fn test_mut_size_hint() {
     let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
-    let mut map: HashMap<_, _> = xs.iter().cloned().collect();
+    let mut map: HashMap<_, _> = xs.into_iter().collect();
 
     let mut iter = map.iter_mut();
 
@@ -613,7 +613,7 @@ fn test_mut_size_hint() {
 fn test_iter_mut_len() {
     let xs = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
-    let mut map: HashMap<_, _> = xs.iter().cloned().collect();
+    let mut map: HashMap<_, _> = xs.into_iter().collect();
 
     let mut iter = map.iter_mut();
 
@@ -649,7 +649,7 @@ fn test_index_nonexistent() {
 fn test_entry() {
     let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
 
-    let mut map: HashMap<_, _> = xs.iter().cloned().collect();
+    let mut map: HashMap<_, _> = xs.into_iter().collect();
 
     // Existing key (insert)
     match map.entry(1) {
@@ -838,7 +838,7 @@ fn test_raw_entry() {
 
     let xs = [(1i32, 10i32), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
 
-    let mut map: HashMap<_, _> = xs.iter().cloned().collect();
+    let mut map: HashMap<_, _> = xs.into_iter().collect();
 
     let compute_hash = |map: &HashMap<i32, i32>, k: i32| -> u64 {
         use core::hash::{BuildHasher, Hash, Hasher};

@@ -113,8 +113,8 @@ fn test_intersection() {
 
 #[test]
 fn test_intersection_size_hint() {
-    let x: BTreeSet<i32> = [3, 4].iter().copied().collect();
-    let y: BTreeSet<i32> = [1, 2, 3].iter().copied().collect();
+    let x: BTreeSet<i32> = [3, 4].into_iter().collect();
+    let y: BTreeSet<i32> = [1, 2, 3].into_iter().collect();
     let mut iter = x.intersection(&y);
     assert_eq!(iter.size_hint(), (1, Some(1)));
     assert_eq!(iter.next(), Some(&3));
@@ -165,7 +165,7 @@ fn test_difference() {
 
 #[test]
 fn test_difference_size_hint() {
-    let s246: BTreeSet<i32> = [2, 4, 6].iter().copied().collect();
+    let s246: BTreeSet<i32> = [2, 4, 6].into_iter().collect();
     let s23456: BTreeSet<i32> = (2..=6).collect();
     let mut iter = s246.difference(&s23456);
     assert_eq!(iter.size_hint(), (0, Some(3)));
@@ -241,8 +241,8 @@ fn test_symmetric_difference() {
 
 #[test]
 fn test_symmetric_difference_size_hint() {
-    let x: BTreeSet<i32> = [2, 4].iter().copied().collect();
-    let y: BTreeSet<i32> = [1, 2, 3].iter().copied().collect();
+    let x: BTreeSet<i32> = [2, 4].into_iter().collect();
+    let y: BTreeSet<i32> = [1, 2, 3].into_iter().collect();
     let mut iter = x.symmetric_difference(&y);
     assert_eq!(iter.size_hint(), (0, Some(5)));
     assert_eq!(iter.next(), Some(&1));
@@ -269,8 +269,8 @@ fn test_union() {
 
 #[test]
 fn test_union_size_hint() {
-    let x: BTreeSet<i32> = [2, 4].iter().copied().collect();
-    let y: BTreeSet<i32> = [1, 2, 3].iter().copied().collect();
+    let x: BTreeSet<i32> = [2, 4].into_iter().collect();
+    let y: BTreeSet<i32> = [1, 2, 3].into_iter().collect();
     let mut iter = x.union(&y);
     assert_eq!(iter.size_hint(), (3, Some(5)));
     assert_eq!(iter.next(), Some(&1));
@@ -338,8 +338,8 @@ fn test_retain() {
 
 #[test]
 fn test_drain_filter() {
-    let mut x: BTreeSet<_> = [1].iter().copied().collect();
-    let mut y: BTreeSet<_> = [1].iter().copied().collect();
+    let mut x: BTreeSet<_> = [1].into_iter().collect();
+    let mut y: BTreeSet<_> = [1].into_iter().collect();
 
     x.drain_filter(|_| true);
     y.drain_filter(|_| false);
@@ -423,7 +423,7 @@ fn test_zip() {
 fn test_from_iter() {
     let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-    let set: BTreeSet<_> = xs.iter().cloned().collect();
+    let set: BTreeSet<_> = xs.into_iter().collect();
 
     for x in &xs {
         assert!(set.contains(x));

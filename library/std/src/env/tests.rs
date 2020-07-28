@@ -70,7 +70,7 @@ fn join_paths_unix() {
     assert!(test_eq(&[], ""));
     assert!(test_eq(&["/bin", "/usr/bin", "/usr/local/bin"], "/bin:/usr/bin:/usr/local/bin"));
     assert!(test_eq(&["", "/bin", "", "", "/usr/bin", ""], ":/bin:::/usr/bin:"));
-    assert!(join_paths(["/te:st"].iter().cloned()).is_err());
+    assert!(join_paths(["/te:st"]).is_err());
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn join_paths_windows() {
     assert!(test_eq(&[r"c:\windows", r"c:\"], r"c:\windows;c:\"));
     assert!(test_eq(&["", r"c:\windows", "", "", r"c:\", ""], r";c:\windows;;;c:\;"));
     assert!(test_eq(&[r"c:\te;st", r"c:\"], r#""c:\te;st";c:\"#));
-    assert!(join_paths([r#"c:\te"st"#].iter().cloned()).is_err());
+    assert!(join_paths([r#"c:\te"st"#]).is_err());
 }
 
 #[test]

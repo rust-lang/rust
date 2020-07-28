@@ -197,7 +197,8 @@ use crate::sys;
 /// use std::collections::HashMap;
 ///
 /// let timber_resources: HashMap<&str, i32> = [("Norway", 100), ("Denmark", 50), ("Iceland", 10)]
-///     .iter().cloned().collect();
+///     .into_iter()
+///     .collect();
 /// // use the values stored in map
 /// ```
 

@@ -132,7 +132,7 @@ fn test_intersperse_collect_string() {
 
 #[test]
 fn test_try_fold_specialization_intersperse_err() {
-    let orig_iter = ["a", "b"].iter().copied().intersperse("-");
+    let orig_iter = ["a", "b"].into_iter().intersperse("-");
 
     // Abort after the first item.
     let mut iter = orig_iter.clone();

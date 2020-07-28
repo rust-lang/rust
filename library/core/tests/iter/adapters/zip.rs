@@ -29,7 +29,7 @@ fn test_zip_nth_side_effects() {
             a.push(n);
             n * 10
         })
-        .zip([2, 3, 4, 5, 6, 7, 8].iter().cloned().map(|n| {
+        .zip([2, 3, 4, 5, 6, 7, 8].into_iter().map(|n| {
             b.push(n * 100);
             n * 1000
         }))
@@ -51,7 +51,7 @@ fn test_zip_next_back_side_effects() {
             a.push(n);
             n * 10
         })
-        .zip([2, 3, 4, 5, 6, 7, 8].iter().cloned().map(|n| {
+        .zip([2, 3, 4, 5, 6, 7, 8].into_iter().map(|n| {
             b.push(n * 100);
             n * 1000
         }));
@@ -77,7 +77,7 @@ fn test_zip_nth_back_side_effects() {
             a.push(n);
             n * 10
         })
-        .zip([2, 3, 4, 5, 6, 7, 8].iter().cloned().map(|n| {
+        .zip([2, 3, 4, 5, 6, 7, 8].into_iter().map(|n| {
             b.push(n * 100);
             n * 1000
         }))
@@ -98,7 +98,7 @@ fn test_zip_next_back_side_effects_exhausted() {
             a.push(n);
             n * 10
         })
-        .zip([2, 3, 4].iter().cloned().map(|n| {
+        .zip([2, 3, 4].into_iter().map(|n| {
             b.push(n * 100);
             n * 1000
         }));
@@ -198,7 +198,7 @@ fn test_zip_nth_back_side_effects_exhausted() {
             a.push(n);
             n * 10
         })
-        .zip([2, 3, 4].iter().cloned().map(|n| {
+        .zip([2, 3, 4].into_iter().map(|n| {
             b.push(n * 100);
             n * 1000
         }));
@@ -218,9 +218,9 @@ fn test_zip_trusted_random_access_composition() {
     let b = a;
     let c = a;
 
-    let a = a.iter().copied();
-    let b = b.iter().copied();
-    let mut c = c.iter().copied();
+    let a = a.into_iter();
+    let b = b.into_iter();
+    let mut c = c.into_iter();
     c.next();
 
     let mut z1 = a.zip(b);
@@ -236,8 +236,8 @@ fn test_zip_trusted_random_access_composition() {
 fn test_double_ended_zip() {
     let xs = [1, 2, 3, 4, 5, 6];
     let ys = [1, 2, 3, 7];
-    let a = xs.iter().cloned();
-    let b = ys.iter().cloned();
+    let a = xs.into_iter();
+    let b = ys.into_iter();
     let mut it = a.zip(b);
     assert_eq!(it.next(), Some((1, 1)));
     assert_eq!(it.next(), Some((2, 2)));
