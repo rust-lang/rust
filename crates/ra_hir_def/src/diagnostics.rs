@@ -18,7 +18,7 @@ impl Diagnostic for UnresolvedModule {
     fn message(&self) -> String {
         "unresolved module".to_string()
     }
-    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
+    fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile::new(self.file, self.decl.clone().into())
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {

@@ -37,7 +37,7 @@ impl Diagnostic for NoSuchField {
         "no such field".to_string()
     }
 
-    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
+    fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile::new(self.file, self.field.clone().into())
     }
 
@@ -137,7 +137,7 @@ impl Diagnostic for MissingMatchArms {
     fn message(&self) -> String {
         String::from("Missing match arm")
     }
-    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
+    fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.match_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -155,7 +155,7 @@ impl Diagnostic for MissingOkInTailExpr {
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
     }
-    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
+    fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -182,7 +182,7 @@ impl Diagnostic for BreakOutsideOfLoop {
     fn message(&self) -> String {
         "break outside of loop".to_string()
     }
-    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
+    fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -209,7 +209,7 @@ impl Diagnostic for MissingUnsafe {
     fn message(&self) -> String {
         format!("This operation is unsafe and requires an unsafe function or block")
     }
-    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
+    fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -239,7 +239,7 @@ impl Diagnostic for MismatchedArgCount {
         let s = if self.expected == 1 { "" } else { "s" };
         format!("Expected {} argument{}, found {}", self.expected, s, self.found)
     }
-    fn fix_source(&self) -> InFile<SyntaxNodePtr> {
+    fn source(&self) -> InFile<SyntaxNodePtr> {
         InFile { file_id: self.file, value: self.call_expr.clone().into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
