@@ -47,7 +47,6 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_session;
 
-mod array_into_iter;
 pub mod builtin;
 mod context;
 mod early;
@@ -76,7 +75,6 @@ use rustc_session::lint::builtin::{
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
-use array_into_iter::ArrayIntoIter;
 use builtin::*;
 use internal::*;
 use methods::*;
@@ -166,7 +164,6 @@ macro_rules! late_lint_passes {
                 // FIXME: Turn the computation of types which implement Debug into a query
                 // and change this to a module lint pass
                 MissingDebugImplementations: MissingDebugImplementations::default(),
-                ArrayIntoIter: ArrayIntoIter,
                 ClashingExternDeclarations: ClashingExternDeclarations::new(),
                 DropTraitConstraints: DropTraitConstraints,
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
