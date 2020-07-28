@@ -33,8 +33,8 @@ pub use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 mod collect_intra_doc_links;
 pub use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
-mod private_items_doc_tests;
-pub use self::private_items_doc_tests::CHECK_PRIVATE_ITEMS_DOC_TESTS;
+mod doc_test_lints;
+pub use self::doc_test_lints::CHECK_PRIVATE_ITEMS_DOC_TESTS;
 
 mod collect_trait_impls;
 pub use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;

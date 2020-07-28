@@ -3,10 +3,10 @@
 //! - MISSING_DOC_CODE_EXAMPLES: this looks for public items missing doc-tests
 //! - PRIVATE_DOC_TESTS: this looks for private items with doc-tests.
 
+use super::{span_of_attrs, Pass};
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use super::{span_of_attrs, Pass};
 use crate::html::markdown::{find_testable_code, ErrorCodes, LangString};
 use rustc_session::lint;
 
