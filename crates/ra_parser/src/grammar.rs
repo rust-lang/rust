@@ -270,10 +270,6 @@ fn name_ref(p: &mut Parser) {
         let m = p.start();
         p.bump(IDENT);
         m.complete(p, NAME_REF);
-    } else if p.at(T![self]) {
-        let m = p.start();
-        p.bump(T![self]);
-        m.complete(p, T![self]);
     } else {
         p.err_and_bump("expected identifier");
     }
