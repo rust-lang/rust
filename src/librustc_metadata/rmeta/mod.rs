@@ -7,7 +7,8 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
-use rustc_hir::def_id::{DefId, DefIndex};
+use rustc_hir::def_id::{DefId, DefIndex, DefPathHash};
+use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::hir::exports::Export;
@@ -195,7 +196,6 @@ crate struct CrateRoot<'tcx> {
     diagnostic_items: Lazy<[(Symbol, DefIndex)]>,
     native_libraries: Lazy<[NativeLib]>,
     foreign_modules: Lazy<[ForeignModule]>,
-    def_path_table: Lazy<rustc_hir::definitions::DefPathTable>,
     impls: Lazy<[TraitImpls]>,
     interpret_alloc_index: Lazy<[u32]>,
 
@@ -285,6 +285,12 @@ define_tables! {
     mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,
+    // `def_keys` and `def_path_hashes` represent a lazy version of a
+    // `DefPathTable`. This allows us to avoid deserializing an entire
+    // `DefPathTable` up front, since we may only ever use a few
+    // definitions from any given crate.
+    def_keys: Table<DefIndex, Lazy<DefKey>>,
+    def_path_hashes: Table<DefIndex, Lazy<DefPathHash>>
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]

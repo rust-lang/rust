@@ -218,8 +218,6 @@ pub struct Session {
 pub struct PerfStats {
     /// The accumulated time spent on computing symbol hashes.
     pub symbol_hash_time: Lock<Duration>,
-    /// The accumulated time spent decoding def path tables from metadata.
-    pub decode_def_path_tables_time: Lock<Duration>,
     /// Total number of values canonicalized queries constructed.
     pub queries_canonicalized: AtomicUsize,
     /// Number of times this query is invoked.
@@ -863,10 +861,6 @@ impl Session {
             duration_to_secs_str(*self.perf_stats.symbol_hash_time.lock())
         );
         println!(
-            "Total time spent decoding DefPath tables:      {}",
-            duration_to_secs_str(*self.perf_stats.decode_def_path_tables_time.lock())
-        );
-        println!(
             "Total queries canonicalized:                   {}",
             self.perf_stats.queries_canonicalized.load(Ordering::Relaxed)
         );
@@ -1339,7 +1333,6 @@ pub fn build_session(
         prof,
         perf_stats: PerfStats {
             symbol_hash_time: Lock::new(Duration::from_secs(0)),
-            decode_def_path_tables_time: Lock::new(Duration::from_secs(0)),
             queries_canonicalized: AtomicUsize::new(0),
             normalize_generic_arg_after_erasing_regions: AtomicUsize::new(0),
             normalize_projection_ty: AtomicUsize::new(0),

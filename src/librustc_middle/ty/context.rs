@@ -1102,20 +1102,13 @@ impl<'tcx> TyCtxt<'tcx> {
         providers[LOCAL_CRATE] = local_providers;
 
         let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
-            let def_path_tables = crates
-                .iter()
-                .map(|&cnum| (cnum, cstore.def_path_table(cnum)))
-                .chain(iter::once((LOCAL_CRATE, definitions.def_path_table())));
+            let capacity = definitions.def_path_table().num_def_ids()
+                + crates.iter().map(|cnum| cstore.num_def_ids(*cnum)).sum::<usize>();
+            let mut map = FxHashMap::with_capacity_and_hasher(capacity, Default::default());
 
-            // Precompute the capacity of the hashmap so we don't have to
-            // re-allocate when populating it.
-            let capacity = def_path_tables.clone().map(|(_, t)| t.size()).sum::<usize>();
-
-            let mut map: FxHashMap<_, _> =
-                FxHashMap::with_capacity_and_hasher(capacity, ::std::default::Default::default());
-
-            for (cnum, def_path_table) in def_path_tables {
-                def_path_table.add_def_path_hashes_to(cnum, &mut map);
+            map.extend(definitions.def_path_table().all_def_path_hashes_and_def_ids(LOCAL_CRATE));
+            for cnum in &crates {
+                map.extend(cstore.all_def_path_hashes_and_def_ids(*cnum).into_iter());
             }
 
             Some(map)

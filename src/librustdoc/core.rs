@@ -117,13 +117,13 @@ impl<'tcx> DocContext<'tcx> {
     // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
     pub fn next_def_id(&self, crate_num: CrateNum) -> DefId {
         let start_def_id = {
-            let next_id = if crate_num == LOCAL_CRATE {
-                self.tcx.hir().definitions().def_path_table().next_id()
+            let num_def_ids = if crate_num == LOCAL_CRATE {
+                self.tcx.hir().definitions().def_path_table().num_def_ids()
             } else {
-                self.enter_resolver(|r| r.cstore().def_path_table(crate_num).next_id())
+                self.enter_resolver(|r| r.cstore().num_def_ids(crate_num))
             };
 
-            DefId { krate: crate_num, index: next_id }
+            DefId { krate: crate_num, index: DefIndex::from_usize(num_def_ids) }
         };
 
         let mut fake_ids = self.fake_def_ids.borrow_mut();
