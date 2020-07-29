@@ -96,10 +96,8 @@ pub fn spin_loop() {
     }
 }
 
-/// An identity function that suggests to the compiler that the given value is used in some
-/// arbitrary, unspecified way.
-///
-/// [`std::convert::identity`]: https://doc.rust-lang.org/core/convert/fn.identity.html
+/// An identity function that asks the compiler to pretend that the given value is used in some
+/// arbitrary but valid way.
 ///
 /// Unlike [`std::convert::identity`], a Rust compiler is encouraged to assume that `pretend_used`
 /// may use `x` in any possible valid way that Rust code is allowed to without introducing
@@ -111,6 +109,8 @@ pub fn spin_loop() {
 /// Note however, that `pretend_used` is only (and can only be) provided on a "best-effort" basis.
 /// The extent to which it can block optimisations may vary depending upon the platform and
 /// code-gen backend used. Programs cannot rely on `pretend_used` for *correctness* in any way.
+///
+/// [`std::convert::identity`]: https://doc.rust-lang.org/core/convert/fn.identity.html
 #[inline]
 #[unstable(feature = "test", issue = "50297")]
 #[allow(unreachable_code)] // this makes #[cfg] a bit easier below.
