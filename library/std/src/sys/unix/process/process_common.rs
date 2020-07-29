@@ -206,7 +206,7 @@ impl Command {
 
     pub fn get_size(&mut self) -> io::Result<usize> {
         use crate::mem;
-        let argv = self.argv.0;
+        let argv = &self.argv.0;
         let argv_size: usize = argv.iter().map(|x| unsafe { strlen(*x) + 1 }).sum::<usize>()
             + (argv.len() + 1) * mem::size_of::<*const u8>();
 
@@ -214,11 +214,11 @@ impl Command {
         let env = self.env.capture();
         let env_size: usize = env
             .iter()
-            .map(|(k, v)| unsafe {
+            .map(|(k, v)|
                 os2c(k.as_ref(), &mut self.saw_nul).to_bytes().len()
                     + os2c(v.as_ref(), &mut self.saw_nul).to_bytes().len()
                     + 2
-            })
+            )
             .sum::<usize>()
             + (env.len() + 1) * mem::size_of::<*const u8>();
 
