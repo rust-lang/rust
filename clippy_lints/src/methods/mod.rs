@@ -1408,7 +1408,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
             ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
             ["step_by", ..] => lint_step_by(cx, expr, arg_lists[0]),
-            ["next", "skip"] => lint_iter_skip_next(cx, expr),
+            ["next", "skip"] => lint_iter_skip_next(cx, expr, arg_lists[1]),
             ["collect", "cloned"] => lint_iter_cloned_collect(cx, expr, arg_lists[1]),
             ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
@@ -2433,17 +2433,21 @@ fn lint_get_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args:
     );
 }
 
-fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
+fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[hir::Expr<'_>]) {
     // lint if caller of skip is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        span_lint_and_help(
-            cx,
-            ITER_SKIP_NEXT,
-            expr.span,
-            "called `skip(x).next()` on an iterator",
-            None,
-            "this is more succinctly expressed by calling `nth(x)`",
-        );
+        if let [caller, n] = skip_args {
+            let hint = format!(".nth({})", snippet(cx, n.span, ".."));
+            span_lint_and_sugg(
+                cx,
+                ITER_SKIP_NEXT,
+                expr.span.trim_start(caller.span).unwrap(),
+                "called `skip(x).next()` on an iterator",
+                "use `nth` instead",
+                hint,
+                Applicability::MachineApplicable,
+            );
+        }
     }
 }
 
