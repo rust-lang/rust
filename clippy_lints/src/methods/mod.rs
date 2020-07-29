@@ -1495,25 +1495,31 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             then {
                 if cx.access_levels.is_exported(impl_item.hir_id) {
-                // check missing trait implementations
-                    for &(method_name, n_args, fn_header, self_kind, out_type, trait_name) in &TRAIT_METHODS {
-                        let no_lifetime_params = || {
-                            !impl_item.generics.params.iter()
-                                .any(|p| matches!(
-                                    p.kind,
-                                    hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::Explicit }))
-                        };
-                        if name == method_name &&
-                            sig.decl.inputs.len() == n_args &&
-                            out_type.matches(cx, &sig.decl.output) &&
-                            self_kind.matches(cx, self_ty, first_arg_ty) &&
-                            fn_header_equals(*fn_header, sig.header) &&
-                            // ignore methods with lifetime params, risk of false positive
-                            no_lifetime_params()
+                    // check missing trait implementations
+                    for method_config in &TRAIT_METHODS {
+                        if name == method_config.method_name &&
+                            sig.decl.inputs.len() == method_config.param_count &&
+                            method_config.output_type.matches(cx, &sig.decl.output) &&
+                            method_config.self_kind.matches(cx, self_ty, first_arg_ty) &&
+                            fn_header_equals(*method_config.fn_header, sig.header) &&
+                            method_config.lifetime_param_cond(&impl_item)
                         {
-                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
-                                "defining a method called `{}` on this type; consider implementing \
-                                the `{}` trait or choosing a less ambiguous name", name, trait_name));
+                            span_lint_and_help(
+                                cx,
+                                SHOULD_IMPLEMENT_TRAIT,
+                                impl_item.span,
+                                &format!(
+                                    "method `{}` can be confused for the standard trait method `{}::{}`",
+                                    method_config.method_name,
+                                    method_config.trait_name,
+                                    method_config.method_name
+                                ),
+                                None,
+                                &format!(
+                                    "consider implementing the trait `{}` or choosing a less ambiguous method name",
+                                    method_config.trait_name
+                                )
+                            );
                         }
                     }
                 }
@@ -3412,39 +3418,85 @@ const FN_HEADER: hir::FnHeader = hir::FnHeader {
     abi: rustc_target::spec::abi::Abi::Rust,
 };
 
+struct ShouldImplTraitCase {
+    trait_name: &'static str,
+    method_name: &'static str,
+    param_count: usize,
+    fn_header: &'static hir::FnHeader,
+    // implicit self kind expected (none, self, &self, ...)
+    self_kind: SelfKind,
+    // checks against the output type
+    output_type: OutType,
+    // certain methods with explicit lifetimes can't implement the equivalent trait method
+    lint_explicit_lifetime: bool,
+}
+impl ShouldImplTraitCase {
+    const fn new(
+        trait_name: &'static str,
+        method_name: &'static str,
+        param_count: usize,
+        fn_header: &'static hir::FnHeader,
+        self_kind: SelfKind,
+        output_type: OutType,
+        lint_explicit_lifetime: bool,
+    ) -> ShouldImplTraitCase {
+        ShouldImplTraitCase {
+            trait_name,
+            method_name,
+            param_count,
+            fn_header,
+            self_kind,
+            output_type,
+            lint_explicit_lifetime,
+        }
+    }
+
+    fn lifetime_param_cond(&self, impl_item: &hir::ImplItem<'_>) -> bool {
+        self.lint_explicit_lifetime
+            || !impl_item.generics.params.iter().any(|p| {
+                matches!(
+                    p.kind,
+                    hir::GenericParamKind::Lifetime {
+                        kind: hir::LifetimeParamKind::Explicit
+                    }
+                )
+            })
+    }
+}
+
 #[rustfmt::skip]
-const TRAIT_METHODS: [(&str, usize, &hir::FnHeader, SelfKind, OutType, &str); 30] = [
-    ("add", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Add"),
-    ("as_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
-    ("as_ref", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
-    ("bitand", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
-    ("bitor", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
-    ("bitxor", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
-    ("borrow", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
-    ("borrow_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
-    ("clone", 1, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
-    ("cmp", 2, &FN_HEADER, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
+const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
+    ShouldImplTraitCase::new("std::ops::Add", "add",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::convert::AsMut", "as_mut",  1,  &FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::convert::AsRef", "as_ref",  1,  &FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::BitAnd", "bitand",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::BitOr", "bitor",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::BitXor", "bitxor",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::borrow::Borrow", "borrow",  1,  &FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::borrow::BorrowMut", "borrow_mut",  1,  &FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::clone::Clone", "clone",  1,  &FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::cmp::Ord", "cmp",  2,  &FN_HEADER,  SelfKind::Ref,  OutType::Any, true),
     // FIXME: default doesn't work
-    ("default", 0, &FN_HEADER, SelfKind::No, OutType::Any, "std::default::Default"),
-    ("deref", 1, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
-    ("deref_mut", 1, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
-    ("div", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Div"),
-    ("drop", 1, &FN_HEADER, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
-    ("eq", 2, &FN_HEADER, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
-    ("from_iter", 1, &FN_HEADER, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
-    ("from_str", 1, &FN_HEADER, SelfKind::No, OutType::Any, "std::str::FromStr"),
-    ("hash", 2, &FN_HEADER, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
-    ("index", 2, &FN_HEADER, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
-    ("index_mut", 2, &FN_HEADER, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
-    ("into_iter", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
-    ("mul", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Mul"),
-    ("neg", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Neg"),
-    ("next", 1, &FN_HEADER, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
-    ("not", 1, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Not"),
-    ("rem", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Rem"),
-    ("shl", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Shl"),
-    ("shr", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Shr"),
-    ("sub", 2, &FN_HEADER, SelfKind::Value, OutType::Any, "std::ops::Sub"),
+    ShouldImplTraitCase::new("std::default::Default", "default",  0,  &FN_HEADER,  SelfKind::No,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Deref", "deref",  1,  &FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::DerefMut", "deref_mut",  1,  &FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::Div", "div",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Drop", "drop",  1,  &FN_HEADER,  SelfKind::RefMut,  OutType::Unit, true),
+    ShouldImplTraitCase::new("std::cmp::PartialEq", "eq",  2,  &FN_HEADER,  SelfKind::Ref,  OutType::Bool, true),
+    ShouldImplTraitCase::new("std::iter::FromIterator", "from_iter",  1,  &FN_HEADER,  SelfKind::No,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::str::FromStr", "from_str",  1,  &FN_HEADER,  SelfKind::No,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::hash::Hash", "hash",  2,  &FN_HEADER,  SelfKind::Ref,  OutType::Unit, true),
+    ShouldImplTraitCase::new("std::ops::Index", "index",  2,  &FN_HEADER,  SelfKind::Ref,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::ops::IndexMut", "index_mut",  2,  &FN_HEADER,  SelfKind::RefMut,  OutType::Ref, true),
+    ShouldImplTraitCase::new("std::iter::IntoIterator", "into_iter",  1,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Mul", "mul",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Neg", "neg",  1,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::iter::Iterator", "next",  1,  &FN_HEADER,  SelfKind::RefMut,  OutType::Any, false),
+    ShouldImplTraitCase::new("std::ops::Not", "not",  1,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Rem", "rem",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Shl", "shl",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Shr", "shr",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
+    ShouldImplTraitCase::new("std::ops::Sub", "sub",  2,  &FN_HEADER,  SelfKind::Value,  OutType::Any, true),
 ];
 
 #[rustfmt::skip]

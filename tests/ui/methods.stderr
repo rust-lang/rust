@@ -1,249 +1,5 @@
-error: defining a method called `add` on this type; consider implementing the `std::ops::Add` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:43:5
-   |
-LL | /     pub fn add(self, other: T) -> T {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-   |
-   = note: `-D clippy::should-implement-trait` implied by `-D warnings`
-
-error: defining a method called `as_mut` on this type; consider implementing the `std::convert::AsMut` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:47:5
-   |
-LL | /     pub fn as_mut(&mut self) -> &mut T {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `as_ref` on this type; consider implementing the `std::convert::AsRef` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:51:5
-   |
-LL | /     pub fn as_ref(&self) -> &T {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `bitand` on this type; consider implementing the `std::ops::BitAnd` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:55:5
-   |
-LL | /     pub fn bitand(self, rhs: T) -> T {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `bitor` on this type; consider implementing the `std::ops::BitOr` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:59:5
-   |
-LL | /     pub fn bitor(self, rhs: Self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `bitxor` on this type; consider implementing the `std::ops::BitXor` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:63:5
-   |
-LL | /     pub fn bitxor(self, rhs: Self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `borrow` on this type; consider implementing the `std::borrow::Borrow` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:67:5
-   |
-LL | /     pub fn borrow(&self) -> &str {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `borrow_mut` on this type; consider implementing the `std::borrow::BorrowMut` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:71:5
-   |
-LL | /     pub fn borrow_mut(&mut self) -> &mut str {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `clone` on this type; consider implementing the `std::clone::Clone` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:75:5
-   |
-LL | /     pub fn clone(&self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `cmp` on this type; consider implementing the `std::cmp::Ord` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:79:5
-   |
-LL | /     pub fn cmp(&self, other: &Self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `deref` on this type; consider implementing the `std::ops::Deref` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:87:5
-   |
-LL | /     pub fn deref(&self) -> &Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `deref_mut` on this type; consider implementing the `std::ops::DerefMut` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:91:5
-   |
-LL | /     pub fn deref_mut(&mut self) -> &mut Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `div` on this type; consider implementing the `std::ops::Div` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:95:5
-   |
-LL | /     pub fn div(self, rhs: Self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `drop` on this type; consider implementing the `std::ops::Drop` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:99:5
-   |
-LL | /     pub fn drop(&mut self) {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `eq` on this type; consider implementing the `std::cmp::PartialEq` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:103:5
-   |
-LL | /     pub fn eq(&self, other: &Self) -> bool {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `from_iter` on this type; consider implementing the `std::iter::FromIterator` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:107:5
-   |
-LL | /     pub fn from_iter<T>(iter: T) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `from_str` on this type; consider implementing the `std::str::FromStr` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:111:5
-   |
-LL | /     pub fn from_str(s: &str) -> Result<Self, Self> {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/methods.rs:111:5
-   |
-LL | /     pub fn from_str(s: &str) -> Result<Self, Self> {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-   |
-   = note: `-D clippy::missing-errors-doc` implied by `-D warnings`
-
-error: defining a method called `hash` on this type; consider implementing the `std::hash::Hash` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:115:5
-   |
-LL | /     pub fn hash(&self, state: &mut T) {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `index` on this type; consider implementing the `std::ops::Index` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:119:5
-   |
-LL | /     pub fn index(&self, index: usize) -> &Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `index_mut` on this type; consider implementing the `std::ops::IndexMut` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:123:5
-   |
-LL | /     pub fn index_mut(&mut self, index: usize) -> &mut Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `into_iter` on this type; consider implementing the `std::iter::IntoIterator` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:127:5
-   |
-LL | /     pub fn into_iter(self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `mul` on this type; consider implementing the `std::ops::Mul` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:131:5
-   |
-LL | /     pub fn mul(self, rhs: Self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `neg` on this type; consider implementing the `std::ops::Neg` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:135:5
-   |
-LL | /     pub fn neg(self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `next` on this type; consider implementing the `std::iter::Iterator` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:139:5
-   |
-LL | /     pub fn next(&mut self) -> Option<Self> {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `not` on this type; consider implementing the `std::ops::Not` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:143:5
-   |
-LL | /     pub fn not(self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `rem` on this type; consider implementing the `std::ops::Rem` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:147:5
-   |
-LL | /     pub fn rem(self, rhs: Self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `shl` on this type; consider implementing the `std::ops::Shl` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:151:5
-   |
-LL | /     pub fn shl(self, rhs: Self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `shr` on this type; consider implementing the `std::ops::Shr` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:155:5
-   |
-LL | /     pub fn shr(self, rhs: Self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
-error: defining a method called `sub` on this type; consider implementing the `std::ops::Sub` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:159:5
-   |
-LL | /     pub fn sub(self, rhs: Self) -> Self {
-LL | |         unimplemented!()
-LL | |     }
-   | |_____^
-
 error: methods called `new` usually return `Self`
-  --> $DIR/methods.rs:300:5
+  --> $DIR/methods.rs:105:5
    |
 LL | /     fn new() -> i32 {
 LL | |         0
@@ -253,7 +9,7 @@ LL | |     }
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:319:13
+  --> $DIR/methods.rs:126:13
    |
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -262,7 +18,7 @@ LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:322:13
+  --> $DIR/methods.rs:129:13
    |
 LL |       let _ = v.iter().filter(|&x| {
    |  _____________^
@@ -272,7 +28,7 @@ LL | |                    ).next();
    | |___________________________^
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:339:22
+  --> $DIR/methods.rs:146:22
    |
 LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| *x < 0)`
@@ -280,25 +36,25 @@ LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    = note: `-D clippy::search-is-some` implied by `-D warnings`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:340:20
+  --> $DIR/methods.rs:147:20
    |
 LL |     let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| **y == x)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:341:20
+  --> $DIR/methods.rs:148:20
    |
 LL |     let _ = (0..1).find(|x| *x == 0).is_some();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| x == 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:342:22
+  --> $DIR/methods.rs:149:22
    |
 LL |     let _ = v.iter().find(|x| **x == 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| *x == 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:345:13
+  --> $DIR/methods.rs:152:13
    |
 LL |       let _ = v.iter().find(|&x| {
    |  _____________^
@@ -308,13 +64,13 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:351:22
+  --> $DIR/methods.rs:158:22
    |
 LL |     let _ = v.iter().position(|&x| x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:354:13
+  --> $DIR/methods.rs:161:13
    |
 LL |       let _ = v.iter().position(|&x| {
    |  _____________^
@@ -324,13 +80,13 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:360:22
+  --> $DIR/methods.rs:167:22
    |
 LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:363:13
+  --> $DIR/methods.rs:170:13
    |
 LL |       let _ = v.iter().rposition(|&x| {
    |  _____________^
@@ -339,5 +95,5 @@ LL | |                                }
 LL | |                    ).is_some();
    | |______________________________^
 
-error: aborting due to 42 previous errors
+error: aborting due to 12 previous errors
 
