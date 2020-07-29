@@ -115,21 +115,21 @@ fn main() {}
           },
           {
             "args": {
-              "cargoArgs": ["check", "--package", "foo"],
+              "cargoArgs": ["check", "--package", "foo", "--all-targets"],
               "executableArgs": [],
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
-            "label": "cargo check -p foo"
+            "label": "cargo check -p foo --all-targets"
           },
           {
             "args": {
-              "cargoArgs": ["test", "--package", "foo"],
+              "cargoArgs": ["test", "--package", "foo", "--all-targets"],
               "executableArgs": [],
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
-            "label": "cargo test -p foo"
+            "label": "cargo test -p foo --all-targets"
           }
         ]),
     );
