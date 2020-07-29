@@ -664,7 +664,7 @@ fn replace_binary_op() {
     assert_ssr_transform(
         "$a + $b ==>> $b + $a",
         "fn f() {1 + 2 + 3 + 4}",
-        expect![["fn f() {4 + 3 + 2 + 1}"]],
+        expect![[r#"fn f() {4 + (3 + (2 + 1))}"#]],
     );
 }
 
@@ -773,8 +773,29 @@ fn preserves_whitespace_within_macro_expansion() {
             macro_rules! macro1 {
                 ($a:expr) => {$a}
             }
-            fn f() {macro1!(4 - 3 - 1   *   2}
+            fn f() {macro1!(4 - (3 - 1   *   2)}
             "#]],
+    )
+}
+
+#[test]
+fn add_parenthesis_when_necessary() {
+    assert_ssr_transform(
+        "foo($a) ==>> $a.to_string()",
+        r#"
+        fn foo(_: i32) {}
+        fn bar3(v: i32) {
+            foo(1 + 2);
+            foo(-v);
+        }
+        "#,
+        expect![[r#"
+            fn foo(_: i32) {}
+            fn bar3(v: i32) {
+                (1 + 2).to_string();
+                (-v).to_string();
+            }
+        "#]],
     )
 }
 
