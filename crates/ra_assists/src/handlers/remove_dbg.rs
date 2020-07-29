@@ -1,6 +1,6 @@
 use ra_syntax::{
     ast::{self, AstNode},
-    TextSize, T,
+    TextRange, TextSize, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -27,19 +27,33 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         return None;
     }
 
-    let macro_range = macro_call.syntax().text_range();
+    let is_leaf = macro_call.syntax().next_sibling().is_none();
 
-    let macro_content = {
-        let macro_args = macro_call.token_tree()?.syntax().clone();
+    let macro_end = if macro_call.semicolon_token().is_some() {
+        macro_call.syntax().text_range().end() - TextSize::of(';')
+    } else {
+        macro_call.syntax().text_range().end()
+    };
 
-        let text = macro_args.text();
-        let without_parens = TextSize::of('(')..text.len() - TextSize::of(')');
-        text.slice(without_parens).to_string()
+    // macro_range determines what will be deleted and replaced with macro_content
+    let macro_range = TextRange::new(macro_call.syntax().text_range().start(), macro_end);
+    let paste_instead_of_dbg = {
+        let text = macro_call.token_tree()?.syntax().text();
+
+        // leafiness determines if we should include the parenthesis or not
+        let slice_index: TextRange = if is_leaf {
+            // leaf means - we can extract the contents of the dbg! in text
+            TextRange::new(TextSize::of('('), text.len() - TextSize::of(')'))
+        } else {
+            // not leaf - means we should keep the parens
+            TextRange::up_to(text.len())
+        };
+        text.slice(slice_index).to_string()
     };
 
     let target = macro_call.syntax().text_range();
     acc.add(AssistId("remove_dbg", AssistKind::Refactor), "Remove dbg!()", target, |builder| {
-        builder.replace(macro_range, macro_content);
+        builder.replace(macro_range, paste_instead_of_dbg);
     })
 }
 
@@ -99,6 +113,7 @@ fn foo(n: usize) {
 ",
         );
     }
+
     #[test]
     fn test_remove_dbg_with_brackets_and_braces() {
         check_assist(remove_dbg, "dbg![<|>1 + 1]", "1 + 1");
@@ -113,7 +128,7 @@ fn foo(n: usize) {
     }
 
     #[test]
-    fn remove_dbg_target() {
+    fn test_remove_dbg_target() {
         check_assist_target(
             remove_dbg,
             "
@@ -124,6 +139,67 @@ fn foo(n: usize) {
 }
 ",
             "dbg!(n.checked_sub(4))",
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_keep_semicolon() {
+        // https://github.com/rust-analyzer/rust-analyzer/issues/5129#issuecomment-651399779
+        // not quite though
+        // adding a comment at the end of the line makes
+        // the ast::MacroCall to include the semicolon at the end
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(1 * 20); // needless comment"#,
+            r#"let res = 1 * 20; // needless comment"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_keep_expression() {
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(a + b).foo();"#,
+            r#"let res = (a + b).foo();"#,
+        );
+    }
+
+    #[test]
+    fn test_remove_dbg_from_inside_fn() {
+        check_assist_target(
+            remove_dbg,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+
+fn main() {
+    let x = square(dbg<|>!(5 + 10));
+    println!("{}", x);
+}"#,
+            "dbg!(5 + 10)",
+        );
+
+        check_assist(
+            remove_dbg,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+
+fn main() {
+    let x = square(dbg<|>!(5 + 10));
+    println!("{}", x);
+}"#,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+
+fn main() {
+    let x = square(5 + 10);
+    println!("{}", x);
+}"#,
         );
     }
 }
