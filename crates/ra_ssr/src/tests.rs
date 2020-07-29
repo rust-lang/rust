@@ -887,6 +887,45 @@ fn ufcs_matches_method_call() {
 }
 
 #[test]
+fn pattern_is_a_single_segment_path() {
+    mark::check!(pattern_is_a_single_segment_path);
+    // The first function should not be altered because the `foo` in scope at the cursor position is
+    // a different `foo`. This case is special because "foo" can be parsed as a pattern (BIND_PAT ->
+    // NAME -> IDENT), which contains no path. If we're not careful we'll end up matching the `foo`
+    // in `let foo` from the first function. Whether we should match the `let foo` in the second
+    // function is less clear. At the moment, we don't. Doing so sounds like a rename operation,
+    // which isn't really what SSR is for, especially since the replacement `bar` must be able to be
+    // resolved, which means if we rename `foo` we'll get a name collision.
+    assert_ssr_transform(
+        "foo ==>> bar",
+        r#"
+        fn f1() -> i32 {
+            let foo = 1;
+            let bar = 2;
+            foo
+        }
+        fn f1() -> i32 {
+            let foo = 1;
+            let bar = 2;
+            foo<|>
+        }
+        "#,
+        expect![[r#"
+            fn f1() -> i32 {
+                let foo = 1;
+                let bar = 2;
+                foo
+            }
+            fn f1() -> i32 {
+                let foo = 1;
+                let bar = 2;
+                bar
+            }
+        "#]],
+    );
+}
+
+#[test]
 fn replace_local_variable_reference() {
     // The pattern references a local variable `foo` in the block containing the cursor. We should
     // only replace references to this variable `foo`, not other variables that just happen to have
