@@ -118,22 +118,27 @@ impl Command {
     pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
         self.args.push(arg.to_os_string());
         self.cmdline.push(' ' as u16);
-        let result = append_arg(&mut cmd, arg, false);
-        if result.is_err() {
-            self.cmdline.truncate(self.cmdline.len() - 1);
-            result
-        } else if self.cmdline.size() >= CMDLINE_MAX {
-            // Roll back oversized
-            self.cmdline.truncate(self.cmdline.len() - 1 - result.unwrap());
-            Err(io::Error::new(ErrorKind::InvalidInput, "oversized cmdline"))
-        }
-        Ok()
+        let result = append_arg(&mut self.cmdline, arg, false);
+        match result {
+            Err(err) => {
+                self.cmdline.truncate(self.cmdline.len() - 1);
+                return Err(err);
+            }
+            Ok(length) => {
+                if self.cmdline.len() >= CMDLINE_MAX {
+                    // Roll back oversized
+                    self.cmdline.truncate(self.cmdline.len() - 1 - length);
+                    return Err(io::Error::new(ErrorKind::InvalidInput, "Oversized cmdline"));
+                }
+            }
+        };
+        Ok(())
     }
     pub fn arg(&mut self, arg: &OsStr) {
         if self.cmdline_error.is_none() {
-            let result = self.maybe_arg(self, arg);
-            if result.is_err() {
-                self.cmdline_error = Some(result.expect_err());
+            let result = self.maybe_arg(arg);
+            if let Err(err) = result {
+                self.cmdline_error = Some(err);
             }
         }
     }
@@ -161,37 +166,34 @@ impl Command {
         default: Stdio,
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
-        if self.cmdline_error.is_some() {
-            return self.cmdline_error.unwrap();
+        if let Some(err) = &self.cmdline_error {
+            return Err(err);
         }
 
         let maybe_env = self.env.capture_if_changed();
         // To have the spawning semantics of unix/windows stay the same, we need
         // to read the *child's* PATH if one is provided. See #15149 for more
         // details.
-        let program = maybe_env
-            .as_ref()
-            .and_then(|env| {
-                if let Some(v) = env.get(OsStr::new("PATH")) {
-                    // Split the value and test each path to see if the
-                    // program exists.
-                    for path in split_paths(&v) {
-                        let path = path
-                            .join(self.program.to_str().unwrap())
-                            .with_extension(env::consts::EXE_EXTENSION);
-                        if fs::metadata(&path).is_ok() {
-                            return Some(path.into_os_string());
-                        }
+        let rprogram = maybe_env.as_ref().and_then(|env| {
+            if let Some(v) = env.get(OsStr::new("PATH")) {
+                // Split the value and test each path to see if the
+                // program exists.
+                for path in split_paths(&v) {
+                    let path = path
+                        .join(self.program.to_str().unwrap())
+                        .with_extension(env::consts::EXE_EXTENSION);
+                    if fs::metadata(&path).is_ok() {
+                        return Some(path.into_os_string());
                     }
                 }
-                None
-            })
-            .as_ref()
-            .unwrap_or(&self.program);
+            }
+            None
+        });
+        let program = rprogram.as_ref().unwrap_or(&self.program);
 
         // Prepare and terminate the application name and the cmdline
         // XXX: this won't work for 16-bit, might be preferable to do a extend_from_slice
-        let program_str: Vec<u16> = Vec::new();
+        let mut program_str: Vec<u16> = Vec::new();
         append_arg(&mut program_str, program, true)?;
         program_str.push(0);
         self.cmdline.push(0);
@@ -259,8 +261,10 @@ impl Command {
     }
 
     pub fn get_size(&mut self) -> io::Result<usize> {
-        let (_, cmd_str) = self.prepare_command_line()?;
-        Ok(cmd_str.len())
+        match &self.cmdline_error {
+            Some(err) => Err(err),
+            None => Ok(self.cmdline.len()),
+        }
     }
     pub fn check_size(&mut self, _refresh: bool) -> io::Result<bool> {
         Ok(self.get_size()? < 32767)
