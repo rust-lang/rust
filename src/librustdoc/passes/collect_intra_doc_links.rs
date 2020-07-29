@@ -868,7 +868,7 @@ fn report_diagnostic(
     let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
     cx.tcx.struct_span_lint_hir(
-        lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+        lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURES,
         hir_id,
         sp,
         |lint| {
