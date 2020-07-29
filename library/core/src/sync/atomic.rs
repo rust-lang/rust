@@ -2649,7 +2649,8 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 ///     }
 ///
 ///     pub fn lock(&self) {
-///         while !self.flag.compare_and_swap(false, true, Ordering::Relaxed) {}
+///         // Wait until the old value is `false`.
+///         while self.flag.compare_and_swap(false, true, Ordering::Relaxed) != false {}
 ///         // This fence synchronizes-with store in `unlock`.
 ///         fence(Ordering::Acquire);
 ///     }
