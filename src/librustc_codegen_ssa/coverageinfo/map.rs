@@ -1,3 +1,4 @@
+use rustc_index::vec::IndexVec;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::{Pos, SourceMap};
@@ -6,6 +7,34 @@ use rustc_span::{BytePos, FileName, Loc, RealFileName};
 use std::cmp::{Ord, Ordering};
 use std::fmt;
 use std::path::PathBuf;
+
+rustc_index::newtype_index! {
+    pub struct ExpressionOperandId {
+        DEBUG_FORMAT = "ExpressionOperandId({})",
+        MAX = 0xFFFF_FFFF,
+    }
+}
+
+rustc_index::newtype_index! {
+    pub struct CounterValueReference {
+        DEBUG_FORMAT = "CounterValueReference({})",
+        MAX = 0xFFFF_FFFF,
+    }
+}
+
+rustc_index::newtype_index! {
+    pub struct InjectedExpressionIndex {
+        DEBUG_FORMAT = "InjectedExpressionIndex({})",
+        MAX = 0xFFFF_FFFF,
+    }
+}
+
+rustc_index::newtype_index! {
+    pub struct MappedExpressionIndex {
+        DEBUG_FORMAT = "MappedExpressionIndex({})",
+        MAX = 0xFFFF_FFFF,
+    }
+}
 
 /// Aligns with [llvm::coverage::Counter::CounterKind](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L91)
 #[derive(Copy, Clone, Debug)]
@@ -38,12 +67,12 @@ impl Counter {
         Self { kind: CounterKind::Zero, id: 0 }
     }
 
-    pub fn counter_value_reference(counter_id: u32) -> Self {
-        Self { kind: CounterKind::CounterValueReference, id: counter_id }
+    pub fn counter_value_reference(counter_id: CounterValueReference) -> Self {
+        Self { kind: CounterKind::CounterValueReference, id: counter_id.into() }
     }
 
-    pub fn expression(final_expression_index: u32) -> Self {
-        Self { kind: CounterKind::Expression, id: final_expression_index }
+    pub fn expression(mapped_expression_index: MappedExpressionIndex) -> Self {
+        Self { kind: CounterKind::Expression, id: mapped_expression_index.into() }
     }
 }
 
@@ -143,9 +172,9 @@ impl Region {
 
 #[derive(Clone, Debug)]
 pub struct ExpressionRegion {
-    lhs: u32,
+    lhs: ExpressionOperandId,
     op: ExprKind,
-    rhs: u32,
+    rhs: ExpressionOperandId,
     region: Region,
 }
 
@@ -203,8 +232,8 @@ pub struct ExpressionRegion {
 pub struct FunctionCoverage<'a> {
     source_map: &'a SourceMap,
     source_hash: u64,
-    counters: Vec<Option<Region>>,
-    expressions: Vec<Option<ExpressionRegion>>,
+    counters: IndexVec<CounterValueReference, Option<Region>>,
+    expressions: IndexVec<InjectedExpressionIndex, Option<ExpressionRegion>>,
     unreachable_regions: Vec<Region>,
 }
 
@@ -214,8 +243,8 @@ impl<'a> FunctionCoverage<'a> {
         Self {
             source_map: tcx.sess.source_map(),
             source_hash: 0, // will be set with the first `add_counter()`
-            counters: vec![None; coverageinfo.num_counters as usize],
-            expressions: vec![None; coverageinfo.num_expressions as usize],
+            counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
+            expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
             unreachable_regions: Vec::new(),
         }
     }
@@ -235,7 +264,7 @@ impl<'a> FunctionCoverage<'a> {
         } else {
             debug_assert_eq!(source_hash, self.source_hash);
         }
-        self.counters[id as usize]
+        self.counters[CounterValueReference::from(id)]
             .replace(Region::new(self.source_map, start_byte_pos, end_byte_pos))
             .expect_none("add_counter called with duplicate `id`");
     }
@@ -263,7 +292,11 @@ impl<'a> FunctionCoverage<'a> {
         start_byte_pos: u32,
         end_byte_pos: u32,
     ) {
-        let expression_index = self.expression_index(id_descending_from_max);
+        let expression_id = ExpressionOperandId::from(id_descending_from_max);
+        let lhs = ExpressionOperandId::from(lhs);
+        let rhs = ExpressionOperandId::from(rhs);
+
+        let expression_index = self.expression_index(expression_id);
         self.expressions[expression_index]
             .replace(ExpressionRegion {
                 lhs,
@@ -294,19 +327,21 @@ impl<'a> FunctionCoverage<'a> {
         assert!(self.source_hash != 0);
 
         let counter_regions = self.counter_regions();
-        let (expressions, expression_regions) = self.expressions_with_regions();
+        let (counter_expressions, expression_regions) = self.expressions_with_regions();
         let unreachable_regions = self.unreachable_regions();
 
         let counter_regions =
             counter_regions.chain(expression_regions.into_iter().chain(unreachable_regions));
-        (expressions, counter_regions)
+        (counter_expressions, counter_regions)
     }
 
     fn counter_regions(&'a self) -> impl Iterator<Item = (Counter, &'a Region)> {
-        self.counters.iter().enumerate().filter_map(|(index, entry)| {
+        self.counters.iter_enumerated().filter_map(|(index, entry)| {
             // Option::map() will return None to filter out missing counters. This may happen
             // if, for example, a MIR-instrumented counter is removed during an optimization.
-            entry.as_ref().map(|region| (Counter::counter_value_reference(index as u32), region))
+            entry.as_ref().map(|region| {
+                (Counter::counter_value_reference(index as CounterValueReference), region)
+            })
         })
     }
 
@@ -315,32 +350,39 @@ impl<'a> FunctionCoverage<'a> {
     ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &'a Region)>) {
         let mut counter_expressions = Vec::with_capacity(self.expressions.len());
         let mut expression_regions = Vec::with_capacity(self.expressions.len());
-        let mut new_indexes = vec![u32::MAX; self.expressions.len()];
+        let mut new_indexes =
+            IndexVec::from_elem_n(MappedExpressionIndex::from(u32::MAX), self.expressions.len());
+        // Note, the initial value shouldn't matter since every index in use in `self.expressions`
+        // will be set, and after that, `new_indexes` will only be accessed using those same
+        // indexes.
 
         // Note that an `ExpressionRegion`s at any given index can include other expressions as
         // operands, but expression operands can only come from the subset of expressions having
         // `expression_index`s lower than the referencing `ExpressionRegion`. Therefore, it is
         // reasonable to look up the new index of an expression operand while the `new_indexes`
         // vector is only complete up to the current `ExpressionIndex`.
-        let id_to_counter = |new_indexes: &Vec<u32>, id| {
-            if id < self.counters.len() as u32 {
-                self.counters
-                    .get(id as usize)
-                    .expect("id is out of range")
-                    .as_ref()
-                    .map(|_| Counter::counter_value_reference(id))
-            } else {
-                let index = self.expression_index(id);
-                self.expressions
-                    .get(index)
-                    .expect("id is out of range")
-                    .as_ref()
-                    .map(|_| Counter::expression(new_indexes[index]))
-            }
-        };
+        let id_to_counter =
+            |new_indexes: &IndexVec<InjectedExpressionIndex, MappedExpressionIndex>,
+             id: ExpressionOperandId| {
+                if id.index() < self.counters.len() {
+                    let index = CounterValueReference::from(id.index());
+                    self.counters
+                        .get(index)
+                        .unwrap() // pre-validated
+                        .as_ref()
+                        .map(|_| Counter::counter_value_reference(index))
+                } else {
+                    let index = self.expression_index(id);
+                    self.expressions
+                        .get(index)
+                        .expect("expression id is out of range")
+                        .as_ref()
+                        .map(|_| Counter::expression(new_indexes[index]))
+                }
+            };
 
         for (original_index, expression_region) in
-            self.expressions.iter().enumerate().filter_map(|(original_index, entry)| {
+            self.expressions.iter_enumerated().filter_map(|(original_index, entry)| {
                 // Option::map() will return None to filter out missing expressions. This may happen
                 // if, for example, a MIR-instrumented expression is removed during an optimization.
                 entry.as_ref().map(|region| (original_index, region))
@@ -356,10 +398,11 @@ impl<'a> FunctionCoverage<'a> {
             {
                 // Both operands exist. `Expression` operands exist in `self.expressions` and have
                 // been assigned a `new_index`.
-                let final_expression_index = counter_expressions.len() as u32;
+                let mapped_expression_index =
+                    MappedExpressionIndex::from(counter_expressions.len());
                 counter_expressions.push(CounterExpression::new(lhs_counter, op, rhs_counter));
-                new_indexes[original_index] = final_expression_index;
-                expression_regions.push((Counter::expression(final_expression_index), region));
+                new_indexes[original_index] = mapped_expression_index;
+                expression_regions.push((Counter::expression(mapped_expression_index), region));
             }
         }
         (counter_expressions, expression_regions.into_iter())
@@ -369,8 +412,11 @@ impl<'a> FunctionCoverage<'a> {
         self.unreachable_regions.iter().map(|region| (Counter::zero(), region))
     }
 
-    fn expression_index(&self, id_descending_from_max: u32) -> usize {
-        debug_assert!(id_descending_from_max as usize >= self.counters.len());
-        (u32::MAX - id_descending_from_max) as usize
+    fn expression_index(
+        &self,
+        id_descending_from_max: ExpressionOperandId,
+    ) -> InjectedExpressionIndex {
+        debug_assert!(id_descending_from_max.index() >= self.counters.len());
+        InjectedExpressionIndex::from(u32::MAX - u32::from(id_descending_from_max))
     }
 }
