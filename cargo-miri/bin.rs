@@ -338,7 +338,7 @@ path = "lib.rs"
     let target = target.as_ref().unwrap_or(&host);
     // Now invoke xargo.
     let mut command = xargo_check();
-    command.arg("build").arg("-q");
+    command.arg("check").arg("-q");
     command.arg("--target").arg(target);
     command.current_dir(&dir);
     command.env("XARGO_HOME", &dir);
