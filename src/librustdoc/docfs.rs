@@ -36,8 +36,8 @@ pub struct DocFS {
 }
 
 impl DocFS {
-    pub fn new(errors: &Sender<String>) -> DocFS {
-        DocFS { sync_only: false, errors: Some(errors.clone()) }
+    pub fn new(errors: Sender<String>) -> DocFS {
+        DocFS { sync_only: false, errors: Some(errors) }
     }
 
     pub fn set_sync_only(&mut self, sync_only: bool) {

@@ -462,7 +462,7 @@ impl FormatRenderer for Context {
             style_files,
             resource_suffix,
             static_root_path,
-            fs: DocFS::new(&sender),
+            fs: DocFS::new(sender),
             edition,
             codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
             playground,
