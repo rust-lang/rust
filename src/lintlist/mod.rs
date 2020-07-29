@@ -2169,7 +2169,7 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
     Lint {
         name: "trait_duplication_in_bounds",
         group: "pedantic",
-        desc: "Check if the same trait bounds are specifed twice during a function declaration",
+        desc: "Check if the same trait bounds are specified twice during a function declaration",
         deprecation: None,
         module: "trait_bounds",
     },

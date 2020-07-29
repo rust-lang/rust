@@ -56,7 +56,7 @@ declare_clippy_lint! {
     /// ```
     pub TRAIT_DUPLICATION_IN_BOUNDS,
     pedantic,
-    "Check if the same trait bounds are specifed twice during a function declaration"
+    "Check if the same trait bounds are specified twice during a function declaration"
 }
 
 #[derive(Copy, Clone)]
