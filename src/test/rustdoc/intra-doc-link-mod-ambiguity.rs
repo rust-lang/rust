@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(intra_doc_link_resolution_failures)]
 
 
 pub fn foo() {

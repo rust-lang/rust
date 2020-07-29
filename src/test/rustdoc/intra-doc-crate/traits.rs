@@ -3,7 +3,7 @@
 // aux-build:traits.rs
 // build-aux-docs
 // ignore-tidy-line-length
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(intra_doc_link_resolution_failures)]
 
 extern crate inner;
 use inner::SomeTrait;

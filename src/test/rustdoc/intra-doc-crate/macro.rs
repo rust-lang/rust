@@ -2,7 +2,7 @@
 // aux-build:macro_inner.rs
 // aux-build:proc_macro.rs
 // build-aux-docs
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(intra_doc_link_resolution_failures)]
 extern crate macro_inner;
 extern crate proc_macro_inner;
 

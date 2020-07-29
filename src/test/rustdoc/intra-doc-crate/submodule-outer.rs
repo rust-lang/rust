@@ -1,6 +1,6 @@
 // aux-build:submodule-outer.rs
 // edition:2018
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(intra_doc_link_resolution_failures)]
 
 extern crate bar as bar_;
 

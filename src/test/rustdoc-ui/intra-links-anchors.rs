@@ -1,4 +1,4 @@
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(intra_doc_link_resolution_failures)]
 
 // A few tests on anchors.
 

@@ -2,7 +2,7 @@
 // ignore-cross-compile
 
 #![crate_name = "outer"]
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(intra_doc_link_resolution_failures)]
 
 // using a trait that has intra-doc links on it from another crate (whether re-exporting or just
 // implementing it) used to give spurious resolution failure warnings
