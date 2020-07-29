@@ -88,6 +88,8 @@
 #![feature(const_result)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_slice_ptr_len)]
+#![feature(const_size_of_val)]
+#![feature(const_align_of_val)]
 #![feature(const_type_name)]
 #![feature(const_likely)]
 #![feature(const_unreachable_unchecked)]

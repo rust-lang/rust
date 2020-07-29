@@ -332,7 +332,8 @@ pub const fn size_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
+#[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
+pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
     intrinsics::size_of_val(val)
 }
 
@@ -466,9 +467,10 @@ pub const fn align_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
 #[allow(deprecated)]
-pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
-    min_align_of_val(val)
+pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
+    intrinsics::min_align_of_val(val)
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
