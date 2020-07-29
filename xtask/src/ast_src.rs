@@ -322,7 +322,6 @@ pub(crate) fn rust_ast() -> AstSrc {
             ///
             /// [Reference](https://doc.rust-lang.org/reference/crates-and-source-files.html)
             struct SourceFile: ModuleItemOwner, AttrsOwner, DocCommentsOwner {
-                modules: [Module],
             }
 
             /// Function definition either with body or not.

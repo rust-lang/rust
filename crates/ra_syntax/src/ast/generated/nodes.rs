@@ -15,9 +15,7 @@ pub struct SourceFile {
 impl ast::ModuleItemOwner for SourceFile {}
 impl ast::AttrsOwner for SourceFile {}
 impl ast::DocCommentsOwner for SourceFile {}
-impl SourceFile {
-    pub fn modules(&self) -> AstChildren<Module> { support::children(&self.syntax) }
-}
+impl SourceFile {}
 /// Function definition either with body or not.
 /// Includes all of its attributes and doc comments.
 ///
