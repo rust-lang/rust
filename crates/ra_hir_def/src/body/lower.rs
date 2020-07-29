@@ -627,53 +627,53 @@ impl ExprCollector<'_> {
             .items()
             .filter_map(|item| {
                 let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
-                    ast::ModuleItem::FnDef(def) => {
+                    ast::Item::FnDef(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             FunctionLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::ModuleItem::TypeAliasDef(def) => {
+                    ast::Item::TypeAliasDef(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             TypeAliasLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::ModuleItem::ConstDef(def) => {
+                    ast::Item::ConstDef(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             ConstLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::ModuleItem::StaticDef(def) => {
+                    ast::Item::StaticDef(def) => {
                         let id = self.find_inner_item(&def)?;
                         (StaticLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::StructDef(def) => {
+                    ast::Item::StructDef(def) => {
                         let id = self.find_inner_item(&def)?;
                         (StructLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::EnumDef(def) => {
+                    ast::Item::EnumDef(def) => {
                         let id = self.find_inner_item(&def)?;
                         (EnumLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::UnionDef(def) => {
+                    ast::Item::UnionDef(def) => {
                         let id = self.find_inner_item(&def)?;
                         (UnionLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::TraitDef(def) => {
+                    ast::Item::TraitDef(def) => {
                         let id = self.find_inner_item(&def)?;
                         (TraitLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::ExternBlock(_) => return None, // FIXME: collect from extern blocks
-                    ast::ModuleItem::ImplDef(_)
-                    | ast::ModuleItem::UseItem(_)
-                    | ast::ModuleItem::ExternCrateItem(_)
-                    | ast::ModuleItem::Module(_)
-                    | ast::ModuleItem::MacroCall(_) => return None,
+                    ast::Item::ExternBlock(_) => return None, // FIXME: collect from extern blocks
+                    ast::Item::ImplDef(_)
+                    | ast::Item::UseItem(_)
+                    | ast::Item::ExternCrateItem(_)
+                    | ast::Item::Module(_)
+                    | ast::Item::MacroCall(_) => return None,
                 };
 
                 Some((def, name))

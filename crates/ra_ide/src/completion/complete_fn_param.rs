@@ -28,7 +28,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
             }
         };
         for item in items {
-            if let ast::ModuleItem::FnDef(func) = item {
+            if let ast::Item::FnDef(func) = item {
                 if Some(&func) == me.as_ref() {
                     continue;
                 }

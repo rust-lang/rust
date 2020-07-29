@@ -70,7 +70,7 @@ impl GenericParamsId {
 pub struct ItemTree {
     top_level: SmallVec<[ModItem; 1]>,
     attrs: FxHashMap<AttrOwner, Attrs>,
-    inner_items: FxHashMap<FileAstId<ast::ModuleItem>, SmallVec<[ModItem; 1]>>,
+    inner_items: FxHashMap<FileAstId<ast::Item>, SmallVec<[ModItem; 1]>>,
 
     data: Option<Box<ItemTreeData>>,
 }
@@ -187,7 +187,7 @@ impl ItemTree {
     ///
     /// Most AST items are lowered to a single `ModItem`, but some (eg. `use` items) may be lowered
     /// to multiple items in the `ItemTree`.
-    pub fn inner_items(&self, ast: FileAstId<ast::ModuleItem>) -> &[ModItem] {
+    pub fn inner_items(&self, ast: FileAstId<ast::Item>) -> &[ModItem] {
         &self.inner_items[&ast]
     }
 
@@ -310,7 +310,7 @@ from_attrs!(ModItem(ModItem), Variant(Idx<Variant>), Field(Idx<Field>));
 
 /// Trait implemented by all item nodes in the item tree.
 pub trait ItemTreeNode: Clone {
-    type Source: AstNode + Into<ast::ModuleItem>;
+    type Source: AstNode + Into<ast::Item>;
 
     fn ast_id(&self) -> FileAstId<Self::Source>;
 

@@ -187,7 +187,7 @@ impl ast::Expr {
     }
 }
 
-impl ast::ModuleItem {
+impl ast::Item {
     /// Returns `text`, parsed as an item, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {
         parsing::parse_text_fragment(text, ra_parser::FragmentKind::Item)
@@ -255,7 +255,7 @@ fn api_walkthrough() {
     let mut func = None;
     for item in file.items() {
         match item {
-            ast::ModuleItem::FnDef(f) => func = Some(f),
+            ast::Item::FnDef(f) => func = Some(f),
             _ => unreachable!(),
         }
     }

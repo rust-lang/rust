@@ -70,19 +70,19 @@ impl Ctx {
         self.tree.data_mut()
     }
 
-    fn lower_mod_item(&mut self, item: &ast::ModuleItem, inner: bool) -> Option<ModItems> {
+    fn lower_mod_item(&mut self, item: &ast::Item, inner: bool) -> Option<ModItems> {
         assert!(inner || self.inner_items.is_empty());
 
         // Collect inner items for 1-to-1-lowered items.
         match item {
-            ast::ModuleItem::StructDef(_)
-            | ast::ModuleItem::UnionDef(_)
-            | ast::ModuleItem::EnumDef(_)
-            | ast::ModuleItem::FnDef(_)
-            | ast::ModuleItem::TypeAliasDef(_)
-            | ast::ModuleItem::ConstDef(_)
-            | ast::ModuleItem::StaticDef(_)
-            | ast::ModuleItem::MacroCall(_) => {
+            ast::Item::StructDef(_)
+            | ast::Item::UnionDef(_)
+            | ast::Item::EnumDef(_)
+            | ast::Item::FnDef(_)
+            | ast::Item::TypeAliasDef(_)
+            | ast::Item::ConstDef(_)
+            | ast::Item::StaticDef(_)
+            | ast::Item::MacroCall(_) => {
                 // Skip this if we're already collecting inner items. We'll descend into all nodes
                 // already.
                 if !inner {
@@ -92,34 +92,30 @@ impl Ctx {
 
             // These are handled in their respective `lower_X` method (since we can't just blindly
             // walk them).
-            ast::ModuleItem::TraitDef(_)
-            | ast::ModuleItem::ImplDef(_)
-            | ast::ModuleItem::ExternBlock(_) => {}
+            ast::Item::TraitDef(_) | ast::Item::ImplDef(_) | ast::Item::ExternBlock(_) => {}
 
             // These don't have inner items.
-            ast::ModuleItem::Module(_)
-            | ast::ModuleItem::ExternCrateItem(_)
-            | ast::ModuleItem::UseItem(_) => {}
+            ast::Item::Module(_) | ast::Item::ExternCrateItem(_) | ast::Item::UseItem(_) => {}
         };
 
         let attrs = Attrs::new(item, &self.hygiene);
         let items = match item {
-            ast::ModuleItem::StructDef(ast) => self.lower_struct(ast).map(Into::into),
-            ast::ModuleItem::UnionDef(ast) => self.lower_union(ast).map(Into::into),
-            ast::ModuleItem::EnumDef(ast) => self.lower_enum(ast).map(Into::into),
-            ast::ModuleItem::FnDef(ast) => self.lower_function(ast).map(Into::into),
-            ast::ModuleItem::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
-            ast::ModuleItem::StaticDef(ast) => self.lower_static(ast).map(Into::into),
-            ast::ModuleItem::ConstDef(ast) => Some(self.lower_const(ast).into()),
-            ast::ModuleItem::Module(ast) => self.lower_module(ast).map(Into::into),
-            ast::ModuleItem::TraitDef(ast) => self.lower_trait(ast).map(Into::into),
-            ast::ModuleItem::ImplDef(ast) => self.lower_impl(ast).map(Into::into),
-            ast::ModuleItem::UseItem(ast) => Some(ModItems(
+            ast::Item::StructDef(ast) => self.lower_struct(ast).map(Into::into),
+            ast::Item::UnionDef(ast) => self.lower_union(ast).map(Into::into),
+            ast::Item::EnumDef(ast) => self.lower_enum(ast).map(Into::into),
+            ast::Item::FnDef(ast) => self.lower_function(ast).map(Into::into),
+            ast::Item::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
+            ast::Item::StaticDef(ast) => self.lower_static(ast).map(Into::into),
+            ast::Item::ConstDef(ast) => Some(self.lower_const(ast).into()),
+            ast::Item::Module(ast) => self.lower_module(ast).map(Into::into),
+            ast::Item::TraitDef(ast) => self.lower_trait(ast).map(Into::into),
+            ast::Item::ImplDef(ast) => self.lower_impl(ast).map(Into::into),
+            ast::Item::UseItem(ast) => Some(ModItems(
                 self.lower_use(ast).into_iter().map(Into::into).collect::<SmallVec<_>>(),
             )),
-            ast::ModuleItem::ExternCrateItem(ast) => self.lower_extern_crate(ast).map(Into::into),
-            ast::ModuleItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
-            ast::ModuleItem::ExternBlock(ast) => {
+            ast::Item::ExternCrateItem(ast) => self.lower_extern_crate(ast).map(Into::into),
+            ast::Item::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
+            ast::Item::ExternBlock(ast) => {
                 Some(ModItems(self.lower_extern_block(ast).into_iter().collect::<SmallVec<_>>()))
             }
         };
@@ -147,22 +143,22 @@ impl Ctx {
     fn collect_inner_items(&mut self, container: &SyntaxNode) {
         let forced_vis = self.forced_visibility.take();
         let mut inner_items = mem::take(&mut self.tree.inner_items);
-        inner_items.extend(
-            container.descendants().skip(1).filter_map(ast::ModuleItem::cast).filter_map(|item| {
+        inner_items.extend(container.descendants().skip(1).filter_map(ast::Item::cast).filter_map(
+            |item| {
                 let ast_id = self.source_ast_id_map.ast_id(&item);
                 Some((ast_id, self.lower_mod_item(&item, true)?.0))
-            }),
-        );
+            },
+        ));
         self.tree.inner_items = inner_items;
         self.forced_visibility = forced_vis;
     }
 
-    fn lower_assoc_item(&mut self, item: &ast::ModuleItem) -> Option<AssocItem> {
+    fn lower_assoc_item(&mut self, item: &ast::Item) -> Option<AssocItem> {
         match item {
-            ast::ModuleItem::FnDef(ast) => self.lower_function(ast).map(Into::into),
-            ast::ModuleItem::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
-            ast::ModuleItem::ConstDef(ast) => Some(self.lower_const(ast).into()),
-            ast::ModuleItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
+            ast::Item::FnDef(ast) => self.lower_function(ast).map(Into::into),
+            ast::Item::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
+            ast::Item::ConstDef(ast) => Some(self.lower_const(ast).into()),
+            ast::Item::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
             _ => None,
         }
     }
