@@ -10,7 +10,7 @@ use std::process::Command;
 
 use rustc_version::VersionMeta;
 
-const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 21);
+const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 22);
 
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates and tests in Miri
 
@@ -271,10 +271,10 @@ fn setup(subcommand: MiriCommand) {
                 .stdout;
             let sysroot = std::str::from_utf8(&sysroot).unwrap();
             let sysroot = Path::new(sysroot.trim_end_matches('\n'));
-            // Check for `$SYSROOT/lib/rustlib/src/rust/src`; test if that contains `libstd/lib.rs`.
+            // Check for `$SYSROOT/lib/rustlib/src/rust/library`; test if that contains `std/Cargo.toml`.
             let rustup_src =
-                sysroot.join("lib").join("rustlib").join("src").join("rust").join("src");
-            if !rustup_src.join("libstd").join("lib.rs").exists() {
+                sysroot.join("lib").join("rustlib").join("src").join("rust").join("library");
+            if !rustup_src.join("std").join("Cargo.toml").exists() {
                 // Ask the user to install the `rust-src` component, and use that.
                 let mut cmd = Command::new("rustup");
                 cmd.args(&["component", "add", "rust-src"]);
