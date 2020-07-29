@@ -1750,6 +1750,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ungrammar"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ee12e4891ab3acc2d95d5023022ace22020247bb8a8d1ece875a443f7dab37d"
+
+[[package]]
 name = "unicode-bidi"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1893,5 +1899,6 @@ dependencies = [
  "pico-args",
  "proc-macro2",
  "quote",
+ "ungrammar",
  "walkdir",
 ]

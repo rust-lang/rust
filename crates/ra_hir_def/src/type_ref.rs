@@ -1,7 +1,7 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use ra_syntax::ast::{self, TypeAscriptionOwner, TypeBoundsOwner};
+use ra_syntax::ast::{self, TypeAscriptionOwner};
 
 use crate::{body::LowerCtx, path::Path};
 
