@@ -27,10 +27,7 @@ because that's clearly a non-descriptive name.
 
 ## Setup
 
-When working on Clippy, you will need the current git master version of rustc,
-which can change rapidly. Make sure you're working near rust-clippy's master,
-and use the `setup-toolchain.sh` script to configure the appropriate toolchain
-for the Clippy directory.
+See the [Basics](basics.md#get-the-code) documentation.
 
 ## Getting Started
 
@@ -38,12 +35,14 @@ There is a bit of boilerplate code that needs to be set up when creating a new
 lint. Fortunately, you can use the clippy dev tools to handle this for you. We
 are naming our new lint `foo_functions` (lints are generally written in snake
 case), and we don't need type information so it will have an early pass type
-(more on this later on). To get started on this lint you can run
-`cargo dev new_lint --name=foo_functions --pass=early --category=pedantic`
-(category will default to nursery if not provided). This command will create
-two files: `tests/ui/foo_functions.rs` and `clippy_lints/src/foo_functions.rs`,
-as well as run `cargo dev update_lints` to register the new lint. For cargo lints,
-two project hierarchies (fail/pass) will be created by default under `tests/ui-cargo`.
+(more on this later on). If you're not sure if the name you chose fits the lint,
+take a look at our [lint naming guidelines][lint_naming]. To get started on this
+lint you can run `cargo dev new_lint --name=foo_functions --pass=early
+--category=pedantic` (category will default to nursery if not provided). This
+command will create two files: `tests/ui/foo_functions.rs` and
+`clippy_lints/src/foo_functions.rs`, as well as run `cargo dev update_lints` to
+register the new lint. For cargo lints, two project hierarchies (fail/pass) will
+be created by default under `tests/ui-cargo`.
 
 Next, we'll open up these files and add our lint!
 
@@ -113,7 +112,7 @@ For cargo lints, the process of testing differs in that we are interested in
 the `Cargo.toml` manifest file. We also need a minimal crate associated
 with that manifest.
 
-If our new lint is named e.g. `foo_categories`, after running `cargo dev new_lint` 
+If our new lint is named e.g. `foo_categories`, after running `cargo dev new_lint`
 we will find by default two new crates, each with its manifest file:
 
 * `tests/ui-cargo/foo_categories/fail/Cargo.toml`: this file should cause the new lint to raise an error.
