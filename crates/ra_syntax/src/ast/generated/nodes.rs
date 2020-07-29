@@ -1929,7 +1929,6 @@ pub struct TypeParamList {
 }
 impl TypeParamList {
     pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
-    pub fn generic_params(&self) -> AstChildren<GenericParam> { support::children(&self.syntax) }
     pub fn type_params(&self) -> AstChildren<TypeParam> { support::children(&self.syntax) }
     pub fn lifetime_params(&self) -> AstChildren<LifetimeParam> { support::children(&self.syntax) }
     pub fn const_params(&self) -> AstChildren<ConstParam> { support::children(&self.syntax) }
@@ -2601,13 +2600,6 @@ pub enum NominalDef {
 impl ast::NameOwner for NominalDef {}
 impl ast::TypeParamsOwner for NominalDef {}
 impl ast::AttrsOwner for NominalDef {}
-/// Any kind of **declared** generic parameter
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GenericParam {
-    LifetimeParam(LifetimeParam),
-    TypeParam(TypeParam),
-    ConstParam(ConstParam),
-}
 /// Any kind of generic argument passed at instantiation site
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericArg {
@@ -4155,39 +4147,6 @@ impl AstNode for NominalDef {
         }
     }
 }
-impl From<LifetimeParam> for GenericParam {
-    fn from(node: LifetimeParam) -> GenericParam { GenericParam::LifetimeParam(node) }
-}
-impl From<TypeParam> for GenericParam {
-    fn from(node: TypeParam) -> GenericParam { GenericParam::TypeParam(node) }
-}
-impl From<ConstParam> for GenericParam {
-    fn from(node: ConstParam) -> GenericParam { GenericParam::ConstParam(node) }
-}
-impl AstNode for GenericParam {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            LIFETIME_PARAM | TYPE_PARAM | CONST_PARAM => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            LIFETIME_PARAM => GenericParam::LifetimeParam(LifetimeParam { syntax }),
-            TYPE_PARAM => GenericParam::TypeParam(TypeParam { syntax }),
-            CONST_PARAM => GenericParam::ConstParam(ConstParam { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            GenericParam::LifetimeParam(it) => &it.syntax,
-            GenericParam::TypeParam(it) => &it.syntax,
-            GenericParam::ConstParam(it) => &it.syntax,
-        }
-    }
-}
 impl From<LifetimeArg> for GenericArg {
     fn from(node: LifetimeArg) -> GenericArg { GenericArg::LifetimeArg(node) }
 }
@@ -4851,11 +4810,6 @@ impl AstNode for FieldDefList {
     }
 }
 impl std::fmt::Display for NominalDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for GenericParam {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

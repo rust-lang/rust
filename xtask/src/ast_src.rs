@@ -1630,7 +1630,6 @@ pub(crate) fn rust_ast() -> AstSrc {
             /// [Reference](https://doc.rust-lang.org/reference/items/generics.html)
             struct TypeParamList {
                 T![<],
-                generic_params: [GenericParam],
                 type_params: [TypeParam],
                 lifetime_params: [LifetimeParam],
                 const_params: [ConstParam],
@@ -2100,13 +2099,6 @@ pub(crate) fn rust_ast() -> AstSrc {
             /// Any kind of nominal type definition.
             enum NominalDef: NameOwner, TypeParamsOwner, AttrsOwner {
                 StructDef, EnumDef, UnionDef,
-            }
-
-            /// Any kind of **declared** generic parameter
-            enum GenericParam {
-                LifetimeParam,
-                TypeParam,
-                ConstParam
             }
 
             /// Any kind of generic argument passed at instantiation site
