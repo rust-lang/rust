@@ -61,9 +61,6 @@ jobs:
         override: true
         components: rustfmt, rust-src
 
-    - if: matrix.os == 'ubuntu-latest'
-      run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
-
     - name: Cache cargo directories
       uses: actions/cache@v2
       with:
@@ -107,8 +104,6 @@ jobs:
         profile: minimal
         override: true
         target: 'powerpc-unknown-linux-gnu'
-
-    - run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
 
     - name: Cache cargo directories
       uses: actions/cache@v2
