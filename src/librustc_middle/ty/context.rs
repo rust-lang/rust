@@ -1905,46 +1905,50 @@ macro_rules! sty_debug_print {
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn debug_stats(self) -> impl std::fmt::Debug + 'tcx {
+        struct DebugStats<'tcx>(TyCtxt<'tcx>);
+
+        impl std::fmt::Debug for DebugStats<'tcx> {
+            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                sty_debug_print!(
+                    fmt,
+                    self.0,
+                    Adt,
+                    Array,
+                    Slice,
+                    RawPtr,
+                    Ref,
+                    FnDef,
+                    FnPtr,
+                    Placeholder,
+                    Generator,
+                    GeneratorWitness,
+                    Dynamic,
+                    Closure,
+                    Tuple,
+                    Bound,
+                    Param,
+                    Infer,
+                    Projection,
+                    Opaque,
+                    Foreign
+                )?;
+
+                writeln!(fmt, "InternalSubsts interner: #{}", self.0.interners.substs.len())?;
+                writeln!(fmt, "Region interner: #{}", self.0.interners.region.len())?;
+                writeln!(fmt, "Stability interner: #{}", self.0.stability_interner.len())?;
+                writeln!(
+                    fmt,
+                    "Const Stability interner: #{}",
+                    self.0.const_stability_interner.len()
+                )?;
+                writeln!(fmt, "Allocation interner: #{}", self.0.allocation_interner.len())?;
+                writeln!(fmt, "Layout interner: #{}", self.0.layout_interner.len())?;
+
+                Ok(())
+            }
+        }
+
         DebugStats(self)
-    }
-}
-
-struct DebugStats<'tcx>(TyCtxt<'tcx>);
-
-impl std::fmt::Debug for DebugStats<'tcx> {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        sty_debug_print!(
-            fmt,
-            self.0,
-            Adt,
-            Array,
-            Slice,
-            RawPtr,
-            Ref,
-            FnDef,
-            FnPtr,
-            Placeholder,
-            Generator,
-            GeneratorWitness,
-            Dynamic,
-            Closure,
-            Tuple,
-            Bound,
-            Param,
-            Infer,
-            Projection,
-            Opaque,
-            Foreign
-        )?;
-
-        writeln!(fmt, "InternalSubsts interner: #{}", self.0.interners.substs.len())?;
-        writeln!(fmt, "Region interner: #{}", self.0.interners.region.len())?;
-        writeln!(fmt, "Stability interner: #{}", self.0.stability_interner.len())?;
-        writeln!(fmt, "Const Stability interner: #{}", self.0.const_stability_interner.len())?;
-        writeln!(fmt, "Allocation interner: #{}", self.0.allocation_interner.len())?;
-        writeln!(fmt, "Layout interner: #{}", self.0.layout_interner.len())?;
-
-        Ok(())
     }
 }
 

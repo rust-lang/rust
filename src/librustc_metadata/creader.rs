@@ -84,13 +84,11 @@ impl std::ops::Deref for CrateMetadataRef<'_> {
 
 struct CrateDump<'a>(&'a CStore);
 
-fn crate_dump(cstore: &'a CStore) -> impl std::fmt::Debug + 'a {
-    CrateDump(cstore)
-}
-
 impl<'a> std::fmt::Debug for CrateDump<'a> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(fmt, "resolved crates:")?;
+        // `iter_crate_data` does not allow returning values. Thus we use a mutable variable here
+        // that aggregates the value (and any errors that could happen).
         let mut res = Ok(());
         self.0.iter_crate_data(|cnum, data| {
             res = res.and(
@@ -878,7 +876,7 @@ impl<'a> CrateLoader<'a> {
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 
-        info!("{:?}", crate_dump(&self.cstore));
+        info!("{:?}", CrateDump(&self.cstore));
 
         self.report_unused_deps(krate);
     }
