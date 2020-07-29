@@ -15,6 +15,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
+use rustc_span::def_id::DefPathHash;
 
 use std::fmt;
 use std::hash::Hash;
@@ -31,6 +32,8 @@ pub trait DepContext: Copy {
 
     /// Try to force a dep node to execute and see if it's green.
     fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
+
+    fn register_reused_dep_path_hash(&self, hash: DefPathHash);
 
     /// Return whether the current session is tainted by errors.
     fn has_errors_or_delayed_span_bugs(&self) -> bool;

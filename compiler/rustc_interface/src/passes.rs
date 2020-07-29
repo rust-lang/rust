@@ -747,7 +747,7 @@ pub fn create_global_ctxt<'tcx>(
         Definitions::new(crate_name, sess.local_crate_disambiguator()),
     ));
 
-    let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
+    let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess, defs);
 
     let codegen_backend = compiler.codegen_backend();
     let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
