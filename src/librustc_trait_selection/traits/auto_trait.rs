@@ -802,6 +802,38 @@ impl AutoTraitFinder<'tcx> {
                         _ => {}
                     };
                 }
+                ty::PredicateAtom::ConstEquate(c1, c2) => {
+                    let evaluate = |c: &'tcx ty::Const<'tcx>| {
+                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                            match select.infcx().const_eval_resolve(
+                                obligation.param_env,
+                                def,
+                                substs,
+                                promoted,
+                                Some(obligation.cause.span),
+                            ) {
+                                Ok(val) => Ok(ty::Const::from_value(select.tcx(), val, c.ty)),
+                                Err(err) => Err(err),
+                            }
+                        } else {
+                            Ok(c)
+                        }
+                    };
+
+                    match (evaluate(c1), evaluate(c2)) {
+                        (Ok(c1), Ok(c2)) => {
+                            match select
+                                .infcx()
+                                .at(&obligation.cause, obligation.param_env)
+                                .eq(c1, c2)
+                            {
+                                Ok(_) => (),
+                                Err(_) => return false,
+                            }
+                        }
+                        _ => return false,
+                    }
+                }
                 _ => panic!("Unexpected predicate {:?} {:?}", ty, predicate),
             };
         }
