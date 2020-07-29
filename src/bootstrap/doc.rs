@@ -460,7 +460,7 @@ impl Step for Std {
         // open the corresponding rendered docs.
         for path in builder.paths.iter().map(components_simplified) {
             if path.get(0) == Some(&"library") {
-                let requested_crate = &path[1][3..];
+                let requested_crate = &path[1];
                 if krates.contains(&requested_crate) {
                     let index = out.join(requested_crate).join("index.html");
                     open(builder, &index);
