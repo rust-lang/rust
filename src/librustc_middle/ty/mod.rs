@@ -2046,7 +2046,6 @@ impl<'tcx> VariantDef {
     /// If someone speeds up attribute loading to not be a performance concern, they can
     /// remove this hack and use the constructor `DefId` everywhere.
     pub fn new(
-        tcx: TyCtxt<'tcx>,
         ident: Ident,
         variant_did: Option<DefId>,
         ctor_def_id: Option<DefId>,
@@ -2056,6 +2055,7 @@ impl<'tcx> VariantDef {
         adt_kind: AdtKind,
         parent_did: DefId,
         recovered: bool,
+        is_field_list_non_exhaustive: bool,
     ) -> Self {
         debug!(
             "VariantDef::new(ident = {:?}, variant_did = {:?}, ctor_def_id = {:?}, discr = {:?},
@@ -2064,14 +2064,8 @@ impl<'tcx> VariantDef {
         );
 
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
-        if adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive) {
-            debug!("found non-exhaustive field list for {:?}", parent_did);
-            flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
-        } else if let Some(variant_did) = variant_did {
-            if tcx.has_attr(variant_did, sym::non_exhaustive) {
-                debug!("found non-exhaustive field list for {:?}", variant_did);
-                flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
-            }
+        if is_field_list_non_exhaustive {
+            flags |= VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
         }
 
         VariantDef {

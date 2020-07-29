@@ -780,7 +780,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_variant(
         &self,
-        tcx: TyCtxt<'tcx>,
         kind: &EntryKind,
         index: DefIndex,
         parent_did: DefId,
@@ -805,7 +804,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let ctor_did = data.ctor.map(|index| self.local_def_id(index));
 
         ty::VariantDef::new(
-            tcx,
             self.item_ident(index, sess),
             variant_did,
             ctor_did,
@@ -826,6 +824,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             adt_kind,
             parent_did,
             false,
+            data.is_non_exhaustive,
         )
     }
 
@@ -847,10 +846,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .get(self, item_id)
                 .unwrap_or(Lazy::empty())
                 .decode(self)
-                .map(|index| self.get_variant(tcx, &self.kind(index), index, did, tcx.sess))
+                .map(|index| self.get_variant(&self.kind(index), index, did, tcx.sess))
                 .collect()
         } else {
-            std::iter::once(self.get_variant(tcx, &kind, item_id, did, tcx.sess)).collect()
+            std::iter::once(self.get_variant(&kind, item_id, did, tcx.sess)).collect()
         };
 
         tcx.alloc_adt_def(did, adt_kind, variants, repr)
