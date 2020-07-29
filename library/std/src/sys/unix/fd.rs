@@ -45,6 +45,22 @@ mod android {
             }
         }
 
+        pub fn untag(&mut self, fd: c_int) {
+            weak!(fn android_fdsan_exchange_owner_tag(c_int, u64, u64) -> u64);
+            match android_fdsan_exchange_owner_tag.get() {
+                Some(f) => {
+                    let prev = unsafe { f(fd, self.0, 0) };
+                    if prev != self.0 {
+                        panic!("attempted to release ownership of not-owned file descriptor");
+                    }
+                }
+
+                None => {}
+            }
+
+            self.0 = 0;
+        }
+
         pub fn close(&mut self, fd: c_int) {
             weak!(fn android_fdsan_close_with_tag(c_int, u64) -> c_int);
             match android_fdsan_close_with_tag.get() {
@@ -99,6 +115,15 @@ impl FileDesc {
     }
 
     /// Extracts the actual file descriptor without closing it.
+    #[cfg(target_os = "android")]
+    pub fn into_raw(mut self) -> c_int {
+        let fd = self.fd;
+        self.tag.untag(fd);
+        mem::forget(self);
+        fd
+    }
+
+    #[cfg(not(target_os = "android"))]
     pub fn into_raw(self) -> c_int {
         let fd = self.fd;
         mem::forget(self);
