@@ -59,11 +59,11 @@ pub fn parse_search_replace(
     rule: &str,
     parse_only: bool,
     db: &RootDatabase,
-    position: FilePosition,
+    resolve_context: FilePosition,
     selections: Vec<FileRange>,
 ) -> Result<Vec<SourceFileEdit>, SsrError> {
     let rule: SsrRule = rule.parse()?;
-    let mut match_finder = MatchFinder::in_context(db, position, selections);
+    let mut match_finder = MatchFinder::in_context(db, resolve_context, selections);
     match_finder.add_rule(rule)?;
     if parse_only {
         return Ok(Vec::new());
