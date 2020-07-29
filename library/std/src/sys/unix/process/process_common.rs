@@ -80,7 +80,7 @@ pub struct Command {
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
-    saw_nul: bool,
+    problem: Problem,
     closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
@@ -129,10 +129,17 @@ pub enum Stdio {
     Fd(FileDesc),
 }
 
+#[derive(Copy, Clone)]
+pub enum Problem {
+    Ok,
+    SawNul,
+    Oversized,
+}
+
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        let mut saw_nul = false;
-        let program = os2c(program, &mut saw_nul);
+        let mut problem = Problem::Ok;
+        let program = os2c(program, &mut problem);
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
             args: vec![program.clone()],
@@ -142,7 +149,7 @@ impl Command {
             cwd: None,
             uid: None,
             gid: None,
-            saw_nul,
+            problem,
             closures: Vec::new(),
             stdin: None,
             stdout: None,
@@ -152,16 +159,25 @@ impl Command {
 
     pub fn set_arg_0(&mut self, arg: &OsStr) {
         // Set a new arg0
-        let arg = os2c(arg, &mut self.saw_nul);
+        let arg = os2c(arg, &mut self.problem);
         debug_assert!(self.argv.0.len() > 1);
         self.argv.0[0] = arg.as_ptr();
         self.args[0] = arg;
     }
 
+    pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
+        self.arg(arg);
+        self.problem.as_result()?;
+        if self.check_size(false)? == false {
+            self.problem = Problem::Oversized;
+        }
+        self.problem.as_result()
+    }
+
     pub fn arg(&mut self, arg: &OsStr) {
         // Overwrite the trailing NULL pointer in `argv` and then add a new null
         // pointer.
-        let arg = os2c(arg, &mut self.saw_nul);
+        let arg = os2c(arg, &mut self.problem);
         self.argv.0[self.args.len()] = arg.as_ptr();
         self.argv.0.push(ptr::null());
 
@@ -171,7 +187,7 @@ impl Command {
     }
 
     pub fn cwd(&mut self, dir: &OsStr) {
-        self.cwd = Some(os2c(dir, &mut self.saw_nul));
+        self.cwd = Some(os2c(dir, &mut self.problem));
     }
     pub fn uid(&mut self, id: uid_t) {
         self.uid = Some(id);
@@ -180,8 +196,8 @@ impl Command {
         self.gid = Some(id);
     }
 
-    pub fn saw_nul(&self) -> bool {
-        self.saw_nul
+    pub fn problem(&self) -> Problem {
+        self.problem
     }
     pub fn get_argv(&self) -> &Vec<*const c_char> {
         &self.argv.0
@@ -214,11 +230,11 @@ impl Command {
         let env = self.env.capture();
         let env_size: usize = env
             .iter()
-            .map(|(k, v)|
-                os2c(k.as_ref(), &mut self.saw_nul).to_bytes().len()
-                    + os2c(v.as_ref(), &mut self.saw_nul).to_bytes().len()
+            .map(|(k, v)| {
+                os2c(k.as_ref(), &mut self.problem).to_bytes().len()
+                    + os2c(v.as_ref(), &mut self.problem).to_bytes().len()
                     + 2
-            )
+            })
             .sum::<usize>()
             + (env.len() + 1) * mem::size_of::<*const u8>();
 
@@ -273,7 +289,7 @@ impl Command {
 
     pub fn capture_env(&mut self) -> Option<CStringArray> {
         let maybe_env = self.env.capture_if_changed();
-        maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
+        maybe_env.map(|env| construct_envp(env, &mut self.problem))
     }
     #[allow(dead_code)]
     pub fn env_saw_path(&self) -> bool {
@@ -299,9 +315,9 @@ impl Command {
     }
 }
 
-fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
+fn os2c(s: &OsStr, problem: &mut Problem) -> CString {
     CString::new(s.as_bytes()).unwrap_or_else(|_e| {
-        *saw_nul = true;
+        *problem = Problem::SawNul;
         CString::new("<string-with-nul>").unwrap()
     })
 }
@@ -332,7 +348,7 @@ impl CStringArray {
     }
 }
 
-fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStringArray {
+fn construct_envp(env: BTreeMap<OsString, OsString>, problem: &mut Problem) -> CStringArray {
     let mut result = CStringArray::with_capacity(env.len());
     for (mut k, v) in env {
         // Reserve additional space for '=' and null terminator
@@ -344,7 +360,7 @@ fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStr
         if let Ok(item) = CString::new(k.into_vec()) {
             result.push(item);
         } else {
-            *saw_nul = true;
+            *problem = Problem::SawNul;
         }
     }
 
@@ -414,6 +430,20 @@ impl ChildStdio {
 
             #[cfg(target_os = "fuchsia")]
             ChildStdio::Null => None,
+        }
+    }
+}
+
+impl Problem {
+    pub fn as_result(&self) -> io::Result<()> {
+        match *self {
+            Problem::Ok => Ok(()),
+            Problem::SawNul => {
+                Err(io::Error::new(io::ErrorKind::InvalidInput, "nul byte found in provided data"))
+            }
+            Problem::Oversized => {
+                Err(io::Error::new(io::ErrorKind::InvalidInput, "Oversized command"))
+            }
         }
     }
 }

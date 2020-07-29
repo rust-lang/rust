@@ -22,9 +22,7 @@ impl Command {
 
         let envp = self.capture_env();
 
-        if self.saw_nul() {
-            return Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"));
-        }
+        self.problem().as_result()?;
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
@@ -110,8 +108,8 @@ impl Command {
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         let envp = self.capture_env();
 
-        if self.saw_nul() {
-            return io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data");
+        if let Err(err) = self.problem().as_result() {
+            return err;
         }
 
         match self.setup_io(default, true) {
@@ -389,7 +387,11 @@ impl Command {
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
             );
-            if ret == 0 { Ok(Some(p)) } else { Err(io::Error::from_raw_os_error(ret)) }
+            if ret == 0 {
+                Ok(Some(p))
+            } else {
+                Err(io::Error::from_raw_os_error(ret))
+            }
         }
     }
 }
@@ -467,11 +469,19 @@ impl ExitStatus {
     }
 
     pub fn code(&self) -> Option<i32> {
-        if self.exited() { Some(unsafe { libc::WEXITSTATUS(self.0) }) } else { None }
+        if self.exited() {
+            Some(unsafe { libc::WEXITSTATUS(self.0) })
+        } else {
+            None
+        }
     }
 
     pub fn signal(&self) -> Option<i32> {
-        if !self.exited() { Some(unsafe { libc::WTERMSIG(self.0) }) } else { None }
+        if !self.exited() {
+            Some(unsafe { libc::WTERMSIG(self.0) })
+        } else {
+            None
+        }
     }
 }
 

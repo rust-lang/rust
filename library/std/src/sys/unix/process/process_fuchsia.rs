@@ -21,12 +21,7 @@ impl Command {
     ) -> io::Result<(Process, StdioPipes)> {
         let envp = self.capture_env();
 
-        if self.saw_nul() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "nul byte found in provided data",
-            ));
-        }
+        self.problem().as_result()?;
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
@@ -36,8 +31,8 @@ impl Command {
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
-        if self.saw_nul() {
-            return io::Error::new(io::ErrorKind::InvalidInput, "nul byte found in provided data");
+        if let Err(err) = self.problem().as_result() {
+            return err;
         }
 
         match self.setup_io(default, true) {
