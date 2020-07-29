@@ -148,7 +148,7 @@ impl Command {
             program,
             env: Default::default(),
             arg_max: Default::default(),
-            arg_size: mem::size_of::<*const u8>(),
+            arg_size: mem::size_of::<*const u8>() + program.to_bytes().len() + 1,
             cwd: None,
             uid: None,
             gid: None,
