@@ -1,4 +1,4 @@
-// EMIT_MIR rustc.main.ConstProp.diff
+// EMIT_MIR bad_op_mod_by_zero.main.ConstProp.diff
 #[allow(unconditional_panic)]
 fn main() {
     let y = 0;

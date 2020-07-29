@@ -15,7 +15,7 @@ impl<T> PrintName<T> {
     const VOID: ! = panic!();
 }
 
-// EMIT_MIR rustc.no_codegen.PreCodegen.after.mir
+// EMIT_MIR remove_never_const.no_codegen.PreCodegen.after.mir
 fn no_codegen<T>() {
     let _ = PrintName::<T>::VOID;
 }

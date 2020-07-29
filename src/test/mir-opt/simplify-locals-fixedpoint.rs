@@ -12,4 +12,4 @@ fn main() {
     foo::<()>();
 }
 
-// EMIT_MIR rustc.foo.SimplifyLocals.diff
+// EMIT_MIR simplify_locals_fixedpoint.foo.SimplifyLocals.diff

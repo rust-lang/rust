@@ -11,7 +11,7 @@ fn encode(this: ((), u8, u8)) {
     assert!(this.2 == 0);
 }
 
-// EMIT_MIR rustc.main.ConstProp.diff
+// EMIT_MIR issue_66971.main.ConstProp.diff
 fn main() {
     encode(((), 0, 0));
 }

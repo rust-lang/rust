@@ -611,6 +611,7 @@ dependencies = [
  "diff",
  "env_logger 0.7.1",
  "getopts",
+ "glob",
  "lazy_static",
  "libc",
  "log",

@@ -14,7 +14,7 @@ impl Drop for HasDrop {
 
 fn callee() {}
 
-// EMIT_MIR rustc.main-{{closure}}.generator_resume.0.mir
+// EMIT_MIR generator_tiny.main-{{closure}}.generator_resume.0.mir
 fn main() {
     let _gen = |_x: u8| {
         let _d = HasDrop;

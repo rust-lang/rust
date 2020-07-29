@@ -177,6 +177,7 @@ fn dump_path(
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
 
+    let crate_name = tcx.crate_name(source.def_id().krate);
     let item_name = tcx.def_path(source.def_id()).to_filename_friendly_no_crate();
     // All drop shims have the same DefId, so we have to add the type
     // to get unique file names.
@@ -196,8 +197,15 @@ fn dump_path(
     };
 
     let file_name = format!(
-        "rustc.{}{}{}{}.{}.{}.{}",
-        item_name, shim_disambiguator, promotion_id, pass_num, pass_name, disambiguator, extension,
+        "{}.{}{}{}{}.{}.{}.{}",
+        crate_name,
+        item_name,
+        shim_disambiguator,
+        promotion_id,
+        pass_num,
+        pass_name,
+        disambiguator,
+        extension,
     );
 
     file_path.push(&file_name);

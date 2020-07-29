@@ -4,8 +4,8 @@
 
 // needs-profiler-support
 // compile-flags: -Zinstrument-coverage
-// EMIT_MIR rustc.main.InstrumentCoverage.diff
-// EMIT_MIR rustc.bar.InstrumentCoverage.diff
+// EMIT_MIR instrument_coverage.main.InstrumentCoverage.diff
+// EMIT_MIR instrument_coverage.bar.InstrumentCoverage.diff
 fn main() {
     loop {
         if bar() {
