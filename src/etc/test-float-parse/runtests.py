@@ -195,9 +195,8 @@ def main():
     global MAILBOX
     tests = [os.path.splitext(f)[0] for f in glob('*.rs')
                                     if not f.startswith('_')]
-    listed = sys.argv[1:]
-    if listed:
-        tests = [test for test in tests if test in listed]
+    args = sys.argv[1:]
+    tests = [test for test in tests if test in args]
     if not tests:
         print("Error: No tests to run")
         sys.exit(1)
