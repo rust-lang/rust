@@ -26,6 +26,7 @@ RUN apt-get update && \
       libedit-dev \
       libncurses-dev \
       make \
+      ninja-build \
       patch \
       perl \
       pkg-config \

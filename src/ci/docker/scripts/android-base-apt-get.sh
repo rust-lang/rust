@@ -10,6 +10,7 @@ apt-get install -y --no-install-recommends \
   git \
   libssl-dev \
   make \
+  ninja-build \
   pkg-config \
   python3 \
   sudo \
