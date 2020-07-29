@@ -1,6 +1,22 @@
 SourceFile =
   Attr*
-  items:ModuleItem*
+  Item*
+
+Item =
+  ConstDef
+| EnumDef
+| ExternBlock
+| ExternCrateItem
+| FnDef
+| ImplDef
+| MacroCall
+| Module
+| StaticDef
+| StructDef
+| TraitDef
+| TypeAliasDef
+| UnionDef
+| UseItem
 
 FnDef =
  Attr* Visibility? Abi? 'const' 'default' 'async' 'unsafe' 'fn' Name TypeParamList?
@@ -59,7 +75,7 @@ Module =
 ItemList =
   '{'
     AssocItem*
-    items:ModuleItem*
+    Item*
   '}'
 
 ConstDef =
@@ -168,7 +184,7 @@ Label =
 BlockExpr =
   Attr* Label
   '{'
-    items:ModuleItem*
+    Item*
     statements:Stmt*
     Expr?
   '}'
@@ -316,7 +332,7 @@ TokenTree =
   '(' ')' | '{' '}' | '[' ']'
 
 MacroItems =
-  items:ModuleItem*
+  Item*
 
 MacroStmts =
   statements:Stmt*
@@ -453,22 +469,6 @@ AssocItem =
 
 ExternItem =
   FnDef | StaticDef
-
-ModuleItem =
-  StructDef
-| UnionDef
-| EnumDef
-| FnDef
-| TraitDef
-| TypeAliasDef
-| ImplDef
-| UseItem
-| ExternCrateItem
-| ConstDef
-| StaticDef
-| Module
-| MacroCall
-| ExternBlock
 
 AttrInput =
   Literal

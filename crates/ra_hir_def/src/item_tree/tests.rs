@@ -21,7 +21,7 @@ fn test_inner_items(ra_fixture: &str) {
     let mut outer_items = FxHashSet::default();
     let mut worklist = tree.top_level_items().to_vec();
     while let Some(item) = worklist.pop() {
-        let node: ast::ModuleItem = match item {
+        let node: ast::Item = match item {
             ModItem::Import(it) => tree.source(&db, InFile::new(file_id, it)).into(),
             ModItem::ExternCrate(it) => tree.source(&db, InFile::new(file_id, it)).into(),
             ModItem::Function(it) => tree.source(&db, InFile::new(file_id, it)).into(),
@@ -53,7 +53,7 @@ fn test_inner_items(ra_fixture: &str) {
 
     // Now descend the root node and check that all `ast::ModuleItem`s are either recorded above, or
     // registered as inner items.
-    for item in root.descendants().skip(1).filter_map(ast::ModuleItem::cast) {
+    for item in root.descendants().skip(1).filter_map(ast::Item::cast) {
         if outer_items.contains(&item) {
             continue;
         }
@@ -279,7 +279,7 @@ fn simple_inner_items() {
 
             inner items:
 
-            for AST FileAstId::<ra_syntax::ast::generated::nodes::ModuleItem>(2):
+            for AST FileAstId::<ra_syntax::ast::generated::nodes::Item>(2):
             Function { name: Name(Text("end")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(1), has_self_param: false, is_unsafe: false, params: [], is_varargs: false, ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(2) }
 
         "#]],
@@ -412,7 +412,7 @@ fn inner_item_attrs() {
 
             inner items:
 
-            for AST FileAstId::<ra_syntax::ast::generated::nodes::ModuleItem>(1):
+            for AST FileAstId::<ra_syntax::ast::generated::nodes::Item>(1):
             #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("on_inner"))] }, input: None }]) }]
             Function { name: Name(Text("inner")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(4294967295), has_self_param: false, is_unsafe: false, params: [], is_varargs: false, ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::FnDef>(1) }
 

@@ -26,6 +26,57 @@ impl Attr {
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for ConstDef {}
+impl ast::NameOwner for ConstDef {}
+impl ast::VisibilityOwner for ConstDef {}
+impl ast::TypeAscriptionOwner for ConstDef {}
+impl ConstDef {
+    pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EnumDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for EnumDef {}
+impl ast::NameOwner for EnumDef {}
+impl ast::VisibilityOwner for EnumDef {}
+impl ast::TypeParamsOwner for EnumDef {}
+impl EnumDef {
+    pub fn enum_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![enum]) }
+    pub fn variant_list(&self) -> Option<EnumVariantList> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ExternBlock {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for ExternBlock {}
+impl ExternBlock {
+    pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
+    pub fn extern_item_list(&self) -> Option<ExternItemList> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ExternCrateItem {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for ExternCrateItem {}
+impl ast::VisibilityOwner for ExternCrateItem {}
+impl ExternCrateItem {
+    pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
+    pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
+    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
+    pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
+    pub fn alias(&self) -> Option<Alias> { support::child(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnDef {
     pub(crate) syntax: SyntaxNode,
 }
@@ -43,6 +94,131 @@ impl FnDef {
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn body(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ImplDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for ImplDef {}
+impl ast::VisibilityOwner for ImplDef {}
+impl ast::TypeParamsOwner for ImplDef {}
+impl ImplDef {
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
+    pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
+    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
+    pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroCall {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for MacroCall {}
+impl ast::NameOwner for MacroCall {}
+impl MacroCall {
+    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
+    pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Module {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for Module {}
+impl ast::NameOwner for Module {}
+impl ast::VisibilityOwner for Module {}
+impl Module {
+    pub fn mod_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mod]) }
+    pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StaticDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for StaticDef {}
+impl ast::NameOwner for StaticDef {}
+impl ast::VisibilityOwner for StaticDef {}
+impl ast::TypeAscriptionOwner for StaticDef {}
+impl StaticDef {
+    pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
+    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StructDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for StructDef {}
+impl ast::NameOwner for StructDef {}
+impl ast::VisibilityOwner for StructDef {}
+impl ast::TypeParamsOwner for StructDef {}
+impl StructDef {
+    pub fn struct_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![struct]) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+    pub fn field_def_list(&self) -> Option<FieldDefList> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TraitDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for TraitDef {}
+impl ast::NameOwner for TraitDef {}
+impl ast::VisibilityOwner for TraitDef {}
+impl ast::TypeParamsOwner for TraitDef {}
+impl ast::TypeBoundsOwner for TraitDef {}
+impl TraitDef {
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
+    pub fn auto_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![auto]) }
+    pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
+    pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeAliasDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for TypeAliasDef {}
+impl ast::NameOwner for TypeAliasDef {}
+impl ast::VisibilityOwner for TypeAliasDef {}
+impl ast::TypeParamsOwner for TypeAliasDef {}
+impl ast::TypeBoundsOwner for TypeAliasDef {}
+impl TypeAliasDef {
+    pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
+    pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UnionDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for UnionDef {}
+impl ast::NameOwner for UnionDef {}
+impl ast::VisibilityOwner for UnionDef {}
+impl ast::TypeParamsOwner for UnionDef {}
+impl UnionDef {
+    pub fn union_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![union]) }
+    pub fn record_field_def_list(&self) -> Option<RecordFieldDefList> {
+        support::child(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UseItem {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for UseItem {}
+impl ast::VisibilityOwner for UseItem {}
+impl UseItem {
+    pub fn use_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![use]) }
+    pub fn use_tree(&self) -> Option<UseTree> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -122,19 +298,6 @@ impl BlockExpr {
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StructDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for StructDef {}
-impl ast::NameOwner for StructDef {}
-impl ast::VisibilityOwner for StructDef {}
-impl ast::TypeParamsOwner for StructDef {}
-impl StructDef {
-    pub fn struct_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![struct]) }
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-    pub fn field_def_list(&self) -> Option<FieldDefList> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldDefList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -151,20 +314,6 @@ impl TupleFieldDefList {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     pub fn fields(&self) -> AstChildren<TupleFieldDef> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UnionDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for UnionDef {}
-impl ast::NameOwner for UnionDef {}
-impl ast::VisibilityOwner for UnionDef {}
-impl ast::TypeParamsOwner for UnionDef {}
-impl UnionDef {
-    pub fn union_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![union]) }
-    pub fn record_field_def_list(&self) -> Option<RecordFieldDefList> {
-        support::child(&self.syntax)
-    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldDef {
@@ -188,18 +337,6 @@ impl TupleFieldDef {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnumDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for EnumDef {}
-impl ast::NameOwner for EnumDef {}
-impl ast::VisibilityOwner for EnumDef {}
-impl ast::TypeParamsOwner for EnumDef {}
-impl EnumDef {
-    pub fn enum_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![enum]) }
-    pub fn variant_list(&self) -> Option<EnumVariantList> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EnumVariantList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -221,21 +358,6 @@ impl EnumVariant {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for TraitDef {}
-impl ast::NameOwner for TraitDef {}
-impl ast::VisibilityOwner for TraitDef {}
-impl ast::TypeParamsOwner for TraitDef {}
-impl ast::TypeBoundsOwner for TraitDef {}
-impl TraitDef {
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
-    pub fn auto_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![auto]) }
-    pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
-    pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBoundList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -251,82 +373,6 @@ impl ItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn assoc_items(&self) -> AstChildren<AssocItem> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Module {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for Module {}
-impl ast::NameOwner for Module {}
-impl ast::VisibilityOwner for Module {}
-impl Module {
-    pub fn mod_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mod]) }
-    pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConstDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for ConstDef {}
-impl ast::NameOwner for ConstDef {}
-impl ast::VisibilityOwner for ConstDef {}
-impl ast::TypeAscriptionOwner for ConstDef {}
-impl ConstDef {
-    pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
-    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StaticDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for StaticDef {}
-impl ast::NameOwner for StaticDef {}
-impl ast::VisibilityOwner for StaticDef {}
-impl ast::TypeAscriptionOwner for StaticDef {}
-impl StaticDef {
-    pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
-    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
-    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeAliasDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for TypeAliasDef {}
-impl ast::NameOwner for TypeAliasDef {}
-impl ast::VisibilityOwner for TypeAliasDef {}
-impl ast::TypeParamsOwner for TypeAliasDef {}
-impl ast::TypeBoundsOwner for TypeAliasDef {}
-impl TypeAliasDef {
-    pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
-    pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImplDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for ImplDef {}
-impl ast::VisibilityOwner for ImplDef {}
-impl ast::TypeParamsOwner for ImplDef {}
-impl ImplDef {
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
-    pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
-    pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
-    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
-    pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenType {
@@ -920,18 +966,6 @@ impl MacroPat {
     pub fn macro_call(&self) -> Option<MacroCall> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MacroCall {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for MacroCall {}
-impl ast::NameOwner for MacroCall {}
-impl MacroCall {
-    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
-    pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPat {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1125,17 +1159,6 @@ impl Param {
     pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![...]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UseItem {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for UseItem {}
-impl ast::VisibilityOwner for UseItem {}
-impl UseItem {
-    pub fn use_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![use]) }
-    pub fn use_tree(&self) -> Option<UseTree> { support::child(&self.syntax) }
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTree {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1162,20 +1185,6 @@ pub struct Alias {
 impl ast::NameOwner for Alias {}
 impl Alias {
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ExternCrateItem {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for ExternCrateItem {}
-impl ast::VisibilityOwner for ExternCrateItem {}
-impl ExternCrateItem {
-    pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
-    pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
-    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
-    pub fn alias(&self) -> Option<Alias> { support::child(&self.syntax) }
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathSegment {
@@ -1229,15 +1238,6 @@ impl ConstArg {
     pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ExternBlock {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for ExternBlock {}
-impl ExternBlock {
-    pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
-    pub fn extern_item_list(&self) -> Option<ExternItemList> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternItemList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1257,23 +1257,23 @@ impl MetaItem {
     pub fn nested_meta_items(&self) -> AstChildren<MetaItem> { support::children(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ModuleItem {
-    StructDef(StructDef),
-    UnionDef(UnionDef),
+pub enum Item {
+    ConstDef(ConstDef),
     EnumDef(EnumDef),
+    ExternBlock(ExternBlock),
+    ExternCrateItem(ExternCrateItem),
     FnDef(FnDef),
+    ImplDef(ImplDef),
+    MacroCall(MacroCall),
+    Module(Module),
+    StaticDef(StaticDef),
+    StructDef(StructDef),
     TraitDef(TraitDef),
     TypeAliasDef(TypeAliasDef),
-    ImplDef(ImplDef),
+    UnionDef(UnionDef),
     UseItem(UseItem),
-    ExternCrateItem(ExternCrateItem),
-    ConstDef(ConstDef),
-    StaticDef(StaticDef),
-    Module(Module),
-    MacroCall(MacroCall),
-    ExternBlock(ExternBlock),
 }
-impl ast::AttrsOwner for ModuleItem {}
+impl ast::AttrsOwner for Item {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeRef {
     ParenType(ParenType),
@@ -1407,8 +1407,151 @@ impl AstNode for Attr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for ConstDef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_DEF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for EnumDef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_DEF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ExternBlock {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_BLOCK }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ExternCrateItem {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_CRATE_ITEM }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for FnDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == FN_DEF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ImplDef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_DEF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for MacroCall {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_CALL }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for Module {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MODULE }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for StaticDef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STATIC_DEF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for StructDef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STRUCT_DEF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for TraitDef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT_DEF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for TypeAliasDef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ALIAS_DEF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for UnionDef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == UNION_DEF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for UseItem {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_ITEM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1506,17 +1649,6 @@ impl AstNode for BlockExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for StructDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == STRUCT_DEF }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for RecordFieldDefList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_DEF_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1530,17 +1662,6 @@ impl AstNode for RecordFieldDefList {
 }
 impl AstNode for TupleFieldDefList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_FIELD_DEF_LIST }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for UnionDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == UNION_DEF }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1572,17 +1693,6 @@ impl AstNode for TupleFieldDef {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for EnumDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_DEF }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for EnumVariantList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_VARIANT_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1605,17 +1715,6 @@ impl AstNode for EnumVariant {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TraitDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT_DEF }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for TypeBoundList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1629,61 +1728,6 @@ impl AstNode for TypeBoundList {
 }
 impl AstNode for ItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ITEM_LIST }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for Module {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MODULE }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for ConstDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_DEF }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for StaticDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == STATIC_DEF }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for TypeAliasDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ALIAS_DEF }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for ImplDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_DEF }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2397,17 +2441,6 @@ impl AstNode for MacroPat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for MacroCall {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_CALL }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for RecordPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2606,17 +2639,6 @@ impl AstNode for Param {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for UseItem {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_ITEM }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for UseTree {
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2641,17 +2663,6 @@ impl AstNode for UseTreeList {
 }
 impl AstNode for Alias {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ALIAS }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for ExternCrateItem {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_CRATE_ITEM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2716,17 +2727,6 @@ impl AstNode for ConstArg {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for ExternBlock {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_BLOCK }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for ExternItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_ITEM_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2749,93 +2749,93 @@ impl AstNode for MetaItem {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl From<StructDef> for ModuleItem {
-    fn from(node: StructDef) -> ModuleItem { ModuleItem::StructDef(node) }
+impl From<ConstDef> for Item {
+    fn from(node: ConstDef) -> Item { Item::ConstDef(node) }
 }
-impl From<UnionDef> for ModuleItem {
-    fn from(node: UnionDef) -> ModuleItem { ModuleItem::UnionDef(node) }
+impl From<EnumDef> for Item {
+    fn from(node: EnumDef) -> Item { Item::EnumDef(node) }
 }
-impl From<EnumDef> for ModuleItem {
-    fn from(node: EnumDef) -> ModuleItem { ModuleItem::EnumDef(node) }
+impl From<ExternBlock> for Item {
+    fn from(node: ExternBlock) -> Item { Item::ExternBlock(node) }
 }
-impl From<FnDef> for ModuleItem {
-    fn from(node: FnDef) -> ModuleItem { ModuleItem::FnDef(node) }
+impl From<ExternCrateItem> for Item {
+    fn from(node: ExternCrateItem) -> Item { Item::ExternCrateItem(node) }
 }
-impl From<TraitDef> for ModuleItem {
-    fn from(node: TraitDef) -> ModuleItem { ModuleItem::TraitDef(node) }
+impl From<FnDef> for Item {
+    fn from(node: FnDef) -> Item { Item::FnDef(node) }
 }
-impl From<TypeAliasDef> for ModuleItem {
-    fn from(node: TypeAliasDef) -> ModuleItem { ModuleItem::TypeAliasDef(node) }
+impl From<ImplDef> for Item {
+    fn from(node: ImplDef) -> Item { Item::ImplDef(node) }
 }
-impl From<ImplDef> for ModuleItem {
-    fn from(node: ImplDef) -> ModuleItem { ModuleItem::ImplDef(node) }
+impl From<MacroCall> for Item {
+    fn from(node: MacroCall) -> Item { Item::MacroCall(node) }
 }
-impl From<UseItem> for ModuleItem {
-    fn from(node: UseItem) -> ModuleItem { ModuleItem::UseItem(node) }
+impl From<Module> for Item {
+    fn from(node: Module) -> Item { Item::Module(node) }
 }
-impl From<ExternCrateItem> for ModuleItem {
-    fn from(node: ExternCrateItem) -> ModuleItem { ModuleItem::ExternCrateItem(node) }
+impl From<StaticDef> for Item {
+    fn from(node: StaticDef) -> Item { Item::StaticDef(node) }
 }
-impl From<ConstDef> for ModuleItem {
-    fn from(node: ConstDef) -> ModuleItem { ModuleItem::ConstDef(node) }
+impl From<StructDef> for Item {
+    fn from(node: StructDef) -> Item { Item::StructDef(node) }
 }
-impl From<StaticDef> for ModuleItem {
-    fn from(node: StaticDef) -> ModuleItem { ModuleItem::StaticDef(node) }
+impl From<TraitDef> for Item {
+    fn from(node: TraitDef) -> Item { Item::TraitDef(node) }
 }
-impl From<Module> for ModuleItem {
-    fn from(node: Module) -> ModuleItem { ModuleItem::Module(node) }
+impl From<TypeAliasDef> for Item {
+    fn from(node: TypeAliasDef) -> Item { Item::TypeAliasDef(node) }
 }
-impl From<MacroCall> for ModuleItem {
-    fn from(node: MacroCall) -> ModuleItem { ModuleItem::MacroCall(node) }
+impl From<UnionDef> for Item {
+    fn from(node: UnionDef) -> Item { Item::UnionDef(node) }
 }
-impl From<ExternBlock> for ModuleItem {
-    fn from(node: ExternBlock) -> ModuleItem { ModuleItem::ExternBlock(node) }
+impl From<UseItem> for Item {
+    fn from(node: UseItem) -> Item { Item::UseItem(node) }
 }
-impl AstNode for ModuleItem {
+impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            STRUCT_DEF | UNION_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | IMPL_DEF
-            | USE_ITEM | EXTERN_CRATE_ITEM | CONST_DEF | STATIC_DEF | MODULE | MACRO_CALL
-            | EXTERN_BLOCK => true,
+            CONST_DEF | ENUM_DEF | EXTERN_BLOCK | EXTERN_CRATE_ITEM | FN_DEF | IMPL_DEF
+            | MACRO_CALL | MODULE | STATIC_DEF | STRUCT_DEF | TRAIT_DEF | TYPE_ALIAS_DEF
+            | UNION_DEF | USE_ITEM => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            STRUCT_DEF => ModuleItem::StructDef(StructDef { syntax }),
-            UNION_DEF => ModuleItem::UnionDef(UnionDef { syntax }),
-            ENUM_DEF => ModuleItem::EnumDef(EnumDef { syntax }),
-            FN_DEF => ModuleItem::FnDef(FnDef { syntax }),
-            TRAIT_DEF => ModuleItem::TraitDef(TraitDef { syntax }),
-            TYPE_ALIAS_DEF => ModuleItem::TypeAliasDef(TypeAliasDef { syntax }),
-            IMPL_DEF => ModuleItem::ImplDef(ImplDef { syntax }),
-            USE_ITEM => ModuleItem::UseItem(UseItem { syntax }),
-            EXTERN_CRATE_ITEM => ModuleItem::ExternCrateItem(ExternCrateItem { syntax }),
-            CONST_DEF => ModuleItem::ConstDef(ConstDef { syntax }),
-            STATIC_DEF => ModuleItem::StaticDef(StaticDef { syntax }),
-            MODULE => ModuleItem::Module(Module { syntax }),
-            MACRO_CALL => ModuleItem::MacroCall(MacroCall { syntax }),
-            EXTERN_BLOCK => ModuleItem::ExternBlock(ExternBlock { syntax }),
+            CONST_DEF => Item::ConstDef(ConstDef { syntax }),
+            ENUM_DEF => Item::EnumDef(EnumDef { syntax }),
+            EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
+            EXTERN_CRATE_ITEM => Item::ExternCrateItem(ExternCrateItem { syntax }),
+            FN_DEF => Item::FnDef(FnDef { syntax }),
+            IMPL_DEF => Item::ImplDef(ImplDef { syntax }),
+            MACRO_CALL => Item::MacroCall(MacroCall { syntax }),
+            MODULE => Item::Module(Module { syntax }),
+            STATIC_DEF => Item::StaticDef(StaticDef { syntax }),
+            STRUCT_DEF => Item::StructDef(StructDef { syntax }),
+            TRAIT_DEF => Item::TraitDef(TraitDef { syntax }),
+            TYPE_ALIAS_DEF => Item::TypeAliasDef(TypeAliasDef { syntax }),
+            UNION_DEF => Item::UnionDef(UnionDef { syntax }),
+            USE_ITEM => Item::UseItem(UseItem { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            ModuleItem::StructDef(it) => &it.syntax,
-            ModuleItem::UnionDef(it) => &it.syntax,
-            ModuleItem::EnumDef(it) => &it.syntax,
-            ModuleItem::FnDef(it) => &it.syntax,
-            ModuleItem::TraitDef(it) => &it.syntax,
-            ModuleItem::TypeAliasDef(it) => &it.syntax,
-            ModuleItem::ImplDef(it) => &it.syntax,
-            ModuleItem::UseItem(it) => &it.syntax,
-            ModuleItem::ExternCrateItem(it) => &it.syntax,
-            ModuleItem::ConstDef(it) => &it.syntax,
-            ModuleItem::StaticDef(it) => &it.syntax,
-            ModuleItem::Module(it) => &it.syntax,
-            ModuleItem::MacroCall(it) => &it.syntax,
-            ModuleItem::ExternBlock(it) => &it.syntax,
+            Item::ConstDef(it) => &it.syntax,
+            Item::EnumDef(it) => &it.syntax,
+            Item::ExternBlock(it) => &it.syntax,
+            Item::ExternCrateItem(it) => &it.syntax,
+            Item::FnDef(it) => &it.syntax,
+            Item::ImplDef(it) => &it.syntax,
+            Item::MacroCall(it) => &it.syntax,
+            Item::Module(it) => &it.syntax,
+            Item::StaticDef(it) => &it.syntax,
+            Item::StructDef(it) => &it.syntax,
+            Item::TraitDef(it) => &it.syntax,
+            Item::TypeAliasDef(it) => &it.syntax,
+            Item::UnionDef(it) => &it.syntax,
+            Item::UseItem(it) => &it.syntax,
         }
     }
 }
@@ -3378,7 +3378,7 @@ impl AstNode for AdtDef {
         }
     }
 }
-impl std::fmt::Display for ModuleItem {
+impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3438,7 +3438,72 @@ impl std::fmt::Display for Attr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for ConstDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for EnumDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ExternBlock {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ExternCrateItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for FnDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ImplDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroCall {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Module {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for StaticDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for StructDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TraitDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeAliasDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UnionDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UseItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3483,22 +3548,12 @@ impl std::fmt::Display for BlockExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for StructDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for RecordFieldDefList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
 impl std::fmt::Display for TupleFieldDefList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for UnionDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3513,11 +3568,6 @@ impl std::fmt::Display for TupleFieldDef {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for EnumDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for EnumVariantList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3528,42 +3578,12 @@ impl std::fmt::Display for EnumVariant {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TraitDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for TypeBoundList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
 impl std::fmt::Display for ItemList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Module {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ConstDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for StaticDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TypeAliasDef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ImplDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3888,11 +3908,6 @@ impl std::fmt::Display for MacroPat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for MacroCall {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for RecordPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3983,11 +3998,6 @@ impl std::fmt::Display for Param {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for UseItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for UseTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3999,11 +4009,6 @@ impl std::fmt::Display for UseTreeList {
     }
 }
 impl std::fmt::Display for Alias {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ExternCrateItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -4029,11 +4034,6 @@ impl std::fmt::Display for AssocTypeArg {
     }
 }
 impl std::fmt::Display for ConstArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ExternBlock {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

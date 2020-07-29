@@ -44,7 +44,7 @@ pub trait ArgListOwner: AstNode {
 }
 
 pub trait ModuleItemOwner: AstNode {
-    fn items(&self) -> AstChildren<ast::ModuleItem> {
+    fn items(&self) -> AstChildren<ast::Item> {
         support::children(self.syntax())
     }
 }

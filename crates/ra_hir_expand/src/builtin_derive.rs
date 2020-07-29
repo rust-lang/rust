@@ -276,7 +276,7 @@ mod tests {
         let file_id = file_pos.file_id;
         let parsed = db.parse(file_id);
         let items: Vec<_> =
-            parsed.syntax_node().descendants().filter_map(ast::ModuleItem::cast).collect();
+            parsed.syntax_node().descendants().filter_map(ast::Item::cast).collect();
 
         let ast_id_map = db.ast_id_map(file_id.into());
 

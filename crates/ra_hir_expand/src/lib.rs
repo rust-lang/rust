@@ -159,7 +159,7 @@ impl HirFileId {
     }
 
     /// Indicate it is macro file generated for builtin derive
-    pub fn is_builtin_derive(&self, db: &dyn db::AstDatabase) -> Option<InFile<ast::ModuleItem>> {
+    pub fn is_builtin_derive(&self, db: &dyn db::AstDatabase) -> Option<InFile<ast::Item>> {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
@@ -174,7 +174,7 @@ impl HirFileId {
                     MacroDefKind::BuiltInDerive(_) => loc.kind.node(db),
                     _ => return None,
                 };
-                Some(item.with_value(ast::ModuleItem::cast(item.value.clone())?))
+                Some(item.with_value(ast::Item::cast(item.value.clone())?))
             }
         }
     }
@@ -258,7 +258,7 @@ pub struct MacroCallLoc {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroCallKind {
     FnLike(AstId<ast::MacroCall>),
-    Attr(AstId<ast::ModuleItem>, String),
+    Attr(AstId<ast::Item>, String),
 }
 
 impl MacroCallKind {

@@ -246,12 +246,12 @@ fn has_test_function_or_multiple_test_submodules(module: &ast::Module) -> bool {
 
         for item in item_list.items() {
             match item {
-                ast::ModuleItem::FnDef(f) => {
+                ast::Item::FnDef(f) => {
                     if has_test_related_attribute(&f) {
                         return true;
                     }
                 }
-                ast::ModuleItem::Module(submodule) => {
+                ast::Item::Module(submodule) => {
                     if has_test_function_or_multiple_test_submodules(&submodule) {
                         number_of_test_submodules += 1;
                     }
