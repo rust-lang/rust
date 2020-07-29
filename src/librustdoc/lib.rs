@@ -507,9 +507,14 @@ fn main_options(options: config::Options) -> i32 {
         ) {
             Ok(_) => rustc_driver::EXIT_SUCCESS,
             Err(e) => {
-                diag.struct_err(&format!("couldn't generate documentation: {}", e.error))
-                    .note(&format!("failed to create or modify \"{}\"", e.file.display()))
-                    .emit();
+                let mut msg =
+                    diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
+                let file = e.file.display().to_string();
+                if file.is_empty() {
+                    msg.emit()
+                } else {
+                    msg.note(&format!("failed to create or modify \"{}\"", file)).emit()
+                }
                 rustc_driver::EXIT_FAILURE
             }
         }

@@ -44,6 +44,7 @@ use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 use std::str;
 use std::string::ToString;
+use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
 
 use itertools::Itertools;
@@ -65,7 +66,7 @@ use serde::{Serialize, Serializer};
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, TypeKind};
 use crate::config::RenderInfo;
 use crate::config::RenderOptions;
-use crate::docfs::{DocFS, ErrorStorage, PathError};
+use crate::docfs::{DocFS, PathError};
 use crate::doctree;
 use crate::error::Error;
 use crate::formats::cache::{cache, Cache};
@@ -113,7 +114,9 @@ crate struct Context {
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
     all: Rc<RefCell<AllTypes>>,
-    pub errors: Arc<ErrorStorage>,
+    /// Storage for the errors produced while generating documentation so they
+    /// can be printed together at the end.
+    pub errors: Rc<Receiver<String>>,
 }
 
 crate struct SharedContext {
@@ -403,7 +406,6 @@ impl FormatRenderer for Context {
             },
             _ => PathBuf::new(),
         };
-        let errors = Arc::new(ErrorStorage::new());
         // If user passed in `--playground-url` arg, we fill in crate name here
         let mut playground = None;
         if let Some(url) = playground_url {
@@ -447,6 +449,7 @@ impl FormatRenderer for Context {
                 }
             }
         }
+        let (sender, receiver) = channel();
         let mut scx = SharedContext {
             collapsed: krate.collapsed,
             src_root,
@@ -459,7 +462,7 @@ impl FormatRenderer for Context {
             style_files,
             resource_suffix,
             static_root_path,
-            fs: DocFS::new(&errors),
+            fs: DocFS::new(&sender),
             edition,
             codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
             playground,
@@ -493,7 +496,7 @@ impl FormatRenderer for Context {
             id_map: Rc::new(RefCell::new(id_map)),
             shared: Arc::new(scx),
             all: Rc::new(RefCell::new(AllTypes::new())),
-            errors,
+            errors: Rc::new(receiver),
         };
 
         CURRENT_DEPTH.with(|s| s.set(0));
@@ -506,8 +509,8 @@ impl FormatRenderer for Context {
     }
 
     fn after_run(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error> {
-        let nb_errors =
-            Arc::get_mut(&mut self.errors).map_or_else(|| 0, |errors| errors.write_errors(diag));
+        Arc::get_mut(&mut self.shared).unwrap().fs.close();
+        let nb_errors = self.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
         if nb_errors > 0 {
             Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
         } else {
