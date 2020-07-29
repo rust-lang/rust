@@ -27,12 +27,12 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         return None;
     }
 
-    let semicolon_on_end = macro_call.semicolon_token().is_some();
     let is_leaf = macro_call.syntax().next_sibling().is_none();
 
-    let macro_end = match semicolon_on_end {
-        true => macro_call.syntax().text_range().end() - TextSize::of(';'),
-        false => macro_call.syntax().text_range().end(),
+    let macro_end = if macro_call.semicolon_token().is_some() {
+        macro_call.syntax().text_range().end() - TextSize::of(';')
+    } else {
+        macro_call.syntax().text_range().end()
     };
 
     // macro_range determines what will be deleted and replaced with macro_content
@@ -40,12 +40,13 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let paste_instead_of_dbg = {
         let text = macro_call.token_tree()?.syntax().text();
 
-        // leafines determines if we should include the parenthesis or not
-        let slice_index: TextRange = match is_leaf {
+        // leafiness determines if we should include the parenthesis or not
+        let slice_index: TextRange = if is_leaf {
             // leaf means - we can extract the contents of the dbg! in text
-            true => TextRange::new(TextSize::of('('), text.len() - TextSize::of(')')),
+            TextRange::new(TextSize::of('('), text.len() - TextSize::of(')'))
+        } else {
             // not leaf - means we should keep the parens
-            false => TextRange::new(TextSize::from(0 as u32), text.len()),
+            TextRange::up_to(text.len())
         };
         text.slice(slice_index).to_string()
     };
@@ -147,45 +148,58 @@ fn foo(n: usize) {
         // not quite though
         // adding a comment at the end of the line makes
         // the ast::MacroCall to include the semicolon at the end
-        let code = "
-let res = <|>dbg!(1 * 20); // needless comment
-";
-        let expected = "
-let res = 1 * 20; // needless comment
-";
-        check_assist(remove_dbg, code, expected);
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(1 * 20); // needless comment"#,
+            r#"let res = 1 * 20; // needless comment"#,
+        );
     }
 
     #[test]
     fn test_remove_dbg_keep_expression() {
-        let code = "
-let res = <|>dbg!(a + b).foo();";
-        let expected = "let res = (a + b).foo();";
-        check_assist(remove_dbg, code, expected);
+        check_assist(
+            remove_dbg,
+            r#"let res = <|>dbg!(a + b).foo();"#,
+            r#"let res = (a + b).foo();"#,
+        );
     }
 
     #[test]
     fn test_remove_dbg_from_inside_fn() {
-        let code = "
+        check_assist_target(
+            remove_dbg,
+            r#"
 fn square(x: u32) -> u32 {
     x * x
 }
 
 fn main() {
     let x = square(dbg<|>!(5 + 10));
-    println!(\"{}\", x);
-}";
+    println!("{}", x);
+}"#,
+            "dbg!(5 + 10)",
+        );
 
-        let expected = "
+        check_assist(
+            remove_dbg,
+            r#"
+fn square(x: u32) -> u32 {
+    x * x
+}
+
+fn main() {
+    let x = square(dbg<|>!(5 + 10));
+    println!("{}", x);
+}"#,
+            r#"
 fn square(x: u32) -> u32 {
     x * x
 }
 
 fn main() {
     let x = square(5 + 10);
-    println!(\"{}\", x);
-}";
-        check_assist_target(remove_dbg, code, "dbg!(5 + 10)");
-        check_assist(remove_dbg, code, expected);
+    println!("{}", x);
+}"#,
+        );
     }
 }
