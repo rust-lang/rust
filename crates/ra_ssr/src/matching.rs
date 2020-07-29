@@ -706,8 +706,8 @@ mod tests {
         let rule: SsrRule = "foo($x) ==>> bar($x)".parse().unwrap();
         let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
-        let (db, position) = crate::tests::single_file(input);
-        let mut match_finder = MatchFinder::in_context(&db, position);
+        let (db, position, selections) = crate::tests::single_file(input);
+        let mut match_finder = MatchFinder::in_context(&db, position, selections);
         match_finder.add_rule(rule).unwrap();
         let matches = match_finder.matches();
         assert_eq!(matches.matches.len(), 1);

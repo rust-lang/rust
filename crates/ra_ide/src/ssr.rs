@@ -1,4 +1,4 @@
-use ra_db::FilePosition;
+use ra_db::{FilePosition, FileRange};
 use ra_ide_db::RootDatabase;
 
 use crate::SourceFileEdit;
@@ -23,6 +23,9 @@ use ra_ssr::{MatchFinder, SsrError, SsrRule};
 //
 // Method calls should generally be written in UFCS form. e.g. `foo::Bar::baz($s, $a)` will match
 // `$s.baz($a)`, provided the method call `baz` resolves to the method `foo::Bar::baz`.
+//
+// The scope of the search / replace will be restricted to the current selection if any, otherwise
+// it will apply to the whole workspace.
 //
 // Placeholders may be given constraints by writing them as `${<name>:<constraint1>:<constraint2>...}`.
 //
@@ -57,9 +60,10 @@ pub fn parse_search_replace(
     parse_only: bool,
     db: &RootDatabase,
     position: FilePosition,
+    selections: Vec<FileRange>,
 ) -> Result<Vec<SourceFileEdit>, SsrError> {
     let rule: SsrRule = rule.parse()?;
-    let mut match_finder = MatchFinder::in_context(db, position);
+    let mut match_finder = MatchFinder::in_context(db, position, selections);
     match_finder.add_rule(rule)?;
     if parse_only {
         return Ok(Vec::new());

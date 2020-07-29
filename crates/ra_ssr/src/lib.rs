@@ -52,6 +52,7 @@ pub struct MatchFinder<'db> {
     sema: Semantics<'db, ra_ide_db::RootDatabase>,
     rules: Vec<ResolvedRule>,
     resolution_scope: resolving::ResolutionScope<'db>,
+    restrict_ranges: Vec<FileRange>,
 }
 
 impl<'db> MatchFinder<'db> {
@@ -60,10 +61,17 @@ impl<'db> MatchFinder<'db> {
     pub fn in_context(
         db: &'db ra_ide_db::RootDatabase,
         lookup_context: FilePosition,
+        mut restrict_ranges: Vec<FileRange>,
     ) -> MatchFinder<'db> {
+        restrict_ranges.retain(|range| !range.range.is_empty());
         let sema = Semantics::new(db);
         let resolution_scope = resolving::ResolutionScope::new(&sema, lookup_context);
-        MatchFinder { sema: Semantics::new(db), rules: Vec::new(), resolution_scope }
+        MatchFinder {
+            sema: Semantics::new(db),
+            rules: Vec::new(),
+            resolution_scope,
+            restrict_ranges,
+        }
     }
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
@@ -79,6 +87,7 @@ impl<'db> MatchFinder<'db> {
             Ok(MatchFinder::in_context(
                 db,
                 FilePosition { file_id: first_file_id, offset: 0.into() },
+                vec![],
             ))
         } else {
             bail!("No files to search");
