@@ -143,7 +143,7 @@ use core::ops::{
     CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Generator, GeneratorState, Receiver,
 };
 use core::pin::Pin;
-use core::ptr::{self, NonNull, Unique};
+use core::ptr::{self, Unique};
 use core::task::{Context, Poll};
 
 use crate::alloc::{self, AllocInit, AllocRef, Global};
@@ -449,50 +449,6 @@ impl<T: ?Sized> Box<T> {
         // so all raw pointer methods go through `leak` which creates a (unique)
         // mutable reference. Turning *that* to a raw pointer behaves correctly.
         Box::leak(b) as *mut T
-    }
-
-    /// Consumes the `Box`, returning the wrapped pointer as `NonNull<T>`.
-    ///
-    /// After calling this function, the caller is responsible for the
-    /// memory previously managed by the `Box`. In particular, the
-    /// caller should properly destroy `T` and release the memory. The
-    /// easiest way to do so is to convert the `NonNull<T>` pointer
-    /// into a raw pointer and back into a `Box` with the [`Box::from_raw`]
-    /// function.
-    ///
-    /// Note: this is an associated function, which means that you have
-    /// to call it as `Box::into_raw_non_null(b)`
-    /// instead of `b.into_raw_non_null()`. This
-    /// is so that there is no conflict with a method on the inner type.
-    ///
-    /// [`Box::from_raw`]: struct.Box.html#method.from_raw
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(box_into_raw_non_null)]
-    /// #![allow(deprecated)]
-    ///
-    /// let x = Box::new(5);
-    /// let ptr = Box::into_raw_non_null(x);
-    ///
-    /// // Clean up the memory by converting the NonNull pointer back
-    /// // into a Box and letting the Box be dropped.
-    /// let x = unsafe { Box::from_raw(ptr.as_ptr()) };
-    /// ```
-    #[unstable(feature = "box_into_raw_non_null", issue = "47336")]
-    #[rustc_deprecated(
-        since = "1.44.0",
-        reason = "use `Box::leak(b).into()` or `NonNull::from(Box::leak(b))` instead"
-    )]
-    #[inline]
-    pub fn into_raw_non_null(b: Box<T>) -> NonNull<T> {
-        // Box is recognized as a "unique pointer" by Stacked Borrows, but internally it is a
-        // raw pointer for the type system. Turning it directly into a raw pointer would not be
-        // recognized as "releasing" the unique pointer to permit aliased raw accesses,
-        // so all raw pointer methods go through `leak` which creates a (unique)
-        // mutable reference. Turning *that* to a raw pointer behaves correctly.
-        Box::leak(b).into()
     }
 
     #[unstable(
