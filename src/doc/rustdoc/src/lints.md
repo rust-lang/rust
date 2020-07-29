@@ -13,18 +13,53 @@ Here is the list of the lints provided by `rustdoc`:
 
 ## broken_intra_doc_links
 
-This lint **warns by default** and is **nightly-only**. This lint detects when
-an intra-doc link fails to get resolved. For example:
+This lint **warns by default**. This lint detects when an [intra-doc link] fails to get resolved. For example:
+
+ [intra-doc link]: linking-to-items-by-name.html
 
 ```rust
-/// I want to link to [`Inexistent`] but it doesn't exist!
+/// I want to link to [`Nonexistent`] but it doesn't exist!
 pub fn foo() {}
 ```
 
 You'll get a warning saying:
 
 ```text
-error: `[`Inexistent`]` cannot be resolved, ignoring it...
+warning: `[Nonexistent]` cannot be resolved, ignoring it.
+ --> test.rs:1:24
+  |
+1 | /// I want to link to [`Nonexistent`] but it doesn't exist!
+  |                        ^^^^^^^^^^^^^ cannot be resolved, ignoring
+```
+
+It will also warn when there is an ambiguity and suggest how to disambiguate:
+
+```rust
+/// [`Foo`]
+pub fn function() {}
+
+pub enum Foo {}
+
+pub fn Foo(){}
+```
+
+```text
+warning: `Foo` is both an enum and a function
+ --> test.rs:1:6
+  |
+1 | /// [`Foo`]
+  |      ^^^^^ ambiguous link
+  |
+  = note: `#[warn(intra_doc_link_resolution_failure)]` on by default
+help: to link to the enum, prefix with the item type
+  |
+1 | /// [`enum@Foo`]
+  |      ^^^^^^^^^^
+help: to link to the function, add parentheses
+  |
+1 | /// [`Foo()`]
+  |      ^^^^^^^
+
 ```
 
 ## missing_docs
