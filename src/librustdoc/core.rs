@@ -32,8 +32,8 @@ use std::rc::Rc;
 
 use crate::clean;
 use crate::clean::{AttributesExt, MAX_DEF_ID};
+use crate::config::RenderInfo;
 use crate::config::{Options as RustdocOptions, RenderOptions};
-use crate::html::render::RenderInfo;
 use crate::passes::{self, Condition::*, ConditionalPass};
 
 pub use rustc_session::config::{CodegenOptions, DebuggingOptions, Input, Options};
@@ -44,9 +44,9 @@ pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 pub struct DocContext<'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub resolver: Rc<RefCell<interface::BoxedResolver>>,
-    /// Later on moved into `html::render::CACHE_KEY`
+    /// Later on moved into `CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
-    /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
+    /// Later on moved through `clean::Crate` into `CACHE_KEY`
     pub external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.

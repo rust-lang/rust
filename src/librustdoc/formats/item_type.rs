@@ -13,7 +13,7 @@ use crate::clean;
 /// The search index uses item types encoded as smaller numbers which equal to
 /// discriminants. JavaScript then is used to decode them into the original value.
 /// Consequently, every change to this type should be synchronized to
-/// the `itemTypes` mapping table in `static/main.js`.
+/// the `itemTypes` mapping table in `html/static/main.js`.
 ///
 /// In addition, code in `html::render` uses this enum to generate CSS classes, page prefixes, and
 /// module headings. If you are adding to this enum and want to ensure that the sidebar also prints

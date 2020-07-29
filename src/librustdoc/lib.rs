@@ -63,19 +63,11 @@ mod config;
 mod core;
 mod docfs;
 mod doctree;
+#[macro_use]
+mod error;
 mod fold;
-pub mod html {
-    crate mod escape;
-    crate mod format;
-    crate mod highlight;
-    crate mod item_type;
-    crate mod layout;
-    pub mod markdown;
-    crate mod render;
-    crate mod sources;
-    crate mod static_files;
-    crate mod toc;
-}
+crate mod formats;
+pub mod html;
 mod markdown;
 mod passes;
 mod test;
@@ -85,7 +77,7 @@ mod visit_lib;
 
 struct Output {
     krate: clean::Crate,
-    renderinfo: html::render::RenderInfo,
+    renderinfo: config::RenderInfo,
     renderopts: config::RenderOptions,
 }
 
@@ -510,12 +502,19 @@ fn main_options(options: config::Options) -> i32 {
         info!("going to format");
         let (error_format, edition, debugging_options) = diag_opts;
         let diag = core::new_handler(error_format, None, &debugging_options);
-        match html::render::run(krate, renderopts, renderinfo, &diag, edition) {
+        match formats::run_format::<html::render::Context>(
+            krate, renderopts, renderinfo, &diag, edition,
+        ) {
             Ok(_) => rustc_driver::EXIT_SUCCESS,
             Err(e) => {
-                diag.struct_err(&format!("couldn't generate documentation: {}", e.error))
-                    .note(&format!("failed to create or modify \"{}\"", e.file.display()))
-                    .emit();
+                let mut msg =
+                    diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
+                let file = e.file.display().to_string();
+                if file.is_empty() {
+                    msg.emit()
+                } else {
+                    msg.note(&format!("failed to create or modify \"{}\"", file)).emit()
+                }
                 rustc_driver::EXIT_FAILURE
             }
         }
