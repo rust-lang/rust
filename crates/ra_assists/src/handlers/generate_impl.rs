@@ -23,7 +23,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let nominal = ctx.find_node_at_offset::<ast::NominalDef>()?;
+    let nominal = ctx.find_node_at_offset::<ast::AdtDef>()?;
     let name = nominal.name()?;
     let target = nominal.syntax().text_range();
     acc.add(

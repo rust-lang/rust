@@ -426,7 +426,7 @@ ExternItemList =
 MetaItem =
   Path '=' AttrInput nested_meta_items:MetaItem*
 
-NominalDef =
+AdtDef =
   StructDef
 | EnumDef
 | UnionDef
