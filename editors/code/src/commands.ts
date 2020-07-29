@@ -190,6 +190,7 @@ export function ssr(ctx: Ctx): Cmd {
         if (!editor || !client) return;
 
         const position = editor.selection.active;
+        const selections = editor.selections;
         const textDocument = { uri: editor.document.uri.toString() };
 
         const options: vscode.InputBoxOptions = {
@@ -198,7 +199,7 @@ export function ssr(ctx: Ctx): Cmd {
             validateInput: async (x: string) => {
                 try {
                     await client.sendRequest(ra.ssr, {
-                        query: x, parseOnly: true, textDocument, position,
+                        query: x, parseOnly: true, textDocument, position, selections,
                     });
                 } catch (e) {
                     return e.toString();
@@ -215,7 +216,7 @@ export function ssr(ctx: Ctx): Cmd {
             cancellable: false,
         }, async (_progress, _token) => {
             const edit = await client.sendRequest(ra.ssr, {
-                query: request, parseOnly: false, textDocument, position
+                query: request, parseOnly: false, textDocument, position, selections,
             });
 
             await vscode.workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));

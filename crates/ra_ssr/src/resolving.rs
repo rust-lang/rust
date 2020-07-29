@@ -141,14 +141,14 @@ impl Resolver<'_, '_> {
 impl<'db> ResolutionScope<'db> {
     pub(crate) fn new(
         sema: &hir::Semantics<'db, ra_ide_db::RootDatabase>,
-        lookup_context: FilePosition,
+        resolve_context: FilePosition,
     ) -> ResolutionScope<'db> {
         use ra_syntax::ast::AstNode;
-        let file = sema.parse(lookup_context.file_id);
+        let file = sema.parse(resolve_context.file_id);
         // Find a node at the requested position, falling back to the whole file.
         let node = file
             .syntax()
-            .token_at_offset(lookup_context.offset)
+            .token_at_offset(resolve_context.offset)
             .left_biased()
             .map(|token| token.parent())
             .unwrap_or_else(|| file.syntax().clone());
@@ -156,7 +156,7 @@ impl<'db> ResolutionScope<'db> {
         let scope = sema.scope(&node);
         ResolutionScope {
             scope,
-            hygiene: hir::Hygiene::new(sema.db, lookup_context.file_id.into()),
+            hygiene: hir::Hygiene::new(sema.db, resolve_context.file_id.into()),
         }
     }
 

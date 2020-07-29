@@ -5,12 +5,13 @@ use crate::{
     resolving::{ResolvedPath, ResolvedPattern, ResolvedRule},
     Match, MatchFinder,
 };
-use ra_db::FileRange;
+use ra_db::{FileId, FileRange};
 use ra_ide_db::{
     defs::Definition,
     search::{Reference, SearchScope},
 };
 use ra_syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
+use rustc_hash::FxHashSet;
 use test_utils::mark;
 
 /// A cache for the results of find_usages. This is for when we have multiple patterns that have the
@@ -54,11 +55,7 @@ impl<'db> MatchFinder<'db> {
                         mark::hit!(use_declaration_with_braces);
                         continue;
                     }
-                    if let Ok(m) =
-                        matching::get_match(false, rule, &node_to_match, &None, &self.sema)
-                    {
-                        matches_out.push(m);
-                    }
+                    self.try_add_match(rule, &node_to_match, &None, matches_out);
                 }
             }
         }
@@ -121,25 +118,39 @@ impl<'db> MatchFinder<'db> {
         // FIXME: We should ideally have a test that checks that we edit local roots and not library
         // roots. This probably would require some changes to fixtures, since currently everything
         // seems to get put into a single source root.
-        use ra_db::SourceDatabaseExt;
-        use ra_ide_db::symbol_index::SymbolsDatabase;
         let mut files = Vec::new();
-        for &root in self.sema.db.local_roots().iter() {
-            let sr = self.sema.db.source_root(root);
-            files.extend(sr.iter());
-        }
+        self.search_files_do(|file_id| {
+            files.push(file_id);
+        });
         SearchScope::files(&files)
     }
 
     fn slow_scan(&self, rule: &ResolvedRule, matches_out: &mut Vec<Match>) {
-        use ra_db::SourceDatabaseExt;
-        use ra_ide_db::symbol_index::SymbolsDatabase;
-        for &root in self.sema.db.local_roots().iter() {
-            let sr = self.sema.db.source_root(root);
-            for file_id in sr.iter() {
-                let file = self.sema.parse(file_id);
-                let code = file.syntax();
-                self.slow_scan_node(code, rule, &None, matches_out);
+        self.search_files_do(|file_id| {
+            let file = self.sema.parse(file_id);
+            let code = file.syntax();
+            self.slow_scan_node(code, rule, &None, matches_out);
+        })
+    }
+
+    fn search_files_do(&self, mut callback: impl FnMut(FileId)) {
+        if self.restrict_ranges.is_empty() {
+            // Unrestricted search.
+            use ra_db::SourceDatabaseExt;
+            use ra_ide_db::symbol_index::SymbolsDatabase;
+            for &root in self.sema.db.local_roots().iter() {
+                let sr = self.sema.db.source_root(root);
+                for file_id in sr.iter() {
+                    callback(file_id);
+                }
+            }
+        } else {
+            // Search is restricted, deduplicate file IDs (generally only one).
+            let mut files = FxHashSet::default();
+            for range in &self.restrict_ranges {
+                if files.insert(range.file_id) {
+                    callback(range.file_id);
+                }
             }
         }
     }
@@ -154,9 +165,7 @@ impl<'db> MatchFinder<'db> {
         if !is_search_permitted(code) {
             return;
         }
-        if let Ok(m) = matching::get_match(false, rule, &code, restrict_range, &self.sema) {
-            matches_out.push(m);
-        }
+        self.try_add_match(rule, &code, restrict_range, matches_out);
         // If we've got a macro call, we already tried matching it pre-expansion, which is the only
         // way to match the whole macro, now try expanding it and matching the expansion.
         if let Some(macro_call) = ast::MacroCall::cast(code.clone()) {
@@ -177,6 +186,38 @@ impl<'db> MatchFinder<'db> {
         for child in code.children() {
             self.slow_scan_node(&child, rule, restrict_range, matches_out);
         }
+    }
+
+    fn try_add_match(
+        &self,
+        rule: &ResolvedRule,
+        code: &SyntaxNode,
+        restrict_range: &Option<FileRange>,
+        matches_out: &mut Vec<Match>,
+    ) {
+        if !self.within_range_restrictions(code) {
+            mark::hit!(replace_nonpath_within_selection);
+            return;
+        }
+        if let Ok(m) = matching::get_match(false, rule, code, restrict_range, &self.sema) {
+            matches_out.push(m);
+        }
+    }
+
+    /// Returns whether `code` is within one of our range restrictions if we have any. No range
+    /// restrictions is considered unrestricted and always returns true.
+    fn within_range_restrictions(&self, code: &SyntaxNode) -> bool {
+        if self.restrict_ranges.is_empty() {
+            // There is no range restriction.
+            return true;
+        }
+        let node_range = self.sema.original_range(code);
+        for range in &self.restrict_ranges {
+            if range.file_id == node_range.file_id && range.range.contains_range(node_range.range) {
+                return true;
+            }
+        }
+        false
     }
 }
 

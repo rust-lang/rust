@@ -221,6 +221,9 @@ pub struct SsrParams {
     /// position.
     #[serde(flatten)]
     pub position: lsp_types::TextDocumentPositionParams,
+
+    /// Current selections. Search/replace will be restricted to these if non-empty.
+    pub selections: Vec<lsp_types::Range>,
 }
 
 pub enum StatusNotification {}
