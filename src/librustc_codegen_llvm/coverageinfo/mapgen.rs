@@ -1,23 +1,15 @@
-use crate::llvm;
-
 use crate::common::CodegenCx;
 use crate::coverageinfo;
+use crate::llvm;
 
+use llvm::coverageinfo::CounterMappingRegion;
 use log::debug;
-use rustc_codegen_ssa::coverageinfo::map::*;
-use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, MiscMethods};
+use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression, Region};
+use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_llvm::RustString;
-use rustc_middle::ty::Instance;
-use rustc_middle::{bug, mir};
 
-use std::collections::BTreeMap;
 use std::ffi::CString;
-use std::path::PathBuf;
-
-// FIXME(richkadel): Complete all variations of generating and exporting the coverage map to LLVM.
-// The current implementation is an initial foundation with basic capabilities (Counters, but not
-// CounterExpressions, etc.).
 
 /// Generates and exports the Coverage Map.
 ///
@@ -32,174 +24,123 @@ use std::path::PathBuf;
 /// undocumented details in Clang's implementation (that may or may not be important) were also
 /// replicated for Rust's Coverage Map.
 pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
-    let mut coverage_writer = CoverageMappingWriter::new(cx);
-
     let function_coverage_map = cx.coverage_context().take_function_coverage_map();
+    if function_coverage_map.is_empty() {
+        // This module has no functions with coverage instrumentation
+        return;
+    }
+
+    let mut mapgen = CoverageMapGenerator::new();
 
     // Encode coverage mappings and generate function records
     let mut function_records = Vec::<&'ll llvm::Value>::new();
     let coverage_mappings_buffer = llvm::build_byte_buffer(|coverage_mappings_buffer| {
         for (instance, function_coverage) in function_coverage_map.into_iter() {
-            if let Some(function_record) = coverage_writer.write_function_mappings_and_record(
-                instance,
-                function_coverage,
-                coverage_mappings_buffer,
-            ) {
-                function_records.push(function_record);
-            }
+            debug!("Generate coverage map for: {:?}", instance);
+
+            let mangled_function_name = cx.tcx.symbol_name(instance).to_string();
+            let function_source_hash = function_coverage.source_hash();
+            let (expressions, counter_regions) =
+                function_coverage.get_expressions_and_counter_regions();
+
+            let old_len = coverage_mappings_buffer.len();
+            mapgen.write_coverage_mappings(expressions, counter_regions, coverage_mappings_buffer);
+            let mapping_data_size = coverage_mappings_buffer.len() - old_len;
+            debug_assert!(
+                mapping_data_size > 0,
+                "Every `FunctionCoverage` should have at least one counter"
+            );
+
+            let function_record = mapgen.make_function_record(
+                cx,
+                mangled_function_name,
+                function_source_hash,
+                mapping_data_size,
+            );
+            function_records.push(function_record);
         }
     });
 
-    // Encode all filenames covered in this module, ordered by `file_id`
+    // Encode all filenames referenced by counters/expressions in this module
     let filenames_buffer = llvm::build_byte_buffer(|filenames_buffer| {
-        coverageinfo::write_filenames_section_to_buffer(
-            &coverage_writer.filenames,
-            filenames_buffer,
-        );
+        coverageinfo::write_filenames_section_to_buffer(&mapgen.filenames, filenames_buffer);
     });
 
-    if coverage_mappings_buffer.len() > 0 {
-        // Generate the LLVM IR representation of the coverage map and store it in a well-known
-        // global constant.
-        coverage_writer.write_coverage_map(
-            function_records,
-            filenames_buffer,
-            coverage_mappings_buffer,
-        );
-    }
+    // Generate the LLVM IR representation of the coverage map and store it in a well-known global
+    mapgen.save_generated_coverage_map(
+        cx,
+        function_records,
+        filenames_buffer,
+        coverage_mappings_buffer,
+    );
 }
 
-struct CoverageMappingWriter<'a, 'll, 'tcx> {
-    cx: &'a CodegenCx<'ll, 'tcx>,
+struct CoverageMapGenerator {
     filenames: Vec<CString>,
     filename_to_index: FxHashMap<CString, u32>,
 }
 
-impl<'a, 'll, 'tcx> CoverageMappingWriter<'a, 'll, 'tcx> {
-    fn new(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
-        Self { cx, filenames: Vec::new(), filename_to_index: FxHashMap::<CString, u32>::default() }
+impl CoverageMapGenerator {
+    fn new() -> Self {
+        Self { filenames: Vec::new(), filename_to_index: FxHashMap::default() }
     }
 
-    /// For the given function, get the coverage region data, stream it to the given buffer, and
-    /// then generate and return a new function record.
-    fn write_function_mappings_and_record(
+    /// Using the `expressions` and `counter_regions` collected for the current function, generate
+    /// the `mapping_regions` and `virtual_file_mapping`, and capture any new filenames. Then use
+    /// LLVM APIs to encode the `virtual_file_mapping`, `expressions`, and `mapping_regions` into
+    /// the given `coverage_mappings` byte buffer, compliant with the LLVM Coverage Mapping format.
+    fn write_coverage_mappings(
         &mut self,
-        instance: Instance<'tcx>,
-        mut function_coverage: FunctionCoverage,
-        coverage_mappings_buffer: &RustString,
-    ) -> Option<&'ll llvm::Value> {
-        let cx = self.cx;
-        let coverageinfo: &mir::CoverageInfo = cx.tcx.coverageinfo(instance.def_id());
-        debug!(
-            "Generate coverage map for: {:?}, num_counters: {}, num_expressions: {}",
-            instance, coverageinfo.num_counters, coverageinfo.num_expressions
-        );
-        debug_assert!(coverageinfo.num_counters > 0);
-
-        let regions_in_file_order = function_coverage.regions_in_file_order(cx.sess().source_map());
-        if regions_in_file_order.len() == 0 {
-            return None;
-        }
-
-        // Stream the coverage mapping regions for the function (`instance`) to the buffer, and
-        // compute the data byte size used.
-        let old_len = coverage_mappings_buffer.len();
-        self.regions_to_mappings(regions_in_file_order, coverage_mappings_buffer);
-        let mapping_data_size = coverage_mappings_buffer.len() - old_len;
-        debug_assert!(mapping_data_size > 0);
-
-        let mangled_function_name = cx.tcx.symbol_name(instance).to_string();
-        let name_ref = coverageinfo::compute_hash(&mangled_function_name);
-        let function_source_hash = function_coverage.source_hash();
-
-        // Generate and return the function record
-        let name_ref_val = cx.const_u64(name_ref);
-        let mapping_data_size_val = cx.const_u32(mapping_data_size as u32);
-        let func_hash_val = cx.const_u64(function_source_hash);
-        Some(cx.const_struct(
-            &[name_ref_val, mapping_data_size_val, func_hash_val],
-            /*packed=*/ true,
-        ))
-    }
-
-    /// For each coverage region, extract its coverage data from the earlier coverage analysis.
-    /// Use LLVM APIs to convert the data into buffered bytes compliant with the LLVM Coverage
-    /// Mapping format.
-    fn regions_to_mappings(
-        &mut self,
-        regions_in_file_order: BTreeMap<PathBuf, BTreeMap<CoverageLoc, (usize, CoverageKind)>>,
+        expressions: Vec<CounterExpression>,
+        counter_regions: impl Iterator<Item = (Counter, &'a Region)>,
         coverage_mappings_buffer: &RustString,
     ) {
+        let mut counter_regions = counter_regions.collect::<Vec<_>>();
+        if counter_regions.is_empty() {
+            return;
+        }
+
         let mut virtual_file_mapping = Vec::new();
-        let mut mapping_regions = coverageinfo::SmallVectorCounterMappingRegion::new();
-        let mut expressions = coverageinfo::SmallVectorCounterExpression::new();
+        let mut mapping_regions = Vec::new();
+        let mut current_file_path = None;
+        let mut current_file_id = 0;
 
-        for (file_id, (file_path, file_coverage_regions)) in
-            regions_in_file_order.into_iter().enumerate()
-        {
-            let file_id = file_id as u32;
-            let filename = CString::new(file_path.to_string_lossy().to_string())
-                .expect("null error converting filename to C string");
-            debug!("  file_id: {} = '{:?}'", file_id, filename);
-            let filenames_index = match self.filename_to_index.get(&filename) {
-                Some(index) => *index,
-                None => {
-                    let index = self.filenames.len() as u32;
-                    self.filenames.push(filename.clone());
-                    self.filename_to_index.insert(filename, index);
-                    index
+        // Convert the list of (Counter, Region) pairs to an array of `CounterMappingRegion`, sorted
+        // by filename and position. Capture any new files to compute the `CounterMappingRegion`s
+        // `file_id` (indexing files referenced by the current function), and construct the
+        // function-specific `virtual_file_mapping` from `file_id` to its index in the module's
+        // `filenames` array.
+        counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
+        for (counter, region) in counter_regions {
+            let (file_path, start_line, start_col, end_line, end_col) = region.file_start_and_end();
+            let same_file = current_file_path.as_ref().map_or(false, |p| p == file_path);
+            if !same_file {
+                if current_file_path.is_some() {
+                    current_file_id += 1;
                 }
-            };
-            virtual_file_mapping.push(filenames_index);
-
-            let mut mapping_indexes = vec![0 as u32; file_coverage_regions.len()];
-            for (mapping_index, (region_id, _)) in file_coverage_regions.values().enumerate() {
-                mapping_indexes[*region_id] = mapping_index as u32;
+                current_file_path = Some(file_path.clone());
+                let filename = CString::new(file_path.to_string_lossy().to_string())
+                    .expect("null error converting filename to C string");
+                debug!("  file_id: {} = '{:?}'", current_file_id, filename);
+                let filenames_index = match self.filename_to_index.get(&filename) {
+                    Some(index) => *index,
+                    None => {
+                        let index = self.filenames.len() as u32;
+                        self.filenames.push(filename.clone());
+                        self.filename_to_index.insert(filename.clone(), index);
+                        index
+                    }
+                };
+                virtual_file_mapping.push(filenames_index);
             }
-
-            for (region_loc, (region_id, region_kind)) in file_coverage_regions.into_iter() {
-                let mapping_index = mapping_indexes[region_id];
-                match region_kind {
-                    CoverageKind::Counter => {
-                        debug!(
-                            "  Counter {}, file_id: {}, region_loc: {}",
-                            mapping_index, file_id, region_loc
-                        );
-                        mapping_regions.push_from(
-                            mapping_index,
-                            file_id,
-                            region_loc.start_line,
-                            region_loc.start_col,
-                            region_loc.end_line,
-                            region_loc.end_col,
-                        );
-                    }
-                    CoverageKind::CounterExpression(lhs, op, rhs) => {
-                        debug!(
-                            "  CounterExpression {} = {} {:?} {}, file_id: {}, region_loc: {:?}",
-                            mapping_index, lhs, op, rhs, file_id, region_loc,
-                        );
-                        mapping_regions.push_from(
-                            mapping_index,
-                            file_id,
-                            region_loc.start_line,
-                            region_loc.start_col,
-                            region_loc.end_line,
-                            region_loc.end_col,
-                        );
-                        expressions.push_from(op, lhs, rhs);
-                    }
-                    CoverageKind::Unreachable => {
-                        debug!(
-                            "  Unreachable region, file_id: {}, region_loc: {:?}",
-                            file_id, region_loc,
-                        );
-                        bug!("Unreachable region not expected and not yet handled!")
-                        // FIXME(richkadel): implement and call
-                        //   mapping_regions.push_from(...) for unreachable regions
-                    }
-                }
-            }
+            mapping_regions.push(CounterMappingRegion::code_region(
+                counter,
+                current_file_id,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+            ));
         }
 
         // Encode and append the current function's coverage mapping data
@@ -211,14 +152,35 @@ impl<'a, 'll, 'tcx> CoverageMappingWriter<'a, 'll, 'tcx> {
         );
     }
 
-    fn write_coverage_map(
+    /// Generate and return the function record `Value`
+    fn make_function_record(
+        &mut self,
+        cx: &CodegenCx<'ll, 'tcx>,
+        mangled_function_name: String,
+        function_source_hash: u64,
+        mapping_data_size: usize,
+    ) -> &'ll llvm::Value {
+        let name_ref = coverageinfo::compute_hash(&mangled_function_name);
+        let name_ref_val = cx.const_u64(name_ref);
+        let mapping_data_size_val = cx.const_u32(mapping_data_size as u32);
+        let func_hash_val = cx.const_u64(function_source_hash);
+        cx.const_struct(
+            &[name_ref_val, mapping_data_size_val, func_hash_val],
+            /*packed=*/ true,
+        )
+    }
+
+    /// Combine the filenames and coverage mappings buffers, construct coverage map header and the
+    /// array of function records, and combine everything into the complete coverage map. Save the
+    /// coverage map data into the LLVM IR as a static global using a specific, well-known section
+    /// and name.
+    fn save_generated_coverage_map(
         self,
+        cx: &CodegenCx<'ll, 'tcx>,
         function_records: Vec<&'ll llvm::Value>,
         filenames_buffer: Vec<u8>,
         mut coverage_mappings_buffer: Vec<u8>,
     ) {
-        let cx = self.cx;
-
         // Concatenate the encoded filenames and encoded coverage mappings, and add additional zero
         // bytes as-needed to ensure 8-byte alignment.
         let mut coverage_size = coverage_mappings_buffer.len();

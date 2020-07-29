@@ -1,5 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
+#![feature(option_expect_none)]
 #![feature(box_patterns)]
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
@@ -7,6 +8,8 @@
 #![feature(or_patterns)]
 #![feature(trusted_len)]
 #![feature(associated_type_bounds)]
+#![feature(const_fn)] // for rustc_index::newtype_index
+#![feature(const_panic)] // for rustc_index::newtype_index
 #![recursion_limit = "256"]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
