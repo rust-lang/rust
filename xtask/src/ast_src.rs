@@ -1479,7 +1479,6 @@ pub(crate) fn rust_ast() -> AstSrc {
             /// [Reference](https://doc.rust-lang.org/reference/patterns.html#struct-patterns)
             struct RecordFieldPatList {
                 T!['{'],
-                pats: [RecordInnerPat],
                 record_field_pats: [RecordFieldPat],
                 bind_pats: [BindPat],
                 T![..],
@@ -2211,13 +2210,6 @@ pub(crate) fn rust_ast() -> AstSrc {
                 RangePat,
                 LiteralPat,
                 MacroPat,
-            }
-
-            /// Any kind of pattern that appears directly inside of the curly
-            /// braces of a record pattern
-            enum RecordInnerPat {
-                RecordFieldPat,
-                BindPat
             }
 
             /// Any kind of input to an attribute

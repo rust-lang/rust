@@ -1710,7 +1710,6 @@ pub struct RecordFieldPatList {
 }
 impl RecordFieldPatList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn pats(&self) -> AstChildren<RecordInnerPat> { support::children(&self.syntax) }
     pub fn record_field_pats(&self) -> AstChildren<RecordFieldPat> {
         support::children(&self.syntax)
     }
@@ -2720,13 +2719,6 @@ pub enum Pat {
     RangePat(RangePat),
     LiteralPat(LiteralPat),
     MacroPat(MacroPat),
-}
-/// Any kind of pattern that appears directly inside of the curly
-/// braces of a record pattern
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RecordInnerPat {
-    RecordFieldPat(RecordFieldPat),
-    BindPat(BindPat),
 }
 /// Any kind of input to an attribute
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -4693,34 +4685,6 @@ impl AstNode for Pat {
         }
     }
 }
-impl From<RecordFieldPat> for RecordInnerPat {
-    fn from(node: RecordFieldPat) -> RecordInnerPat { RecordInnerPat::RecordFieldPat(node) }
-}
-impl From<BindPat> for RecordInnerPat {
-    fn from(node: BindPat) -> RecordInnerPat { RecordInnerPat::BindPat(node) }
-}
-impl AstNode for RecordInnerPat {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            RECORD_FIELD_PAT | BIND_PAT => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            RECORD_FIELD_PAT => RecordInnerPat::RecordFieldPat(RecordFieldPat { syntax }),
-            BIND_PAT => RecordInnerPat::BindPat(BindPat { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            RecordInnerPat::RecordFieldPat(it) => &it.syntax,
-            RecordInnerPat::BindPat(it) => &it.syntax,
-        }
-    }
-}
 impl From<Literal> for AttrInput {
     fn from(node: Literal) -> AttrInput { AttrInput::Literal(node) }
 }
@@ -4843,11 +4807,6 @@ impl std::fmt::Display for Expr {
     }
 }
 impl std::fmt::Display for Pat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for RecordInnerPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
