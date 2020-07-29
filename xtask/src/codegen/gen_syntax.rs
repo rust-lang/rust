@@ -9,28 +9,29 @@ use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
 
 use crate::{
-    ast_src::{AstSrc, Field, FieldSrc, KindsSrc, AST_SRC, KINDS_SRC},
+    ast_src::{rust_ast, AstSrc, Field, FieldSrc, KindsSrc, KINDS_SRC},
     codegen::{self, update, Mode},
     project_root, Result,
 };
 
 pub fn generate_syntax(mode: Mode) -> Result<()> {
+    let ast = rust_ast();
     let syntax_kinds_file = project_root().join(codegen::SYNTAX_KINDS);
     let syntax_kinds = generate_syntax_kinds(KINDS_SRC)?;
     update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
     let ast_tokens_file = project_root().join(codegen::AST_TOKENS);
-    let contents = generate_tokens(AST_SRC)?;
+    let contents = generate_tokens(&ast)?;
     update(ast_tokens_file.as_path(), &contents, mode)?;
 
     let ast_nodes_file = project_root().join(codegen::AST_NODES);
-    let contents = generate_nodes(KINDS_SRC, AST_SRC)?;
+    let contents = generate_nodes(KINDS_SRC, &ast)?;
     update(ast_nodes_file.as_path(), &contents, mode)?;
 
     Ok(())
 }
 
-fn generate_tokens(grammar: AstSrc<'_>) -> Result<String> {
+fn generate_tokens(grammar: &AstSrc) -> Result<String> {
     let tokens = grammar.tokens.iter().map(|token| {
         let name = format_ident!("{}", token);
         let kind = format_ident!("{}", to_upper_snake_case(token));
@@ -62,13 +63,13 @@ fn generate_tokens(grammar: AstSrc<'_>) -> Result<String> {
     Ok(pretty)
 }
 
-fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
+fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
     let (node_defs, node_boilerplate_impls): (Vec<_>, Vec<_>) = grammar
         .nodes
         .iter()
         .map(|node| {
             let name = format_ident!("{}", node.name);
-            let kind = format_ident!("{}", to_upper_snake_case(node.name));
+            let kind = format_ident!("{}", to_upper_snake_case(&node.name));
             let traits = node.traits.iter().map(|trait_name| {
                 let trait_name = format_ident!("{}", trait_name);
                 quote!(impl ast::#trait_name for #name {})
@@ -192,8 +193,8 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         })
         .unzip();
 
-    let enum_names = grammar.enums.iter().map(|it| it.name);
-    let node_names = grammar.nodes.iter().map(|it| it.name);
+    let enum_names = grammar.enums.iter().map(|it| &it.name);
+    let node_names = grammar.nodes.iter().map(|it| &it.name);
 
     let display_impls =
         enum_names.chain(node_names.clone()).map(|it| format_ident!("{}", it)).map(|name| {
@@ -212,7 +213,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
         .nodes
         .iter()
         .map(|kind| to_pascal_case(kind))
-        .filter(|name| !defined_nodes.contains(name.as_str()))
+        .filter(|name| !defined_nodes.iter().any(|&it| it == name))
     {
         eprintln!("Warning: node {} not defined in ast source", node);
     }
@@ -236,12 +237,12 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
     let mut res = String::with_capacity(ast.len() * 2);
 
     let mut docs =
-        grammar.nodes.iter().map(|it| it.doc).chain(grammar.enums.iter().map(|it| it.doc));
+        grammar.nodes.iter().map(|it| &it.doc).chain(grammar.enums.iter().map(|it| &it.doc));
 
     for chunk in ast.split("# [ pretty_doc_comment_placeholder_workaround ]") {
         res.push_str(chunk);
         if let Some(doc) = docs.next() {
-            write_doc_comment(doc, &mut res);
+            write_doc_comment(&doc, &mut res);
         }
     }
 
@@ -249,7 +250,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: AstSrc<'_>) -> Result<String> {
     Ok(pretty)
 }
 
-fn write_doc_comment(contents: &[&str], dest: &mut String) {
+fn write_doc_comment(contents: &[String], dest: &mut String) {
     for line in contents {
         writeln!(dest, "///{}", line).unwrap();
     }
@@ -413,7 +414,7 @@ fn to_pascal_case(s: &str) -> String {
     buf
 }
 
-impl Field<'_> {
+impl Field {
     fn is_many(&self) -> bool {
         matches!(self, Field::Node { src: FieldSrc::Many(_), .. })
     }
@@ -429,7 +430,7 @@ impl Field<'_> {
     fn method_name(&self) -> proc_macro2::Ident {
         match self {
             Field::Token(name) => {
-                let name = match *name {
+                let name = match name.as_str() {
                     ";" => "semicolon",
                     "->" => "thin_arrow",
                     "'{'" => "l_curly",
