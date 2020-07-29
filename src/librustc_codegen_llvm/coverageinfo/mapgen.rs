@@ -2,8 +2,9 @@ use crate::common::CodegenCx;
 use crate::coverageinfo;
 use crate::llvm;
 
+use llvm::coverageinfo::CounterMappingRegion;
 use log::debug;
-use rustc_codegen_ssa::coverageinfo::map::*;
+use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression, Region};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_llvm::RustString;
@@ -132,7 +133,7 @@ impl CoverageMapGenerator {
                 };
                 virtual_file_mapping.push(filenames_index);
             }
-            mapping_regions.push(coverageinfo::CounterMappingRegion::code_region(
+            mapping_regions.push(CounterMappingRegion::code_region(
                 counter,
                 current_file_id,
                 start_line,

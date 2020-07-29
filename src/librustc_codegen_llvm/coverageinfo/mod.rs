@@ -4,8 +4,9 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 
 use libc::c_uint;
+use llvm::coverageinfo::CounterMappingRegion;
 use log::debug;
-use rustc_codegen_ssa::coverageinfo::map::*;
+use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, ExprKind, FunctionCoverage};
 use rustc_codegen_ssa::traits::{
     BaseTypeMethods, CoverageInfoBuilderMethods, CoverageInfoMethods, StaticMethods,
 };
@@ -107,150 +108,6 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             .entry(instance)
             .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
             .add_unreachable_region(start_byte_pos, end_byte_pos);
-    }
-}
-
-/// Aligns with [llvm::coverage::CounterMappingRegion::RegionKind](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L205-L221)
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-enum RegionKind {
-    /// A CodeRegion associates some code with a counter
-    CodeRegion = 0,
-
-    /// An ExpansionRegion represents a file expansion region that associates
-    /// a source range with the expansion of a virtual source file, such as
-    /// for a macro instantiation or #include file.
-    ExpansionRegion = 1,
-
-    /// A SkippedRegion represents a source range with code that was skipped
-    /// by a preprocessor or similar means.
-    SkippedRegion = 2,
-
-    /// A GapRegion is like a CodeRegion, but its count is only set as the
-    /// line execution count when its the only region in the line.
-    GapRegion = 3,
-}
-
-/// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the
-/// coverage map, in accordance with the
-/// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/llvmorg-8.0.0/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
-/// The struct composes fields representing the `Counter` type and value(s) (injected counter ID,
-/// or expression type and operands), the source file (an indirect index into a "filenames array",
-/// encoded separately), and source location (start and end positions of the represented code
-/// region).
-///
-/// Aligns with [llvm::coverage::CounterMappingRegion](https://github.com/rust-lang/llvm-project/blob/rustc/10.0-2020-05-05/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L223-L226)
-/// Important: The Rust struct layout (order and types of fields) must match its C++ counterpart.
-#[derive(Copy, Clone, Debug)]
-#[repr(C)]
-pub struct CounterMappingRegion {
-    /// The counter type and type-dependent counter data, if any.
-    counter: Counter,
-
-    /// An indirect reference to the source filename. In the LLVM Coverage Mapping Format, the
-    /// file_id is an index into a function-specific `virtual_file_mapping` array of indexes that,
-    /// in turn, are used to look up the filename for this region.
-    file_id: u32,
-
-    /// If the `RegionKind` is an `ExpansionRegion`, the `expanded_file_id` can be used to find the
-    /// mapping regions created as a result of macro expansion, by checking if their file id matches
-    /// the expanded file id.
-    expanded_file_id: u32,
-
-    /// 1-based starting line of the mapping region.
-    start_line: u32,
-
-    /// 1-based starting column of the mapping region.
-    start_col: u32,
-
-    /// 1-based ending line of the mapping region.
-    end_line: u32,
-
-    /// 1-based ending column of the mapping region. If the high bit is set, the current mapping
-    /// region is a gap area.
-    end_col: u32,
-
-    kind: RegionKind,
-}
-
-impl CounterMappingRegion {
-    pub fn code_region(
-        counter: Counter,
-        file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter,
-            file_id,
-            expanded_file_id: 0,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            kind: RegionKind::CodeRegion,
-        }
-    }
-
-    pub fn expansion_region(
-        file_id: u32,
-        expanded_file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter: Counter::zero(),
-            file_id,
-            expanded_file_id,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            kind: RegionKind::ExpansionRegion,
-        }
-    }
-
-    pub fn skipped_region(
-        file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter: Counter::zero(),
-            file_id,
-            expanded_file_id: 0,
-            start_line,
-            start_col,
-            end_line,
-            end_col,
-            kind: RegionKind::SkippedRegion,
-        }
-    }
-
-    pub fn gap_region(
-        counter: Counter,
-        file_id: u32,
-        start_line: u32,
-        start_col: u32,
-        end_line: u32,
-        end_col: u32,
-    ) -> Self {
-        Self {
-            counter,
-            file_id,
-            expanded_file_id: 0,
-            start_line,
-            start_col,
-            end_line,
-            end_col: ((1 as u32) << 31) | end_col,
-            kind: RegionKind::GapRegion,
-        }
     }
 }
 
