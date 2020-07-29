@@ -1376,15 +1376,15 @@ impl ast::AttrsOwner for ExternItem {}
 impl ast::NameOwner for ExternItem {}
 impl ast::VisibilityOwner for ExternItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum NominalDef {
+pub enum AdtDef {
     StructDef(StructDef),
     EnumDef(EnumDef),
     UnionDef(UnionDef),
 }
-impl ast::AttrsOwner for NominalDef {}
-impl ast::NameOwner for NominalDef {}
-impl ast::TypeParamsOwner for NominalDef {}
-impl ast::VisibilityOwner for NominalDef {}
+impl ast::AttrsOwner for AdtDef {}
+impl ast::NameOwner for AdtDef {}
+impl ast::TypeParamsOwner for AdtDef {}
+impl ast::VisibilityOwner for AdtDef {}
 impl AstNode for SourceFile {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SOURCE_FILE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3345,16 +3345,16 @@ impl AstNode for ExternItem {
         }
     }
 }
-impl From<StructDef> for NominalDef {
-    fn from(node: StructDef) -> NominalDef { NominalDef::StructDef(node) }
+impl From<StructDef> for AdtDef {
+    fn from(node: StructDef) -> AdtDef { AdtDef::StructDef(node) }
 }
-impl From<EnumDef> for NominalDef {
-    fn from(node: EnumDef) -> NominalDef { NominalDef::EnumDef(node) }
+impl From<EnumDef> for AdtDef {
+    fn from(node: EnumDef) -> AdtDef { AdtDef::EnumDef(node) }
 }
-impl From<UnionDef> for NominalDef {
-    fn from(node: UnionDef) -> NominalDef { NominalDef::UnionDef(node) }
+impl From<UnionDef> for AdtDef {
+    fn from(node: UnionDef) -> AdtDef { AdtDef::UnionDef(node) }
 }
-impl AstNode for NominalDef {
+impl AstNode for AdtDef {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             STRUCT_DEF | ENUM_DEF | UNION_DEF => true,
@@ -3363,18 +3363,18 @@ impl AstNode for NominalDef {
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            STRUCT_DEF => NominalDef::StructDef(StructDef { syntax }),
-            ENUM_DEF => NominalDef::EnumDef(EnumDef { syntax }),
-            UNION_DEF => NominalDef::UnionDef(UnionDef { syntax }),
+            STRUCT_DEF => AdtDef::StructDef(StructDef { syntax }),
+            ENUM_DEF => AdtDef::EnumDef(EnumDef { syntax }),
+            UNION_DEF => AdtDef::UnionDef(UnionDef { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            NominalDef::StructDef(it) => &it.syntax,
-            NominalDef::EnumDef(it) => &it.syntax,
-            NominalDef::UnionDef(it) => &it.syntax,
+            AdtDef::StructDef(it) => &it.syntax,
+            AdtDef::EnumDef(it) => &it.syntax,
+            AdtDef::UnionDef(it) => &it.syntax,
         }
     }
 }
@@ -3423,7 +3423,7 @@ impl std::fmt::Display for ExternItem {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for NominalDef {
+impl std::fmt::Display for AdtDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
