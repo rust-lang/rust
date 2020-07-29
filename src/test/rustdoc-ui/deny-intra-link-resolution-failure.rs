@@ -1,4 +1,4 @@
-#![deny(intra_doc_link_resolution_failures)]
+#![deny(intra_doc_resolution_failures)]
 
 /// [v2] //~ ERROR
 pub fn foo() {}

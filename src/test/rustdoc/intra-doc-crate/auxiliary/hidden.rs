@@ -1,5 +1,5 @@
 #![crate_name = "hidden_dep"]
-#![deny(intra_doc_link_resolution_failures)]
+#![deny(intra_doc_resolution_failures)]
 
 #[doc(hidden)]
 pub mod __reexport {

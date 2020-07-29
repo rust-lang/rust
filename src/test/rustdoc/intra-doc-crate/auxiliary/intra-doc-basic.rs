@@ -1,5 +1,5 @@
 #![crate_name = "a"]
-#![deny(intra_doc_link_resolution_failures)]
+#![deny(intra_doc_resolution_failures)]
 
 pub struct Foo;
 

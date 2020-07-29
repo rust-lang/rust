@@ -1,6 +1,6 @@
 // aux-build:intra-link-proc-macro-macro.rs
 // build-aux-docs
-#![deny(intra_doc_link_resolution_failures)]
+#![deny(intra_doc_resolution_failures)]
 
 extern crate intra_link_proc_macro_macro;
 

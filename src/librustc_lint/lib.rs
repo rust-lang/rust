@@ -62,7 +62,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
-    INTRA_DOC_LINK_RESOLUTION_FAILURES, INVALID_CODEBLOCK_ATTRIBUTES, MISSING_DOC_CODE_EXAMPLES,
+    INTRA_DOC_RESOLUTION_FAILURES, INVALID_CODEBLOCK_ATTRIBUTES, MISSING_DOC_CODE_EXAMPLES,
     PRIVATE_DOC_TESTS,
 };
 use rustc_span::symbol::{Ident, Symbol};
@@ -303,7 +303,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
 
     add_lint_group!(
         "rustdoc",
-        INTRA_DOC_LINK_RESOLUTION_FAILURES,
+        INTRA_DOC_RESOLUTION_FAILURES,
         INVALID_CODEBLOCK_ATTRIBUTES,
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS
@@ -318,7 +318,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_renamed("async_idents", "keyword_idents");
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
     store.register_renamed("redundant_semicolon", "redundant_semicolons");
-    store.register_renamed("intra_doc_link_resolution_failure", "intra_doc_link_resolution_failures");
+    store.register_renamed("intra_doc_link_resolution_failure", "intra_doc_resolution_failures");
     store.register_removed("unknown_features", "replaced by an error");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");

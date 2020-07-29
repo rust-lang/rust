@@ -4,7 +4,7 @@
 // ignore-windows
 // ignore-tidy-linelength
 
-#![deny(intra_doc_link_resolution_failures)]
+#![deny(intra_doc_resolution_failures)]
 #![feature(no_core, lang_items)]
 #![no_core]
 #![crate_type = "rlib"]

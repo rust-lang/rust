@@ -1,6 +1,6 @@
 // we need to make sure that intra-doc links on trait impls get resolved in the right scope
 
-#![deny(intra_doc_link_resolution_failures)]
+#![deny(intra_doc_resolution_failures)]
 
 pub mod inner {
     pub struct SomethingOutOfScope;
