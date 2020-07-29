@@ -63,7 +63,7 @@ use rustc_span::symbol::{sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, TypeKind};
+use crate::clean::{self, primitives, AttributesExt, Deprecation, GetDefId, SelfTy, TypeKind};
 use crate::config::RenderInfo;
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
@@ -3405,7 +3405,7 @@ fn render_deref_methods(
         render_assoc_items(w, cx, container_item, did, what, cache);
     } else {
         if let Some(prim) = target.primitive_type() {
-            if let Some(&did) = cache.primitive_locations.get(&prim) {
+            if let Some(&did) = primitives().get(&prim) {
                 render_assoc_items(w, cx, container_item, did, what, cache);
             }
         }
@@ -4058,7 +4058,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                         .def_id()
                         .or(target
                             .primitive_type()
-                            .and_then(|prim| c.primitive_locations.get(&prim).cloned()))
+                            .and_then(|prim| primitives().get(&prim).cloned()))
                         .and_then(|did| c.impls.get(&did));
                     if let Some(impls) = inner_impl {
                         out.push_str("<a class=\"sidebar-title\" href=\"#deref-methods\">");

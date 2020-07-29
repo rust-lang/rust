@@ -9,7 +9,7 @@ use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_span::source_map::FileName;
 
-use crate::clean::{self, GetDefId};
+use crate::clean::{self, primitives, GetDefId};
 use crate::config::RenderInfo;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
@@ -75,9 +75,6 @@ pub struct Cache {
 
     /// Cache of where external crate documentation can be found.
     pub extern_locations: FxHashMap<CrateNum, (String, PathBuf, ExternalLocation)>,
-
-    /// Cache of where documentation for primitives can be found.
-    pub primitive_locations: FxHashMap<clean::PrimitiveType, DefId>,
 
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -180,19 +177,6 @@ impl Cache {
 
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
             cache.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
-        }
-
-        // Cache where all known primitives have their documentation located.
-        //
-        // Favor linking to as local extern as possible, so iterate all crates in
-        // reverse topological order.
-        for &(_, ref e) in krate.externs.iter().rev() {
-            for &(def_id, prim, _) in &e.primitives {
-                cache.primitive_locations.insert(prim, def_id);
-            }
-        }
-        for &(def_id, prim, _) in &krate.primitives {
-            cache.primitive_locations.insert(prim, def_id);
         }
 
         cache.stack.push(krate.name.clone());
@@ -403,9 +387,8 @@ impl DocFolder for Cache {
                         true
                     }
                     ref t => {
-                        let prim_did = t
-                            .primitive_type()
-                            .and_then(|t| self.primitive_locations.get(&t).cloned());
+                        let prim_did =
+                            t.primitive_type().and_then(|t| primitives().get(&t).cloned());
                         match prim_did {
                             Some(did) => {
                                 self.parent_stack.push(did);
@@ -436,9 +419,8 @@ impl DocFolder for Cache {
                             dids.insert(did);
                         }
                         ref t => {
-                            let did = t
-                                .primitive_type()
-                                .and_then(|t| self.primitive_locations.get(&t).cloned());
+                            let did =
+                                t.primitive_type().and_then(|t| primitives().get(&t).cloned());
 
                             if let Some(did) = did {
                                 dids.insert(did);

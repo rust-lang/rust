@@ -14,7 +14,7 @@ use rustc_hir as hir;
 use rustc_span::def_id::DefId;
 use rustc_target::spec::abi::Abi;
 
-use crate::clean::{self, PrimitiveType};
+use crate::clean::{self, primitives, PrimitiveType};
 use crate::formats::cache::cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -559,10 +559,13 @@ fn primitive_link(
     prim: clean::PrimitiveType,
     name: &str,
 ) -> fmt::Result {
-    let m = cache();
     let mut needs_termination = false;
+
     if !f.alternate() {
-        match m.primitive_locations.get(&prim) {
+        let m = cache();
+        let primitives = primitives();
+
+        match primitives.get(&prim) {
             Some(&def_id) if def_id.is_local() => {
                 let len = CURRENT_DEPTH.with(|s| s.get());
                 let len = if len == 0 { 0 } else { len - 1 };
