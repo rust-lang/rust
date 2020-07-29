@@ -11,7 +11,9 @@ pub struct SourceFile {
 }
 impl ast::AttrsOwner for SourceFile {}
 impl ast::ModuleItemOwner for SourceFile {}
-impl SourceFile {}
+impl SourceFile {
+    pub fn shebang_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![shebang]) }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Attr {
     pub(crate) syntax: SyntaxNode,

@@ -374,6 +374,7 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> Result<String> {
             #([#all_keywords_idents] => { $crate::SyntaxKind::#all_keywords };)*
             [lifetime] => { $crate::SyntaxKind::LIFETIME };
             [ident] => { $crate::SyntaxKind::IDENT };
+            [shebang] => { $crate::SyntaxKind::SHEBANG };
         }
     };
 
@@ -595,7 +596,6 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) {
 }
 
 fn deduplicate_fields(ast: &mut AstSrc) {
-    eprintln!();
     for node in &mut ast.nodes {
         let mut i = 0;
         'outer: while i < node.fields.len() {
