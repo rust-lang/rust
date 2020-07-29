@@ -220,15 +220,7 @@ fn runnable_mod(
     module: ast::Module,
     file_id: FileId,
 ) -> Option<Runnable> {
-    let has_test_function = module
-        .item_list()?
-        .items()
-        .filter_map(|it| match it {
-            ast::ModuleItem::FnDef(it) => Some(it),
-            _ => None,
-        })
-        .any(|f| has_test_related_attribute(&f));
-    if !has_test_function {
+    if !has_test_function_or_multiple_test_submodules(&module) {
         return None;
     }
     let module_def = sema.to_def(&module)?;
@@ -244,6 +236,34 @@ fn runnable_mod(
     let cfg_exprs = attrs.cfg().collect();
     let nav = module_def.to_nav(sema.db);
     Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg_exprs })
+}
+
+// We could create runnables for modules with number_of_test_submodules > 0,
+// but that bloats the runnables for no real benefit, since all tests can be run by the submodule already
+fn has_test_function_or_multiple_test_submodules(module: &ast::Module) -> bool {
+    if let Some(item_list) = module.item_list() {
+        let mut number_of_test_submodules = 0;
+
+        for item in item_list.items() {
+            match item {
+                ast::ModuleItem::FnDef(f) => {
+                    if has_test_related_attribute(&f) {
+                        return true;
+                    }
+                }
+                ast::ModuleItem::Module(submodule) => {
+                    if has_test_function_or_multiple_test_submodules(&submodule) {
+                        number_of_test_submodules += 1;
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        number_of_test_submodules > 1
+    } else {
+        false
+    }
 }
 
 #[cfg(test)]
@@ -571,19 +591,33 @@ mod test_mod {
     }
 
     #[test]
-    fn test_runnables_one_depth_layer_module() {
+    fn only_modules_with_test_functions_or_more_than_one_test_submodule_have_runners() {
         check(
             r#"
 //- /lib.rs
 <|>
-mod foo {
-    mod test_mod {
-        #[test]
-        fn test_foo1() {}
+mod root_tests {
+    mod nested_tests_0 {
+        mod nested_tests_1 {
+            #[test]
+            fn nested_test_11() {}
+
+            #[test]
+            fn nested_test_12() {}
+        }
+
+        mod nested_tests_2 {
+            #[test]
+            fn nested_test_2() {}
+        }
+
+        mod nested_tests_3 {}
     }
+
+    mod nested_tests_4 {}
 }
 "#,
-            &[&TEST, &TEST],
+            &[&TEST, &TEST, &TEST, &TEST, &TEST, &TEST],
             expect![[r#"
                 [
                     Runnable {
@@ -591,18 +625,18 @@ mod foo {
                             file_id: FileId(
                                 1,
                             ),
-                            full_range: 15..77,
+                            full_range: 22..323,
                             focus_range: Some(
-                                19..27,
+                                26..40,
                             ),
-                            name: "test_mod",
+                            name: "nested_tests_0",
                             kind: MODULE,
                             container_name: None,
                             description: None,
                             docs: None,
                         },
                         kind: TestMod {
-                            path: "foo::test_mod",
+                            path: "root_tests::nested_tests_0",
                         },
                         cfg_exprs: [],
                     },
@@ -611,11 +645,31 @@ mod foo {
                             file_id: FileId(
                                 1,
                             ),
-                            full_range: 38..71,
+                            full_range: 51..192,
                             focus_range: Some(
-                                57..66,
+                                55..69,
                             ),
-                            name: "test_foo1",
+                            name: "nested_tests_1",
+                            kind: MODULE,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: TestMod {
+                            path: "root_tests::nested_tests_0::nested_tests_1",
+                        },
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 84..126,
+                            focus_range: Some(
+                                107..121,
+                            ),
+                            name: "nested_test_11",
                             kind: FN_DEF,
                             container_name: None,
                             description: None,
@@ -623,7 +677,7 @@ mod foo {
                         },
                         kind: Test {
                             test_id: Path(
-                                "foo::test_mod::test_foo1",
+                                "root_tests::nested_tests_0::nested_tests_1::nested_test_11",
                             ),
                             attr: TestAttr {
                                 ignore: false,
@@ -631,46 +685,28 @@ mod foo {
                         },
                         cfg_exprs: [],
                     },
-                ]
-            "#]],
-        );
-    }
-
-    #[test]
-    fn test_runnables_multiple_depth_module() {
-        check(
-            r#"
-//- /lib.rs
-<|>
-mod foo {
-    mod bar {
-        mod test_mod {
-            #[test]
-            fn test_foo1() {}
-        }
-    }
-}
-"#,
-            &[&TEST, &TEST],
-            expect![[r#"
-                [
                     Runnable {
                         nav: NavigationTarget {
                             file_id: FileId(
                                 1,
                             ),
-                            full_range: 33..107,
+                            full_range: 140..182,
                             focus_range: Some(
-                                37..45,
+                                163..177,
                             ),
-                            name: "test_mod",
-                            kind: MODULE,
+                            name: "nested_test_12",
+                            kind: FN_DEF,
                             container_name: None,
                             description: None,
                             docs: None,
                         },
-                        kind: TestMod {
-                            path: "foo::bar::test_mod",
+                        kind: Test {
+                            test_id: Path(
+                                "root_tests::nested_tests_0::nested_tests_1::nested_test_12",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
                         },
                         cfg_exprs: [],
                     },
@@ -679,11 +715,31 @@ mod foo {
                             file_id: FileId(
                                 1,
                             ),
-                            full_range: 60..97,
+                            full_range: 202..286,
                             focus_range: Some(
-                                83..92,
+                                206..220,
                             ),
-                            name: "test_foo1",
+                            name: "nested_tests_2",
+                            kind: MODULE,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: TestMod {
+                            path: "root_tests::nested_tests_0::nested_tests_2",
+                        },
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 235..276,
+                            focus_range: Some(
+                                258..271,
+                            ),
+                            name: "nested_test_2",
                             kind: FN_DEF,
                             container_name: None,
                             description: None,
@@ -691,7 +747,7 @@ mod foo {
                         },
                         kind: Test {
                             test_id: Path(
-                                "foo::bar::test_mod::test_foo1",
+                                "root_tests::nested_tests_0::nested_tests_2::nested_test_2",
                             ),
                             attr: TestAttr {
                                 ignore: false,
