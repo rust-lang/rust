@@ -287,7 +287,7 @@ impl CodegenCx<'ll, 'tcx> {
             // argument validation.
             debug_assert!(
                 !(self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
-                    && self.tcx.sess.target.target.options.is_like_msvc
+                    && self.tcx.sess.target.target.options.is_like_windows
                     && self.tcx.sess.opts.cg.prefer_dynamic)
             );
 
