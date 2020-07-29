@@ -1,7 +1,10 @@
 //! Fully type-check project and print various stats, like the number of type
 //! errors.
 
-use std::{path::Path, time::Instant};
+use std::{
+    path::Path,
+    time::{Instant, SystemTime, UNIX_EPOCH},
+};
 
 use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
@@ -10,12 +13,12 @@ use hir::{
 use hir_def::FunctionId;
 use hir_ty::{Ty, TypeWalk};
 use itertools::Itertools;
+use oorandom::Rand32;
 use ra_db::{
     salsa::{self, ParallelDatabase},
     SourceDatabaseExt,
 };
 use ra_syntax::AstNode;
-use rand::{seq::SliceRandom, thread_rng};
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
@@ -46,6 +49,11 @@ pub fn analysis_stats(
     load_output_dirs: bool,
     with_proc_macro: bool,
 ) -> Result<()> {
+    let mut rng = {
+        let seed = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+        Rand32::new(seed)
+    };
+
     let db_load_time = Instant::now();
     let (host, vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
@@ -57,7 +65,7 @@ pub fn analysis_stats(
 
     let mut krates = Crate::all(db);
     if randomize {
-        krates.shuffle(&mut thread_rng());
+        shuffle(&mut rng, &mut krates);
     }
     for krate in krates {
         let module = krate.root_module(db).expect("crate without root module");
@@ -72,7 +80,7 @@ pub fn analysis_stats(
     }
 
     if randomize {
-        visit_queue.shuffle(&mut thread_rng());
+        shuffle(&mut rng, &mut visit_queue);
     }
 
     eprintln!("Crates in this dir: {}", num_crates);
@@ -110,7 +118,7 @@ pub fn analysis_stats(
     );
 
     if randomize {
-        funcs.shuffle(&mut thread_rng());
+        shuffle(&mut rng, &mut funcs);
     }
 
     let mut bar = match verbosity {
@@ -305,4 +313,11 @@ pub fn analysis_stats(
     }
 
     Ok(())
+}
+
+fn shuffle<T>(rng: &mut Rand32, slice: &mut [T]) {
+    for i in (1..slice.len()).rev() {
+        let idx = rng.rand_range(0..i as u32) as usize;
+        slice.swap(idx, i)
+    }
 }
