@@ -4,6 +4,7 @@ use crate::collections::BTreeMap;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
+use crate::mem;
 use crate::ptr;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::File;
@@ -13,7 +14,7 @@ use crate::sys_common::process::CommandEnv;
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
 
-use libc::{c_char, c_int, gid_t, strlen, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
+use libc::{c_char, c_int, gid_t, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
@@ -76,6 +77,7 @@ pub struct Command {
     argv: Argv,
     env: CommandEnv,
     arg_max: Option<isize>,
+    arg_size: usize,
 
     cwd: Option<CString>,
     uid: Option<uid_t>,
@@ -146,6 +148,7 @@ impl Command {
             program,
             env: Default::default(),
             arg_max: Default::default(),
+            arg_size: mem::size_of::<*const u8>(),
             cwd: None,
             uid: None,
             gid: None,
@@ -161,6 +164,8 @@ impl Command {
         // Set a new arg0
         let arg = os2c(arg, &mut self.problem);
         debug_assert!(self.argv.0.len() > 1);
+        self.arg_size -= self.args[0].to_bytes().len();
+        self.arg_size += arg.to_bytes().len();
         self.argv.0[0] = arg.as_ptr();
         self.args[0] = arg;
     }
@@ -178,6 +183,7 @@ impl Command {
         // Overwrite the trailing NULL pointer in `argv` and then add a new null
         // pointer.
         let arg = os2c(arg, &mut self.problem);
+        self.arg_size += arg.to_bytes().len() + 1 + mem::size_of::<*const u8>();
         self.argv.0[self.args.len()] = arg.as_ptr();
         self.argv.0.push(ptr::null());
 
@@ -221,11 +227,6 @@ impl Command {
     }
 
     pub fn get_size(&mut self) -> io::Result<usize> {
-        use crate::mem;
-        let argv = &self.argv.0;
-        let argv_size: usize = argv.iter().map(|x| unsafe { strlen(*x) + 1 }).sum::<usize>()
-            + (argv.len() + 1) * mem::size_of::<*const u8>();
-
         // Envp size calculation is approximate.
         let env = self.env.capture();
         let env_size: usize = env
@@ -238,7 +239,7 @@ impl Command {
             .sum::<usize>()
             + (env.len() + 1) * mem::size_of::<*const u8>();
 
-        Ok(argv_size + env_size)
+        Ok(self.arg_size + env_size)
     }
 
     pub fn check_size(&mut self, refresh: bool) -> io::Result<bool> {
