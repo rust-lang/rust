@@ -472,3 +472,19 @@ impl ast::TokenTree {
             .filter(|it| matches!(it.kind(), T!['}'] | T![')'] | T![']']))
     }
 }
+
+impl ast::DocCommentsOwner for ast::SourceFile {}
+impl ast::DocCommentsOwner for ast::FnDef {}
+impl ast::DocCommentsOwner for ast::StructDef {}
+impl ast::DocCommentsOwner for ast::UnionDef {}
+impl ast::DocCommentsOwner for ast::RecordFieldDef {}
+impl ast::DocCommentsOwner for ast::TupleFieldDef {}
+impl ast::DocCommentsOwner for ast::EnumDef {}
+impl ast::DocCommentsOwner for ast::EnumVariant {}
+impl ast::DocCommentsOwner for ast::TraitDef {}
+impl ast::DocCommentsOwner for ast::Module {}
+impl ast::DocCommentsOwner for ast::StaticDef {}
+impl ast::DocCommentsOwner for ast::ConstDef {}
+impl ast::DocCommentsOwner for ast::TypeAliasDef {}
+impl ast::DocCommentsOwner for ast::ImplDef {}
+impl ast::DocCommentsOwner for ast::MacroCall {}
