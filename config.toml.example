@@ -49,10 +49,8 @@
 # dynamic version to be available.
 #static-libstdcpp = false
 
-# Tell the LLVM build system to use Ninja instead of the platform default for
-# the generated build system. This can sometimes be faster than make, for
-# example.
-#ninja = false
+# Whether to use Ninja to build LLVM. This runs much faster than make.
+#ninja = true
 
 # LLVM targets to build support for.
 # Note: this is NOT related to Rust compilation targets. However, as Rust is
