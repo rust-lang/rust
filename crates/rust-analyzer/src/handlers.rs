@@ -469,12 +469,12 @@ pub(crate) fn handle_runnables(
         res.push(runnable);
     }
 
-    // Add `cargo check` and `cargo test` for the whole package
+    // Add `cargo check` and `cargo test` for all targets of the whole package
     match cargo_spec {
         Some(spec) => {
             for &cmd in ["check", "test"].iter() {
                 res.push(lsp_ext::Runnable {
-                    label: format!("cargo {} -p {}", cmd, spec.package),
+                    label: format!("cargo {} -p {} --all-targets", cmd, spec.package),
                     location: None,
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
@@ -483,6 +483,7 @@ pub(crate) fn handle_runnables(
                             cmd.to_string(),
                             "--package".to_string(),
                             spec.package.clone(),
+                            "--all-targets".to_string(),
                         ],
                         executable_args: Vec::new(),
                         expect_test: None,
