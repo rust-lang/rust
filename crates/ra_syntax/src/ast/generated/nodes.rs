@@ -502,6 +502,23 @@ impl ConstParam {
     pub fn default_val(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Literal {
+    pub(crate) syntax: SyntaxNode,
+}
+impl Literal {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TokenTree {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TokenTree {
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenType {
     pub(crate) syntax: SyntaxNode,
 }
@@ -908,11 +925,6 @@ pub struct BinExpr {
 impl ast::AttrsOwner for BinExpr {}
 impl BinExpr {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Literal {
-    pub(crate) syntax: SyntaxNode,
-}
-impl Literal {}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1131,18 +1143,6 @@ impl TuplePat {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TokenTree {
-    pub(crate) syntax: SyntaxNode,
-}
-impl TokenTree {
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroDef {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1263,16 +1263,6 @@ impl ConstArg {
     pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MetaItem {
-    pub(crate) syntax: SyntaxNode,
-}
-impl MetaItem {
-    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn attr_input(&self) -> Option<AttrInput> { support::child(&self.syntax) }
-    pub fn nested_meta_items(&self) -> AstChildren<MetaItem> { support::children(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Item {
     Const(Const),
     Enum(Enum),
@@ -1388,16 +1378,16 @@ pub enum GenericParam {
 }
 impl ast::AttrsOwner for GenericParam {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AttrInput {
+    Literal(Literal),
+    TokenTree(TokenTree),
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
     LetStmt(LetStmt),
     ExprStmt(ExprStmt),
 }
 impl ast::AttrsOwner for Stmt {}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AttrInput {
-    Literal(Literal),
-    TokenTree(TokenTree),
-}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AdtDef {
     Struct(Struct),
@@ -1892,6 +1882,28 @@ impl AstNode for ConstParam {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for Literal {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LITERAL }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for TokenTree {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TOKEN_TREE }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for ParenType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2354,17 +2366,6 @@ impl AstNode for BinExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for Literal {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == LITERAL }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for MatchExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2629,17 +2630,6 @@ impl AstNode for TuplePat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TokenTree {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TOKEN_TREE }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for MacroDef {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_DEF }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2763,17 +2753,6 @@ impl AstNode for AssocTypeArg {
 }
 impl AstNode for ConstArg {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_ARG }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for MetaItem {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == META_ITEM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3363,34 +3342,6 @@ impl AstNode for GenericParam {
         }
     }
 }
-impl From<LetStmt> for Stmt {
-    fn from(node: LetStmt) -> Stmt { Stmt::LetStmt(node) }
-}
-impl From<ExprStmt> for Stmt {
-    fn from(node: ExprStmt) -> Stmt { Stmt::ExprStmt(node) }
-}
-impl AstNode for Stmt {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            LET_STMT | EXPR_STMT => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            LET_STMT => Stmt::LetStmt(LetStmt { syntax }),
-            EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            Stmt::LetStmt(it) => &it.syntax,
-            Stmt::ExprStmt(it) => &it.syntax,
-        }
-    }
-}
 impl From<Literal> for AttrInput {
     fn from(node: Literal) -> AttrInput { AttrInput::Literal(node) }
 }
@@ -3416,6 +3367,34 @@ impl AstNode for AttrInput {
         match self {
             AttrInput::Literal(it) => &it.syntax,
             AttrInput::TokenTree(it) => &it.syntax,
+        }
+    }
+}
+impl From<LetStmt> for Stmt {
+    fn from(node: LetStmt) -> Stmt { Stmt::LetStmt(node) }
+}
+impl From<ExprStmt> for Stmt {
+    fn from(node: ExprStmt) -> Stmt { Stmt::ExprStmt(node) }
+}
+impl AstNode for Stmt {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            LET_STMT | EXPR_STMT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            LET_STMT => Stmt::LetStmt(LetStmt { syntax }),
+            EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Stmt::LetStmt(it) => &it.syntax,
+            Stmt::ExprStmt(it) => &it.syntax,
         }
     }
 }
@@ -3492,12 +3471,12 @@ impl std::fmt::Display for GenericParam {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for Stmt {
+impl std::fmt::Display for AttrInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for AttrInput {
+impl std::fmt::Display for Stmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3727,6 +3706,16 @@ impl std::fmt::Display for ConstParam {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for Literal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TokenTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for ParenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3937,11 +3926,6 @@ impl std::fmt::Display for BinExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for Literal {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for MatchExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -4062,11 +4046,6 @@ impl std::fmt::Display for TuplePat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TokenTree {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for MacroDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -4123,11 +4102,6 @@ impl std::fmt::Display for AssocTypeArg {
     }
 }
 impl std::fmt::Display for ConstArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for MetaItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

@@ -173,6 +173,20 @@ ConstParam =
 LifetimeParam =
   Attr* 'lifetime'
 
+Visibility =
+  'pub' ('('
+    'super'
+  | 'self'
+  | 'crate'
+  | 'in' Path
+  ')')?
+
+Attr =
+  '#' '!'? '[' Path ('=' input:AttrInput)? ']'
+
+AttrInput =
+  Literal | TokenTree
+
 ParenType =
   '(' TypeRef ')'
 
@@ -391,9 +405,6 @@ TupleStructPat =
 TuplePat =
    '(' args:Pat* ')'
 
-Visibility =
-  'pub' ('(' 'super' | 'self' | 'crate' | 'in' Path ')')?
-
 Name =
   'ident'
 
@@ -415,9 +426,6 @@ MacroItems =
 MacroStmts =
   statements:Stmt*
   Expr?
-
-Attr =
-  '#' '!'? '[' Path ('=' input:AttrInput)? ']'
 
 TypeBound =
   'lifetime' | 'const'? TypeRef
@@ -465,9 +473,6 @@ LifetimeArg =
 ConstArg =
   Literal | BlockExpr BlockExpr
 
-MetaItem =
-  Path '=' AttrInput nested_meta_items:MetaItem*
-
 AdtDef =
   Struct
 | Enum
@@ -487,10 +492,6 @@ TypeRef =
 | ForType
 | ImplTraitType
 | DynTraitType
-
-AttrInput =
-  Literal
-| TokenTree
 
 Stmt =
   LetStmt
