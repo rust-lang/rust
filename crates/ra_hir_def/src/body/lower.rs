@@ -656,7 +656,7 @@ impl ExprCollector<'_> {
                         let id = self.find_inner_item(&def)?;
                         (StructLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::Item::EnumDef(def) => {
+                    ast::Item::Enum(def) => {
                         let id = self.find_inner_item(&def)?;
                         (EnumLoc { container, id }.intern(self.db).into(), def.name())
                     }

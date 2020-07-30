@@ -124,7 +124,7 @@ impl HasChildSource for EnumId {
 fn lower_enum(
     db: &dyn DefDatabase,
     trace: &mut Trace<EnumVariantData, ast::EnumVariant>,
-    ast: &InFile<ast::EnumDef>,
+    ast: &InFile<ast::Enum>,
     module_id: ModuleId,
 ) {
     let expander = CfgExpander::new(db, ast.file_id, module_id.krate);

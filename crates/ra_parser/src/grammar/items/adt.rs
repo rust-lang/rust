@@ -64,7 +64,7 @@ pub(super) fn enum_def(p: &mut Parser, m: Marker) {
     } else {
         p.error("expected `{`")
     }
-    m.complete(p, ENUM_DEF);
+    m.complete(p, ENUM);
 }
 
 pub(crate) fn enum_variant_list(p: &mut Parser) {

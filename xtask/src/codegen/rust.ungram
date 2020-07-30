@@ -5,7 +5,7 @@ SourceFile =
 
 Item =
   ConstDef
-| EnumDef
+| Enum
 | ExternBlock
 | ExternCrate
 | Fn
@@ -98,11 +98,7 @@ FieldList =
   RecordFieldList
 | TupleFieldList
 
-Union =
-  Attr* Visibility? 'union' Name GenericParamList? WhereClause?
-  RecordFieldList
-
-EnumDef =
+Enum =
   Attr* Visibility? 'enum' Name GenericParamList? WhereClause?
   variant_list:EnumVariantList
 
@@ -111,6 +107,10 @@ EnumVariantList =
 
 EnumVariant =
   Attr* Visibility? Name FieldList ('=' Expr)?
+
+Union =
+  Attr* Visibility? 'union' Name GenericParamList? WhereClause?
+  RecordFieldList
 
 TraitDef =
   Attr* Visibility? 'unsafe'? 'auto'? 'trait' Name GenericParamList
@@ -454,7 +454,7 @@ MetaItem =
 
 AdtDef =
   Struct
-| EnumDef
+| Enum
 | Union
 
 TypeRef =

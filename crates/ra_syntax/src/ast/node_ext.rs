@@ -248,11 +248,11 @@ impl ast::RecordFieldPat {
 }
 
 impl ast::EnumVariant {
-    pub fn parent_enum(&self) -> ast::EnumDef {
+    pub fn parent_enum(&self) -> ast::Enum {
         self.syntax()
             .parent()
             .and_then(|it| it.parent())
-            .and_then(ast::EnumDef::cast)
+            .and_then(ast::Enum::cast)
             .expect("EnumVariants are always nested in Enums")
     }
     pub fn kind(&self) -> StructKind {
@@ -479,7 +479,7 @@ impl ast::DocCommentsOwner for ast::Struct {}
 impl ast::DocCommentsOwner for ast::Union {}
 impl ast::DocCommentsOwner for ast::RecordField {}
 impl ast::DocCommentsOwner for ast::TupleField {}
-impl ast::DocCommentsOwner for ast::EnumDef {}
+impl ast::DocCommentsOwner for ast::Enum {}
 impl ast::DocCommentsOwner for ast::EnumVariant {}
 impl ast::DocCommentsOwner for ast::TraitDef {}
 impl ast::DocCommentsOwner for ast::Module {}

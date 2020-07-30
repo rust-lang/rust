@@ -706,7 +706,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
 
     let tag = match parent.kind() {
         STRUCT => HighlightTag::Struct,
-        ENUM_DEF => HighlightTag::Enum,
+        ENUM => HighlightTag::Enum,
         UNION => HighlightTag::Union,
         TRAIT_DEF => HighlightTag::Trait,
         TYPE_ALIAS => HighlightTag::TypeAlias,

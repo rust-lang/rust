@@ -25,7 +25,7 @@ impl ShortLabel for ast::Union {
     }
 }
 
-impl ShortLabel for ast::EnumDef {
+impl ShortLabel for ast::Enum {
     fn short_label(&self) -> Option<String> {
         short_label_from_node(self, "enum ")
     }

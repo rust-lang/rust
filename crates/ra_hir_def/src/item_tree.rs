@@ -416,7 +416,7 @@ mod_items! {
     Function in functions -> ast::Fn,
     Struct in structs -> ast::Struct,
     Union in unions -> ast::Union,
-    Enum in enums -> ast::EnumDef,
+    Enum in enums -> ast::Enum,
     Const in consts -> ast::ConstDef,
     Static in statics -> ast::StaticDef,
     Trait in traits -> ast::TraitDef,
@@ -543,7 +543,7 @@ pub struct Enum {
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
     pub variants: IdRange<Variant>,
-    pub ast_id: FileAstId<ast::EnumDef>,
+    pub ast_id: FileAstId<ast::Enum>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

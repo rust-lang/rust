@@ -77,7 +77,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn struct_to_def(&mut self, src: InFile<ast::Struct>) -> Option<StructId> {
         self.to_def(src, keys::STRUCT)
     }
-    pub(super) fn enum_to_def(&mut self, src: InFile<ast::EnumDef>) -> Option<EnumId> {
+    pub(super) fn enum_to_def(&mut self, src: InFile<ast::Enum>) -> Option<EnumId> {
         self.to_def(src, keys::ENUM)
     }
     pub(super) fn union_to_def(&mut self, src: InFile<ast::Union>) -> Option<UnionId> {
@@ -170,7 +170,7 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.struct_to_def(container.with_value(it))?;
                         VariantId::from(def).into()
                     },
-                    ast::EnumDef(it) => {
+                    ast::Enum(it) => {
                         let def = self.enum_to_def(container.with_value(it))?;
                         def.into()
                     },
@@ -206,7 +206,7 @@ impl SourceToDefCtx<'_, '_> {
                 match (container.value) {
                     ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
                     ast::Struct(it) => self.struct_to_def(container.with_value(it))?.into(),
-                    ast::EnumDef(it) => self.enum_to_def(container.with_value(it))?.into(),
+                    ast::Enum(it) => self.enum_to_def(container.with_value(it))?.into(),
                     ast::TraitDef(it) => self.trait_to_def(container.with_value(it))?.into(),
                     ast::TypeAlias(it) => self.type_alias_to_def(container.with_value(it))?.into(),
                     ast::ImplDef(it) => self.impl_to_def(container.with_value(it))?.into(),

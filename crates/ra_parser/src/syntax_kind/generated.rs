@@ -125,7 +125,7 @@ pub enum SyntaxKind {
     SOURCE_FILE,
     STRUCT,
     UNION,
-    ENUM_DEF,
+    ENUM,
     FN,
     RET_TYPE,
     EXTERN_CRATE,

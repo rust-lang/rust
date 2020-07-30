@@ -926,7 +926,7 @@ pub(crate) fn handle_code_lens(
                         it.kind,
                         SyntaxKind::TRAIT_DEF
                             | SyntaxKind::STRUCT
-                            | SyntaxKind::ENUM_DEF
+                            | SyntaxKind::ENUM
                             | SyntaxKind::UNION
                     )
                 })

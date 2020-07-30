@@ -11,7 +11,7 @@ SOURCE_FILE@0..575
     BLOCK_EXPR@10..574
       L_CURLY@10..11 "{"
       WHITESPACE@11..16 "\n    "
-      ENUM_DEF@16..152
+      ENUM@16..152
         ENUM_KW@16..20 "enum"
         WHITESPACE@20..21 " "
         NAME@21..25
@@ -79,7 +79,7 @@ SOURCE_FILE@0..575
           INT_NUMBER@184..185 "1"
         SEMICOLON@185..186 ";"
       WHITESPACE@186..191 "\n    "
-      ENUM_DEF@191..223
+      ENUM@191..223
         ENUM_KW@191..195 "enum"
         WHITESPACE@195..196 " "
         NAME@196..201
@@ -95,7 +95,7 @@ SOURCE_FILE@0..575
           WHITESPACE@217..222 "\n    "
           R_CURLY@222..223 "}"
       WHITESPACE@223..229 "\n\n    "
-      ENUM_DEF@229..300
+      ENUM@229..300
         ENUM_KW@229..233 "enum"
         WHITESPACE@233..234 " "
         NAME@234..239
@@ -132,7 +132,7 @@ SOURCE_FILE@0..575
         BLOCK_EXPR@306..459
           L_CURLY@306..307 "{"
           WHITESPACE@307..316 "\n        "
-          ENUM_DEF@316..453
+          ENUM@316..453
             COMMENT@316..329 "// fail again"
             WHITESPACE@329..338 "\n        "
             ENUM_KW@338..342 "enum"
