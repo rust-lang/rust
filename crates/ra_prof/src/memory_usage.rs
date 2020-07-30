@@ -26,7 +26,7 @@ impl MemoryUsage {
         cfg_if! {
             if #[cfg(target_os = "linux")] {
                 // Note: This is incredibly slow.
-                let alloc = unsafe { libc::mallinfo() }.uordblks as u32 as isize;
+                let alloc = unsafe { libc::mallinfo() }.uordblks as isize;
                 MemoryUsage { allocated: Bytes(alloc) }
             } else {
                 MemoryUsage { allocated: Bytes(0) }
