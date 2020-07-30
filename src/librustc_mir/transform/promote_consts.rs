@@ -502,9 +502,33 @@ impl<'tcx> Validator<'_, 'tcx> {
     fn validate_place(&self, place: PlaceRef<'tcx>) -> Result<(), Unpromotable> {
         match place {
             PlaceRef { local, projection: [] } => self.validate_local(local),
-            PlaceRef { local: _, projection: [proj_base @ .., elem] } => {
+            PlaceRef { local, projection: [proj_base @ .., elem] } => {
                 match *elem {
-                    ProjectionElem::Deref | ProjectionElem::Downcast(..) => {
+                    ProjectionElem::Deref => {
+                        let mut not_promotable = true;
+                        if let TempState::Defined { location, .. } = self.temps[local] {
+                            let def_stmt =
+                                self.body[location.block].statements.get(location.statement_index);
+                            if let Some(Statement {
+                                kind:
+                                    StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(c)))),
+                                ..
+                            }) = def_stmt
+                            {
+                                if let Some(did) = c.check_static_ptr(self.tcx) {
+                                    if let Some(hir::ConstContext::Static(..)) = self.const_kind {
+                                        if !self.tcx.is_thread_local_static(did) {
+                                            not_promotable = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if not_promotable {
+                            return Err(Unpromotable);
+                        }
+                    }
+                    ProjectionElem::Downcast(..) => {
                         return Err(Unpromotable);
                     }
 
