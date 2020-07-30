@@ -51,7 +51,7 @@ details.
 - `rustdoc` – tests for rustdoc, making sure that the generated files
   contain the expected documentation.
 - `*-fulldeps` – same as above, but indicates that the test depends
-  on things other than `libstd` (and hence those things must be built)
+  on things other than `std` (and hence those things must be built)
 
 ## Other Tests
 
@@ -82,7 +82,7 @@ including:
   include typical Rust `#[test]` unittests.  Under the hood, `x.py` will run
   `cargo test` on each package to run all the tests.
 
-  Example: `./x.py test src/libstd`
+  Example: `./x.py test library/std`
 
 - **Doc tests** – Example code embedded within Rust documentation is executed
   via `rustdoc --test`.  Examples:
@@ -90,7 +90,7 @@ including:
   `./x.py test src/doc` – Runs `rustdoc --test` for all documentation in
   `src/doc`.
 
-  `./x.py test --doc src/libstd` – Runs `rustdoc --test` on the standard
+  `./x.py test --doc library/std` – Runs `rustdoc --test` on the standard
   library.
 
 - **Link checker** – A small tool for verifying `href` links within

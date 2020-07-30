@@ -175,9 +175,9 @@ should still read the rest of the section:
 | Command | When to use it |
 | --- | --- |
 | `x.py check` | Quick check to see if things compile; rust-analyzer can run this automatically for you |
-| `x.py build --stage 0 [src/libstd]` | Build only the standard library, without building the compiler |
-| `x.py build src/libstd` | Build just the 1st stage of the compiler, along with the standard library; this is faster than building stage 2 and usually good enough |
-| `x.py build --keep-stage 1 src/libstd` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
+| `x.py build --stage 0 [library/std]` | Build only the standard library, without building the compiler |
+| `x.py build library/std` | Build just the 1st stage of the compiler, along with the standard library; this is faster than building stage 2 and usually good enough |
+| `x.py build --keep-stage 1 library/std` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
 | `x.py test [--keep-stage 1]` | Run the test suite using the stage1 compiler |
 | `x.py test --bless [--keep-stage 1]` | Run the test suite using the stage1 compiler _and_ update expected test output. |
 | `x.py build --stage 2 src/rustc` | Do a full 2-stage build. You almost never want to do this. |
@@ -203,10 +203,10 @@ For most contributions, you only need to build stage 1, which saves a lot of tim
 
 ```sh
 # Build the compiler (stage 1)
-./x.py build src/libstd
+./x.py build library/std
 
 # Subsequent builds
-./x.py build --keep-stage 1 src/libstd
+./x.py build --keep-stage 1 library/std
 ```
 
 This will take a while, especially the first time. Be wary of accidentally
@@ -294,10 +294,10 @@ stage 0, which uses the current beta compiler.
 ```
 
 ```sh
-./x.py test --stage 0 src/libstd
+./x.py test --stage 0 library/std
 ```
 
-(The same works for `src/liballoc`, `src/libcore`, etc.)
+(The same works for `library/alloc`, `library/core`, etc.)
 
 ### Building and Testing `rustdoc`
 

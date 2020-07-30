@@ -94,7 +94,7 @@ cross-compile `rustc`:
 ```
 DESTDIR=/path/to/install/in \
 ./x.py install -i --stage 1 --host aarch64-apple-darwin.json --target aarch64-apple-darwin \
-src/librustc src/libstd
+src/librustc library/std
 ```
 
 If your target specification is already available in the bootstrap

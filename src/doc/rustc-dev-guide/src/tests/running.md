@@ -68,19 +68,19 @@ Likewise, you can test a single file by passing its path:
 ### Run tests on the standard library
 
 ```bash
-./x.py test src/libstd
+./x.py test library/std
 ```
 
 ### Run the tidy script and tests on the standard library
 
 ```bash
-./x.py test tidy src/libstd
+./x.py test tidy library/std
 ```
 
 ### Run tests on the standard library using a stage 1 compiler
 
 ```bash
->   ./x.py test src/libstd
+>   ./x.py test library/std
 ```
 
 By listing which test suites you want to run you avoid having to run

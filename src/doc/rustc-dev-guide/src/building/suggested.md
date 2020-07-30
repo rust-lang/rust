@@ -58,13 +58,13 @@ don't work (but that is easily detected and fixed).
 
 The sequence of commands you want is as follows:
 
-- Initial build: `./x.py build -i src/libstd`
+- Initial build: `./x.py build -i library/std`
   - As [documented above](#command), this will build a functional
     stage1 compiler as part of running all stage0 commands (which include
-    building a `libstd` compatible with the stage1 compiler) as well as the
+    building a `std` compatible with the stage1 compiler) as well as the
     first few steps of the "stage 1 actions" up to "stage1 (sysroot stage1)
-    builds libstd".
-- Subsequent builds: `./x.py build -i src/libstd --keep-stage 1`
+    builds std".
+- Subsequent builds: `./x.py build -i library/std --keep-stage 1`
   - Note that we added the `--keep-stage 1` flag here
 
 As mentioned, the effect of `--keep-stage 1` is that we just *assume* that the

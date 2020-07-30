@@ -52,7 +52,7 @@ assertions = true
 #       `true`, because an unoptimized rustc with debugging
 #       enabled becomes *unusably slow* (e.g. rust-lang/rust#24840
 #       reported a 25x slowdown) and bootstrapping the supposed
-#       "maximally debuggable" environment (notably libstd) takes
+#       "maximally debuggable" environment (notably std) takes
 #       hours to build.
 #
 debug = true
@@ -92,7 +92,7 @@ One thing to keep in mind is that `rustc` is a _bootstrapping_
 compiler. That is, since `rustc` is written in Rust, we need to use an
 older version of the compiler to compile the newer version. In
 particular, the newer version of the compiler and some of the artifacts needed
-to build it, such as `libstd` and other tooling, may use some unstable features
+to build it, such as `std` and other tooling, may use some unstable features
 internally, requiring a specific version which understands these unstable
 features.
 
@@ -176,16 +176,16 @@ Once you've created a config.toml, you are now ready to run
 probably the best "go to" command for building a local rust:
 
 ```bash
-./x.py build -i src/libstd
+./x.py build -i library/std
 ```
 
-This may *look* like it only builds `libstd`, but that is not the case.
+This may *look* like it only builds `std`, but that is not the case.
 What this command does is the following:
 
-- Build `libstd` using the stage0 compiler (using incremental)
+- Build `std` using the stage0 compiler (using incremental)
 - Build `librustc` using the stage0 compiler (using incremental)
   - This produces the stage1 compiler
-- Build `libstd` using the stage1 compiler (cannot use incremental)
+- Build `std` using the stage1 compiler (cannot use incremental)
 
 This final product (stage1 compiler + libs built using that compiler)
 is what you need to build other rust programs (unless you use `#![no_std]` or
@@ -201,7 +201,7 @@ stage1 libraries.  This is because incremental only works when you run
 the *same compiler* twice in a row.  In this case, we are building a
 *new stage1 compiler* every time. Therefore, the old incremental
 results may not apply. **As a result, you will probably find that
-building the stage1 `libstd` is a bottleneck for you** -- but fear not,
+building the stage1 `std` is a bottleneck for you** -- but fear not,
 there is a (hacky) workaround.  See [the section on "recommended
 workflows"](./suggested.md) below.
 
@@ -211,23 +211,23 @@ build. The **full** `rustc` build (what you get if you say `./x.py build
 
 - Build `librustc` and `rustc` with the stage1 compiler.
   - The resulting compiler here is called the "stage2" compiler.
-- Build `libstd` with stage2 compiler.
+- Build `std` with stage2 compiler.
 - Build `librustdoc` and a bunch of other things with the stage2 compiler.
 
 <a name=toolchain></a>
 
 ## Build specific components
 
-Build only the libcore library
+- Build only the core library
 
 ```bash
-./x.py build src/libcore
+./x.py build library/core
 ```
 
-Build the libcore and libproc_macro library only
+- Build the core and proc_macro libraries only
 
 ```bash
-./x.py build src/libcore src/libproc_macro
+./x.py build library/core library/proc_macro
 ```
 
 Sometimes you might just want to test if the part you’re working on can
@@ -277,11 +277,11 @@ in other sections:
 
 - Building things:
   - `./x.py build` – builds everything using the stage 1 compiler,
-    not just up to `libstd`
+    not just up to `std`
   - `./x.py build --stage 2` – builds the stage2 compiler
 - Running tests (see the [section on running tests](../tests/running.html) for
   more details):
-  - `./x.py test src/libstd` – runs the `#[test]` tests from `libstd`
+  - `./x.py test library/std` – runs the `#[test]` tests from `std`
   - `./x.py test src/test/ui` – runs the `ui` test suite
   - `./x.py test src/test/ui/const-generics` - runs all the tests in
   the `const-generics/` subdirectory of the `ui` test suite

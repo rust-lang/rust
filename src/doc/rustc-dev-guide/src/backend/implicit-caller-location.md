@@ -17,7 +17,7 @@ fn main() {
 }
 ```
 
-Prior to Rust 1.42, panics like this `unwrap()` printed a location in libcore:
+Prior to Rust 1.42, panics like this `unwrap()` printed a location in core:
 
 ```
 $ rustc +1.41.0 example.rs; example.exe

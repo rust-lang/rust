@@ -50,7 +50,7 @@ before, not all of these are needed for every type of contribution.
 - **Implementation** Implement your idea unstably in the compiler. You can
   find the original implementation [here][impl1].
 - **Possibly iterate/refine** As the community gets experience with your
-  feature on the nightly compiler and in `libstd`, there may be additional
+  feature on the nightly compiler and in `std`, there may be additional
   feedback about design choice that might be adjusted. This particular feature
   went [through][impl2] a [number][impl3] of [iterations][impl4].
 - **Stabilization** When your feature has baked enough, a rust team member may

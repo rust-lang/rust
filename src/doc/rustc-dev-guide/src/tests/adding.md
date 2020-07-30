@@ -378,8 +378,8 @@ The following strings replace their corresponding values:
 Additionally, the following changes are made:
 
 - Line and column numbers for paths in `$SRC_DIR` are replaced with `LL:CC`.
-  For example, `/path/to/rust/src/libcore/clone.rs:122:8` is replaced with
-  `$SRC_DIR/libcore/clone.rs:LL:COL`.
+  For example, `/path/to/rust/library/core/src/clone.rs:122:8` is replaced with
+  `$SRC_DIR/core/src/clone.rs:LL:COL`.
 
   Note: The line and column numbers for `-->` lines pointing to the test are
   *not* normalized, and left as-is. This ensures that the compiler continues

@@ -108,10 +108,10 @@ data needs some infrastructure in place.
 In the case of LLVM, these runtime components are implemented in
 [compiler-rt][compiler-rt-profile] and statically linked into any instrumented
 binaries.
-The `rustc` version of this can be found in `src/libprofiler_builtins` which
+The `rustc` version of this can be found in `library/profiler_builtins` which
 basically packs the C code from `compiler-rt` into a Rust crate.
 
-In order for `libprofiler_builtins` to be built, `profiler = true` must be set
+In order for `profiler_builtins` to be built, `profiler = true` must be set
 in `rustc`'s `config.toml`.
 
 [compiler-rt-profile]: https://github.com/llvm/llvm-project/tree/master/compiler-rt/lib/profile
