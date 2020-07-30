@@ -24,7 +24,7 @@ Module =
   (ItemList | ';')
 
 ItemList =
-  '{' Item* '}'
+  '{' Attr* Item* '}'
 
 FnDef =
  Attr* Visibility? Abi? 'const' 'default' 'async' 'unsafe' 'fn' Name TypeParamList?

@@ -248,6 +248,7 @@ impl Name {
 pub struct ItemList {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::AttrsOwner for ItemList {}
 impl ast::ModuleItemOwner for ItemList {}
 impl ItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
