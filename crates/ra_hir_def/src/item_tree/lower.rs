@@ -79,7 +79,7 @@ impl Ctx {
         // Collect inner items for 1-to-1-lowered items.
         match item {
             ast::Item::StructDef(_)
-            | ast::Item::UnionDef(_)
+            | ast::Item::Union(_)
             | ast::Item::EnumDef(_)
             | ast::Item::Fn(_)
             | ast::Item::TypeAlias(_)
@@ -104,7 +104,7 @@ impl Ctx {
         let attrs = Attrs::new(item, &self.hygiene);
         let items = match item {
             ast::Item::StructDef(ast) => self.lower_struct(ast).map(Into::into),
-            ast::Item::UnionDef(ast) => self.lower_union(ast).map(Into::into),
+            ast::Item::Union(ast) => self.lower_union(ast).map(Into::into),
             ast::Item::EnumDef(ast) => self.lower_enum(ast).map(Into::into),
             ast::Item::Fn(ast) => self.lower_function(ast).map(Into::into),
             ast::Item::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
@@ -233,7 +233,7 @@ impl Ctx {
         res
     }
 
-    fn lower_union(&mut self, union: &ast::UnionDef) -> Option<FileItemTreeId<Union>> {
+    fn lower_union(&mut self, union: &ast::Union) -> Option<FileItemTreeId<Union>> {
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Union, union);

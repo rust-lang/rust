@@ -476,7 +476,7 @@ impl ast::TokenTree {
 impl ast::DocCommentsOwner for ast::SourceFile {}
 impl ast::DocCommentsOwner for ast::Fn {}
 impl ast::DocCommentsOwner for ast::StructDef {}
-impl ast::DocCommentsOwner for ast::UnionDef {}
+impl ast::DocCommentsOwner for ast::Union {}
 impl ast::DocCommentsOwner for ast::RecordField {}
 impl ast::DocCommentsOwner for ast::TupleField {}
 impl ast::DocCommentsOwner for ast::EnumDef {}

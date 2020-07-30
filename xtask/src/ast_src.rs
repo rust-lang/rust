@@ -94,7 +94,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
     nodes: &[
         "SOURCE_FILE",
         "STRUCT_DEF",
-        "UNION_DEF",
+        "UNION",
         "ENUM_DEF",
         "FN",
         "RET_TYPE",

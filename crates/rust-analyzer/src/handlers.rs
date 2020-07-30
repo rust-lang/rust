@@ -927,7 +927,7 @@ pub(crate) fn handle_code_lens(
                         SyntaxKind::TRAIT_DEF
                             | SyntaxKind::STRUCT_DEF
                             | SyntaxKind::ENUM_DEF
-                            | SyntaxKind::UNION_DEF
+                            | SyntaxKind::UNION
                     )
                 })
                 .map(|it| {

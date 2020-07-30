@@ -80,7 +80,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn enum_to_def(&mut self, src: InFile<ast::EnumDef>) -> Option<EnumId> {
         self.to_def(src, keys::ENUM)
     }
-    pub(super) fn union_to_def(&mut self, src: InFile<ast::UnionDef>) -> Option<UnionId> {
+    pub(super) fn union_to_def(&mut self, src: InFile<ast::Union>) -> Option<UnionId> {
         self.to_def(src, keys::UNION)
     }
     pub(super) fn static_to_def(&mut self, src: InFile<ast::StaticDef>) -> Option<StaticId> {
@@ -174,7 +174,7 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.enum_to_def(container.with_value(it))?;
                         def.into()
                     },
-                    ast::UnionDef(it) => {
+                    ast::Union(it) => {
                         let def = self.union_to_def(container.with_value(it))?;
                         VariantId::from(def).into()
                     },

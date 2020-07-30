@@ -16,7 +16,7 @@ Item =
 | StructDef
 | TraitDef
 | TypeAlias
-| UnionDef
+| Union
 | Use
 
 Module =
@@ -98,7 +98,7 @@ FieldList =
   RecordFieldList
 | TupleFieldList
 
-UnionDef =
+Union =
   Attr* Visibility? 'union' Name GenericParamList? WhereClause?
   RecordFieldList
 
@@ -455,7 +455,7 @@ MetaItem =
 AdtDef =
   StructDef
 | EnumDef
-| UnionDef
+| Union
 
 TypeRef =
   ParenType

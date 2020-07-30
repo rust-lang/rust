@@ -660,7 +660,7 @@ impl ExprCollector<'_> {
                         let id = self.find_inner_item(&def)?;
                         (EnumLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::Item::UnionDef(def) => {
+                    ast::Item::Union(def) => {
                         let id = self.find_inner_item(&def)?;
                         (UnionLoc { container, id }.intern(self.db).into(), def.name())
                     }
