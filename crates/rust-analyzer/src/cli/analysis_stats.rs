@@ -111,11 +111,7 @@ pub fn analysis_stats(
     eprintln!("Total declarations: {}", num_decls);
     eprintln!("Total functions: {}", funcs.len());
     let item_collection_memory = ra_prof::memory_usage();
-    eprintln!(
-        "Item Collection: {:?}, {}",
-        analysis_time.elapsed(),
-        item_collection_memory.allocated
-    );
+    eprintln!("Item Collection: {:?}, {}", analysis_time.elapsed(), item_collection_memory);
 
     if randomize {
         shuffle(&mut rng, &mut funcs);
@@ -140,7 +136,7 @@ pub fn analysis_stats(
         eprintln!(
             "Parallel Inference: {:?}, {}",
             inference_time.elapsed(),
-            ra_prof::memory_usage().allocated
+            ra_prof::memory_usage()
         );
     }
 
@@ -297,11 +293,7 @@ pub fn analysis_stats(
 
     let inference_time = inference_time.elapsed();
     let total_memory = ra_prof::memory_usage();
-    eprintln!(
-        "Inference: {:?}, {}",
-        inference_time,
-        total_memory.allocated - item_collection_memory.allocated
-    );
+    eprintln!("Inference: {:?}, {}", inference_time, total_memory - item_collection_memory);
 
     let analysis_time = analysis_time.elapsed();
     eprintln!("Total: {:?}, {}", analysis_time, total_memory);
