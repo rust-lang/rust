@@ -83,21 +83,20 @@ StructDef =
   )
 
 RecordFieldList =
- '{' fields:RecordField* '}'
+ '{' fields:(RecordField (',' RecordField)* ','?)? '}'
 
 RecordField =
   Attr* Visibility? Name ':' ascribed_type:TypeRef
 
 TupleFieldList =
-  '(' fields:TupleField* ')'
+  '(' fields:(TupleField (',' TupleField)* ','?)? ')'
 
 TupleField =
-  Attr* Visibility? Name TypeRef
+  Attr* Visibility? TypeRef
 
 FieldList =
   RecordFieldList
 | TupleFieldList
-
 
 UnionDef =
   Attr* Visibility? 'union' Name GenericParamList? WhereClause?

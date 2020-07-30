@@ -422,7 +422,6 @@ pub struct TupleField {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for TupleField {}
-impl ast::NameOwner for TupleField {}
 impl ast::VisibilityOwner for TupleField {}
 impl TupleField {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
