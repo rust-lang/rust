@@ -258,7 +258,7 @@ fn test_expr_order() {
     assert_eq_text!(
         dump.trim(),
         r#"MACRO_ITEMS@0..15
-  FN_DEF@0..15
+  FN@0..15
     FN_KW@0..2 "fn"
     NAME@2..5
       IDENT@2..5 "bar"

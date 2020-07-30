@@ -16,7 +16,7 @@ pub use navigation_target::NavigationTarget;
 pub(crate) use navigation_target::{ToNav, TryToNav};
 pub(crate) use short_label::ShortLabel;
 
-pub(crate) fn function_declaration(node: &ast::FnDef) -> String {
+pub(crate) fn function_declaration(node: &ast::Fn) -> String {
     let mut buf = String::new();
     if let Some(vis) = node.visibility() {
         format_to!(buf, "{} ", vis);

@@ -66,7 +66,7 @@ pub fn get_missing_assoc_items(
     if let Some(item_list) = impl_def.assoc_item_list() {
         for item in item_list.assoc_items() {
             match item {
-                ast::AssocItem::FnDef(f) => {
+                ast::AssocItem::Fn(f) => {
                     if let Some(n) = f.name() {
                         impl_fns_consts.insert(n.syntax().to_string());
                     }

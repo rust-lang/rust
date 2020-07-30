@@ -627,7 +627,7 @@ impl ExprCollector<'_> {
             .items()
             .filter_map(|item| {
                 let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
-                    ast::Item::FnDef(def) => {
+                    ast::Item::Fn(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             FunctionLoc { container: container.into(), id }.intern(self.db).into(),

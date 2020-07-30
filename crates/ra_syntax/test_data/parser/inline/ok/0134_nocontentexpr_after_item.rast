@@ -1,5 +1,5 @@
 SOURCE_FILE@0..111
-  FN_DEF@0..110
+  FN@0..110
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..18
@@ -33,7 +33,7 @@ SOURCE_FILE@0..111
           R_CURLY@74..75 "}"
       SEMICOLON@75..76 ";"
       WHITESPACE@76..81 "\n    "
-      FN_DEF@81..90
+      FN@81..90
         FN_KW@81..83 "fn"
         WHITESPACE@83..84 " "
         NAME@84..85

@@ -2,7 +2,7 @@
 //!
 //! This module adds the completion items related to implementing associated
 //! items within a `impl Trait for Struct` block. The current context node
-//! must be within either a `FN_DEF`, `TYPE_ALIAS_DEF`, or `CONST_DEF` node
+//! must be within either a `FN`, `TYPE_ALIAS_DEF`, or `CONST_DEF` node
 //! and an direct child of an `IMPL_DEF`.
 //!
 //! # Examples
@@ -63,7 +63,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
                     }
                 }),
 
-            SyntaxKind::FN_DEF => {
+            SyntaxKind::FN => {
                 for missing_fn in get_missing_assoc_items(&ctx.sema, &impl_def)
                     .into_iter()
                     .filter_map(|item| match item {
@@ -106,7 +106,7 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
 
 fn completion_match(ctx: &CompletionContext) -> Option<(SyntaxNode, ImplDef)> {
     let (trigger, impl_def_offset) = ctx.token.ancestors().find_map(|p| match p.kind() {
-        SyntaxKind::FN_DEF
+        SyntaxKind::FN
         | SyntaxKind::TYPE_ALIAS_DEF
         | SyntaxKind::CONST_DEF
         | SyntaxKind::BLOCK_EXPR => Some((p, 2)),

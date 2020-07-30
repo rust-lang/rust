@@ -8,7 +8,7 @@ SOURCE_FILE@0..22
     ASSOC_ITEM_LIST@8..21
       L_CURLY@8..9 "{"
       WHITESPACE@9..10 " "
-      FN_DEF@10..19
+      FN@10..19
         FN_KW@10..12 "fn"
         WHITESPACE@12..13 " "
         NAME@13..16

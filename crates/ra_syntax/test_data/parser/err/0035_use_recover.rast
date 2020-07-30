@@ -34,7 +34,7 @@ SOURCE_FILE@0..48
   USE@34..37
     USE_KW@34..37 "use"
   WHITESPACE@37..38 "\n"
-  FN_DEF@38..47
+  FN@38..47
     FN_KW@38..40 "fn"
     WHITESPACE@40..41 " "
     NAME@41..42

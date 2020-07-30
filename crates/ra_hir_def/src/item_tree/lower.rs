@@ -78,7 +78,7 @@ impl Ctx {
             ast::Item::StructDef(_)
             | ast::Item::UnionDef(_)
             | ast::Item::EnumDef(_)
-            | ast::Item::FnDef(_)
+            | ast::Item::Fn(_)
             | ast::Item::TypeAliasDef(_)
             | ast::Item::ConstDef(_)
             | ast::Item::StaticDef(_)
@@ -103,7 +103,7 @@ impl Ctx {
             ast::Item::StructDef(ast) => self.lower_struct(ast).map(Into::into),
             ast::Item::UnionDef(ast) => self.lower_union(ast).map(Into::into),
             ast::Item::EnumDef(ast) => self.lower_enum(ast).map(Into::into),
-            ast::Item::FnDef(ast) => self.lower_function(ast).map(Into::into),
+            ast::Item::Fn(ast) => self.lower_function(ast).map(Into::into),
             ast::Item::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
             ast::Item::StaticDef(ast) => self.lower_static(ast).map(Into::into),
             ast::Item::ConstDef(ast) => Some(self.lower_const(ast).into()),
@@ -155,7 +155,7 @@ impl Ctx {
 
     fn lower_assoc_item(&mut self, item: &ast::AssocItem) -> Option<AssocItem> {
         match item {
-            ast::AssocItem::FnDef(ast) => self.lower_function(ast).map(Into::into),
+            ast::AssocItem::Fn(ast) => self.lower_function(ast).map(Into::into),
             ast::AssocItem::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
             ast::AssocItem::ConstDef(ast) => Some(self.lower_const(ast).into()),
             ast::AssocItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
@@ -277,7 +277,7 @@ impl Ctx {
         Some(res)
     }
 
-    fn lower_function(&mut self, func: &ast::FnDef) -> Option<FileItemTreeId<Function>> {
+    fn lower_function(&mut self, func: &ast::Fn) -> Option<FileItemTreeId<Function>> {
         let visibility = self.lower_visibility(func);
         let name = func.name()?.as_name();
 
@@ -547,7 +547,7 @@ impl Ctx {
                     self.collect_inner_items(item.syntax());
                     let attrs = Attrs::new(&item, &self.hygiene);
                     let id: ModItem = match item {
-                        ast::ExternItem::FnDef(ast) => {
+                        ast::ExternItem::Fn(ast) => {
                             let func = self.lower_function(&ast)?;
                             self.data().functions[func.index].is_unsafe = true;
                             func.into()

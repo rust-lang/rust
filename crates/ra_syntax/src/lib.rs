@@ -255,11 +255,11 @@ fn api_walkthrough() {
     let mut func = None;
     for item in file.items() {
         match item {
-            ast::Item::FnDef(f) => func = Some(f),
+            ast::Item::Fn(f) => func = Some(f),
             _ => unreachable!(),
         }
     }
-    let func: ast::FnDef = func.unwrap();
+    let func: ast::Fn = func.unwrap();
 
     // Each AST node has a bunch of getters for children. All getters return
     // `Option`s though, to account for incomplete code. Some getters are common
@@ -316,7 +316,7 @@ fn api_walkthrough() {
     );
 
     // As well as some iterator helpers:
-    let f = expr_syntax.ancestors().find_map(ast::FnDef::cast);
+    let f = expr_syntax.ancestors().find_map(ast::Fn::cast);
     assert_eq!(f, Some(func));
     assert!(expr_syntax.siblings_with_tokens(Direction::Next).any(|it| it.kind() == T!['}']));
     assert_eq!(

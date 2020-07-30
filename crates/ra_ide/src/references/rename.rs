@@ -149,7 +149,7 @@ fn rename_to_self(
     let source_file = sema.parse(position.file_id);
     let syn = source_file.syntax();
 
-    let fn_def = find_node_at_offset::<ast::FnDef>(syn, position.offset)?;
+    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)?;
     let params = fn_def.param_list()?;
     if params.self_param().is_some() {
         return None; // method already has self param
@@ -221,7 +221,7 @@ fn rename_self_to_param(
     let syn = source_file.syntax();
 
     let text = sema.db.file_text(position.file_id);
-    let fn_def = find_node_at_offset::<ast::FnDef>(syn, position.offset)?;
+    let fn_def = find_node_at_offset::<ast::Fn>(syn, position.offset)?;
     let search_range = fn_def.syntax().text_range();
 
     let mut edits: Vec<SourceFileEdit> = vec![];

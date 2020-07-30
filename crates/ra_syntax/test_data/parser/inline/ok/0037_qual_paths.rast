@@ -32,7 +32,7 @@ SOURCE_FILE@0..71
             IDENT@19..25 "Output"
     SEMICOLON@25..26 ";"
   WHITESPACE@26..27 "\n"
-  FN_DEF@27..70
+  FN@27..70
     FN_KW@27..29 "fn"
     WHITESPACE@29..30 " "
     NAME@30..33

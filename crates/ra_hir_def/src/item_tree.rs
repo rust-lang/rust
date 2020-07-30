@@ -413,7 +413,7 @@ macro_rules! mod_items {
 mod_items! {
     Import in imports -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
-    Function in functions -> ast::FnDef,
+    Function in functions -> ast::Fn,
     Struct in structs -> ast::StructDef,
     Union in unions -> ast::UnionDef,
     Enum in enums -> ast::EnumDef,
@@ -505,7 +505,7 @@ pub struct Function {
     pub params: Box<[TypeRef]>,
     pub is_varargs: bool,
     pub ret_type: TypeRef,
-    pub ast_id: FileAstId<ast::FnDef>,
+    pub ast_id: FileAstId<ast::Fn>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

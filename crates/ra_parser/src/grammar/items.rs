@@ -180,7 +180,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // unsafe const fn bar() {}
         T![fn] => {
             fn_def(p);
-            m.complete(p, FN_DEF);
+            m.complete(p, FN);
         }
 
         // test unsafe_trait

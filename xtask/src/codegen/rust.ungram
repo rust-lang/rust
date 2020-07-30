@@ -8,7 +8,7 @@ Item =
 | EnumDef
 | ExternBlock
 | ExternCrate
-| FnDef
+| Fn
 | ImplDef
 | MacroCall
 | Module
@@ -42,11 +42,32 @@ UseTree =
 UseTreeList =
   '{' (UseTree (',' UseTree)* ','?)? '}'
 
-FnDef =
- Attr* Visibility? Abi? 'const' 'default' 'async' 'unsafe' 'fn' Name TypeParamList?
- ParamList RetType?
+Fn =
+ Attr* Visibility?
+ 'default'? ('async' | 'const')? 'unsafe'? Abi?
+ 'fn' Name TypeParamList? ParamList RetType?
  WhereClause?
  (body:BlockExpr | ';')
+
+Abi =
+  'extern' 'string'?
+
+ParamList =
+  '('(
+    (Param (',' Param)* ','?)?
+  | SelfParam ','?
+  | SelfParam ',' (Param (',' Param)* ','?)
+  )')'
+
+SelfParam =
+  Attr* (
+    ('&' 'lifetime'?)? 'mut'? 'self'
+  | 'mut'? 'self' ':' ascribed_type:TypeRef
+  )
+
+Param =
+  Attr* Pat (':' ascribed_type:TypeRef)
+| '...'
 
 RetType =
   '->' TypeRef
@@ -388,25 +409,12 @@ WherePred =
 WhereClause =
   'where' predicates:WherePred*
 
-Abi =
-  'string'
-
 ExprStmt =
   Attr* Expr ';'
 
 LetStmt =
   Attr* 'let' Pat (':' ascribed_type:TypeRef)
   '=' initializer:Expr ';'
-
-ParamList =
-  '(' SelfParam Param* ')'
-
-SelfParam =
-  Attr* ('&' 'lifetime'?)? 'mut'? 'self' (':' ascribed_type:TypeRef)
-
-Param =
-  Attr* Pat (':' ascribed_type:TypeRef)
-| '...'
 
 Path =
   (qualifier:Path '::')? segment:PathSegment
@@ -465,13 +473,13 @@ TypeRef =
 | DynTraitType
 
 AssocItem =
-  FnDef
+  Fn
 | TypeAliasDef
 | ConstDef
 | MacroCall
 
 ExternItem =
-  FnDef | StaticDef
+  Fn | StaticDef
 
 AttrInput =
   Literal

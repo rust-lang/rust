@@ -12,7 +12,7 @@ SOURCE_FILE@0..31
   ERROR@14..15
     R_CURLY@14..15 "}"
   WHITESPACE@15..17 "\n\n"
-  FN_DEF@17..27
+  FN@17..27
     FN_KW@17..19 "fn"
     WHITESPACE@19..20 " "
     NAME@20..23

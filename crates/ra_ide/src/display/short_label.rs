@@ -7,7 +7,7 @@ pub(crate) trait ShortLabel {
     fn short_label(&self) -> Option<String>;
 }
 
-impl ShortLabel for ast::FnDef {
+impl ShortLabel for ast::Fn {
     fn short_label(&self) -> Option<String> {
         Some(crate::display::function_declaration(self))
     }

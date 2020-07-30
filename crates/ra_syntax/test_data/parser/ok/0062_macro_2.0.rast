@@ -51,7 +51,7 @@ SOURCE_FILE@0..349
         WHITESPACE@91..92 "\n"
         R_CURLY@92..93 "}"
   WHITESPACE@93..95 "\n\n"
-  FN_DEF@95..348
+  FN@95..348
     ATTR@95..102
       POUND@95..96 "#"
       L_BRACK@96..97 "["

@@ -585,7 +585,7 @@ to_def_impls![
     (crate::TypeAlias, ast::TypeAliasDef, type_alias_to_def),
     (crate::Const, ast::ConstDef, const_to_def),
     (crate::Static, ast::StaticDef, static_to_def),
-    (crate::Function, ast::FnDef, fn_to_def),
+    (crate::Function, ast::Fn, fn_to_def),
     (crate::Field, ast::RecordFieldDef, record_field_to_def),
     (crate::Field, ast::TupleFieldDef, tuple_field_to_def),
     (crate::EnumVariant, ast::EnumVariant, enum_variant_to_def),

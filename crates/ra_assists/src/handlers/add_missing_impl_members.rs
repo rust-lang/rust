@@ -118,7 +118,7 @@ fn add_missing_impl_members_inner(
 
     let def_name = |item: &ast::AssocItem| -> Option<SmolStr> {
         match item {
-            ast::AssocItem::FnDef(def) => def.name(),
+            ast::AssocItem::Fn(def) => def.name(),
             ast::AssocItem::TypeAliasDef(def) => def.name(),
             ast::AssocItem::ConstDef(def) => def.name(),
             ast::AssocItem::MacroCall(_) => None,
@@ -129,13 +129,13 @@ fn add_missing_impl_members_inner(
     let missing_items = get_missing_assoc_items(&ctx.sema, &impl_def)
         .iter()
         .map(|i| match i {
-            hir::AssocItem::Function(i) => ast::AssocItem::FnDef(i.source(ctx.db()).value),
+            hir::AssocItem::Function(i) => ast::AssocItem::Fn(i.source(ctx.db()).value),
             hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAliasDef(i.source(ctx.db()).value),
             hir::AssocItem::Const(i) => ast::AssocItem::ConstDef(i.source(ctx.db()).value),
         })
         .filter(|t| def_name(&t).is_some())
         .filter(|t| match t {
-            ast::AssocItem::FnDef(def) => match mode {
+            ast::AssocItem::Fn(def) => match mode {
                 AddMissingImplMembersMode::DefaultMethodsOnly => def.body().is_some(),
                 AddMissingImplMembersMode::NoDefaultMethods => def.body().is_none(),
             },
@@ -158,7 +158,7 @@ fn add_missing_impl_members_inner(
             .into_iter()
             .map(|it| ast_transform::apply(&*ast_transform, it))
             .map(|it| match it {
-                ast::AssocItem::FnDef(def) => ast::AssocItem::FnDef(add_body(def)),
+                ast::AssocItem::Fn(def) => ast::AssocItem::Fn(add_body(def)),
                 ast::AssocItem::TypeAliasDef(def) => {
                     ast::AssocItem::TypeAliasDef(def.remove_bounds())
                 }
@@ -174,7 +174,7 @@ fn add_missing_impl_members_inner(
             Some(cap) => {
                 let mut cursor = Cursor::Before(first_new_item.syntax());
                 let placeholder;
-                if let ast::AssocItem::FnDef(func) = &first_new_item {
+                if let ast::AssocItem::Fn(func) = &first_new_item {
                     if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast) {
                         if m.syntax().text() == "todo!()" {
                             placeholder = m;
@@ -192,7 +192,7 @@ fn add_missing_impl_members_inner(
     })
 }
 
-fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
+fn add_body(fn_def: ast::Fn) -> ast::Fn {
     if fn_def.body().is_some() {
         return fn_def;
     }

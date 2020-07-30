@@ -169,7 +169,7 @@ fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet
 
 fn complete_return(
     ctx: &CompletionContext,
-    fn_def: &ast::FnDef,
+    fn_def: &ast::Fn,
     can_be_stmt: bool,
 ) -> Option<CompletionItem> {
     let snip = match (can_be_stmt, fn_def.ret_type().is_some()) {

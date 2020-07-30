@@ -36,7 +36,7 @@ SOURCE_FILE@0..69
                 IDENT@38..41 "Bar"
         SEMICOLON@41..42 ";"
       WHITESPACE@42..47 "\n    "
-      FN_DEF@47..66
+      FN@47..66
         DEFAULT_KW@47..54 "default"
         WHITESPACE@54..55 " "
         FN_KW@55..57 "fn"

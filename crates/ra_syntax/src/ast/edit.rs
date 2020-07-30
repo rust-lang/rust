@@ -29,9 +29,9 @@ impl ast::BinExpr {
     }
 }
 
-impl ast::FnDef {
+impl ast::Fn {
     #[must_use]
-    pub fn with_body(&self, body: ast::BlockExpr) -> ast::FnDef {
+    pub fn with_body(&self, body: ast::BlockExpr) -> ast::Fn {
         let mut to_insert: ArrayVec<[SyntaxElement; 2]> = ArrayVec::new();
         let old_body_or_semi: SyntaxElement = if let Some(old_body) = self.body() {
             old_body.syntax().clone().into()

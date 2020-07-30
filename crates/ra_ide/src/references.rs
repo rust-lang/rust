@@ -376,7 +376,7 @@ impl Foo {
 }
 "#,
         );
-        check_result(refs, "f FN_DEF FileId(1) 27..43 30..31 Other", &[]);
+        check_result(refs, "f FN FileId(1) 27..43 30..31 Other", &[]);
     }
 
     #[test]
@@ -514,7 +514,7 @@ pub(super) struct Foo<|> {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) 19..35 26..30 Other",
+            "quux FN FileId(1) 19..35 26..30 Other",
             &["FileId(2) 16..20 StructLiteral", "FileId(3) 16..20 StructLiteral"],
         );
 
@@ -522,7 +522,7 @@ pub(super) struct Foo<|> {
             analysis.find_all_refs(pos, Some(SearchScope::single_file(bar))).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) 19..35 26..30 Other",
+            "quux FN FileId(1) 19..35 26..30 Other",
             &["FileId(3) 16..20 StructLiteral"],
         );
     }
@@ -619,7 +619,7 @@ fn main() {
         );
         check_result(
             refs,
-            "new FN_DEF FileId(1) 54..101 61..64 Other",
+            "new FN FileId(1) 54..101 61..64 Other",
             &["FileId(1) 146..149 StructLiteral"],
         );
     }
@@ -646,7 +646,7 @@ fn main() {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "f FN_DEF FileId(1) 26..35 29..30 Other",
+            "f FN FileId(1) 26..35 29..30 Other",
             &["FileId(2) 11..12 Other", "FileId(2) 28..29 StructLiteral"],
         );
     }

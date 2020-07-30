@@ -96,7 +96,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "STRUCT_DEF",
         "UNION_DEF",
         "ENUM_DEF",
-        "FN_DEF",
+        "FN",
         "RET_TYPE",
         "EXTERN_CRATE",
         "MODULE",

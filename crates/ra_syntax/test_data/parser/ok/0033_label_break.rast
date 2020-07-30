@@ -1,5 +1,5 @@
 SOURCE_FILE@0..506
-  FN_DEF@0..505
+  FN@0..505
     COMMENT@0..33 "// format with label  ..."
     WHITESPACE@33..34 "\n"
     FN_KW@34..36 "fn"

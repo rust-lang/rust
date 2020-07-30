@@ -1,5 +1,5 @@
 SOURCE_FILE@0..71
-  FN_DEF@0..19
+  FN@0..19
     VISIBILITY@0..5
       CRATE_KW@0..5 "crate"
     WHITESPACE@5..6 " "

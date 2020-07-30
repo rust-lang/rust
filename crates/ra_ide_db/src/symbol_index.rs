@@ -397,7 +397,7 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
     }
     match_ast! {
         match node {
-            ast::FnDef(it) => decl(it),
+            ast::Fn(it) => decl(it),
             ast::StructDef(it) => decl(it),
             ast::EnumDef(it) => decl(it),
             ast::TraitDef(it) => decl(it),

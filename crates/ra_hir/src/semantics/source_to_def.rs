@@ -71,7 +71,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn impl_to_def(&mut self, src: InFile<ast::ImplDef>) -> Option<ImplId> {
         self.to_def(src, keys::IMPL)
     }
-    pub(super) fn fn_to_def(&mut self, src: InFile<ast::FnDef>) -> Option<FunctionId> {
+    pub(super) fn fn_to_def(&mut self, src: InFile<ast::Fn>) -> Option<FunctionId> {
         self.to_def(src, keys::FUNCTION)
     }
     pub(super) fn struct_to_def(&mut self, src: InFile<ast::StructDef>) -> Option<StructId> {
@@ -171,7 +171,7 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.impl_to_def(container.with_value(it))?;
                         def.into()
                     },
-                    ast::FnDef(it) => {
+                    ast::Fn(it) => {
                         let def = self.fn_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
@@ -213,7 +213,7 @@ impl SourceToDefCtx<'_, '_> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: GenericDefId = match_ast! {
                 match (container.value) {
-                    ast::FnDef(it) => self.fn_to_def(container.with_value(it))?.into(),
+                    ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
                     ast::StructDef(it) => self.struct_to_def(container.with_value(it))?.into(),
                     ast::EnumDef(it) => self.enum_to_def(container.with_value(it))?.into(),
                     ast::TraitDef(it) => self.trait_to_def(container.with_value(it))?.into(),
@@ -233,7 +233,7 @@ impl SourceToDefCtx<'_, '_> {
                 match (container.value) {
                     ast::ConstDef(it) => self.const_to_def(container.with_value(it))?.into(),
                     ast::StaticDef(it) => self.static_to_def(container.with_value(it))?.into(),
-                    ast::FnDef(it) => self.fn_to_def(container.with_value(it))?.into(),
+                    ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
                     _ => continue,
                 }
             };
