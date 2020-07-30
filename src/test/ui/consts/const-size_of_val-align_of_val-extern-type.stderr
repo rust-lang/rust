@@ -1,0 +1,20 @@
+error: any use of this value will cause an error
+  --> $DIR/const-size_of_val-align_of_val-extern-type.rs:11:31
+   |
+LL | const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque) };
+   | ------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                               |
+   |                               `extern type` does not have known layout
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: any use of this value will cause an error
+  --> $DIR/const-size_of_val-align_of_val-extern-type.rs:12:32
+   |
+LL | const _ALIGN: usize = unsafe { min_align_of_val(&4 as *const i32 as *const Opaque) };
+   | -------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                                |
+   |                                `extern type` does not have known layout
+
+error: aborting due to 2 previous errors
+

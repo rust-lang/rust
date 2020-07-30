@@ -120,6 +120,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(location.ptr, dest)?;
             }
 
+            sym::min_align_of_val | sym::size_of_val => {
+                let place = self.deref_operand(args[0])?;
+                let (size, align) = self
+                    .size_and_align_of(place.meta, place.layout)?
+                    .ok_or_else(|| err_unsup_format!("`extern type` does not have known layout"))?;
+
+                let result = match intrinsic_name {
+                    sym::min_align_of_val => align.bytes(),
+                    sym::size_of_val => size.bytes(),
+                    _ => bug!(),
+                };
+
+                self.write_scalar(Scalar::from_machine_usize(result, self), dest)?;
+            }
+
             sym::min_align_of
             | sym::pref_align_of
             | sym::needs_drop
