@@ -1,3 +1,4 @@
+//! Like `std::time::Instant`, but also measures memory & CPU cycles.
 use std::{
     fmt,
     time::{Duration, Instant},
@@ -74,16 +75,5 @@ impl fmt::Display for StopWatchSpan {
             write!(f, ", {}", memory)?;
         }
         Ok(())
-    }
-}
-
-// Unclear if we need this:
-// https://github.com/jimblandy/perf-event/issues/8
-impl Drop for StopWatch {
-    fn drop(&mut self) {
-        #[cfg(target_os = "linux")]
-        if let Some(mut counter) = self.counter.take() {
-            let _ = counter.disable();
-        }
     }
 }
