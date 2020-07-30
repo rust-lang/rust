@@ -1,5 +1,5 @@
 #![crate_name = "a"]
-#![deny(intra_doc_resolution_failures)]
+#![deny(broken_intra_doc_links)]
 
 pub mod bar {
    pub struct Bar;

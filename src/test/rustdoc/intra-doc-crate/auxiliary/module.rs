@@ -1,5 +1,5 @@
 #![crate_name = "module_inner"]
-#![deny(intra_doc_resolution_failures)]
+#![deny(broken_intra_doc_links)]
 /// [SomeType] links to [bar]
 pub struct SomeType;
 pub trait SomeTrait {}

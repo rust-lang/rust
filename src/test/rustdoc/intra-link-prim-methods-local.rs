@@ -1,4 +1,4 @@
-#![deny(intra_doc_resolution_failures)]
+#![deny(broken_intra_doc_links)]
 #![feature(no_core, lang_items)]
 #![no_core]
 #![crate_type = "rlib"]

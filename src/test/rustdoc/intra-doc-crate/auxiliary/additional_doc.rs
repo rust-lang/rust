@@ -1,5 +1,5 @@
 #![crate_name = "my_rand"]
-#![deny(intra_doc_resolution_failures)]
+#![deny(broken_intra_doc_links)]
 
 pub trait RngCore {}
 /// Rng extends [`RngCore`].

@@ -1,4 +1,4 @@
-#![deny(intra_doc_resolution_failures)]
+#![deny(broken_intra_doc_links)]
 
 // ignore-tidy-linelength
 
