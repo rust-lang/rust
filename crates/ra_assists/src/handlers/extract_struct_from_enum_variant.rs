@@ -31,7 +31,7 @@ pub(crate) fn extract_struct_from_enum_variant(
     acc: &mut Assists,
     ctx: &AssistContext,
 ) -> Option<()> {
-    let variant = ctx.find_node_at_offset::<ast::EnumVariant>()?;
+    let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let field_list = match variant.kind() {
         ast::StructKind::Tuple(field_list) => field_list,
         _ => return None,

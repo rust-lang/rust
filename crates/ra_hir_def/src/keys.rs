@@ -24,7 +24,7 @@ pub const STRUCT: Key<ast::Struct, StructId> = Key::new();
 pub const UNION: Key<ast::Union, UnionId> = Key::new();
 pub const ENUM: Key<ast::Enum, EnumId> = Key::new();
 
-pub const ENUM_VARIANT: Key<ast::EnumVariant, EnumVariantId> = Key::new();
+pub const VARIANT: Key<ast::Variant, EnumVariantId> = Key::new();
 pub const TUPLE_FIELD: Key<ast::TupleField, FieldId> = Key::new();
 pub const RECORD_FIELD: Key<ast::RecordField, FieldId> = Key::new();
 pub const TYPE_PARAM: Key<ast::TypeParam, TypeParamId> = Key::new();

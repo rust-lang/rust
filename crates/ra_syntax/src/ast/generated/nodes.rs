@@ -53,7 +53,7 @@ impl ast::VisibilityOwner for Enum {}
 impl ast::GenericParamsOwner for Enum {}
 impl Enum {
     pub fn enum_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![enum]) }
-    pub fn variant_list(&self) -> Option<EnumVariantList> { support::child(&self.syntax) }
+    pub fn variant_list(&self) -> Option<VariantList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternBlock {
@@ -427,22 +427,22 @@ impl TupleField {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnumVariantList {
+pub struct VariantList {
     pub(crate) syntax: SyntaxNode,
 }
-impl EnumVariantList {
+impl VariantList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn variants(&self) -> AstChildren<EnumVariant> { support::children(&self.syntax) }
+    pub fn variants(&self) -> AstChildren<Variant> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnumVariant {
+pub struct Variant {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for EnumVariant {}
-impl ast::NameOwner for EnumVariant {}
-impl ast::VisibilityOwner for EnumVariant {}
-impl EnumVariant {
+impl ast::AttrsOwner for Variant {}
+impl ast::NameOwner for Variant {}
+impl ast::VisibilityOwner for Variant {}
+impl Variant {
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -1806,8 +1806,8 @@ impl AstNode for TupleField {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for EnumVariantList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_VARIANT_LIST }
+impl AstNode for VariantList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == VARIANT_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1817,8 +1817,8 @@ impl AstNode for EnumVariantList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for EnumVariant {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_VARIANT }
+impl AstNode for Variant {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == VARIANT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3640,12 +3640,12 @@ impl std::fmt::Display for TupleField {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for EnumVariantList {
+impl std::fmt::Display for VariantList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for EnumVariant {
+impl std::fmt::Display for Variant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

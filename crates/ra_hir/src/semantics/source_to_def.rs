@@ -100,9 +100,9 @@ impl SourceToDefCtx<'_, '_> {
     }
     pub(super) fn enum_variant_to_def(
         &mut self,
-        src: InFile<ast::EnumVariant>,
+        src: InFile<ast::Variant>,
     ) -> Option<EnumVariantId> {
-        self.to_def(src, keys::ENUM_VARIANT)
+        self.to_def(src, keys::VARIANT)
     }
     pub(super) fn bind_pat_to_def(
         &mut self,

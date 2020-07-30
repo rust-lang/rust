@@ -390,7 +390,7 @@ enum Foo {
 }
 "#,
         );
-        check_result(refs, "B ENUM_VARIANT FileId(1) 22..23 22..23 Other", &[]);
+        check_result(refs, "B VARIANT FileId(1) 22..23 22..23 Other", &[]);
     }
 
     #[test]

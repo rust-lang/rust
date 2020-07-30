@@ -34,7 +34,7 @@ pub(crate) fn symbol_kind(syntax_kind: SyntaxKind) -> lsp_types::SymbolKind {
         SyntaxKind::FN => lsp_types::SymbolKind::Function,
         SyntaxKind::STRUCT => lsp_types::SymbolKind::Struct,
         SyntaxKind::ENUM => lsp_types::SymbolKind::Enum,
-        SyntaxKind::ENUM_VARIANT => lsp_types::SymbolKind::EnumMember,
+        SyntaxKind::VARIANT => lsp_types::SymbolKind::EnumMember,
         SyntaxKind::TRAIT_DEF => lsp_types::SymbolKind::Interface,
         SyntaxKind::MACRO_CALL => lsp_types::SymbolKind::Function,
         SyntaxKind::MODULE => lsp_types::SymbolKind::Module,

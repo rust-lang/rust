@@ -17,15 +17,15 @@ SOURCE_FILE@0..111
         NAME@32..41
           IDENT@32..41 "LocalEnum"
         WHITESPACE@41..42 " "
-        ENUM_VARIANT_LIST@42..75
+        VARIANT_LIST@42..75
           L_CURLY@42..43 "{"
           WHITESPACE@43..52 "\n        "
-          ENUM_VARIANT@52..55
+          VARIANT@52..55
             NAME@52..55
               IDENT@52..55 "One"
           COMMA@55..56 ","
           WHITESPACE@56..65 "\n        "
-          ENUM_VARIANT@65..68
+          VARIANT@65..68
             NAME@65..68
               IDENT@65..68 "Two"
           COMMA@68..69 ","

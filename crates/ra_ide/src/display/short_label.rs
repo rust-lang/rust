@@ -71,7 +71,7 @@ impl ShortLabel for ast::RecordField {
     }
 }
 
-impl ShortLabel for ast::EnumVariant {
+impl ShortLabel for ast::Variant {
     fn short_label(&self) -> Option<String> {
         Some(self.name()?.text().to_string())
     }

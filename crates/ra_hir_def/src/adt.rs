@@ -112,7 +112,7 @@ impl EnumData {
 
 impl HasChildSource for EnumId {
     type ChildId = LocalEnumVariantId;
-    type Value = ast::EnumVariant;
+    type Value = ast::Variant;
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let src = self.lookup(db).source(db);
         let mut trace = Trace::new_for_map();
@@ -123,7 +123,7 @@ impl HasChildSource for EnumId {
 
 fn lower_enum(
     db: &dyn DefDatabase,
-    trace: &mut Trace<EnumVariantData, ast::EnumVariant>,
+    trace: &mut Trace<EnumVariantData, ast::Variant>,
     ast: &InFile<ast::Enum>,
     module_id: ModuleId,
 ) {

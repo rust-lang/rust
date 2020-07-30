@@ -75,8 +75,8 @@ impl HasSource for Enum {
     }
 }
 impl HasSource for EnumVariant {
-    type Ast = ast::EnumVariant;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::EnumVariant> {
+    type Ast = ast::Variant;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Variant> {
         self.parent.id.child_source(db.upcast()).map(|map| map[self.id].clone())
     }
 }

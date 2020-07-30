@@ -91,7 +91,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
             if p.eat(T![=]) {
                 expressions::expr(p);
             }
-            var.complete(p, ENUM_VARIANT);
+            var.complete(p, VARIANT);
         } else {
             var.abandon(p);
             p.err_and_bump("expected enum variant");
@@ -101,7 +101,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
         }
     }
     p.expect(T!['}']);
-    m.complete(p, ENUM_VARIANT_LIST);
+    m.complete(p, VARIANT_LIST);
 }
 
 pub(crate) fn record_field_def_list(p: &mut Parser) {

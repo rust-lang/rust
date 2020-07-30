@@ -100,12 +100,12 @@ FieldList =
 
 Enum =
   Attr* Visibility? 'enum' Name GenericParamList? WhereClause?
-  variant_list:EnumVariantList
+  VariantList
 
-EnumVariantList =
- '{' variants:EnumVariant* '}'
+VariantList =
+ '{' Variant* '}'
 
-EnumVariant =
+Variant =
   Attr* Visibility? Name FieldList ('=' Expr)?
 
 Union =

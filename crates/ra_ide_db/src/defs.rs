@@ -170,7 +170,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                 let def: hir::Static = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::EnumVariant(it) => {
+            ast::Variant(it) => {
                 let def: hir::EnumVariant = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },

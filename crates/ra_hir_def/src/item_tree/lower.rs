@@ -259,7 +259,7 @@ impl Ctx {
         Some(id(self.data().enums.alloc(res)))
     }
 
-    fn lower_variants(&mut self, variants: &ast::EnumVariantList) -> IdRange<Variant> {
+    fn lower_variants(&mut self, variants: &ast::VariantList) -> IdRange<Variant> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
@@ -271,7 +271,7 @@ impl Ctx {
         IdRange::new(start..end)
     }
 
-    fn lower_variant(&mut self, variant: &ast::EnumVariant) -> Option<Variant> {
+    fn lower_variant(&mut self, variant: &ast::Variant) -> Option<Variant> {
         let name = variant.name()?.as_name();
         let fields = self.lower_fields(&variant.kind());
         let res = Variant { name, fields };

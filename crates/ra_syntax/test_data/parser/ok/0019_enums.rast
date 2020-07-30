@@ -5,7 +5,7 @@ SOURCE_FILE@0..182
     NAME@5..7
       IDENT@5..7 "E1"
     WHITESPACE@7..8 " "
-    ENUM_VARIANT_LIST@8..11
+    VARIANT_LIST@8..11
       L_CURLY@8..9 "{"
       WHITESPACE@9..10 "\n"
       R_CURLY@10..11 "}"
@@ -22,7 +22,7 @@ SOURCE_FILE@0..182
           IDENT@21..22 "T"
       R_ANGLE@22..23 ">"
     WHITESPACE@23..24 " "
-    ENUM_VARIANT_LIST@24..27
+    VARIANT_LIST@24..27
       L_CURLY@24..25 "{"
       WHITESPACE@25..26 "\n"
       R_CURLY@26..27 "}"
@@ -33,10 +33,10 @@ SOURCE_FILE@0..182
     NAME@34..36
       IDENT@34..36 "E3"
     WHITESPACE@36..37 " "
-    ENUM_VARIANT_LIST@37..46
+    VARIANT_LIST@37..46
       L_CURLY@37..38 "{"
       WHITESPACE@38..43 "\n    "
-      ENUM_VARIANT@43..44
+      VARIANT@43..44
         NAME@43..44
           IDENT@43..44 "X"
       WHITESPACE@44..45 "\n"
@@ -48,10 +48,10 @@ SOURCE_FILE@0..182
     NAME@53..55
       IDENT@53..55 "E4"
     WHITESPACE@55..56 " "
-    ENUM_VARIANT_LIST@56..66
+    VARIANT_LIST@56..66
       L_CURLY@56..57 "{"
       WHITESPACE@57..62 "\n    "
-      ENUM_VARIANT@62..63
+      VARIANT@62..63
         NAME@62..63
           IDENT@62..63 "X"
       COMMA@63..64 ","
@@ -64,15 +64,15 @@ SOURCE_FILE@0..182
     NAME@73..75
       IDENT@73..75 "E5"
     WHITESPACE@75..76 " "
-    ENUM_VARIANT_LIST@76..181
+    VARIANT_LIST@76..181
       L_CURLY@76..77 "{"
       WHITESPACE@77..82 "\n    "
-      ENUM_VARIANT@82..83
+      VARIANT@82..83
         NAME@82..83
           IDENT@82..83 "A"
       COMMA@83..84 ","
       WHITESPACE@84..89 "\n    "
-      ENUM_VARIANT@89..95
+      VARIANT@89..95
         NAME@89..90
           IDENT@89..90 "B"
         WHITESPACE@90..91 " "
@@ -82,7 +82,7 @@ SOURCE_FILE@0..182
           INT_NUMBER@93..95 "92"
       COMMA@95..96 ","
       WHITESPACE@96..101 "\n    "
-      ENUM_VARIANT@101..146
+      VARIANT@101..146
         NAME@101..102
           IDENT@101..102 "C"
         WHITESPACE@102..103 " "
@@ -119,7 +119,7 @@ SOURCE_FILE@0..182
           R_CURLY@145..146 "}"
       COMMA@146..147 ","
       WHITESPACE@147..152 "\n    "
-      ENUM_VARIANT@152..156
+      VARIANT@152..156
         NAME@152..153
           IDENT@152..153 "F"
         WHITESPACE@153..154 " "
@@ -128,7 +128,7 @@ SOURCE_FILE@0..182
           R_CURLY@155..156 "}"
       COMMA@156..157 ","
       WHITESPACE@157..162 "\n    "
-      ENUM_VARIANT@162..169
+      VARIANT@162..169
         NAME@162..163
           IDENT@162..163 "D"
         TUPLE_FIELD_LIST@163..169
@@ -143,7 +143,7 @@ SOURCE_FILE@0..182
           R_PAREN@168..169 ")"
       COMMA@169..170 ","
       WHITESPACE@170..175 "\n    "
-      ENUM_VARIANT@175..178
+      VARIANT@175..178
         NAME@175..176
           IDENT@175..176 "E"
         TUPLE_FIELD_LIST@176..178

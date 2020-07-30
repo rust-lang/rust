@@ -247,7 +247,7 @@ impl ast::RecordFieldPat {
     }
 }
 
-impl ast::EnumVariant {
+impl ast::Variant {
     pub fn parent_enum(&self) -> ast::Enum {
         self.syntax()
             .parent()
@@ -480,7 +480,7 @@ impl ast::DocCommentsOwner for ast::Union {}
 impl ast::DocCommentsOwner for ast::RecordField {}
 impl ast::DocCommentsOwner for ast::TupleField {}
 impl ast::DocCommentsOwner for ast::Enum {}
-impl ast::DocCommentsOwner for ast::EnumVariant {}
+impl ast::DocCommentsOwner for ast::Variant {}
 impl ast::DocCommentsOwner for ast::TraitDef {}
 impl ast::DocCommentsOwner for ast::Module {}
 impl ast::DocCommentsOwner for ast::StaticDef {}

@@ -17,15 +17,15 @@ SOURCE_FILE@0..575
         NAME@21..25
           IDENT@21..25 "Test"
         WHITESPACE@25..26 " "
-        ENUM_VARIANT_LIST@26..152
+        VARIANT_LIST@26..152
           L_CURLY@26..27 "{"
           WHITESPACE@27..36 "\n        "
-          ENUM_VARIANT@36..40
+          VARIANT@36..40
             NAME@36..40
               IDENT@36..40 "Var1"
           COMMA@40..41 ","
           WHITESPACE@41..50 "\n        "
-          ENUM_VARIANT@50..62
+          VARIANT@50..62
             NAME@50..54
               IDENT@50..54 "Var2"
             TUPLE_FIELD_LIST@54..62
@@ -39,7 +39,7 @@ SOURCE_FILE@0..575
               R_PAREN@61..62 ")"
           COMMA@62..63 ","
           WHITESPACE@63..72 "\n        "
-          ENUM_VARIANT@72..145
+          VARIANT@72..145
             NAME@72..76
               IDENT@72..76 "Var3"
             WHITESPACE@76..77 " "
@@ -85,10 +85,10 @@ SOURCE_FILE@0..575
         NAME@196..201
           IDENT@196..201 "Test2"
         WHITESPACE@201..202 " "
-        ENUM_VARIANT_LIST@202..223
+        VARIANT_LIST@202..223
           L_CURLY@202..203 "{"
           WHITESPACE@203..212 "\n        "
-          ENUM_VARIANT@212..216
+          VARIANT@212..216
             NAME@212..216
               IDENT@212..216 "Fine"
           COMMA@216..217 ","
@@ -101,10 +101,10 @@ SOURCE_FILE@0..575
         NAME@234..239
           IDENT@234..239 "Test3"
         WHITESPACE@239..240 " "
-        ENUM_VARIANT_LIST@240..300
+        VARIANT_LIST@240..300
           L_CURLY@240..241 "{"
           WHITESPACE@241..250 "\n        "
-          ENUM_VARIANT@250..293
+          VARIANT@250..293
             NAME@250..259
               IDENT@250..259 "StillFine"
             WHITESPACE@259..260 " "
@@ -140,10 +140,10 @@ SOURCE_FILE@0..575
             NAME@343..348
               IDENT@343..348 "Test4"
             WHITESPACE@348..349 " "
-            ENUM_VARIANT_LIST@349..453
+            VARIANT_LIST@349..453
               L_CURLY@349..350 "{"
               WHITESPACE@350..363 "\n            "
-              ENUM_VARIANT@363..372
+              VARIANT@363..372
                 NAME@363..367
                   IDENT@363..367 "Nope"
                 TUPLE_FIELD_LIST@367..372
