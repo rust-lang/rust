@@ -412,8 +412,8 @@ fn test_literal_with_attr() {
     assert_eq!(lit.token().text(), r#""Hello""#);
 }
 
-impl ast::RecordField {
-    pub fn parent_record_lit(&self) -> ast::RecordLit {
-        self.syntax().ancestors().find_map(ast::RecordLit::cast).unwrap()
+impl ast::RecordExprField {
+    pub fn parent_record_lit(&self) -> ast::RecordExpr {
+        self.syntax().ancestors().find_map(ast::RecordExpr::cast).unwrap()
     }
 }

@@ -159,9 +159,9 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "MATCH_ARM_LIST",
         "MATCH_ARM",
         "MATCH_GUARD",
-        "RECORD_LIT",
-        "RECORD_FIELD_LIST",
-        "RECORD_FIELD",
+        "RECORD_EXPR",
+        "RECORD_EXPR_FIELD_LIST",
+        "RECORD_EXPR_FIELD",
         "EFFECT_EXPR",
         "BOX_EXPR",
         // postfix

@@ -96,7 +96,7 @@ fn get_chaining_hints(
         return None;
     }
 
-    if matches!(expr, ast::Expr::RecordLit(_)) {
+    if matches!(expr, ast::Expr::RecordExpr(_)) {
         return None;
     }
 

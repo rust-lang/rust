@@ -189,11 +189,11 @@ impl ast::StructDef {
     }
 }
 
-impl ast::RecordField {
-    pub fn for_field_name(field_name: &ast::NameRef) -> Option<ast::RecordField> {
+impl ast::RecordExprField {
+    pub fn for_field_name(field_name: &ast::NameRef) -> Option<ast::RecordExprField> {
         let candidate =
-            field_name.syntax().parent().and_then(ast::RecordField::cast).or_else(|| {
-                field_name.syntax().ancestors().nth(4).and_then(ast::RecordField::cast)
+            field_name.syntax().parent().and_then(ast::RecordExprField::cast).or_else(|| {
+                field_name.syntax().ancestors().nth(4).and_then(ast::RecordExprField::cast)
             })?;
         if candidate.field_name().as_ref() == Some(field_name) {
             Some(candidate)

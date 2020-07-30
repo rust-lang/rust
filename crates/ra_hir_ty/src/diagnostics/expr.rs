@@ -100,8 +100,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         if let Ok(source_ptr) = source_map.expr_syntax(id) {
             let root = source_ptr.file_syntax(db.upcast());
-            if let ast::Expr::RecordLit(record_lit) = &source_ptr.value.to_node(&root) {
-                if let Some(field_list) = record_lit.record_field_list() {
+            if let ast::Expr::RecordExpr(record_lit) = &source_ptr.value.to_node(&root) {
+                if let Some(field_list) = record_lit.record_expr_field_list() {
                     let variant_data = variant_data(db.upcast(), variant_def);
                     let missed_fields = missed_fields
                         .into_iter()

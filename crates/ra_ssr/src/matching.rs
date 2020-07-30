@@ -209,7 +209,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         // Some kinds of nodes have special handling. For everything else, we fall back to default
         // matching.
         match code.kind() {
-            SyntaxKind::RECORD_FIELD_LIST => {
+            SyntaxKind::RECORD_EXPR_FIELD_LIST => {
                 self.attempt_match_record_field_list(phase, pattern, code)
             }
             SyntaxKind::TOKEN_TREE => self.attempt_match_token_tree(phase, pattern, code),
@@ -399,7 +399,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         // Build a map keyed by field name.
         let mut fields_by_name = FxHashMap::default();
         for child in code.children() {
-            if let Some(record) = ast::RecordField::cast(child.clone()) {
+            if let Some(record) = ast::RecordExprField::cast(child.clone()) {
                 if let Some(name) = record.field_name() {
                     fields_by_name.insert(name.text().clone(), child.clone());
                 }

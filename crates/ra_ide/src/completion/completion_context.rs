@@ -37,9 +37,9 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) name_ref_syntax: Option<ast::NameRef>,
     pub(super) function_syntax: Option<ast::Fn>,
     pub(super) use_item_syntax: Option<ast::Use>,
-    pub(super) record_lit_syntax: Option<ast::RecordLit>,
+    pub(super) record_lit_syntax: Option<ast::RecordExpr>,
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
-    pub(super) record_field_syntax: Option<ast::RecordField>,
+    pub(super) record_field_syntax: Option<ast::RecordExprField>,
     pub(super) impl_def: Option<ast::ImplDef>,
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
@@ -316,7 +316,7 @@ impl<'a> CompletionContext<'a> {
         self.name_ref_syntax =
             find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();
-        if ast::RecordField::for_field_name(&name_ref).is_some() {
+        if ast::RecordExprField::for_field_name(&name_ref).is_some() {
             self.record_lit_syntax =
                 self.sema.find_node_at_offset_with_macros(&original_file, offset);
         }
@@ -357,7 +357,7 @@ impl<'a> CompletionContext<'a> {
             .take_while(|it| {
                 it.kind() != SOURCE_FILE && it.kind() != MODULE && it.kind() != CALL_EXPR
             })
-            .find_map(ast::RecordField::cast);
+            .find_map(ast::RecordExprField::cast);
 
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,

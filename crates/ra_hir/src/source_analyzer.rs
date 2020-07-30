@@ -159,7 +159,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_record_field(
         &self,
         db: &dyn HirDatabase,
-        field: &ast::RecordField,
+        field: &ast::RecordExprField,
     ) -> Option<(Field, Option<Local>)> {
         let expr = field.expr()?;
         let expr_id = self.expr_id(db, &expr)?;
@@ -246,7 +246,7 @@ impl SourceAnalyzer {
             }
         }
 
-        if let Some(rec_lit) = path.syntax().parent().and_then(ast::RecordLit::cast) {
+        if let Some(rec_lit) = path.syntax().parent().and_then(ast::RecordExpr::cast) {
             let expr_id = self.expr_id(db, &rec_lit.into())?;
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
@@ -284,7 +284,7 @@ impl SourceAnalyzer {
     pub(crate) fn record_literal_missing_fields(
         &self,
         db: &dyn HirDatabase,
-        literal: &ast::RecordLit,
+        literal: &ast::RecordExpr,
     ) -> Option<Vec<(Field, Type)>> {
         let krate = self.resolver.krate()?;
         let body = self.body.as_ref()?;
@@ -358,7 +358,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_variant(
         &self,
         db: &dyn HirDatabase,
-        record_lit: ast::RecordLit,
+        record_lit: ast::RecordExpr,
     ) -> Option<VariantId> {
         let infer = self.infer.as_ref()?;
         let expr_id = self.expr_id(db, &record_lit.into())?;

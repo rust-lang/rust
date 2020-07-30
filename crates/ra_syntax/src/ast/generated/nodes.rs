@@ -909,30 +909,32 @@ impl MatchGuard {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordLit {
+pub struct RecordExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl RecordLit {
+impl RecordExpr {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn record_field_list(&self) -> Option<RecordFieldList> { support::child(&self.syntax) }
+    pub fn record_expr_field_list(&self) -> Option<RecordExprFieldList> {
+        support::child(&self.syntax)
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordFieldList {
+pub struct RecordExprFieldList {
     pub(crate) syntax: SyntaxNode,
 }
-impl RecordFieldList {
+impl RecordExprFieldList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn fields(&self) -> AstChildren<RecordField> { support::children(&self.syntax) }
+    pub fn fields(&self) -> AstChildren<RecordExprField> { support::children(&self.syntax) }
     pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
     pub fn spread(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordField {
+pub struct RecordExprField {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RecordField {}
-impl RecordField {
+impl ast::AttrsOwner for RecordExprField {}
+impl RecordExprField {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -1345,7 +1347,7 @@ pub enum Expr {
     BlockExpr(BlockExpr),
     ReturnExpr(ReturnExpr),
     MatchExpr(MatchExpr),
-    RecordLit(RecordLit),
+    RecordExpr(RecordExpr),
     CallExpr(CallExpr),
     IndexExpr(IndexExpr),
     MethodCallExpr(MethodCallExpr),
@@ -2357,8 +2359,8 @@ impl AstNode for MatchGuard {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for RecordLit {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_LIT }
+impl AstNode for RecordExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2368,8 +2370,8 @@ impl AstNode for RecordLit {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for RecordFieldList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_LIST }
+impl AstNode for RecordExprFieldList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_EXPR_FIELD_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2379,8 +2381,8 @@ impl AstNode for RecordFieldList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for RecordField {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD }
+impl AstNode for RecordExprField {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_EXPR_FIELD }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3119,8 +3121,8 @@ impl From<ReturnExpr> for Expr {
 impl From<MatchExpr> for Expr {
     fn from(node: MatchExpr) -> Expr { Expr::MatchExpr(node) }
 }
-impl From<RecordLit> for Expr {
-    fn from(node: RecordLit) -> Expr { Expr::RecordLit(node) }
+impl From<RecordExpr> for Expr {
+    fn from(node: RecordExpr) -> Expr { Expr::RecordExpr(node) }
 }
 impl From<CallExpr> for Expr {
     fn from(node: CallExpr) -> Expr { Expr::CallExpr(node) }
@@ -3172,7 +3174,7 @@ impl AstNode for Expr {
         match kind {
             TUPLE_EXPR | ARRAY_EXPR | PAREN_EXPR | PATH_EXPR | LAMBDA_EXPR | IF_EXPR
             | LOOP_EXPR | FOR_EXPR | WHILE_EXPR | CONTINUE_EXPR | BREAK_EXPR | LABEL
-            | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | RECORD_LIT | CALL_EXPR | INDEX_EXPR
+            | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | RECORD_EXPR | CALL_EXPR | INDEX_EXPR
             | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | EFFECT_EXPR | CAST_EXPR
             | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL | BOX_EXPR => {
                 true
@@ -3197,7 +3199,7 @@ impl AstNode for Expr {
             BLOCK_EXPR => Expr::BlockExpr(BlockExpr { syntax }),
             RETURN_EXPR => Expr::ReturnExpr(ReturnExpr { syntax }),
             MATCH_EXPR => Expr::MatchExpr(MatchExpr { syntax }),
-            RECORD_LIT => Expr::RecordLit(RecordLit { syntax }),
+            RECORD_EXPR => Expr::RecordExpr(RecordExpr { syntax }),
             CALL_EXPR => Expr::CallExpr(CallExpr { syntax }),
             INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
             METHOD_CALL_EXPR => Expr::MethodCallExpr(MethodCallExpr { syntax }),
@@ -3234,7 +3236,7 @@ impl AstNode for Expr {
             Expr::BlockExpr(it) => &it.syntax,
             Expr::ReturnExpr(it) => &it.syntax,
             Expr::MatchExpr(it) => &it.syntax,
-            Expr::RecordLit(it) => &it.syntax,
+            Expr::RecordExpr(it) => &it.syntax,
             Expr::CallExpr(it) => &it.syntax,
             Expr::IndexExpr(it) => &it.syntax,
             Expr::MethodCallExpr(it) => &it.syntax,
@@ -3893,17 +3895,17 @@ impl std::fmt::Display for MatchGuard {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for RecordLit {
+impl std::fmt::Display for RecordExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for RecordFieldList {
+impl std::fmt::Display for RecordExprFieldList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for RecordField {
+impl std::fmt::Display for RecordExprField {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

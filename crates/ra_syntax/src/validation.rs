@@ -91,7 +91,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::Literal(it) => validate_literal(it, &mut errors),
                 ast::BlockExpr(it) => block::validate_block_expr(it, &mut errors),
                 ast::FieldExpr(it) => validate_numeric_name(it.name_ref(), &mut errors),
-                ast::RecordField(it) => validate_numeric_name(it.name_ref(), &mut errors),
+                ast::RecordExprField(it) => validate_numeric_name(it.name_ref(), &mut errors),
                 ast::Visibility(it) => validate_visibility(it, &mut errors),
                 ast::RangeExpr(it) => validate_range_expr(it, &mut errors),
                 ast::PathSegment(it) => validate_path_keywords(it, &mut errors),

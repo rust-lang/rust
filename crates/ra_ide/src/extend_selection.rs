@@ -41,7 +41,7 @@ fn try_extend_selection(
         MATCH_ARM_LIST,
         RECORD_FIELD_DEF_LIST,
         TUPLE_FIELD_DEF_LIST,
-        RECORD_FIELD_LIST,
+        RECORD_EXPR_FIELD_LIST,
         ENUM_VARIANT_LIST,
         USE_TREE_LIST,
         GENERIC_PARAM_LIST,

@@ -45,7 +45,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         target,
         move |edit| {
             let field_shorthand =
-                match to_extract.syntax().parent().and_then(ast::RecordField::cast) {
+                match to_extract.syntax().parent().and_then(ast::RecordExprField::cast) {
                     Some(field) => field.name_ref(),
                     None => None,
                 };

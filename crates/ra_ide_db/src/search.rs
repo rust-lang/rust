@@ -315,7 +315,7 @@ fn is_record_lit_name_ref(name_ref: &ast::NameRef) -> bool {
     name_ref
         .syntax()
         .ancestors()
-        .find_map(ast::RecordLit::cast)
+        .find_map(ast::RecordExpr::cast)
         .and_then(|l| l.path())
         .and_then(|p| p.segment())
         .map(|p| p.name_ref().as_ref() == Some(name_ref))

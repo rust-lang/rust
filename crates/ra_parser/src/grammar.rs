@@ -143,7 +143,7 @@ pub(crate) fn reparser(
     let res = match node {
         BLOCK_EXPR => expressions::block_expr,
         RECORD_FIELD_DEF_LIST => items::record_field_def_list,
-        RECORD_FIELD_LIST => items::record_field_list,
+        RECORD_EXPR_FIELD_LIST => items::record_field_list,
         ENUM_VARIANT_LIST => items::enum_variant_list,
         MATCH_ARM_LIST => items::match_arm_list,
         USE_TREE_LIST => items::use_tree_list,

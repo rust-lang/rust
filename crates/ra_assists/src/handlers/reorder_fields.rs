@@ -23,7 +23,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 //
 pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    reorder::<ast::RecordLit>(acc, ctx).or_else(|| reorder::<ast::RecordPat>(acc, ctx))
+    reorder::<ast::RecordExpr>(acc, ctx).or_else(|| reorder::<ast::RecordPat>(acc, ctx))
 }
 
 fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -56,7 +56,7 @@ fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
 fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {
     match node.kind() {
-        RECORD_LIT => vec![RECORD_FIELD],
+        RECORD_EXPR => vec![RECORD_EXPR_FIELD],
         RECORD_PAT => vec![RECORD_FIELD_PAT, BIND_PAT],
         _ => vec![],
     }
@@ -65,7 +65,7 @@ fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {
 fn get_field_name(node: &SyntaxNode) -> String {
     let res = match_ast! {
         match node {
-            ast::RecordField(field) => field.field_name().map(|it| it.to_string()),
+            ast::RecordExprField(field) => field.field_name().map(|it| it.to_string()),
             ast::RecordFieldPat(field) => field.field_name().map(|it| it.to_string()),
             _ => None,
         }

@@ -116,18 +116,18 @@ impl ast::AssocItemList {
     }
 }
 
-impl ast::RecordFieldList {
+impl ast::RecordExprFieldList {
     #[must_use]
-    pub fn append_field(&self, field: &ast::RecordField) -> ast::RecordFieldList {
+    pub fn append_field(&self, field: &ast::RecordExprField) -> ast::RecordExprFieldList {
         self.insert_field(InsertPosition::Last, field)
     }
 
     #[must_use]
     pub fn insert_field(
         &self,
-        position: InsertPosition<&'_ ast::RecordField>,
-        field: &ast::RecordField,
-    ) -> ast::RecordFieldList {
+        position: InsertPosition<&'_ ast::RecordExprField>,
+        field: &ast::RecordExprField,
+    ) -> ast::RecordExprFieldList {
         let is_multiline = self.syntax().text().contains_char('\n');
         let ws;
         let space = if is_multiline {

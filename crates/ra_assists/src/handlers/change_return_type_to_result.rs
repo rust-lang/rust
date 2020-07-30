@@ -240,7 +240,7 @@ fn get_tail_expr_from_block(expr: &Expr) -> Option<Vec<NodeType>> {
         Expr::ParenExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::PathExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::Label(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
-        Expr::RecordLit(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
+        Expr::RecordExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::IndexExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::MethodCallExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),
         Expr::AwaitExpr(expr) => Some(vec![NodeType::Leaf(expr.syntax().clone())]),

@@ -386,7 +386,7 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
         MATCH_EXPR => FragmentKind::Expr,
         MATCH_ARM => FragmentKind::Expr,
         MATCH_GUARD => FragmentKind::Expr,
-        RECORD_FIELD => FragmentKind::Expr,
+        RECORD_EXPR_FIELD => FragmentKind::Expr,
         CALL_EXPR => FragmentKind::Expr,
         INDEX_EXPR => FragmentKind::Expr,
         METHOD_CALL_EXPR => FragmentKind::Expr,

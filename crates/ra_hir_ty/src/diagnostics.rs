@@ -29,7 +29,7 @@ pub fn validate_body(db: &dyn HirDatabase, owner: DefWithBodyId, sink: &mut Diag
 #[derive(Debug)]
 pub struct NoSuchField {
     pub file: HirFileId,
-    pub field: AstPtr<ast::RecordField>,
+    pub field: AstPtr<ast::RecordExprField>,
 }
 
 impl Diagnostic for NoSuchField {
@@ -47,19 +47,19 @@ impl Diagnostic for NoSuchField {
 }
 
 impl AstDiagnostic for NoSuchField {
-    type AST = ast::RecordField;
+    type AST = ast::RecordExprField;
 
     fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().value.to_node(&root);
-        ast::RecordField::cast(node).unwrap()
+        ast::RecordExprField::cast(node).unwrap()
     }
 }
 
 #[derive(Debug)]
 pub struct MissingFields {
     pub file: HirFileId,
-    pub field_list: AstPtr<ast::RecordFieldList>,
+    pub field_list: AstPtr<ast::RecordExprFieldList>,
     pub missed_fields: Vec<Name>,
 }
 
@@ -80,12 +80,12 @@ impl Diagnostic for MissingFields {
 }
 
 impl AstDiagnostic for MissingFields {
-    type AST = ast::RecordFieldList;
+    type AST = ast::RecordExprFieldList;
 
     fn ast(&self, db: &dyn AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().value.to_node(&root);
-        ast::RecordFieldList::cast(node).unwrap()
+        ast::RecordExprFieldList::cast(node).unwrap()
     }
 }
 
