@@ -736,10 +736,7 @@ fn validate_generic_param_order<'a>(
         let max_param = &mut max_param;
         match max_param {
             Some(ParamKindOrd::Const)
-                if ParamKindOrd::Type == kind && sess.features_untracked().const_generics =>
-            {
-                ()
-            }
+                if ParamKindOrd::Type == kind && sess.features_untracked().const_generics => {}
             Some(max_param) if *max_param > kind => {
                 let entry = out_of_order.entry(kind).or_insert((*max_param, vec![]));
                 entry.1.push(span);
