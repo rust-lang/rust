@@ -667,69 +667,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Print an allocation and all allocations it points to, recursively.
-    /// This prints directly to stderr, ignoring RUSTC_LOG! It is up to the caller to
-    /// control for this.
-    pub fn dump_alloc(&self, id: AllocId) {
-        self.dump_allocs(vec![id]);
+    /// Create a lazy debug printer that prints the given allocation and all allocations it points
+    /// to, recursively.
+    #[must_use]
+    pub fn dump_alloc<'a>(&'a self, id: AllocId) -> DumpAllocs<'a, 'mir, 'tcx, M> {
+        self.dump_allocs(vec![id])
     }
 
-    /// Print a list of allocations and all allocations they point to, recursively.
-    /// This prints directly to stderr, ignoring RUSTC_LOG! It is up to the caller to
-    /// control for this.
-    pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
-        // Cannot be a closure because it is generic in `Tag`, `Extra`.
-        fn write_allocation_track_relocs<'tcx, Tag: Copy + fmt::Debug, Extra>(
-            tcx: TyCtxt<'tcx>,
-            allocs_to_print: &mut VecDeque<AllocId>,
-            alloc: &Allocation<Tag, Extra>,
-        ) {
-            for &(_, target_id) in alloc.relocations().values() {
-                allocs_to_print.push_back(target_id);
-            }
-            pretty::write_allocation(tcx, alloc, &mut std::io::stderr()).unwrap();
-        }
-
+    /// Create a lazy debug printer for a list of allocations and all allocations they point to,
+    /// recursively.
+    #[must_use]
+    pub fn dump_allocs<'a>(&'a self, mut allocs: Vec<AllocId>) -> DumpAllocs<'a, 'mir, 'tcx, M> {
         allocs.sort();
         allocs.dedup();
-        let mut allocs_to_print = VecDeque::from(allocs);
-        // `allocs_printed` contains all allocations that we have already printed.
-        let mut allocs_printed = FxHashSet::default();
-
-        while let Some(id) = allocs_to_print.pop_front() {
-            if !allocs_printed.insert(id) {
-                // Already printed, so skip this.
-                continue;
-            }
-
-            eprint!("{}", id);
-            match self.alloc_map.get(id) {
-                Some(&(kind, ref alloc)) => {
-                    // normal alloc
-                    eprint!(" ({}, ", kind);
-                    write_allocation_track_relocs(self.tcx, &mut allocs_to_print, alloc);
-                }
-                None => {
-                    // global alloc
-                    match self.tcx.get_global_alloc(id) {
-                        Some(GlobalAlloc::Memory(alloc)) => {
-                            eprint!(" (unchanged global, ");
-                            write_allocation_track_relocs(self.tcx, &mut allocs_to_print, alloc);
-                        }
-                        Some(GlobalAlloc::Function(func)) => {
-                            eprint!(" (fn: {})", func);
-                        }
-                        Some(GlobalAlloc::Static(did)) => {
-                            eprint!(" (static: {})", self.tcx.def_path_str(did));
-                        }
-                        None => {
-                            eprint!(" (deallocated)");
-                        }
-                    }
-                }
-            }
-            eprintln!();
-        }
+        DumpAllocs { mem: self, allocs }
     }
 
     /// Print leaked memory. Allocations reachable from `static_roots` or a `Global` allocation
@@ -760,8 +711,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         });
         let n = leaks.len();
         if n > 0 {
-            eprintln!("The following memory was leaked:");
-            self.dump_allocs(leaks);
+            eprintln!("The following memory was leaked: {:?}", self.dump_allocs(leaks));
         }
         n
     }
@@ -769,6 +719,80 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
     pub fn alloc_map(&self) -> &M::MemoryMap {
         &self.alloc_map
+    }
+}
+
+#[doc(hidden)]
+/// There's no way to use this directly, it's just a helper struct for the `dump_alloc(s)` methods.
+pub struct DumpAllocs<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+    mem: &'a Memory<'mir, 'tcx, M>,
+    allocs: Vec<AllocId>,
+}
+
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 'mir, 'tcx, M> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Cannot be a closure because it is generic in `Tag`, `Extra`.
+        fn write_allocation_track_relocs<'tcx, Tag: Copy + fmt::Debug, Extra>(
+            fmt: &mut std::fmt::Formatter<'_>,
+            tcx: TyCtxt<'tcx>,
+            allocs_to_print: &mut VecDeque<AllocId>,
+            alloc: &Allocation<Tag, Extra>,
+        ) -> std::fmt::Result {
+            for &(_, target_id) in alloc.relocations().values() {
+                allocs_to_print.push_back(target_id);
+            }
+            write!(fmt, "{}", pretty::display_allocation(tcx, alloc))
+        }
+
+        let mut allocs_to_print: VecDeque<_> = self.allocs.iter().copied().collect();
+        // `allocs_printed` contains all allocations that we have already printed.
+        let mut allocs_printed = FxHashSet::default();
+
+        while let Some(id) = allocs_to_print.pop_front() {
+            if !allocs_printed.insert(id) {
+                // Already printed, so skip this.
+                continue;
+            }
+
+            write!(fmt, "{}", id)?;
+            match self.mem.alloc_map.get(id) {
+                Some(&(kind, ref alloc)) => {
+                    // normal alloc
+                    write!(fmt, " ({}, ", kind)?;
+                    write_allocation_track_relocs(
+                        &mut *fmt,
+                        self.mem.tcx,
+                        &mut allocs_to_print,
+                        alloc,
+                    )?;
+                }
+                None => {
+                    // global alloc
+                    match self.mem.tcx.get_global_alloc(id) {
+                        Some(GlobalAlloc::Memory(alloc)) => {
+                            write!(fmt, " (unchanged global, ")?;
+                            write_allocation_track_relocs(
+                                &mut *fmt,
+                                self.mem.tcx,
+                                &mut allocs_to_print,
+                                alloc,
+                            )?;
+                        }
+                        Some(GlobalAlloc::Function(func)) => {
+                            write!(fmt, " (fn: {})", func)?;
+                        }
+                        Some(GlobalAlloc::Static(did)) => {
+                            write!(fmt, " (static: {})", self.mem.tcx.def_path_str(did))?;
+                        }
+                        None => {
+                            write!(fmt, " (deallocated)")?;
+                        }
+                    }
+                }
+            }
+            writeln!(fmt)?;
+        }
+        Ok(())
     }
 }
 

@@ -1831,7 +1831,7 @@ pub mod tls {
 }
 
 macro_rules! sty_debug_print {
-    ($ctxt: expr, $($variant: ident),*) => {{
+    ($fmt: expr, $ctxt: expr, $($variant: ident),*) => {{
         // Curious inner module to allow variant names to be used as
         // variable names.
         #[allow(non_snake_case)]
@@ -1848,7 +1848,7 @@ macro_rules! sty_debug_print {
                 all_infer: usize,
             }
 
-            pub fn go(tcx: TyCtxt<'_>) {
+            pub fn go(fmt: &mut std::fmt::Formatter<'_>, tcx: TyCtxt<'_>) -> std::fmt::Result {
                 let mut total = DebugStat {
                     total: 0,
                     lt_infer: 0,
@@ -1878,8 +1878,8 @@ macro_rules! sty_debug_print {
                     if ct { total.ct_infer += 1; variant.ct_infer += 1 }
                     if lt && ty && ct { total.all_infer += 1; variant.all_infer += 1 }
                 }
-                println!("Ty interner             total           ty lt ct all");
-                $(println!("    {:18}: {uses:6} {usespc:4.1}%, \
+                writeln!(fmt, "Ty interner             total           ty lt ct all")?;
+                $(writeln!(fmt, "    {:18}: {uses:6} {usespc:4.1}%, \
                             {ty:4.1}% {lt:5.1}% {ct:4.1}% {all:4.1}%",
                     stringify!($variant),
                     uses = $variant.total,
@@ -1887,9 +1887,9 @@ macro_rules! sty_debug_print {
                     ty = $variant.ty_infer as f64 * 100.0  / total.total as f64,
                     lt = $variant.lt_infer as f64 * 100.0  / total.total as f64,
                     ct = $variant.ct_infer as f64 * 100.0  / total.total as f64,
-                    all = $variant.all_infer as f64 * 100.0  / total.total as f64);
+                    all = $variant.all_infer as f64 * 100.0  / total.total as f64)?;
                 )*
-                println!("                  total {uses:6}        \
+                writeln!(fmt, "                  total {uses:6}        \
                           {ty:4.1}% {lt:5.1}% {ct:4.1}% {all:4.1}%",
                     uses = total.total,
                     ty = total.ty_infer as f64 * 100.0  / total.total as f64,
@@ -1899,41 +1899,56 @@ macro_rules! sty_debug_print {
             }
         }
 
-        inner::go($ctxt)
+        inner::go($fmt, $ctxt)
     }}
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn print_debug_stats(self) {
-        sty_debug_print!(
-            self,
-            Adt,
-            Array,
-            Slice,
-            RawPtr,
-            Ref,
-            FnDef,
-            FnPtr,
-            Placeholder,
-            Generator,
-            GeneratorWitness,
-            Dynamic,
-            Closure,
-            Tuple,
-            Bound,
-            Param,
-            Infer,
-            Projection,
-            Opaque,
-            Foreign
-        );
+    pub fn debug_stats(self) -> impl std::fmt::Debug + 'tcx {
+        struct DebugStats<'tcx>(TyCtxt<'tcx>);
 
-        println!("InternalSubsts interner: #{}", self.interners.substs.len());
-        println!("Region interner: #{}", self.interners.region.len());
-        println!("Stability interner: #{}", self.stability_interner.len());
-        println!("Const Stability interner: #{}", self.const_stability_interner.len());
-        println!("Allocation interner: #{}", self.allocation_interner.len());
-        println!("Layout interner: #{}", self.layout_interner.len());
+        impl std::fmt::Debug for DebugStats<'tcx> {
+            fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                sty_debug_print!(
+                    fmt,
+                    self.0,
+                    Adt,
+                    Array,
+                    Slice,
+                    RawPtr,
+                    Ref,
+                    FnDef,
+                    FnPtr,
+                    Placeholder,
+                    Generator,
+                    GeneratorWitness,
+                    Dynamic,
+                    Closure,
+                    Tuple,
+                    Bound,
+                    Param,
+                    Infer,
+                    Projection,
+                    Opaque,
+                    Foreign
+                )?;
+
+                writeln!(fmt, "InternalSubsts interner: #{}", self.0.interners.substs.len())?;
+                writeln!(fmt, "Region interner: #{}", self.0.interners.region.len())?;
+                writeln!(fmt, "Stability interner: #{}", self.0.stability_interner.len())?;
+                writeln!(
+                    fmt,
+                    "Const Stability interner: #{}",
+                    self.0.const_stability_interner.len()
+                )?;
+                writeln!(fmt, "Allocation interner: #{}", self.0.allocation_interner.len())?;
+                writeln!(fmt, "Layout interner: #{}", self.0.layout_interner.len())?;
+
+                Ok(())
+            }
+        }
+
+        DebugStats(self)
     }
 }
 

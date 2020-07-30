@@ -56,7 +56,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
         self.copy_op(place.into(), dest)?;
 
         self.return_to_block(ret.map(|r| r.1))?;
-        self.dump_place(*dest);
+        trace!("{:?}", self.dump_place(*dest));
         Ok(true)
     }
 

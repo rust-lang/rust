@@ -596,7 +596,7 @@ pub fn write_allocations<'tcx>(
                         todo.push(id);
                     }
                 }
-                write_allocation(tcx, alloc, w)
+                write!(w, "{}", display_allocation(tcx, alloc))
             };
         write!(w, "\n{}", id)?;
         match tcx.get_global_alloc(id) {
@@ -648,24 +648,36 @@ pub fn write_allocations<'tcx>(
 /// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
 /// characters or characters whose value is larger than 127) with a `.`
 /// This also prints relocations adequately.
-pub fn write_allocation<Tag: Copy + Debug, Extra>(
+pub fn display_allocation<Tag: Copy + Debug, Extra>(
     tcx: TyCtxt<'tcx>,
-    alloc: &Allocation<Tag, Extra>,
-    w: &mut dyn Write,
-) -> io::Result<()> {
-    write!(w, "size: {}, align: {})", alloc.size.bytes(), alloc.align.bytes())?;
-    if alloc.size == Size::ZERO {
-        // We are done.
-        return write!(w, " {{}}");
-    }
-    // Write allocation bytes.
-    writeln!(w, " {{")?;
-    write_allocation_bytes(tcx, alloc, w, "    ")?;
-    write!(w, "}}")?;
-    Ok(())
+    alloc: &'a Allocation<Tag, Extra>,
+) -> RenderAllocation<'a, 'tcx, Tag, Extra> {
+    RenderAllocation { tcx, alloc }
 }
 
-fn write_allocation_endline(w: &mut dyn Write, ascii: &str) -> io::Result<()> {
+#[doc(hidden)]
+pub struct RenderAllocation<'a, 'tcx, Tag, Extra> {
+    tcx: TyCtxt<'tcx>,
+    alloc: &'a Allocation<Tag, Extra>,
+}
+
+impl<Tag: Copy + Debug, Extra> std::fmt::Display for RenderAllocation<'a, 'tcx, Tag, Extra> {
+    fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let RenderAllocation { tcx, alloc } = *self;
+        write!(w, "size: {}, align: {})", alloc.size.bytes(), alloc.align.bytes())?;
+        if alloc.size == Size::ZERO {
+            // We are done.
+            return write!(w, " {{}}");
+        }
+        // Write allocation bytes.
+        writeln!(w, " {{")?;
+        write_allocation_bytes(tcx, alloc, w, "    ")?;
+        write!(w, "}}")?;
+        Ok(())
+    }
+}
+
+fn write_allocation_endline(w: &mut dyn std::fmt::Write, ascii: &str) -> std::fmt::Result {
     for _ in 0..(BYTES_PER_LINE - ascii.chars().count()) {
         write!(w, "   ")?;
     }
@@ -677,12 +689,12 @@ const BYTES_PER_LINE: usize = 16;
 
 /// Prints the line start address and returns the new line start address.
 fn write_allocation_newline(
-    w: &mut dyn Write,
+    w: &mut dyn std::fmt::Write,
     mut line_start: Size,
     ascii: &str,
     pos_width: usize,
     prefix: &str,
-) -> io::Result<Size> {
+) -> Result<Size, std::fmt::Error> {
     write_allocation_endline(w, ascii)?;
     line_start += Size::from_bytes(BYTES_PER_LINE);
     write!(w, "{}0x{:02$x} │ ", prefix, line_start.bytes(), pos_width)?;
@@ -695,9 +707,9 @@ fn write_allocation_newline(
 fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
     tcx: TyCtxt<'tcx>,
     alloc: &Allocation<Tag, Extra>,
-    w: &mut dyn Write,
+    w: &mut dyn std::fmt::Write,
     prefix: &str,
-) -> io::Result<()> {
+) -> std::fmt::Result {
     let num_lines = alloc.size.bytes_usize().saturating_sub(BYTES_PER_LINE);
     // Number of chars needed to represent all line numbers.
     let pos_width = format!("{:x}", alloc.size.bytes()).len();
