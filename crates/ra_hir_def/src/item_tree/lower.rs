@@ -228,7 +228,7 @@ impl Ctx {
     fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleField) -> Field {
         let name = Name::new_tuple_field(idx);
         let visibility = self.lower_visibility(field);
-        let type_ref = self.lower_type_ref_opt(field.type_ref());
+        let type_ref = self.lower_type_ref_opt(field.ty());
         let res = Field { name, type_ref, visibility };
         res
     }
@@ -317,7 +317,7 @@ impl Ctx {
             }
         }
 
-        let ret_type = match func.ret_type().and_then(|rt| rt.type_ref()) {
+        let ret_type = match func.ret_type().and_then(|rt| rt.ty()) {
             Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
             _ => TypeRef::unit(),
         };
@@ -352,7 +352,7 @@ impl Ctx {
         type_alias: &ast::TypeAlias,
     ) -> Option<FileItemTreeId<TypeAlias>> {
         let name = type_alias.name()?.as_name();
-        let type_ref = type_alias.type_ref().map(|it| self.lower_type_ref(&it));
+        let type_ref = type_alias.ty().map(|it| self.lower_type_ref(&it));
         let visibility = self.lower_visibility(type_alias);
         let bounds = self.lower_type_bounds(type_alias);
         let generic_params = self.lower_generic_params(GenericsOwner::TypeAlias, type_alias);

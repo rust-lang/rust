@@ -44,7 +44,7 @@ pub(crate) fn function_declaration(node: &ast::Fn) -> String {
         format_to!(buf, "{}", param_list);
     }
     if let Some(ret_type) = node.ret_type() {
-        if ret_type.type_ref().is_some() {
+        if ret_type.ty().is_some() {
             format_to!(buf, " {}", ret_type);
         }
     }

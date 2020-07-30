@@ -198,7 +198,7 @@ impl TypeAlias {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -333,7 +333,7 @@ pub struct RetType {
 }
 impl RetType {
     pub fn thin_arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![->]) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhereClause {
@@ -425,7 +425,7 @@ pub struct TupleField {
 impl ast::AttrsOwner for TupleField {}
 impl ast::VisibilityOwner for TupleField {}
 impl TupleField {
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariantList {
@@ -525,7 +525,7 @@ pub struct ParenType {
 }
 impl ParenType {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -559,7 +559,7 @@ impl PointerType {
     pub fn star_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayType {
@@ -567,7 +567,7 @@ pub struct ArrayType {
 }
 impl ArrayType {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
@@ -578,7 +578,7 @@ pub struct SliceType {
 }
 impl SliceType {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -591,7 +591,7 @@ impl ReferenceType {
         support::token(&self.syntax, T![lifetime])
     }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlaceholderType {
@@ -618,7 +618,7 @@ pub struct ForType {
 impl ForType {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplTraitType {
@@ -882,7 +882,7 @@ impl ast::AttrsOwner for CastExpr {}
 impl CastExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefExpr {
