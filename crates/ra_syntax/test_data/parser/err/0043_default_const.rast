@@ -1,5 +1,5 @@
 SOURCE_FILE@0..39
-  TRAIT_DEF@0..38
+  TRAIT@0..38
     TRAIT_KW@0..5 "trait"
     WHITESPACE@5..6 " "
     NAME@6..7

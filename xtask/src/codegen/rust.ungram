@@ -9,12 +9,12 @@ Item =
 | ExternBlock
 | ExternCrate
 | Fn
-| ImplDef
+| Impl
 | MacroCall
 | Module
 | Static
 | Struct
-| TraitDef
+| Trait
 | TypeAlias
 | Union
 | Use
@@ -66,8 +66,11 @@ SelfParam =
   )
 
 Param =
-  Attr* Pat (':' ascribed_type:TypeRef)
-| '...'
+  Attr* (
+    Pat (':' ascribed_type:TypeRef)
+  | ascribed_type:TypeRef
+  | '...'
+  )
 
 RetType =
   '->' TypeRef
@@ -120,7 +123,7 @@ Static =
   Attr* Visibility? 'static'? 'mut'? Name ':' ascribed_type:TypeRef
   '=' body:Expr ';'
 
-TraitDef =
+Trait =
   Attr* Visibility? 'unsafe'? 'auto'? 'trait' Name GenericParamList
   (':' TypeBoundList?)? WhereClause
   AssocItemList
@@ -128,9 +131,12 @@ TraitDef =
 AssocItemList =
   '{' AssocItem* '}'
 
-ImplDef =
- Attr* Visibility? 'const'? 'default'? 'unsafe'? 'impl' GenericParamList? '!'? 'for'
- WhereClause?
+Impl =
+ Attr* Visibility?
+ 'default'? 'unsafe'? 'impl' 'const'? GenericParamList? (
+   TypeRef
+ | '!'? TypeRef 'for' TypeRef
+ ) WhereClause?
  AssocItemList
 
 ParenType =

@@ -40,7 +40,7 @@ pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -
         .filter(|lifetime| lifetime.text() == "'_")?;
     if let Some(fn_def) = lifetime_token.ancestors().find_map(ast::Fn::cast) {
         generate_fn_def_assist(acc, &fn_def, lifetime_token.text_range())
-    } else if let Some(impl_def) = lifetime_token.ancestors().find_map(ast::ImplDef::cast) {
+    } else if let Some(impl_def) = lifetime_token.ancestors().find_map(ast::Impl::cast) {
         generate_impl_def_assist(acc, &impl_def, lifetime_token.text_range())
     } else {
         None
@@ -93,7 +93,7 @@ fn generate_fn_def_assist(
 /// Generate the assist for the impl def case
 fn generate_impl_def_assist(
     acc: &mut Assists,
-    impl_def: &ast::ImplDef,
+    impl_def: &ast::Impl,
     lifetime_loc: TextRange,
 ) -> Option<()> {
     let new_lifetime_param = generate_unique_lifetime_param_name(&impl_def.generic_param_list())?;

@@ -647,7 +647,7 @@ fn highlight_element(
 
 fn is_child_of_impl(element: &SyntaxElement) -> bool {
     match element.parent() {
-        Some(e) => e.kind() == IMPL_DEF,
+        Some(e) => e.kind() == IMPL,
         _ => false,
     }
 }
@@ -708,7 +708,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         STRUCT => HighlightTag::Struct,
         ENUM => HighlightTag::Enum,
         UNION => HighlightTag::Union,
-        TRAIT_DEF => HighlightTag::Trait,
+        TRAIT => HighlightTag::Trait,
         TYPE_ALIAS => HighlightTag::TypeAlias,
         TYPE_PARAM => HighlightTag::TypeParam,
         RECORD_FIELD => HighlightTag::Field,

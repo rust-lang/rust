@@ -31,7 +31,7 @@ impl ShortLabel for ast::Enum {
     }
 }
 
-impl ShortLabel for ast::TraitDef {
+impl ShortLabel for ast::Trait {
     fn short_label(&self) -> Option<String> {
         if self.unsafe_token().is_some() {
             short_label_from_node(self, "unsafe trait ")

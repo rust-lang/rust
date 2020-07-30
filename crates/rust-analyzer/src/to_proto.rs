@@ -35,14 +35,14 @@ pub(crate) fn symbol_kind(syntax_kind: SyntaxKind) -> lsp_types::SymbolKind {
         SyntaxKind::STRUCT => lsp_types::SymbolKind::Struct,
         SyntaxKind::ENUM => lsp_types::SymbolKind::Enum,
         SyntaxKind::VARIANT => lsp_types::SymbolKind::EnumMember,
-        SyntaxKind::TRAIT_DEF => lsp_types::SymbolKind::Interface,
+        SyntaxKind::TRAIT => lsp_types::SymbolKind::Interface,
         SyntaxKind::MACRO_CALL => lsp_types::SymbolKind::Function,
         SyntaxKind::MODULE => lsp_types::SymbolKind::Module,
         SyntaxKind::TYPE_ALIAS => lsp_types::SymbolKind::TypeParameter,
         SyntaxKind::RECORD_FIELD => lsp_types::SymbolKind::Field,
         SyntaxKind::STATIC => lsp_types::SymbolKind::Constant,
         SyntaxKind::CONST => lsp_types::SymbolKind::Constant,
-        SyntaxKind::IMPL_DEF => lsp_types::SymbolKind::Object,
+        SyntaxKind::IMPL => lsp_types::SymbolKind::Object,
         _ => lsp_types::SymbolKind::Variable,
     }
 }

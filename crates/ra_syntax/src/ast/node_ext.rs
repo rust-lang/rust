@@ -141,7 +141,7 @@ impl ast::UseTreeList {
     }
 }
 
-impl ast::ImplDef {
+impl ast::Impl {
     pub fn target_type(&self) -> Option<ast::TypeRef> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),
@@ -481,10 +481,10 @@ impl ast::DocCommentsOwner for ast::RecordField {}
 impl ast::DocCommentsOwner for ast::TupleField {}
 impl ast::DocCommentsOwner for ast::Enum {}
 impl ast::DocCommentsOwner for ast::Variant {}
-impl ast::DocCommentsOwner for ast::TraitDef {}
+impl ast::DocCommentsOwner for ast::Trait {}
 impl ast::DocCommentsOwner for ast::Module {}
 impl ast::DocCommentsOwner for ast::Static {}
 impl ast::DocCommentsOwner for ast::Const {}
 impl ast::DocCommentsOwner for ast::TypeAlias {}
-impl ast::DocCommentsOwner for ast::ImplDef {}
+impl ast::DocCommentsOwner for ast::Impl {}
 impl ast::DocCommentsOwner for ast::MacroCall {}

@@ -100,17 +100,18 @@ impl Fn {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImplDef {
+pub struct Impl {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ImplDef {}
-impl ast::VisibilityOwner for ImplDef {}
-impl ast::GenericParamsOwner for ImplDef {}
-impl ImplDef {
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+impl ast::AttrsOwner for Impl {}
+impl ast::VisibilityOwner for Impl {}
+impl ast::GenericParamsOwner for Impl {}
+impl Impl {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
@@ -169,15 +170,15 @@ impl Struct {
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitDef {
+pub struct Trait {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for TraitDef {}
-impl ast::NameOwner for TraitDef {}
-impl ast::VisibilityOwner for TraitDef {}
-impl ast::GenericParamsOwner for TraitDef {}
-impl ast::TypeBoundsOwner for TraitDef {}
-impl TraitDef {
+impl ast::AttrsOwner for Trait {}
+impl ast::NameOwner for Trait {}
+impl ast::VisibilityOwner for Trait {}
+impl ast::GenericParamsOwner for Trait {}
+impl ast::TypeBoundsOwner for Trait {}
+impl Trait {
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn auto_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![auto]) }
     pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
@@ -1278,12 +1279,12 @@ pub enum Item {
     ExternBlock(ExternBlock),
     ExternCrate(ExternCrate),
     Fn(Fn),
-    ImplDef(ImplDef),
+    Impl(Impl),
     MacroCall(MacroCall),
     Module(Module),
     Static(Static),
     Struct(Struct),
-    TraitDef(TraitDef),
+    Trait(Trait),
     TypeAlias(TypeAlias),
     Union(Union),
     Use(Use),
@@ -1477,8 +1478,8 @@ impl AstNode for Fn {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for ImplDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_DEF }
+impl AstNode for Impl {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1532,8 +1533,8 @@ impl AstNode for Struct {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TraitDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT_DEF }
+impl AstNode for Trait {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2790,8 +2791,8 @@ impl From<ExternCrate> for Item {
 impl From<Fn> for Item {
     fn from(node: Fn) -> Item { Item::Fn(node) }
 }
-impl From<ImplDef> for Item {
-    fn from(node: ImplDef) -> Item { Item::ImplDef(node) }
+impl From<Impl> for Item {
+    fn from(node: Impl) -> Item { Item::Impl(node) }
 }
 impl From<MacroCall> for Item {
     fn from(node: MacroCall) -> Item { Item::MacroCall(node) }
@@ -2805,8 +2806,8 @@ impl From<Static> for Item {
 impl From<Struct> for Item {
     fn from(node: Struct) -> Item { Item::Struct(node) }
 }
-impl From<TraitDef> for Item {
-    fn from(node: TraitDef) -> Item { Item::TraitDef(node) }
+impl From<Trait> for Item {
+    fn from(node: Trait) -> Item { Item::Trait(node) }
 }
 impl From<TypeAlias> for Item {
     fn from(node: TypeAlias) -> Item { Item::TypeAlias(node) }
@@ -2820,8 +2821,8 @@ impl From<Use> for Item {
 impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL_DEF | MACRO_CALL | MODULE
-            | STATIC | STRUCT | TRAIT_DEF | TYPE_ALIAS | UNION | USE => true,
+            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL | MACRO_CALL | MODULE
+            | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE => true,
             _ => false,
         }
     }
@@ -2832,12 +2833,12 @@ impl AstNode for Item {
             EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
             EXTERN_CRATE => Item::ExternCrate(ExternCrate { syntax }),
             FN => Item::Fn(Fn { syntax }),
-            IMPL_DEF => Item::ImplDef(ImplDef { syntax }),
+            IMPL => Item::Impl(Impl { syntax }),
             MACRO_CALL => Item::MacroCall(MacroCall { syntax }),
             MODULE => Item::Module(Module { syntax }),
             STATIC => Item::Static(Static { syntax }),
             STRUCT => Item::Struct(Struct { syntax }),
-            TRAIT_DEF => Item::TraitDef(TraitDef { syntax }),
+            TRAIT => Item::Trait(Trait { syntax }),
             TYPE_ALIAS => Item::TypeAlias(TypeAlias { syntax }),
             UNION => Item::Union(Union { syntax }),
             USE => Item::Use(Use { syntax }),
@@ -2852,12 +2853,12 @@ impl AstNode for Item {
             Item::ExternBlock(it) => &it.syntax,
             Item::ExternCrate(it) => &it.syntax,
             Item::Fn(it) => &it.syntax,
-            Item::ImplDef(it) => &it.syntax,
+            Item::Impl(it) => &it.syntax,
             Item::MacroCall(it) => &it.syntax,
             Item::Module(it) => &it.syntax,
             Item::Static(it) => &it.syntax,
             Item::Struct(it) => &it.syntax,
-            Item::TraitDef(it) => &it.syntax,
+            Item::Trait(it) => &it.syntax,
             Item::TypeAlias(it) => &it.syntax,
             Item::Union(it) => &it.syntax,
             Item::Use(it) => &it.syntax,
@@ -3491,7 +3492,7 @@ impl std::fmt::Display for Fn {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ImplDef {
+impl std::fmt::Display for Impl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3516,7 +3517,7 @@ impl std::fmt::Display for Struct {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TraitDef {
+impl std::fmt::Display for Trait {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

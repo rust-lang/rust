@@ -192,15 +192,14 @@ fn text_edit_from_self_param(
     self_param: &ast::SelfParam,
     new_name: &str,
 ) -> Option<TextEdit> {
-    fn target_type_name(impl_def: &ast::ImplDef) -> Option<String> {
+    fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
         if let Some(ast::TypeRef::PathType(p)) = impl_def.target_type() {
             return Some(p.path()?.segment()?.name_ref()?.text().to_string());
         }
         None
     }
 
-    let impl_def =
-        find_node_at_offset::<ast::ImplDef>(syn, self_param.syntax().text_range().start())?;
+    let impl_def = find_node_at_offset::<ast::Impl>(syn, self_param.syntax().text_range().start())?;
     let type_name = target_type_name(&impl_def)?;
 
     let mut replacement_text = String::from(new_name);

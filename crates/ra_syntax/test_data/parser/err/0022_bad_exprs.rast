@@ -75,7 +75,7 @@ SOURCE_FILE@0..112
         ERROR@54..55
           COMMA@54..55 ","
       WHITESPACE@55..56 " "
-      IMPL_DEF@56..60
+      IMPL@56..60
         IMPL_KW@56..60 "impl"
       EXPR_STMT@60..61
         ERROR@60..61
@@ -133,7 +133,7 @@ SOURCE_FILE@0..112
         ERROR@96..97
           COMMA@96..97 ","
       WHITESPACE@97..98 " "
-      TRAIT_DEF@98..104
+      TRAIT@98..104
         TRAIT_KW@98..103 "trait"
         ERROR@103..104
           COMMA@103..104 ","

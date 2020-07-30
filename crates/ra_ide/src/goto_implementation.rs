@@ -28,7 +28,7 @@ pub(crate) fn goto_implementation(
             nominal_def.syntax().text_range(),
             impls_for_def(&sema, &nominal_def, krate)?,
         ));
-    } else if let Some(trait_def) = find_node_at_offset::<ast::TraitDef>(&syntax, position.offset) {
+    } else if let Some(trait_def) = find_node_at_offset::<ast::Trait>(&syntax, position.offset) {
         return Some(RangeInfo::new(
             trait_def.syntax().text_range(),
             impls_for_trait(&sema, &trait_def, krate)?,
@@ -62,7 +62,7 @@ fn impls_for_def(
 
 fn impls_for_trait(
     sema: &Semantics<RootDatabase>,
-    node: &ast::TraitDef,
+    node: &ast::Trait,
     krate: Crate,
 ) -> Option<Vec<NavigationTarget>> {
     let tr = sema.to_def(node)?;
