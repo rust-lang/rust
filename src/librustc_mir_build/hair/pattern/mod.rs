@@ -16,7 +16,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{get_slice_bytes, sign_extend, ConstValue};
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
 use rustc_middle::mir::UserTypeProjection;
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
@@ -833,6 +833,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 } else {
                     pattern
                 }
+            }
+            Err(ErrorHandled::TooGeneric) => {
+                // While `Reported | Linted` cases will have diagnostics emitted already
+                // it is not true for TooGeneric case, so we need to give user more information.
+                self.tcx.sess.span_err(span, "constant pattern depends on a generic parameter");
+                pat_from_kind(PatKind::Wild)
             }
             Err(_) => {
                 self.tcx.sess.span_err(span, "could not evaluate constant pattern");
