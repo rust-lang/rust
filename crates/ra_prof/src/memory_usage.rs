@@ -5,7 +5,6 @@ use cfg_if::cfg_if;
 
 pub struct MemoryUsage {
     pub allocated: Bytes,
-    pub resident: Bytes,
 }
 
 impl MemoryUsage {
@@ -14,9 +13,9 @@ impl MemoryUsage {
             if #[cfg(target_os = "linux")] {
                 // Note: This is incredibly slow.
                 let alloc = unsafe { libc::mallinfo() }.uordblks as u32 as usize;
-                MemoryUsage { allocated: Bytes(alloc), resident: Bytes(0) }
+                MemoryUsage { allocated: Bytes(alloc) }
             } else {
-                MemoryUsage { allocated: Bytes(0), resident: Bytes(0) }
+                MemoryUsage { allocated: Bytes(0) }
             }
         }
     }
@@ -24,7 +23,7 @@ impl MemoryUsage {
 
 impl fmt::Display for MemoryUsage {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{} allocated {} resident", self.allocated, self.resident,)
+        write!(fmt, "{}", self.allocated)
     }
 }
 
