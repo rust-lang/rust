@@ -1,5 +1,5 @@
 use ra_syntax::{
-    ast::{self, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
+    ast::{self, GenericParamsOwner, NameOwner, TypeAscriptionOwner},
     AstNode, SyntaxKind, TextRange, TextSize,
 };
 use rustc_hash::FxHashSet;
@@ -54,7 +54,7 @@ fn generate_fn_def_assist(
     lifetime_loc: TextRange,
 ) -> Option<()> {
     let param_list: ast::ParamList = fn_def.param_list()?;
-    let new_lifetime_param = generate_unique_lifetime_param_name(&fn_def.type_param_list())?;
+    let new_lifetime_param = generate_unique_lifetime_param_name(&fn_def.generic_param_list())?;
     let end_of_fn_ident = fn_def.name()?.ident_token()?.text_range().end();
     let self_param =
         // use the self if it's a reference and has no explicit lifetime
@@ -96,7 +96,7 @@ fn generate_impl_def_assist(
     impl_def: &ast::ImplDef,
     lifetime_loc: TextRange,
 ) -> Option<()> {
-    let new_lifetime_param = generate_unique_lifetime_param_name(&impl_def.type_param_list())?;
+    let new_lifetime_param = generate_unique_lifetime_param_name(&impl_def.generic_param_list())?;
     let end_of_impl_kw = impl_def.impl_token()?.text_range().end();
     acc.add(AssistId(ASSIST_NAME, AssistKind::Refactor), ASSIST_LABEL, lifetime_loc, |builder| {
         add_lifetime_param(impl_def, builder, end_of_impl_kw, new_lifetime_param);
@@ -107,7 +107,7 @@ fn generate_impl_def_assist(
 /// Given a type parameter list, generate a unique lifetime parameter name
 /// which is not in the list
 fn generate_unique_lifetime_param_name(
-    existing_type_param_list: &Option<ast::TypeParamList>,
+    existing_type_param_list: &Option<ast::GenericParamList>,
 ) -> Option<char> {
     match existing_type_param_list {
         Some(type_params) => {
@@ -123,13 +123,13 @@ fn generate_unique_lifetime_param_name(
 
 /// Add the lifetime param to `builder`. If there are type parameters in `type_params_owner`, add it to the end. Otherwise
 /// add new type params brackets with the lifetime parameter at `new_type_params_loc`.
-fn add_lifetime_param<TypeParamsOwner: ast::TypeParamsOwner>(
+fn add_lifetime_param<TypeParamsOwner: ast::GenericParamsOwner>(
     type_params_owner: &TypeParamsOwner,
     builder: &mut AssistBuilder,
     new_type_params_loc: TextSize,
     new_lifetime_param: char,
 ) {
-    match type_params_owner.type_param_list() {
+    match type_params_owner.generic_param_list() {
         // add the new lifetime parameter to an existing type param list
         Some(type_params) => {
             builder.insert(

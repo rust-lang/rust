@@ -9,7 +9,7 @@ SOURCE_FILE@0..121
     WHITESPACE@8..9 " "
     FOR_TYPE@9..27
       FOR_KW@9..12 "for"
-      TYPE_PARAM_LIST@12..16
+      GENERIC_PARAM_LIST@12..16
         L_ANGLE@12..13 "<"
         LIFETIME_PARAM@13..15
           LIFETIME@13..15 "\'a"
@@ -39,7 +39,7 @@ SOURCE_FILE@0..121
     WHITESPACE@37..38 " "
     FOR_TYPE@38..80
       FOR_KW@38..41 "for"
-      TYPE_PARAM_LIST@41..45
+      GENERIC_PARAM_LIST@41..45
         L_ANGLE@41..42 "<"
         LIFETIME_PARAM@42..44
           LIFETIME@42..44 "\'a"
@@ -84,7 +84,7 @@ SOURCE_FILE@0..121
     WHITESPACE@92..93 " "
     FOR_TYPE@93..119
       FOR_KW@93..96 "for"
-      TYPE_PARAM_LIST@96..100
+      GENERIC_PARAM_LIST@96..100
         L_ANGLE@96..97 "<"
         LIFETIME_PARAM@97..99
           LIFETIME@97..99 "\'a"

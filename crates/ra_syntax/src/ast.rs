@@ -286,7 +286,7 @@ where
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
     assert!(pred.for_token().is_none());
-    assert!(pred.type_param_list().is_none());
+    assert!(pred.generic_param_list().is_none());
     assert_eq!("T", pred.type_ref().unwrap().syntax().text().to_string());
     assert_bound("Clone", bounds.next());
     assert_bound("Copy", bounds.next());
@@ -325,7 +325,7 @@ where
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
     assert!(pred.for_token().is_some());
-    assert_eq!("<'a>", pred.type_param_list().unwrap().syntax().text().to_string());
+    assert_eq!("<'a>", pred.generic_param_list().unwrap().syntax().text().to_string());
     assert_eq!("F", pred.type_ref().unwrap().syntax().text().to_string());
     assert_bound("Fn(&'a str)", bounds.next());
 }

@@ -1,5 +1,5 @@
 use ra_syntax::{
-    ast::{self, AttrsOwner, NameOwner, TypeAscriptionOwner, TypeParamsOwner},
+    ast::{self, AttrsOwner, GenericParamsOwner, NameOwner, TypeAscriptionOwner},
     match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, WalkEvent,
 };
 
@@ -113,7 +113,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
         match node {
             ast::Fn(it) => {
                 let mut detail = String::from("fn");
-                if let Some(type_param_list) = it.type_param_list() {
+                if let Some(type_param_list) = it.generic_param_list() {
                     collapse_ws(type_param_list.syntax(), &mut detail);
                 }
                 if let Some(param_list) = it.param_list() {

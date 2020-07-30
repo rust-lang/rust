@@ -9,7 +9,7 @@ SOURCE_FILE@0..157
     WHITESPACE@68..69 " "
     NAME@69..72
       IDENT@69..72 "foo"
-    TYPE_PARAM_LIST@72..85
+    GENERIC_PARAM_LIST@72..85
       L_ANGLE@72..73 "<"
       TYPE_PARAM@73..84
         NAME@73..74

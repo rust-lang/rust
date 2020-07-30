@@ -50,7 +50,7 @@ pub struct EnumDef {
 impl ast::AttrsOwner for EnumDef {}
 impl ast::NameOwner for EnumDef {}
 impl ast::VisibilityOwner for EnumDef {}
-impl ast::TypeParamsOwner for EnumDef {}
+impl ast::GenericParamsOwner for EnumDef {}
 impl EnumDef {
     pub fn enum_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![enum]) }
     pub fn variant_list(&self) -> Option<EnumVariantList> { support::child(&self.syntax) }
@@ -85,7 +85,7 @@ pub struct Fn {
 impl ast::AttrsOwner for Fn {}
 impl ast::NameOwner for Fn {}
 impl ast::VisibilityOwner for Fn {}
-impl ast::TypeParamsOwner for Fn {}
+impl ast::GenericParamsOwner for Fn {}
 impl Fn {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
@@ -104,7 +104,7 @@ pub struct ImplDef {
 }
 impl ast::AttrsOwner for ImplDef {}
 impl ast::VisibilityOwner for ImplDef {}
-impl ast::TypeParamsOwner for ImplDef {}
+impl ast::GenericParamsOwner for ImplDef {}
 impl ImplDef {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
@@ -161,7 +161,7 @@ pub struct StructDef {
 impl ast::AttrsOwner for StructDef {}
 impl ast::NameOwner for StructDef {}
 impl ast::VisibilityOwner for StructDef {}
-impl ast::TypeParamsOwner for StructDef {}
+impl ast::GenericParamsOwner for StructDef {}
 impl StructDef {
     pub fn struct_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![struct]) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -174,7 +174,7 @@ pub struct TraitDef {
 impl ast::AttrsOwner for TraitDef {}
 impl ast::NameOwner for TraitDef {}
 impl ast::VisibilityOwner for TraitDef {}
-impl ast::TypeParamsOwner for TraitDef {}
+impl ast::GenericParamsOwner for TraitDef {}
 impl ast::TypeBoundsOwner for TraitDef {}
 impl TraitDef {
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
@@ -189,7 +189,7 @@ pub struct TypeAlias {
 impl ast::AttrsOwner for TypeAlias {}
 impl ast::NameOwner for TypeAlias {}
 impl ast::VisibilityOwner for TypeAlias {}
-impl ast::TypeParamsOwner for TypeAlias {}
+impl ast::GenericParamsOwner for TypeAlias {}
 impl ast::TypeBoundsOwner for TypeAlias {}
 impl TypeAlias {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
@@ -205,7 +205,7 @@ pub struct UnionDef {
 impl ast::AttrsOwner for UnionDef {}
 impl ast::NameOwner for UnionDef {}
 impl ast::VisibilityOwner for UnionDef {}
-impl ast::TypeParamsOwner for UnionDef {}
+impl ast::GenericParamsOwner for UnionDef {}
 impl UnionDef {
     pub fn union_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![union]) }
     pub fn record_field_def_list(&self) -> Option<RecordFieldDefList> {
@@ -307,10 +307,10 @@ impl Abi {
     pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeParamList {
+pub struct GenericParamList {
     pub(crate) syntax: SyntaxNode,
 }
-impl TypeParamList {
+impl GenericParamList {
     pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
     pub fn type_params(&self) -> AstChildren<TypeParam> { support::children(&self.syntax) }
     pub fn lifetime_params(&self) -> AstChildren<LifetimeParam> { support::children(&self.syntax) }
@@ -557,7 +557,7 @@ pub struct ForType {
 }
 impl ForType {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
-    pub fn type_param_list(&self) -> Option<TypeParamList> { support::child(&self.syntax) }
+    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1172,7 +1172,7 @@ pub struct WherePred {
 impl ast::TypeBoundsOwner for WherePred {}
 impl WherePred {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
-    pub fn type_param_list(&self) -> Option<TypeParamList> { support::child(&self.syntax) }
+    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![lifetime])
     }
@@ -1397,8 +1397,8 @@ pub enum AdtDef {
     UnionDef(UnionDef),
 }
 impl ast::AttrsOwner for AdtDef {}
+impl ast::GenericParamsOwner for AdtDef {}
 impl ast::NameOwner for AdtDef {}
-impl ast::TypeParamsOwner for AdtDef {}
 impl ast::VisibilityOwner for AdtDef {}
 impl AstNode for SourceFile {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SOURCE_FILE }
@@ -1675,8 +1675,8 @@ impl AstNode for Abi {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TypeParamList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_PARAM_LIST }
+impl AstNode for GenericParamList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == GENERIC_PARAM_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3583,7 +3583,7 @@ impl std::fmt::Display for Abi {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TypeParamList {
+impl std::fmt::Display for GenericParamList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

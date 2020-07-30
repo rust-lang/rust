@@ -291,7 +291,7 @@ pub fn visibility_pub_crate() -> ast::Visibility {
 pub fn fn_def(
     visibility: Option<ast::Visibility>,
     fn_name: ast::Name,
-    type_params: Option<ast::TypeParamList>,
+    type_params: Option<ast::GenericParamList>,
     params: ast::ParamList,
     body: ast::BlockExpr,
 ) -> ast::Fn {

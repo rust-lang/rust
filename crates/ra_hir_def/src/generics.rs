@@ -12,7 +12,7 @@ use hir_expand::{
 use ra_arena::{map::ArenaMap, Arena};
 use ra_db::FileId;
 use ra_prof::profile;
-use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
+use ra_syntax::ast::{self, GenericParamsOwner, NameOwner, TypeBoundsOwner};
 
 use crate::{
     body::LowerCtx,
@@ -205,9 +205,9 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx,
         sm: &mut SourceMap,
-        node: &dyn TypeParamsOwner,
+        node: &dyn GenericParamsOwner,
     ) {
-        if let Some(params) = node.type_param_list() {
+        if let Some(params) = node.generic_param_list() {
             self.fill_params(lower_ctx, sm, params)
         }
         if let Some(where_clause) = node.where_clause() {
@@ -232,7 +232,7 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx,
         sm: &mut SourceMap,
-        params: ast::TypeParamList,
+        params: ast::GenericParamList,
     ) {
         for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());

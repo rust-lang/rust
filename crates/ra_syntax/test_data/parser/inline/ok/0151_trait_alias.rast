@@ -4,7 +4,7 @@ SOURCE_FILE@0..83
     WHITESPACE@5..6 " "
     NAME@6..7
       IDENT@6..7 "Z"
-    TYPE_PARAM_LIST@7..10
+    GENERIC_PARAM_LIST@7..10
       L_ANGLE@7..8 "<"
       TYPE_PARAM@8..9
         NAME@8..9
@@ -36,7 +36,7 @@ SOURCE_FILE@0..83
     WHITESPACE@24..25 " "
     NAME@25..26
       IDENT@25..26 "Z"
-    TYPE_PARAM_LIST@26..29
+    GENERIC_PARAM_LIST@26..29
       L_ANGLE@26..27 "<"
       TYPE_PARAM@27..28
         NAME@27..28
@@ -87,7 +87,7 @@ SOURCE_FILE@0..83
     WHITESPACE@57..58 " "
     NAME@58..59
       IDENT@58..59 "Z"
-    TYPE_PARAM_LIST@59..62
+    GENERIC_PARAM_LIST@59..62
       L_ANGLE@59..60 "<"
       TYPE_PARAM@60..61
         NAME@60..61

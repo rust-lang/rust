@@ -104,7 +104,7 @@ impl FunctionTemplate {
 struct FunctionBuilder {
     target: GeneratedFunctionTarget,
     fn_name: ast::Name,
-    type_params: Option<ast::TypeParamList>,
+    type_params: Option<ast::GenericParamList>,
     params: ast::ParamList,
     file: FileId,
     needs_pub: bool,
@@ -200,7 +200,7 @@ fn fn_args(
     ctx: &AssistContext,
     target_module: hir::Module,
     call: &ast::CallExpr,
-) -> Option<(Option<ast::TypeParamList>, ast::ParamList)> {
+) -> Option<(Option<ast::GenericParamList>, ast::ParamList)> {
     let mut arg_names = Vec::new();
     let mut arg_types = Vec::new();
     for arg in call.arg_list()?.args() {

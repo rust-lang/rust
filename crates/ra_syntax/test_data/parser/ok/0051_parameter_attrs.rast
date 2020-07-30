@@ -137,7 +137,7 @@ SOURCE_FILE@0..519
     WHITESPACE@132..133 " "
     NAME@133..136
       IDENT@133..136 "foo"
-    TYPE_PARAM_LIST@136..168
+    GENERIC_PARAM_LIST@136..168
       L_ANGLE@136..137 "<"
       TYPE_PARAM@137..167
         NAME@137..138
@@ -341,7 +341,7 @@ SOURCE_FILE@0..519
         WHITESPACE@342..343 " "
         NAME@343..345
           IDENT@343..345 "g3"
-        TYPE_PARAM_LIST@345..349
+        GENERIC_PARAM_LIST@345..349
           L_ANGLE@345..346 "<"
           LIFETIME_PARAM@346..348
             LIFETIME@346..348 "\'a"
@@ -373,7 +373,7 @@ SOURCE_FILE@0..519
         WHITESPACE@379..380 " "
         NAME@380..382
           IDENT@380..382 "g4"
-        TYPE_PARAM_LIST@382..386
+        GENERIC_PARAM_LIST@382..386
           L_ANGLE@382..383 "<"
           LIFETIME_PARAM@383..385
             LIFETIME@383..385 "\'a"
@@ -405,7 +405,7 @@ SOURCE_FILE@0..519
         WHITESPACE@415..416 " "
         NAME@416..418
           IDENT@416..418 "g5"
-        TYPE_PARAM_LIST@418..422
+        GENERIC_PARAM_LIST@418..422
           L_ANGLE@418..419 "<"
           LIFETIME_PARAM@419..421
             LIFETIME@419..421 "\'a"
