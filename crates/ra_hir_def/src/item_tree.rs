@@ -415,7 +415,7 @@ mod_items! {
     ExternCrate in extern_crates -> ast::ExternCrate,
     Function in functions -> ast::Fn,
     Struct in structs -> ast::StructDef,
-    Union in unions -> ast::UnionDef,
+    Union in unions -> ast::Union,
     Enum in enums -> ast::EnumDef,
     Const in consts -> ast::ConstDef,
     Static in statics -> ast::StaticDef,
@@ -534,7 +534,7 @@ pub struct Union {
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
     pub fields: Fields,
-    pub ast_id: FileAstId<ast::UnionDef>,
+    pub ast_id: FileAstId<ast::Union>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

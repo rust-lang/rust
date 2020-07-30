@@ -63,8 +63,8 @@ impl HasSource for Struct {
     }
 }
 impl HasSource for Union {
-    type Ast = ast::UnionDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::UnionDef> {
+    type Ast = ast::Union;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Union> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }

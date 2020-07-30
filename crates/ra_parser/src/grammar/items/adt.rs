@@ -11,7 +11,7 @@ pub(super) fn struct_def(p: &mut Parser, m: Marker) {
 pub(super) fn union_def(p: &mut Parser, m: Marker) {
     assert!(p.at_contextual_kw("union"));
     p.bump_remap(T![union]);
-    struct_or_union(p, m, T![union], UNION_DEF);
+    struct_or_union(p, m, T![union], UNION);
 }
 
 fn struct_or_union(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {

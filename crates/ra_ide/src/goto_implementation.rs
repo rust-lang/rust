@@ -46,7 +46,7 @@ fn impls_for_def(
     let ty = match node {
         ast::AdtDef::StructDef(def) => sema.to_def(def)?.ty(sema.db),
         ast::AdtDef::EnumDef(def) => sema.to_def(def)?.ty(sema.db),
-        ast::AdtDef::UnionDef(def) => sema.to_def(def)?.ty(sema.db),
+        ast::AdtDef::Union(def) => sema.to_def(def)?.ty(sema.db),
     };
 
     let impls = ImplDef::all_in_crate(sema.db, krate);

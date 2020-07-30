@@ -19,7 +19,7 @@ impl ShortLabel for ast::StructDef {
     }
 }
 
-impl ShortLabel for ast::UnionDef {
+impl ShortLabel for ast::Union {
     fn short_label(&self) -> Option<String> {
         short_label_from_node(self, "union ")
     }
