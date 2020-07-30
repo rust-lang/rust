@@ -54,6 +54,8 @@ impl Sysroot {
         let src = get_or_install_rust_src(cargo_toml)?;
         let mut sysroot = Sysroot { crates: Arena::default() };
         for name in SYSROOT_CRATES.trim().lines() {
+            // FIXME: remove this path when 1.47 comes out
+            // https://github.com/rust-lang/rust/pull/73265
             let root = src.join(format!("lib{}", name)).join("lib.rs");
             if root.exists() {
                 sysroot.crates.alloc(SysrootCrateData {
@@ -61,6 +63,15 @@ impl Sysroot {
                     root,
                     deps: Vec::new(),
                 });
+            } else {
+                let root = src.join(name).join("src/lib.rs");
+                if root.exists() {
+                    sysroot.crates.alloc(SysrootCrateData {
+                        name: name.into(),
+                        root,
+                        deps: Vec::new(),
+                    });
+                }
             }
         }
         if let Some(std) = sysroot.std() {
@@ -94,23 +105,38 @@ fn get_or_install_rust_src(cargo_toml: &AbsPath) -> Result<AbsPathBuf> {
     rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
     let stdout = utf8_stdout(rustc)?;
     let sysroot_path = AbsPath::assert(Path::new(stdout.trim()));
-    let src_path = sysroot_path.join("lib/rustlib/src/rust/src");
-
-    if !src_path.exists() {
+    let mut src = get_rust_src(sysroot_path);
+    if src.is_none() {
         let mut rustup = Command::new(ra_toolchain::rustup());
         rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
         utf8_stdout(rustup)?;
+        src = get_rust_src(sysroot_path);
     }
-    if !src_path.exists() {
-        bail!(
+    match src {
+        Some(r) => Ok(r),
+        None => bail!(
             "can't load standard library from sysroot\n\
             {}\n\
             (discovered via `rustc --print sysroot`)\n\
             try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
-            src_path.display(),
-        )
+            sysroot_path.display(),
+        ),
     }
-    Ok(src_path)
+}
+
+fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
+    // try the new path first since the old one still exists
+    let mut src_path = sysroot_path.join("lib/rustlib/src/rust/library");
+    if !src_path.exists() {
+        // FIXME: remove this path when 1.47 comes out
+        // https://github.com/rust-lang/rust/pull/73265
+        src_path = sysroot_path.join("lib/rustlib/src/rust/src");
+    }
+    if src_path.exists() {
+        Some(src_path)
+    } else {
+        None
+    }
 }
 
 impl SysrootCrateData {
