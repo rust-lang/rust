@@ -312,9 +312,7 @@ pub struct GenericParamList {
 }
 impl GenericParamList {
     pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
-    pub fn type_params(&self) -> AstChildren<TypeParam> { support::children(&self.syntax) }
-    pub fn lifetime_params(&self) -> AstChildren<LifetimeParam> { support::children(&self.syntax) }
-    pub fn const_params(&self) -> AstChildren<ConstParam> { support::children(&self.syntax) }
+    pub fn generic_params(&self) -> AstChildren<GenericParam> { support::children(&self.syntax) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -468,6 +466,40 @@ impl ExternItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn extern_items(&self) -> AstChildren<ExternItem> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LifetimeParam {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for LifetimeParam {}
+impl LifetimeParam {
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![lifetime])
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeParam {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for TypeParam {}
+impl ast::NameOwner for TypeParam {}
+impl ast::TypeBoundsOwner for TypeParam {}
+impl TypeParam {
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn default_type(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstParam {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for ConstParam {}
+impl ast::NameOwner for ConstParam {}
+impl ast::TypeAscriptionOwner for ConstParam {}
+impl ConstParam {
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn default_val(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenType {
@@ -1133,40 +1165,6 @@ impl MacroStmts {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeParam {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for TypeParam {}
-impl ast::NameOwner for TypeParam {}
-impl ast::TypeBoundsOwner for TypeParam {}
-impl TypeParam {
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn default_type(&self) -> Option<TypeRef> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LifetimeParam {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for LifetimeParam {}
-impl LifetimeParam {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConstParam {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for ConstParam {}
-impl ast::NameOwner for ConstParam {}
-impl ast::TypeAscriptionOwner for ConstParam {}
-impl ConstParam {
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
-    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn default_val(&self) -> Option<Expr> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBound {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1382,6 +1380,13 @@ pub enum ExternItem {
 }
 impl ast::AttrsOwner for ExternItem {}
 impl ast::NameOwner for ExternItem {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GenericParam {
+    LifetimeParam(LifetimeParam),
+    TypeParam(TypeParam),
+    ConstParam(ConstParam),
+}
+impl ast::AttrsOwner for GenericParam {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
     LetStmt(LetStmt),
@@ -1845,6 +1850,39 @@ impl AstNode for AssocItemList {
 }
 impl AstNode for ExternItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_ITEM_LIST }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for LifetimeParam {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME_PARAM }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for TypeParam {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_PARAM }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ConstParam {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_PARAM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2635,39 +2673,6 @@ impl AstNode for MacroStmts {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TypeParam {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_PARAM }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for LifetimeParam {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME_PARAM }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for ConstParam {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_PARAM }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for TypeBound {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3325,6 +3330,39 @@ impl AstNode for ExternItem {
         }
     }
 }
+impl From<LifetimeParam> for GenericParam {
+    fn from(node: LifetimeParam) -> GenericParam { GenericParam::LifetimeParam(node) }
+}
+impl From<TypeParam> for GenericParam {
+    fn from(node: TypeParam) -> GenericParam { GenericParam::TypeParam(node) }
+}
+impl From<ConstParam> for GenericParam {
+    fn from(node: ConstParam) -> GenericParam { GenericParam::ConstParam(node) }
+}
+impl AstNode for GenericParam {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            LIFETIME_PARAM | TYPE_PARAM | CONST_PARAM => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            LIFETIME_PARAM => GenericParam::LifetimeParam(LifetimeParam { syntax }),
+            TYPE_PARAM => GenericParam::TypeParam(TypeParam { syntax }),
+            CONST_PARAM => GenericParam::ConstParam(ConstParam { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            GenericParam::LifetimeParam(it) => &it.syntax,
+            GenericParam::TypeParam(it) => &it.syntax,
+            GenericParam::ConstParam(it) => &it.syntax,
+        }
+    }
+}
 impl From<LetStmt> for Stmt {
     fn from(node: LetStmt) -> Stmt { Stmt::LetStmt(node) }
 }
@@ -3445,6 +3483,11 @@ impl std::fmt::Display for AssocItem {
     }
 }
 impl std::fmt::Display for ExternItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for GenericParam {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3665,6 +3708,21 @@ impl std::fmt::Display for AssocItemList {
     }
 }
 impl std::fmt::Display for ExternItemList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for LifetimeParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeParam {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ConstParam {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -4020,21 +4078,6 @@ impl std::fmt::Display for MacroItems {
     }
 }
 impl std::fmt::Display for MacroStmts {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TypeParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for LifetimeParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ConstParam {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

@@ -154,6 +154,25 @@ ExternItemList =
 ExternItem =
   Fn | Static | MacroCall
 
+GenericParamList =
+  '<' (GenericParam (',' GenericParam)* ','?)? '>'
+
+GenericParam =
+  LifetimeParam
+| TypeParam
+| ConstParam
+
+TypeParam =
+  Attr* Name (':' TypeBoundList?)?
+  ('=' default_type:TypeRef)?
+
+ConstParam =
+  Attr* 'const' Name ':' ascribed_type:TypeRef
+  ('=' default_val:Expr)?
+
+LifetimeParam =
+  Attr* 'lifetime'
+
 ParenType =
   '(' TypeRef ')'
 
@@ -399,24 +418,6 @@ MacroStmts =
 
 Attr =
   '#' '!'? '[' Path ('=' input:AttrInput)? ']'
-
-GenericParamList =
-  '<'
-    TypeParam*
-    LifetimeParam*
-    ConstParam*
-  '>'
-
-TypeParam =
-  Attr* Name (':' TypeBoundList?)?
-  ('=' default_type:TypeRef)?
-
-ConstParam =
-  Attr* 'const' Name ':' ascribed_type:TypeRef
-  ('=' default_val:Expr)?
-
-LifetimeParam =
-  Attr* 'lifetime'
 
 TypeBound =
   'lifetime' | 'const'? TypeRef

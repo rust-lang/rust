@@ -473,6 +473,27 @@ impl ast::TokenTree {
     }
 }
 
+impl ast::GenericParamList {
+    pub fn lifetime_params(&self) -> impl Iterator<Item = ast::LifetimeParam> {
+        self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::LifetimeParam(it) => Some(it),
+            ast::GenericParam::TypeParam(_) | ast::GenericParam::ConstParam(_) => None,
+        })
+    }
+    pub fn type_params(&self) -> impl Iterator<Item = ast::TypeParam> {
+        self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::TypeParam(it) => Some(it),
+            ast::GenericParam::LifetimeParam(_) | ast::GenericParam::ConstParam(_) => None,
+        })
+    }
+    pub fn const_params(&self) -> impl Iterator<Item = ast::ConstParam> {
+        self.generic_params().filter_map(|param| match param {
+            ast::GenericParam::ConstParam(it) => Some(it),
+            ast::GenericParam::TypeParam(_) | ast::GenericParam::LifetimeParam(_) => None,
+        })
+    }
+}
+
 impl ast::DocCommentsOwner for ast::SourceFile {}
 impl ast::DocCommentsOwner for ast::Fn {}
 impl ast::DocCommentsOwner for ast::Struct {}
