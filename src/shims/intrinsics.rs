@@ -1,5 +1,7 @@
 use std::iter;
 
+use log::trace;
+
 use rustc_attr as attr;
 use rustc_ast::ast::FloatTy;
 use rustc_middle::{mir, ty};
@@ -524,7 +526,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             name => throw_unsup_format!("unimplemented intrinsic: {}", name),
         }
 
-        this.dump_place(*dest);
+        trace!("{:?}", this.dump_place(*dest));
         this.go_to_block(ret);
         Ok(())
     }

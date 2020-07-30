@@ -1,5 +1,7 @@
 use std::{convert::{TryInto, TryFrom}, iter};
 
+use log::trace;
+
 use rustc_hir::def_id::DefId;
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{Align, Size};
@@ -175,7 +177,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Third: functions that return.
         if this.emulate_foreign_item_by_name(link_name, args, dest, ret)? {
-            this.dump_place(*dest);
+            trace!("{:?}", this.dump_place(*dest));
             this.go_to_block(ret);
         }
 
