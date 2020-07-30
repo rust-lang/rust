@@ -120,6 +120,7 @@ pub fn analysis_stats(
 
     let mut bar = match verbosity {
         Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+        _ if parallel => ProgressReport::hidden(),
         _ => ProgressReport::new(funcs.len() as u64),
     };
 
