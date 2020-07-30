@@ -41,7 +41,7 @@ impl<'a> SubstituteTypeParams<'a> {
         source_scope: &'a SemanticsScope<'a>,
         // FIXME: there's implicit invariant that `trait_` and  `source_scope` match...
         trait_: hir::Trait,
-        impl_def: ast::ImplDef,
+        impl_def: ast::Impl,
     ) -> SubstituteTypeParams<'a> {
         let substs = get_syntactic_substs(impl_def).unwrap_or_default();
         let generic_def: hir::GenericDef = trait_.into();
@@ -80,7 +80,7 @@ impl<'a> SubstituteTypeParams<'a> {
 
         // FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
         // trait ref, and then go from the types in the substs back to the syntax)
-        fn get_syntactic_substs(impl_def: ast::ImplDef) -> Option<Vec<ast::TypeRef>> {
+        fn get_syntactic_substs(impl_def: ast::Impl) -> Option<Vec<ast::TypeRef>> {
             let target_trait = impl_def.target_trait()?;
             let path_type = match target_trait {
                 ast::TypeRef::PathType(path) => path,

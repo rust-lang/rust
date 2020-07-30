@@ -122,7 +122,7 @@ fn generate_impl_text(strukt: &ast::Struct, code: &str) -> String {
 //
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
-fn find_struct_impl(ctx: &AssistContext, strukt: &ast::Struct) -> Option<Option<ast::ImplDef>> {
+fn find_struct_impl(ctx: &AssistContext, strukt: &ast::Struct) -> Option<Option<ast::Impl>> {
     let db = ctx.db();
     let module = strukt.syntax().ancestors().find(|node| {
         ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())
@@ -130,7 +130,7 @@ fn find_struct_impl(ctx: &AssistContext, strukt: &ast::Struct) -> Option<Option<
 
     let struct_def = ctx.sema.to_def(strukt)?;
 
-    let block = module.descendants().filter_map(ast::ImplDef::cast).find_map(|impl_blk| {
+    let block = module.descendants().filter_map(ast::Impl::cast).find_map(|impl_blk| {
         let blk = ctx.sema.to_def(&impl_blk)?;
 
         // FIXME: handle e.g. `struct S<T>; impl<U> S<U> {}`
@@ -158,7 +158,7 @@ fn find_struct_impl(ctx: &AssistContext, strukt: &ast::Struct) -> Option<Option<
     Some(block)
 }
 
-fn has_new_fn(imp: &ast::ImplDef) -> bool {
+fn has_new_fn(imp: &ast::Impl) -> bool {
     if let Some(il) = imp.assoc_item_list() {
         for item in il.assoc_items() {
             if let ast::AssocItem::Fn(f) = item {

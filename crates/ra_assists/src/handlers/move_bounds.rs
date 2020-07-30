@@ -39,7 +39,7 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
         match parent {
             ast::Fn(it) => it.body()?.syntax().clone().into(),
             ast::Trait(it) => it.assoc_item_list()?.syntax().clone().into(),
-            ast::ImplDef(it) => it.assoc_item_list()?.syntax().clone().into(),
+            ast::Impl(it) => it.assoc_item_list()?.syntax().clone().into(),
             ast::Enum(it) => it.variant_list()?.syntax().clone().into(),
             ast::Struct(it) => {
                 it.syntax().children_with_tokens()

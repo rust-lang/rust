@@ -95,7 +95,7 @@ impl Ctx {
 
             // These are handled in their respective `lower_X` method (since we can't just blindly
             // walk them).
-            ast::Item::Trait(_) | ast::Item::ImplDef(_) | ast::Item::ExternBlock(_) => {}
+            ast::Item::Trait(_) | ast::Item::Impl(_) | ast::Item::ExternBlock(_) => {}
 
             // These don't have inner items.
             ast::Item::Module(_) | ast::Item::ExternCrate(_) | ast::Item::Use(_) => {}
@@ -112,7 +112,7 @@ impl Ctx {
             ast::Item::Const(ast) => Some(self.lower_const(ast).into()),
             ast::Item::Module(ast) => self.lower_module(ast).map(Into::into),
             ast::Item::Trait(ast) => self.lower_trait(ast).map(Into::into),
-            ast::Item::ImplDef(ast) => self.lower_impl(ast).map(Into::into),
+            ast::Item::Impl(ast) => self.lower_impl(ast).map(Into::into),
             ast::Item::Use(ast) => Some(ModItems(
                 self.lower_use(ast).into_iter().map(Into::into).collect::<SmallVec<_>>(),
             )),
@@ -445,7 +445,7 @@ impl Ctx {
         Some(id(self.data().traits.alloc(res)))
     }
 
-    fn lower_impl(&mut self, impl_def: &ast::ImplDef) -> Option<FileItemTreeId<Impl>> {
+    fn lower_impl(&mut self, impl_def: &ast::Impl) -> Option<FileItemTreeId<Impl>> {
         let generic_params =
             self.lower_generic_params_and_inner_items(GenericsOwner::Impl, impl_def);
         let target_trait = impl_def.target_trait().map(|tr| self.lower_type_ref(&tr));

@@ -274,7 +274,7 @@ fn simple_inner_items() {
             inner attrs: Attrs { entries: None }
 
             top-level items:
-            Impl { generic_params: GenericParamsId(0), target_trait: Some(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("D"))] }, generic_args: [None] })), target_type: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Response"))] }, generic_args: [Some(GenericArgs { args: [Type(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("T"))] }, generic_args: [None] }))], has_self_type: false, bindings: [] })] }), is_negative: false, items: [Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ImplDef>(0) }
+            Impl { generic_params: GenericParamsId(0), target_trait: Some(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("D"))] }, generic_args: [None] })), target_type: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Response"))] }, generic_args: [Some(GenericArgs { args: [Type(Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("T"))] }, generic_args: [None] }))], has_self_type: false, bindings: [] })] }), is_negative: false, items: [Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::Impl>(0) }
             > Function { name: Name(Text("foo")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(4294967295), has_self_param: false, is_unsafe: false, params: [], is_varargs: false, ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::Fn>(1) }
 
             inner items:
@@ -353,7 +353,7 @@ fn impl_attrs() {
 
             top-level items:
             #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("impl_attr"))] }, input: None }]) }]
-            Impl { generic_params: GenericParamsId(4294967295), target_trait: None, target_type: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Ty"))] }, generic_args: [None] }), is_negative: false, items: [Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ImplDef>(0) }
+            Impl { generic_params: GenericParamsId(4294967295), target_trait: None, target_type: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Ty"))] }, generic_args: [None] }), is_negative: false, items: [Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::Impl>(0) }
             > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_a"))] }, input: None }]) }]
             > Function { name: Name(Text("a")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(4294967295), has_self_param: false, is_unsafe: false, params: [], is_varargs: false, ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::Fn>(1) }
             > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_b"))] }, input: None }]) }]
@@ -432,7 +432,7 @@ fn assoc_item_macros() {
             inner attrs: Attrs { entries: None }
 
             top-level items:
-            Impl { generic_params: GenericParamsId(4294967295), target_trait: None, target_type: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("S"))] }, generic_args: [None] }), is_negative: false, items: [MacroCall(Idx::<MacroCall>(0))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ImplDef>(0) }
+            Impl { generic_params: GenericParamsId(4294967295), target_trait: None, target_type: Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("S"))] }, generic_args: [None] }), is_negative: false, items: [MacroCall(Idx::<MacroCall>(0))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::Impl>(0) }
             > MacroCall { name: None, path: ModPath { kind: Plain, segments: [Name(Text("items"))] }, is_export: false, is_local_inner: false, is_builtin: false, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::MacroCall>(1) }
         "#]],
     );

@@ -204,7 +204,7 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         _ => return,
     }
 
-    let impl_def = match parent.parent().and_then(|it| it.parent()).and_then(ast::ImplDef::cast) {
+    let impl_def = match parent.parent().and_then(|it| it.parent()).and_then(ast::Impl::cast) {
         Some(it) => it,
         None => return,
     };

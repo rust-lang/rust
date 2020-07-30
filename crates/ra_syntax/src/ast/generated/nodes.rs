@@ -100,17 +100,18 @@ impl Fn {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImplDef {
+pub struct Impl {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ImplDef {}
-impl ast::VisibilityOwner for ImplDef {}
-impl ast::GenericParamsOwner for ImplDef {}
-impl ImplDef {
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+impl ast::AttrsOwner for Impl {}
+impl ast::VisibilityOwner for Impl {}
+impl ast::GenericParamsOwner for Impl {}
+impl Impl {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
+    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
@@ -1278,7 +1279,7 @@ pub enum Item {
     ExternBlock(ExternBlock),
     ExternCrate(ExternCrate),
     Fn(Fn),
-    ImplDef(ImplDef),
+    Impl(Impl),
     MacroCall(MacroCall),
     Module(Module),
     Static(Static),
@@ -1477,8 +1478,8 @@ impl AstNode for Fn {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for ImplDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_DEF }
+impl AstNode for Impl {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2790,8 +2791,8 @@ impl From<ExternCrate> for Item {
 impl From<Fn> for Item {
     fn from(node: Fn) -> Item { Item::Fn(node) }
 }
-impl From<ImplDef> for Item {
-    fn from(node: ImplDef) -> Item { Item::ImplDef(node) }
+impl From<Impl> for Item {
+    fn from(node: Impl) -> Item { Item::Impl(node) }
 }
 impl From<MacroCall> for Item {
     fn from(node: MacroCall) -> Item { Item::MacroCall(node) }
@@ -2820,7 +2821,7 @@ impl From<Use> for Item {
 impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL_DEF | MACRO_CALL | MODULE
+            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL | MACRO_CALL | MODULE
             | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE => true,
             _ => false,
         }
@@ -2832,7 +2833,7 @@ impl AstNode for Item {
             EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
             EXTERN_CRATE => Item::ExternCrate(ExternCrate { syntax }),
             FN => Item::Fn(Fn { syntax }),
-            IMPL_DEF => Item::ImplDef(ImplDef { syntax }),
+            IMPL => Item::Impl(Impl { syntax }),
             MACRO_CALL => Item::MacroCall(MacroCall { syntax }),
             MODULE => Item::Module(Module { syntax }),
             STATIC => Item::Static(Static { syntax }),
@@ -2852,7 +2853,7 @@ impl AstNode for Item {
             Item::ExternBlock(it) => &it.syntax,
             Item::ExternCrate(it) => &it.syntax,
             Item::Fn(it) => &it.syntax,
-            Item::ImplDef(it) => &it.syntax,
+            Item::Impl(it) => &it.syntax,
             Item::MacroCall(it) => &it.syntax,
             Item::Module(it) => &it.syntax,
             Item::Static(it) => &it.syntax,
@@ -3491,7 +3492,7 @@ impl std::fmt::Display for Fn {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ImplDef {
+impl std::fmt::Display for Impl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

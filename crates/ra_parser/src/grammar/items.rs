@@ -221,7 +221,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // unsafe default impl Foo {}
         T![impl] => {
             traits::impl_def(p);
-            m.complete(p, IMPL_DEF);
+            m.complete(p, IMPL);
         }
 
         // test existential_type

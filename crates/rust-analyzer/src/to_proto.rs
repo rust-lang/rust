@@ -42,7 +42,7 @@ pub(crate) fn symbol_kind(syntax_kind: SyntaxKind) -> lsp_types::SymbolKind {
         SyntaxKind::RECORD_FIELD => lsp_types::SymbolKind::Field,
         SyntaxKind::STATIC => lsp_types::SymbolKind::Constant,
         SyntaxKind::CONST => lsp_types::SymbolKind::Constant,
-        SyntaxKind::IMPL_DEF => lsp_types::SymbolKind::Object,
+        SyntaxKind::IMPL => lsp_types::SymbolKind::Object,
         _ => lsp_types::SymbolKind::Variable,
     }
 }

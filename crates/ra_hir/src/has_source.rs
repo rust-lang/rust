@@ -120,8 +120,8 @@ impl HasSource for MacroDef {
     }
 }
 impl HasSource for ImplDef {
-    type Ast = ast::ImplDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::ImplDef> {
+    type Ast = ast::Impl;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Impl> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }

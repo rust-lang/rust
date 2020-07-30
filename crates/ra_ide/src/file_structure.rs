@@ -139,7 +139,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::RecordField(it) => decl_with_ascription(it),
             ast::Const(it) => decl_with_ascription(it),
             ast::Static(it) => decl_with_ascription(it),
-            ast::ImplDef(it) => {
+            ast::Impl(it) => {
                 let target_type = it.target_type()?;
                 let target_trait = it.target_trait();
                 let label = match target_trait {
@@ -372,7 +372,7 @@ fn very_obsolete() {}
                         label: "impl E",
                         navigation_range: 239..240,
                         node_range: 234..243,
-                        kind: IMPL_DEF,
+                        kind: IMPL,
                         detail: None,
                         deprecated: false,
                     },
@@ -381,7 +381,7 @@ fn very_obsolete() {}
                         label: "impl fmt::Debug for E",
                         navigation_range: 265..266,
                         node_range: 245..269,
-                        kind: IMPL_DEF,
+                        kind: IMPL,
                         detail: None,
                         deprecated: false,
                     },

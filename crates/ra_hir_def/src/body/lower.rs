@@ -669,7 +669,7 @@ impl ExprCollector<'_> {
                         (TraitLoc { container, id }.intern(self.db).into(), def.name())
                     }
                     ast::Item::ExternBlock(_) => return None, // FIXME: collect from extern blocks
-                    ast::Item::ImplDef(_)
+                    ast::Item::Impl(_)
                     | ast::Item::Use(_)
                     | ast::Item::ExternCrate(_)
                     | ast::Item::Module(_)

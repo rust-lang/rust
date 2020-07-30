@@ -647,7 +647,7 @@ fn highlight_element(
 
 fn is_child_of_impl(element: &SyntaxElement) -> bool {
     match element.parent() {
-        Some(e) => e.kind() == IMPL_DEF,
+        Some(e) => e.kind() == IMPL,
         _ => false,
     }
 }

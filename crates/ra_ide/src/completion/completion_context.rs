@@ -40,7 +40,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) record_lit_syntax: Option<ast::RecordExpr>,
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
     pub(super) record_field_syntax: Option<ast::RecordExprField>,
-    pub(super) impl_def: Option<ast::ImplDef>,
+    pub(super) impl_def: Option<ast::Impl>,
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) is_param: bool,
@@ -325,7 +325,7 @@ impl<'a> CompletionContext<'a> {
             .sema
             .ancestors_with_macros(self.token.parent())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-            .find_map(ast::ImplDef::cast);
+            .find_map(ast::Impl::cast);
 
         let top_node = name_ref
             .syntax()

@@ -56,7 +56,7 @@ pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor
 
 pub fn get_missing_assoc_items(
     sema: &Semantics<RootDatabase>,
-    impl_def: &ast::ImplDef,
+    impl_def: &ast::Impl,
 ) -> Vec<hir::AssocItem> {
     // Names must be unique between constants and functions. However, type aliases
     // may share the same name as a function or constant.
@@ -109,7 +109,7 @@ pub fn get_missing_assoc_items(
 
 pub(crate) fn resolve_target_trait(
     sema: &Semantics<RootDatabase>,
-    impl_def: &ast::ImplDef,
+    impl_def: &ast::Impl,
 ) -> Option<hir::Trait> {
     let ast_path = impl_def
         .target_trait()

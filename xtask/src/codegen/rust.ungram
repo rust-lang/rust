@@ -9,7 +9,7 @@ Item =
 | ExternBlock
 | ExternCrate
 | Fn
-| ImplDef
+| Impl
 | MacroCall
 | Module
 | Static
@@ -131,9 +131,12 @@ Trait =
 AssocItemList =
   '{' AssocItem* '}'
 
-ImplDef =
- Attr* Visibility? 'const'? 'default'? 'unsafe'? 'impl' GenericParamList? '!'? 'for'
- WhereClause?
+Impl =
+ Attr* Visibility?
+ 'default'? 'unsafe'? 'impl' 'const'? GenericParamList? (
+   TypeRef
+ | '!'? TypeRef 'for' TypeRef
+ ) WhereClause?
  AssocItemList
 
 ParenType =

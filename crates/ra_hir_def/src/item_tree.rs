@@ -420,7 +420,7 @@ mod_items! {
     Const in consts -> ast::Const,
     Static in statics -> ast::Static,
     Trait in traits -> ast::Trait,
-    Impl in impls -> ast::ImplDef,
+    Impl in impls -> ast::Impl,
     TypeAlias in type_aliases -> ast::TypeAlias,
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
@@ -581,7 +581,7 @@ pub struct Impl {
     pub target_type: TypeRef,
     pub is_negative: bool,
     pub items: Box<[AssocItem]>,
-    pub ast_id: FileAstId<ast::ImplDef>,
+    pub ast_id: FileAstId<ast::Impl>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
