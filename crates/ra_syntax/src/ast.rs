@@ -139,7 +139,7 @@ fn test_doc_comment_of_statics() {
     )
     .ok()
     .unwrap();
-    let st = file.syntax().descendants().find_map(StaticDef::cast).unwrap();
+    let st = file.syntax().descendants().find_map(Static::cast).unwrap();
     assert_eq!("Number of levels", st.doc_comment_text().unwrap());
 }
 

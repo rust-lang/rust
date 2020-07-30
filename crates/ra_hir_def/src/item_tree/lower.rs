@@ -83,8 +83,8 @@ impl Ctx {
             | ast::Item::Enum(_)
             | ast::Item::Fn(_)
             | ast::Item::TypeAlias(_)
-            | ast::Item::ConstDef(_)
-            | ast::Item::StaticDef(_)
+            | ast::Item::Const(_)
+            | ast::Item::Static(_)
             | ast::Item::MacroCall(_) => {
                 // Skip this if we're already collecting inner items. We'll descend into all nodes
                 // already.
@@ -108,8 +108,8 @@ impl Ctx {
             ast::Item::Enum(ast) => self.lower_enum(ast).map(Into::into),
             ast::Item::Fn(ast) => self.lower_function(ast).map(Into::into),
             ast::Item::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
-            ast::Item::StaticDef(ast) => self.lower_static(ast).map(Into::into),
-            ast::Item::ConstDef(ast) => Some(self.lower_const(ast).into()),
+            ast::Item::Static(ast) => self.lower_static(ast).map(Into::into),
+            ast::Item::Const(ast) => Some(self.lower_const(ast).into()),
             ast::Item::Module(ast) => self.lower_module(ast).map(Into::into),
             ast::Item::TraitDef(ast) => self.lower_trait(ast).map(Into::into),
             ast::Item::ImplDef(ast) => self.lower_impl(ast).map(Into::into),
@@ -160,7 +160,7 @@ impl Ctx {
         match item {
             ast::AssocItem::Fn(ast) => self.lower_function(ast).map(Into::into),
             ast::AssocItem::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
-            ast::AssocItem::ConstDef(ast) => Some(self.lower_const(ast).into()),
+            ast::AssocItem::Const(ast) => Some(self.lower_const(ast).into()),
             ast::AssocItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
         }
     }
@@ -368,7 +368,7 @@ impl Ctx {
         Some(id(self.data().type_aliases.alloc(res)))
     }
 
-    fn lower_static(&mut self, static_: &ast::StaticDef) -> Option<FileItemTreeId<Static>> {
+    fn lower_static(&mut self, static_: &ast::Static) -> Option<FileItemTreeId<Static>> {
         let name = static_.name()?.as_name();
         let type_ref = self.lower_type_ref_opt(static_.ascribed_type());
         let visibility = self.lower_visibility(static_);
@@ -378,7 +378,7 @@ impl Ctx {
         Some(id(self.data().statics.alloc(res)))
     }
 
-    fn lower_const(&mut self, konst: &ast::ConstDef) -> FileItemTreeId<Const> {
+    fn lower_const(&mut self, konst: &ast::Const) -> FileItemTreeId<Const> {
         let name = konst.name().map(|it| it.as_name());
         let type_ref = self.lower_type_ref_opt(konst.ascribed_type());
         let visibility = self.lower_visibility(konst);
@@ -553,7 +553,7 @@ impl Ctx {
                             self.data().functions[func.index].is_unsafe = true;
                             func.into()
                         }
-                        ast::ExternItem::StaticDef(ast) => {
+                        ast::ExternItem::Static(ast) => {
                             let statik = self.lower_static(&ast)?;
                             statik.into()
                         }

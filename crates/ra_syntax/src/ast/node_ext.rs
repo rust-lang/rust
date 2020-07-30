@@ -483,8 +483,8 @@ impl ast::DocCommentsOwner for ast::Enum {}
 impl ast::DocCommentsOwner for ast::Variant {}
 impl ast::DocCommentsOwner for ast::TraitDef {}
 impl ast::DocCommentsOwner for ast::Module {}
-impl ast::DocCommentsOwner for ast::StaticDef {}
-impl ast::DocCommentsOwner for ast::ConstDef {}
+impl ast::DocCommentsOwner for ast::Static {}
+impl ast::DocCommentsOwner for ast::Const {}
 impl ast::DocCommentsOwner for ast::TypeAlias {}
 impl ast::DocCommentsOwner for ast::ImplDef {}
 impl ast::DocCommentsOwner for ast::MacroCall {}

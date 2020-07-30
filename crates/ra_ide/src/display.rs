@@ -54,7 +54,7 @@ pub(crate) fn function_declaration(node: &ast::Fn) -> String {
     buf
 }
 
-pub(crate) fn const_label(node: &ast::ConstDef) -> String {
+pub(crate) fn const_label(node: &ast::Const) -> String {
     let label: String = node
         .syntax()
         .children_with_tokens()

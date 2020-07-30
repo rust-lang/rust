@@ -15,8 +15,8 @@ use crate::{
 pub type Key<K, V> = crate::dyn_map::Key<InFile<K>, V, AstPtrPolicy<K, V>>;
 
 pub const FUNCTION: Key<ast::Fn, FunctionId> = Key::new();
-pub const CONST: Key<ast::ConstDef, ConstId> = Key::new();
-pub const STATIC: Key<ast::StaticDef, StaticId> = Key::new();
+pub const CONST: Key<ast::Const, ConstId> = Key::new();
+pub const STATIC: Key<ast::Static, StaticId> = Key::new();
 pub const TYPE_ALIAS: Key<ast::TypeAlias, TypeAliasId> = Key::new();
 pub const IMPL: Key<ast::ImplDef, ImplId> = Key::new();
 pub const TRAIT: Key<ast::TraitDef, TraitId> = Key::new();

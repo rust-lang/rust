@@ -417,8 +417,8 @@ mod_items! {
     Struct in structs -> ast::Struct,
     Union in unions -> ast::Union,
     Enum in enums -> ast::Enum,
-    Const in consts -> ast::ConstDef,
-    Static in statics -> ast::StaticDef,
+    Const in consts -> ast::Const,
+    Static in statics -> ast::Static,
     Trait in traits -> ast::TraitDef,
     Impl in impls -> ast::ImplDef,
     TypeAlias in type_aliases -> ast::TypeAlias,
@@ -552,7 +552,7 @@ pub struct Const {
     pub name: Option<Name>,
     pub visibility: RawVisibilityId,
     pub type_ref: TypeRef,
-    pub ast_id: FileAstId<ast::ConstDef>,
+    pub ast_id: FileAstId<ast::Const>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -561,7 +561,7 @@ pub struct Static {
     pub visibility: RawVisibilityId,
     pub mutable: bool,
     pub type_ref: TypeRef,
-    pub ast_id: FileAstId<ast::StaticDef>,
+    pub ast_id: FileAstId<ast::Static>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

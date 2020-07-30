@@ -78,7 +78,7 @@ pub fn get_missing_assoc_items(
                     }
                 }
 
-                ast::AssocItem::ConstDef(c) => {
+                ast::AssocItem::Const(c) => {
                     if let Some(n) = c.name() {
                         impl_fns_consts.insert(n.syntax().to_string());
                     }

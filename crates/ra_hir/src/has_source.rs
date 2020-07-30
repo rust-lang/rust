@@ -87,14 +87,14 @@ impl HasSource for Function {
     }
 }
 impl HasSource for Const {
-    type Ast = ast::ConstDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::ConstDef> {
+    type Ast = ast::Const;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Const> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
 impl HasSource for Static {
-    type Ast = ast::StaticDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::StaticDef> {
+    type Ast = ast::Static;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Static> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }

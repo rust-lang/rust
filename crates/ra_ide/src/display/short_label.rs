@@ -53,13 +53,13 @@ impl ShortLabel for ast::TypeAlias {
     }
 }
 
-impl ShortLabel for ast::ConstDef {
+impl ShortLabel for ast::Const {
     fn short_label(&self) -> Option<String> {
         short_label_from_ascribed_node(self, "const ")
     }
 }
 
-impl ShortLabel for ast::StaticDef {
+impl ShortLabel for ast::Static {
     fn short_label(&self) -> Option<String> {
         short_label_from_ascribed_node(self, "static ")
     }
