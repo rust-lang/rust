@@ -45,7 +45,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_immediate(*v, dest)?;
             }
 
-            Pointer(PointerCast::ReifyFnPointer) => {
+            Pointer(PointerCast::ReifyFnPointer | PointerCast::ReifyNotConstFnPointer) => {
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
                     ty::FnDef(def_id, substs) => {

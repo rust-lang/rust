@@ -2110,6 +2110,10 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
+    pub fn signature_not_const_fn(self, sig: PolyFnSig<'tcx>) -> PolyFnSig<'tcx> {
+        sig.map_bound(|s| ty::FnSig { constness: hir::Constness::NotConst, ..s })
+    }
+
     /// Same a `self.mk_region(kind)`, but avoids accessing the interners if
     /// `*r == kind`.
     #[inline]
@@ -2300,6 +2304,13 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_fn_ptr(self, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
         self.mk_ty(FnPtr(fty))
+    }
+
+    #[inline]
+    pub fn mk_not_const_fn_ptr(self, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
+        let mut not_const = fty.skip_binder();
+        not_const.constness = hir::Constness::NotConst;
+        self.mk_ty(FnPtr(ty::Binder::dummy(not_const)))
     }
 
     #[inline]

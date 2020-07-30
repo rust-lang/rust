@@ -952,6 +952,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let prev_ty = self.resolve_vars_with_obligations(prev_ty);
         let new_ty = self.resolve_vars_with_obligations(new_ty);
+        let mut prev_drop_const = false;
+        let mut new_drop_const = false;
         debug!(
             "coercion::try_find_coercion_lub({:?}, {:?}, exprs={:?} exprs)",
             prev_ty,
@@ -982,7 +984,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // We have a LUB of prev_ty and new_ty, just return it.
                             Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
                             Err(_) => {
-                                (Some(prev_ty.fn_sig(self.tcx)), Some(new_ty.fn_sig(self.tcx)))
+                                let mut prev_sig = prev_ty.fn_sig(self.tcx);
+                                let mut new_sig = new_ty.fn_sig(self.tcx);
+                                if prev_sig.constness() != new_sig.constness() {
+                                    if prev_sig.constness() == hir::Constness::Const {
+                                        prev_sig = self.tcx.signature_not_const_fn(prev_sig);
+                                        prev_drop_const = true;
+                                    } else {
+                                        new_sig = self.tcx.signature_not_const_fn(prev_sig);
+                                        new_drop_const = true;
+                                    }
+                                }
+                                (Some(prev_sig), Some(new_sig))
                             }
                         }
                     }
@@ -1028,12 +1041,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let fn_ptr = self.tcx.mk_fn_ptr(sig);
             let prev_adjustment = match prev_ty.kind() {
                 ty::Closure(..) => Adjust::Pointer(PointerCast::ClosureFnPointer(a_sig.unsafety())),
-                ty::FnDef(..) => Adjust::Pointer(PointerCast::ReifyFnPointer),
+                ty::FnDef(..) => {
+                    if prev_drop_const {
+                        Adjust::Pointer(PointerCast::ReifyNotConstFnPointer)
+                    } else {
+                        Adjust::Pointer(PointerCast::ReifyFnPointer)
+                    }
+                }
                 _ => unreachable!(),
             };
             let next_adjustment = match new_ty.kind() {
                 ty::Closure(..) => Adjust::Pointer(PointerCast::ClosureFnPointer(b_sig.unsafety())),
-                ty::FnDef(..) => Adjust::Pointer(PointerCast::ReifyFnPointer),
+                ty::FnDef(..) => {
+                    if new_drop_const {
+                        Adjust::Pointer(PointerCast::ReifyNotConstFnPointer)
+                    } else {
+                        Adjust::Pointer(PointerCast::ReifyFnPointer)
+                    }
+                }
                 _ => unreachable!(),
             };
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {

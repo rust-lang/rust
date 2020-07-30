@@ -11,6 +11,9 @@ pub enum PointerCast {
     /// Go from a fn-item type to a fn-pointer type.
     ReifyFnPointer,
 
+    /// Go from a fn-item type to a not const fn-pointer type (drop const qualifier)
+    ReifyNotConstFnPointer,
+
     /// Go from a safe fn pointer to an unsafe fn pointer.
     UnsafeFnPointer,
 

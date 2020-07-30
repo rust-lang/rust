@@ -2807,8 +2807,8 @@ impl ClashingExternDeclarations {
                             let a_sig = a_poly_sig.skip_binder();
                             let b_sig = b_poly_sig.skip_binder();
 
-                            (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
-                                == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
+                            (a_sig.abi, a_sig.unsafety, a_sig.c_variadic, a_sig.constness)
+                                == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic, b_sig.constness)
                                 && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
                                     structurally_same_type_impl(seen_types, cx, a, b, ckind)
                                 })
