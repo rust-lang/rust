@@ -453,9 +453,20 @@ impl Variant {
 pub struct AssocItemList {
     pub(crate) syntax: SyntaxNode,
 }
+impl ast::AttrsOwner for AssocItemList {}
 impl AssocItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn assoc_items(&self) -> AstChildren<AssocItem> { support::children(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ExternItemList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for ExternItemList {}
+impl ExternItemList {
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn extern_items(&self) -> AstChildren<ExternItem> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1254,15 +1265,6 @@ impl ConstArg {
     pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ExternItemList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ExternItemList {
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn extern_items(&self) -> AstChildren<ExternItem> { support::children(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MetaItem {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1373,6 +1375,14 @@ pub enum AssocItem {
 impl ast::AttrsOwner for AssocItem {}
 impl ast::NameOwner for AssocItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ExternItem {
+    Fn(Fn),
+    Static(Static),
+    MacroCall(MacroCall),
+}
+impl ast::AttrsOwner for ExternItem {}
+impl ast::NameOwner for ExternItem {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
     LetStmt(LetStmt),
     ExprStmt(ExprStmt),
@@ -1383,14 +1393,6 @@ pub enum AttrInput {
     Literal(Literal),
     TokenTree(TokenTree),
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ExternItem {
-    Fn(Fn),
-    Static(Static),
-}
-impl ast::AttrsOwner for ExternItem {}
-impl ast::NameOwner for ExternItem {}
-impl ast::VisibilityOwner for ExternItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AdtDef {
     Struct(Struct),
@@ -1832,6 +1834,17 @@ impl AstNode for Variant {
 }
 impl AstNode for AssocItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ASSOC_ITEM_LIST }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ExternItemList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_ITEM_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2754,17 +2767,6 @@ impl AstNode for ConstArg {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for ExternItemList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_ITEM_LIST }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for MetaItem {
     fn can_cast(kind: SyntaxKind) -> bool { kind == META_ITEM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3290,6 +3292,39 @@ impl AstNode for AssocItem {
         }
     }
 }
+impl From<Fn> for ExternItem {
+    fn from(node: Fn) -> ExternItem { ExternItem::Fn(node) }
+}
+impl From<Static> for ExternItem {
+    fn from(node: Static) -> ExternItem { ExternItem::Static(node) }
+}
+impl From<MacroCall> for ExternItem {
+    fn from(node: MacroCall) -> ExternItem { ExternItem::MacroCall(node) }
+}
+impl AstNode for ExternItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            FN | STATIC | MACRO_CALL => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            FN => ExternItem::Fn(Fn { syntax }),
+            STATIC => ExternItem::Static(Static { syntax }),
+            MACRO_CALL => ExternItem::MacroCall(MacroCall { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            ExternItem::Fn(it) => &it.syntax,
+            ExternItem::Static(it) => &it.syntax,
+            ExternItem::MacroCall(it) => &it.syntax,
+        }
+    }
+}
 impl From<LetStmt> for Stmt {
     fn from(node: LetStmt) -> Stmt { Stmt::LetStmt(node) }
 }
@@ -3343,34 +3378,6 @@ impl AstNode for AttrInput {
         match self {
             AttrInput::Literal(it) => &it.syntax,
             AttrInput::TokenTree(it) => &it.syntax,
-        }
-    }
-}
-impl From<Fn> for ExternItem {
-    fn from(node: Fn) -> ExternItem { ExternItem::Fn(node) }
-}
-impl From<Static> for ExternItem {
-    fn from(node: Static) -> ExternItem { ExternItem::Static(node) }
-}
-impl AstNode for ExternItem {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FN | STATIC => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            FN => ExternItem::Fn(Fn { syntax }),
-            STATIC => ExternItem::Static(Static { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            ExternItem::Fn(it) => &it.syntax,
-            ExternItem::Static(it) => &it.syntax,
         }
     }
 }
@@ -3437,17 +3444,17 @@ impl std::fmt::Display for AssocItem {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for ExternItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for Stmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
 impl std::fmt::Display for AttrInput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ExternItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3653,6 +3660,11 @@ impl std::fmt::Display for Variant {
     }
 }
 impl std::fmt::Display for AssocItemList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ExternItemList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -4068,11 +4080,6 @@ impl std::fmt::Display for AssocTypeArg {
     }
 }
 impl std::fmt::Display for ConstArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ExternItemList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
