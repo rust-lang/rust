@@ -19,7 +19,7 @@ SOURCE_FILE@0..46
     ASSOC_ITEM_LIST@15..45
       L_CURLY@15..16 "{"
       WHITESPACE@16..19 "\n  "
-      CONST_DEF@19..43
+      CONST@19..43
         DEFAULT_KW@19..26 "default"
         WHITESPACE@26..27 " "
         CONST_KW@27..32 "const"

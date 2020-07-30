@@ -42,7 +42,7 @@ fn try_extend_selection(
         RECORD_FIELD_LIST,
         TUPLE_FIELD_LIST,
         RECORD_EXPR_FIELD_LIST,
-        ENUM_VARIANT_LIST,
+        VARIANT_LIST,
         USE_TREE_LIST,
         GENERIC_PARAM_LIST,
         TYPE_ARG_LIST,

@@ -166,11 +166,11 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                 let def: hir::Trait = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::StaticDef(it) => {
+            ast::Static(it) => {
                 let def: hir::Static = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::EnumVariant(it) => {
+            ast::Variant(it) => {
                 let def: hir::EnumVariant = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
@@ -178,7 +178,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                 let def: hir::Function = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::ConstDef(it) => {
+            ast::Const(it) => {
                 let def: hir::Const = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },

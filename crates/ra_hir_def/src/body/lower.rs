@@ -641,14 +641,14 @@ impl ExprCollector<'_> {
                             def.name(),
                         )
                     }
-                    ast::Item::ConstDef(def) => {
+                    ast::Item::Const(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             ConstLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::Item::StaticDef(def) => {
+                    ast::Item::Static(def) => {
                         let id = self.find_inner_item(&def)?;
                         (StaticLoc { container, id }.intern(self.db).into(), def.name())
                     }

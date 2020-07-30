@@ -4,7 +4,7 @@ SourceFile =
   Item*
 
 Item =
-  ConstDef
+  Const
 | Enum
 | ExternBlock
 | ExternCrate
@@ -12,7 +12,7 @@ Item =
 | ImplDef
 | MacroCall
 | Module
-| StaticDef
+| Static
 | Struct
 | TraitDef
 | TypeAlias
@@ -100,17 +100,25 @@ FieldList =
 
 Enum =
   Attr* Visibility? 'enum' Name GenericParamList? WhereClause?
-  variant_list:EnumVariantList
+  VariantList
 
-EnumVariantList =
- '{' variants:EnumVariant* '}'
+VariantList =
+ '{' (Variant (',' Variant)* ','?)? '}'
 
-EnumVariant =
+Variant =
   Attr* Visibility? Name FieldList ('=' Expr)?
 
 Union =
   Attr* Visibility? 'union' Name GenericParamList? WhereClause?
   RecordFieldList
+
+Const =
+  Attr* Visibility? 'default'? 'const' (Name | '_') ':' ascribed_type:TypeRef
+  '=' body:Expr ';'
+
+Static =
+  Attr* Visibility? 'static'? 'mut'? Name ':' ascribed_type:TypeRef
+  '=' body:Expr ';'
 
 TraitDef =
   Attr* Visibility? 'unsafe'? 'auto'? 'trait' Name GenericParamList
@@ -119,14 +127,6 @@ TraitDef =
 
 AssocItemList =
   '{' AssocItem* '}'
-
-ConstDef =
-  Attr* Visibility? 'default'? 'const' Name ':' ascribed_type:TypeRef
-  '=' body:Expr ';'
-
-StaticDef =
-  Attr* Visibility? 'static'? 'mut'? 'static' Name ':' ascribed_type:TypeRef
-  '=' body:Expr ';'
 
 ImplDef =
  Attr* Visibility? 'const'? 'default'? 'unsafe'? 'impl' GenericParamList? '!'? 'for'
@@ -475,11 +475,11 @@ TypeRef =
 AssocItem =
   Fn
 | TypeAlias
-| ConstDef
+| Const
 | MacroCall
 
 ExternItem =
-  Fn | StaticDef
+  Fn | Static
 
 AttrInput =
   Literal

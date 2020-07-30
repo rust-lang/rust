@@ -27,7 +27,7 @@ SOURCE_FILE@0..83
                     IDENT@21..26 "Clone"
         SEMICOLON@26..27 ";"
       WHITESPACE@27..32 "\n    "
-      CONST_DEF@32..45
+      CONST@32..45
         CONST_KW@32..37 "const"
         WHITESPACE@37..38 " "
         NAME@38..39

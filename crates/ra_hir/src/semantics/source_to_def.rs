@@ -83,10 +83,10 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn union_to_def(&mut self, src: InFile<ast::Union>) -> Option<UnionId> {
         self.to_def(src, keys::UNION)
     }
-    pub(super) fn static_to_def(&mut self, src: InFile<ast::StaticDef>) -> Option<StaticId> {
+    pub(super) fn static_to_def(&mut self, src: InFile<ast::Static>) -> Option<StaticId> {
         self.to_def(src, keys::STATIC)
     }
-    pub(super) fn const_to_def(&mut self, src: InFile<ast::ConstDef>) -> Option<ConstId> {
+    pub(super) fn const_to_def(&mut self, src: InFile<ast::Const>) -> Option<ConstId> {
         self.to_def(src, keys::CONST)
     }
     pub(super) fn type_alias_to_def(&mut self, src: InFile<ast::TypeAlias>) -> Option<TypeAliasId> {
@@ -100,9 +100,9 @@ impl SourceToDefCtx<'_, '_> {
     }
     pub(super) fn enum_variant_to_def(
         &mut self,
-        src: InFile<ast::EnumVariant>,
+        src: InFile<ast::Variant>,
     ) -> Option<EnumVariantId> {
-        self.to_def(src, keys::ENUM_VARIANT)
+        self.to_def(src, keys::VARIANT)
     }
     pub(super) fn bind_pat_to_def(
         &mut self,
@@ -178,11 +178,11 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.union_to_def(container.with_value(it))?;
                         VariantId::from(def).into()
                     },
-                    ast::StaticDef(it) => {
+                    ast::Static(it) => {
                         let def = self.static_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
-                    ast::ConstDef(it) => {
+                    ast::Const(it) => {
                         let def = self.const_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
@@ -222,8 +222,8 @@ impl SourceToDefCtx<'_, '_> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: DefWithBodyId = match_ast! {
                 match (container.value) {
-                    ast::ConstDef(it) => self.const_to_def(container.with_value(it))?.into(),
-                    ast::StaticDef(it) => self.static_to_def(container.with_value(it))?.into(),
+                    ast::Const(it) => self.const_to_def(container.with_value(it))?.into(),
+                    ast::Static(it) => self.static_to_def(container.with_value(it))?.into(),
                     ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
                     _ => continue,
                 }

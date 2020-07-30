@@ -129,7 +129,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::Struct(it) => decl(it),
             ast::Union(it) => decl(it),
             ast::Enum(it) => decl(it),
-            ast::EnumVariant(it) => decl(it),
+            ast::Variant(it) => decl(it),
             ast::TraitDef(it) => decl(it),
             ast::Module(it) => decl(it),
             ast::TypeAlias(it) => {
@@ -137,8 +137,8 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 decl_with_type_ref(it, ty)
             },
             ast::RecordField(it) => decl_with_ascription(it),
-            ast::ConstDef(it) => decl_with_ascription(it),
-            ast::StaticDef(it) => decl_with_ascription(it),
+            ast::Const(it) => decl_with_ascription(it),
+            ast::Static(it) => decl_with_ascription(it),
             ast::ImplDef(it) => {
                 let target_type = it.target_type()?;
                 let target_trait = it.target_trait();
@@ -319,7 +319,7 @@ fn very_obsolete() {}
                         label: "X",
                         navigation_range: 169..170,
                         node_range: 169..170,
-                        kind: ENUM_VARIANT,
+                        kind: VARIANT,
                         detail: None,
                         deprecated: false,
                     },
@@ -330,7 +330,7 @@ fn very_obsolete() {}
                         label: "Y",
                         navigation_range: 172..173,
                         node_range: 172..178,
-                        kind: ENUM_VARIANT,
+                        kind: VARIANT,
                         detail: None,
                         deprecated: false,
                     },
@@ -350,7 +350,7 @@ fn very_obsolete() {}
                         label: "S",
                         navigation_range: 201..202,
                         node_range: 194..213,
-                        kind: STATIC_DEF,
+                        kind: STATIC,
                         detail: Some(
                             "i32",
                         ),
@@ -361,7 +361,7 @@ fn very_obsolete() {}
                         label: "C",
                         navigation_range: 220..221,
                         node_range: 214..232,
-                        kind: CONST_DEF,
+                        kind: CONST,
                         detail: Some(
                             "i32",
                         ),

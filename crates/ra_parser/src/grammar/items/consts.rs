@@ -3,11 +3,11 @@
 use super::*;
 
 pub(super) fn static_def(p: &mut Parser, m: Marker) {
-    const_or_static(p, m, T![static], STATIC_DEF)
+    const_or_static(p, m, T![static], STATIC)
 }
 
 pub(super) fn const_def(p: &mut Parser, m: Marker) {
-    const_or_static(p, m, T![const], CONST_DEF)
+    const_or_static(p, m, T![const], CONST)
 }
 
 fn const_or_static(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {

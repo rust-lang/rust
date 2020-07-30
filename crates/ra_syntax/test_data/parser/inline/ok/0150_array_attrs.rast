@@ -1,5 +1,5 @@
 SOURCE_FILE@0..40
-  CONST_DEF@0..39
+  CONST@0..39
     CONST_KW@0..5 "const"
     WHITESPACE@5..6 " "
     NAME@6..7

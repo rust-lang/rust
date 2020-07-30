@@ -1,7 +1,7 @@
 use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode,
-    SyntaxKind::{CONST_DEF, ENUM, FN, MODULE, STATIC_DEF, STRUCT, TRAIT_DEF, VISIBILITY},
+    SyntaxKind::{CONST, ENUM, FN, MODULE, STATIC, STRUCT, TRAIT_DEF, VISIBILITY},
     T,
 };
 use test_utils::mark;
@@ -36,7 +36,7 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
     let (offset, target) = if let Some(keyword) = item_keyword {
         let parent = keyword.parent();
-        let def_kws = vec![CONST_DEF, STATIC_DEF, FN, MODULE, STRUCT, ENUM, TRAIT_DEF];
+        let def_kws = vec![CONST, STATIC, FN, MODULE, STRUCT, ENUM, TRAIT_DEF];
         // Parent is not a definition, can't add visibility
         if !def_kws.iter().any(|&def_kw| def_kw == parent.kind()) {
             return None;

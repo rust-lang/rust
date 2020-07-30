@@ -14,7 +14,7 @@ SOURCE_FILE@0..39
             NAME_REF@12..19
               IDENT@12..19 "default"
       WHITESPACE@19..20 " "
-      CONST_DEF@20..36
+      CONST@20..36
         CONST_KW@20..25 "const"
         WHITESPACE@25..26 " "
         NAME@26..27

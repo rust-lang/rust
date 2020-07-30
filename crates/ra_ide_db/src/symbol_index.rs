@@ -403,8 +403,8 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
             ast::TraitDef(it) => decl(it),
             ast::Module(it) => decl(it),
             ast::TypeAlias(it) => decl(it),
-            ast::ConstDef(it) => decl(it),
-            ast::StaticDef(it) => decl(it),
+            ast::Const(it) => decl(it),
+            ast::Static(it) => decl(it),
             ast::MacroCall(it) => {
                 if it.is_macro_rules().is_some() {
                     decl(it)

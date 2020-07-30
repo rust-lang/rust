@@ -93,7 +93,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         | USE_TREE_LIST
         | BLOCK_EXPR
         | MATCH_ARM_LIST
-        | ENUM_VARIANT_LIST
+        | VARIANT_LIST
         | TOKEN_TREE => Some(FoldKind::Block),
         _ => None,
     }

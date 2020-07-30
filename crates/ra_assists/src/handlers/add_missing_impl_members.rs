@@ -120,7 +120,7 @@ fn add_missing_impl_members_inner(
         match item {
             ast::AssocItem::Fn(def) => def.name(),
             ast::AssocItem::TypeAlias(def) => def.name(),
-            ast::AssocItem::ConstDef(def) => def.name(),
+            ast::AssocItem::Const(def) => def.name(),
             ast::AssocItem::MacroCall(_) => None,
         }
         .map(|it| it.text().clone())
@@ -131,7 +131,7 @@ fn add_missing_impl_members_inner(
         .map(|i| match i {
             hir::AssocItem::Function(i) => ast::AssocItem::Fn(i.source(ctx.db()).value),
             hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(i.source(ctx.db()).value),
-            hir::AssocItem::Const(i) => ast::AssocItem::ConstDef(i.source(ctx.db()).value),
+            hir::AssocItem::Const(i) => ast::AssocItem::Const(i.source(ctx.db()).value),
         })
         .filter(|t| def_name(&t).is_some())
         .filter(|t| match t {

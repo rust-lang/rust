@@ -28,16 +28,17 @@ impl Attr {
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConstDef {
+pub struct Const {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ConstDef {}
-impl ast::NameOwner for ConstDef {}
-impl ast::VisibilityOwner for ConstDef {}
-impl ast::TypeAscriptionOwner for ConstDef {}
-impl ConstDef {
+impl ast::AttrsOwner for Const {}
+impl ast::NameOwner for Const {}
+impl ast::VisibilityOwner for Const {}
+impl ast::TypeAscriptionOwner for Const {}
+impl Const {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -53,7 +54,7 @@ impl ast::VisibilityOwner for Enum {}
 impl ast::GenericParamsOwner for Enum {}
 impl Enum {
     pub fn enum_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![enum]) }
-    pub fn variant_list(&self) -> Option<EnumVariantList> { support::child(&self.syntax) }
+    pub fn variant_list(&self) -> Option<VariantList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternBlock {
@@ -139,14 +140,14 @@ impl Module {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StaticDef {
+pub struct Static {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for StaticDef {}
-impl ast::NameOwner for StaticDef {}
-impl ast::VisibilityOwner for StaticDef {}
-impl ast::TypeAscriptionOwner for StaticDef {}
-impl StaticDef {
+impl ast::AttrsOwner for Static {}
+impl ast::NameOwner for Static {}
+impl ast::VisibilityOwner for Static {}
+impl ast::TypeAscriptionOwner for Static {}
+impl Static {
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
@@ -427,22 +428,22 @@ impl TupleField {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnumVariantList {
+pub struct VariantList {
     pub(crate) syntax: SyntaxNode,
 }
-impl EnumVariantList {
+impl VariantList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn variants(&self) -> AstChildren<EnumVariant> { support::children(&self.syntax) }
+    pub fn variants(&self) -> AstChildren<Variant> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnumVariant {
+pub struct Variant {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for EnumVariant {}
-impl ast::NameOwner for EnumVariant {}
-impl ast::VisibilityOwner for EnumVariant {}
-impl EnumVariant {
+impl ast::AttrsOwner for Variant {}
+impl ast::NameOwner for Variant {}
+impl ast::VisibilityOwner for Variant {}
+impl Variant {
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
@@ -1272,7 +1273,7 @@ impl MetaItem {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Item {
-    ConstDef(ConstDef),
+    Const(Const),
     Enum(Enum),
     ExternBlock(ExternBlock),
     ExternCrate(ExternCrate),
@@ -1280,7 +1281,7 @@ pub enum Item {
     ImplDef(ImplDef),
     MacroCall(MacroCall),
     Module(Module),
-    StaticDef(StaticDef),
+    Static(Static),
     Struct(Struct),
     TraitDef(TraitDef),
     TypeAlias(TypeAlias),
@@ -1365,7 +1366,7 @@ pub enum Expr {
 pub enum AssocItem {
     Fn(Fn),
     TypeAlias(TypeAlias),
-    ConstDef(ConstDef),
+    Const(Const),
     MacroCall(MacroCall),
 }
 impl ast::AttrsOwner for AssocItem {}
@@ -1384,7 +1385,7 @@ pub enum AttrInput {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternItem {
     Fn(Fn),
-    StaticDef(StaticDef),
+    Static(Static),
 }
 impl ast::AttrsOwner for ExternItem {}
 impl ast::NameOwner for ExternItem {}
@@ -1421,8 +1422,8 @@ impl AstNode for Attr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for ConstDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_DEF }
+impl AstNode for Const {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1509,8 +1510,8 @@ impl AstNode for Module {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for StaticDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == STATIC_DEF }
+impl AstNode for Static {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == STATIC }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1806,8 +1807,8 @@ impl AstNode for TupleField {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for EnumVariantList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_VARIANT_LIST }
+impl AstNode for VariantList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == VARIANT_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1817,8 +1818,8 @@ impl AstNode for EnumVariantList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for EnumVariant {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_VARIANT }
+impl AstNode for Variant {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == VARIANT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2774,8 +2775,8 @@ impl AstNode for MetaItem {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl From<ConstDef> for Item {
-    fn from(node: ConstDef) -> Item { Item::ConstDef(node) }
+impl From<Const> for Item {
+    fn from(node: Const) -> Item { Item::Const(node) }
 }
 impl From<Enum> for Item {
     fn from(node: Enum) -> Item { Item::Enum(node) }
@@ -2798,8 +2799,8 @@ impl From<MacroCall> for Item {
 impl From<Module> for Item {
     fn from(node: Module) -> Item { Item::Module(node) }
 }
-impl From<StaticDef> for Item {
-    fn from(node: StaticDef) -> Item { Item::StaticDef(node) }
+impl From<Static> for Item {
+    fn from(node: Static) -> Item { Item::Static(node) }
 }
 impl From<Struct> for Item {
     fn from(node: Struct) -> Item { Item::Struct(node) }
@@ -2819,14 +2820,14 @@ impl From<Use> for Item {
 impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            CONST_DEF | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL_DEF | MACRO_CALL
-            | MODULE | STATIC_DEF | STRUCT | TRAIT_DEF | TYPE_ALIAS | UNION | USE => true,
+            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL_DEF | MACRO_CALL | MODULE
+            | STATIC | STRUCT | TRAIT_DEF | TYPE_ALIAS | UNION | USE => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            CONST_DEF => Item::ConstDef(ConstDef { syntax }),
+            CONST => Item::Const(Const { syntax }),
             ENUM => Item::Enum(Enum { syntax }),
             EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
             EXTERN_CRATE => Item::ExternCrate(ExternCrate { syntax }),
@@ -2834,7 +2835,7 @@ impl AstNode for Item {
             IMPL_DEF => Item::ImplDef(ImplDef { syntax }),
             MACRO_CALL => Item::MacroCall(MacroCall { syntax }),
             MODULE => Item::Module(Module { syntax }),
-            STATIC_DEF => Item::StaticDef(StaticDef { syntax }),
+            STATIC => Item::Static(Static { syntax }),
             STRUCT => Item::Struct(Struct { syntax }),
             TRAIT_DEF => Item::TraitDef(TraitDef { syntax }),
             TYPE_ALIAS => Item::TypeAlias(TypeAlias { syntax }),
@@ -2846,7 +2847,7 @@ impl AstNode for Item {
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            Item::ConstDef(it) => &it.syntax,
+            Item::Const(it) => &it.syntax,
             Item::Enum(it) => &it.syntax,
             Item::ExternBlock(it) => &it.syntax,
             Item::ExternCrate(it) => &it.syntax,
@@ -2854,7 +2855,7 @@ impl AstNode for Item {
             Item::ImplDef(it) => &it.syntax,
             Item::MacroCall(it) => &it.syntax,
             Item::Module(it) => &it.syntax,
-            Item::StaticDef(it) => &it.syntax,
+            Item::Static(it) => &it.syntax,
             Item::Struct(it) => &it.syntax,
             Item::TraitDef(it) => &it.syntax,
             Item::TypeAlias(it) => &it.syntax,
@@ -3256,8 +3257,8 @@ impl From<Fn> for AssocItem {
 impl From<TypeAlias> for AssocItem {
     fn from(node: TypeAlias) -> AssocItem { AssocItem::TypeAlias(node) }
 }
-impl From<ConstDef> for AssocItem {
-    fn from(node: ConstDef) -> AssocItem { AssocItem::ConstDef(node) }
+impl From<Const> for AssocItem {
+    fn from(node: Const) -> AssocItem { AssocItem::Const(node) }
 }
 impl From<MacroCall> for AssocItem {
     fn from(node: MacroCall) -> AssocItem { AssocItem::MacroCall(node) }
@@ -3265,7 +3266,7 @@ impl From<MacroCall> for AssocItem {
 impl AstNode for AssocItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            FN | TYPE_ALIAS | CONST_DEF | MACRO_CALL => true,
+            FN | TYPE_ALIAS | CONST | MACRO_CALL => true,
             _ => false,
         }
     }
@@ -3273,7 +3274,7 @@ impl AstNode for AssocItem {
         let res = match syntax.kind() {
             FN => AssocItem::Fn(Fn { syntax }),
             TYPE_ALIAS => AssocItem::TypeAlias(TypeAlias { syntax }),
-            CONST_DEF => AssocItem::ConstDef(ConstDef { syntax }),
+            CONST => AssocItem::Const(Const { syntax }),
             MACRO_CALL => AssocItem::MacroCall(MacroCall { syntax }),
             _ => return None,
         };
@@ -3283,7 +3284,7 @@ impl AstNode for AssocItem {
         match self {
             AssocItem::Fn(it) => &it.syntax,
             AssocItem::TypeAlias(it) => &it.syntax,
-            AssocItem::ConstDef(it) => &it.syntax,
+            AssocItem::Const(it) => &it.syntax,
             AssocItem::MacroCall(it) => &it.syntax,
         }
     }
@@ -3347,20 +3348,20 @@ impl AstNode for AttrInput {
 impl From<Fn> for ExternItem {
     fn from(node: Fn) -> ExternItem { ExternItem::Fn(node) }
 }
-impl From<StaticDef> for ExternItem {
-    fn from(node: StaticDef) -> ExternItem { ExternItem::StaticDef(node) }
+impl From<Static> for ExternItem {
+    fn from(node: Static) -> ExternItem { ExternItem::Static(node) }
 }
 impl AstNode for ExternItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            FN | STATIC_DEF => true,
+            FN | STATIC => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             FN => ExternItem::Fn(Fn { syntax }),
-            STATIC_DEF => ExternItem::StaticDef(StaticDef { syntax }),
+            STATIC => ExternItem::Static(Static { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3368,7 +3369,7 @@ impl AstNode for ExternItem {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             ExternItem::Fn(it) => &it.syntax,
-            ExternItem::StaticDef(it) => &it.syntax,
+            ExternItem::Static(it) => &it.syntax,
         }
     }
 }
@@ -3465,7 +3466,7 @@ impl std::fmt::Display for Attr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ConstDef {
+impl std::fmt::Display for Const {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3505,7 +3506,7 @@ impl std::fmt::Display for Module {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for StaticDef {
+impl std::fmt::Display for Static {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3640,12 +3641,12 @@ impl std::fmt::Display for TupleField {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for EnumVariantList {
+impl std::fmt::Display for VariantList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for EnumVariant {
+impl std::fmt::Display for Variant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

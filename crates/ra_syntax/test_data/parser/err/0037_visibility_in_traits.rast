@@ -65,7 +65,7 @@ SOURCE_FILE@0..118
           R_PAREN@79..80 ")"
         SEMICOLON@80..81 ";"
       WHITESPACE@81..86 "\n    "
-      CONST_DEF@86..115
+      CONST@86..115
         VISIBILITY@86..96
           PUB_KW@86..89 "pub"
           L_PAREN@89..90 "("
