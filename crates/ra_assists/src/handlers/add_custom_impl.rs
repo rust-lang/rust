@@ -29,8 +29,8 @@ use crate::{
 // }
 // ```
 pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let input = ctx.find_node_at_offset::<ast::AttrInput>()?;
-    let attr = input.syntax().parent().and_then(ast::Attr::cast)?;
+    let attr = ctx.find_node_at_offset::<ast::Attr>()?;
+    let input = attr.token_tree()?;
 
     let attr_name = attr
         .syntax()
