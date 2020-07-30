@@ -248,9 +248,9 @@ impl<'a> CrateLoader<'a> {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 if let Some(mut files) = entry.files() {
                     if files.any(|l| {
-                        let l = fs::canonicalize(l).ok();
-                        source.dylib.as_ref().map(|p| &p.0) == l.as_ref()
-                            || source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
+                        let l = fs::canonicalize(l).unwrap_or(l.clone().into());
+                        source.dylib.as_ref().map(|p| &p.0) == Some(&l)
+                            || source.rlib.as_ref().map(|p| &p.0) == Some(&l)
                     }) {
                         ret = Some(cnum);
                     }

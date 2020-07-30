@@ -117,28 +117,22 @@ pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
 
 pub fn get_or_default_sysroot() -> PathBuf {
     // Follow symlinks.  If the resolved path is relative, make it absolute.
-    fn canonicalize(path: Option<PathBuf>) -> Option<PathBuf> {
-        path.and_then(|path| {
-            match fs::canonicalize(&path) {
-                // See comments on this target function, but the gist is that
-                // gcc chokes on verbatim paths which fs::canonicalize generates
-                // so we try to avoid those kinds of paths.
-                Ok(canon) => Some(fix_windows_verbatim_for_gcc(&canon)),
-                Err(e) => panic!("failed to get realpath: {}", e),
-            }
-        })
+    fn canonicalize(path: PathBuf) -> PathBuf {
+        let path = fs::canonicalize(&path).unwrap_or(path);
+        // See comments on this target function, but the gist is that
+        // gcc chokes on verbatim paths which fs::canonicalize generates
+        // so we try to avoid those kinds of paths.
+        fix_windows_verbatim_for_gcc(&path)
     }
 
     match env::current_exe() {
-        Ok(exe) => match canonicalize(Some(exe)) {
-            Some(mut p) => {
-                p.pop();
-                p.pop();
-                p
-            }
-            None => panic!("can't determine value for sysroot"),
-        },
-        Err(ref e) => panic!(format!("failed to get current_exe: {}", e)),
+        Ok(exe) => {
+            let mut p = canonicalize(exe);
+            p.pop();
+            p.pop();
+            p
+        }
+        Err(e) => panic!("failed to get current_exe: {}", e),
     }
 }
 
