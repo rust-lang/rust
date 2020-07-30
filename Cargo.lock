@@ -841,6 +841,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
+name = "perf-event"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cb38a2f363560fb3cfcb47f28848b245a41c7e0d63e0b190918b712b6bf6803"
+dependencies = [
+ "libc",
+ "perf-event-open-sys",
+]
+
+[[package]]
+name = "perf-event-open-sys"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95db63e37862bc1b842135d2234ef9418f222cc660c6752f45e7cf9ddfb97f96"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "petgraph"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1126,6 +1145,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "once_cell",
+ "perf-event",
  "ra_arena",
 ]
 

@@ -3,7 +3,7 @@
 
 use std::{
     path::Path,
-    time::{Instant, SystemTime, UNIX_EPOCH},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use hir::{
@@ -29,6 +29,7 @@ use crate::{
     },
     print_memory_usage,
 };
+use ra_prof::StopWatch;
 
 /// Need to wrap Snapshot to provide `Clone` impl for `map_with`
 struct Snap<DB>(DB);
@@ -54,11 +55,12 @@ pub fn analysis_stats(
         Rand32::new(seed)
     };
 
-    let db_load_time = Instant::now();
+    let mut db_load_sw = StopWatch::start().memory(memory_usage);
     let (host, vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
     let db = host.raw_database();
-    eprintln!("Database loaded {:?}", db_load_time.elapsed());
-    let analysis_time = Instant::now();
+    eprintln!("Database loaded {}", db_load_sw.elapsed());
+
+    let mut analysis_sw = StopWatch::start().memory(memory_usage);
     let mut num_crates = 0;
     let mut visited_modules = FxHashSet::default();
     let mut visit_queue = Vec::new();
@@ -110,8 +112,7 @@ pub fn analysis_stats(
     eprintln!("Total modules found: {}", visited_modules.len());
     eprintln!("Total declarations: {}", num_decls);
     eprintln!("Total functions: {}", funcs.len());
-    let item_collection_memory = ra_prof::memory_usage();
-    eprintln!("Item Collection: {:?}, {}", analysis_time.elapsed(), item_collection_memory);
+    eprintln!("Item Collection: {}", analysis_sw.elapsed());
 
     if randomize {
         shuffle(&mut rng, &mut funcs);
@@ -123,7 +124,7 @@ pub fn analysis_stats(
     };
 
     if parallel {
-        let inference_time = Instant::now();
+        let mut inference_sw = StopWatch::start().memory(memory_usage);
         let snap = Snap(db.snapshot());
         funcs
             .par_iter()
@@ -133,14 +134,10 @@ pub fn analysis_stats(
                 snap.0.infer(f_id.into());
             })
             .count();
-        eprintln!(
-            "Parallel Inference: {:?}, {}",
-            inference_time.elapsed(),
-            ra_prof::memory_usage()
-        );
+        eprintln!("Parallel Inference: {}", inference_sw.elapsed());
     }
 
-    let inference_time = Instant::now();
+    let mut inference_sw = StopWatch::start().memory(memory_usage);
     bar.tick();
     let mut num_exprs = 0;
     let mut num_exprs_unknown = 0;
@@ -291,14 +288,17 @@ pub fn analysis_stats(
     eprintln!("Type mismatches: {}", num_type_mismatches);
     report_metric("type mismatches", num_type_mismatches, "#");
 
-    let inference_time = inference_time.elapsed();
-    let total_memory = ra_prof::memory_usage();
-    eprintln!("Inference: {:?}, {}", inference_time, total_memory - item_collection_memory);
+    eprintln!("Inference: {}", inference_sw.elapsed());
 
-    let analysis_time = analysis_time.elapsed();
-    eprintln!("Total: {:?}, {}", analysis_time, total_memory);
-    report_metric("total time", analysis_time.as_millis() as u64, "ms");
-    report_metric("total memory", total_memory.allocated.megabytes() as u64, "MB");
+    let total_span = analysis_sw.elapsed();
+    eprintln!("Total: {}", total_span);
+    report_metric("total time", total_span.time.as_millis() as u64, "ms");
+    if let Some(instructions) = total_span.instructions {
+        report_metric("total time", instructions, "#instr");
+    }
+    if let Some(memory) = total_span.memory {
+        report_metric("total memory", memory.allocated.megabytes() as u64, "MB");
+    }
 
     if memory_usage {
         print_memory_usage(host, vfs);
