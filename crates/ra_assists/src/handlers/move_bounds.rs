@@ -43,7 +43,7 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
             ast::EnumDef(it) => it.variant_list()?.syntax().clone().into(),
             ast::StructDef(it) => {
                 it.syntax().children_with_tokens()
-                    .find(|it| it.kind() == RECORD_FIELD_DEF_LIST || it.kind() == T![;])?
+                    .find(|it| it.kind() == RECORD_FIELD_LIST || it.kind() == T![;])?
             },
             _ => return None
         }

@@ -179,7 +179,7 @@ impl VariantData {
 
 impl HasChildSource for VariantId {
     type ChildId = LocalFieldId;
-    type Value = Either<ast::TupleFieldDef, ast::RecordFieldDef>;
+    type Value = Either<ast::TupleField, ast::RecordField>;
 
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let (src, module_id) = match self {
@@ -194,7 +194,7 @@ impl HasChildSource for VariantId {
             }
             VariantId::UnionId(it) => (
                 it.lookup(db).source(db).map(|it| {
-                    it.record_field_def_list()
+                    it.record_field_list()
                         .map(ast::StructKind::Record)
                         .unwrap_or(ast::StructKind::Unit)
                 }),
@@ -218,7 +218,7 @@ pub enum StructKind {
 fn lower_struct(
     db: &dyn DefDatabase,
     expander: &mut CfgExpander,
-    trace: &mut Trace<FieldData, Either<ast::TupleFieldDef, ast::RecordFieldDef>>,
+    trace: &mut Trace<FieldData, Either<ast::TupleField, ast::RecordField>>,
     ast: &InFile<ast::StructKind>,
 ) -> StructKind {
     let ctx = LowerCtx::new(db, ast.file_id);

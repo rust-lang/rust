@@ -47,7 +47,7 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         }
         (vis_offset(&parent), keyword.text_range())
     } else if let Some(field_name) = ctx.find_node_at_offset::<ast::Name>() {
-        let field = field_name.syntax().ancestors().find_map(ast::RecordFieldDef::cast)?;
+        let field = field_name.syntax().ancestors().find_map(ast::RecordField::cast)?;
         if field.name()? != field_name {
             mark::hit!(change_visibility_field_false_positive);
             return None;
@@ -56,7 +56,7 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             return None;
         }
         (vis_offset(field.syntax()), field_name.syntax().text_range())
-    } else if let Some(field) = ctx.find_node_at_offset::<ast::TupleFieldDef>() {
+    } else if let Some(field) = ctx.find_node_at_offset::<ast::TupleField>() {
         if field.visibility().is_some() {
             return None;
         }

@@ -119,7 +119,7 @@ pub(crate) fn record_field_def_list(p: &mut Parser) {
         }
     }
     p.expect(T!['}']);
-    m.complete(p, RECORD_FIELD_DEF_LIST);
+    m.complete(p, RECORD_FIELD_LIST);
 
     fn record_field_def(p: &mut Parser) {
         let m = p.start();
@@ -134,7 +134,7 @@ pub(crate) fn record_field_def_list(p: &mut Parser) {
             name(p);
             p.expect(T![:]);
             types::type_(p);
-            m.complete(p, RECORD_FIELD_DEF);
+            m.complete(p, RECORD_FIELD);
         } else {
             m.abandon(p);
             p.err_and_bump("expected field declaration");
@@ -167,12 +167,12 @@ fn tuple_field_def_list(p: &mut Parser) {
             break;
         }
         types::type_(p);
-        m.complete(p, TUPLE_FIELD_DEF);
+        m.complete(p, TUPLE_FIELD);
 
         if !p.at(T![')']) {
             p.expect(T![,]);
         }
     }
     p.expect(T![')']);
-    m.complete(p, TUPLE_FIELD_DEF_LIST);
+    m.complete(p, TUPLE_FIELD_LIST);
 }

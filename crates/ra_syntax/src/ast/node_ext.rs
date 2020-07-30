@@ -166,16 +166,16 @@ impl ast::ImplDef {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructKind {
-    Record(ast::RecordFieldDefList),
-    Tuple(ast::TupleFieldDefList),
+    Record(ast::RecordFieldList),
+    Tuple(ast::TupleFieldList),
     Unit,
 }
 
 impl StructKind {
     fn from_node<N: AstNode>(node: &N) -> StructKind {
-        if let Some(nfdl) = support::child::<ast::RecordFieldDefList>(node.syntax()) {
+        if let Some(nfdl) = support::child::<ast::RecordFieldList>(node.syntax()) {
             StructKind::Record(nfdl)
-        } else if let Some(pfl) = support::child::<ast::TupleFieldDefList>(node.syntax()) {
+        } else if let Some(pfl) = support::child::<ast::TupleFieldList>(node.syntax()) {
             StructKind::Tuple(pfl)
         } else {
             StructKind::Unit
@@ -477,8 +477,8 @@ impl ast::DocCommentsOwner for ast::SourceFile {}
 impl ast::DocCommentsOwner for ast::Fn {}
 impl ast::DocCommentsOwner for ast::StructDef {}
 impl ast::DocCommentsOwner for ast::UnionDef {}
-impl ast::DocCommentsOwner for ast::RecordFieldDef {}
-impl ast::DocCommentsOwner for ast::TupleFieldDef {}
+impl ast::DocCommentsOwner for ast::RecordField {}
+impl ast::DocCommentsOwner for ast::TupleField {}
 impl ast::DocCommentsOwner for ast::EnumDef {}
 impl ast::DocCommentsOwner for ast::EnumVariant {}
 impl ast::DocCommentsOwner for ast::TraitDef {}

@@ -92,16 +92,10 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn type_alias_to_def(&mut self, src: InFile<ast::TypeAlias>) -> Option<TypeAliasId> {
         self.to_def(src, keys::TYPE_ALIAS)
     }
-    pub(super) fn record_field_to_def(
-        &mut self,
-        src: InFile<ast::RecordFieldDef>,
-    ) -> Option<FieldId> {
+    pub(super) fn record_field_to_def(&mut self, src: InFile<ast::RecordField>) -> Option<FieldId> {
         self.to_def(src, keys::RECORD_FIELD)
     }
-    pub(super) fn tuple_field_to_def(
-        &mut self,
-        src: InFile<ast::TupleFieldDef>,
-    ) -> Option<FieldId> {
+    pub(super) fn tuple_field_to_def(&mut self, src: InFile<ast::TupleField>) -> Option<FieldId> {
         self.to_def(src, keys::TUPLE_FIELD)
     }
     pub(super) fn enum_variant_to_def(

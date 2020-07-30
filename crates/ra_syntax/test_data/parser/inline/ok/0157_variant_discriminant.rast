@@ -11,9 +11,9 @@ SOURCE_FILE@0..23
       ENUM_VARIANT@9..20
         NAME@9..10
           IDENT@9..10 "X"
-        TUPLE_FIELD_DEF_LIST@10..15
+        TUPLE_FIELD_LIST@10..15
           L_PAREN@10..11 "("
-          TUPLE_FIELD_DEF@11..14
+          TUPLE_FIELD@11..14
             PATH_TYPE@11..14
               PATH@11..14
                 PATH_SEGMENT@11..14

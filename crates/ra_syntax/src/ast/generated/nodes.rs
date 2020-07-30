@@ -165,7 +165,7 @@ impl ast::GenericParamsOwner for StructDef {}
 impl StructDef {
     pub fn struct_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![struct]) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
-    pub fn field_def_list(&self) -> Option<FieldDefList> { support::child(&self.syntax) }
+    pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitDef {
@@ -208,9 +208,7 @@ impl ast::VisibilityOwner for UnionDef {}
 impl ast::GenericParamsOwner for UnionDef {}
 impl UnionDef {
     pub fn union_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![union]) }
-    pub fn record_field_def_list(&self) -> Option<RecordFieldDefList> {
-        support::child(&self.syntax)
-    }
+    pub fn record_field_list(&self) -> Option<RecordFieldList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Use {
@@ -391,42 +389,42 @@ impl TypeBoundList {
     pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordFieldDefList {
+pub struct RecordFieldList {
     pub(crate) syntax: SyntaxNode,
 }
-impl RecordFieldDefList {
+impl RecordFieldList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn fields(&self) -> AstChildren<RecordFieldDef> { support::children(&self.syntax) }
+    pub fn fields(&self) -> AstChildren<RecordField> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TupleFieldDefList {
+pub struct TupleFieldList {
     pub(crate) syntax: SyntaxNode,
 }
-impl TupleFieldDefList {
+impl TupleFieldList {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn fields(&self) -> AstChildren<TupleFieldDef> { support::children(&self.syntax) }
+    pub fn fields(&self) -> AstChildren<TupleField> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordFieldDef {
+pub struct RecordField {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RecordFieldDef {}
-impl ast::NameOwner for RecordFieldDef {}
-impl ast::VisibilityOwner for RecordFieldDef {}
-impl ast::TypeAscriptionOwner for RecordFieldDef {}
-impl RecordFieldDef {
+impl ast::AttrsOwner for RecordField {}
+impl ast::NameOwner for RecordField {}
+impl ast::VisibilityOwner for RecordField {}
+impl ast::TypeAscriptionOwner for RecordField {}
+impl RecordField {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TupleFieldDef {
+pub struct TupleField {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for TupleFieldDef {}
-impl ast::NameOwner for TupleFieldDef {}
-impl ast::VisibilityOwner for TupleFieldDef {}
-impl TupleFieldDef {
+impl ast::AttrsOwner for TupleField {}
+impl ast::NameOwner for TupleField {}
+impl ast::VisibilityOwner for TupleField {}
+impl TupleField {
     pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -446,7 +444,7 @@ impl ast::AttrsOwner for EnumVariant {}
 impl ast::NameOwner for EnumVariant {}
 impl ast::VisibilityOwner for EnumVariant {}
 impl EnumVariant {
-    pub fn field_def_list(&self) -> Option<FieldDefList> { support::child(&self.syntax) }
+    pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
@@ -1326,9 +1324,9 @@ pub enum Pat {
     MacroPat(MacroPat),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum FieldDefList {
-    RecordFieldDefList(RecordFieldDefList),
-    TupleFieldDefList(TupleFieldDefList),
+pub enum FieldList {
+    RecordFieldList(RecordFieldList),
+    TupleFieldList(TupleFieldList),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
@@ -1765,8 +1763,8 @@ impl AstNode for TypeBoundList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for RecordFieldDefList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_DEF_LIST }
+impl AstNode for RecordFieldList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1776,8 +1774,8 @@ impl AstNode for RecordFieldDefList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TupleFieldDefList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_FIELD_DEF_LIST }
+impl AstNode for TupleFieldList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_FIELD_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1787,8 +1785,8 @@ impl AstNode for TupleFieldDefList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for RecordFieldDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_DEF }
+impl AstNode for RecordField {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1798,8 +1796,8 @@ impl AstNode for RecordFieldDef {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TupleFieldDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_FIELD_DEF }
+impl AstNode for TupleField {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_FIELD }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3046,33 +3044,31 @@ impl AstNode for Pat {
         }
     }
 }
-impl From<RecordFieldDefList> for FieldDefList {
-    fn from(node: RecordFieldDefList) -> FieldDefList { FieldDefList::RecordFieldDefList(node) }
+impl From<RecordFieldList> for FieldList {
+    fn from(node: RecordFieldList) -> FieldList { FieldList::RecordFieldList(node) }
 }
-impl From<TupleFieldDefList> for FieldDefList {
-    fn from(node: TupleFieldDefList) -> FieldDefList { FieldDefList::TupleFieldDefList(node) }
+impl From<TupleFieldList> for FieldList {
+    fn from(node: TupleFieldList) -> FieldList { FieldList::TupleFieldList(node) }
 }
-impl AstNode for FieldDefList {
+impl AstNode for FieldList {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            RECORD_FIELD_DEF_LIST | TUPLE_FIELD_DEF_LIST => true,
+            RECORD_FIELD_LIST | TUPLE_FIELD_LIST => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            RECORD_FIELD_DEF_LIST => {
-                FieldDefList::RecordFieldDefList(RecordFieldDefList { syntax })
-            }
-            TUPLE_FIELD_DEF_LIST => FieldDefList::TupleFieldDefList(TupleFieldDefList { syntax }),
+            RECORD_FIELD_LIST => FieldList::RecordFieldList(RecordFieldList { syntax }),
+            TUPLE_FIELD_LIST => FieldList::TupleFieldList(TupleFieldList { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            FieldDefList::RecordFieldDefList(it) => &it.syntax,
-            FieldDefList::TupleFieldDefList(it) => &it.syntax,
+            FieldList::RecordFieldList(it) => &it.syntax,
+            FieldList::TupleFieldList(it) => &it.syntax,
         }
     }
 }
@@ -3425,7 +3421,7 @@ impl std::fmt::Display for Pat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for FieldDefList {
+impl std::fmt::Display for FieldList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3625,22 +3621,22 @@ impl std::fmt::Display for TypeBoundList {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for RecordFieldDefList {
+impl std::fmt::Display for RecordFieldList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TupleFieldDefList {
+impl std::fmt::Display for TupleFieldList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for RecordFieldDef {
+impl std::fmt::Display for RecordField {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TupleFieldDef {
+impl std::fmt::Display for TupleField {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

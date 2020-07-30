@@ -85,7 +85,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         COMMENT => Some(FoldKind::Comment),
         USE => Some(FoldKind::Imports),
         ARG_LIST | PARAM_LIST => Some(FoldKind::ArgList),
-        RECORD_FIELD_DEF_LIST
+        RECORD_FIELD_LIST
         | RECORD_FIELD_PAT_LIST
         | RECORD_EXPR_FIELD_LIST
         | ITEM_LIST

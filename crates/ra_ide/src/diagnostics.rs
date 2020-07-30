@@ -155,21 +155,21 @@ fn missing_struct_field_fix(
             module = s.module(sema.db);
             let source = s.source(sema.db);
             def_file_id = source.file_id;
-            let fields = source.value.field_def_list()?;
-            record_field_def_list(fields)?
+            let fields = source.value.field_list()?;
+            record_field_list(fields)?
         }
         VariantDef::Union(u) => {
             module = u.module(sema.db);
             let source = u.source(sema.db);
             def_file_id = source.file_id;
-            source.value.record_field_def_list()?
+            source.value.record_field_list()?
         }
         VariantDef::EnumVariant(e) => {
             module = e.module(sema.db);
             let source = e.source(sema.db);
             def_file_id = source.file_id;
-            let fields = source.value.field_def_list()?;
-            record_field_def_list(fields)?
+            let fields = source.value.field_list()?;
+            record_field_list(fields)?
         }
     };
     let def_file_id = def_file_id.original_file(sema.db);
@@ -205,10 +205,10 @@ fn missing_struct_field_fix(
     let fix = Fix::new("Create field", source_change.into());
     return Some(fix);
 
-    fn record_field_def_list(field_def_list: ast::FieldDefList) -> Option<ast::RecordFieldDefList> {
+    fn record_field_list(field_def_list: ast::FieldList) -> Option<ast::RecordFieldList> {
         match field_def_list {
-            ast::FieldDefList::RecordFieldDefList(it) => Some(it),
-            ast::FieldDefList::TupleFieldDefList(_) => None,
+            ast::FieldList::RecordFieldList(it) => Some(it),
+            ast::FieldList::TupleFieldList(_) => None,
         }
     }
 }

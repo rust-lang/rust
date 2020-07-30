@@ -39,8 +39,8 @@ fn try_extend_selection(
     let list_kinds = [
         RECORD_FIELD_PAT_LIST,
         MATCH_ARM_LIST,
-        RECORD_FIELD_DEF_LIST,
-        TUPLE_FIELD_DEF_LIST,
+        RECORD_FIELD_LIST,
+        TUPLE_FIELD_LIST,
         RECORD_EXPR_FIELD_LIST,
         ENUM_VARIANT_LIST,
         USE_TREE_LIST,
