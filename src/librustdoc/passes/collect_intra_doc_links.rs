@@ -1,4 +1,5 @@
 use rustc_ast as ast;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtensionKind;
 use rustc_feature::UnstableFeatures;
@@ -9,7 +10,7 @@ use rustc_hir::def::{
     PerNS, Res,
 };
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_resolve::ParentScope;
 use rustc_session::lint;
 use rustc_span::hygiene::MacroKind;
@@ -347,7 +348,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             // HACK(jynelson): `clean` expects the type, not the associated item.
                             // but the disambiguator logic expects the associated item.
                             // Store the kind in a side channel so that only the disambiguator logic looks at it.
-                            self.kind_side_channel.replace(Some(item.kind.as_def_kind()));
+                            self.kind_side_channel.set(Some(kind.as_def_kind()));
                             Ok((ty_res, Some(format!("{}.{}", out, item_name))))
                         })
                     } else if ns == Namespace::ValueNS {
@@ -443,8 +444,6 @@ fn resolve_associated_trait_item(
     ns: Namespace,
     cx: &DocContext<'_>,
 ) -> Option<ty::AssocKind> {
-    use rustc_hir::def_id::LOCAL_CRATE;
-
     let ty = cx.tcx.type_of(did);
     // First consider automatic impls: `impl From<T> for T`
     let implicit_impls = crate::clean::get_auto_trait_and_blanket_impls(cx, ty, did);
@@ -501,52 +500,67 @@ fn resolve_associated_trait_item(
             }
         })
         .collect();
+
     // Next consider explicit impls: `impl MyTrait for MyType`
-    // There isn't a cheap way to do this. Just look at every trait!
-    for &trait_ in cx.tcx.all_traits(LOCAL_CRATE) {
-        trace!("considering explicit impl for trait {:?}", trait_);
-        // We can skip the trait if it doesn't have the associated item `item_name`
-        let assoc_item = cx
-            .tcx
-            .associated_items(trait_)
-            .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
-            .map(|assoc| (assoc.def_id, assoc.kind));
-        if let Some(assoc_item) = assoc_item {
-            debug!("considering item {:?}", assoc_item);
-            // Look at each trait implementation to see if it's an impl for `did`
-            cx.tcx.for_each_relevant_impl(trait_, ty, |impl_| {
-                use ty::TyKind;
-
-                let trait_ref = cx.tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
-                // Check if these are the same type.
-                let impl_type = trait_ref.self_ty();
-                debug!(
-                    "comparing type {} with kind {:?} against def_id {:?}",
-                    impl_type, impl_type.kind, did
-                );
-                // Fast path: if this is a primitive simple `==` will work
-                let same_type = impl_type == ty
-                    || match impl_type.kind {
-                        // Check if these are the same def_id
-                        TyKind::Adt(def, _) => {
-                            debug!("adt did: {:?}", def.did);
-                            def.did == did
-                        }
-                        TyKind::Foreign(def_id) => def_id == did,
-                        _ => false,
-                    };
-                if same_type {
-                    // We found it!
-                    debug!("found a match!");
-                    candidates.push(assoc_item);
-                }
-            });
-        }
+    // Give precedence to inherent impls.
+    if candidates.is_empty() {
+        let mut cache = cx.type_trait_cache.borrow_mut();
+        let traits = cache.entry(did).or_insert_with(|| traits_implemented_by(cx.tcx, did));
+        debug!("considering traits {:?}", traits);
+        candidates.extend(traits.iter().filter_map(|&trait_| {
+            cx.tcx
+                .associated_items(trait_)
+                .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
+                .map(|assoc| (assoc.def_id, assoc.kind))
+        }));
     }
-
     // FIXME: warn about ambiguity
     debug!("the candidates were {:?}", candidates);
     candidates.pop().map(|(_, kind)| kind)
+}
+
+/// Given a type, return all traits implemented by that type.
+///
+/// NOTE: this cannot be a query because more traits could be available when more crates are compiled!
+/// So it is not stable to serialize cross-crate.
+/// FIXME: this should only search traits in scope
+fn traits_implemented_by<'a>(tcx: TyCtxt<'a>, type_: DefId) -> FxHashSet<DefId> {
+    use rustc_hir::def_id::LOCAL_CRATE;
+
+    let all_traits = tcx.all_traits(LOCAL_CRATE).iter().copied();
+    let ty = tcx.type_of(type_);
+    let iter = all_traits.flat_map(|trait_| {
+        trace!("considering explicit impl for trait {:?}", trait_);
+        let mut saw_impl = false;
+        // Look at each trait implementation to see if it's an impl for `did`
+        tcx.for_each_relevant_impl(trait_, ty, |impl_| {
+            // FIXME: this is inefficient, find a way to short-circuit for_each_* so this doesn't take as long
+            if saw_impl {
+                return;
+            }
+
+            let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
+            // Check if these are the same type.
+            let impl_type = trait_ref.self_ty();
+            debug!(
+                "comparing type {} with kind {:?} against type {:?}",
+                impl_type, impl_type.kind, type_
+            );
+            // Fast path: if this is a primitive simple `==` will work
+            saw_impl = impl_type == ty
+                || match impl_type.kind {
+                    // Check if these are the same def_id
+                    ty::Adt(def, _) => {
+                        debug!("adt def_id: {:?}", def.did);
+                        def.did == type_
+                    }
+                    ty::Foreign(def_id) => def_id == type_,
+                    _ => false,
+                };
+        });
+        if saw_impl { Some(trait_) } else { None }
+    });
+    iter.collect()
 }
 
 /// Check for resolve collisions between a trait and its derive

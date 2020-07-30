@@ -69,6 +69,11 @@ pub struct DocContext<'tcx> {
     pub auto_traits: Vec<DefId>,
     /// The options given to rustdoc that could be relevant to a pass.
     pub render_options: RenderOptions,
+    /// The traits implemented by a given type.
+    ///
+    /// See `collect_intra_doc_links::traits_implemented_by` for more details.
+    /// `map<type, set<trait>>`
+    pub type_trait_cache: RefCell<FxHashMap<DefId, FxHashSet<DefId>>>,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -510,6 +515,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
                         .collect(),
                     render_options,
+                    type_trait_cache: RefCell::new(FxHashMap::default()),
                 };
                 debug!("crate: {:?}", tcx.hir().krate());
 
