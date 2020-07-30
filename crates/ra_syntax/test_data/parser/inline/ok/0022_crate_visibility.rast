@@ -1,5 +1,5 @@
 SOURCE_FILE@0..81
-  STRUCT_DEF@0..20
+  STRUCT@0..20
     VISIBILITY@0..10
       PUB_KW@0..3 "pub"
       L_PAREN@3..4 "("
@@ -12,7 +12,7 @@ SOURCE_FILE@0..81
       IDENT@18..19 "S"
     SEMICOLON@19..20 ";"
   WHITESPACE@20..21 "\n"
-  STRUCT_DEF@21..40
+  STRUCT@21..40
     VISIBILITY@21..30
       PUB_KW@21..24 "pub"
       L_PAREN@24..25 "("
@@ -25,7 +25,7 @@ SOURCE_FILE@0..81
       IDENT@38..39 "S"
     SEMICOLON@39..40 ";"
   WHITESPACE@40..41 "\n"
-  STRUCT_DEF@41..60
+  STRUCT@41..60
     VISIBILITY@41..50
       PUB_KW@41..44 "pub"
       L_PAREN@44..45 "("
@@ -38,7 +38,7 @@ SOURCE_FILE@0..81
       IDENT@58..59 "S"
     SEMICOLON@59..60 ";"
   WHITESPACE@60..61 "\n"
-  STRUCT_DEF@61..80
+  STRUCT@61..80
     VISIBILITY@61..70
       PUB_KW@61..64 "pub"
       L_PAREN@64..65 "("

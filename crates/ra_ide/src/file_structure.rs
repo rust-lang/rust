@@ -126,7 +126,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 
                 decl_with_detail(it, Some(detail))
             },
-            ast::StructDef(it) => decl(it),
+            ast::Struct(it) => decl(it),
             ast::Union(it) => decl(it),
             ast::EnumDef(it) => decl(it),
             ast::EnumVariant(it) => decl(it),
@@ -238,7 +238,7 @@ fn very_obsolete() {}
                         label: "Foo",
                         navigation_range: 8..11,
                         node_range: 1..26,
-                        kind: STRUCT_DEF,
+                        kind: STRUCT,
                         detail: None,
                         deprecated: false,
                     },

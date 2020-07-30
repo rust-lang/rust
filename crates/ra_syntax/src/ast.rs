@@ -235,7 +235,7 @@ fn test_comments_preserve_trailing_whitespace() {
     )
     .ok()
     .unwrap();
-    let def = file.syntax().descendants().find_map(StructDef::cast).unwrap();
+    let def = file.syntax().descendants().find_map(Struct::cast).unwrap();
     assert_eq!(
         "Representation of a Realm.   \nIn the specification these are called Realm Records.",
         def.doc_comment_text().unwrap()

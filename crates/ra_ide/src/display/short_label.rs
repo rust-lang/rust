@@ -13,7 +13,7 @@ impl ShortLabel for ast::Fn {
     }
 }
 
-impl ShortLabel for ast::StructDef {
+impl ShortLabel for ast::Struct {
     fn short_label(&self) -> Option<String> {
         short_label_from_node(self, "struct ")
     }

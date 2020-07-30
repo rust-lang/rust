@@ -13,7 +13,7 @@ Item =
 | MacroCall
 | Module
 | StaticDef
-| StructDef
+| Struct
 | TraitDef
 | TypeAlias
 | Union
@@ -76,7 +76,7 @@ TypeAlias =
   Attr* Visibility? 'default'? 'type' Name GenericParamList? (':' TypeBoundList?)? WhereClause?
   '=' TypeRef ';'
 
-StructDef =
+Struct =
   Attr* Visibility? 'struct' Name GenericParamList? (
     WhereClause?  (RecordFieldList | ';')
   | TupleFieldList WhereClause? ';'
@@ -453,7 +453,7 @@ MetaItem =
   Path '=' AttrInput nested_meta_items:MetaItem*
 
 AdtDef =
-  StructDef
+  Struct
 | EnumDef
 | Union
 

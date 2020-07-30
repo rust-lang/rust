@@ -1,7 +1,7 @@
 SOURCE_FILE@0..199
   COMMENT@0..60 "// https://github.com ..."
   WHITESPACE@60..62 "\n\n"
-  STRUCT_DEF@62..73
+  STRUCT@62..73
     STRUCT_KW@62..68 "struct"
     WHITESPACE@68..69 " "
     NAME@69..72

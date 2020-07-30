@@ -47,7 +47,7 @@ SOURCE_FILE@0..111
           R_CURLY@89..90 "}"
       SEMICOLON@90..91 ";"
       WHITESPACE@91..96 "\n    "
-      STRUCT_DEF@96..107
+      STRUCT@96..107
         STRUCT_KW@96..102 "struct"
         WHITESPACE@102..103 " "
         NAME@103..104

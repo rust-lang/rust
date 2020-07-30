@@ -20,7 +20,7 @@ pub const STATIC: Key<ast::StaticDef, StaticId> = Key::new();
 pub const TYPE_ALIAS: Key<ast::TypeAlias, TypeAliasId> = Key::new();
 pub const IMPL: Key<ast::ImplDef, ImplId> = Key::new();
 pub const TRAIT: Key<ast::TraitDef, TraitId> = Key::new();
-pub const STRUCT: Key<ast::StructDef, StructId> = Key::new();
+pub const STRUCT: Key<ast::Struct, StructId> = Key::new();
 pub const UNION: Key<ast::Union, UnionId> = Key::new();
 pub const ENUM: Key<ast::EnumDef, EnumId> = Key::new();
 

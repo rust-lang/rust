@@ -72,7 +72,7 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
     let node = item.syntax();
     let (name, params) = match_ast! {
         match node {
-            ast::StructDef(it) => (it.name(), it.generic_param_list()),
+            ast::Struct(it) => (it.name(), it.generic_param_list()),
             ast::EnumDef(it) => (it.name(), it.generic_param_list()),
             ast::Union(it) => (it.name(), it.generic_param_list()),
             _ => {

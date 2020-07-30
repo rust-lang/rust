@@ -28,7 +28,7 @@ SOURCE_FILE@0..112
         ERROR@17..18
           COMMA@17..18 ","
       WHITESPACE@18..19 " "
-      STRUCT_DEF@19..26
+      STRUCT@19..26
         STRUCT_KW@19..25 "struct"
         ERROR@25..26
           COMMA@25..26 ","

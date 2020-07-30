@@ -41,7 +41,7 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
             ast::TraitDef(it) => it.assoc_item_list()?.syntax().clone().into(),
             ast::ImplDef(it) => it.assoc_item_list()?.syntax().clone().into(),
             ast::EnumDef(it) => it.variant_list()?.syntax().clone().into(),
-            ast::StructDef(it) => {
+            ast::Struct(it) => {
                 it.syntax().children_with_tokens()
                     .find(|it| it.kind() == RECORD_FIELD_LIST || it.kind() == T![;])?
             },

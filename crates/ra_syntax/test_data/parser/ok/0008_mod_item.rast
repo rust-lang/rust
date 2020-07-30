@@ -40,7 +40,7 @@ SOURCE_FILE@0..118
           WHITESPACE@41..46 "\n    "
           R_CURLY@46..47 "}"
       WHITESPACE@47..52 "\n    "
-      STRUCT_DEF@52..63
+      STRUCT@52..63
         STRUCT_KW@52..58 "struct"
         WHITESPACE@58..59 " "
         NAME@59..60
