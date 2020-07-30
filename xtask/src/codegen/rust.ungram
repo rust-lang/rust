@@ -173,6 +173,14 @@ ConstParam =
 LifetimeParam =
   Attr* 'lifetime'
 
+Visibility =
+  'pub' ('('
+    'super'
+  | 'self'
+  | 'crate'
+  | 'in' Path
+  ')')?
+
 ParenType =
   '(' TypeRef ')'
 
@@ -390,9 +398,6 @@ TupleStructPat =
 
 TuplePat =
    '(' args:Pat* ')'
-
-Visibility =
-  'pub' ('(' 'super' | 'self' | 'crate' | 'in' Path ')')?
 
 Name =
   'ident'
