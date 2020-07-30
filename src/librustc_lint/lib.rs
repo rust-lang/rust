@@ -61,8 +61,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
-    BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
-    INTRA_DOC_RESOLUTION_FAILURES, INVALID_CODEBLOCK_ATTRIBUTES, MISSING_DOC_CODE_EXAMPLES,
+    BARE_TRAIT_OBJECTS, BROKEN_INTRA_DOC_LINKS, ELIDED_LIFETIMES_IN_PATHS,
+    EXPLICIT_OUTLIVES_REQUIREMENTS, INVALID_CODEBLOCK_ATTRIBUTES, MISSING_DOC_CODE_EXAMPLES,
     PRIVATE_DOC_TESTS,
 };
 use rustc_span::symbol::{Ident, Symbol};
@@ -303,7 +303,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
 
     add_lint_group!(
         "rustdoc",
-        INTRA_DOC_RESOLUTION_FAILURES,
+        BROKEN_INTRA_DOC_LINKS,
         INVALID_CODEBLOCK_ATTRIBUTES,
         MISSING_DOC_CODE_EXAMPLES,
         PRIVATE_DOC_TESTS

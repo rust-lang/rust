@@ -867,7 +867,7 @@ fn report_diagnostic(
     let attrs = &item.attrs;
     let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
-    cx.tcx.struct_span_lint_hir(lint::builtin::INTRA_DOC_RESOLUTION_FAILURES, hir_id, sp, |lint| {
+    cx.tcx.struct_span_lint_hir(lint::builtin::BROKEN_INTRA_DOC_LINKS, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);
 
         let span = link_range
