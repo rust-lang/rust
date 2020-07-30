@@ -401,7 +401,7 @@ impl ast::BlockExpr {
             Some(it) => it,
             None => return true,
         };
-        !matches!(parent.kind(), FN_DEF | IF_EXPR | WHILE_EXPR | LOOP_EXPR | EFFECT_EXPR)
+        !matches!(parent.kind(), FN | IF_EXPR | WHILE_EXPR | LOOP_EXPR | EFFECT_EXPR)
     }
 }
 

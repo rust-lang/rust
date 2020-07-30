@@ -11,7 +11,7 @@ SOURCE_FILE@0..69
     ASSOC_ITEM_LIST@7..68
       L_CURLY@7..8 "{"
       WHITESPACE@8..13 "\n    "
-      FN_DEF@13..33
+      FN@13..33
         FN_KW@13..15 "fn"
         WHITESPACE@15..16 " "
         NAME@16..17
@@ -35,7 +35,7 @@ SOURCE_FILE@0..69
           L_CURLY@31..32 "{"
           R_CURLY@32..33 "}"
       WHITESPACE@33..38 "\n    "
-      FN_DEF@38..66
+      FN@38..66
         FN_KW@38..40 "fn"
         WHITESPACE@40..41 " "
         NAME@41..42

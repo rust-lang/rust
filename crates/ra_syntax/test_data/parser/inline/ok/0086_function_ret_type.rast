@@ -1,5 +1,5 @@
 SOURCE_FILE@0..30
-  FN_DEF@0..11
+  FN@0..11
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -12,7 +12,7 @@ SOURCE_FILE@0..30
       L_CURLY@9..10 "{"
       R_CURLY@10..11 "}"
   WHITESPACE@11..12 "\n"
-  FN_DEF@12..29
+  FN@12..29
     FN_KW@12..14 "fn"
     WHITESPACE@14..15 " "
     NAME@15..18

@@ -35,7 +35,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) krate: Option<hir::Crate>,
     pub(super) expected_type: Option<Type>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
-    pub(super) function_syntax: Option<ast::FnDef>,
+    pub(super) function_syntax: Option<ast::Fn>,
     pub(super) use_item_syntax: Option<ast::Use>,
     pub(super) record_lit_syntax: Option<ast::RecordLit>,
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
@@ -349,7 +349,7 @@ impl<'a> CompletionContext<'a> {
             .sema
             .ancestors_with_macros(self.token.parent())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-            .find_map(ast::FnDef::cast);
+            .find_map(ast::Fn::cast);
 
         self.record_field_syntax = self
             .sema

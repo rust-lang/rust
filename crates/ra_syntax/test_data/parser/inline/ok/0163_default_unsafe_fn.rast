@@ -19,7 +19,7 @@ SOURCE_FILE@0..50
     ASSOC_ITEM_LIST@15..49
       L_CURLY@15..16 "{"
       WHITESPACE@16..21 "\n    "
-      FN_DEF@21..47
+      FN@21..47
         DEFAULT_KW@21..28 "default"
         WHITESPACE@28..29 " "
         UNSAFE_KW@29..35 "unsafe"

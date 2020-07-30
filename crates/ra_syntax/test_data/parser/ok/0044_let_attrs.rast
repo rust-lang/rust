@@ -1,5 +1,5 @@
 SOURCE_FILE@0..166
-  FN_DEF@0..165
+  FN@0..165
     COMMENT@0..60 "// https://github.com ..."
     WHITESPACE@60..61 "\n"
     FN_KW@61..63 "fn"

@@ -1,7 +1,7 @@
 SOURCE_FILE@0..395
   COMMENT@0..60 "// https://github.com ..."
   WHITESPACE@60..62 "\n\n"
-  FN_DEF@62..341
+  FN@62..341
     FN_KW@62..64 "fn"
     WHITESPACE@64..65 " "
     NAME@65..69
@@ -288,7 +288,7 @@ SOURCE_FILE@0..395
       WHITESPACE@365..366 "\n"
       R_CURLY@366..367 "}"
   WHITESPACE@367..369 "\n\n"
-  FN_DEF@369..394
+  FN@369..394
     FN_KW@369..371 "fn"
     WHITESPACE@371..372 " "
     NAME@372..375

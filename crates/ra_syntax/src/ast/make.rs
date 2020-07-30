@@ -294,7 +294,7 @@ pub fn fn_def(
     type_params: Option<ast::TypeParamList>,
     params: ast::ParamList,
     body: ast::BlockExpr,
-) -> ast::FnDef {
+) -> ast::Fn {
     let type_params =
         if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
     let visibility = match visibility {

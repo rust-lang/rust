@@ -14,7 +14,7 @@ SOURCE_FILE@0..62
             NAME_REF@14..21
               IDENT@14..21 "default"
       WHITESPACE@21..22 " "
-      TYPE_ALIAS_DEF@22..35
+      TYPE_ALIAS@22..35
         TYPE_KW@22..26 "type"
         WHITESPACE@26..27 " "
         NAME@27..28
@@ -35,7 +35,7 @@ SOURCE_FILE@0..62
             NAME_REF@40..47
               IDENT@40..47 "default"
       WHITESPACE@47..48 " "
-      FN_DEF@48..59
+      FN@48..59
         FN_KW@48..50 "fn"
         WHITESPACE@50..51 " "
         NAME@51..54

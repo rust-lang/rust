@@ -1,5 +1,5 @@
 SOURCE_FILE@0..18
-  FN_DEF@0..17
+  FN@0..17
     ASYNC_KW@0..5 "async"
     WHITESPACE@5..6 " "
     FN_KW@6..8 "fn"

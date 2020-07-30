@@ -16,7 +16,7 @@ pub use navigation_target::NavigationTarget;
 pub(crate) use navigation_target::{ToNav, TryToNav};
 pub(crate) use short_label::ShortLabel;
 
-pub(crate) fn function_declaration(node: &ast::FnDef) -> String {
+pub(crate) fn function_declaration(node: &ast::Fn) -> String {
     let mut buf = String::new();
     if let Some(vis) = node.visibility() {
         format_to!(buf, "{} ", vis);
@@ -65,7 +65,7 @@ pub(crate) fn const_label(node: &ast::ConstDef) -> String {
     label.trim().to_owned()
 }
 
-pub(crate) fn type_label(node: &ast::TypeAliasDef) -> String {
+pub(crate) fn type_label(node: &ast::TypeAlias) -> String {
     let label: String = node
         .syntax()
         .children_with_tokens()

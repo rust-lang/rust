@@ -413,7 +413,7 @@ macro_rules! mod_items {
 mod_items! {
     Import in imports -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
-    Function in functions -> ast::FnDef,
+    Function in functions -> ast::Fn,
     Struct in structs -> ast::StructDef,
     Union in unions -> ast::UnionDef,
     Enum in enums -> ast::EnumDef,
@@ -421,7 +421,7 @@ mod_items! {
     Static in statics -> ast::StaticDef,
     Trait in traits -> ast::TraitDef,
     Impl in impls -> ast::ImplDef,
-    TypeAlias in type_aliases -> ast::TypeAliasDef,
+    TypeAlias in type_aliases -> ast::TypeAlias,
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
 }
@@ -505,7 +505,7 @@ pub struct Function {
     pub params: Box<[TypeRef]>,
     pub is_varargs: bool,
     pub ret_type: TypeRef,
-    pub ast_id: FileAstId<ast::FnDef>,
+    pub ast_id: FileAstId<ast::Fn>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -592,7 +592,7 @@ pub struct TypeAlias {
     pub bounds: Box<[TypeBound]>,
     pub generic_params: GenericParamsId,
     pub type_ref: Option<TypeRef>,
-    pub ast_id: FileAstId<ast::TypeAliasDef>,
+    pub ast_id: FileAstId<ast::TypeAlias>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

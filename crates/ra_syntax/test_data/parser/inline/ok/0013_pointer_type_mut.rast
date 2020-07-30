@@ -1,5 +1,5 @@
 SOURCE_FILE@0..36
-  TYPE_ALIAS_DEF@0..17
+  TYPE_ALIAS@0..17
     TYPE_KW@0..4 "type"
     WHITESPACE@4..5 " "
     NAME@5..6
@@ -16,7 +16,7 @@ SOURCE_FILE@0..36
         R_PAREN@15..16 ")"
     SEMICOLON@16..17 ";"
   WHITESPACE@17..18 "\n"
-  TYPE_ALIAS_DEF@18..35
+  TYPE_ALIAS@18..35
     TYPE_KW@18..22 "type"
     WHITESPACE@22..23 " "
     NAME@23..24

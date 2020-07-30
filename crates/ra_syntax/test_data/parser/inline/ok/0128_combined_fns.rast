@@ -1,5 +1,5 @@
 SOURCE_FILE@0..50
-  FN_DEF@0..24
+  FN@0..24
     ASYNC_KW@0..5 "async"
     WHITESPACE@5..6 " "
     UNSAFE_KW@6..12 "unsafe"
@@ -16,7 +16,7 @@ SOURCE_FILE@0..50
       L_CURLY@22..23 "{"
       R_CURLY@23..24 "}"
   WHITESPACE@24..25 "\n"
-  FN_DEF@25..49
+  FN@25..49
     CONST_KW@25..30 "const"
     WHITESPACE@30..31 " "
     UNSAFE_KW@31..37 "unsafe"

@@ -20,7 +20,7 @@ use test_utils::mark;
 pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
     // FIXME: extend to lambdas as well
-    let fn_def = ret_type.syntax().parent().and_then(ast::FnDef::cast)?;
+    let fn_def = ret_type.syntax().parent().and_then(ast::Fn::cast)?;
 
     let type_ref = &ret_type.type_ref()?;
     let ret_type_str = type_ref.syntax().text().to_string();

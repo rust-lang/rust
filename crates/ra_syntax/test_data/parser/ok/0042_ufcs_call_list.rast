@@ -20,7 +20,7 @@ SOURCE_FILE@0..199
     ASSOC_ITEM_LIST@84..141
       L_CURLY@84..85 "{"
       WHITESPACE@85..90 "\n    "
-      FN_DEF@90..139
+      FN@90..139
         FN_KW@90..92 "fn"
         WHITESPACE@92..93 " "
         NAME@93..96
@@ -55,7 +55,7 @@ SOURCE_FILE@0..199
       WHITESPACE@139..140 "\n"
       R_CURLY@140..141 "}"
   WHITESPACE@141..143 "\n\n"
-  FN_DEF@143..161
+  FN@143..161
     FN_KW@143..145 "fn"
     WHITESPACE@145..146 " "
     NAME@146..149
@@ -78,7 +78,7 @@ SOURCE_FILE@0..199
       L_CURLY@159..160 "{"
       R_CURLY@160..161 "}"
   WHITESPACE@161..163 "\n\n"
-  FN_DEF@163..198
+  FN@163..198
     FN_KW@163..165 "fn"
     WHITESPACE@165..166 " "
     NAME@166..170

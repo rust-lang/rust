@@ -19,8 +19,8 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
     let mut params = FxHashMap::default();
 
-    let me = ctx.token.ancestors().find_map(ast::FnDef::cast);
-    let mut process_fn = |func: ast::FnDef| {
+    let me = ctx.token.ancestors().find_map(ast::Fn::cast);
+    let mut process_fn = |func: ast::Fn| {
         if Some(&func) == me.as_ref() {
             return;
         }
@@ -34,15 +34,15 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         match_ast! {
             match node {
                 ast::SourceFile(it) => it.items().filter_map(|item| match item {
-                    ast::Item::FnDef(it) => Some(it),
+                    ast::Item::Fn(it) => Some(it),
                     _ => None,
                 }).for_each(&mut process_fn),
                 ast::ItemList(it) => it.items().filter_map(|item| match item {
-                    ast::Item::FnDef(it) => Some(it),
+                    ast::Item::Fn(it) => Some(it),
                     _ => None,
                 }).for_each(&mut process_fn),
                 ast::AssocItemList(it) => it.assoc_items().filter_map(|item| match item {
-                    ast::AssocItem::FnDef(it) => Some(it),
+                    ast::AssocItem::Fn(it) => Some(it),
                     _ => None,
                 }).for_each(&mut process_fn),
                 _ => continue,

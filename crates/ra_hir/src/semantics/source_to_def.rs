@@ -71,7 +71,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn impl_to_def(&mut self, src: InFile<ast::ImplDef>) -> Option<ImplId> {
         self.to_def(src, keys::IMPL)
     }
-    pub(super) fn fn_to_def(&mut self, src: InFile<ast::FnDef>) -> Option<FunctionId> {
+    pub(super) fn fn_to_def(&mut self, src: InFile<ast::Fn>) -> Option<FunctionId> {
         self.to_def(src, keys::FUNCTION)
     }
     pub(super) fn struct_to_def(&mut self, src: InFile<ast::StructDef>) -> Option<StructId> {
@@ -89,10 +89,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn const_to_def(&mut self, src: InFile<ast::ConstDef>) -> Option<ConstId> {
         self.to_def(src, keys::CONST)
     }
-    pub(super) fn type_alias_to_def(
-        &mut self,
-        src: InFile<ast::TypeAliasDef>,
-    ) -> Option<TypeAliasId> {
+    pub(super) fn type_alias_to_def(&mut self, src: InFile<ast::TypeAlias>) -> Option<TypeAliasId> {
         self.to_def(src, keys::TYPE_ALIAS)
     }
     pub(super) fn record_field_to_def(
@@ -171,7 +168,7 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.impl_to_def(container.with_value(it))?;
                         def.into()
                     },
-                    ast::FnDef(it) => {
+                    ast::Fn(it) => {
                         let def = self.fn_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
@@ -195,7 +192,7 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.const_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
-                    ast::TypeAliasDef(it) => {
+                    ast::TypeAlias(it) => {
                         let def = self.type_alias_to_def(container.with_value(it))?;
                         def.into()
                     },
@@ -213,11 +210,11 @@ impl SourceToDefCtx<'_, '_> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: GenericDefId = match_ast! {
                 match (container.value) {
-                    ast::FnDef(it) => self.fn_to_def(container.with_value(it))?.into(),
+                    ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
                     ast::StructDef(it) => self.struct_to_def(container.with_value(it))?.into(),
                     ast::EnumDef(it) => self.enum_to_def(container.with_value(it))?.into(),
                     ast::TraitDef(it) => self.trait_to_def(container.with_value(it))?.into(),
-                    ast::TypeAliasDef(it) => self.type_alias_to_def(container.with_value(it))?.into(),
+                    ast::TypeAlias(it) => self.type_alias_to_def(container.with_value(it))?.into(),
                     ast::ImplDef(it) => self.impl_to_def(container.with_value(it))?.into(),
                     _ => continue,
                 }
@@ -233,7 +230,7 @@ impl SourceToDefCtx<'_, '_> {
                 match (container.value) {
                     ast::ConstDef(it) => self.const_to_def(container.with_value(it))?.into(),
                     ast::StaticDef(it) => self.static_to_def(container.with_value(it))?.into(),
-                    ast::FnDef(it) => self.fn_to_def(container.with_value(it))?.into(),
+                    ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
                     _ => continue,
                 }
             };

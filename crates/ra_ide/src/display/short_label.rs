@@ -7,7 +7,7 @@ pub(crate) trait ShortLabel {
     fn short_label(&self) -> Option<String>;
 }
 
-impl ShortLabel for ast::FnDef {
+impl ShortLabel for ast::Fn {
     fn short_label(&self) -> Option<String> {
         Some(crate::display::function_declaration(self))
     }
@@ -47,7 +47,7 @@ impl ShortLabel for ast::Module {
     }
 }
 
-impl ShortLabel for ast::TypeAliasDef {
+impl ShortLabel for ast::TypeAlias {
     fn short_label(&self) -> Option<String> {
         short_label_from_node(self, "type ")
     }

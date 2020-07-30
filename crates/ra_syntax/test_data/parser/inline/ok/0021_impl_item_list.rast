@@ -11,7 +11,7 @@ SOURCE_FILE@0..89
     ASSOC_ITEM_LIST@7..88
       L_CURLY@7..8 "{"
       WHITESPACE@8..13 "\n    "
-      TYPE_ALIAS_DEF@13..26
+      TYPE_ALIAS@13..26
         TYPE_KW@13..17 "type"
         WHITESPACE@17..18 " "
         NAME@18..19
@@ -45,7 +45,7 @@ SOURCE_FILE@0..89
           INT_NUMBER@46..48 "92"
         SEMICOLON@48..49 ";"
       WHITESPACE@49..54 "\n    "
-      FN_DEF@54..65
+      FN@54..65
         FN_KW@54..56 "fn"
         WHITESPACE@56..57 " "
         NAME@57..60
@@ -58,7 +58,7 @@ SOURCE_FILE@0..89
           L_CURLY@63..64 "{"
           R_CURLY@64..65 "}"
       WHITESPACE@65..70 "\n    "
-      FN_DEF@70..86
+      FN@70..86
         FN_KW@70..72 "fn"
         WHITESPACE@72..73 " "
         NAME@73..76

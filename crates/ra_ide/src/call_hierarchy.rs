@@ -59,7 +59,7 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
         if let Some(nav) = syntax.ancestors().find_map(|node| {
             match_ast! {
                 match node {
-                    ast::FnDef(it) => {
+                    ast::Fn(it) => {
                         let def = sema.to_def(&it)?;
                         Some(def.to_nav(sema.db))
                     },
@@ -181,8 +181,8 @@ fn caller() {
     call<|>ee();
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
-            &["caller FN_DEF FileId(1) 15..44 18..24 : [33..39]"],
+            "callee FN FileId(1) 0..14 3..9",
+            &["caller FN FileId(1) 15..44 18..24 : [33..39]"],
             &[],
         );
     }
@@ -197,8 +197,8 @@ fn caller() {
     callee();
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
-            &["caller FN_DEF FileId(1) 15..44 18..24 : [33..39]"],
+            "callee FN FileId(1) 0..14 3..9",
+            &["caller FN FileId(1) 15..44 18..24 : [33..39]"],
             &[],
         );
     }
@@ -214,8 +214,8 @@ fn caller() {
     callee();
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
-            &["caller FN_DEF FileId(1) 15..58 18..24 : [33..39, 47..53]"],
+            "callee FN FileId(1) 0..14 3..9",
+            &["caller FN FileId(1) 15..58 18..24 : [33..39, 47..53]"],
             &[],
         );
     }
@@ -234,10 +234,10 @@ fn caller2() {
     callee();
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
+            "callee FN FileId(1) 0..14 3..9",
             &[
-                "caller1 FN_DEF FileId(1) 15..45 18..25 : [34..40]",
-                "caller2 FN_DEF FileId(1) 47..77 50..57 : [66..72]",
+                "caller1 FN FileId(1) 15..45 18..25 : [34..40]",
+                "caller2 FN FileId(1) 47..77 50..57 : [66..72]",
             ],
             &[],
         );
@@ -263,10 +263,10 @@ mod tests {
     }
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
+            "callee FN FileId(1) 0..14 3..9",
             &[
-                "caller1 FN_DEF FileId(1) 15..45 18..25 : [34..40]",
-                "test_caller FN_DEF FileId(1) 95..149 110..121 : [134..140]",
+                "caller1 FN FileId(1) 15..45 18..25 : [34..40]",
+                "test_caller FN FileId(1) 95..149 110..121 : [134..140]",
             ],
             &[],
         );
@@ -287,8 +287,8 @@ fn caller() {
 //- /foo/mod.rs
 pub fn callee() {}
 "#,
-            "callee FN_DEF FileId(2) 0..18 7..13",
-            &["caller FN_DEF FileId(1) 27..56 30..36 : [45..51]"],
+            "callee FN FileId(2) 0..18 7..13",
+            &["caller FN FileId(1) 27..56 30..36 : [45..51]"],
             &[],
         );
     }
@@ -304,9 +304,9 @@ fn call<|>er() {
     callee();
 }
 "#,
-            "caller FN_DEF FileId(1) 15..58 18..24",
+            "caller FN FileId(1) 15..58 18..24",
             &[],
-            &["callee FN_DEF FileId(1) 0..14 3..9 : [33..39, 47..53]"],
+            &["callee FN FileId(1) 0..14 3..9 : [33..39, 47..53]"],
         );
     }
 
@@ -325,9 +325,9 @@ fn call<|>er() {
 //- /foo/mod.rs
 pub fn callee() {}
 "#,
-            "caller FN_DEF FileId(1) 27..56 30..36",
+            "caller FN FileId(1) 27..56 30..36",
             &[],
-            &["callee FN_DEF FileId(2) 0..18 7..13 : [45..51]"],
+            &["callee FN FileId(2) 0..18 7..13 : [45..51]"],
         );
     }
 
@@ -348,9 +348,9 @@ fn caller3() {
 
 }
 "#,
-            "caller2 FN_DEF FileId(1) 33..64 36..43",
-            &["caller1 FN_DEF FileId(1) 0..31 3..10 : [19..26]"],
-            &["caller3 FN_DEF FileId(1) 66..83 69..76 : [52..59]"],
+            "caller2 FN FileId(1) 33..64 36..43",
+            &["caller1 FN FileId(1) 0..31 3..10 : [19..26]"],
+            &["caller3 FN FileId(1) 66..83 69..76 : [52..59]"],
         );
     }
 
@@ -368,9 +368,9 @@ fn main() {
     a<|>()
 }
 "#,
-            "a FN_DEF FileId(1) 0..18 3..4",
-            &["main FN_DEF FileId(1) 31..52 34..38 : [47..48]"],
-            &["b FN_DEF FileId(1) 20..29 23..24 : [13..14]"],
+            "a FN FileId(1) 0..18 3..4",
+            &["main FN FileId(1) 31..52 34..38 : [47..48]"],
+            &["b FN FileId(1) 20..29 23..24 : [13..14]"],
         );
 
         check_hierarchy(
@@ -385,8 +385,8 @@ fn main() {
     a()
 }
 "#,
-            "b FN_DEF FileId(1) 20..29 23..24",
-            &["a FN_DEF FileId(1) 0..18 3..4 : [13..14]"],
+            "b FN FileId(1) 20..29 23..24",
+            &["a FN FileId(1) 0..18 3..4 : [13..14]"],
             &[],
         );
     }

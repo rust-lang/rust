@@ -8,7 +8,7 @@ use ra_syntax::{
         make,
     },
     AstNode,
-    SyntaxKind::{FN_DEF, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
+    SyntaxKind::{FN, LOOP_EXPR, L_CURLY, R_CURLY, WHILE_EXPR, WHITESPACE},
     SyntaxNode,
 };
 
@@ -88,7 +88,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
 
     let early_expression: ast::Expr = match parent_container.kind() {
         WHILE_EXPR | LOOP_EXPR => make::expr_continue(),
-        FN_DEF => make::expr_return(),
+        FN => make::expr_return(),
         _ => return None,
     };
 

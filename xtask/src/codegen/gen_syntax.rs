@@ -471,6 +471,7 @@ impl Field {
                     "::" => "coloncolon",
                     "#" => "pound",
                     "?" => "question_mark",
+                    "," => "comma",
                     _ => name,
                 };
                 format_ident!("{}_token", name)
@@ -599,13 +600,9 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) {
     }
 }
 
-// (T (',' T)* ','?)?
+// (T (',' T)* ','?)
 fn lower_comma_list(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) -> bool {
     let rule = match rule {
-        Rule::Opt(it) => it,
-        _ => return false,
-    };
-    let rule = match &**rule {
         Rule::Seq(it) => it,
         _ => return false,
     };

@@ -82,7 +82,7 @@ struct FunctionTemplate {
     insert_offset: TextSize,
     placeholder_expr: ast::MacroCall,
     leading_ws: String,
-    fn_def: ast::FnDef,
+    fn_def: ast::Fn,
     trailing_ws: String,
     file: FileId,
 }

@@ -1361,7 +1361,7 @@ fn foo_<|>test() {}
                                     11..19,
                                 ),
                                 name: "foo_test",
-                                kind: FN_DEF,
+                                kind: FN,
                                 container_name: None,
                                 description: None,
                                 docs: None,

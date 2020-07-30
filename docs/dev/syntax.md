@@ -82,7 +82,7 @@ Points of note:
 An input like `fn f() { 90 + 2 }` might be parsed as
 
 ```
-FN_DEF@0..17
+FN@0..17
   FN_KW@0..2 "fn"
   WHITESPACE@2..3 " "
   NAME@3..4
@@ -342,7 +342,7 @@ pub struct FnDef {
 impl AstNode for FnDef {
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         match kind {
-            FN_DEF => Some(FnDef { syntax }),
+            FN => Some(FnDef { syntax }),
             _ => None,
         }
     }

@@ -379,12 +379,12 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
 
     match_ast! {
         match node {
-            ast::FnDef(it) => it.doc_comment_text(),
+            ast::Fn(it) => it.doc_comment_text(),
             ast::StructDef(it) => it.doc_comment_text(),
             ast::EnumDef(it) => it.doc_comment_text(),
             ast::TraitDef(it) => it.doc_comment_text(),
             ast::Module(it) => it.doc_comment_text(),
-            ast::TypeAliasDef(it) => it.doc_comment_text(),
+            ast::TypeAlias(it) => it.doc_comment_text(),
             ast::ConstDef(it) => it.doc_comment_text(),
             ast::StaticDef(it) => it.doc_comment_text(),
             ast::RecordFieldDef(it) => it.doc_comment_text(),
@@ -404,12 +404,12 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
 
     match_ast! {
         match node {
-            ast::FnDef(it) => it.short_label(),
+            ast::Fn(it) => it.short_label(),
             ast::StructDef(it) => it.short_label(),
             ast::EnumDef(it) => it.short_label(),
             ast::TraitDef(it) => it.short_label(),
             ast::Module(it) => it.short_label(),
-            ast::TypeAliasDef(it) => it.short_label(),
+            ast::TypeAlias(it) => it.short_label(),
             ast::ConstDef(it) => it.short_label(),
             ast::StaticDef(it) => it.short_label(),
             ast::RecordFieldDef(it) => it.short_label(),

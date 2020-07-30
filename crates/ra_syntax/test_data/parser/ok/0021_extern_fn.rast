@@ -1,5 +1,5 @@
 SOURCE_FILE@0..71
-  FN_DEF@0..19
+  FN@0..19
     ABI@0..6
       EXTERN_KW@0..6 "extern"
     WHITESPACE@6..7 " "
@@ -16,7 +16,7 @@ SOURCE_FILE@0..71
       WHITESPACE@17..18 "\n"
       R_CURLY@18..19 "}"
   WHITESPACE@19..21 "\n\n"
-  FN_DEF@21..44
+  FN@21..44
     ABI@21..31
       EXTERN_KW@21..27 "extern"
       WHITESPACE@27..28 " "
@@ -35,7 +35,7 @@ SOURCE_FILE@0..71
       WHITESPACE@42..43 "\n"
       R_CURLY@43..44 "}"
   WHITESPACE@44..46 "\n\n"
-  FN_DEF@46..70
+  FN@46..70
     ABI@46..57
       EXTERN_KW@46..52 "extern"
       WHITESPACE@52..53 " "

@@ -26,7 +26,7 @@ SOURCE_FILE@0..118
     ITEM_LIST@25..65
       L_CURLY@25..26 "{"
       WHITESPACE@26..31 "\n    "
-      FN_DEF@31..47
+      FN@31..47
         FN_KW@31..33 "fn"
         WHITESPACE@33..34 " "
         NAME@34..37

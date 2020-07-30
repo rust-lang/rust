@@ -6,7 +6,7 @@ SOURCE_FILE@0..1598
     EXTERN_ITEM_LIST@7..1597
       L_CURLY@7..8 "{"
       WHITESPACE@8..13 "\n    "
-      FN_DEF@13..87
+      FN@13..87
         VISIBILITY@13..16
           PUB_KW@13..16 "pub"
         WHITESPACE@16..17 " "
@@ -69,7 +69,7 @@ SOURCE_FILE@0..1598
                   IDENT@81..86 "c_int"
         SEMICOLON@86..87 ";"
       WHITESPACE@87..92 "\n    "
-      FN_DEF@92..167
+      FN@92..167
         VISIBILITY@92..95
           PUB_KW@92..95 "pub"
         WHITESPACE@95..96 " "
@@ -134,7 +134,7 @@ SOURCE_FILE@0..1598
                   IDENT@161..166 "c_int"
         SEMICOLON@166..167 ";"
       WHITESPACE@167..172 "\n    "
-      FN_DEF@172..276
+      FN@172..276
         VISIBILITY@172..175
           PUB_KW@172..175 "pub"
         WHITESPACE@175..176 " "
@@ -199,7 +199,7 @@ SOURCE_FILE@0..1598
                   IDENT@270..275 "c_int"
         SEMICOLON@275..276 ";"
       WHITESPACE@276..281 "\n    "
-      FN_DEF@281..341
+      FN@281..341
         VISIBILITY@281..284
           PUB_KW@281..284 "pub"
         WHITESPACE@284..285 " "
@@ -248,7 +248,7 @@ SOURCE_FILE@0..1598
                   IDENT@335..340 "c_int"
         SEMICOLON@340..341 ";"
       WHITESPACE@341..346 "\n    "
-      FN_DEF@346..469
+      FN@346..469
         VISIBILITY@346..349
           PUB_KW@346..349 "pub"
         WHITESPACE@349..350 " "
@@ -317,7 +317,7 @@ SOURCE_FILE@0..1598
                   IDENT@463..468 "c_int"
         SEMICOLON@468..469 ";"
       WHITESPACE@469..474 "\n    "
-      FN_DEF@474..691
+      FN@474..691
         VISIBILITY@474..477
           PUB_KW@474..477 "pub"
         WHITESPACE@477..478 " "
@@ -416,7 +416,7 @@ SOURCE_FILE@0..1598
                   IDENT@685..690 "c_int"
         SEMICOLON@690..691 ";"
       WHITESPACE@691..696 "\n    "
-      FN_DEF@696..864
+      FN@696..864
         VISIBILITY@696..699
           PUB_KW@696..699 "pub"
         WHITESPACE@699..700 " "
@@ -510,7 +510,7 @@ SOURCE_FILE@0..1598
                   IDENT@858..863 "c_int"
         SEMICOLON@863..864 ";"
       WHITESPACE@864..869 "\n    "
-      FN_DEF@869..992
+      FN@869..992
         VISIBILITY@869..872
           PUB_KW@869..872 "pub"
         WHITESPACE@872..873 " "
@@ -579,7 +579,7 @@ SOURCE_FILE@0..1598
                   IDENT@986..991 "c_int"
         SEMICOLON@991..992 ";"
       WHITESPACE@992..997 "\n    "
-      FN_DEF@997..1173
+      FN@997..1173
         VISIBILITY@997..1000
           PUB_KW@997..1000 "pub"
         WHITESPACE@1000..1001 " "
@@ -690,7 +690,7 @@ SOURCE_FILE@0..1598
                   IDENT@1165..1172 "ssize_t"
         SEMICOLON@1172..1173 ";"
       WHITESPACE@1173..1178 "\n    "
-      FN_DEF@1178..1289
+      FN@1178..1289
         VISIBILITY@1178..1181
           PUB_KW@1178..1181 "pub"
         WHITESPACE@1181..1182 " "
@@ -771,7 +771,7 @@ SOURCE_FILE@0..1598
                   IDENT@1281..1288 "ssize_t"
         SEMICOLON@1288..1289 ";"
       WHITESPACE@1289..1294 "\n    "
-      FN_DEF@1294..1481
+      FN@1294..1481
         VISIBILITY@1294..1297
           PUB_KW@1294..1297 "pub"
         WHITESPACE@1297..1298 " "
@@ -888,7 +888,7 @@ SOURCE_FILE@0..1598
                   IDENT@1473..1480 "ssize_t"
         SEMICOLON@1480..1481 ";"
       WHITESPACE@1481..1486 "\n    "
-      FN_DEF@1486..1595
+      FN@1486..1595
         VISIBILITY@1486..1489
           PUB_KW@1486..1489 "pub"
         WHITESPACE@1489..1490 " "

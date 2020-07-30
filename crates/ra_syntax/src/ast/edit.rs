@@ -29,9 +29,9 @@ impl ast::BinExpr {
     }
 }
 
-impl ast::FnDef {
+impl ast::Fn {
     #[must_use]
-    pub fn with_body(&self, body: ast::BlockExpr) -> ast::FnDef {
+    pub fn with_body(&self, body: ast::BlockExpr) -> ast::Fn {
         let mut to_insert: ArrayVec<[SyntaxElement; 2]> = ArrayVec::new();
         let old_body_or_semi: SyntaxElement = if let Some(old_body) = self.body() {
             old_body.syntax().clone().into()
@@ -192,9 +192,9 @@ impl ast::RecordFieldList {
     }
 }
 
-impl ast::TypeAliasDef {
+impl ast::TypeAlias {
     #[must_use]
-    pub fn remove_bounds(&self) -> ast::TypeAliasDef {
+    pub fn remove_bounds(&self) -> ast::TypeAlias {
         let colon = match self.colon_token() {
             Some(it) => it,
             None => return self.clone(),

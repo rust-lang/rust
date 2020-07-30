@@ -1,7 +1,7 @@
 SOURCE_FILE@0..157
   COMMENT@0..60 "// https://github.com ..."
   WHITESPACE@60..62 "\n\n"
-  FN_DEF@62..156
+  FN@62..156
     VISIBILITY@62..65
       PUB_KW@62..65 "pub"
     WHITESPACE@65..66 " "

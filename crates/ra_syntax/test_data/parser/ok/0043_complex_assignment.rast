@@ -30,7 +30,7 @@ SOURCE_FILE@0..160
       WHITESPACE@88..89 " "
       R_CURLY@89..90 "}"
   WHITESPACE@90..92 "\n\n"
-  FN_DEF@92..159
+  FN@92..159
     FN_KW@92..94 "fn"
     WHITESPACE@94..95 " "
     NAME@95..98

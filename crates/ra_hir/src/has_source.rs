@@ -81,8 +81,8 @@ impl HasSource for EnumVariant {
     }
 }
 impl HasSource for Function {
-    type Ast = ast::FnDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::FnDef> {
+    type Ast = ast::Fn;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Fn> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
@@ -105,8 +105,8 @@ impl HasSource for Trait {
     }
 }
 impl HasSource for TypeAlias {
-    type Ast = ast::TypeAliasDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::TypeAliasDef> {
+    type Ast = ast::TypeAlias;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::TypeAlias> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }

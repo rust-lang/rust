@@ -111,7 +111,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 
     match_ast! {
         match node {
-            ast::FnDef(it) => {
+            ast::Fn(it) => {
                 let mut detail = String::from("fn");
                 if let Some(type_param_list) = it.type_param_list() {
                     collapse_ws(type_param_list.syntax(), &mut detail);
@@ -132,7 +132,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::EnumVariant(it) => decl(it),
             ast::TraitDef(it) => decl(it),
             ast::Module(it) => decl(it),
-            ast::TypeAliasDef(it) => {
+            ast::TypeAlias(it) => {
                 let ty = it.type_ref();
                 decl_with_type_ref(it, ty)
             },
@@ -271,7 +271,7 @@ fn very_obsolete() {}
                         label: "bar1",
                         navigation_range: 43..47,
                         node_range: 40..52,
-                        kind: FN_DEF,
+                        kind: FN,
                         detail: Some(
                             "fn()",
                         ),
@@ -284,7 +284,7 @@ fn very_obsolete() {}
                         label: "bar2",
                         navigation_range: 60..64,
                         node_range: 57..81,
-                        kind: FN_DEF,
+                        kind: FN,
                         detail: Some(
                             "fn<T>(t: T) -> T",
                         ),
@@ -297,7 +297,7 @@ fn very_obsolete() {}
                         label: "bar3",
                         navigation_range: 89..93,
                         node_range: 86..156,
-                        kind: FN_DEF,
+                        kind: FN,
                         detail: Some(
                             "fn<A, B>(a: A, b: B) -> Vec< u32 >",
                         ),
@@ -339,7 +339,7 @@ fn very_obsolete() {}
                         label: "T",
                         navigation_range: 186..187,
                         node_range: 181..193,
-                        kind: TYPE_ALIAS_DEF,
+                        kind: TYPE_ALIAS,
                         detail: Some(
                             "()",
                         ),
@@ -417,7 +417,7 @@ fn very_obsolete() {}
                         label: "obsolete",
                         navigation_range: 428..436,
                         node_range: 411..441,
-                        kind: FN_DEF,
+                        kind: FN,
                         detail: Some(
                             "fn()",
                         ),
@@ -428,7 +428,7 @@ fn very_obsolete() {}
                         label: "very_obsolete",
                         navigation_range: 481..494,
                         node_range: 443..499,
-                        kind: FN_DEF,
+                        kind: FN,
                         detail: Some(
                             "fn()",
                         ),

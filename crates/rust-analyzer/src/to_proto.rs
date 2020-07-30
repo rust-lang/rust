@@ -31,14 +31,14 @@ pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Rang
 
 pub(crate) fn symbol_kind(syntax_kind: SyntaxKind) -> lsp_types::SymbolKind {
     match syntax_kind {
-        SyntaxKind::FN_DEF => lsp_types::SymbolKind::Function,
+        SyntaxKind::FN => lsp_types::SymbolKind::Function,
         SyntaxKind::STRUCT_DEF => lsp_types::SymbolKind::Struct,
         SyntaxKind::ENUM_DEF => lsp_types::SymbolKind::Enum,
         SyntaxKind::ENUM_VARIANT => lsp_types::SymbolKind::EnumMember,
         SyntaxKind::TRAIT_DEF => lsp_types::SymbolKind::Interface,
         SyntaxKind::MACRO_CALL => lsp_types::SymbolKind::Function,
         SyntaxKind::MODULE => lsp_types::SymbolKind::Module,
-        SyntaxKind::TYPE_ALIAS_DEF => lsp_types::SymbolKind::TypeParameter,
+        SyntaxKind::TYPE_ALIAS => lsp_types::SymbolKind::TypeParameter,
         SyntaxKind::RECORD_FIELD_DEF => lsp_types::SymbolKind::Field,
         SyntaxKind::STATIC_DEF => lsp_types::SymbolKind::Constant,
         SyntaxKind::CONST_DEF => lsp_types::SymbolKind::Constant,

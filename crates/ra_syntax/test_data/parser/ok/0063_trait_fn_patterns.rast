@@ -8,7 +8,7 @@ SOURCE_FILE@0..170
     ASSOC_ITEM_LIST@8..169
       L_CURLY@8..9 "{"
       WHITESPACE@9..14 "\n    "
-      FN_DEF@14..46
+      FN@14..46
         FN_KW@14..16 "fn"
         WHITESPACE@16..17 " "
         NAME@17..19
@@ -50,7 +50,7 @@ SOURCE_FILE@0..170
           L_CURLY@44..45 "{"
           R_CURLY@45..46 "}"
       WHITESPACE@46..51 "\n    "
-      FN_DEF@51..74
+      FN@51..74
         FN_KW@51..53 "fn"
         WHITESPACE@53..54 " "
         NAME@54..56
@@ -92,7 +92,7 @@ SOURCE_FILE@0..170
           L_CURLY@72..73 "{"
           R_CURLY@73..74 "}"
       WHITESPACE@74..79 "\n    "
-      FN_DEF@79..108
+      FN@79..108
         FN_KW@79..81 "fn"
         WHITESPACE@81..82 " "
         NAME@82..84
@@ -123,7 +123,7 @@ SOURCE_FILE@0..170
           L_CURLY@106..107 "{"
           R_CURLY@107..108 "}"
       WHITESPACE@108..113 "\n    "
-      FN_DEF@113..135
+      FN@113..135
         FN_KW@113..115 "fn"
         WHITESPACE@115..116 " "
         NAME@116..118
@@ -155,7 +155,7 @@ SOURCE_FILE@0..170
           L_CURLY@133..134 "{"
           R_CURLY@134..135 "}"
       WHITESPACE@135..140 "\n    "
-      FN_DEF@140..167
+      FN@140..167
         FN_KW@140..142 "fn"
         WHITESPACE@142..143 " "
         NAME@143..146

@@ -102,7 +102,7 @@ pub(crate) fn runnable(
 ) -> Option<Runnable> {
     match_ast! {
         match item {
-            ast::FnDef(it) => runnable_fn(sema, it, file_id),
+            ast::Fn(it) => runnable_fn(sema, it, file_id),
             ast::Module(it) => runnable_mod(sema, it, file_id),
             _ => None,
         }
@@ -111,7 +111,7 @@ pub(crate) fn runnable(
 
 fn runnable_fn(
     sema: &Semantics<RootDatabase>,
-    fn_def: ast::FnDef,
+    fn_def: ast::Fn,
     file_id: FileId,
 ) -> Option<Runnable> {
     let name_string = fn_def.name()?.text().to_string();
@@ -188,7 +188,7 @@ pub struct TestAttr {
 }
 
 impl TestAttr {
-    fn from_fn(fn_def: &ast::FnDef) -> TestAttr {
+    fn from_fn(fn_def: &ast::Fn) -> TestAttr {
         let ignore = fn_def
             .attrs()
             .filter_map(|attr| attr.simple_name())
@@ -203,7 +203,7 @@ impl TestAttr {
 ///
 /// It may produce false positives, for example, `#[wasm_bindgen_test]` requires a different command to run the test,
 /// but it's better than not to have the runnables for the tests at all.
-fn has_test_related_attribute(fn_def: &ast::FnDef) -> bool {
+fn has_test_related_attribute(fn_def: &ast::Fn) -> bool {
     fn_def
         .attrs()
         .filter_map(|attr| attr.path())
@@ -211,7 +211,7 @@ fn has_test_related_attribute(fn_def: &ast::FnDef) -> bool {
         .any(|attribute_text| attribute_text.contains("test"))
 }
 
-fn has_doc_test(fn_def: &ast::FnDef) -> bool {
+fn has_doc_test(fn_def: &ast::Fn) -> bool {
     fn_def.doc_comment_text().map_or(false, |comment| comment.contains("```"))
 }
 
@@ -246,7 +246,7 @@ fn has_test_function_or_multiple_test_submodules(module: &ast::Module) -> bool {
 
         for item in item_list.items() {
             match item {
-                ast::Item::FnDef(f) => {
+                ast::Item::Fn(f) => {
                     if has_test_related_attribute(&f) {
                         return true;
                     }
@@ -320,7 +320,7 @@ fn bench() {}
                                 4..8,
                             ),
                             name: "main",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -338,7 +338,7 @@ fn bench() {}
                                 26..34,
                             ),
                             name: "test_foo",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -363,7 +363,7 @@ fn bench() {}
                                 62..70,
                             ),
                             name: "test_foo",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -388,7 +388,7 @@ fn bench() {}
                                 89..94,
                             ),
                             name: "bench",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -431,7 +431,7 @@ fn foo() {}
                                 4..8,
                             ),
                             name: "main",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -447,7 +447,7 @@ fn foo() {}
                             full_range: 15..57,
                             focus_range: None,
                             name: "foo",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -493,7 +493,7 @@ impl Data {
                                 4..8,
                             ),
                             name: "main",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -509,7 +509,7 @@ impl Data {
                             full_range: 44..98,
                             focus_range: None,
                             name: "foo",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -570,7 +570,7 @@ mod test_mod {
                                 35..44,
                             ),
                             name: "test_foo1",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -670,7 +670,7 @@ mod root_tests {
                                 107..121,
                             ),
                             name: "nested_test_11",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -695,7 +695,7 @@ mod root_tests {
                                 163..177,
                             ),
                             name: "nested_test_12",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -740,7 +740,7 @@ mod root_tests {
                                 258..271,
                             ),
                             name: "nested_test_2",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -783,7 +783,7 @@ fn test_foo1() {}
                                 36..45,
                             ),
                             name: "test_foo1",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,
@@ -831,7 +831,7 @@ fn test_foo1() {}
                                 58..67,
                             ),
                             name: "test_foo1",
-                            kind: FN_DEF,
+                            kind: FN,
                             container_name: None,
                             description: None,
                             docs: None,

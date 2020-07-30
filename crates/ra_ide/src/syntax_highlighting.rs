@@ -464,7 +464,7 @@ fn highlight_element(
     let db = sema.db;
     let mut binding_hash = None;
     let highlight: Highlight = match element.kind() {
-        FN_DEF => {
+        FN => {
             bindings_shadow_count.clear();
             return None;
         }
@@ -709,11 +709,11 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         ENUM_DEF => HighlightTag::Enum,
         UNION_DEF => HighlightTag::Union,
         TRAIT_DEF => HighlightTag::Trait,
-        TYPE_ALIAS_DEF => HighlightTag::TypeAlias,
+        TYPE_ALIAS => HighlightTag::TypeAlias,
         TYPE_PARAM => HighlightTag::TypeParam,
         RECORD_FIELD_DEF => HighlightTag::Field,
         MODULE => HighlightTag::Module,
-        FN_DEF => HighlightTag::Function,
+        FN => HighlightTag::Function,
         CONST_DEF => HighlightTag::Constant,
         STATIC_DEF => HighlightTag::Static,
         ENUM_VARIANT => HighlightTag::EnumVariant,

@@ -37,7 +37,7 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
 
     let anchor = match_ast! {
         match parent {
-            ast::FnDef(it) => it.body()?.syntax().clone().into(),
+            ast::Fn(it) => it.body()?.syntax().clone().into(),
             ast::TraitDef(it) => it.assoc_item_list()?.syntax().clone().into(),
             ast::ImplDef(it) => it.assoc_item_list()?.syntax().clone().into(),
             ast::EnumDef(it) => it.variant_list()?.syntax().clone().into(),

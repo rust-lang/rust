@@ -11,7 +11,7 @@ SOURCE_FILE@0..183
     ASSOC_ITEM_LIST@14..182
       L_CURLY@14..15 "{"
       WHITESPACE@15..20 "\n    "
-      FN_DEF@20..161
+      FN@20..161
         FN_KW@20..22 "fn"
         WHITESPACE@22..23 " "
         NAME@23..32
@@ -116,7 +116,7 @@ SOURCE_FILE@0..183
           WHITESPACE@155..160 "\n    "
           R_CURLY@160..161 "}"
       WHITESPACE@161..167 "\n\n    "
-      FN_DEF@167..180
+      FN@167..180
         FN_KW@167..169 "fn"
         WHITESPACE@169..170 " "
         NAME@170..180
