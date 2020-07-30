@@ -183,6 +183,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     .collect(),
                 1,
             ),
+            where_clauses: make_binders(vec![], 0),
         };
         let num_vars = datas.num_binders;
         Arc::new(OpaqueTyDatum { opaque_ty_id: id, bound: make_binders(bound, num_vars) })
@@ -191,15 +192,6 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn hidden_opaque_type(&self, _id: chalk_ir::OpaqueTyId<Interner>) -> chalk_ir::Ty<Interner> {
         // FIXME: actually provide the hidden type; it is relevant for auto traits
         Ty::Unknown.to_chalk(self.db)
-    }
-
-    fn force_impl_for(
-        &self,
-        _well_known: rust_ir::WellKnownTrait,
-        _ty: &chalk_ir::TyData<Interner>,
-    ) -> Option<bool> {
-        // this method is mostly for rustc
-        None
     }
 
     fn is_object_safe(&self, _trait_id: chalk_ir::TraitId<Interner>) -> bool {
@@ -547,8 +539,13 @@ pub(crate) fn fn_def_datum_query(
         ),
         where_clauses,
     };
-    let datum =
-        FnDefDatum { id: fn_def_id, binders: make_binders(bound, sig.num_binders), abi: () };
+    let datum = FnDefDatum {
+        id: fn_def_id,
+        abi: (),
+        safety: chalk_ir::Safety::Safe,
+        variadic: sig.value.is_varargs,
+        binders: make_binders(bound, sig.num_binders),
+    };
     Arc::new(datum)
 }
 
