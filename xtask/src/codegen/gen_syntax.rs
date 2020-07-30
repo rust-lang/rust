@@ -543,6 +543,10 @@ fn lower_enum(grammar: &Grammar, rule: &Rule) -> Option<Vec<String>> {
 }
 
 fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) {
+    if lower_comma_list(acc, grammar, rule) {
+        return;
+    }
+
     match rule {
         Rule::Node(node) => {
             let field = Field::Node { name: grammar[*node].name.clone(), src: FieldSrc::Shorthand };
@@ -593,6 +597,37 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) {
         }
         Rule::Opt(rule) => lower_rule(acc, grammar, rule),
     }
+}
+
+// (T (',' T)* ','?)?
+fn lower_comma_list(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) -> bool {
+    let rule = match rule {
+        Rule::Opt(it) => it,
+        _ => return false,
+    };
+    let rule = match &**rule {
+        Rule::Seq(it) => it,
+        _ => return false,
+    };
+    let (node, repeat, trailing_comma) = match rule.as_slice() {
+        [Rule::Node(node), Rule::Rep(repeat), Rule::Opt(trailing_comma)] => {
+            (node, repeat, trailing_comma)
+        }
+        _ => return false,
+    };
+    let repeat = match &**repeat {
+        Rule::Seq(it) => it,
+        _ => return false,
+    };
+    match repeat.as_slice() {
+        [comma, Rule::Node(n)] if comma == &**trailing_comma && n == node => (),
+        _ => return false,
+    }
+    let name = grammar[*node].name.clone();
+    let label = pluralize(&to_lower_snake_case(&name));
+    let field = Field::Node { name: label.clone(), src: FieldSrc::Many(name) };
+    acc.push(field);
+    true
 }
 
 fn deduplicate_fields(ast: &mut AstSrc) {

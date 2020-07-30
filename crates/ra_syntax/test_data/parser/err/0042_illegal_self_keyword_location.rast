@@ -1,5 +1,5 @@
 SOURCE_FILE@0..25
-  USE_ITEM@0..11
+  USE@0..11
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
     USE_TREE@4..10
@@ -9,7 +9,7 @@ SOURCE_FILE@0..25
           SELF_KW@6..10 "self"
     SEMICOLON@10..11 ";"
   WHITESPACE@11..12 "\n"
-  USE_ITEM@12..24
+  USE@12..24
     USE_KW@12..15 "use"
     WHITESPACE@15..16 " "
     USE_TREE@16..23

@@ -17,7 +17,7 @@ Item =
 | TraitDef
 | TypeAliasDef
 | UnionDef
-| UseItem
+| Use
 
 Module =
   Attr* Visibility? 'mod' Name
@@ -28,6 +28,19 @@ ItemList =
 
 ExternCrate =
   Attr* Visibility? 'extern' 'crate' (NameRef | 'self') Rename? ';'
+
+Rename =
+  'as' (Name | '_')
+
+Use =
+  Attr* Visibility? 'use' UseTree ';'
+
+UseTree =
+  (Path? '::')? ('*' | UseTreeList )
+| Path Rename?
+
+UseTreeList =
+  '{' (UseTree (',' UseTree)* ','?)? '}'
 
 FnDef =
  Attr* Visibility? Abi? 'const' 'default' 'async' 'unsafe' 'fn' Name TypeParamList?
@@ -394,18 +407,6 @@ SelfParam =
 Param =
   Attr* Pat (':' ascribed_type:TypeRef)
 | '...'
-
-UseItem =
-  Attr* Visibility? 'use' UseTree ';'
-
-UseTree =
-  Path ('::' ('*' | UseTreeList))  Rename?
-
-UseTreeList =
-  '{' UseTree* '}'
-
-Rename =
-  'as' Name
 
 Path =
   (qualifier:Path '::')? segment:PathSegment

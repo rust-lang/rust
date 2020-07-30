@@ -58,7 +58,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
             }
             NodeOrToken::Node(node) => {
                 // Fold groups of imports
-                if node.kind() == USE_ITEM && !visited_imports.contains(&node) {
+                if node.kind() == USE && !visited_imports.contains(&node) {
                     if let Some(range) = contiguous_range_for_group(&node, &mut visited_imports) {
                         res.push(Fold { range, kind: FoldKind::Imports })
                     }
@@ -83,7 +83,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
 fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
-        USE_ITEM => Some(FoldKind::Imports),
+        USE => Some(FoldKind::Imports),
         ARG_LIST | PARAM_LIST => Some(FoldKind::ArgList),
         RECORD_FIELD_DEF_LIST
         | RECORD_FIELD_PAT_LIST

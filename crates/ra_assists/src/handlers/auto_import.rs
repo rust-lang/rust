@@ -92,7 +92,7 @@ impl AutoImportAssets {
 
     fn for_regular_path(path_under_caret: ast::Path, ctx: &AssistContext) -> Option<Self> {
         let syntax_under_caret = path_under_caret.syntax().to_owned();
-        if syntax_under_caret.ancestors().find_map(ast::UseItem::cast).is_some() {
+        if syntax_under_caret.ancestors().find_map(ast::Use::cast).is_some() {
             return None;
         }
 

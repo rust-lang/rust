@@ -213,12 +213,12 @@ impl UnionDef {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UseItem {
+pub struct Use {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for UseItem {}
-impl ast::VisibilityOwner for UseItem {}
-impl UseItem {
+impl ast::AttrsOwner for Use {}
+impl ast::VisibilityOwner for Use {}
+impl Use {
     pub fn use_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![use]) }
     pub fn use_tree(&self) -> Option<UseTree> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -268,6 +268,36 @@ pub struct Rename {
 impl ast::NameOwner for Rename {}
 impl Rename {
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
+    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UseTree {
+    pub(crate) syntax: SyntaxNode,
+}
+impl UseTree {
+    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
+    pub fn star_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*]) }
+    pub fn use_tree_list(&self) -> Option<UseTreeList> { support::child(&self.syntax) }
+    pub fn rename(&self) -> Option<Rename> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Path {
+    pub(crate) syntax: SyntaxNode,
+}
+impl Path {
+    pub fn qualifier(&self) -> Option<Path> { support::child(&self.syntax) }
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
+    pub fn segment(&self) -> Option<PathSegment> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UseTreeList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl UseTreeList {
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn use_trees(&self) -> AstChildren<UseTree> { support::children(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Abi {
@@ -431,15 +461,6 @@ pub struct PathType {
 }
 impl PathType {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Path {
-    pub(crate) syntax: SyntaxNode,
-}
-impl Path {
-    pub fn qualifier(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
-    pub fn segment(&self) -> Option<PathSegment> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PointerType {
@@ -1178,26 +1199,6 @@ impl Param {
     pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![...]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UseTree {
-    pub(crate) syntax: SyntaxNode,
-}
-impl UseTree {
-    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
-    pub fn star_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*]) }
-    pub fn use_tree_list(&self) -> Option<UseTreeList> { support::child(&self.syntax) }
-    pub fn rename(&self) -> Option<Rename> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UseTreeList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl UseTreeList {
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn use_trees(&self) -> AstChildren<UseTree> { support::children(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathSegment {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1282,7 +1283,7 @@ pub enum Item {
     TraitDef(TraitDef),
     TypeAliasDef(TypeAliasDef),
     UnionDef(UnionDef),
-    UseItem(UseItem),
+    Use(Use),
 }
 impl ast::AttrsOwner for Item {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1561,8 +1562,8 @@ impl AstNode for UnionDef {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for UseItem {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_ITEM }
+impl AstNode for Use {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == USE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1618,6 +1619,39 @@ impl AstNode for NameRef {
 }
 impl AstNode for Rename {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RENAME }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for UseTree {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for Path {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for UseTreeList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1816,17 +1850,6 @@ impl AstNode for NeverType {
 }
 impl AstNode for PathType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_TYPE }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for Path {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2672,28 +2695,6 @@ impl AstNode for Param {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for UseTree {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for UseTreeList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE_LIST }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for PathSegment {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_SEGMENT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2810,15 +2811,16 @@ impl From<TypeAliasDef> for Item {
 impl From<UnionDef> for Item {
     fn from(node: UnionDef) -> Item { Item::UnionDef(node) }
 }
-impl From<UseItem> for Item {
-    fn from(node: UseItem) -> Item { Item::UseItem(node) }
+impl From<Use> for Item {
+    fn from(node: Use) -> Item { Item::Use(node) }
 }
 impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CONST_DEF | ENUM_DEF | EXTERN_BLOCK | EXTERN_CRATE | FN_DEF | IMPL_DEF | MACRO_CALL
-            | MODULE | STATIC_DEF | STRUCT_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | UNION_DEF
-            | USE_ITEM => true,
+            | MODULE | STATIC_DEF | STRUCT_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | UNION_DEF | USE => {
+                true
+            }
             _ => false,
         }
     }
@@ -2837,7 +2839,7 @@ impl AstNode for Item {
             TRAIT_DEF => Item::TraitDef(TraitDef { syntax }),
             TYPE_ALIAS_DEF => Item::TypeAliasDef(TypeAliasDef { syntax }),
             UNION_DEF => Item::UnionDef(UnionDef { syntax }),
-            USE_ITEM => Item::UseItem(UseItem { syntax }),
+            USE => Item::Use(Use { syntax }),
             _ => return None,
         };
         Some(res)
@@ -2857,7 +2859,7 @@ impl AstNode for Item {
             Item::TraitDef(it) => &it.syntax,
             Item::TypeAliasDef(it) => &it.syntax,
             Item::UnionDef(it) => &it.syntax,
-            Item::UseItem(it) => &it.syntax,
+            Item::Use(it) => &it.syntax,
         }
     }
 }
@@ -3530,7 +3532,7 @@ impl std::fmt::Display for UnionDef {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for UseItem {
+impl std::fmt::Display for Use {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3556,6 +3558,21 @@ impl std::fmt::Display for NameRef {
     }
 }
 impl std::fmt::Display for Rename {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UseTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Path {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UseTreeList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3646,11 +3663,6 @@ impl std::fmt::Display for NeverType {
     }
 }
 impl std::fmt::Display for PathType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -4031,16 +4043,6 @@ impl std::fmt::Display for SelfParam {
     }
 }
 impl std::fmt::Display for Param {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for UseTree {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for UseTreeList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
