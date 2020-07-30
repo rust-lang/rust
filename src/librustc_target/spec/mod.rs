@@ -55,7 +55,6 @@ mod avr_gnu_base;
 mod cloudabi_base;
 mod dragonfly_base;
 mod freebsd_base;
-mod freestanding_base;
 mod fuchsia_base;
 mod haiku_base;
 mod hermit_base;
