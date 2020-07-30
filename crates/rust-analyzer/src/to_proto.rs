@@ -400,6 +400,7 @@ fn semantic_token_type_and_modifiers(
             HighlightModifier::Injected => semantic_tokens::INJECTED,
             HighlightModifier::ControlFlow => semantic_tokens::CONTROL_FLOW,
             HighlightModifier::Mutable => semantic_tokens::MUTABLE,
+            HighlightModifier::Consuming => semantic_tokens::CONSUMING,
             HighlightModifier::Unsafe => semantic_tokens::UNSAFE,
         };
         mods |= modifier;
