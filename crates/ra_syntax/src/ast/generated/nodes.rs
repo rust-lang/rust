@@ -24,7 +24,8 @@ impl Attr {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn input(&self) -> Option<AttrInput> { support::child(&self.syntax) }
+    pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
+    pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -321,9 +322,9 @@ pub struct ParamList {
 }
 impl ParamList {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn params(&self) -> AstChildren<Param> { support::children(&self.syntax) }
     pub fn self_param(&self) -> Option<SelfParam> { support::child(&self.syntax) }
     pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
+    pub fn params(&self) -> AstChildren<Param> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -356,17 +357,6 @@ impl BlockExpr {
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Param {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for Param {}
-impl ast::TypeAscriptionOwner for Param {}
-impl Param {
-    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![...]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
 }
@@ -380,6 +370,17 @@ impl SelfParam {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Param {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for Param {}
+impl ast::TypeAscriptionOwner for Param {}
+impl Param {
+    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
+    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![...]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBoundList {
@@ -1378,11 +1379,6 @@ pub enum GenericParam {
 }
 impl ast::AttrsOwner for GenericParam {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AttrInput {
-    Literal(Literal),
-    TokenTree(TokenTree),
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
     LetStmt(LetStmt),
     ExprStmt(ExprStmt),
@@ -1728,8 +1724,8 @@ impl AstNode for BlockExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for Param {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM }
+impl AstNode for SelfParam {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SELF_PARAM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1739,8 +1735,8 @@ impl AstNode for Param {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for SelfParam {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == SELF_PARAM }
+impl AstNode for Param {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3342,34 +3338,6 @@ impl AstNode for GenericParam {
         }
     }
 }
-impl From<Literal> for AttrInput {
-    fn from(node: Literal) -> AttrInput { AttrInput::Literal(node) }
-}
-impl From<TokenTree> for AttrInput {
-    fn from(node: TokenTree) -> AttrInput { AttrInput::TokenTree(node) }
-}
-impl AstNode for AttrInput {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            LITERAL | TOKEN_TREE => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            LITERAL => AttrInput::Literal(Literal { syntax }),
-            TOKEN_TREE => AttrInput::TokenTree(TokenTree { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            AttrInput::Literal(it) => &it.syntax,
-            AttrInput::TokenTree(it) => &it.syntax,
-        }
-    }
-}
 impl From<LetStmt> for Stmt {
     fn from(node: LetStmt) -> Stmt { Stmt::LetStmt(node) }
 }
@@ -3467,11 +3435,6 @@ impl std::fmt::Display for ExternItem {
     }
 }
 impl std::fmt::Display for GenericParam {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for AttrInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3636,12 +3599,12 @@ impl std::fmt::Display for BlockExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for Param {
+impl std::fmt::Display for SelfParam {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for SelfParam {
+impl std::fmt::Display for Param {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

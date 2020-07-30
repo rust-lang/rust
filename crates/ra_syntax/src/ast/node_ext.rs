@@ -7,7 +7,7 @@ use itertools::Itertools;
 use ra_parser::SyntaxKind;
 
 use crate::{
-    ast::{self, support, AstNode, AttrInput, NameOwner, SyntaxNode},
+    ast::{self, support, AstNode, NameOwner, SyntaxNode},
     SmolStr, SyntaxElement, SyntaxToken, T,
 };
 
@@ -39,29 +39,23 @@ pub enum AttrKind {
 
 impl ast::Attr {
     pub fn as_simple_atom(&self) -> Option<SmolStr> {
-        match self.input() {
-            None => self.simple_name(),
-            Some(_) => None,
+        if self.eq_token().is_some() || self.token_tree().is_some() {
+            return None;
         }
+        self.simple_name()
     }
 
     pub fn as_simple_call(&self) -> Option<(SmolStr, ast::TokenTree)> {
-        match self.input() {
-            Some(AttrInput::TokenTree(tt)) => Some((self.simple_name()?, tt)),
-            _ => None,
-        }
+        let tt = self.token_tree()?;
+        Some((self.simple_name()?, tt))
     }
 
     pub fn as_simple_key_value(&self) -> Option<(SmolStr, SmolStr)> {
-        match self.input() {
-            Some(AttrInput::Literal(lit)) => {
-                let key = self.simple_name()?;
-                // FIXME: escape? raw string?
-                let value = lit.syntax().first_token()?.text().trim_matches('"').into();
-                Some((key, value))
-            }
-            _ => None,
-        }
+        let lit = self.literal()?;
+        let key = self.simple_name()?;
+        // FIXME: escape? raw string?
+        let value = lit.syntax().first_token()?.text().trim_matches('"').into();
+        Some((key, value))
     }
 
     pub fn simple_name(&self) -> Option<SmolStr> {

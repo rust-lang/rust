@@ -54,9 +54,8 @@ Abi =
 
 ParamList =
   '('(
-    (Param (',' Param)* ','?)?
-  | SelfParam ','?
-  | SelfParam ',' (Param (',' Param)* ','?)
+    SelfParam
+  | (SelfParam ',')? (Param (',' Param)* ','?)?
   )')'
 
 SelfParam =
@@ -182,10 +181,7 @@ Visibility =
   ')')?
 
 Attr =
-  '#' '!'? '[' Path ('=' input:AttrInput)? ']'
-
-AttrInput =
-  Literal | TokenTree
+  '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
 
 ParenType =
   '(' TypeRef ')'
