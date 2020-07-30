@@ -405,8 +405,7 @@ fn scope_for_offset(
             )
         })
         .map(|(expr_range, scope)| {
-            adjust(db, scopes, source_map, expr_range, offset.file_id, offset.value)
-                .unwrap_or(*scope)
+            adjust(db, scopes, source_map, expr_range, offset).unwrap_or(*scope)
         })
 }
 
@@ -417,8 +416,7 @@ fn adjust(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
     expr_range: TextRange,
-    file_id: HirFileId,
-    offset: TextSize,
+    offset: InFile<TextSize>,
 ) -> Option<ScopeId> {
     let child_scopes = scopes
         .scope_by_expr()
@@ -426,7 +424,7 @@ fn adjust(
         .filter_map(|(id, scope)| {
             let source = source_map.expr_syntax(*id).ok()?;
             // FIXME: correctly handle macro expansion
-            if source.file_id != file_id {
+            if source.file_id != offset.file_id {
                 return None;
             }
             let root = source.file_syntax(db.upcast());
@@ -434,7 +432,7 @@ fn adjust(
             Some((node.syntax().text_range(), scope))
         })
         .filter(|&(range, _)| {
-            range.start() <= offset && expr_range.contains_range(range) && range != expr_range
+            range.start() <= offset.value && expr_range.contains_range(range) && range != expr_range
         });
 
     child_scopes
