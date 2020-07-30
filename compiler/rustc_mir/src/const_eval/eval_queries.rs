@@ -193,21 +193,7 @@ fn validate_and_turn_into_const<'tcx>(
     let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
     let val = (|| {
         let mplace = ecx.raw_const_to_mplace(constant)?;
-
-        // FIXME do not validate promoteds until a decision on
-        // https://github.com/rust-lang/rust/issues/67465 is made
-        if cid.promoted.is_none() {
-            let mut ref_tracking = RefTracking::new(mplace);
-            while let Some((mplace, path)) = ref_tracking.todo.pop() {
-                ecx.const_validate_operand(
-                    mplace.into(),
-                    path,
-                    &mut ref_tracking,
-                    /*may_ref_to_static*/ ecx.memory.extra.can_access_statics,
-                )?;
-            }
-        }
-        // Now that we validated, turn this into a proper constant.
+        // Turn this into a proper constant.
         // Statics/promoteds are always `ByRef`, for the rest `op_to_const` decides
         // whether they become immediates.
         if is_static || cid.promoted.is_some() {
@@ -221,6 +207,7 @@ fn validate_and_turn_into_const<'tcx>(
         }
     })();
 
+    // FIXME: Can this ever be an error and not be a compiler bug or can we just ICE here?
     val.map_err(|error| {
         let err = ConstEvalErr::new(&ecx, error, None);
         err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
@@ -319,7 +306,6 @@ pub fn const_eval_raw_provider<'tcx>(
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body))
-        .map(|place| RawConst { alloc_id: place.ptr.assert_ptr().alloc_id, ty: place.layout.ty })
         .map_err(|error| {
             let err = ConstEvalErr::new(&ecx, error, None);
             // errors in statics are always emitted as fatal errors
@@ -395,6 +381,39 @@ pub fn const_eval_raw_provider<'tcx>(
             } else {
                 // use of broken constant from other crate
                 err.report_as_error(ecx.tcx.at(ecx.cur_span()), "could not evaluate constant")
+            }
+        })
+        .and_then(|mplace| {
+            // Since evaluation had no errors, valiate the resulting constant:
+            let validation = try {
+                // FIXME do not validate promoteds until a decision on
+                // https://github.com/rust-lang/rust/issues/67465 is made
+                if cid.promoted.is_none() {
+                    let mut ref_tracking = RefTracking::new(mplace);
+                    while let Some((mplace, path)) = ref_tracking.todo.pop() {
+                        ecx.const_validate_operand(
+                            mplace.into(),
+                            path,
+                            &mut ref_tracking,
+                            /*may_ref_to_static*/ ecx.memory.extra.can_access_statics,
+                        )?;
+                    }
+                }
+            };
+            if let Err(error) = validation {
+                // Validation failed, report an error
+                let err = ConstEvalErr::new(&ecx, error, None);
+                Err(err.struct_error(
+                    ecx.tcx,
+                    "it is undefined behavior to use this value",
+                    |mut diag| {
+                        diag.note(note_on_undefined_behavior_error());
+                        diag.emit();
+                    },
+                ))
+            } else {
+                // Convert to raw constant
+                Ok(RawConst { alloc_id: mplace.ptr.assert_ptr().alloc_id, ty: mplace.layout.ty })
             }
         })
 }
