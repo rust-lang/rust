@@ -178,7 +178,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "winapi-i686-pc-windows-gnu",
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
-    "wincolor",
 ];
 
 /// Dependency checks.
