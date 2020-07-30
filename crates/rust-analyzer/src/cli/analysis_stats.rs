@@ -295,7 +295,7 @@ pub fn analysis_stats(
     eprintln!("Total: {}", total_span);
     report_metric("total time", total_span.time.as_millis() as u64, "ms");
     if let Some(instructions) = total_span.instructions {
-        report_metric("total time", instructions, "#instr");
+        report_metric("total instructions", instructions, "#instr");
     }
     if let Some(memory) = total_span.memory {
         report_metric("total memory", memory.allocated.megabytes() as u64, "MB");
