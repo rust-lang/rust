@@ -81,7 +81,7 @@ crate fn evaluate_goal<'tcx>(
         universes: max_universe + 1,
     };
 
-    let solver_choice = chalk_integration::SolverChoice::SLG {
+    let solver_choice = chalk_solve::solve::SLGSolver {
         max_size: 32,
         expected_answers: None,
     };
