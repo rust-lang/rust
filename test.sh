@@ -89,7 +89,7 @@ else
 fi
 popd
 
-pushd build_sysroot/sysroot_src/src/libcore/tests
+pushd build_sysroot/sysroot_src/library/core/tests
 echo "[TEST] libcore"
 rm -r ./target || true
 ../../../../../cargo.sh test
