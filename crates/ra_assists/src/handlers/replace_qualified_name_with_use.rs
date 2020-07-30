@@ -25,7 +25,7 @@ pub(crate) fn replace_qualified_name_with_use(
 ) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
-    if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
+    if path.syntax().ancestors().find_map(ast::Use::cast).is_some() {
         return None;
     }
 
@@ -85,7 +85,7 @@ fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path:
             match child {
                 // Don't modify `use` items, as this can break the `use` item when injecting a new
                 // import into the use tree.
-                ast::UseItem(_it) => continue,
+                ast::Use(_it) => continue,
                 // Don't descend into submodules, they don't have the same `use` items in scope.
                 ast::Module(_it) => continue,
 

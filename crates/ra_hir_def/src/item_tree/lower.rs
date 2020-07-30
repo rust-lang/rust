@@ -95,7 +95,7 @@ impl Ctx {
             ast::Item::TraitDef(_) | ast::Item::ImplDef(_) | ast::Item::ExternBlock(_) => {}
 
             // These don't have inner items.
-            ast::Item::Module(_) | ast::Item::ExternCrate(_) | ast::Item::UseItem(_) => {}
+            ast::Item::Module(_) | ast::Item::ExternCrate(_) | ast::Item::Use(_) => {}
         };
 
         let attrs = Attrs::new(item, &self.hygiene);
@@ -110,7 +110,7 @@ impl Ctx {
             ast::Item::Module(ast) => self.lower_module(ast).map(Into::into),
             ast::Item::TraitDef(ast) => self.lower_trait(ast).map(Into::into),
             ast::Item::ImplDef(ast) => self.lower_impl(ast).map(Into::into),
-            ast::Item::UseItem(ast) => Some(ModItems(
+            ast::Item::Use(ast) => Some(ModItems(
                 self.lower_use(ast).into_iter().map(Into::into).collect::<SmallVec<_>>(),
             )),
             ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast).map(Into::into),
@@ -469,7 +469,7 @@ impl Ctx {
         Some(id(self.data().impls.alloc(res)))
     }
 
-    fn lower_use(&mut self, use_item: &ast::UseItem) -> Vec<FileItemTreeId<Import>> {
+    fn lower_use(&mut self, use_item: &ast::Use) -> Vec<FileItemTreeId<Import>> {
         // FIXME: cfg_attr
         let is_prelude = use_item.has_atom_attr("prelude_import");
         let visibility = self.lower_visibility(use_item);

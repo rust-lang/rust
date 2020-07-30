@@ -262,9 +262,9 @@ impl ast::PathSegment {
     }
 }
 
-impl ast::UseItem {
+impl ast::Use {
     #[must_use]
-    pub fn with_use_tree(&self, use_tree: ast::UseTree) -> ast::UseItem {
+    pub fn with_use_tree(&self, use_tree: ast::UseTree) -> ast::Use {
         if let Some(old) = self.use_tree() {
             return self.replace_descendant(old, use_tree);
         }

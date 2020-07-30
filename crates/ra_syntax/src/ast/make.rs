@@ -60,7 +60,7 @@ pub fn use_tree_list(use_trees: impl IntoIterator<Item = ast::UseTree>) -> ast::
     ast_from_text(&format!("use {{{}}};", use_trees))
 }
 
-pub fn use_item(use_tree: ast::UseTree) -> ast::UseItem {
+pub fn use_item(use_tree: ast::UseTree) -> ast::Use {
     ast_from_text(&format!("use {};", use_tree))
 }
 

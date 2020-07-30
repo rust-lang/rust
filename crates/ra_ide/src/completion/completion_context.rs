@@ -36,7 +36,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) expected_type: Option<Type>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
     pub(super) function_syntax: Option<ast::FnDef>,
-    pub(super) use_item_syntax: Option<ast::UseItem>,
+    pub(super) use_item_syntax: Option<ast::Use>,
     pub(super) record_lit_syntax: Option<ast::RecordLit>,
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
     pub(super) record_field_syntax: Option<ast::RecordField>,
@@ -343,7 +343,7 @@ impl<'a> CompletionContext<'a> {
         }
 
         self.use_item_syntax =
-            self.sema.ancestors_with_macros(self.token.parent()).find_map(ast::UseItem::cast);
+            self.sema.ancestors_with_macros(self.token.parent()).find_map(ast::Use::cast);
 
         self.function_syntax = self
             .sema

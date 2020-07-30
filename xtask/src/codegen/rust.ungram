@@ -17,7 +17,7 @@ Item =
 | TraitDef
 | TypeAliasDef
 | UnionDef
-| UseItem
+| Use
 
 Module =
   Attr* Visibility? 'mod' Name
@@ -32,7 +32,7 @@ ExternCrate =
 Rename =
   'as' (Name | '_')
 
-UseItem =
+Use =
   Attr* Visibility? 'use' UseTree ';'
 
 UseTree =
