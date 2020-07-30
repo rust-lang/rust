@@ -267,7 +267,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.assert_contains_node(node)
     }
 
-    pub fn is_unsafe_method_call(&self, method_call_expr: ast::MethodCallExpr) -> bool {
+    pub fn is_unsafe_method_call(&self, method_call_expr: &ast::MethodCallExpr) -> bool {
         self.imp.is_unsafe_method_call(method_call_expr)
     }
 
@@ -571,7 +571,7 @@ impl<'db> SemanticsImpl<'db> {
         InFile::new(file_id, node)
     }
 
-    pub fn is_unsafe_method_call(&self, method_call_expr: ast::MethodCallExpr) -> bool {
+    pub fn is_unsafe_method_call(&self, method_call_expr: &ast::MethodCallExpr) -> bool {
         method_call_expr
             .expr()
             .and_then(|expr| {

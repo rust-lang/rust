@@ -36,6 +36,10 @@ impl Foo {
     fn qux(&mut self) {
         self.x = 0;
     }
+
+    fn quop(&self) -> i32 {
+        self.x
+    }
 }
 
 static mut STATIC_MUT: i32 = 0;
@@ -87,6 +91,11 @@ fn main() {
     let Foo { x: z, y } = Foo { x: z, y };
 
     y;
+
+    let mut foo = Foo { x, y: x };
+    foo.quop();
+    foo.qux();
+    foo.baz();
 }
 
 enum Option<T> {

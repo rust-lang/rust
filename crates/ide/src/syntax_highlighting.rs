@@ -4,7 +4,7 @@ mod injection;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, Semantics, VariantDef};
+use hir::{Mutability, Name, Semantics, VariantDef};
 use ide_db::{
     defs::{classify_name, classify_name_ref, Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -729,13 +729,23 @@ fn highlight_name(
                     let is_unsafe = name_ref
                         .and_then(|name_ref| name_ref.syntax().parent())
                         .and_then(ast::MethodCallExpr::cast)
-                        .map(|method_call_expr| sema.is_unsafe_method_call(method_call_expr))
+                        .map(|method_call_expr| sema.is_unsafe_method_call(&method_call_expr))
                         .unwrap_or(false);
                     if is_unsafe {
                         h |= HighlightModifier::Unsafe;
                     }
                 }
-                return h;
+                return if func.has_self_param(db) {
+                    match func.mutability_of_self_param(db) {
+                        Some(mutability) => match mutability {
+                            Mutability::Mut => h | HighlightModifier::Mutable,
+                            Mutability::Shared => h,
+                        },
+                        None => h | HighlightModifier::Consuming,
+                    }
+                } else {
+                    h
+                };
             }
             hir::ModuleDef::Adt(hir::Adt::Struct(_)) => HighlightTag::Struct,
             hir::ModuleDef::Adt(hir::Adt::Enum(_)) => HighlightTag::Enum,
@@ -808,14 +818,26 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
     match parent.kind() {
         METHOD_CALL_EXPR => {
             let mut h = Highlight::new(HighlightTag::Function);
-            let is_unsafe = ast::MethodCallExpr::cast(parent)
-                .map(|method_call_expr| sema.is_unsafe_method_call(method_call_expr))
-                .unwrap_or(false);
-            if is_unsafe {
-                h |= HighlightModifier::Unsafe;
-            }
+            ast::MethodCallExpr::cast(parent)
+                .and_then(|method_call_expr| {
+                    if sema.is_unsafe_method_call(&method_call_expr) {
+                        h |= HighlightModifier::Unsafe;
+                    }
 
-            h
+                    let func = sema.resolve_method_call(&method_call_expr)?;
+                    if !func.has_self_param(sema.db) {
+                        return Some(h);
+                    }
+
+                    Some(match func.mutability_of_self_param(sema.db) {
+                        Some(mutability) => match mutability {
+                            Mutability::Mut => h | HighlightModifier::Mutable,
+                            Mutability::Shared => h,
+                        },
+                        None => h | HighlightModifier::Consuming,
+                    })
+                })
+                .unwrap_or_else(|| h)
         }
         FIELD_EXPR => {
             let h = HighlightTag::Field;
