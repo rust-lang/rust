@@ -294,7 +294,7 @@ impl<'tcx> Queries<'tcx> {
         };
 
         let attrs = &*tcx.get_attrs(def_id.to_def_id());
-        let attrs = attrs.iter().filter(|attr| attr.check_name(sym::rustc_error));
+        let attrs = attrs.iter().filter(|attr| tcx.sess.check_name(attr, sym::rustc_error));
         for attr in attrs {
             match attr.meta_item_list() {
                 // Check if there is a `#[rustc_error(delay_span_bug_from_inside_query)]`.

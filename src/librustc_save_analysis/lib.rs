@@ -825,7 +825,7 @@ impl<'tcx> SaveContext<'tcx> {
                 // FIXME: Should save-analysis beautify doc strings itself or leave it to users?
                 result.push_str(&beautify_doc_string(val));
                 result.push('\n');
-            } else if attr.check_name(sym::doc) {
+            } else if self.tcx.sess.check_name(attr, sym::doc) {
                 if let Some(meta_list) = attr.meta_item_list() {
                     meta_list
                         .into_iter()

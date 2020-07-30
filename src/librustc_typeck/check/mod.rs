@@ -2603,7 +2603,7 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
     let repr = def.repr;
     if repr.packed() {
         for attr in tcx.get_attrs(def.did).iter() {
-            for r in attr::find_repr_attrs(&tcx.sess.parse_sess, attr) {
+            for r in attr::find_repr_attrs(&tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r {
                     if let Some(repr_pack) = repr.pack {
                         if pack as u64 != repr_pack.bytes() {
@@ -2814,7 +2814,7 @@ pub fn check_enum<'tcx>(
 
     if vs.is_empty() {
         let attributes = tcx.get_attrs(def_id.to_def_id());
-        if let Some(attr) = attr::find_by_name(&attributes, sym::repr) {
+        if let Some(attr) = tcx.sess.find_by_name(&attributes, sym::repr) {
             struct_span_err!(
                 tcx.sess,
                 attr.span,

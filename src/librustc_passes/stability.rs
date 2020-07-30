@@ -65,11 +65,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             did_error = self.forbid_staged_api_attrs(hir_id, attrs);
         }
 
-        let depr = if did_error {
-            None
-        } else {
-            attr::find_deprecation(&self.tcx.sess.parse_sess, attrs, item_sp)
-        };
+        let depr =
+            if did_error { None } else { attr::find_deprecation(&self.tcx.sess, attrs, item_sp) };
         let mut is_deprecated = false;
         if let Some(depr) = &depr {
             is_deprecated = true;
@@ -88,7 +85,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         if self.tcx.features().staged_api {
-            if let Some(..) = attrs.iter().find(|a| a.check_name(sym::deprecated)) {
+            if let Some(..) = attrs.iter().find(|a| self.tcx.sess.check_name(a, sym::deprecated)) {
                 self.tcx.sess.span_err(
                     item_sp,
                     "`#[deprecated]` cannot be used in staged API; \
@@ -105,7 +102,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             return;
         }
 
-        let (stab, const_stab) = attr::find_stability(&self.tcx.sess.parse_sess, attrs, item_sp);
+        let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item_sp);
 
         let const_stab = const_stab.map(|const_stab| {
             let const_stab = self.tcx.intern_const_stability(const_stab);
@@ -252,7 +249,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         for attr in attrs {
             let name = attr.name_or_empty();
             if unstable_attrs.contains(&name) {
-                attr::mark_used(attr);
+                self.tcx.sess.mark_attr_used(attr);
                 struct_span_err!(
                     self.tcx.sess,
                     attr.span,

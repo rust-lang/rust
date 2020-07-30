@@ -34,16 +34,16 @@ impl SymbolNamesTest<'tcx> {
         let tcx = self.tcx;
         let def_id = tcx.hir().local_def_id(hir_id);
         for attr in tcx.get_attrs(def_id.to_def_id()).iter() {
-            if attr.check_name(SYMBOL_NAME) {
+            if tcx.sess.check_name(attr, SYMBOL_NAME) {
                 // for now, can only use on monomorphic names
                 let instance = Instance::mono(tcx, def_id.to_def_id());
-                let mangled = self.tcx.symbol_name(instance);
+                let mangled = tcx.symbol_name(instance);
                 tcx.sess.span_err(attr.span, &format!("symbol-name({})", mangled));
                 if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
                     tcx.sess.span_err(attr.span, &format!("demangling({})", demangling));
                     tcx.sess.span_err(attr.span, &format!("demangling-alt({:#})", demangling));
                 }
-            } else if attr.check_name(DEF_PATH) {
+            } else if tcx.sess.check_name(attr, DEF_PATH) {
                 let path = tcx.def_path_str(def_id.to_def_id());
                 tcx.sess.span_err(attr.span, &format!("def-path({})", path));
             }

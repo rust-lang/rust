@@ -2,7 +2,6 @@ use crate::Lint;
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast::ast;
 use rustc_ast::ast::{ExprKind, StmtKind};
-use rustc_ast::attr;
 use rustc_ast::util::parser;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
@@ -242,7 +241,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             descr_post_path: &str,
         ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
-                if attr.check_name(sym::must_use) {
+                if cx.sess().check_name(attr, sym::must_use) {
                     cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
                         let msg = format!(
                             "unused {}`{}`{} that must be used",
@@ -331,7 +330,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAttributes {
             }
         }
 
-        if !attr::is_used(attr) {
+        if !cx.sess().is_attr_used(attr) {
             debug!("emitting warning for: {:?}", attr);
             cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
                 lint.build("unused attribute").emit()

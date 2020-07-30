@@ -117,7 +117,7 @@ impl IfThisChanged<'tcx> {
         let def_id = self.tcx.hir().local_def_id(hir_id);
         let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
         for attr in attrs {
-            if attr.check_name(sym::rustc_if_this_changed) {
+            if self.tcx.sess.check_name(attr, sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     None => DepNode::from_def_path_hash(def_path_hash, DepKind::hir_owner),
@@ -132,7 +132,7 @@ impl IfThisChanged<'tcx> {
                     },
                 };
                 self.if_this_changed.push((attr.span, def_id.to_def_id(), dep_node));
-            } else if attr.check_name(sym::rustc_then_this_would_need) {
+            } else if self.tcx.sess.check_name(attr, sym::rustc_then_this_would_need) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
                     Some(n) => match DepNode::from_label_string(&n.as_str(), def_path_hash) {

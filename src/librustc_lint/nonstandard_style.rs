@@ -127,7 +127,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
         let has_repr_c = it
             .attrs
             .iter()
-            .any(|attr| attr::find_repr_attrs(&cx.sess.parse_sess, attr).contains(&attr::ReprC));
+            .any(|attr| attr::find_repr_attrs(&cx.sess, attr).contains(&attr::ReprC));
 
         if has_repr_c {
             return;
@@ -263,7 +263,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
-            attr::find_by_name(&cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
+            cx.sess()
+                .find_by_name(&cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
                 .and_then(|attr| attr.meta())
                 .and_then(|meta| {
                     meta.name_value_literal().and_then(|lit| {
@@ -327,7 +328,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             },
             FnKind::ItemFn(ident, _, header, _, attrs) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
-                if header.abi != Abi::Rust && attr::contains_name(attrs, sym::no_mangle) {
+                if header.abi != Abi::Rust && cx.sess().contains_name(attrs, sym::no_mangle) {
                     return;
                 }
                 self.check_snake_case(cx, "function", ident);
@@ -407,7 +408,7 @@ impl NonUpperCaseGlobals {
 impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         match it.kind {
-            hir::ItemKind::Static(..) if !attr::contains_name(&it.attrs, sym::no_mangle) => {
+            hir::ItemKind::Static(..) if !cx.sess().contains_name(&it.attrs, sym::no_mangle) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", &it.ident);
             }
             hir::ItemKind::Const(..) => {

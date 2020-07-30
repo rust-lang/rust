@@ -4,7 +4,6 @@ use crate::core::DocContext;
 use crate::fold::{self, DocFolder};
 use crate::passes::Pass;
 
-use rustc_ast::attr;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use serde::Serialize;
@@ -155,7 +154,10 @@ impl fold::DocFolder for CoverageCalculator {
                 return Some(i);
             }
             clean::ImplItem(ref impl_)
-                if attr::contains_name(&i.attrs.other_attrs, sym::automatically_derived)
+                if i.attrs
+                    .other_attrs
+                    .iter()
+                    .any(|item| item.has_name(sym::automatically_derived))
                     || impl_.synthetic
                     || impl_.blanket_impl.is_some() =>
             {

@@ -37,7 +37,12 @@ impl MultiItemModifier for Expander {
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let template = AttributeTemplate { list: Some("path"), ..Default::default() };
         let attr = &ecx.attribute(meta_item.clone());
-        validate_attr::check_builtin_attribute(ecx.parse_sess, attr, sym::cfg_accessible, template);
+        validate_attr::check_builtin_attribute(
+            &ecx.sess.parse_sess,
+            attr,
+            sym::cfg_accessible,
+            template,
+        );
 
         let path = match validate_input(ecx, meta_item) {
             Some(path) => path,

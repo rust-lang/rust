@@ -196,7 +196,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: LocalDefId) {
                     }
 
                     for attr in it.attrs {
-                        if attr.check_name(sym::track_caller) {
+                        if tcx.sess.check_name(attr, sym::track_caller) {
                             tcx.sess
                                 .struct_span_err(
                                     attr.span,
@@ -293,7 +293,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
                     }
 
                     for attr in it.attrs {
-                        if attr.check_name(sym::track_caller) {
+                        if tcx.sess.check_name(attr, sym::track_caller) {
                             tcx.sess
                                 .struct_span_err(
                                     attr.span,

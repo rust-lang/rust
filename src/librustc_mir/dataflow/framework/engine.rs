@@ -335,7 +335,7 @@ impl RustcMirAttrs {
 
         let rustc_mir_attrs = attrs
             .iter()
-            .filter(|attr| attr.check_name(sym::rustc_mir))
+            .filter(|attr| tcx.sess.check_name(attr, sym::rustc_mir))
             .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 
         for attr in rustc_mir_attrs {

@@ -3195,7 +3195,6 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
- "scoped-tls",
  "smallvec 1.4.0",
  "tracing",
 ]
@@ -3467,6 +3466,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
+ "rustc_session",
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.0",

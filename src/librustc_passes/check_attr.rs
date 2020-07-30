@@ -9,7 +9,6 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
 use rustc_ast::ast::{Attribute, NestedMetaItem};
-use rustc_ast::attr;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -60,17 +59,17 @@ impl CheckAttrVisitor<'tcx> {
     ) {
         let mut is_valid = true;
         for attr in attrs {
-            is_valid &= if attr.check_name(sym::inline) {
+            is_valid &= if self.tcx.sess.check_name(attr, sym::inline) {
                 self.check_inline(hir_id, attr, span, target)
-            } else if attr.check_name(sym::non_exhaustive) {
+            } else if self.tcx.sess.check_name(attr, sym::non_exhaustive) {
                 self.check_non_exhaustive(attr, span, target)
-            } else if attr.check_name(sym::marker) {
+            } else if self.tcx.sess.check_name(attr, sym::marker) {
                 self.check_marker(attr, span, target)
-            } else if attr.check_name(sym::target_feature) {
+            } else if self.tcx.sess.check_name(attr, sym::target_feature) {
                 self.check_target_feature(attr, span, target)
-            } else if attr.check_name(sym::track_caller) {
+            } else if self.tcx.sess.check_name(attr, sym::track_caller) {
                 self.check_track_caller(&attr.span, attrs, span, target)
-            } else if attr.check_name(sym::doc) {
+            } else if self.tcx.sess.check_name(attr, sym::doc) {
                 self.check_doc_alias(attr)
             } else {
                 true
@@ -144,7 +143,7 @@ impl CheckAttrVisitor<'tcx> {
         target: Target,
     ) -> bool {
         match target {
-            _ if attr::contains_name(attrs, sym::naked) => {
+            _ if self.tcx.sess.contains_name(attrs, sym::naked) => {
                 struct_span_err!(
                     self.tcx.sess,
                     *attr_span,
@@ -262,7 +261,7 @@ impl CheckAttrVisitor<'tcx> {
         // ```
         let hints: Vec<_> = attrs
             .iter()
-            .filter(|attr| attr.check_name(sym::repr))
+            .filter(|attr| self.tcx.sess.check_name(attr, sym::repr))
             .filter_map(|attr| attr.meta_item_list())
             .flatten()
             .collect();
@@ -391,10 +390,10 @@ impl CheckAttrVisitor<'tcx> {
         // When checking statements ignore expressions, they will be checked later
         if let hir::StmtKind::Local(ref l) = stmt.kind {
             for attr in l.attrs.iter() {
-                if attr.check_name(sym::inline) {
+                if self.tcx.sess.check_name(attr, sym::inline) {
                     self.check_inline(l.hir_id, attr, &stmt.span, Target::Statement);
                 }
-                if attr.check_name(sym::repr) {
+                if self.tcx.sess.check_name(attr, sym::repr) {
                     self.emit_repr_error(
                         attr.span,
                         stmt.span,
@@ -412,10 +411,10 @@ impl CheckAttrVisitor<'tcx> {
             _ => Target::Expression,
         };
         for attr in expr.attrs.iter() {
-            if attr.check_name(sym::inline) {
+            if self.tcx.sess.check_name(attr, sym::inline) {
                 self.check_inline(expr.hir_id, attr, &expr.span, target);
             }
-            if attr.check_name(sym::repr) {
+            if self.tcx.sess.check_name(attr, sym::repr) {
                 self.emit_repr_error(
                     attr.span,
                     expr.span,
@@ -431,7 +430,7 @@ impl CheckAttrVisitor<'tcx> {
 
     fn check_used(&self, attrs: &'hir [Attribute], target: Target) {
         for attr in attrs {
-            if attr.check_name(sym::used) && target != Target::Static {
+            if self.tcx.sess.check_name(attr, sym::used) && target != Target::Static {
                 self.tcx
                     .sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");

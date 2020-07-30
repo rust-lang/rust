@@ -1,5 +1,5 @@
 use super::*;
-use crate::with_default_session_globals;
+use rustc_span::with_default_session_globals;
 
 #[test]
 fn line_doc_comments() {

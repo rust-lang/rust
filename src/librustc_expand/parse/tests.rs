@@ -5,13 +5,13 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::visit;
-use rustc_ast::with_default_session_globals;
 use rustc_ast_pretty::pprust::item_to_string;
 use rustc_errors::PResult;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::with_default_session_globals;
 use rustc_span::{BytePos, FileName, Pos, Span};
 
 use std::path::PathBuf;

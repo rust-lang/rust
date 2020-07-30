@@ -2265,7 +2265,7 @@ impl ReprOptions {
         let mut max_align: Option<Align> = None;
         let mut min_pack: Option<Align> = None;
         for attr in tcx.get_attrs(did).iter() {
-            for r in attr::find_repr_attrs(&tcx.sess.parse_sess, attr) {
+            for r in attr::find_repr_attrs(&tcx.sess, attr) {
                 flags.insert(match r {
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {
@@ -2382,7 +2382,7 @@ impl<'tcx> AdtDef {
         }
 
         let attrs = tcx.get_attrs(did);
-        if attr::contains_name(&attrs, sym::fundamental) {
+        if tcx.sess.contains_name(&attrs, sym::fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
         if Some(did) == tcx.lang_items().phantom_data() {
@@ -3021,7 +3021,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Determines whether an item is annotated with an attribute.
     pub fn has_attr(self, did: DefId, attr: Symbol) -> bool {
-        attr::contains_name(&self.get_attrs(did), attr)
+        self.sess.contains_name(&self.get_attrs(did), attr)
     }
 
     /// Returns `true` if this is an `auto trait`.

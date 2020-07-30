@@ -5,7 +5,6 @@ use crate::native_libs;
 use crate::rmeta::{self, encoder};
 
 use rustc_ast::ast;
-use rustc_ast::attr;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
@@ -415,7 +414,7 @@ impl CStore {
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index, sess);
         for attr in attrs.iter() {
-            attr::mark_used(attr);
+            sess.mark_attr_used(attr);
         }
 
         let ident = data.item_ident(id.index, sess);

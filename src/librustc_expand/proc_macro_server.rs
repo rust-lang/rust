@@ -364,7 +364,7 @@ impl<'a> Rustc<'a> {
     pub fn new(cx: &'a ExtCtxt<'_>) -> Self {
         let expn_data = cx.current_expansion.id.expn_data();
         Rustc {
-            sess: cx.parse_sess,
+            sess: &cx.sess.parse_sess,
             def_site: cx.with_def_site_ctxt(expn_data.def_site),
             call_site: cx.with_call_site_ctxt(expn_data.call_site),
             mixed_site: cx.with_mixed_site_ctxt(expn_data.call_site),

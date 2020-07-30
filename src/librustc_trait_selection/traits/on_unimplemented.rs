@@ -164,7 +164,7 @@ impl<'tcx> OnUnimplementedDirective {
     ) -> Result<Option<Self>, ErrorReported> {
         let attrs = tcx.get_attrs(impl_def_id);
 
-        let attr = if let Some(item) = attr::find_by_name(&attrs, sym::rustc_on_unimplemented) {
+        let attr = if let Some(item) = tcx.sess.find_by_name(&attrs, sym::rustc_on_unimplemented) {
             item
         } else {
             return Ok(None);

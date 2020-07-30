@@ -3,7 +3,6 @@ use crate::rmeta::*;
 
 use log::{debug, trace};
 use rustc_ast::ast;
-use rustc_ast::attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -633,7 +632,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let source_map_bytes = self.position() - i;
 
         let attrs = tcx.hir().krate_attrs();
-        let has_default_lib_allocator = attr::contains_name(&attrs, sym::default_lib_allocator);
+        let has_default_lib_allocator = tcx.sess.contains_name(&attrs, sym::default_lib_allocator);
 
         let root = self.lazy(CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
@@ -659,12 +658,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
-            compiler_builtins: attr::contains_name(&attrs, sym::compiler_builtins),
-            needs_allocator: attr::contains_name(&attrs, sym::needs_allocator),
-            needs_panic_runtime: attr::contains_name(&attrs, sym::needs_panic_runtime),
-            no_builtins: attr::contains_name(&attrs, sym::no_builtins),
-            panic_runtime: attr::contains_name(&attrs, sym::panic_runtime),
-            profiler_runtime: attr::contains_name(&attrs, sym::profiler_runtime),
+            compiler_builtins: tcx.sess.contains_name(&attrs, sym::compiler_builtins),
+            needs_allocator: tcx.sess.contains_name(&attrs, sym::needs_allocator),
+            needs_panic_runtime: tcx.sess.contains_name(&attrs, sym::needs_panic_runtime),
+            no_builtins: tcx.sess.contains_name(&attrs, sym::no_builtins),
+            panic_runtime: tcx.sess.contains_name(&attrs, sym::panic_runtime),
+            profiler_runtime: tcx.sess.contains_name(&attrs, sym::profiler_runtime),
             symbol_mangling_version: tcx.sess.opts.debugging_opts.symbol_mangling_version,
 
             crate_deps,

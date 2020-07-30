@@ -1,7 +1,7 @@
 //! Related to out filenames of compilation (e.g. save analysis, binaries).
 use crate::config::{CrateType, Input, OutputFilenames, OutputType};
 use crate::Session;
-use rustc_ast::{ast, attr};
+use rustc_ast::ast;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use std::path::{Path, PathBuf};
@@ -56,7 +56,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
     // the command line over one found in the #[crate_name] attribute. If we
     // find both we ensure that they're the same later on as well.
     let attr_crate_name =
-        attr::find_by_name(attrs, sym::crate_name).and_then(|at| at.value_str().map(|s| (at, s)));
+        sess.find_by_name(attrs, sym::crate_name).and_then(|at| at.value_str().map(|s| (at, s)));
 
     if let Some(ref s) = sess.opts.crate_name {
         if let Some((attr, name)) = attr_crate_name {
@@ -75,7 +75,6 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
     if let Some((attr, s)) = attr_crate_name {
         return validate(s.to_string(), Some(attr.span));
     }
-
     if let Input::File(ref path) = *input {
         if let Some(s) = path.file_stem().and_then(|s| s.to_str()) {
             if s.starts_with('-') {

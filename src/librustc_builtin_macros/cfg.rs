@@ -19,7 +19,7 @@ pub fn expand_cfg(
 
     match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {
-            let matches_cfg = attr::cfg_matches(&cfg, cx.parse_sess, cx.ecfg.features);
+            let matches_cfg = attr::cfg_matches(&cfg, &cx.sess.parse_sess, cx.ecfg.features);
             MacEager::expr(cx.expr_bool(sp, matches_cfg))
         }
         Err(mut err) => {

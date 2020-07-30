@@ -1,13 +1,12 @@
 //! Parsing and validation of builtin attributes
 
-use super::{find_by_name, mark_used};
-
 use rustc_ast::ast::{self, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, Handler};
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_session::parse::{feature_err, ParseSess};
+use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
 use std::num::NonZeroU32;
@@ -86,9 +85,9 @@ pub enum UnwindAttr {
 }
 
 /// Determine what `#[unwind]` attribute is present in `attrs`, if any.
-pub fn find_unwind_attr(diagnostic: &Handler, attrs: &[Attribute]) -> Option<UnwindAttr> {
+pub fn find_unwind_attr(sess: &Session, attrs: &[Attribute]) -> Option<UnwindAttr> {
     attrs.iter().fold(None, |ia, attr| {
-        if attr.check_name(sym::unwind) {
+        if sess.check_name(attr, sym::unwind) {
             if let Some(meta) = attr.meta() {
                 if let MetaItemKind::List(items) = meta.kind {
                     if items.len() == 1 {
@@ -100,7 +99,7 @@ pub fn find_unwind_attr(diagnostic: &Handler, attrs: &[Attribute]) -> Option<Unw
                     }
 
                     struct_span_err!(
-                        diagnostic,
+                        sess.diagnostic(),
                         attr.span,
                         E0633,
                         "malformed `unwind` attribute input"
@@ -164,22 +163,10 @@ impl StabilityLevel {
     }
 }
 
-/// Checks if `attrs` contains an attribute like `#![feature(feature_name)]`.
-/// This will not perform any "sanity checks" on the form of the attributes.
-pub fn contains_feature_attr(attrs: &[Attribute], feature_name: Symbol) -> bool {
-    attrs.iter().any(|item| {
-        item.check_name(sym::feature)
-            && item
-                .meta_item_list()
-                .map(|list| list.iter().any(|mi| mi.is_word() && mi.has_name(feature_name)))
-                .unwrap_or(false)
-    })
-}
-
 /// Collects stability info from all stability attributes in `attrs`.
 /// Returns `None` if no stability attributes are found.
 pub fn find_stability(
-    sess: &ParseSess,
+    sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
 ) -> (Option<Stability>, Option<ConstStability>) {
@@ -187,7 +174,7 @@ pub fn find_stability(
 }
 
 fn find_stability_generic<'a, I>(
-    sess: &ParseSess,
+    sess: &Session,
     attrs_iter: I,
     item_sp: Span,
 ) -> (Option<Stability>, Option<ConstStability>)
@@ -200,7 +187,7 @@ where
     let mut const_stab: Option<ConstStability> = None;
     let mut promotable = false;
     let mut allow_const_fn_ptr = false;
-    let diagnostic = &sess.span_diagnostic;
+    let diagnostic = &sess.parse_sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
         if ![
@@ -217,7 +204,7 @@ where
             continue; // not a stability level
         }
 
-        mark_used(attr);
+        sess.mark_attr_used(attr);
 
         let meta = attr.meta();
 
@@ -233,7 +220,7 @@ where
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
                     handle_errors(
-                        sess,
+                        &sess.parse_sess,
                         meta.span,
                         AttrError::MultipleItem(pprust::path_to_string(&meta.path)),
                     );
@@ -252,10 +239,18 @@ where
             match meta_name {
                 sym::rustc_const_unstable | sym::unstable => {
                     if meta_name == sym::unstable && stab.is_some() {
-                        handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
+                        handle_errors(
+                            &sess.parse_sess,
+                            attr.span,
+                            AttrError::MultipleStabilityLevels,
+                        );
                         break;
                     } else if meta_name == sym::rustc_const_unstable && const_stab.is_some() {
-                        handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
+                        handle_errors(
+                            &sess.parse_sess,
+                            attr.span,
+                            AttrError::MultipleStabilityLevels,
+                        );
                         break;
                     }
 
@@ -321,13 +316,13 @@ where
                                 sym::soft => {
                                     if !mi.is_word() {
                                         let msg = "`soft` should not have any arguments";
-                                        sess.span_diagnostic.span_err(mi.span, msg);
+                                        sess.parse_sess.span_diagnostic.span_err(mi.span, msg);
                                     }
                                     is_soft = true;
                                 }
                                 _ => {
                                     handle_errors(
-                                        sess,
+                                        &sess.parse_sess,
                                         meta.span(),
                                         AttrError::UnknownMetaItem(
                                             pprust::path_to_string(&mi.path),
@@ -339,7 +334,7 @@ where
                             }
                         } else {
                             handle_errors(
-                                sess,
+                                &sess.parse_sess,
                                 meta.span(),
                                 AttrError::UnsupportedLiteral("unsupported literal", false),
                             );
@@ -362,7 +357,7 @@ where
                             }
                         }
                         (None, _, _) => {
-                            handle_errors(sess, attr.span, AttrError::MissingFeature);
+                            handle_errors(&sess.parse_sess, attr.span, AttrError::MissingFeature);
                             continue;
                         }
                         _ => {
@@ -374,10 +369,18 @@ where
                 }
                 sym::rustc_const_stable | sym::stable => {
                     if meta_name == sym::stable && stab.is_some() {
-                        handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
+                        handle_errors(
+                            &sess.parse_sess,
+                            attr.span,
+                            AttrError::MultipleStabilityLevels,
+                        );
                         break;
                     } else if meta_name == sym::rustc_const_stable && const_stab.is_some() {
-                        handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
+                        handle_errors(
+                            &sess.parse_sess,
+                            attr.span,
+                            AttrError::MultipleStabilityLevels,
+                        );
                         break;
                     }
 
@@ -398,7 +401,7 @@ where
                                 }
                                 _ => {
                                     handle_errors(
-                                        sess,
+                                        &sess.parse_sess,
                                         meta.span(),
                                         AttrError::UnknownMetaItem(
                                             pprust::path_to_string(&mi.path),
@@ -410,7 +413,7 @@ where
                             },
                             NestedMetaItem::Literal(lit) => {
                                 handle_errors(
-                                    sess,
+                                    &sess.parse_sess,
                                     lit.span,
                                     AttrError::UnsupportedLiteral("unsupported literal", false),
                                 );
@@ -434,11 +437,11 @@ where
                             }
                         }
                         (None, _) => {
-                            handle_errors(sess, attr.span, AttrError::MissingFeature);
+                            handle_errors(&sess.parse_sess, attr.span, AttrError::MissingFeature);
                             continue;
                         }
                         _ => {
-                            handle_errors(sess, attr.span, AttrError::MissingSince);
+                            handle_errors(&sess.parse_sess, attr.span, AttrError::MissingSince);
                             continue;
                         }
                     }
@@ -469,8 +472,8 @@ where
     (stab, const_stab)
 }
 
-pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
-    super::first_attr_value_str_by_name(attrs, sym::crate_name)
+pub fn find_crate_name(sess: &Session, attrs: &[Attribute]) -> Option<Symbol> {
+    sess.first_attr_value_str_by_name(attrs, sym::crate_name)
 }
 
 /// Tests if a cfg-pattern matches the cfg set
@@ -633,16 +636,12 @@ pub struct Deprecation {
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
-pub fn find_deprecation(
-    sess: &ParseSess,
-    attrs: &[Attribute],
-    item_sp: Span,
-) -> Option<Deprecation> {
+pub fn find_deprecation(sess: &Session, attrs: &[Attribute], item_sp: Span) -> Option<Deprecation> {
     find_deprecation_generic(sess, attrs.iter(), item_sp)
 }
 
 fn find_deprecation_generic<'a, I>(
-    sess: &ParseSess,
+    sess: &Session,
     attrs_iter: I,
     item_sp: Span,
 ) -> Option<Deprecation>
@@ -650,10 +649,11 @@ where
     I: Iterator<Item = &'a Attribute>,
 {
     let mut depr: Option<Deprecation> = None;
-    let diagnostic = &sess.span_diagnostic;
+    let diagnostic = &sess.parse_sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
-        if !(attr.check_name(sym::deprecated) || attr.check_name(sym::rustc_deprecated)) {
+        if !(sess.check_name(attr, sym::deprecated) || sess.check_name(attr, sym::rustc_deprecated))
+        {
             continue;
         }
 
@@ -676,7 +676,7 @@ where
                 let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                     if item.is_some() {
                         handle_errors(
-                            sess,
+                            &sess.parse_sess,
                             meta.span,
                             AttrError::MultipleItem(pprust::path_to_string(&meta.path)),
                         );
@@ -688,7 +688,7 @@ where
                     } else {
                         if let Some(lit) = meta.name_value_literal() {
                             handle_errors(
-                                sess,
+                                &sess.parse_sess,
                                 lit.span,
                                 AttrError::UnsupportedLiteral(
                                     "literal in `deprecated` \
@@ -713,28 +713,28 @@ where
                                     continue 'outer;
                                 }
                             }
-                            sym::note if attr.check_name(sym::deprecated) => {
+                            sym::note if sess.check_name(attr, sym::deprecated) => {
                                 if !get(mi, &mut note) {
                                     continue 'outer;
                                 }
                             }
-                            sym::reason if attr.check_name(sym::rustc_deprecated) => {
+                            sym::reason if sess.check_name(attr, sym::rustc_deprecated) => {
                                 if !get(mi, &mut note) {
                                     continue 'outer;
                                 }
                             }
-                            sym::suggestion if attr.check_name(sym::rustc_deprecated) => {
+                            sym::suggestion if sess.check_name(attr, sym::rustc_deprecated) => {
                                 if !get(mi, &mut suggestion) {
                                     continue 'outer;
                                 }
                             }
                             _ => {
                                 handle_errors(
-                                    sess,
+                                    &sess.parse_sess,
                                     meta.span(),
                                     AttrError::UnknownMetaItem(
                                         pprust::path_to_string(&mi.path),
-                                        if attr.check_name(sym::deprecated) {
+                                        if sess.check_name(attr, sym::deprecated) {
                                             &["since", "note"]
                                         } else {
                                             &["since", "reason", "suggestion"]
@@ -746,7 +746,7 @@ where
                         },
                         NestedMetaItem::Literal(lit) => {
                             handle_errors(
-                                sess,
+                                &sess.parse_sess,
                                 lit.span,
                                 AttrError::UnsupportedLiteral(
                                     "item in `deprecated` must be a key/value pair",
@@ -760,13 +760,13 @@ where
             }
         }
 
-        if suggestion.is_some() && attr.check_name(sym::deprecated) {
+        if suggestion.is_some() && sess.check_name(attr, sym::deprecated) {
             unreachable!("only allowed on rustc_deprecated")
         }
 
-        if attr.check_name(sym::rustc_deprecated) {
+        if sess.check_name(attr, sym::rustc_deprecated) {
             if since.is_none() {
-                handle_errors(sess, attr.span, AttrError::MissingSince);
+                handle_errors(&sess.parse_sess, attr.span, AttrError::MissingSince);
                 continue;
             }
 
@@ -776,9 +776,9 @@ where
             }
         }
 
-        mark_used(&attr);
+        sess.mark_attr_used(&attr);
 
-        let is_since_rustc_version = attr.check_name(sym::rustc_deprecated);
+        let is_since_rustc_version = sess.check_name(attr, sym::rustc_deprecated);
         depr = Some(Deprecation { since, note, suggestion, is_since_rustc_version });
     }
 
@@ -821,18 +821,18 @@ impl IntType {
 /// the same discriminant size that the corresponding C enum would or C
 /// structure layout, `packed` to remove padding, and `transparent` to elegate representation
 /// concerns to the only non-ZST field.
-pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
+pub fn find_repr_attrs(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
     use ReprAttr::*;
 
     let mut acc = Vec::new();
-    let diagnostic = &sess.span_diagnostic;
+    let diagnostic = &sess.parse_sess.span_diagnostic;
     if attr.has_name(sym::repr) {
         if let Some(items) = attr.meta_item_list() {
-            mark_used(attr);
+            sess.mark_attr_used(attr);
             for item in items {
                 if !item.is_meta_item() {
                     handle_errors(
-                        sess,
+                        &sess.parse_sess,
                         item.span(),
                         AttrError::UnsupportedLiteral(
                             "meta item in `repr` must be an identifier",
@@ -976,13 +976,14 @@ pub enum TransparencyError {
 }
 
 pub fn find_transparency(
+    sess: &Session,
     attrs: &[Attribute],
     macro_rules: bool,
 ) -> (Transparency, Option<TransparencyError>) {
     let mut transparency = None;
     let mut error = None;
     for attr in attrs {
-        if attr.check_name(sym::rustc_macro_transparency) {
+        if sess.check_name(attr, sym::rustc_macro_transparency) {
             if let Some((_, old_span)) = transparency {
                 error = Some(TransparencyError::MultipleTransparencyAttrs(old_span, attr.span));
                 break;
@@ -1007,18 +1008,20 @@ pub fn find_transparency(
 }
 
 pub fn allow_internal_unstable<'a>(
+    sess: &'a Session,
     attrs: &[Attribute],
-    diag: &'a rustc_errors::Handler,
 ) -> Option<impl Iterator<Item = Symbol> + 'a> {
-    let attr = find_by_name(attrs, sym::allow_internal_unstable)?;
+    let attr = sess.find_by_name(attrs, sym::allow_internal_unstable)?;
     let list = attr.meta_item_list().or_else(|| {
-        diag.span_err(attr.span, "allow_internal_unstable expects list of feature names");
+        sess.diagnostic()
+            .span_err(attr.span, "allow_internal_unstable expects list of feature names");
         None
     })?;
     Some(list.into_iter().filter_map(move |it| {
         let name = it.ident().map(|ident| ident.name);
         if name.is_none() {
-            diag.span_err(it.span(), "`allow_internal_unstable` expects feature names");
+            sess.diagnostic()
+                .span_err(it.span(), "`allow_internal_unstable` expects feature names");
         }
         name
     }))
