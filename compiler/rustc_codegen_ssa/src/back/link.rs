@@ -1084,7 +1084,7 @@ fn get_crt_libs_path(sess: &Session) -> Option<PathBuf> {
 
 fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> PathBuf {
     // prefer system {,dll}crt2.o libs, see get_crt_libs_path comment for more details
-    if sess.opts.debugging_opts.link_self_contained.is_none()
+    if sess.opts.cg.link_self_contained.is_none()
         && sess.target.target.llvm_target.contains("windows-gnu")
     {
         if let Some(compiler_libs_path) = get_crt_libs_path(sess) {
@@ -1289,7 +1289,7 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 /// Whether we link to our own CRT objects instead of relying on gcc to pull them.
 /// We only provide such support for a very limited number of targets.
 fn crt_objects_fallback(sess: &Session, crate_type: CrateType) -> bool {
-    if let Some(self_contained) = sess.opts.debugging_opts.link_self_contained {
+    if let Some(self_contained) = sess.opts.cg.link_self_contained {
         return self_contained;
     }
 
@@ -1499,7 +1499,7 @@ fn link_local_crate_native_libs_and_dependent_crate_libs<'a, B: ArchiveBuilder<'
 /// Add sysroot and other globally set directories to the directory search list.
 fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session, self_contained: bool) {
     // Prefer system mingw-w64 libs, see get_crt_libs_path comment for more details.
-    if sess.opts.debugging_opts.link_self_contained.is_none()
+    if sess.opts.cg.link_self_contained.is_none()
         && cfg!(windows)
         && sess.target.target.llvm_target.contains("windows-gnu")
     {
