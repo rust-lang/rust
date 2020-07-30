@@ -406,6 +406,9 @@ fn opts() -> Vec<RustcOptGroup> {
                 "specified the rustc-like binary to use as the test builder",
             )
         }),
+        unstable("crate-root-link", |o| {
+            o.optmulti("", "crate-root-link", "", "Specifies links to display on the crate root")
+        }),
     ]
 }
 

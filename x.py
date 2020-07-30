@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # This file is only a "symlink" to bootstrap.py, all logic should go there.
 

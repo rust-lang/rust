@@ -218,6 +218,8 @@ pub struct RenderOptions {
     pub extern_html_root_urls: BTreeMap<String, String>,
     /// If present, suffix added to CSS/JavaScript files when referencing them in generated pages.
     pub resource_suffix: String,
+    /// Links displayed on the crate root page.
+    pub crate_root_links: BTreeMap<String, String>,
     /// Whether to run the static CSS/JavaScript through a minifier when outputting them. `true` by
     /// default.
     //
@@ -270,6 +272,36 @@ impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
     pub fn from_matches(matches: &getopts::Matches) -> Result<Options, i32> {
+        fn parse_keyval_opt_internal(
+            matches: &getopts::Matches,
+            opt_name: &'static str,
+            empty_err: &'static str,
+            invalid_form_err: &'static str,
+        ) -> Result<BTreeMap<String, String>, &'static str> {
+            let mut externs = BTreeMap::new();
+            for arg in &(matches).opt_strs(opt_name) {
+                let mut parts = arg.splitn(2, '=');
+                let name = parts.next().ok_or(empty_err)?;
+                let url = parts.next().ok_or(invalid_form_err)?;
+                externs.insert(name.to_string(), url.to_string());
+            }
+
+            Ok(externs)
+        }
+        /// Extracts key-value arguments (such as for `--extern-html-root-url`)  from `matches` and returns
+        /// a map of crate names to the given URLs. If an argument was ill-formed, returns an error
+        /// describing the issue.
+        macro_rules! parse_keyval_opt {
+            ($matches:expr, $opt_name:literal) => {
+                parse_keyval_opt_internal(
+                    $matches,
+                    $opt_name,
+                    concat!("--", $opt_name, "must not be empty"),
+                    concat!("--", $opt_name, "must be of the form name=url"),
+                )
+            };
+        }
+
         // Check for unstable options.
         nightly_options::check_nightly_options(&matches, &opts());
 
@@ -366,7 +398,15 @@ impl Options {
             .map(|s| SearchPath::from_cli_opt(s, error_format))
             .collect();
         let externs = parse_externs(&matches, &debugging_options, error_format);
-        let extern_html_root_urls = match parse_extern_html_roots(&matches) {
+        let extern_html_root_urls = match parse_keyval_opt!(&matches, "extern-html-root-url") {
+            Ok(ex) => ex,
+            Err(err) => {
+                diag.struct_err(err).emit();
+                return Err(1);
+            }
+        };
+
+        let crate_root_links = match parse_keyval_opt!(&matches, "crate-root-link") {
             Ok(ex) => ex,
             Err(err) => {
                 diag.struct_err(err).emit();
@@ -609,6 +649,7 @@ impl Options {
                 generate_search_filter,
                 document_private,
                 document_hidden,
+                crate_root_links,
             },
             output_format,
         })
@@ -653,21 +694,4 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
                 .emit();
         }
     }
-}
-
-/// Extracts `--extern-html-root-url` arguments from `matches` and returns a map of crate names to
-/// the given URLs. If an `--extern-html-root-url` argument was ill-formed, returns an error
-/// describing the issue.
-fn parse_extern_html_roots(
-    matches: &getopts::Matches,
-) -> Result<BTreeMap<String, String>, &'static str> {
-    let mut externs = BTreeMap::new();
-    for arg in &matches.opt_strs("extern-html-root-url") {
-        let mut parts = arg.splitn(2, '=');
-        let name = parts.next().ok_or("--extern-html-root-url must not be empty")?;
-        let url = parts.next().ok_or("--extern-html-root-url must be of the form name=url")?;
-        externs.insert(name.to_string(), url.to_string());
-    }
-
-    Ok(externs)
 }

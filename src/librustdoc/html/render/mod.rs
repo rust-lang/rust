@@ -157,6 +157,8 @@ crate struct SharedContext {
     pub edition: Edition,
     pub codes: ErrorCodes,
     playground: Option<markdown::Playground>,
+    /// Links displayed on the crate root page.
+    pub crate_root_links: BTreeMap<String, String>,
 }
 
 impl Context {
@@ -396,6 +398,7 @@ impl FormatRenderer for Context {
             resource_suffix,
             static_root_path,
             generate_search_filter,
+            crate_root_links,
             ..
         } = options;
 
@@ -466,6 +469,7 @@ impl FormatRenderer for Context {
             edition,
             codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
             playground,
+            crate_root_links,
         };
 
         // Add the default themes to the `Vec` of stylepaths
@@ -3893,6 +3897,26 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
             );
         }
     }
+
+    if it.is_crate() && !cx.shared.crate_root_links.is_empty() {
+        let mut links_html = String::new();
+        for (name, url) in &cx.shared.crate_root_links {
+            links_html.push_str(&format!(
+                "<li><a href='{}'>{}</a></li>",
+                Escape(url),
+                Escape(name),
+            ));
+        }
+        write!(
+            buffer,
+            "<div class='block items'>\
+            <ul>\
+            {}\
+            </ul>\
+            </div>",
+            links_html
+        );
+    };
 
     write!(buffer, "<div class=\"sidebar-elems\">");
     if it.is_crate() {
