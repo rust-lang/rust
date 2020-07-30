@@ -82,10 +82,6 @@ StructDef =
   | TupleFieldDefList WhereClause? ';'
   )
 
-UnionDef =
-  Attr* Visibility? 'union' Name GenericParamList? WhereClause?
-  RecordFieldDefList
-
 RecordFieldDefList =
  '{' fields:RecordFieldDef* '}'
 
@@ -101,6 +97,11 @@ TupleFieldDef =
 FieldDefList =
   RecordFieldDefList
 | TupleFieldDefList
+
+
+UnionDef =
+  Attr* Visibility? 'union' Name GenericParamList? WhereClause?
+  RecordFieldDefList
 
 EnumDef =
   Attr* Visibility? 'enum' Name GenericParamList? WhereClause?
