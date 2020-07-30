@@ -1,5 +1,4 @@
 use rustc_ast::ast;
-use rustc_ast::expand::is_proc_macro_attr;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use std::str::FromStr;
@@ -126,6 +125,6 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 
 /// Return true if the attributes contain any of `proc_macro`,
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
-pub fn is_proc_macro(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(is_proc_macro_attr)
+pub fn is_proc_macro(sess: &Session, attrs: &[ast::Attribute]) -> bool {
+    attrs.iter().any(|attr| sess.is_proc_macro_attr(attr))
 }

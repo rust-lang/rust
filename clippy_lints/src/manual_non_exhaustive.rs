@@ -102,7 +102,7 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {
                     if_chain! {
-                        if !attr::contains_name(&item.attrs, sym!(non_exhaustive));
+                        if !item.attrs.iter().any(|attr| attr.has_name(sym!(non_exhaustive)));
                         let header_span = cx.sess.source_map().span_until_char(item.span, '{');
                         if let Some(snippet) = snippet_opt(cx, header_span);
                         then {
@@ -154,7 +154,7 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: 
                 "this seems like a manual implementation of the non-exhaustive pattern",
                 |diag| {
                     if_chain! {
-                        if !attr::contains_name(&item.attrs, sym!(non_exhaustive));
+                        if !item.attrs.iter().any(|attr| attr.has_name(sym!(non_exhaustive)));
                         let header_span = find_header_span(cx, item, data);
                         if let Some(snippet) = snippet_opt(cx, header_span);
                         then {
