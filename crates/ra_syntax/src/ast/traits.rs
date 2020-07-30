@@ -9,12 +9,6 @@ use crate::{
     SyntaxToken, T,
 };
 
-pub trait TypeAscriptionOwner: AstNode {
-    fn ascribed_type(&self) -> Option<ast::TypeRef> {
-        support::child(self.syntax())
-    }
-}
-
 pub trait NameOwner: AstNode {
     fn name(&self) -> Option<ast::Name> {
         support::child(self.syntax())

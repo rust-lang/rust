@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_syntax::ast::{self, AstNode, NameOwner, TypeAscriptionOwner, VisibilityOwner};
+use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 use stdx::format_to;
 
 pub(crate) trait ShortLabel {
@@ -55,19 +55,19 @@ impl ShortLabel for ast::TypeAlias {
 
 impl ShortLabel for ast::Const {
     fn short_label(&self) -> Option<String> {
-        short_label_from_ascribed_node(self, "const ")
+        short_label_from_ty(self, self.ty(), "const ")
     }
 }
 
 impl ShortLabel for ast::Static {
     fn short_label(&self) -> Option<String> {
-        short_label_from_ascribed_node(self, "static ")
+        short_label_from_ty(self, self.ty(), "static ")
     }
 }
 
 impl ShortLabel for ast::RecordField {
     fn short_label(&self) -> Option<String> {
-        short_label_from_ascribed_node(self, "")
+        short_label_from_ty(self, self.ty(), "")
     }
 }
 
@@ -77,13 +77,13 @@ impl ShortLabel for ast::Variant {
     }
 }
 
-fn short_label_from_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>
+fn short_label_from_ty<T>(node: &T, ty: Option<ast::TypeRef>, prefix: &str) -> Option<String>
 where
-    T: NameOwner + VisibilityOwner + TypeAscriptionOwner,
+    T: NameOwner + VisibilityOwner,
 {
     let mut buf = short_label_from_node(node, prefix)?;
 
-    if let Some(type_ref) = node.ascribed_type() {
+    if let Some(type_ref) = ty {
         format_to!(buf, ": {}", type_ref.syntax());
     }
 

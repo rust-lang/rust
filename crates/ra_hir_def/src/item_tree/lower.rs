@@ -209,7 +209,7 @@ impl Ctx {
     fn lower_record_field(&mut self, field: &ast::RecordField) -> Option<Field> {
         let name = field.name()?.as_name();
         let visibility = self.lower_visibility(field);
-        let type_ref = self.lower_type_ref_opt(field.ascribed_type());
+        let type_ref = self.lower_type_ref_opt(field.ty());
         let res = Field { name, type_ref, visibility };
         Some(res)
     }
@@ -286,7 +286,7 @@ impl Ctx {
         let mut has_self_param = false;
         if let Some(param_list) = func.param_list() {
             if let Some(self_param) = param_list.self_param() {
-                let self_type = match self_param.ascribed_type() {
+                let self_type = match self_param.ty() {
                     Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
                     None => {
                         let self_type = TypeRef::Path(name![Self].into());
@@ -305,7 +305,7 @@ impl Ctx {
                 has_self_param = true;
             }
             for param in param_list.params() {
-                let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ascribed_type());
+                let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                 params.push(type_ref);
             }
         }
@@ -370,7 +370,7 @@ impl Ctx {
 
     fn lower_static(&mut self, static_: &ast::Static) -> Option<FileItemTreeId<Static>> {
         let name = static_.name()?.as_name();
-        let type_ref = self.lower_type_ref_opt(static_.ascribed_type());
+        let type_ref = self.lower_type_ref_opt(static_.ty());
         let visibility = self.lower_visibility(static_);
         let mutable = static_.mut_token().is_some();
         let ast_id = self.source_ast_id_map.ast_id(static_);
@@ -380,7 +380,7 @@ impl Ctx {
 
     fn lower_const(&mut self, konst: &ast::Const) -> FileItemTreeId<Const> {
         let name = konst.name().map(|it| it.as_name());
-        let type_ref = self.lower_type_ref_opt(konst.ascribed_type());
+        let type_ref = self.lower_type_ref_opt(konst.ty());
         let visibility = self.lower_visibility(konst);
         let ast_id = self.source_ast_id_map.ast_id(konst);
         let res = Const { name, visibility, type_ref, ast_id };

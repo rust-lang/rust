@@ -1,5 +1,5 @@
 use ra_syntax::{
-    ast::{self, GenericParamsOwner, NameOwner, TypeAscriptionOwner},
+    ast::{self, GenericParamsOwner, NameOwner},
     AstNode, SyntaxKind, TextRange, TextSize,
 };
 use rustc_hash::FxHashSet;
@@ -67,7 +67,7 @@ fn generate_fn_def_assist(
         // otherwise, if there's a single reference parameter without a named liftime, use that
         let fn_params_without_lifetime: Vec<_> = param_list
             .params()
-            .filter_map(|param| match param.ascribed_type() {
+            .filter_map(|param| match param.ty() {
                 Some(ast::TypeRef::ReferenceType(ascribed_type))
                     if ascribed_type.lifetime_token() == None =>
                 {

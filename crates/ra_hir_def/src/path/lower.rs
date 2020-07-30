@@ -9,7 +9,7 @@ use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName},
 };
-use ra_syntax::ast::{self, AstNode, TypeAscriptionOwner, TypeBoundsOwner};
+use ra_syntax::ast::{self, AstNode, TypeBoundsOwner};
 
 use super::AssociatedTypeBinding;
 use crate::{
@@ -189,7 +189,7 @@ fn lower_generic_args_from_fn_path(
     if let Some(params) = params {
         let mut param_types = Vec::new();
         for param in params.params() {
-            let type_ref = TypeRef::from_ast_opt(&ctx, param.ascribed_type());
+            let type_ref = TypeRef::from_ast_opt(&ctx, param.ty());
             param_types.push(type_ref);
         }
         let arg = GenericArg::Type(TypeRef::Tuple(param_types));

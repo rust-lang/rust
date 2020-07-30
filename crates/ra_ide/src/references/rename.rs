@@ -7,7 +7,8 @@ use ra_ide_db::{
     RootDatabase,
 };
 use ra_syntax::{
-    algo::find_node_at_offset, ast, ast::NameOwner, ast::TypeAscriptionOwner,
+    algo::find_node_at_offset,
+    ast::{self, NameOwner},
     lex_single_valid_syntax_kind, match_ast, AstNode, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 use ra_text_edit::TextEdit;
@@ -155,7 +156,7 @@ fn rename_to_self(
         return None; // method already has self param
     }
     let first_param = params.params().next()?;
-    let mutable = match first_param.ascribed_type() {
+    let mutable = match first_param.ty() {
         Some(ast::TypeRef::ReferenceType(rt)) => rt.mut_token().is_some(),
         _ => return None, // not renaming other types
     };
