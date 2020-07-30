@@ -29,7 +29,7 @@ pub fn target() -> TargetResult {
          * native integers are 32-bit
          * All other elements are default
          */
-        data_layout: "e-S64-p:32:32-i64:64-m:e-n32".to_string(),
+        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         linker_flavor: LinkerFlavor::Ld,
         options: TargetOptions {
             linker: Some("arm-none-eabi-ld".to_string()),

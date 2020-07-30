@@ -8,7 +8,7 @@
 pub fn mutable_upvar() {
     let mut x = &mut 0;
     //~^ ERROR
-    move || {
+    let _ = move || {
         *x = 1;
     };
 }

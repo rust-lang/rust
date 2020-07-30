@@ -636,9 +636,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                 }
                 GenericArgKind::Const(c) => {
                     self.push("K");
-                    // FIXME(const_generics) implement `ty::print::Print` on `ty::Const`.
-                    // self = c.print(self)?;
-                    self = self.print_const(c)?;
+                    self = c.print(self)?;
                 }
             }
         }

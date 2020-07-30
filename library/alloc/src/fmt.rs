@@ -83,7 +83,7 @@
 //! # Formatting Parameters
 //!
 //! Each argument being formatted can be transformed by a number of formatting
-//! parameters (corresponding to `format_spec` in the syntax above). These
+//! parameters (corresponding to `format_spec` in [the syntax](#syntax)). These
 //! parameters affect the string representation of what's being formatted.
 //!
 //! ## Width

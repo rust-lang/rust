@@ -1,0 +1,17 @@
+warning: unused generator that must be used
+  --> $DIR/reborrow-mut-upvar.rs:6:5
+   |
+LL | /     || {
+LL | |         {
+LL | |             let _baz = &*bar;
+LL | |             yield;
+...  |
+LL | |         *bar = 2;
+LL | |     };
+   | |______^
+   |
+   = note: `#[warn(unused_must_use)]` on by default
+   = note: generators are lazy and do nothing unless resumed
+
+warning: 1 warning emitted
+

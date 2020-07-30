@@ -646,29 +646,6 @@ impl<T: ?Sized> Arc<T> {
         }
     }
 
-    /// Consumes the `Arc`, returning the wrapped pointer as `NonNull<T>`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(rc_into_raw_non_null)]
-    /// #![allow(deprecated)]
-    ///
-    /// use std::sync::Arc;
-    ///
-    /// let x = Arc::new("hello".to_owned());
-    /// let ptr = Arc::into_raw_non_null(x);
-    /// let deref = unsafe { ptr.as_ref() };
-    /// assert_eq!(deref, "hello");
-    /// ```
-    #[unstable(feature = "rc_into_raw_non_null", issue = "47336")]
-    #[rustc_deprecated(since = "1.44.0", reason = "use `Arc::into_raw` instead")]
-    #[inline]
-    pub fn into_raw_non_null(this: Self) -> NonNull<T> {
-        // safe because Arc guarantees its pointer is non-null
-        unsafe { NonNull::new_unchecked(Arc::into_raw(this) as *mut _) }
-    }
-
     /// Creates a new [`Weak`][weak] pointer to this allocation.
     ///
     /// [weak]: struct.Weak.html

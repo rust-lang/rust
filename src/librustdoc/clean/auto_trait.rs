@@ -430,14 +430,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     }
 
     // Converts the calculated ParamEnv and lifetime information to a clean::Generics, suitable for
-    // display on the docs page. Cleaning the Predicates produces sub-optimal WherePredicate's,
+    // display on the docs page. Cleaning the Predicates produces sub-optimal `WherePredicate`s,
     // so we fix them up:
     //
     // * Multiple bounds for the same type are coalesced into one: e.g., 'T: Copy', 'T: Debug'
     // becomes 'T: Copy + Debug'
     // * Fn bounds are handled specially - instead of leaving it as 'T: Fn(), <T as Fn::Output> =
     // K', we use the dedicated syntax 'T: Fn() -> K'
-    // * We explcitly add a '?Sized' bound if we didn't find any 'Sized' predicates for a type
+    // * We explicitly add a '?Sized' bound if we didn't find any 'Sized' predicates for a type
     fn param_env_to_generics(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -588,7 +588,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                         .args;
 
                                     match args {
-                                        // Convert somethiung like '<T as Iterator::Item> = u8'
+                                        // Convert something like '<T as Iterator::Item> = u8'
                                         // to 'T: Iterator<Item=u8>'
                                         GenericArgs::AngleBracketed {
                                             ref mut bindings, ..
@@ -712,7 +712,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // since FxHasher has different behavior for 32-bit and 64-bit platforms.
     //
     // Obviously, it's extremely undesirable for documentation rendering
-    // to be depndent on the platform it's run on. Apart from being confusing
+    // to be dependent on the platform it's run on. Apart from being confusing
     // to end users, it makes writing tests much more difficult, as predicates
     // can appear in any order in the final result.
     //
