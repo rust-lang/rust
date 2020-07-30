@@ -8,7 +8,7 @@ SOURCE_FILE@0..87
           NAME_REF@5..9
             IDENT@5..9 "Type"
     WHITESPACE@9..10 " "
-    ITEM_LIST@10..12
+    ASSOC_ITEM_LIST@10..12
       L_CURLY@10..11 "{"
       R_CURLY@11..12 "}"
   WHITESPACE@12..13 "\n"
@@ -29,7 +29,7 @@ SOURCE_FILE@0..87
           NAME_REF@29..30
             IDENT@29..30 "T"
     WHITESPACE@30..31 " "
-    ITEM_LIST@31..33
+    ASSOC_ITEM_LIST@31..33
       L_CURLY@31..32 "{"
       R_CURLY@32..33 "}"
   WHITESPACE@33..34 "\n"
@@ -45,7 +45,7 @@ SOURCE_FILE@0..87
           NAME_REF@44..51
             IDENT@44..51 "NotType"
     WHITESPACE@51..52 " "
-    ITEM_LIST@52..54
+    ASSOC_ITEM_LIST@52..54
       L_CURLY@52..53 "{"
       R_CURLY@53..54 "}"
   WHITESPACE@54..55 "\n"
@@ -69,7 +69,7 @@ SOURCE_FILE@0..87
           NAME_REF@76..83
             IDENT@76..83 "NotType"
     WHITESPACE@83..84 " "
-    ITEM_LIST@84..86
+    ASSOC_ITEM_LIST@84..86
       L_CURLY@84..85 "{"
       R_CURLY@85..86 "}"
   WHITESPACE@86..87 "\n"

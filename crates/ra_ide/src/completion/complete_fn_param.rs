@@ -18,26 +18,36 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     }
 
     let mut params = FxHashMap::default();
+
     let me = ctx.token.ancestors().find_map(ast::FnDef::cast);
+    let mut process_fn = |func: ast::FnDef| {
+        if Some(&func) == me.as_ref() {
+            return;
+        }
+        func.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
+            let text = param.syntax().text().to_string();
+            params.entry(text).or_insert(param);
+        })
+    };
+
     for node in ctx.token.parent().ancestors() {
-        let items = match_ast! {
+        match_ast! {
             match node {
-                ast::SourceFile(it) => it.items(),
-                ast::ItemList(it) => it.items(),
+                ast::SourceFile(it) => it.items().filter_map(|item| match item {
+                    ast::Item::FnDef(it) => Some(it),
+                    _ => None,
+                }).for_each(&mut process_fn),
+                ast::ItemList(it) => it.items().filter_map(|item| match item {
+                    ast::Item::FnDef(it) => Some(it),
+                    _ => None,
+                }).for_each(&mut process_fn),
+                ast::AssocItemList(it) => it.assoc_items().filter_map(|item| match item {
+                    ast::AssocItem::FnDef(it) => Some(it),
+                    _ => None,
+                }).for_each(&mut process_fn),
                 _ => continue,
             }
         };
-        for item in items {
-            if let ast::Item::FnDef(func) = item {
-                if Some(&func) == me.as_ref() {
-                    continue;
-                }
-                func.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
-                    let text = param.syntax().text().to_string();
-                    params.entry(text).or_insert(param);
-                })
-            }
-        }
     }
 
     params

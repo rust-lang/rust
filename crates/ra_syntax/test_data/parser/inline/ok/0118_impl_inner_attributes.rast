@@ -17,7 +17,7 @@ SOURCE_FILE@0..94
           NAME_REF@14..15
             IDENT@14..15 "F"
     WHITESPACE@15..16 " "
-    ITEM_LIST@16..93
+    ASSOC_ITEM_LIST@16..93
       L_CURLY@16..17 "{"
       WHITESPACE@17..23 "\n     "
       COMMENT@23..48 "//! This is a doc com ..."

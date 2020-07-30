@@ -80,9 +80,12 @@ where
     }
 }
 
-impl ast::ItemList {
+impl ast::AssocItemList {
     #[must_use]
-    pub fn append_items(&self, items: impl IntoIterator<Item = ast::AssocItem>) -> ast::ItemList {
+    pub fn append_items(
+        &self,
+        items: impl IntoIterator<Item = ast::AssocItem>,
+    ) -> ast::AssocItemList {
         let mut res = self.clone();
         if !self.syntax().text().contains_char('\n') {
             res = make_multiline(res);
@@ -92,7 +95,7 @@ impl ast::ItemList {
     }
 
     #[must_use]
-    pub fn append_item(&self, item: ast::AssocItem) -> ast::ItemList {
+    pub fn append_item(&self, item: ast::AssocItem) -> ast::AssocItemList {
         let (indent, position) = match self.assoc_items().last() {
             Some(it) => (
                 leading_indent(it.syntax()).unwrap_or_default().to_string(),

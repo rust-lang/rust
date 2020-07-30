@@ -5,7 +5,7 @@ SOURCE_FILE@0..39
     NAME@6..7
       IDENT@6..7 "T"
     WHITESPACE@7..8 " "
-    ITEM_LIST@8..38
+    ASSOC_ITEM_LIST@8..38
       L_CURLY@8..9 "{"
       WHITESPACE@9..12 "\n  "
       MACRO_CALL@12..19

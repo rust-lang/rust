@@ -17,7 +17,7 @@ SOURCE_FILE@0..199
           NAME_REF@80..83
             IDENT@80..83 "Foo"
     WHITESPACE@83..84 " "
-    ITEM_LIST@84..141
+    ASSOC_ITEM_LIST@84..141
       L_CURLY@84..85 "{"
       WHITESPACE@85..90 "\n    "
       FN_DEF@90..139

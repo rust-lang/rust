@@ -14,7 +14,7 @@ SOURCE_FILE@0..118
       L_PAREN@11..12 "("
       R_PAREN@12..13 ")"
     WHITESPACE@13..14 " "
-    ITEM_LIST@14..117
+    ASSOC_ITEM_LIST@14..117
       L_CURLY@14..15 "{"
       WHITESPACE@15..20 "\n    "
       FN_DEF@20..31

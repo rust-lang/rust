@@ -5,7 +5,7 @@ SOURCE_FILE@0..22
     NAME@6..7
       IDENT@6..7 "T"
     WHITESPACE@7..8 " "
-    ITEM_LIST@8..21
+    ASSOC_ITEM_LIST@8..21
       L_CURLY@8..9 "{"
       WHITESPACE@9..10 " "
       FN_DEF@10..19

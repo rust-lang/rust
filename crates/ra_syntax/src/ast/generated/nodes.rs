@@ -112,7 +112,7 @@ impl ImplDef {
     pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
-    pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
+    pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCall {
@@ -180,7 +180,7 @@ impl TraitDef {
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn auto_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![auto]) }
     pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
-    pub fn item_list(&self) -> Option<ItemList> { support::child(&self.syntax) }
+    pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAliasDef {
@@ -238,17 +238,27 @@ impl Visibility {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Abi {
-    pub(crate) syntax: SyntaxNode,
-}
-impl Abi {}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Name {
     pub(crate) syntax: SyntaxNode,
 }
 impl Name {
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ItemList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for ItemList {}
+impl ast::ModuleItemOwner for ItemList {}
+impl ItemList {
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Abi {
+    pub(crate) syntax: SyntaxNode,
+}
+impl Abi {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParamList {
     pub(crate) syntax: SyntaxNode,
@@ -367,11 +377,10 @@ impl TypeBoundList {
     pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ItemList {
+pub struct AssocItemList {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::ModuleItemOwner for ItemList {}
-impl ItemList {
+impl AssocItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn assoc_items(&self) -> AstChildren<AssocItem> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
@@ -1336,10 +1345,10 @@ pub enum AssocItem {
     FnDef(FnDef),
     TypeAliasDef(TypeAliasDef),
     ConstDef(ConstDef),
+    MacroCall(MacroCall),
 }
 impl ast::AttrsOwner for AssocItem {}
 impl ast::NameOwner for AssocItem {}
-impl ast::VisibilityOwner for AssocItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
     OrPat(OrPat),
@@ -1574,8 +1583,8 @@ impl AstNode for Visibility {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for Abi {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ABI }
+impl AstNode for Name {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1585,8 +1594,19 @@ impl AstNode for Abi {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for Name {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME }
+impl AstNode for ItemList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ITEM_LIST }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for Abi {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ABI }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1728,8 +1748,8 @@ impl AstNode for TypeBoundList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for ItemList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ITEM_LIST }
+impl AstNode for AssocItemList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASSOC_ITEM_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3144,10 +3164,13 @@ impl From<TypeAliasDef> for AssocItem {
 impl From<ConstDef> for AssocItem {
     fn from(node: ConstDef) -> AssocItem { AssocItem::ConstDef(node) }
 }
+impl From<MacroCall> for AssocItem {
+    fn from(node: MacroCall) -> AssocItem { AssocItem::MacroCall(node) }
+}
 impl AstNode for AssocItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            FN_DEF | TYPE_ALIAS_DEF | CONST_DEF => true,
+            FN_DEF | TYPE_ALIAS_DEF | CONST_DEF | MACRO_CALL => true,
             _ => false,
         }
     }
@@ -3156,6 +3179,7 @@ impl AstNode for AssocItem {
             FN_DEF => AssocItem::FnDef(FnDef { syntax }),
             TYPE_ALIAS_DEF => AssocItem::TypeAliasDef(TypeAliasDef { syntax }),
             CONST_DEF => AssocItem::ConstDef(ConstDef { syntax }),
+            MACRO_CALL => AssocItem::MacroCall(MacroCall { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3165,6 +3189,7 @@ impl AstNode for AssocItem {
             AssocItem::FnDef(it) => &it.syntax,
             AssocItem::TypeAliasDef(it) => &it.syntax,
             AssocItem::ConstDef(it) => &it.syntax,
+            AssocItem::MacroCall(it) => &it.syntax,
         }
     }
 }
@@ -3515,12 +3540,17 @@ impl std::fmt::Display for Visibility {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for Abi {
+impl std::fmt::Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for Name {
+impl std::fmt::Display for ItemList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Abi {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3585,7 +3615,7 @@ impl std::fmt::Display for TypeBoundList {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ItemList {
+impl std::fmt::Display for AssocItemList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

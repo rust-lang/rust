@@ -149,12 +149,12 @@ pub(crate) fn reparser(
         USE_TREE_LIST => items::use_tree_list,
         EXTERN_ITEM_LIST => items::extern_item_list,
         TOKEN_TREE if first_child? == T!['{'] => items::token_tree,
-        ITEM_LIST => match parent? {
+        ASSOC_ITEM_LIST => match parent? {
             IMPL_DEF => items::impl_item_list,
             TRAIT_DEF => items::trait_item_list,
-            MODULE => items::mod_item_list,
             _ => return None,
         },
+        ITEM_LIST => items::mod_item_list,
         _ => return None,
     };
     Some(res)

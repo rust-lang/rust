@@ -48,7 +48,7 @@ SOURCE_FILE@0..101
                   NAME_REF@34..38
                     IDENT@34..38 "Copy"
     WHITESPACE@38..39 " "
-    ITEM_LIST@39..41
+    ASSOC_ITEM_LIST@39..41
       L_CURLY@39..40 "{"
       R_CURLY@40..41 "}"
   WHITESPACE@41..42 "\n"
@@ -119,7 +119,7 @@ SOURCE_FILE@0..101
                   NAME_REF@93..97
                     IDENT@93..97 "Copy"
     WHITESPACE@97..98 " "
-    ITEM_LIST@98..100
+    ASSOC_ITEM_LIST@98..100
       L_CURLY@98..99 "{"
       R_CURLY@99..100 "}"
   WHITESPACE@100..101 "\n"

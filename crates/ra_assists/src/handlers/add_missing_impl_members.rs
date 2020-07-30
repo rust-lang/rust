@@ -112,7 +112,7 @@ fn add_missing_impl_members_inner(
 ) -> Option<()> {
     let _p = ra_prof::profile("add_missing_impl_members_inner");
     let impl_def = ctx.find_node_at_offset::<ast::ImplDef>()?;
-    let impl_item_list = impl_def.item_list()?;
+    let impl_item_list = impl_def.assoc_item_list()?;
 
     let trait_ = resolve_target_trait(&ctx.sema, &impl_def)?;
 
@@ -121,6 +121,7 @@ fn add_missing_impl_members_inner(
             ast::AssocItem::FnDef(def) => def.name(),
             ast::AssocItem::TypeAliasDef(def) => def.name(),
             ast::AssocItem::ConstDef(def) => def.name(),
+            ast::AssocItem::MacroCall(_) => None,
         }
         .map(|it| it.text().clone())
     };

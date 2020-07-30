@@ -16,7 +16,7 @@ SOURCE_FILE@0..46
           NAME_REF@11..14
             IDENT@11..14 "Foo"
     WHITESPACE@14..15 " "
-    ITEM_LIST@15..45
+    ASSOC_ITEM_LIST@15..45
       L_CURLY@15..16 "{"
       WHITESPACE@16..19 "\n  "
       CONST_DEF@19..43

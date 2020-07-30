@@ -9,7 +9,7 @@ SOURCE_FILE@0..23
     NAME@18..19
       IDENT@18..19 "T"
     WHITESPACE@19..20 " "
-    ITEM_LIST@20..22
+    ASSOC_ITEM_LIST@20..22
       L_CURLY@20..21 "{"
       R_CURLY@21..22 "}"
   WHITESPACE@22..23 "\n"

@@ -186,6 +186,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "TUPLE_FIELD_DEF",
         "ENUM_VARIANT_LIST",
         "ITEM_LIST",
+        "ASSOC_ITEM_LIST",
         "ATTR",
         "META_ITEM", // not an item actually
         "USE_TREE",
