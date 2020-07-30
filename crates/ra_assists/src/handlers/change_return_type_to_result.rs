@@ -22,7 +22,7 @@ pub(crate) fn change_return_type_to_result(acc: &mut Assists, ctx: &AssistContex
     // FIXME: extend to lambdas as well
     let fn_def = ret_type.syntax().parent().and_then(ast::Fn::cast)?;
 
-    let type_ref = &ret_type.type_ref()?;
+    let type_ref = &ret_type.ty()?;
     let ret_type_str = type_ref.syntax().text().to_string();
     let first_part_ret_type = ret_type_str.splitn(2, '<').next();
     if let Some(ret_type_first_part) = first_part_ret_type {

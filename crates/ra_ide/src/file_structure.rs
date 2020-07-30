@@ -125,7 +125,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::Variant(it) => decl(it),
             ast::Trait(it) => decl(it),
             ast::Module(it) => decl(it),
-            ast::TypeAlias(it) => decl_with_type_ref(&it, it.type_ref()),
+            ast::TypeAlias(it) => decl_with_type_ref(&it, it.ty()),
             ast::RecordField(it) => decl_with_type_ref(&it, it.ty()),
             ast::Const(it) => decl_with_type_ref(&it, it.ty()),
             ast::Static(it) => decl_with_type_ref(&it, it.ty()),

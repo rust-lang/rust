@@ -432,7 +432,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.type_ref());
+                let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.ty());
                 self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr)
             }
             ast::Expr::RefExpr(e) => {
@@ -471,10 +471,8 @@ impl ExprCollector<'_> {
                         arg_types.push(type_ref);
                     }
                 }
-                let ret_type = e
-                    .ret_type()
-                    .and_then(|r| r.type_ref())
-                    .map(|it| TypeRef::from_ast(&self.ctx(), it));
+                let ret_type =
+                    e.ret_type().and_then(|r| r.ty()).map(|it| TypeRef::from_ast(&self.ctx(), it));
                 let body = self.collect_expr_opt(e.body());
                 self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
             }

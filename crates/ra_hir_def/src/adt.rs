@@ -234,7 +234,7 @@ fn lower_struct(
                     || Either::Left(fd.clone()),
                     || FieldData {
                         name: Name::new_tuple_field(i),
-                        type_ref: TypeRef::from_ast_opt(&ctx, fd.type_ref()),
+                        type_ref: TypeRef::from_ast_opt(&ctx, fd.ty()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );

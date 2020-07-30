@@ -196,7 +196,7 @@ fn lower_generic_args_from_fn_path(
         args.push(arg);
     }
     if let Some(ret_type) = ret_type {
-        let type_ref = TypeRef::from_ast_opt(&ctx, ret_type.type_ref());
+        let type_ref = TypeRef::from_ast_opt(&ctx, ret_type.ty());
         bindings.push(AssociatedTypeBinding {
             name: name![Output],
             type_ref: Some(type_ref),

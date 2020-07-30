@@ -72,11 +72,11 @@ Param =
   )
 
 RetType =
-  '->' TypeRef
+  '->' ty:TypeRef
 
 TypeAlias =
   Attr* Visibility? 'default'? 'type' Name GenericParamList? (':' TypeBoundList?)? WhereClause?
-  '=' TypeRef ';'
+  '=' ty:TypeRef ';'
 
 Struct =
   Attr* Visibility? 'struct' Name GenericParamList? (
@@ -94,7 +94,7 @@ TupleFieldList =
   '(' fields:(TupleField (',' TupleField)* ','?)? ')'
 
 TupleField =
-  Attr* Visibility? TypeRef
+  Attr* Visibility? ty:TypeRef
 
 FieldList =
   RecordFieldList
@@ -184,7 +184,7 @@ Attr =
   '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
 
 ParenType =
-  '(' TypeRef ')'
+  '(' ty:TypeRef ')'
 
 TupleType =
   '(' fields:TypeRef* ')'
@@ -196,16 +196,16 @@ PathType =
   Path
 
 PointerType =
-  '*' ('const' | 'mut') TypeRef
+  '*' ('const' | 'mut') ty:TypeRef
 
 ArrayType =
-  '[' TypeRef ';' Expr ']'
+  '[' ty:TypeRef ';' Expr ']'
 
 SliceType =
-  '[' TypeRef ']'
+  '[' ty:TypeRef ']'
 
 ReferenceType =
-  '&' 'lifetime'? 'mut'? TypeRef
+  '&' 'lifetime'? 'mut'? ty:TypeRef
 
 PlaceholderType =
    '_'
@@ -214,7 +214,7 @@ FnPointerType =
    Abi 'unsafe'? 'fn' ParamList RetType?
 
 ForType =
-   'for' GenericParamList TypeRef
+   'for' GenericParamList ty:TypeRef
 
 ImplTraitType =
   'impl' TypeBoundList
@@ -302,7 +302,7 @@ TryExpr =
   Attr* Expr '?'
 
 CastExpr =
-  Attr* Expr 'as' TypeRef
+  Attr* Expr 'as' ty:TypeRef
 
 RefExpr =
   Attr* '&' ('raw' | 'mut' | 'const') Expr

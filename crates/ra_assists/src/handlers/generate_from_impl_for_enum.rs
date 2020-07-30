@@ -32,7 +32,7 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
     if field_list.fields().count() != 1 {
         return None;
     }
-    let field_type = field_list.fields().next()?.type_ref()?;
+    let field_type = field_list.fields().next()?.ty()?;
     let path = match field_type {
         ast::TypeRef::PathType(it) => it,
         _ => return None,
