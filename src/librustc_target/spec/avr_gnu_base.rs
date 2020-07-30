@@ -19,13 +19,12 @@ pub fn target(target_cpu: String) -> TargetResult {
             cpu: target_cpu.clone(),
             exe_suffix: ".elf".to_string(),
             linker: Some("avr-gcc".to_owned()),
-            pre_link_args: vec![(
-                LinkerFlavor::Gcc,
-                vec!["-Os".to_owned(), format!("-mmcu={}", target_cpu)],
+            pre_link_args: vec![(LinkerFlavor::Gcc,
+                vec![format!("-mmcu={}", target_cpu)],
             )]
             .into_iter()
             .collect(),
-            late_link_args: vec![(LinkerFlavor::Gcc, vec!["-lc".to_owned(), "-lgcc".to_owned()])]
+            late_link_args: vec![(LinkerFlavor::Gcc, vec!["-lgcc".to_owned()])]
                 .into_iter()
                 .collect(),
             ..super::freestanding_base::opts()
