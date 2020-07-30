@@ -13,7 +13,7 @@ use quote::{format_ident, quote};
 use ungrammar::{Grammar, Rule};
 
 use crate::{
-    ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Field, KindsSrc, Valence, KINDS_SRC},
+    ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC},
     codegen::{self, update, Mode},
     project_root, Result,
 };
@@ -431,7 +431,7 @@ fn pluralize(s: &str) -> String {
 
 impl Field {
     fn is_many(&self) -> bool {
-        matches!(self, Field::Node { valence: Valence::Many, .. })
+        matches!(self, Field::Node { cardinality: Cardinality::Many, .. })
     }
     fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
         match self {
@@ -509,7 +509,7 @@ fn lower(grammar: &Grammar) -> AstSrc {
             }
             None => {
                 let mut fields = Vec::new();
-                lower_rule(&mut fields, grammar, rule);
+                lower_rule(&mut fields, grammar, None, rule);
                 res.nodes.push(AstNodeSrc { doc: Vec::new(), name, traits: Vec::new(), fields });
             }
         }
@@ -537,19 +537,20 @@ fn lower_enum(grammar: &Grammar, rule: &Rule) -> Option<Vec<String>> {
     Some(variants)
 }
 
-fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) {
-    if lower_comma_list(acc, grammar, rule) {
+fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, rule: &Rule) {
+    if lower_comma_list(acc, grammar, label, rule) {
         return;
     }
 
     match rule {
         Rule::Node(node) => {
             let ty = grammar[*node].name.clone();
-            let name = to_lower_snake_case(&ty);
-            let field = Field::Node { name, ty, valence: Valence::Optional };
+            let name = label.cloned().unwrap_or_else(|| to_lower_snake_case(&ty));
+            let field = Field::Node { name, ty, cardinality: Cardinality::Optional };
             acc.push(field);
         }
         Rule::Token(token) => {
+            assert!(label.is_none());
             let mut name = grammar[*token].name.clone();
             if name != "int_number" && name != "string" {
                 if "[]{}()".contains(&name) {
@@ -562,44 +563,33 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) {
         Rule::Rep(inner) => {
             if let Rule::Node(node) = &**inner {
                 let ty = grammar[*node].name.clone();
-                let name = pluralize(&to_lower_snake_case(&ty));
-                let field = Field::Node { name, ty, valence: Valence::Many };
+                let name = label.cloned().unwrap_or_else(|| pluralize(&to_lower_snake_case(&ty)));
+                let field = Field::Node { name, ty, cardinality: Cardinality::Many };
                 acc.push(field);
                 return;
             }
             todo!("{:?}", rule)
         }
-        Rule::Labeled { label, rule } => {
-            let node = match &**rule {
-                Rule::Rep(inner) | Rule::Opt(inner) => match &**inner {
-                    Rule::Node(node) => node,
-                    _ => todo!("{:?}", rule),
-                },
-                Rule::Node(node) => node,
-                _ => todo!("{:?}", rule),
-            };
-            let ty = grammar[*node].name.clone();
-            let field = Field::Node {
-                name: label.clone(),
-                ty,
-                valence: match &**rule {
-                    Rule::Rep(_) => Valence::Many,
-                    _ => Valence::Optional,
-                },
-            };
-            acc.push(field);
+        Rule::Labeled { label: l, rule } => {
+            assert!(label.is_none());
+            lower_rule(acc, grammar, Some(l), rule);
         }
         Rule::Seq(rules) | Rule::Alt(rules) => {
             for rule in rules {
-                lower_rule(acc, grammar, rule)
+                lower_rule(acc, grammar, label, rule)
             }
         }
-        Rule::Opt(rule) => lower_rule(acc, grammar, rule),
+        Rule::Opt(rule) => lower_rule(acc, grammar, label, rule),
     }
 }
 
 // (T (',' T)* ','?)
-fn lower_comma_list(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) -> bool {
+fn lower_comma_list(
+    acc: &mut Vec<Field>,
+    grammar: &Grammar,
+    label: Option<&String>,
+    rule: &Rule,
+) -> bool {
     let rule = match rule {
         Rule::Seq(it) => it,
         _ => return false,
@@ -619,8 +609,8 @@ fn lower_comma_list(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) -> boo
         _ => return false,
     }
     let ty = grammar[*node].name.clone();
-    let name = pluralize(&to_lower_snake_case(&ty));
-    let field = Field::Node { name, ty, valence: Valence::Many };
+    let name = label.cloned().unwrap_or_else(|| pluralize(&to_lower_snake_case(&ty)));
+    let field = Field::Node { name, ty, cardinality: Cardinality::Many };
     acc.push(field);
     true
 }
@@ -656,7 +646,7 @@ fn extract_enums(ast: &mut AstSrc) {
                 node.remove_field(to_remove);
                 let ty = enm.name.clone();
                 let name = to_lower_snake_case(&ty);
-                node.fields.push(Field::Node { name, ty, valence: Valence::Optional });
+                node.fields.push(Field::Node { name, ty, cardinality: Cardinality::Optional });
             }
         }
     }
