@@ -16,6 +16,9 @@ fn main() {
     } else if target.contains("freebsd") {
         println!("cargo:rustc-link-lib=execinfo");
         println!("cargo:rustc-link-lib=pthread");
+        if env::var("RUST_STD_FREEBSD_12_ABI").is_ok() {
+            println!("cargo:rustc-cfg=freebsd12");
+        }
     } else if target.contains("netbsd") {
         println!("cargo:rustc-link-lib=pthread");
         println!("cargo:rustc-link-lib=rt");

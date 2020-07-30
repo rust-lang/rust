@@ -74,7 +74,14 @@ pub trait MetadataExt {
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
-        unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const raw::stat) }
+        // The methods below use libc::stat, so they work fine when libc is built with FreeBSD 12 ABI.
+        // This method would just return nonsense.
+        #[cfg(freebsd12)]
+        panic!("as_raw_stat not supported with FreeBSD 12 ABI");
+        #[cfg(not(freebsd12))]
+        unsafe {
+            &*(self.as_inner().as_inner() as *const libc::stat as *const raw::stat)
+        }
     }
     fn st_dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev as u64
@@ -136,6 +143,11 @@ impl MetadataExt for Metadata {
     fn st_flags(&self) -> u32 {
         self.as_inner().as_inner().st_flags as u32
     }
+    #[cfg(freebsd12)]
+    fn st_lspare(&self) -> u32 {
+        panic!("st_lspare not supported with FreeBSD 12 ABI");
+    }
+    #[cfg(not(freebsd12))]
     fn st_lspare(&self) -> u32 {
         self.as_inner().as_inner().st_lspare as u32
     }
