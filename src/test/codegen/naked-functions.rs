@@ -18,7 +18,7 @@ pub fn naked_empty() {
 // CHECK-NEXT: define void @naked_with_args(i{{[0-9]+( %0)?}})
 pub fn naked_with_args(a: isize) {
     // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: %a = alloca i{{[0-9]+}}
+    // CHECK-NEXT: %_1 = alloca i{{[0-9]+}}
     &a; // keep variable in an alloca
     // CHECK: ret void
 }
@@ -39,7 +39,7 @@ pub fn naked_with_return() -> isize {
 #[naked]
 pub fn naked_with_args_and_return(a: isize) -> isize {
     // CHECK-NEXT: {{.+}}:
-    // CHECK-NEXT: %a = alloca i{{[0-9]+}}
+    // CHECK-NEXT: %_1 = alloca i{{[0-9]+}}
     &a; // keep variable in an alloca
     // CHECK: ret i{{[0-9]+}} %{{[0-9]+}}
     a
