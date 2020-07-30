@@ -1,5 +1,5 @@
 SOURCE_FILE@0..37
-  TYPE_ALIAS_DEF@0..36
+  TYPE_ALIAS@0..36
     EXISTENTIAL_KW@0..11 "existential"
     WHITESPACE@11..12 " "
     TYPE_KW@12..16 "type"

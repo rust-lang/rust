@@ -183,15 +183,15 @@ impl TraitDef {
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeAliasDef {
+pub struct TypeAlias {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for TypeAliasDef {}
-impl ast::NameOwner for TypeAliasDef {}
-impl ast::VisibilityOwner for TypeAliasDef {}
-impl ast::TypeParamsOwner for TypeAliasDef {}
-impl ast::TypeBoundsOwner for TypeAliasDef {}
-impl TypeAliasDef {
+impl ast::AttrsOwner for TypeAlias {}
+impl ast::NameOwner for TypeAlias {}
+impl ast::VisibilityOwner for TypeAlias {}
+impl ast::TypeParamsOwner for TypeAlias {}
+impl ast::TypeBoundsOwner for TypeAlias {}
+impl TypeAlias {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
@@ -384,6 +384,13 @@ impl SelfParam {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeBoundList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TypeBoundList {
+    pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldDefList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -442,13 +449,6 @@ impl EnumVariant {
     pub fn field_def_list(&self) -> Option<FieldDefList> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeBoundList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl TypeBoundList {
-    pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AssocItemList {
@@ -1284,7 +1284,7 @@ pub enum Item {
     StaticDef(StaticDef),
     StructDef(StructDef),
     TraitDef(TraitDef),
-    TypeAliasDef(TypeAliasDef),
+    TypeAlias(TypeAlias),
     UnionDef(UnionDef),
     Use(Use),
 }
@@ -1365,7 +1365,7 @@ pub enum Expr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
     Fn(Fn),
-    TypeAliasDef(TypeAliasDef),
+    TypeAlias(TypeAlias),
     ConstDef(ConstDef),
     MacroCall(MacroCall),
 }
@@ -1543,8 +1543,8 @@ impl AstNode for TraitDef {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TypeAliasDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ALIAS_DEF }
+impl AstNode for TypeAlias {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ALIAS }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1752,6 +1752,17 @@ impl AstNode for SelfParam {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for TypeBoundList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND_LIST }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for RecordFieldDefList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_DEF_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1809,17 +1820,6 @@ impl AstNode for EnumVariantList {
 }
 impl AstNode for EnumVariant {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_VARIANT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for TypeBoundList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2808,8 +2808,8 @@ impl From<StructDef> for Item {
 impl From<TraitDef> for Item {
     fn from(node: TraitDef) -> Item { Item::TraitDef(node) }
 }
-impl From<TypeAliasDef> for Item {
-    fn from(node: TypeAliasDef) -> Item { Item::TypeAliasDef(node) }
+impl From<TypeAlias> for Item {
+    fn from(node: TypeAlias) -> Item { Item::TypeAlias(node) }
 }
 impl From<UnionDef> for Item {
     fn from(node: UnionDef) -> Item { Item::UnionDef(node) }
@@ -2821,9 +2821,7 @@ impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CONST_DEF | ENUM_DEF | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL_DEF | MACRO_CALL
-            | MODULE | STATIC_DEF | STRUCT_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | UNION_DEF | USE => {
-                true
-            }
+            | MODULE | STATIC_DEF | STRUCT_DEF | TRAIT_DEF | TYPE_ALIAS | UNION_DEF | USE => true,
             _ => false,
         }
     }
@@ -2840,7 +2838,7 @@ impl AstNode for Item {
             STATIC_DEF => Item::StaticDef(StaticDef { syntax }),
             STRUCT_DEF => Item::StructDef(StructDef { syntax }),
             TRAIT_DEF => Item::TraitDef(TraitDef { syntax }),
-            TYPE_ALIAS_DEF => Item::TypeAliasDef(TypeAliasDef { syntax }),
+            TYPE_ALIAS => Item::TypeAlias(TypeAlias { syntax }),
             UNION_DEF => Item::UnionDef(UnionDef { syntax }),
             USE => Item::Use(Use { syntax }),
             _ => return None,
@@ -2860,7 +2858,7 @@ impl AstNode for Item {
             Item::StaticDef(it) => &it.syntax,
             Item::StructDef(it) => &it.syntax,
             Item::TraitDef(it) => &it.syntax,
-            Item::TypeAliasDef(it) => &it.syntax,
+            Item::TypeAlias(it) => &it.syntax,
             Item::UnionDef(it) => &it.syntax,
             Item::Use(it) => &it.syntax,
         }
@@ -3258,8 +3256,8 @@ impl AstNode for Expr {
 impl From<Fn> for AssocItem {
     fn from(node: Fn) -> AssocItem { AssocItem::Fn(node) }
 }
-impl From<TypeAliasDef> for AssocItem {
-    fn from(node: TypeAliasDef) -> AssocItem { AssocItem::TypeAliasDef(node) }
+impl From<TypeAlias> for AssocItem {
+    fn from(node: TypeAlias) -> AssocItem { AssocItem::TypeAlias(node) }
 }
 impl From<ConstDef> for AssocItem {
     fn from(node: ConstDef) -> AssocItem { AssocItem::ConstDef(node) }
@@ -3270,14 +3268,14 @@ impl From<MacroCall> for AssocItem {
 impl AstNode for AssocItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            FN | TYPE_ALIAS_DEF | CONST_DEF | MACRO_CALL => true,
+            FN | TYPE_ALIAS | CONST_DEF | MACRO_CALL => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             FN => AssocItem::Fn(Fn { syntax }),
-            TYPE_ALIAS_DEF => AssocItem::TypeAliasDef(TypeAliasDef { syntax }),
+            TYPE_ALIAS => AssocItem::TypeAlias(TypeAlias { syntax }),
             CONST_DEF => AssocItem::ConstDef(ConstDef { syntax }),
             MACRO_CALL => AssocItem::MacroCall(MacroCall { syntax }),
             _ => return None,
@@ -3287,7 +3285,7 @@ impl AstNode for AssocItem {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             AssocItem::Fn(it) => &it.syntax,
-            AssocItem::TypeAliasDef(it) => &it.syntax,
+            AssocItem::TypeAlias(it) => &it.syntax,
             AssocItem::ConstDef(it) => &it.syntax,
             AssocItem::MacroCall(it) => &it.syntax,
         }
@@ -3525,7 +3523,7 @@ impl std::fmt::Display for TraitDef {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TypeAliasDef {
+impl std::fmt::Display for TypeAlias {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3620,6 +3618,11 @@ impl std::fmt::Display for SelfParam {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for TypeBoundList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for RecordFieldDefList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3646,11 +3649,6 @@ impl std::fmt::Display for EnumVariantList {
     }
 }
 impl std::fmt::Display for EnumVariant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TypeBoundList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

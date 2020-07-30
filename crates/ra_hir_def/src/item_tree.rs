@@ -421,7 +421,7 @@ mod_items! {
     Static in statics -> ast::StaticDef,
     Trait in traits -> ast::TraitDef,
     Impl in impls -> ast::ImplDef,
-    TypeAlias in type_aliases -> ast::TypeAliasDef,
+    TypeAlias in type_aliases -> ast::TypeAlias,
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
 }
@@ -592,7 +592,7 @@ pub struct TypeAlias {
     pub bounds: Box<[TypeBound]>,
     pub generic_params: GenericParamsId,
     pub type_ref: Option<TypeRef>,
-    pub ast_id: FileAstId<ast::TypeAliasDef>,
+    pub ast_id: FileAstId<ast::TypeAlias>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

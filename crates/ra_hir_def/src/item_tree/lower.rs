@@ -79,7 +79,7 @@ impl Ctx {
             | ast::Item::UnionDef(_)
             | ast::Item::EnumDef(_)
             | ast::Item::Fn(_)
-            | ast::Item::TypeAliasDef(_)
+            | ast::Item::TypeAlias(_)
             | ast::Item::ConstDef(_)
             | ast::Item::StaticDef(_)
             | ast::Item::MacroCall(_) => {
@@ -104,7 +104,7 @@ impl Ctx {
             ast::Item::UnionDef(ast) => self.lower_union(ast).map(Into::into),
             ast::Item::EnumDef(ast) => self.lower_enum(ast).map(Into::into),
             ast::Item::Fn(ast) => self.lower_function(ast).map(Into::into),
-            ast::Item::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
+            ast::Item::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
             ast::Item::StaticDef(ast) => self.lower_static(ast).map(Into::into),
             ast::Item::ConstDef(ast) => Some(self.lower_const(ast).into()),
             ast::Item::Module(ast) => self.lower_module(ast).map(Into::into),
@@ -156,7 +156,7 @@ impl Ctx {
     fn lower_assoc_item(&mut self, item: &ast::AssocItem) -> Option<AssocItem> {
         match item {
             ast::AssocItem::Fn(ast) => self.lower_function(ast).map(Into::into),
-            ast::AssocItem::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
+            ast::AssocItem::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
             ast::AssocItem::ConstDef(ast) => Some(self.lower_const(ast).into()),
             ast::AssocItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
         }
@@ -348,7 +348,7 @@ impl Ctx {
 
     fn lower_type_alias(
         &mut self,
-        type_alias: &ast::TypeAliasDef,
+        type_alias: &ast::TypeAlias,
     ) -> Option<FileItemTreeId<TypeAlias>> {
         let name = type_alias.name()?.as_name();
         let type_ref = type_alias.type_ref().map(|it| self.lower_type_ref(&it));

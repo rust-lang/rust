@@ -72,7 +72,7 @@ pub fn get_missing_assoc_items(
                     }
                 }
 
-                ast::AssocItem::TypeAliasDef(t) => {
+                ast::AssocItem::TypeAlias(t) => {
                     if let Some(n) = t.name() {
                         impl_type.insert(n.syntax().to_string());
                     }

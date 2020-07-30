@@ -119,7 +119,7 @@ fn add_missing_impl_members_inner(
     let def_name = |item: &ast::AssocItem| -> Option<SmolStr> {
         match item {
             ast::AssocItem::Fn(def) => def.name(),
-            ast::AssocItem::TypeAliasDef(def) => def.name(),
+            ast::AssocItem::TypeAlias(def) => def.name(),
             ast::AssocItem::ConstDef(def) => def.name(),
             ast::AssocItem::MacroCall(_) => None,
         }
@@ -130,7 +130,7 @@ fn add_missing_impl_members_inner(
         .iter()
         .map(|i| match i {
             hir::AssocItem::Function(i) => ast::AssocItem::Fn(i.source(ctx.db()).value),
-            hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAliasDef(i.source(ctx.db()).value),
+            hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(i.source(ctx.db()).value),
             hir::AssocItem::Const(i) => ast::AssocItem::ConstDef(i.source(ctx.db()).value),
         })
         .filter(|t| def_name(&t).is_some())
@@ -159,9 +159,7 @@ fn add_missing_impl_members_inner(
             .map(|it| ast_transform::apply(&*ast_transform, it))
             .map(|it| match it {
                 ast::AssocItem::Fn(def) => ast::AssocItem::Fn(add_body(def)),
-                ast::AssocItem::TypeAliasDef(def) => {
-                    ast::AssocItem::TypeAliasDef(def.remove_bounds())
-                }
+                ast::AssocItem::TypeAlias(def) => ast::AssocItem::TypeAlias(def.remove_bounds()),
                 _ => it,
             })
             .map(|it| edit::remove_attrs_and_docs(&it));

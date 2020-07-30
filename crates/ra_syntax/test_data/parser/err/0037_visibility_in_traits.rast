@@ -46,7 +46,7 @@ SOURCE_FILE@0..118
           L_CURLY@49..50 "{"
           R_CURLY@50..51 "}"
       WHITESPACE@51..56 "\n    "
-      TYPE_ALIAS_DEF@56..81
+      TYPE_ALIAS@56..81
         VISIBILITY@56..66
           PUB_KW@56..59 "pub"
           L_PAREN@59..60 "("

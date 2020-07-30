@@ -132,7 +132,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::EnumVariant(it) => decl(it),
             ast::TraitDef(it) => decl(it),
             ast::Module(it) => decl(it),
-            ast::TypeAliasDef(it) => {
+            ast::TypeAlias(it) => {
                 let ty = it.type_ref();
                 decl_with_type_ref(it, ty)
             },
@@ -339,7 +339,7 @@ fn very_obsolete() {}
                         label: "T",
                         navigation_range: 186..187,
                         node_range: 181..193,
-                        kind: TYPE_ALIAS_DEF,
+                        kind: TYPE_ALIAS,
                         detail: Some(
                             "()",
                         ),

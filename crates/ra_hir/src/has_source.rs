@@ -105,8 +105,8 @@ impl HasSource for Trait {
     }
 }
 impl HasSource for TypeAlias {
-    type Ast = ast::TypeAliasDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::TypeAliasDef> {
+    type Ast = ast::TypeAlias;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::TypeAlias> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }

@@ -192,9 +192,9 @@ impl ast::RecordFieldList {
     }
 }
 
-impl ast::TypeAliasDef {
+impl ast::TypeAlias {
     #[must_use]
-    pub fn remove_bounds(&self) -> ast::TypeAliasDef {
+    pub fn remove_bounds(&self) -> ast::TypeAlias {
         let colon = match self.colon_token() {
             Some(it) => it,
             None => return self.clone(),

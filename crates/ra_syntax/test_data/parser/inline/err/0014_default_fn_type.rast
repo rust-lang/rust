@@ -14,7 +14,7 @@ SOURCE_FILE@0..62
             NAME_REF@14..21
               IDENT@14..21 "default"
       WHITESPACE@21..22 " "
-      TYPE_ALIAS_DEF@22..35
+      TYPE_ALIAS@22..35
         TYPE_KW@22..26 "type"
         WHITESPACE@26..27 " "
         NAME@27..28

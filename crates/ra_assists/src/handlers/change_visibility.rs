@@ -1,9 +1,7 @@
 use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode,
-    SyntaxKind::{
-        CONST_DEF, ENUM_DEF, FN, MODULE, STATIC_DEF, STRUCT_DEF, TRAIT_DEF, VISIBILITY,
-    },
+    SyntaxKind::{CONST_DEF, ENUM_DEF, FN, MODULE, STATIC_DEF, STRUCT_DEF, TRAIT_DEF, VISIBILITY},
     T,
 };
 use test_utils::mark;

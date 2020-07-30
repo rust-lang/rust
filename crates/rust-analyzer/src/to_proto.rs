@@ -38,7 +38,7 @@ pub(crate) fn symbol_kind(syntax_kind: SyntaxKind) -> lsp_types::SymbolKind {
         SyntaxKind::TRAIT_DEF => lsp_types::SymbolKind::Interface,
         SyntaxKind::MACRO_CALL => lsp_types::SymbolKind::Function,
         SyntaxKind::MODULE => lsp_types::SymbolKind::Module,
-        SyntaxKind::TYPE_ALIAS_DEF => lsp_types::SymbolKind::TypeParameter,
+        SyntaxKind::TYPE_ALIAS => lsp_types::SymbolKind::TypeParameter,
         SyntaxKind::RECORD_FIELD_DEF => lsp_types::SymbolKind::Field,
         SyntaxKind::STATIC_DEF => lsp_types::SymbolKind::Constant,
         SyntaxKind::CONST_DEF => lsp_types::SymbolKind::Constant,

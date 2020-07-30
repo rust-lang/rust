@@ -634,7 +634,7 @@ impl ExprCollector<'_> {
                             def.name(),
                         )
                     }
-                    ast::Item::TypeAliasDef(def) => {
+                    ast::Item::TypeAlias(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             TypeAliasLoc { container: container.into(), id }.intern(self.db).into(),

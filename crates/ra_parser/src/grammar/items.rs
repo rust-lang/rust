@@ -380,7 +380,7 @@ fn type_def(p: &mut Parser, m: Marker) {
         types::type_(p);
     }
     p.expect(T![;]);
-    m.complete(p, TYPE_ALIAS_DEF);
+    m.complete(p, TYPE_ALIAS);
 }
 
 pub(crate) fn mod_item(p: &mut Parser, m: Marker) {

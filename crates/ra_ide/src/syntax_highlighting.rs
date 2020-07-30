@@ -709,7 +709,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         ENUM_DEF => HighlightTag::Enum,
         UNION_DEF => HighlightTag::Union,
         TRAIT_DEF => HighlightTag::Trait,
-        TYPE_ALIAS_DEF => HighlightTag::TypeAlias,
+        TYPE_ALIAS => HighlightTag::TypeAlias,
         TYPE_PARAM => HighlightTag::TypeParam,
         RECORD_FIELD_DEF => HighlightTag::Field,
         MODULE => HighlightTag::Module,

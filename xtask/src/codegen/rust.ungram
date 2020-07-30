@@ -15,7 +15,7 @@ Item =
 | StaticDef
 | StructDef
 | TraitDef
-| TypeAliasDef
+| TypeAlias
 | UnionDef
 | Use
 
@@ -72,6 +72,10 @@ Param =
 RetType =
   '->' TypeRef
 
+TypeAlias =
+  Attr* Visibility? 'default'? 'type' Name TypeParamList? (':' TypeBoundList?)? WhereClause?
+  '=' TypeRef ';'
+
 StructDef =
   Attr* Visibility? 'struct' Name TypeParamList? (
     WhereClause?  (RecordFieldDefList | ';')
@@ -123,10 +127,6 @@ ConstDef =
 StaticDef =
   Attr* Visibility? 'static'? 'mut'? 'static' Name ':' ascribed_type:TypeRef
   '=' body:Expr ';'
-
-TypeAliasDef =
-  Attr* Visibility? 'default'? 'type' Name TypeParamList? WhereClause? (':' TypeBoundList?)?
-  '=' TypeRef ';'
 
 ImplDef =
  Attr* Visibility? 'const'? 'default'? 'unsafe'? 'impl' TypeParamList? '!'? 'for'
@@ -474,7 +474,7 @@ TypeRef =
 
 AssocItem =
   Fn
-| TypeAliasDef
+| TypeAlias
 | ConstDef
 | MacroCall
 

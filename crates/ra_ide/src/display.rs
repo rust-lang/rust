@@ -65,7 +65,7 @@ pub(crate) fn const_label(node: &ast::ConstDef) -> String {
     label.trim().to_owned()
 }
 
-pub(crate) fn type_label(node: &ast::TypeAliasDef) -> String {
+pub(crate) fn type_label(node: &ast::TypeAlias) -> String {
     let label: String = node
         .syntax()
         .children_with_tokens()

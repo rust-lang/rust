@@ -4,7 +4,7 @@ mod block;
 
 use crate::{
     ast, match_ast, AstNode, SyntaxError,
-    SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST_DEF, FN, INT_NUMBER, STRING, TYPE_ALIAS_DEF},
+    SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST_DEF, FN, INT_NUMBER, STRING, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
 };
 use rustc_lexer::unescape::{
@@ -200,7 +200,7 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         None => return,
     };
     match parent.kind() {
-        FN | CONST_DEF | TYPE_ALIAS_DEF => (),
+        FN | CONST_DEF | TYPE_ALIAS => (),
         _ => return,
     }
 
