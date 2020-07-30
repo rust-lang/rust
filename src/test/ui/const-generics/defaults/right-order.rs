@@ -1,5 +1,5 @@
 // run-pass
-// Verifies that having generic parameters after constants is permitted
+// Verifies that having generic parameters after constants is permitted.
 
 #![feature(const_generics)]
 #![allow(incomplete_features)]
