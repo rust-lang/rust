@@ -209,7 +209,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_field(field)
     }
 
-    pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<(Field, Option<Local>)> {
+    pub fn resolve_record_field(
+        &self,
+        field: &ast::RecordExprField,
+    ) -> Option<(Field, Option<Local>)> {
         self.imp.resolve_record_field(field)
     }
 
@@ -225,7 +228,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_path(path)
     }
 
-    pub fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantDef> {
+    pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantDef> {
         self.imp.resolve_variant(record_lit).map(VariantDef::from)
     }
 
@@ -240,7 +243,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     // FIXME: use this instead?
     // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
 
-    pub fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
+    pub fn record_literal_missing_fields(&self, literal: &ast::RecordExpr) -> Vec<(Field, Type)> {
         self.imp.record_literal_missing_fields(literal)
     }
 
@@ -422,7 +425,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax()).resolve_field(self.db, field)
     }
 
-    fn resolve_record_field(&self, field: &ast::RecordField) -> Option<(Field, Option<Local>)> {
+    fn resolve_record_field(&self, field: &ast::RecordExprField) -> Option<(Field, Option<Local>)> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
@@ -440,7 +443,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
     }
 
-    fn resolve_variant(&self, record_lit: ast::RecordLit) -> Option<VariantId> {
+    fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
         self.analyze(record_lit.syntax()).resolve_variant(self.db, record_lit)
     }
 
@@ -453,7 +456,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(pat.syntax()).resolve_bind_pat_to_const(self.db, pat)
     }
 
-    fn record_literal_missing_fields(&self, literal: &ast::RecordLit) -> Vec<(Field, Type)> {
+    fn record_literal_missing_fields(&self, literal: &ast::RecordExpr) -> Vec<(Field, Type)> {
         self.analyze(literal.syntax())
             .record_literal_missing_fields(self.db, literal)
             .unwrap_or_default()

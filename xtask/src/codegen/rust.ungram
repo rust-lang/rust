@@ -82,10 +82,6 @@ StructDef =
   | TupleFieldDefList WhereClause? ';'
   )
 
-UnionDef =
-  Attr* Visibility? 'union' Name GenericParamList? WhereClause?
-  RecordFieldDefList
-
 RecordFieldDefList =
  '{' fields:RecordFieldDef* '}'
 
@@ -101,6 +97,11 @@ TupleFieldDef =
 FieldDefList =
   RecordFieldDefList
 | TupleFieldDefList
+
+
+UnionDef =
+  Attr* Visibility? 'union' Name GenericParamList? WhereClause?
+  RecordFieldDefList
 
 EnumDef =
   Attr* Visibility? 'enum' Name GenericParamList? WhereClause?
@@ -284,16 +285,16 @@ MatchArm =
 MatchGuard =
   'if' Expr
 
-RecordLit =
- Path RecordFieldList
+RecordExpr =
+ Path RecordExprFieldList
 
-RecordFieldList =
+RecordExprFieldList =
   '{'
-    fields:RecordField*
+    fields:RecordExprField*
     ('..' spread:Expr)?
   '}'
 
-RecordField =
+RecordExprField =
   Attr* NameRef (':' Expr)?
 
 OrPat =
@@ -522,7 +523,7 @@ Expr =
 | BlockExpr
 | ReturnExpr
 | MatchExpr
-| RecordLit
+| RecordExpr
 | CallExpr
 | IndexExpr
 | MethodCallExpr

@@ -379,10 +379,10 @@ impl ExprCollector<'_> {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
-            ast::Expr::RecordLit(e) => {
+            ast::Expr::RecordExpr(e) => {
                 let path = e.path().and_then(|path| self.expander.parse_path(path));
                 let mut field_ptrs = Vec::new();
-                let record_lit = if let Some(nfl) = e.record_field_list() {
+                let record_lit = if let Some(nfl) = e.record_expr_field_list() {
                     let fields = nfl
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))

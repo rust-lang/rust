@@ -236,7 +236,7 @@ pub fn classify_name_ref(
         }
     }
 
-    if let Some(record_field) = ast::RecordField::for_field_name(name_ref) {
+    if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref) {
         if let Some((field, local)) = sema.resolve_record_field(&record_field) {
             let field = Definition::Field(field);
             let res = match local {

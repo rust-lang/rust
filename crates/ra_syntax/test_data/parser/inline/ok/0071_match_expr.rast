@@ -72,13 +72,13 @@ SOURCE_FILE@0..97
           BLOCK_EXPR@82..90
             L_CURLY@82..83 "{"
             WHITESPACE@83..84 " "
-            RECORD_LIT@84..88
+            RECORD_EXPR@84..88
               PATH@84..85
                 PATH_SEGMENT@84..85
                   NAME_REF@84..85
                     IDENT@84..85 "S"
               WHITESPACE@85..86 " "
-              RECORD_FIELD_LIST@86..88
+              RECORD_EXPR_FIELD_LIST@86..88
                 L_CURLY@86..87 "{"
                 R_CURLY@87..88 "}"
             WHITESPACE@88..89 " "

@@ -64,13 +64,13 @@ pub fn use_item(use_tree: ast::UseTree) -> ast::Use {
     ast_from_text(&format!("use {};", use_tree))
 }
 
-pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
+pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordExprField {
     return match expr {
         Some(expr) => from_text(&format!("{}: {}", name, expr)),
         None => from_text(&name.to_string()),
     };
 
-    fn from_text(text: &str) -> ast::RecordField {
+    fn from_text(text: &str) -> ast::RecordExprField {
         ast_from_text(&format!("fn f() {{ S {{ {}, }} }}", text))
     }
 }

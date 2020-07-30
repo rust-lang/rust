@@ -146,7 +146,7 @@ fn missing_struct_field_fix(
 ) -> Option<Fix> {
     let record_expr = sema.ast(d);
 
-    let record_lit = ast::RecordLit::cast(record_expr.syntax().parent()?.parent()?)?;
+    let record_lit = ast::RecordExpr::cast(record_expr.syntax().parent()?.parent()?)?;
     let def_id = sema.resolve_variant(record_lit)?;
     let module;
     let def_file_id;
@@ -263,8 +263,8 @@ fn check_struct_shorthand_initialization(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<()> {
-    let record_lit = ast::RecordLit::cast(node.clone())?;
-    let record_field_list = record_lit.record_field_list()?;
+    let record_lit = ast::RecordExpr::cast(node.clone())?;
+    let record_field_list = record_lit.record_expr_field_list()?;
     for record_field in record_field_list.fields() {
         if let (Some(name_ref), Some(expr)) = (record_field.name_ref(), record_field.expr()) {
             let field_name = name_ref.syntax().text().to_string();
