@@ -106,10 +106,9 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
 
 fn completion_match(ctx: &CompletionContext) -> Option<(SyntaxNode, ImplDef)> {
     let (trigger, impl_def_offset) = ctx.token.ancestors().find_map(|p| match p.kind() {
-        SyntaxKind::FN
-        | SyntaxKind::TYPE_ALIAS
-        | SyntaxKind::CONST
-        | SyntaxKind::BLOCK_EXPR => Some((p, 2)),
+        SyntaxKind::FN | SyntaxKind::TYPE_ALIAS | SyntaxKind::CONST | SyntaxKind::BLOCK_EXPR => {
+            Some((p, 2))
+        }
         SyntaxKind::NAME_REF => Some((p, 5)),
         _ => None,
     })?;
