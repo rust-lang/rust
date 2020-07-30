@@ -75,7 +75,7 @@ pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordE
     }
 }
 
-pub fn record_field_def(name: ast::NameRef, ty: ast::TypeRef) -> ast::RecordFieldDef {
+pub fn record_field_def(name: ast::NameRef, ty: ast::TypeRef) -> ast::RecordField {
     ast_from_text(&format!("struct S {{ {}: {}, }}", name, ty))
 }
 

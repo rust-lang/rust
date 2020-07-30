@@ -136,7 +136,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 let ty = it.type_ref();
                 decl_with_type_ref(it, ty)
             },
-            ast::RecordFieldDef(it) => decl_with_ascription(it),
+            ast::RecordField(it) => decl_with_ascription(it),
             ast::ConstDef(it) => decl_with_ascription(it),
             ast::StaticDef(it) => decl_with_ascription(it),
             ast::ImplDef(it) => {
@@ -249,7 +249,7 @@ fn very_obsolete() {}
                         label: "x",
                         navigation_range: 18..19,
                         node_range: 18..24,
-                        kind: RECORD_FIELD_DEF,
+                        kind: RECORD_FIELD,
                         detail: Some(
                             "i32",
                         ),

@@ -65,7 +65,7 @@ impl ShortLabel for ast::StaticDef {
     }
 }
 
-impl ShortLabel for ast::RecordFieldDef {
+impl ShortLabel for ast::RecordField {
     fn short_label(&self) -> Option<String> {
         short_label_from_ascribed_node(self, "")
     }

@@ -78,30 +78,30 @@ TypeAlias =
 
 StructDef =
   Attr* Visibility? 'struct' Name GenericParamList? (
-    WhereClause?  (RecordFieldDefList | ';')
-  | TupleFieldDefList WhereClause? ';'
+    WhereClause?  (RecordFieldList | ';')
+  | TupleFieldList WhereClause? ';'
   )
 
-RecordFieldDefList =
- '{' fields:RecordFieldDef* '}'
+RecordFieldList =
+ '{' fields:RecordField* '}'
 
-RecordFieldDef =
+RecordField =
   Attr* Visibility? Name ':' ascribed_type:TypeRef
 
-TupleFieldDefList =
-  '(' fields:TupleFieldDef* ')'
+TupleFieldList =
+  '(' fields:TupleField* ')'
 
-TupleFieldDef =
+TupleField =
   Attr* Visibility? Name TypeRef
 
-FieldDefList =
-  RecordFieldDefList
-| TupleFieldDefList
+FieldList =
+  RecordFieldList
+| TupleFieldList
 
 
 UnionDef =
   Attr* Visibility? 'union' Name GenericParamList? WhereClause?
-  RecordFieldDefList
+  RecordFieldList
 
 EnumDef =
   Attr* Visibility? 'enum' Name GenericParamList? WhereClause?
@@ -111,7 +111,7 @@ EnumVariantList =
  '{' variants:EnumVariant* '}'
 
 EnumVariant =
-  Attr* Visibility? Name FieldDefList ('=' Expr)?
+  Attr* Visibility? Name FieldList ('=' Expr)?
 
 TraitDef =
   Attr* Visibility? 'unsafe'? 'auto'? 'trait' Name GenericParamList

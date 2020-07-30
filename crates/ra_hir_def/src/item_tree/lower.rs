@@ -1,10 +1,7 @@
 //! AST -> `ItemTree` lowering code.
 
-use super::*;
-use crate::{
-    attr::Attrs,
-    generics::{GenericParams, TypeParamData, TypeParamProvenance},
-};
+use std::{collections::hash_map::Entry, mem, sync::Arc};
+
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
 use ra_arena::map::ArenaMap;
 use ra_syntax::{
@@ -12,7 +9,13 @@ use ra_syntax::{
     SyntaxNode,
 };
 use smallvec::SmallVec;
-use std::{collections::hash_map::Entry, mem, sync::Arc};
+
+use crate::{
+    attr::Attrs,
+    generics::{GenericParams, TypeParamData, TypeParamProvenance},
+};
+
+use super::*;
 
 fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
     FileItemTreeId { index, _p: PhantomData }
@@ -191,7 +194,7 @@ impl Ctx {
         }
     }
 
-    fn lower_record_fields(&mut self, fields: &ast::RecordFieldDefList) -> IdRange<Field> {
+    fn lower_record_fields(&mut self, fields: &ast::RecordFieldList) -> IdRange<Field> {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
@@ -203,7 +206,7 @@ impl Ctx {
         IdRange::new(start..end)
     }
 
-    fn lower_record_field(&mut self, field: &ast::RecordFieldDef) -> Option<Field> {
+    fn lower_record_field(&mut self, field: &ast::RecordField) -> Option<Field> {
         let name = field.name()?.as_name();
         let visibility = self.lower_visibility(field);
         let type_ref = self.lower_type_ref_opt(field.ascribed_type());
@@ -211,7 +214,7 @@ impl Ctx {
         Some(res)
     }
 
-    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldDefList) -> IdRange<Field> {
+    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldList) -> IdRange<Field> {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
             let data = self.lower_tuple_field(i, &field);
@@ -222,7 +225,7 @@ impl Ctx {
         IdRange::new(start..end)
     }
 
-    fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleFieldDef) -> Field {
+    fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleField) -> Field {
         let name = Name::new_tuple_field(idx);
         let visibility = self.lower_visibility(field);
         let type_ref = self.lower_type_ref_opt(field.type_ref());
@@ -234,10 +237,8 @@ impl Ctx {
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Union, union);
-        let fields = match union.record_field_def_list() {
-            Some(record_field_def_list) => {
-                self.lower_fields(&StructKind::Record(record_field_def_list))
-            }
+        let fields = match union.record_field_list() {
+            Some(record_field_list) => self.lower_fields(&StructKind::Record(record_field_list)),
             None => Fields::Record(IdRange::new(self.next_field_idx()..self.next_field_idx())),
         };
         let ast_id = self.source_ast_id_map.ast_id(union);

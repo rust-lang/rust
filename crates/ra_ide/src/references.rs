@@ -361,7 +361,7 @@ fn main(s: Foo) {
         );
         check_result(
             refs,
-            "spam RECORD_FIELD_DEF FileId(1) 17..30 21..25 Other",
+            "spam RECORD_FIELD FileId(1) 17..30 21..25 Other",
             &["FileId(1) 67..71 Other Read"],
         );
     }
@@ -580,7 +580,7 @@ fn foo() {
         );
         check_result(
             refs,
-            "f RECORD_FIELD_DEF FileId(1) 15..21 15..16 Other",
+            "f RECORD_FIELD FileId(1) 15..21 15..16 Other",
             &["FileId(1) 55..56 Other Read", "FileId(1) 68..69 Other Write"],
         );
     }

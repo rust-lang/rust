@@ -142,7 +142,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 
                 Some(NameClass::Definition(Definition::Local(local)))
             },
-            ast::RecordFieldDef(it) => {
+            ast::RecordField(it) => {
                 let field: hir::Field = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::Field(field)))
             },

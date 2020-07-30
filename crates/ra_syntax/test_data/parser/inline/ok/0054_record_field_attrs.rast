@@ -5,10 +5,10 @@ SOURCE_FILE@0..64
     NAME@7..8
       IDENT@7..8 "S"
     WHITESPACE@8..9 " "
-    RECORD_FIELD_DEF_LIST@9..63
+    RECORD_FIELD_LIST@9..63
       L_CURLY@9..10 "{"
       WHITESPACE@10..15 "\n    "
-      RECORD_FIELD_DEF@15..60
+      RECORD_FIELD@15..60
         ATTR@15..43
           POUND@15..16 "#"
           L_BRACK@16..17 "["

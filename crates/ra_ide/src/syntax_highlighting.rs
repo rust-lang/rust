@@ -711,7 +711,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         TRAIT_DEF => HighlightTag::Trait,
         TYPE_ALIAS => HighlightTag::TypeAlias,
         TYPE_PARAM => HighlightTag::TypeParam,
-        RECORD_FIELD_DEF => HighlightTag::Field,
+        RECORD_FIELD => HighlightTag::Field,
         MODULE => HighlightTag::Module,
         FN => HighlightTag::Function,
         CONST_DEF => HighlightTag::Constant,

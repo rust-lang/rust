@@ -7,10 +7,10 @@ SOURCE_FILE@0..160
     NAME@69..73
       IDENT@69..73 "Repr"
     WHITESPACE@73..74 " "
-    RECORD_FIELD_DEF_LIST@74..90
+    RECORD_FIELD_LIST@74..90
       L_CURLY@74..75 "{"
       WHITESPACE@75..76 " "
-      RECORD_FIELD_DEF@76..88
+      RECORD_FIELD@76..88
         NAME@76..79
           IDENT@76..79 "raw"
         COLON@79..80 ":"

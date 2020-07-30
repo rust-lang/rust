@@ -361,8 +361,8 @@ pub struct Field {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum FieldSource {
-    Named(ast::RecordFieldDef),
-    Pos(ast::TupleFieldDef),
+    Named(ast::RecordField),
+    Pos(ast::TupleField),
 }
 
 impl Field {

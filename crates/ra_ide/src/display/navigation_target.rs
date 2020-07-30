@@ -387,7 +387,7 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
             ast::TypeAlias(it) => it.doc_comment_text(),
             ast::ConstDef(it) => it.doc_comment_text(),
             ast::StaticDef(it) => it.doc_comment_text(),
-            ast::RecordFieldDef(it) => it.doc_comment_text(),
+            ast::RecordField(it) => it.doc_comment_text(),
             ast::EnumVariant(it) => it.doc_comment_text(),
             ast::MacroCall(it) => it.doc_comment_text(),
             _ => None,
@@ -412,7 +412,7 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
             ast::TypeAlias(it) => it.short_label(),
             ast::ConstDef(it) => it.short_label(),
             ast::StaticDef(it) => it.short_label(),
-            ast::RecordFieldDef(it) => it.short_label(),
+            ast::RecordField(it) => it.short_label(),
             ast::EnumVariant(it) => it.short_label(),
             _ => None,
         }

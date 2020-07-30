@@ -25,8 +25,8 @@ pub const UNION: Key<ast::UnionDef, UnionId> = Key::new();
 pub const ENUM: Key<ast::EnumDef, EnumId> = Key::new();
 
 pub const ENUM_VARIANT: Key<ast::EnumVariant, EnumVariantId> = Key::new();
-pub const TUPLE_FIELD: Key<ast::TupleFieldDef, FieldId> = Key::new();
-pub const RECORD_FIELD: Key<ast::RecordFieldDef, FieldId> = Key::new();
+pub const TUPLE_FIELD: Key<ast::TupleField, FieldId> = Key::new();
+pub const RECORD_FIELD: Key<ast::RecordField, FieldId> = Key::new();
 pub const TYPE_PARAM: Key<ast::TypeParam, TypeParamId> = Key::new();
 
 pub const MACRO: Key<ast::MacroCall, MacroDefId> = Key::new();
