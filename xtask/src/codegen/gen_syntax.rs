@@ -13,7 +13,7 @@ use quote::{format_ident, quote};
 use ungrammar::{Grammar, Rule};
 
 use crate::{
-    ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Field, FieldSrc, KindsSrc, KINDS_SRC},
+    ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Field, KindsSrc, Valence, KINDS_SRC},
     codegen::{self, update, Mode},
     project_root, Result,
 };
@@ -431,7 +431,7 @@ fn pluralize(s: &str) -> String {
 
 impl Field {
     fn is_many(&self) -> bool {
-        matches!(self, Field::Node { src: FieldSrc::Many(_), .. })
+        matches!(self, Field::Node { valence: Valence::Many, .. })
     }
     fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
         match self {
@@ -476,19 +476,13 @@ impl Field {
                 };
                 format_ident!("{}_token", name)
             }
-            Field::Node { name, src } => match src {
-                FieldSrc::Shorthand => format_ident!("{}", to_lower_snake_case(name)),
-                _ => format_ident!("{}", name),
-            },
+            Field::Node { name, .. } => format_ident!("{}", name),
         }
     }
     fn ty(&self) -> proc_macro2::Ident {
         match self {
             Field::Token(_) => format_ident!("SyntaxToken"),
-            Field::Node { name, src } => match src {
-                FieldSrc::Optional(ty) | FieldSrc::Many(ty) => format_ident!("{}", ty),
-                FieldSrc::Shorthand => format_ident!("{}", name),
-            },
+            Field::Node { ty, .. } => format_ident!("{}", ty),
         }
     }
 }
@@ -550,7 +544,9 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) {
 
     match rule {
         Rule::Node(node) => {
-            let field = Field::Node { name: grammar[*node].name.clone(), src: FieldSrc::Shorthand };
+            let ty = grammar[*node].name.clone();
+            let name = to_lower_snake_case(&ty);
+            let field = Field::Node { name, ty, valence: Valence::Optional };
             acc.push(field);
         }
         Rule::Token(token) => {
@@ -565,9 +561,9 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) {
         }
         Rule::Rep(inner) => {
             if let Rule::Node(node) = &**inner {
-                let name = grammar[*node].name.clone();
-                let label = pluralize(&to_lower_snake_case(&name));
-                let field = Field::Node { name: label.clone(), src: FieldSrc::Many(name) };
+                let ty = grammar[*node].name.clone();
+                let name = pluralize(&to_lower_snake_case(&ty));
+                let field = Field::Node { name, ty, valence: Valence::Many };
                 acc.push(field);
                 return;
             }
@@ -582,11 +578,13 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) {
                 Rule::Node(node) => node,
                 _ => todo!("{:?}", rule),
             };
+            let ty = grammar[*node].name.clone();
             let field = Field::Node {
                 name: label.clone(),
-                src: match &**rule {
-                    Rule::Rep(_) => FieldSrc::Many(grammar[*node].name.clone()),
-                    _ => FieldSrc::Optional(grammar[*node].name.clone()),
+                ty,
+                valence: match &**rule {
+                    Rule::Rep(_) => Valence::Many,
+                    _ => Valence::Optional,
                 },
             };
             acc.push(field);
@@ -620,9 +618,9 @@ fn lower_comma_list(acc: &mut Vec<Field>, grammar: &Grammar, rule: &Rule) -> boo
         [comma, Rule::Node(n)] if comma == &**trailing_comma && n == node => (),
         _ => return false,
     }
-    let name = grammar[*node].name.clone();
-    let label = pluralize(&to_lower_snake_case(&name));
-    let field = Field::Node { name: label.clone(), src: FieldSrc::Many(name) };
+    let ty = grammar[*node].name.clone();
+    let name = pluralize(&to_lower_snake_case(&ty));
+    let field = Field::Node { name, ty, valence: Valence::Many };
     acc.push(field);
     true
 }
@@ -656,7 +654,9 @@ fn extract_enums(ast: &mut AstSrc) {
             }
             if to_remove.len() == enm.variants.len() {
                 node.remove_field(to_remove);
-                node.fields.push(Field::Node { name: enm.name.clone(), src: FieldSrc::Shorthand });
+                let ty = enm.name.clone();
+                let name = to_lower_snake_case(&ty);
+                node.fields.push(Field::Node { name, ty, valence: Valence::Optional });
             }
         }
     }
