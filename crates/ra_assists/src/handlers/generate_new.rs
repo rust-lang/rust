@@ -1,7 +1,8 @@
 use hir::Adt;
 use ra_syntax::{
     ast::{
-        self, AstNode, NameOwner, StructKind, TypeAscriptionOwner, TypeParamsOwner, VisibilityOwner,
+        self, AstNode, GenericParamsOwner, NameOwner, StructKind, TypeAscriptionOwner,
+        VisibilityOwner,
     },
     T,
 };
@@ -91,7 +92,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 // Generates the surrounding `impl Type { <code> }` including type and lifetime
 // parameters
 fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
-    let type_params = strukt.type_param_list();
+    let type_params = strukt.generic_param_list();
     let mut buf = String::with_capacity(code.len());
     buf.push_str("\n\nimpl");
     if let Some(type_params) = &type_params {

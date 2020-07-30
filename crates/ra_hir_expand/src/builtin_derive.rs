@@ -4,7 +4,7 @@ use log::debug;
 
 use ra_parser::FragmentKind;
 use ra_syntax::{
-    ast::{self, AstNode, ModuleItemOwner, NameOwner, TypeParamsOwner},
+    ast::{self, AstNode, GenericParamsOwner, ModuleItemOwner, NameOwner},
     match_ast,
 };
 
@@ -72,9 +72,9 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
     let node = item.syntax();
     let (name, params) = match_ast! {
         match node {
-            ast::StructDef(it) => (it.name(), it.type_param_list()),
-            ast::EnumDef(it) => (it.name(), it.type_param_list()),
-            ast::UnionDef(it) => (it.name(), it.type_param_list()),
+            ast::StructDef(it) => (it.name(), it.generic_param_list()),
+            ast::EnumDef(it) => (it.name(), it.generic_param_list()),
+            ast::UnionDef(it) => (it.name(), it.generic_param_list()),
             _ => {
                 debug!("unexpected node is {:?}", node);
                 return Err(mbe::ExpandError::ConversionError)

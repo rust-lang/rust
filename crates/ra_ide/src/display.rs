@@ -5,7 +5,7 @@ mod navigation_target;
 mod short_label;
 
 use ra_syntax::{
-    ast::{self, AstNode, AttrsOwner, NameOwner, TypeParamsOwner},
+    ast::{self, AstNode, AttrsOwner, GenericParamsOwner, NameOwner},
     SyntaxKind::{ATTR, COMMENT},
 };
 
@@ -37,7 +37,7 @@ pub(crate) fn function_declaration(node: &ast::Fn) -> String {
     if let Some(name) = node.name() {
         format_to!(buf, "fn {}", name)
     }
-    if let Some(type_params) = node.type_param_list() {
+    if let Some(type_params) = node.generic_param_list() {
         format_to!(buf, "{}", type_params);
     }
     if let Some(param_list) = node.param_list() {

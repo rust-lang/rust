@@ -4,7 +4,7 @@ SOURCE_FILE@0..101
     WHITESPACE@5..6 " "
     NAME@6..7
       IDENT@6..7 "T"
-    TYPE_PARAM_LIST@7..10
+    GENERIC_PARAM_LIST@7..10
       L_ANGLE@7..8 "<"
       TYPE_PARAM@8..9
         NAME@8..9
@@ -57,7 +57,7 @@ SOURCE_FILE@0..101
     WHITESPACE@47..48 " "
     NAME@48..49
       IDENT@48..49 "X"
-    TYPE_PARAM_LIST@49..69
+    GENERIC_PARAM_LIST@49..69
       L_ANGLE@49..50 "<"
       TYPE_PARAM@50..68
         NAME@50..51

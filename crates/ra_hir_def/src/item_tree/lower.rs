@@ -568,10 +568,10 @@ impl Ctx {
     fn lower_generic_params_and_inner_items(
         &mut self,
         owner: GenericsOwner<'_>,
-        node: &impl ast::TypeParamsOwner,
+        node: &impl ast::GenericParamsOwner,
     ) -> GenericParamsId {
         // Generics are part of item headers and may contain inner items we need to collect.
-        if let Some(params) = node.type_param_list() {
+        if let Some(params) = node.generic_param_list() {
             self.collect_inner_items(params.syntax());
         }
         if let Some(clause) = node.where_clause() {
@@ -584,7 +584,7 @@ impl Ctx {
     fn lower_generic_params(
         &mut self,
         owner: GenericsOwner<'_>,
-        node: &impl ast::TypeParamsOwner,
+        node: &impl ast::GenericParamsOwner,
     ) -> GenericParamsId {
         let mut sm = &mut ArenaMap::default();
         let mut generics = GenericParams::default();

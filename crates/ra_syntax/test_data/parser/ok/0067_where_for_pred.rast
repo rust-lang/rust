@@ -4,7 +4,7 @@ SOURCE_FILE@0..374
     WHITESPACE@2..3 " "
     NAME@3..12
       IDENT@3..12 "for_trait"
-    TYPE_PARAM_LIST@12..15
+    GENERIC_PARAM_LIST@12..15
       L_ANGLE@12..13 "<"
       TYPE_PARAM@13..14
         NAME@13..14
@@ -19,7 +19,7 @@ SOURCE_FILE@0..374
       WHITESPACE@23..28 "\n    "
       WHERE_PRED@28..50
         FOR_KW@28..31 "for"
-        TYPE_PARAM_LIST@31..35
+        GENERIC_PARAM_LIST@31..35
           L_ANGLE@31..32 "<"
           LIFETIME_PARAM@32..34
             LIFETIME@32..34 "\'a"
@@ -64,7 +64,7 @@ SOURCE_FILE@0..374
     WHITESPACE@58..59 " "
     NAME@59..66
       IDENT@59..66 "for_ref"
-    TYPE_PARAM_LIST@66..69
+    GENERIC_PARAM_LIST@66..69
       L_ANGLE@66..67 "<"
       TYPE_PARAM@67..68
         NAME@67..68
@@ -79,7 +79,7 @@ SOURCE_FILE@0..374
       WHITESPACE@77..82 "\n    "
       WHERE_PRED@82..102
         FOR_KW@82..85 "for"
-        TYPE_PARAM_LIST@85..89
+        GENERIC_PARAM_LIST@85..89
           L_ANGLE@85..86 "<"
           LIFETIME_PARAM@86..88
             LIFETIME@86..88 "\'a"
@@ -115,7 +115,7 @@ SOURCE_FILE@0..374
     WHITESPACE@110..111 " "
     NAME@111..121
       IDENT@111..121 "for_parens"
-    TYPE_PARAM_LIST@121..124
+    GENERIC_PARAM_LIST@121..124
       L_ANGLE@121..122 "<"
       TYPE_PARAM@122..123
         NAME@122..123
@@ -130,7 +130,7 @@ SOURCE_FILE@0..374
       WHITESPACE@132..137 "\n    "
       WHERE_PRED@137..165
         FOR_KW@137..140 "for"
-        TYPE_PARAM_LIST@140..144
+        GENERIC_PARAM_LIST@140..144
           L_ANGLE@140..141 "<"
           LIFETIME_PARAM@141..143
             LIFETIME@141..143 "\'a"
@@ -182,7 +182,7 @@ SOURCE_FILE@0..374
     WHITESPACE@173..174 " "
     NAME@174..183
       IDENT@174..183 "for_slice"
-    TYPE_PARAM_LIST@183..186
+    GENERIC_PARAM_LIST@183..186
       L_ANGLE@183..184 "<"
       TYPE_PARAM@184..185
         NAME@184..185
@@ -197,7 +197,7 @@ SOURCE_FILE@0..374
       WHITESPACE@194..199 "\n    "
       WHERE_PRED@199..218
         FOR_KW@199..202 "for"
-        TYPE_PARAM_LIST@202..206
+        GENERIC_PARAM_LIST@202..206
           L_ANGLE@202..203 "<"
           LIFETIME_PARAM@203..205
             LIFETIME@203..205 "\'a"
@@ -236,7 +236,7 @@ SOURCE_FILE@0..374
     WHITESPACE@226..227 " "
     NAME@227..236
       IDENT@227..236 "for_qpath"
-    TYPE_PARAM_LIST@236..239
+    GENERIC_PARAM_LIST@236..239
       L_ANGLE@236..237 "<"
       TYPE_PARAM@237..238
         NAME@237..238
@@ -264,7 +264,7 @@ SOURCE_FILE@0..374
       WHITESPACE@253..258 "\n    "
       WHERE_PRED@258..295
         FOR_KW@258..261 "for"
-        TYPE_PARAM_LIST@261..265
+        GENERIC_PARAM_LIST@261..265
           L_ANGLE@261..262 "<"
           LIFETIME_PARAM@262..264
             LIFETIME@262..264 "\'a"
@@ -318,7 +318,7 @@ SOURCE_FILE@0..374
     WHITESPACE@303..304 " "
     NAME@304..314
       IDENT@304..314 "for_for_fn"
-    TYPE_PARAM_LIST@314..317
+    GENERIC_PARAM_LIST@314..317
       L_ANGLE@314..315 "<"
       TYPE_PARAM@315..316
         NAME@315..316
@@ -333,7 +333,7 @@ SOURCE_FILE@0..374
       WHITESPACE@325..330 "\n    "
       WHERE_PRED@330..368
         FOR_KW@330..333 "for"
-        TYPE_PARAM_LIST@333..337
+        GENERIC_PARAM_LIST@333..337
           L_ANGLE@333..334 "<"
           LIFETIME_PARAM@334..336
             LIFETIME@334..336 "\'a"
@@ -341,7 +341,7 @@ SOURCE_FILE@0..374
         WHITESPACE@337..338 " "
         FOR_TYPE@338..362
           FOR_KW@338..341 "for"
-          TYPE_PARAM_LIST@341..345
+          GENERIC_PARAM_LIST@341..345
             L_ANGLE@341..342 "<"
             LIFETIME_PARAM@342..344
               LIFETIME@342..344 "\'b"

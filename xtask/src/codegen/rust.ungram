@@ -45,7 +45,7 @@ UseTreeList =
 Fn =
  Attr* Visibility?
  'default'? ('async' | 'const')? 'unsafe'? Abi?
- 'fn' Name TypeParamList? ParamList RetType?
+ 'fn' Name GenericParamList? ParamList RetType?
  WhereClause?
  (body:BlockExpr | ';')
 
@@ -73,17 +73,17 @@ RetType =
   '->' TypeRef
 
 TypeAlias =
-  Attr* Visibility? 'default'? 'type' Name TypeParamList? (':' TypeBoundList?)? WhereClause?
+  Attr* Visibility? 'default'? 'type' Name GenericParamList? (':' TypeBoundList?)? WhereClause?
   '=' TypeRef ';'
 
 StructDef =
-  Attr* Visibility? 'struct' Name TypeParamList? (
+  Attr* Visibility? 'struct' Name GenericParamList? (
     WhereClause?  (RecordFieldDefList | ';')
   | TupleFieldDefList WhereClause? ';'
   )
 
 UnionDef =
-  Attr* Visibility? 'union' Name TypeParamList? WhereClause?
+  Attr* Visibility? 'union' Name GenericParamList? WhereClause?
   RecordFieldDefList
 
 RecordFieldDefList =
@@ -103,7 +103,7 @@ FieldDefList =
 | TupleFieldDefList
 
 EnumDef =
-  Attr* Visibility? 'enum' Name TypeParamList? WhereClause?
+  Attr* Visibility? 'enum' Name GenericParamList? WhereClause?
   variant_list:EnumVariantList
 
 EnumVariantList =
@@ -113,7 +113,7 @@ EnumVariant =
   Attr* Visibility? Name FieldDefList ('=' Expr)?
 
 TraitDef =
-  Attr* Visibility? 'unsafe'? 'auto'? 'trait' Name TypeParamList
+  Attr* Visibility? 'unsafe'? 'auto'? 'trait' Name GenericParamList
   (':' TypeBoundList?)? WhereClause
   AssocItemList
 
@@ -129,7 +129,7 @@ StaticDef =
   '=' body:Expr ';'
 
 ImplDef =
- Attr* Visibility? 'const'? 'default'? 'unsafe'? 'impl' TypeParamList? '!'? 'for'
+ Attr* Visibility? 'const'? 'default'? 'unsafe'? 'impl' GenericParamList? '!'? 'for'
  WhereClause?
  AssocItemList
 
@@ -164,7 +164,7 @@ FnPointerType =
    Abi 'unsafe'? 'fn' ParamList RetType?
 
 ForType =
-   'for' TypeParamList TypeRef
+   'for' GenericParamList TypeRef
 
 ImplTraitType =
   'impl' TypeBoundList
@@ -379,7 +379,7 @@ MacroStmts =
 Attr =
   '#' '!'? '[' Path ('=' input:AttrInput)? ']'
 
-TypeParamList =
+GenericParamList =
   '<'
     TypeParam*
     LifetimeParam*
@@ -404,7 +404,7 @@ TypeBoundList =
    bounds:TypeBound*
 
 WherePred =
-  ('for' TypeParamList)?  ('lifetime' | TypeRef) ':' TypeBoundList
+  ('for' GenericParamList)?  ('lifetime' | TypeRef) ':' TypeBoundList
 
 WhereClause =
   'where' predicates:WherePred*

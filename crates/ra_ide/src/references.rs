@@ -175,7 +175,7 @@ fn get_struct_def_name_for_struct_literal_search(
             return name.syntax().ancestors().find_map(ast::StructDef::cast).and_then(|l| l.name());
         }
         if sema
-            .find_node_at_offset_with_descend::<ast::TypeParamList>(
+            .find_node_at_offset_with_descend::<ast::GenericParamList>(
                 &syntax,
                 left.text_range().start(),
             )

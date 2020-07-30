@@ -4,7 +4,7 @@ SOURCE_FILE@0..40
     WHITESPACE@2..3 " "
     NAME@3..4
       IDENT@3..4 "f"
-    TYPE_PARAM_LIST@4..7
+    GENERIC_PARAM_LIST@4..7
       L_ANGLE@4..5 "<"
       TYPE_PARAM@5..6
         NAME@5..6

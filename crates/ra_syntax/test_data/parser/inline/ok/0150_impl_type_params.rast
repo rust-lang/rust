@@ -1,7 +1,7 @@
 SOURCE_FILE@0..29
   IMPL_DEF@0..28
     IMPL_KW@0..4 "impl"
-    TYPE_PARAM_LIST@4..18
+    GENERIC_PARAM_LIST@4..18
       L_ANGLE@4..5 "<"
       CONST_PARAM@5..17
         CONST_KW@5..10 "const"

@@ -230,7 +230,7 @@ pub enum SyntaxKind {
     NAME_REF,
     LET_STMT,
     EXPR_STMT,
-    TYPE_PARAM_LIST,
+    GENERIC_PARAM_LIST,
     LIFETIME_PARAM,
     TYPE_PARAM,
     CONST_PARAM,

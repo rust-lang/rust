@@ -1,4 +1,4 @@
-use ra_syntax::ast::{self, AstNode, NameOwner, TypeParamsOwner};
+use ra_syntax::ast::{self, AstNode, GenericParamsOwner, NameOwner};
 use stdx::{format_to, SepBy};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -31,7 +31,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()
         format!("Generate impl for `{}`", name),
         target,
         |edit| {
-            let type_params = nominal.type_param_list();
+            let type_params = nominal.generic_param_list();
             let start_offset = nominal.syntax().text_range().end();
             let mut buf = String::new();
             buf.push_str("\n\nimpl");

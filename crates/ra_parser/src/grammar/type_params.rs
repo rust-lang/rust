@@ -36,7 +36,7 @@ fn type_param_list(p: &mut Parser) {
         }
     }
     p.expect(T![>]);
-    m.complete(p, TYPE_PARAM_LIST);
+    m.complete(p, GENERIC_PARAM_LIST);
 }
 
 fn lifetime_param(p: &mut Parser, m: Marker) {

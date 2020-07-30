@@ -49,8 +49,8 @@ pub trait ModuleItemOwner: AstNode {
     }
 }
 
-pub trait TypeParamsOwner: AstNode {
-    fn type_param_list(&self) -> Option<ast::TypeParamList> {
+pub trait GenericParamsOwner: AstNode {
+    fn generic_param_list(&self) -> Option<ast::GenericParamList> {
         support::child(self.syntax())
     }
 
