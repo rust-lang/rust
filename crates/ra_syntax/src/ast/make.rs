@@ -37,7 +37,7 @@ fn path_from_text(text: &str) -> ast::Path {
 pub fn use_tree(
     path: ast::Path,
     use_tree_list: Option<ast::UseTreeList>,
-    alias: Option<ast::Alias>,
+    alias: Option<ast::Rename>,
     add_star: bool,
 ) -> ast::UseTree {
     let mut buf = "use ".to_string();

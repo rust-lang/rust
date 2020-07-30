@@ -224,7 +224,7 @@ fn opt_alias(p: &mut Parser) {
         if !p.eat(T![_]) {
             name(p);
         }
-        m.complete(p, ALIAS);
+        m.complete(p, RENAME);
     }
 }
 

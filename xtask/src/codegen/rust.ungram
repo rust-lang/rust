@@ -396,16 +396,16 @@ UseItem =
   Attr* Visibility? 'use' UseTree ';'
 
 UseTree =
-  Path ('::' ('*' | UseTreeList))  Alias?
+  Path ('::' ('*' | UseTreeList))  Rename?
 
 UseTreeList =
   '{' UseTree* '}'
 
-Alias =
+Rename =
   'as' Name
 
 ExternCrateItem =
-  Attr* Visibility? 'extern' 'crate' (NameRef | 'self') Alias? ';'
+  Attr* Visibility? 'extern' 'crate' (NameRef | 'self') Rename? ';'
 
 Path =
   (qualifier:Path '::')? segment:PathSegment

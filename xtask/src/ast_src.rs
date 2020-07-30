@@ -194,7 +194,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "PATH",
         "PATH_SEGMENT",
         "LITERAL",
-        "ALIAS",
+        "RENAME",
         "VISIBILITY",
         "WHERE_CLAUSE",
         "WHERE_PRED",

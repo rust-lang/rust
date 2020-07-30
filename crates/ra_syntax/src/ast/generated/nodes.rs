@@ -75,7 +75,7 @@ impl ExternCrateItem {
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
-    pub fn alias(&self) -> Option<Alias> { support::child(&self.syntax) }
+    pub fn rename(&self) -> Option<Rename> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1178,7 +1178,7 @@ impl UseTree {
     pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
     pub fn star_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*]) }
     pub fn use_tree_list(&self) -> Option<UseTreeList> { support::child(&self.syntax) }
-    pub fn alias(&self) -> Option<Alias> { support::child(&self.syntax) }
+    pub fn rename(&self) -> Option<Rename> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTreeList {
@@ -1190,11 +1190,11 @@ impl UseTreeList {
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Alias {
+pub struct Rename {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::NameOwner for Alias {}
-impl Alias {
+impl ast::NameOwner for Rename {}
+impl Rename {
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2683,8 +2683,8 @@ impl AstNode for UseTreeList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for Alias {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ALIAS }
+impl AstNode for Rename {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RENAME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -4040,7 +4040,7 @@ impl std::fmt::Display for UseTreeList {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for Alias {
+impl std::fmt::Display for Rename {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
