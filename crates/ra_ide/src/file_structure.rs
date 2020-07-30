@@ -1,5 +1,5 @@
 use ra_syntax::{
-    ast::{self, AttrsOwner, GenericParamsOwner, NameOwner, TypeAscriptionOwner},
+    ast::{self, AttrsOwner, GenericParamsOwner, NameOwner},
     match_ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, WalkEvent,
 };
 
@@ -52,18 +52,11 @@ pub fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
 
 fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
     fn decl<N: NameOwner + AttrsOwner>(node: N) -> Option<StructureNode> {
-        decl_with_detail(node, None)
-    }
-
-    fn decl_with_ascription<N: NameOwner + AttrsOwner + TypeAscriptionOwner>(
-        node: N,
-    ) -> Option<StructureNode> {
-        let ty = node.ascribed_type();
-        decl_with_type_ref(node, ty)
+        decl_with_detail(&node, None)
     }
 
     fn decl_with_type_ref<N: NameOwner + AttrsOwner>(
-        node: N,
+        node: &N,
         type_ref: Option<ast::TypeRef>,
     ) -> Option<StructureNode> {
         let detail = type_ref.map(|type_ref| {
@@ -75,7 +68,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
     }
 
     fn decl_with_detail<N: NameOwner + AttrsOwner>(
-        node: N,
+        node: &N,
         detail: Option<String>,
     ) -> Option<StructureNode> {
         let name = node.name()?;
@@ -124,7 +117,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                     collapse_ws(ret_type.syntax(), &mut detail);
                 }
 
-                decl_with_detail(it, Some(detail))
+                decl_with_detail(&it, Some(detail))
             },
             ast::Struct(it) => decl(it),
             ast::Union(it) => decl(it),
@@ -132,13 +125,10 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::Variant(it) => decl(it),
             ast::Trait(it) => decl(it),
             ast::Module(it) => decl(it),
-            ast::TypeAlias(it) => {
-                let ty = it.type_ref();
-                decl_with_type_ref(it, ty)
-            },
-            ast::RecordField(it) => decl_with_ascription(it),
-            ast::Const(it) => decl_with_ascription(it),
-            ast::Static(it) => decl_with_ascription(it),
+            ast::TypeAlias(it) => decl_with_type_ref(&it, it.type_ref()),
+            ast::RecordField(it) => decl_with_type_ref(&it, it.ty()),
+            ast::Const(it) => decl_with_type_ref(&it, it.ty()),
+            ast::Static(it) => decl_with_type_ref(&it, it.ty()),
             ast::Impl(it) => {
                 let target_type = it.target_type()?;
                 let target_trait = it.target_trait();

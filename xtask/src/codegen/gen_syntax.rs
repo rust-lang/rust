@@ -660,7 +660,6 @@ fn extract_struct_traits(ast: &mut AstSrc) {
         ("GenericParamsOwner", &["generic_param_list", "where_clause"]),
         ("TypeBoundsOwner", &["type_bound_list", "colon_token"]),
         ("ModuleItemOwner", &["items"]),
-        ("TypeAscriptionOwner", &["ascribed_type"]),
         ("LoopBodyOwner", &["label", "loop_body"]),
         ("ArgListOwner", &["arg_list"]),
     ];

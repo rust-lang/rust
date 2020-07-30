@@ -2,7 +2,7 @@ use hir::{Adt, Callable, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
+    ast::{self, ArgListOwner, AstNode},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
 use stdx::to_lower_snake_case;
@@ -230,10 +230,10 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
         match_ast! {
             match node {
                 ast::LetStmt(it) => {
-                    return it.ascribed_type().is_some()
+                    return it.ty().is_some()
                 },
                 ast::Param(it) => {
-                    return it.ascribed_type().is_some()
+                    return it.ty().is_some()
                 },
                 ast::MatchArm(_it) => {
                     return pat_is_enum_variant(db, bind_pat, pat_ty);

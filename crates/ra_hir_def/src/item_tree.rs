@@ -13,7 +13,7 @@ use std::{
     sync::Arc,
 };
 
-use ast::{AstNode, AttrsOwner, NameOwner, StructKind, TypeAscriptionOwner};
+use ast::{AstNode, AttrsOwner, NameOwner, StructKind};
 use either::Either;
 use hir_expand::{
     ast_id_map::FileAstId,

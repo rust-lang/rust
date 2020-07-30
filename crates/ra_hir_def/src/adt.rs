@@ -8,7 +8,7 @@ use hir_expand::{
     InFile,
 };
 use ra_arena::{map::ArenaMap, Arena};
-use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner, VisibilityOwner};
+use ra_syntax::ast::{self, NameOwner, VisibilityOwner};
 
 use crate::{
     body::{CfgExpander, LowerCtx},
@@ -251,7 +251,7 @@ fn lower_struct(
                     || Either::Right(fd.clone()),
                     || FieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
-                        type_ref: TypeRef::from_ast_opt(&ctx, fd.ascribed_type()),
+                        type_ref: TypeRef::from_ast_opt(&ctx, fd.ty()),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );

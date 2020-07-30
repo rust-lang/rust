@@ -1,7 +1,7 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use ra_syntax::ast::{self, TypeAscriptionOwner};
+use ra_syntax::ast::{self};
 
 use crate::{body::LowerCtx, path::Path};
 
@@ -124,10 +124,7 @@ impl TypeRef {
                         is_varargs = param.dotdotdot_token().is_some();
                     }
 
-                    pl.params()
-                        .map(|p| p.ascribed_type())
-                        .map(|it| TypeRef::from_ast_opt(&ctx, it))
-                        .collect()
+                    pl.params().map(|p| p.ty()).map(|it| TypeRef::from_ast_opt(&ctx, it)).collect()
                 } else {
                     Vec::new()
                 };

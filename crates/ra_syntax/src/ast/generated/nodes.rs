@@ -35,12 +35,12 @@ pub struct Const {
 impl ast::AttrsOwner for Const {}
 impl ast::NameOwner for Const {}
 impl ast::VisibilityOwner for Const {}
-impl ast::TypeAscriptionOwner for Const {}
 impl Const {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -148,11 +148,11 @@ pub struct Static {
 impl ast::AttrsOwner for Static {}
 impl ast::NameOwner for Static {}
 impl ast::VisibilityOwner for Static {}
-impl ast::TypeAscriptionOwner for Static {}
 impl Static {
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -361,7 +361,6 @@ pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for SelfParam {}
-impl ast::TypeAscriptionOwner for SelfParam {}
 impl SelfParam {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
@@ -370,16 +369,17 @@ impl SelfParam {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Param {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for Param {}
-impl ast::TypeAscriptionOwner for Param {}
 impl Param {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![...]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -414,9 +414,9 @@ pub struct RecordField {
 impl ast::AttrsOwner for RecordField {}
 impl ast::NameOwner for RecordField {}
 impl ast::VisibilityOwner for RecordField {}
-impl ast::TypeAscriptionOwner for RecordField {}
 impl RecordField {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleField {
@@ -495,10 +495,10 @@ pub struct ConstParam {
 }
 impl ast::AttrsOwner for ConstParam {}
 impl ast::NameOwner for ConstParam {}
-impl ast::TypeAscriptionOwner for ConstParam {}
 impl ConstParam {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn default_val(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
@@ -1203,11 +1203,11 @@ pub struct LetStmt {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for LetStmt {}
-impl ast::TypeAscriptionOwner for LetStmt {}
 impl LetStmt {
     pub fn let_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![let]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn initializer(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }

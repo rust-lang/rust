@@ -1,9 +1,6 @@
 use hir::Adt;
 use ra_syntax::{
-    ast::{
-        self, AstNode, GenericParamsOwner, NameOwner, StructKind, TypeAscriptionOwner,
-        VisibilityOwner,
-    },
+    ast::{self, AstNode, GenericParamsOwner, NameOwner, StructKind, VisibilityOwner},
     T,
 };
 use stdx::{format_to, SepBy};
@@ -54,9 +51,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
         let params = field_list
             .fields()
-            .filter_map(|f| {
-                Some(format!("{}: {}", f.name()?.syntax(), f.ascribed_type()?.syntax()))
-            })
+            .filter_map(|f| Some(format!("{}: {}", f.name()?.syntax(), f.ty()?.syntax())))
             .sep_by(", ");
         let fields = field_list.fields().filter_map(|f| f.name()).sep_by(", ");
 

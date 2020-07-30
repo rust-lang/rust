@@ -61,13 +61,13 @@ ParamList =
 SelfParam =
   Attr* (
     ('&' 'lifetime'?)? 'mut'? 'self'
-  | 'mut'? 'self' ':' ascribed_type:TypeRef
+  | 'mut'? 'self' ':' ty:TypeRef
   )
 
 Param =
   Attr* (
-    Pat (':' ascribed_type:TypeRef)
-  | ascribed_type:TypeRef
+    Pat (':' ty:TypeRef)
+  | ty:TypeRef
   | '...'
   )
 
@@ -88,7 +88,7 @@ RecordFieldList =
  '{' fields:(RecordField (',' RecordField)* ','?)? '}'
 
 RecordField =
-  Attr* Visibility? Name ':' ascribed_type:TypeRef
+  Attr* Visibility? Name ':' ty:TypeRef
 
 TupleFieldList =
   '(' fields:(TupleField (',' TupleField)* ','?)? ')'
@@ -115,11 +115,11 @@ Union =
   RecordFieldList
 
 Const =
-  Attr* Visibility? 'default'? 'const' (Name | '_') ':' ascribed_type:TypeRef
+  Attr* Visibility? 'default'? 'const' (Name | '_') ':' ty:TypeRef
   '=' body:Expr ';'
 
 Static =
-  Attr* Visibility? 'static'? 'mut'? Name ':' ascribed_type:TypeRef
+  Attr* Visibility? 'static'? 'mut'? Name ':' ty:TypeRef
   '=' body:Expr ';'
 
 Trait =
@@ -166,7 +166,7 @@ TypeParam =
   ('=' default_type:TypeRef)?
 
 ConstParam =
-  Attr* 'const' Name ':' ascribed_type:TypeRef
+  Attr* 'const' Name ':' ty:TypeRef
   ('=' default_val:Expr)?
 
 LifetimeParam =
@@ -439,7 +439,7 @@ ExprStmt =
   Attr* Expr ';'
 
 LetStmt =
-  Attr* 'let' Pat (':' ascribed_type:TypeRef)
+  Attr* 'let' Pat (':' ty:TypeRef)
   '=' initializer:Expr ';'
 
 Path =

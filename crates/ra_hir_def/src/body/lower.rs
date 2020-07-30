@@ -11,7 +11,7 @@ use ra_arena::Arena;
 use ra_syntax::{
     ast::{
         self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, ModuleItemOwner, NameOwner,
-        SlicePatComponents, TypeAscriptionOwner,
+        SlicePatComponents,
     },
     AstNode, AstPtr,
 };
@@ -466,8 +466,7 @@ impl ExprCollector<'_> {
                 if let Some(pl) = e.param_list() {
                     for param in pl.params() {
                         let pat = self.collect_pat_opt(param.pat());
-                        let type_ref =
-                            param.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                        let type_ref = param.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
                         args.push(pat);
                         arg_types.push(type_ref);
                     }
@@ -607,8 +606,7 @@ impl ExprCollector<'_> {
             .map(|s| match s {
                 ast::Stmt::LetStmt(stmt) => {
                     let pat = self.collect_pat_opt(stmt.pat());
-                    let type_ref =
-                        stmt.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                    let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
                     let initializer = stmt.initializer().map(|e| self.collect_expr(e));
                     Statement::Let { pat, type_ref, initializer }
                 }
