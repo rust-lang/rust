@@ -181,6 +181,12 @@ Visibility =
   | 'in' Path
   ')')?
 
+Attr =
+  '#' '!'? '[' Path ('=' input:AttrInput)? ']'
+
+AttrInput =
+  Literal | TokenTree
+
 ParenType =
   '(' TypeRef ')'
 
@@ -421,9 +427,6 @@ MacroStmts =
   statements:Stmt*
   Expr?
 
-Attr =
-  '#' '!'? '[' Path ('=' input:AttrInput)? ']'
-
 TypeBound =
   'lifetime' | 'const'? TypeRef
 
@@ -492,10 +495,6 @@ TypeRef =
 | ForType
 | ImplTraitType
 | DynTraitType
-
-AttrInput =
-  Literal
-| TokenTree
 
 Stmt =
   LetStmt
