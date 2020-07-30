@@ -67,7 +67,7 @@ impl ModPath {
 
     /// Calls `cb` with all paths, represented by this use item.
     pub(crate) fn expand_use_item(
-        item_src: InFile<ast::UseItem>,
+        item_src: InFile<ast::Use>,
         hygiene: &Hygiene,
         mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<ImportAlias>),
     ) {

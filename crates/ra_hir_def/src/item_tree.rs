@@ -411,7 +411,7 @@ macro_rules! mod_items {
 }
 
 mod_items! {
-    Import in imports -> ast::UseItem,
+    Import in imports -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
     Function in functions -> ast::FnDef,
     Struct in structs -> ast::StructDef,
@@ -482,7 +482,7 @@ pub struct Import {
     pub is_prelude: bool,
     /// AST ID of the `use` or `extern crate` item this import was derived from. Note that many
     /// `Import`s can map to the same `use` item.
-    pub ast_id: FileAstId<ast::UseItem>,
+    pub ast_id: FileAstId<ast::Use>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

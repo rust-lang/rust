@@ -130,7 +130,7 @@ pub enum SyntaxKind {
     RET_TYPE,
     EXTERN_CRATE,
     MODULE,
-    USE_ITEM,
+    USE,
     STATIC_DEF,
     CONST_DEF,
     TRAIT_DEF,

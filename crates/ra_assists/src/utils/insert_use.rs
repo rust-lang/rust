@@ -225,7 +225,7 @@ fn walk_use_tree_for_best_action(
                 current_use_tree
                     .syntax()
                     .ancestors()
-                    .find_map(ast::UseItem::cast)
+                    .find_map(ast::Use::cast)
                     .map(|it| it.syntax().clone()),
                 true,
             );
@@ -254,7 +254,7 @@ fn walk_use_tree_for_best_action(
             current_use_tree
                 .syntax()
                 .ancestors()
-                .find_map(ast::UseItem::cast)
+                .find_map(ast::Use::cast)
                 .map(|it| it.syntax().clone()),
             true,
         ),
@@ -304,7 +304,7 @@ fn walk_use_tree_for_best_action(
                 current_use_tree
                     .syntax()
                     .ancestors()
-                    .find_map(ast::UseItem::cast)
+                    .find_map(ast::Use::cast)
                     .map(|it| it.syntax().clone()),
                 true,
             );
@@ -377,7 +377,7 @@ fn best_action_for_target(
     let mut storage = Vec::with_capacity(16); // this should be the only allocation
     let best_action = container
         .children()
-        .filter_map(ast::UseItem::cast)
+        .filter_map(ast::Use::cast)
         .filter_map(|it| it.use_tree())
         .map(|u| walk_use_tree_for_best_action(&mut storage, None, u, target))
         .fold(None, |best, a| match best {

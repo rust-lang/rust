@@ -213,12 +213,12 @@ impl UnionDef {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct UseItem {
+pub struct Use {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for UseItem {}
-impl ast::VisibilityOwner for UseItem {}
-impl UseItem {
+impl ast::AttrsOwner for Use {}
+impl ast::VisibilityOwner for Use {}
+impl Use {
     pub fn use_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![use]) }
     pub fn use_tree(&self) -> Option<UseTree> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -1283,7 +1283,7 @@ pub enum Item {
     TraitDef(TraitDef),
     TypeAliasDef(TypeAliasDef),
     UnionDef(UnionDef),
-    UseItem(UseItem),
+    Use(Use),
 }
 impl ast::AttrsOwner for Item {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1562,8 +1562,8 @@ impl AstNode for UnionDef {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for UseItem {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_ITEM }
+impl AstNode for Use {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == USE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2811,15 +2811,16 @@ impl From<TypeAliasDef> for Item {
 impl From<UnionDef> for Item {
     fn from(node: UnionDef) -> Item { Item::UnionDef(node) }
 }
-impl From<UseItem> for Item {
-    fn from(node: UseItem) -> Item { Item::UseItem(node) }
+impl From<Use> for Item {
+    fn from(node: Use) -> Item { Item::Use(node) }
 }
 impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CONST_DEF | ENUM_DEF | EXTERN_BLOCK | EXTERN_CRATE | FN_DEF | IMPL_DEF | MACRO_CALL
-            | MODULE | STATIC_DEF | STRUCT_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | UNION_DEF
-            | USE_ITEM => true,
+            | MODULE | STATIC_DEF | STRUCT_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | UNION_DEF | USE => {
+                true
+            }
             _ => false,
         }
     }
@@ -2838,7 +2839,7 @@ impl AstNode for Item {
             TRAIT_DEF => Item::TraitDef(TraitDef { syntax }),
             TYPE_ALIAS_DEF => Item::TypeAliasDef(TypeAliasDef { syntax }),
             UNION_DEF => Item::UnionDef(UnionDef { syntax }),
-            USE_ITEM => Item::UseItem(UseItem { syntax }),
+            USE => Item::Use(Use { syntax }),
             _ => return None,
         };
         Some(res)
@@ -2858,7 +2859,7 @@ impl AstNode for Item {
             Item::TraitDef(it) => &it.syntax,
             Item::TypeAliasDef(it) => &it.syntax,
             Item::UnionDef(it) => &it.syntax,
-            Item::UseItem(it) => &it.syntax,
+            Item::Use(it) => &it.syntax,
         }
     }
 }
@@ -3531,7 +3532,7 @@ impl std::fmt::Display for UnionDef {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for UseItem {
+impl std::fmt::Display for Use {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
