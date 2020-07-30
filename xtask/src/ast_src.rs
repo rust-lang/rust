@@ -242,14 +242,13 @@ pub(crate) struct AstNodeSrc {
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Field {
     Token(String),
-    Node { name: String, src: FieldSrc },
+    Node { name: String, ty: String, valence: Valence },
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub(crate) enum FieldSrc {
-    Shorthand,
-    Optional(String),
-    Many(String),
+pub(crate) enum Valence {
+    Optional,
+    Many,
 }
 
 #[derive(Debug)]
