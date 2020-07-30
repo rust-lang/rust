@@ -1,5 +1,5 @@
 SOURCE_FILE@0..198
-  USE_ITEM@0..28
+  USE@0..28
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
     USE_TREE@4..27
@@ -20,7 +20,7 @@ SOURCE_FILE@0..198
           IDENT@18..27 "some_name"
     SEMICOLON@27..28 ";"
   WHITESPACE@28..29 "\n"
-  USE_ITEM@29..181
+  USE@29..181
     USE_KW@29..32 "use"
     WHITESPACE@32..33 " "
     USE_TREE@33..180
@@ -121,7 +121,7 @@ SOURCE_FILE@0..198
         R_CURLY@179..180 "}"
     SEMICOLON@180..181 ";"
   WHITESPACE@181..182 "\n"
-  USE_ITEM@182..197
+  USE@182..197
     USE_KW@182..185 "use"
     WHITESPACE@185..186 " "
     USE_TREE@186..196
