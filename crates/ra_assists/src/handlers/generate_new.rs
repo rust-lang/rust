@@ -31,7 +31,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // ```
 pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let strukt = ctx.find_node_at_offset::<ast::StructDef>()?;
+    let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
 
     // We want to only apply this to non-union structs with named fields
     let field_list = match strukt.kind() {
@@ -91,7 +91,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
 // Generates the surrounding `impl Type { <code> }` including type and lifetime
 // parameters
-fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
+fn generate_impl_text(strukt: &ast::Struct, code: &str) -> String {
     let type_params = strukt.generic_param_list();
     let mut buf = String::with_capacity(code.len());
     buf.push_str("\n\nimpl");
@@ -122,7 +122,7 @@ fn generate_impl_text(strukt: &ast::StructDef, code: &str) -> String {
 //
 // FIXME: change the new fn checking to a more semantic approach when that's more
 // viable (e.g. we process proc macros, etc)
-fn find_struct_impl(ctx: &AssistContext, strukt: &ast::StructDef) -> Option<Option<ast::ImplDef>> {
+fn find_struct_impl(ctx: &AssistContext, strukt: &ast::Struct) -> Option<Option<ast::ImplDef>> {
     let db = ctx.db();
     let module = strukt.syntax().ancestors().find(|node| {
         ast::Module::can_cast(node.kind()) || ast::SourceFile::can_cast(node.kind())

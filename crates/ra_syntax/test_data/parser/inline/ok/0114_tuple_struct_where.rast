@@ -1,5 +1,5 @@
 SOURCE_FILE@0..53
-  STRUCT_DEF@0..33
+  STRUCT@0..33
     STRUCT_KW@0..6 "struct"
     WHITESPACE@6..7 " "
     NAME@7..11
@@ -40,7 +40,7 @@ SOURCE_FILE@0..53
                     IDENT@27..32 "Clone"
     SEMICOLON@32..33 ";"
   WHITESPACE@33..34 "\n"
-  STRUCT_DEF@34..52
+  STRUCT@34..52
     STRUCT_KW@34..40 "struct"
     WHITESPACE@40..41 " "
     NAME@41..45

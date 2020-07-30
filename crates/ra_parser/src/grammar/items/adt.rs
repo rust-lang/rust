@@ -5,7 +5,7 @@ use super::*;
 pub(super) fn struct_def(p: &mut Parser, m: Marker) {
     assert!(p.at(T![struct]));
     p.bump(T![struct]);
-    struct_or_union(p, m, T![struct], STRUCT_DEF);
+    struct_or_union(p, m, T![struct], STRUCT);
 }
 
 pub(super) fn union_def(p: &mut Parser, m: Marker) {

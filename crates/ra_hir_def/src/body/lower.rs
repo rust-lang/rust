@@ -652,7 +652,7 @@ impl ExprCollector<'_> {
                         let id = self.find_inner_item(&def)?;
                         (StaticLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::Item::StructDef(def) => {
+                    ast::Item::Struct(def) => {
                         let id = self.find_inner_item(&def)?;
                         (StructLoc { container, id }.intern(self.db).into(), def.name())
                     }

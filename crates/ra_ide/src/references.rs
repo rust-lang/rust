@@ -172,7 +172,7 @@ fn get_struct_def_name_for_struct_literal_search(
         if let Some(name) =
             sema.find_node_at_offset_with_descend::<ast::Name>(&syntax, left.text_range().start())
         {
-            return name.syntax().ancestors().find_map(ast::StructDef::cast).and_then(|l| l.name());
+            return name.syntax().ancestors().find_map(ast::Struct::cast).and_then(|l| l.name());
         }
         if sema
             .find_node_at_offset_with_descend::<ast::GenericParamList>(
@@ -181,7 +181,7 @@ fn get_struct_def_name_for_struct_literal_search(
             )
             .is_some()
         {
-            return left.ancestors().find_map(ast::StructDef::cast).and_then(|l| l.name());
+            return left.ancestors().find_map(ast::Struct::cast).and_then(|l| l.name());
         }
     }
     None
@@ -212,7 +212,7 @@ fn main() {
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..26 7..10 Other",
+            "Foo STRUCT FileId(1) 0..26 7..10 Other",
             &["FileId(1) 101..104 StructLiteral"],
         );
     }
@@ -230,7 +230,7 @@ struct Foo<|> {}
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..13 7..10 Other",
+            "Foo STRUCT FileId(1) 0..13 7..10 Other",
             &["FileId(1) 41..44 Other", "FileId(1) 54..57 StructLiteral"],
         );
     }
@@ -248,7 +248,7 @@ struct Foo<T> <|>{}
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..16 7..10 Other",
+            "Foo STRUCT FileId(1) 0..16 7..10 Other",
             &["FileId(1) 64..67 StructLiteral"],
         );
     }
@@ -267,7 +267,7 @@ fn main() {
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..16 7..10 Other",
+            "Foo STRUCT FileId(1) 0..16 7..10 Other",
             &["FileId(1) 54..57 StructLiteral"],
         );
     }
@@ -431,7 +431,7 @@ fn f() {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(2) 17..51 28..31 Other",
+            "Foo STRUCT FileId(2) 17..51 28..31 Other",
             &["FileId(1) 53..56 StructLiteral", "FileId(3) 79..82 StructLiteral"],
         );
     }
@@ -486,7 +486,7 @@ pub(super) struct Foo<|> {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(3) 0..41 18..21 Other",
+            "Foo STRUCT FileId(3) 0..41 18..21 Other",
             &["FileId(2) 20..23 Other", "FileId(2) 47..50 StructLiteral"],
         );
     }

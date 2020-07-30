@@ -57,8 +57,8 @@ impl HasSource for Field {
     }
 }
 impl HasSource for Struct {
-    type Ast = ast::StructDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::StructDef> {
+    type Ast = ast::Struct;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Struct> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }

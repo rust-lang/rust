@@ -150,7 +150,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                 let def = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::StructDef(it) => {
+            ast::Struct(it) => {
                 let def: hir::Struct = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },

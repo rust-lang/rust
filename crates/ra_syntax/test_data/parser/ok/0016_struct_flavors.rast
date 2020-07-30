@@ -1,12 +1,12 @@
 SOURCE_FILE@0..97
-  STRUCT_DEF@0..9
+  STRUCT@0..9
     STRUCT_KW@0..6 "struct"
     WHITESPACE@6..7 " "
     NAME@7..8
       IDENT@7..8 "A"
     SEMICOLON@8..9 ";"
   WHITESPACE@9..10 "\n"
-  STRUCT_DEF@10..21
+  STRUCT@10..21
     STRUCT_KW@10..16 "struct"
     WHITESPACE@16..17 " "
     NAME@17..18
@@ -16,7 +16,7 @@ SOURCE_FILE@0..97
       L_CURLY@19..20 "{"
       R_CURLY@20..21 "}"
   WHITESPACE@21..22 "\n"
-  STRUCT_DEF@22..33
+  STRUCT@22..33
     STRUCT_KW@22..28 "struct"
     WHITESPACE@28..29 " "
     NAME@29..30
@@ -26,7 +26,7 @@ SOURCE_FILE@0..97
       R_PAREN@31..32 ")"
     SEMICOLON@32..33 ";"
   WHITESPACE@33..35 "\n\n"
-  STRUCT_DEF@35..74
+  STRUCT@35..74
     STRUCT_KW@35..41 "struct"
     WHITESPACE@41..42 " "
     NAME@42..43
@@ -63,7 +63,7 @@ SOURCE_FILE@0..97
       WHITESPACE@72..73 "\n"
       R_CURLY@73..74 "}"
   WHITESPACE@74..76 "\n\n"
-  STRUCT_DEF@76..96
+  STRUCT@76..96
     STRUCT_KW@76..82 "struct"
     WHITESPACE@82..83 " "
     NAME@83..84

@@ -925,7 +925,7 @@ pub(crate) fn handle_code_lens(
                     matches!(
                         it.kind,
                         SyntaxKind::TRAIT_DEF
-                            | SyntaxKind::STRUCT_DEF
+                            | SyntaxKind::STRUCT
                             | SyntaxKind::ENUM_DEF
                             | SyntaxKind::UNION
                     )

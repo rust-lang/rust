@@ -146,8 +146,8 @@ fn n_attached_trivias<'a>(
     trivias: impl Iterator<Item = (SyntaxKind, &'a str)>,
 ) -> usize {
     match kind {
-        MACRO_CALL | CONST_DEF | TYPE_ALIAS | STRUCT_DEF | ENUM_DEF | ENUM_VARIANT | FN
-        | TRAIT_DEF | MODULE | RECORD_FIELD | STATIC_DEF => {
+        MACRO_CALL | CONST_DEF | TYPE_ALIAS | STRUCT | ENUM_DEF | ENUM_VARIANT | FN | TRAIT_DEF
+        | MODULE | RECORD_FIELD | STATIC_DEF => {
             let mut res = 0;
             let mut trivias = trivias.enumerate().peekable();
 

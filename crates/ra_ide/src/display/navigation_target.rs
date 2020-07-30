@@ -380,7 +380,7 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
     match_ast! {
         match node {
             ast::Fn(it) => it.doc_comment_text(),
-            ast::StructDef(it) => it.doc_comment_text(),
+            ast::Struct(it) => it.doc_comment_text(),
             ast::EnumDef(it) => it.doc_comment_text(),
             ast::TraitDef(it) => it.doc_comment_text(),
             ast::Module(it) => it.doc_comment_text(),
@@ -405,7 +405,7 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
     match_ast! {
         match node {
             ast::Fn(it) => it.short_label(),
-            ast::StructDef(it) => it.short_label(),
+            ast::Struct(it) => it.short_label(),
             ast::EnumDef(it) => it.short_label(),
             ast::TraitDef(it) => it.short_label(),
             ast::Module(it) => it.short_label(),

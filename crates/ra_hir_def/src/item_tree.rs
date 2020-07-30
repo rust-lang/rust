@@ -414,7 +414,7 @@ mod_items! {
     Import in imports -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
     Function in functions -> ast::Fn,
-    Struct in structs -> ast::StructDef,
+    Struct in structs -> ast::Struct,
     Union in unions -> ast::Union,
     Enum in enums -> ast::EnumDef,
     Const in consts -> ast::ConstDef,
@@ -514,7 +514,7 @@ pub struct Struct {
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
     pub fields: Fields,
-    pub ast_id: FileAstId<ast::StructDef>,
+    pub ast_id: FileAstId<ast::Struct>,
     pub kind: StructDefKind,
 }
 

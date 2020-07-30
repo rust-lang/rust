@@ -1,5 +1,5 @@
 SOURCE_FILE@0..43
-  STRUCT_DEF@0..11
+  STRUCT@0..11
     STRUCT_KW@0..6 "struct"
     WHITESPACE@6..7 " "
     NAME@7..8
@@ -38,7 +38,7 @@ SOURCE_FILE@0..43
     WHITESPACE@29..30 "\n"
     R_CURLY@30..31 "}"
   WHITESPACE@31..33 "\n\n"
-  STRUCT_DEF@33..42
+  STRUCT@33..42
     STRUCT_KW@33..39 "struct"
     WHITESPACE@39..40 " "
     NAME@40..41

@@ -1,7 +1,7 @@
 //! Generated file, do not edit by hand, see `xtask/src/codegen`
 
 #![allow(bad_style, missing_docs, unreachable_pub)]
-#[doc = r" The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`."]
+#[doc = r" The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT`."]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[repr(u16)]
 pub enum SyntaxKind {
@@ -123,7 +123,7 @@ pub enum SyntaxKind {
     L_DOLLAR,
     R_DOLLAR,
     SOURCE_FILE,
-    STRUCT_DEF,
+    STRUCT,
     UNION,
     ENUM_DEF,
     FN,

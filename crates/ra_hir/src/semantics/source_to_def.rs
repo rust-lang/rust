@@ -74,7 +74,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn fn_to_def(&mut self, src: InFile<ast::Fn>) -> Option<FunctionId> {
         self.to_def(src, keys::FUNCTION)
     }
-    pub(super) fn struct_to_def(&mut self, src: InFile<ast::StructDef>) -> Option<StructId> {
+    pub(super) fn struct_to_def(&mut self, src: InFile<ast::Struct>) -> Option<StructId> {
         self.to_def(src, keys::STRUCT)
     }
     pub(super) fn enum_to_def(&mut self, src: InFile<ast::EnumDef>) -> Option<EnumId> {
@@ -166,7 +166,7 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.fn_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
-                    ast::StructDef(it) => {
+                    ast::Struct(it) => {
                         let def = self.struct_to_def(container.with_value(it))?;
                         VariantId::from(def).into()
                     },
@@ -205,7 +205,7 @@ impl SourceToDefCtx<'_, '_> {
             let res: GenericDefId = match_ast! {
                 match (container.value) {
                     ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
-                    ast::StructDef(it) => self.struct_to_def(container.with_value(it))?.into(),
+                    ast::Struct(it) => self.struct_to_def(container.with_value(it))?.into(),
                     ast::EnumDef(it) => self.enum_to_def(container.with_value(it))?.into(),
                     ast::TraitDef(it) => self.trait_to_def(container.with_value(it))?.into(),
                     ast::TypeAlias(it) => self.type_alias_to_def(container.with_value(it))?.into(),

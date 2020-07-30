@@ -490,7 +490,7 @@ fn test_expand_to_item_list() {
         format!("{:#?}", tree).trim(),
         r#"
 MACRO_ITEMS@0..40
-  STRUCT_DEF@0..20
+  STRUCT@0..20
     STRUCT_KW@0..6 "struct"
     NAME@6..9
       IDENT@6..9 "Foo"
@@ -506,7 +506,7 @@ MACRO_ITEMS@0..40
               NAME_REF@16..19
                 IDENT@16..19 "u32"
       R_CURLY@19..20 "}"
-  STRUCT_DEF@20..40
+  STRUCT@20..40
     STRUCT_KW@20..26 "struct"
     NAME@26..29
       IDENT@26..29 "Bar"
