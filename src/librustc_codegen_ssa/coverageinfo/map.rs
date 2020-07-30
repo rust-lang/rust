@@ -86,7 +86,11 @@ impl Region {
     pub fn new(source_map: &SourceMap, start_byte_pos: u32, end_byte_pos: u32) -> Self {
         let start = source_map.lookup_char_pos(BytePos::from_u32(start_byte_pos));
         let end = source_map.lookup_char_pos(BytePos::from_u32(end_byte_pos));
-        assert_eq!(start.file.name, end.file.name);
+        assert_eq!(
+            start.file.name, end.file.name,
+            "Region start ({} -> {:?}) and end ({} -> {:?}) don't come from the same source file!",
+            start_byte_pos, start, end_byte_pos, end
+        );
         Self { start, end }
     }
 
