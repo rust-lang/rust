@@ -4,13 +4,13 @@ Date: Fri, 10 Apr 2020 13:47:42 +0200
 Subject: [PATCH] Remove usage of extern_weak in thread_local_dtor
 
 ---
- src/libstd/sys/unix/thread_local_dtor.rs | 20 --------------------
+ library/std/src/sys/unix/thread_local_dtor.rs | 20 --------------------
  1 files changed, 0 insertions(+), 20 deletions(-)
 
-diff --git a/src/libstd/sys/unix/thread_local_dtor.rs b/src/libstd/sys/unix/thread_local_dtor.rs
+diff --git a/library/std/src/sys/unix/thread_local_dtor.rs b/library/std/src/sys/unix/thread_local_dtor.rs
 index 8730b4d..8d6e3d5 100644
---- a/src/libstd/sys/unix/thread_local_dtor.rs
-+++ b/src/libstd/sys/unix/thread_local_dtor.rs
+--- a/library/std/src/sys/unix/thread_local_dtor.rs
++++ b/library/std/src/sys/unix/thread_local_dtor.rs
 @@ -15,28 +15,8 @@
      target_os = "emscripten"
  ))]

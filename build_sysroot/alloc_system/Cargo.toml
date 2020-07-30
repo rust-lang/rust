@@ -8,6 +8,6 @@ path = "lib.rs"
 test = false
 doc = false
 [dependencies]
-core = { path = "../sysroot_src/src/libcore" }
+core = { path = "../sysroot_src/library/core" }
 libc = { version = "0.2.43", features = ['rustc-dep-of-std'], default-features = false }
 compiler_builtins = "0.1"

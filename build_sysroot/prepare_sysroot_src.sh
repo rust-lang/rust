@@ -11,8 +11,8 @@ if [ ! -e $SRC_DIR ]; then
 fi
 
 rm -rf $DST_DIR
-mkdir -p $DST_DIR/src
-cp -r $SRC_DIR/src $DST_DIR/
+mkdir -p $DST_DIR/library
+cp -r $SRC_DIR/library $DST_DIR/
 
 pushd $DST_DIR
 echo "[GIT] init"

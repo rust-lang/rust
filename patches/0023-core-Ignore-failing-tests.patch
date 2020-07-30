@@ -4,16 +4,16 @@ Date: Sun, 24 Nov 2019 15:34:06 +0100
 Subject: [PATCH] [core] Ignore failing tests
 
 ---
- src/libcore/tests/iter.rs       |  4 ++++
- src/libcore/tests/num/bignum.rs | 10 ++++++++++
- src/libcore/tests/num/mod.rs    |  5 +++--
- src/libcore/tests/time.rs       |  1 +
+ library/core/tests/iter.rs       |  4 ++++
+ library/core/tests/num/bignum.rs | 10 ++++++++++
+ library/core/tests/num/mod.rs    |  5 +++--
+ library/core/tests/time.rs       |  1 +
  4 files changed, 18 insertions(+), 2 deletions(-)
 
-diff --git a/src/libcore/tests/array.rs b/src/libcore/tests/array.rs
+diff --git a/library/core/tests/array.rs b/library/core/tests/array.rs
 index 4bc44e9..8e3c7a4 100644
---- a/src/libcore/tests/array.rs
-+++ b/src/libcore/tests/array.rs
+--- a/library/core/tests/array.rs
++++ b/library/core/tests/array.rs
 @@ -242,6 +242,7 @@ fn iterator_drops() {
      assert_eq!(i.get(), 5);
  }
@@ -30,10 +30,10 @@ index 4bc44e9..8e3c7a4 100644
  
  #[test]
  fn empty_array_is_always_default() {
-diff --git a/src/libcore/tests/num/mod.rs b/src/libcore/tests/num/mod.rs
+diff --git a/library/core/tests/num/mod.rs b/library/core/tests/num/mod.rs
 index a17c094..5bb11d2 100644
---- a/src/libcore/tests/num/mod.rs
-+++ b/src/libcore/tests/num/mod.rs
+--- a/library/core/tests/num/mod.rs
++++ b/library/core/tests/num/mod.rs
 @@ -651,11 +651,12 @@ macro_rules! test_float {
                  assert_eq!((9.0 as $fty).min($neginf), $neginf);
                  assert_eq!(($neginf as $fty).min(-9.0), $neginf);
