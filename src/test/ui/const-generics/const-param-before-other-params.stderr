@@ -4,11 +4,5 @@ error: lifetime parameters must be declared prior to const parameters
 LL | fn bar<const X: (), 'a>(_: &'a ()) {
    |       --------------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, const X: ()>`
 
-error: type parameters must be declared prior to const parameters
-  --> $DIR/const-param-before-other-params.rs:8:21
-   |
-LL | fn foo<const X: (), T>(_: &T) {
-   |       --------------^- help: reorder the parameters: lifetimes, then types, then consts: `<T, const X: ()>`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
