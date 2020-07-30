@@ -1520,9 +1520,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     let has_sub = sub.is_some();
                     let res = self
                         .try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
-                        .unwrap_or_else(|| {
-                            self.fresh_binding(ident, pat.id, pat_src, bindings)
-                        });
+                        .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                 }
                 PatKind::TupleStruct(ref path, ..) => {
