@@ -1,5 +1,7 @@
 use rustc_middle::mir;
 
+use log::trace;
+
 use crate::*;
 use helpers::check_arg_count;
 
@@ -42,7 +44,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
 
-        this.dump_place(*dest);
+        trace!("{:?}", this.dump_place(*dest));
         this.go_to_block(ret);
         Ok(())
     }

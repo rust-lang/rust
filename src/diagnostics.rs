@@ -137,8 +137,7 @@ pub fn report_error<'tcx, 'mir>(
                 access.uninit_ptr.offset.bytes(),
                 access.uninit_ptr.offset.bytes() + access.uninit_size.bytes(),
             );
-            ecx.memory.dump_alloc(access.uninit_ptr.alloc_id);
-            eprintln!();
+            eprintln!("{:?}", ecx.memory.dump_alloc(access.uninit_ptr.alloc_id));
         }
         _ => {}
     }
