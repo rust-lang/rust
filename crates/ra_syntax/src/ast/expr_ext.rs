@@ -333,13 +333,12 @@ impl ast::Literal {
 
         match token.kind() {
             INT_NUMBER => {
-                // FYI: there was a bug here previously, thus an if statement bellow is necessary.
+                // FYI: there was a bug here previously, thus the if statement below is necessary.
                 // The lexer treats e.g. `1f64` as an integer literal. See
                 // https://github.com/rust-analyzer/rust-analyzer/issues/1592
                 // and the comments on the linked PR.
 
                 let text = token.text();
-
                 if let suffix @ Some(_) = Self::find_suffix(&text, &FLOAT_SUFFIXES) {
                     LiteralKind::FloatNumber { suffix }
                 } else {
