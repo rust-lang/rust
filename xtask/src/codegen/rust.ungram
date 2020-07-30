@@ -29,6 +29,19 @@ ItemList =
 ExternCrate =
   Attr* Visibility? 'extern' 'crate' (NameRef | 'self') Rename? ';'
 
+Rename =
+  'as' (Name | '_')
+
+UseItem =
+  Attr* Visibility? 'use' UseTree ';'
+
+UseTree =
+  (Path? '::')? ('*' | UseTreeList )
+| Path Rename?
+
+UseTreeList =
+  '{' (UseTree (',' UseTree)* ','?)? '}'
+
 FnDef =
  Attr* Visibility? Abi? 'const' 'default' 'async' 'unsafe' 'fn' Name TypeParamList?
  ParamList RetType?
@@ -394,18 +407,6 @@ SelfParam =
 Param =
   Attr* Pat (':' ascribed_type:TypeRef)
 | '...'
-
-UseItem =
-  Attr* Visibility? 'use' UseTree ';'
-
-UseTree =
-  Path ('::' ('*' | UseTreeList))  Rename?
-
-UseTreeList =
-  '{' UseTree* '}'
-
-Rename =
-  'as' Name
 
 Path =
   (qualifier:Path '::')? segment:PathSegment
