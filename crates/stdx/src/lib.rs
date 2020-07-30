@@ -109,9 +109,18 @@ pub fn replace(buf: &mut String, from: char, to: &str) {
     *buf = buf.replace(from, to)
 }
 
-pub fn split_delim(haystack: &str, delim: char) -> Option<(&str, &str)> {
-    let idx = haystack.find(delim)?;
-    Some((&haystack[..idx], &haystack[idx + delim.len_utf8()..]))
+// https://github.com/rust-lang/rust/issues/74773
+pub fn split_once(haystack: &str, delim: char) -> Option<(&str, &str)> {
+    let mut split = haystack.splitn(2, delim);
+    let prefix = split.next()?;
+    let suffix = split.next()?;
+    Some((prefix, suffix))
+}
+pub fn rsplit_once(haystack: &str, delim: char) -> Option<(&str, &str)> {
+    let mut split = haystack.rsplitn(2, delim);
+    let suffix = split.next()?;
+    let prefix = split.next()?;
+    Some((prefix, suffix))
 }
 
 pub fn trim_indent(mut text: &str) -> String {

@@ -2,7 +2,7 @@
 
 use std::{env, path::Path, str::FromStr, sync::Arc, time::Instant};
 
-use anyhow::{format_err, Result};
+use anyhow::{bail, format_err, Result};
 use ra_db::{
     salsa::{Database, Durability},
     FileId,
@@ -30,17 +30,16 @@ pub struct Position {
 impl FromStr for Position {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self> {
-        let (path_line, column) = rsplit_at_char(s, ':')?;
-        let (path, line) = rsplit_at_char(path_line, ':')?;
-        let path = env::current_dir().unwrap().join(path);
-        let path = AbsPathBuf::assert(path);
-        Ok(Position { path, line: line.parse()?, column: column.parse()? })
+        let mut split = s.rsplitn(3, ':');
+        match (split.next(), split.next(), split.next()) {
+            (Some(column), Some(line), Some(path)) => {
+                let path = env::current_dir().unwrap().join(path);
+                let path = AbsPathBuf::assert(path);
+                Ok(Position { path, line: line.parse()?, column: column.parse()? })
+            }
+            _ => bail!("position should be in file:line:column format: {:?}", s),
+        }
     }
-}
-
-fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
-    let idx = s.rfind(c).ok_or_else(|| format_err!("no `{}` in {}", c, s))?;
-    Ok((&s[..idx], &s[idx + 1..]))
 }
 
 pub fn analysis_bench(
