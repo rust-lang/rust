@@ -393,7 +393,7 @@ impl Step for Miri {
             cargo.arg("--").arg("miri").arg("setup");
 
             // Tell `cargo miri setup` where to find the sources.
-            cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
+            cargo.env("XARGO_RUST_SRC", builder.src.join("library"));
             // Tell it where to find Miri.
             cargo.env("MIRI", &miri);
             // Debug things.
