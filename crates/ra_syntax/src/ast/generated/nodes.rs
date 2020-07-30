@@ -65,12 +65,12 @@ impl ExternBlock {
     pub fn extern_item_list(&self) -> Option<ExternItemList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ExternCrateItem {
+pub struct ExternCrate {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for ExternCrateItem {}
-impl ast::VisibilityOwner for ExternCrateItem {}
-impl ExternCrateItem {
+impl ast::AttrsOwner for ExternCrate {}
+impl ast::VisibilityOwner for ExternCrate {}
+impl ExternCrate {
     pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
@@ -253,6 +253,21 @@ impl ast::ModuleItemOwner for ItemList {}
 impl ItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NameRef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl NameRef {
+    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Rename {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::NameOwner for Rename {}
+impl Rename {
+    pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Abi {
@@ -697,13 +712,6 @@ impl MethodCallExpr {
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn type_arg_list(&self) -> Option<TypeArgList> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NameRef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl NameRef {
-    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeArgList {
@@ -1190,14 +1198,6 @@ impl UseTreeList {
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Rename {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::NameOwner for Rename {}
-impl Rename {
-    pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PathSegment {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1272,7 +1272,7 @@ pub enum Item {
     ConstDef(ConstDef),
     EnumDef(EnumDef),
     ExternBlock(ExternBlock),
-    ExternCrateItem(ExternCrateItem),
+    ExternCrate(ExternCrate),
     FnDef(FnDef),
     ImplDef(ImplDef),
     MacroCall(MacroCall),
@@ -1451,8 +1451,8 @@ impl AstNode for ExternBlock {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for ExternCrateItem {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_CRATE_ITEM }
+impl AstNode for ExternCrate {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == EXTERN_CRATE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1596,6 +1596,28 @@ impl AstNode for Name {
 }
 impl AstNode for ItemList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ITEM_LIST }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for NameRef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME_REF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for Rename {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RENAME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2102,17 +2124,6 @@ impl AstNode for ArgList {
 }
 impl AstNode for MethodCallExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == METHOD_CALL_EXPR }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for NameRef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME_REF }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2683,17 +2694,6 @@ impl AstNode for UseTreeList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for Rename {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RENAME }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for PathSegment {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_SEGMENT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2780,8 +2780,8 @@ impl From<EnumDef> for Item {
 impl From<ExternBlock> for Item {
     fn from(node: ExternBlock) -> Item { Item::ExternBlock(node) }
 }
-impl From<ExternCrateItem> for Item {
-    fn from(node: ExternCrateItem) -> Item { Item::ExternCrateItem(node) }
+impl From<ExternCrate> for Item {
+    fn from(node: ExternCrate) -> Item { Item::ExternCrate(node) }
 }
 impl From<FnDef> for Item {
     fn from(node: FnDef) -> Item { Item::FnDef(node) }
@@ -2816,9 +2816,9 @@ impl From<UseItem> for Item {
 impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            CONST_DEF | ENUM_DEF | EXTERN_BLOCK | EXTERN_CRATE_ITEM | FN_DEF | IMPL_DEF
-            | MACRO_CALL | MODULE | STATIC_DEF | STRUCT_DEF | TRAIT_DEF | TYPE_ALIAS_DEF
-            | UNION_DEF | USE_ITEM => true,
+            CONST_DEF | ENUM_DEF | EXTERN_BLOCK | EXTERN_CRATE | FN_DEF | IMPL_DEF | MACRO_CALL
+            | MODULE | STATIC_DEF | STRUCT_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | UNION_DEF
+            | USE_ITEM => true,
             _ => false,
         }
     }
@@ -2827,7 +2827,7 @@ impl AstNode for Item {
             CONST_DEF => Item::ConstDef(ConstDef { syntax }),
             ENUM_DEF => Item::EnumDef(EnumDef { syntax }),
             EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
-            EXTERN_CRATE_ITEM => Item::ExternCrateItem(ExternCrateItem { syntax }),
+            EXTERN_CRATE => Item::ExternCrate(ExternCrate { syntax }),
             FN_DEF => Item::FnDef(FnDef { syntax }),
             IMPL_DEF => Item::ImplDef(ImplDef { syntax }),
             MACRO_CALL => Item::MacroCall(MacroCall { syntax }),
@@ -2847,7 +2847,7 @@ impl AstNode for Item {
             Item::ConstDef(it) => &it.syntax,
             Item::EnumDef(it) => &it.syntax,
             Item::ExternBlock(it) => &it.syntax,
-            Item::ExternCrateItem(it) => &it.syntax,
+            Item::ExternCrate(it) => &it.syntax,
             Item::FnDef(it) => &it.syntax,
             Item::ImplDef(it) => &it.syntax,
             Item::MacroCall(it) => &it.syntax,
@@ -3480,7 +3480,7 @@ impl std::fmt::Display for ExternBlock {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ExternCrateItem {
+impl std::fmt::Display for ExternCrate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3546,6 +3546,16 @@ impl std::fmt::Display for Name {
     }
 }
 impl std::fmt::Display for ItemList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for NameRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Rename {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3776,11 +3786,6 @@ impl std::fmt::Display for ArgList {
     }
 }
 impl std::fmt::Display for MethodCallExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for NameRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -4036,11 +4041,6 @@ impl std::fmt::Display for UseTree {
     }
 }
 impl std::fmt::Display for UseTreeList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Rename {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

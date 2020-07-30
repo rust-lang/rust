@@ -412,7 +412,7 @@ macro_rules! mod_items {
 
 mod_items! {
     Import in imports -> ast::UseItem,
-    ExternCrate in extern_crates -> ast::ExternCrateItem,
+    ExternCrate in extern_crates -> ast::ExternCrate,
     Function in functions -> ast::FnDef,
     Struct in structs -> ast::StructDef,
     Union in unions -> ast::UnionDef,
@@ -492,7 +492,7 @@ pub struct ExternCrate {
     pub visibility: RawVisibilityId,
     /// Whether this is a `#[macro_use] extern crate ...`.
     pub is_macro_use: bool,
-    pub ast_id: FileAstId<ast::ExternCrateItem>,
+    pub ast_id: FileAstId<ast::ExternCrate>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

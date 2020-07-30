@@ -313,7 +313,7 @@ fn extern_crate_item(p: &mut Parser, m: Marker) {
 
     opt_alias(p);
     p.expect(T![;]);
-    m.complete(p, EXTERN_CRATE_ITEM);
+    m.complete(p, EXTERN_CRATE);
 }
 
 pub(crate) fn extern_item_list(p: &mut Parser) {
