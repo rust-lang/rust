@@ -1,5 +1,5 @@
 SOURCE_FILE@0..16
-  TRAIT_DEF@0..15
+  TRAIT@0..15
     AUTO_KW@0..4 "auto"
     WHITESPACE@4..5 " "
     TRAIT_KW@5..10 "trait"

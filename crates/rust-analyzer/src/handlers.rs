@@ -924,7 +924,7 @@ pub(crate) fn handle_code_lens(
                 .filter(|it| {
                     matches!(
                         it.kind,
-                        SyntaxKind::TRAIT_DEF
+                        SyntaxKind::TRAIT
                             | SyntaxKind::STRUCT
                             | SyntaxKind::ENUM
                             | SyntaxKind::UNION

@@ -151,7 +151,7 @@ pub(crate) fn reparser(
         TOKEN_TREE if first_child? == T!['{'] => items::token_tree,
         ASSOC_ITEM_LIST => match parent? {
             IMPL_DEF => items::impl_item_list,
-            TRAIT_DEF => items::trait_item_list,
+            TRAIT => items::trait_item_list,
             _ => return None,
         },
         ITEM_LIST => items::mod_item_list,

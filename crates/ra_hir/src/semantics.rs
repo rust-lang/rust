@@ -583,7 +583,7 @@ to_def_impls![
     (crate::Struct, ast::Struct, struct_to_def),
     (crate::Enum, ast::Enum, enum_to_def),
     (crate::Union, ast::Union, union_to_def),
-    (crate::Trait, ast::TraitDef, trait_to_def),
+    (crate::Trait, ast::Trait, trait_to_def),
     (crate::ImplDef, ast::ImplDef, impl_to_def),
     (crate::TypeAlias, ast::TypeAlias, type_alias_to_def),
     (crate::Const, ast::Const, const_to_def),

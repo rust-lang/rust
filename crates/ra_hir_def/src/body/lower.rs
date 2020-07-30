@@ -664,7 +664,7 @@ impl ExprCollector<'_> {
                         let id = self.find_inner_item(&def)?;
                         (UnionLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::Item::TraitDef(def) => {
+                    ast::Item::Trait(def) => {
                         let id = self.find_inner_item(&def)?;
                         (TraitLoc { container, id }.intern(self.db).into(), def.name())
                     }

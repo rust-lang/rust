@@ -95,7 +95,7 @@ impl Ctx {
 
             // These are handled in their respective `lower_X` method (since we can't just blindly
             // walk them).
-            ast::Item::TraitDef(_) | ast::Item::ImplDef(_) | ast::Item::ExternBlock(_) => {}
+            ast::Item::Trait(_) | ast::Item::ImplDef(_) | ast::Item::ExternBlock(_) => {}
 
             // These don't have inner items.
             ast::Item::Module(_) | ast::Item::ExternCrate(_) | ast::Item::Use(_) => {}
@@ -111,7 +111,7 @@ impl Ctx {
             ast::Item::Static(ast) => self.lower_static(ast).map(Into::into),
             ast::Item::Const(ast) => Some(self.lower_const(ast).into()),
             ast::Item::Module(ast) => self.lower_module(ast).map(Into::into),
-            ast::Item::TraitDef(ast) => self.lower_trait(ast).map(Into::into),
+            ast::Item::Trait(ast) => self.lower_trait(ast).map(Into::into),
             ast::Item::ImplDef(ast) => self.lower_impl(ast).map(Into::into),
             ast::Item::Use(ast) => Some(ModItems(
                 self.lower_use(ast).into_iter().map(Into::into).collect::<SmallVec<_>>(),
@@ -413,7 +413,7 @@ impl Ctx {
         Some(id(self.data().mods.alloc(res)))
     }
 
-    fn lower_trait(&mut self, trait_def: &ast::TraitDef) -> Option<FileItemTreeId<Trait>> {
+    fn lower_trait(&mut self, trait_def: &ast::Trait) -> Option<FileItemTreeId<Trait>> {
         let name = trait_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_def);
         let generic_params =
@@ -698,7 +698,7 @@ enum GenericsOwner<'a> {
     Enum,
     Union,
     /// The `TraitDef` is needed to fill the source map for the implicit `Self` parameter.
-    Trait(&'a ast::TraitDef),
+    Trait(&'a ast::Trait),
     TypeAlias,
     Impl,
 }

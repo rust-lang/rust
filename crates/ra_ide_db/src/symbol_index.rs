@@ -344,7 +344,7 @@ impl Query {
 }
 
 fn is_type(kind: SyntaxKind) -> bool {
-    matches!(kind, STRUCT | ENUM | TRAIT_DEF | TYPE_ALIAS)
+    matches!(kind, STRUCT | ENUM | TRAIT | TYPE_ALIAS)
 }
 
 /// The actual data that is stored in the index. It should be as compact as
@@ -400,7 +400,7 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
             ast::Fn(it) => decl(it),
             ast::Struct(it) => decl(it),
             ast::Enum(it) => decl(it),
-            ast::TraitDef(it) => decl(it),
+            ast::Trait(it) => decl(it),
             ast::Module(it) => decl(it),
             ast::TypeAlias(it) => decl(it),
             ast::Const(it) => decl(it),

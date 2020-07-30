@@ -99,8 +99,8 @@ impl HasSource for Static {
     }
 }
 impl HasSource for Trait {
-    type Ast = ast::TraitDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::TraitDef> {
+    type Ast = ast::Trait;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Trait> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }
@@ -127,7 +127,7 @@ impl HasSource for ImplDef {
 }
 
 impl HasSource for TypeParam {
-    type Ast = Either<ast::TraitDef, ast::TypeParam>;
+    type Ast = Either<ast::Trait, ast::TypeParam>;
     fn source(self, db: &dyn HirDatabase) -> InFile<Self::Ast> {
         let child_source = self.id.parent.child_source(db.upcast());
         child_source.map(|it| it[self.id.local_id].clone())

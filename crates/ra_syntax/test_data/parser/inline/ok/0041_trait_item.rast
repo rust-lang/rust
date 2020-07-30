@@ -1,5 +1,5 @@
 SOURCE_FILE@0..101
-  TRAIT_DEF@0..41
+  TRAIT@0..41
     TRAIT_KW@0..5 "trait"
     WHITESPACE@5..6 " "
     NAME@6..7
@@ -52,7 +52,7 @@ SOURCE_FILE@0..101
       L_CURLY@39..40 "{"
       R_CURLY@40..41 "}"
   WHITESPACE@41..42 "\n"
-  TRAIT_DEF@42..100
+  TRAIT@42..100
     TRAIT_KW@42..47 "trait"
     WHITESPACE@47..48 " "
     NAME@48..49

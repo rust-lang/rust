@@ -193,7 +193,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // unsafe auto trait T {}
         T![trait] => {
             traits::trait_def(p);
-            m.complete(p, TRAIT_DEF);
+            m.complete(p, TRAIT);
         }
 
         // test unsafe_impl

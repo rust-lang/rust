@@ -419,7 +419,7 @@ mod_items! {
     Enum in enums -> ast::Enum,
     Const in consts -> ast::Const,
     Static in statics -> ast::Static,
-    Trait in traits -> ast::TraitDef,
+    Trait in traits -> ast::Trait,
     Impl in impls -> ast::ImplDef,
     TypeAlias in type_aliases -> ast::TypeAlias,
     Mod in mods -> ast::Module,
@@ -571,7 +571,7 @@ pub struct Trait {
     pub generic_params: GenericParamsId,
     pub auto: bool,
     pub items: Box<[AssocItem]>,
-    pub ast_id: FileAstId<ast::TraitDef>,
+    pub ast_id: FileAstId<ast::Trait>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

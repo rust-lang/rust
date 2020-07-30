@@ -15,7 +15,7 @@ pub(crate) fn has_trait_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element)
         .filter(|it| it.kind() == ASSOC_ITEM_LIST)
         .and_then(|it| it.parent())
-        .filter(|it| it.kind() == TRAIT_DEF)
+        .filter(|it| it.kind() == TRAIT)
         .is_some()
 }
 #[test]
@@ -113,7 +113,7 @@ fn test_if_is_prev() {
 }
 
 pub(crate) fn has_trait_as_prev_sibling(element: SyntaxElement) -> bool {
-    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == TRAIT_DEF).is_some()
+    previous_sibling_or_ancestor_sibling(element).filter(|it| it.kind() == TRAIT).is_some()
 }
 #[test]
 fn test_has_trait_as_prev_sibling() {

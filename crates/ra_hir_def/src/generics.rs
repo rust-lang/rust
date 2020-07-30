@@ -66,7 +66,7 @@ pub enum WherePredicateTarget {
     TypeParam(LocalTypeParamId),
 }
 
-type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::TraitDef, ast::TypeParam>>;
+type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::Trait, ast::TypeParam>>;
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -317,7 +317,7 @@ impl GenericParams {
 
 impl HasChildSource for GenericDefId {
     type ChildId = LocalTypeParamId;
-    type Value = Either<ast::TraitDef, ast::TypeParam>;
+    type Value = Either<ast::Trait, ast::TypeParam>;
     fn child_source(&self, db: &dyn DefDatabase) -> InFile<SourceMap> {
         let (_, sm) = GenericParams::new(db, *self);
         sm

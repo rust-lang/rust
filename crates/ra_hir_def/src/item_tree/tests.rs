@@ -234,7 +234,7 @@ fn smoke() {
             #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("ext_crate"))] }, input: None }]) }]
             ExternCrate { path: ModPath { kind: Plain, segments: [Name(Text("krate"))] }, alias: None, visibility: RawVisibilityId("pub(self)"), is_macro_use: false, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::ExternCrate>(1) }
             #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("on_trait"))] }, input: None }]) }]
-            Trait { name: Name(Text("Tr")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(0), auto: false, items: [TypeAlias(Idx::<TypeAlias>(0)), Const(Idx::<Const>(0)), Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::TraitDef>(2) }
+            Trait { name: Name(Text("Tr")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(0), auto: false, items: [TypeAlias(Idx::<TypeAlias>(0)), Const(Idx::<Const>(0)), Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::Trait>(2) }
             > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("assoc_ty"))] }, input: None }]) }]
             > TypeAlias { name: Name(Text("AssocTy")), visibility: RawVisibilityId("pub(self)"), bounds: [Path(Path { type_anchor: None, mod_path: ModPath { kind: Plain, segments: [Name(Text("Tr"))] }, generic_args: [Some(GenericArgs { args: [Type(Tuple([]))], has_self_type: false, bindings: [] })] })], generic_params: GenericParamsId(4294967295), type_ref: None, ast_id: FileAstId::<ra_syntax::ast::generated::nodes::TypeAlias>(8) }
             > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("assoc_const"))] }, input: None }]) }]
@@ -327,7 +327,7 @@ fn trait_attrs() {
 
             top-level items:
             #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("trait_attr"))] }, input: None }]) }]
-            Trait { name: Name(Text("Tr")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(0), auto: false, items: [Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::TraitDef>(0) }
+            Trait { name: Name(Text("Tr")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(0), auto: false, items: [Function(Idx::<Function>(0)), Function(Idx::<Function>(1))], ast_id: FileAstId::<ra_syntax::ast::generated::nodes::Trait>(0) }
             > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_a"))] }, input: None }]) }]
             > Function { name: Name(Text("a")), visibility: RawVisibilityId("pub(self)"), generic_params: GenericParamsId(4294967295), has_self_param: false, is_unsafe: false, params: [], is_varargs: false, ret_type: Tuple([]), ast_id: FileAstId::<ra_syntax::ast::generated::nodes::Fn>(1) }
             > #[Attrs { entries: Some([Attr { path: ModPath { kind: Plain, segments: [Name(Text("attr_b"))] }, input: None }]) }]

@@ -481,7 +481,7 @@ impl ast::DocCommentsOwner for ast::RecordField {}
 impl ast::DocCommentsOwner for ast::TupleField {}
 impl ast::DocCommentsOwner for ast::Enum {}
 impl ast::DocCommentsOwner for ast::Variant {}
-impl ast::DocCommentsOwner for ast::TraitDef {}
+impl ast::DocCommentsOwner for ast::Trait {}
 impl ast::DocCommentsOwner for ast::Module {}
 impl ast::DocCommentsOwner for ast::Static {}
 impl ast::DocCommentsOwner for ast::Const {}

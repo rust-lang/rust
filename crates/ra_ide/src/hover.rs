@@ -1678,7 +1678,7 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1718,7 +1718,7 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1777,7 +1777,7 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1796,7 +1796,7 @@ fn main() { let s<|>t = foo(); }
                                         19..22,
                                     ),
                                     name: "Bar",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Bar",
@@ -1839,7 +1839,7 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1858,7 +1858,7 @@ fn main() { let s<|>t = foo(); }
                                         22..25,
                                     ),
                                     name: "Bar",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Bar",
@@ -1933,7 +1933,7 @@ fn foo(ar<|>g: &impl Foo) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1973,7 +1973,7 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -1992,7 +1992,7 @@ fn foo(ar<|>g: &impl Foo + Bar<S>) {}
                                         19..22,
                                     ),
                                     name: "Bar",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Bar",
@@ -2049,7 +2049,7 @@ fn foo(ar<|>g: &impl Foo<S>) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2130,7 +2130,7 @@ fn main() { let s<|>t = foo(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2167,7 +2167,7 @@ fn foo(ar<|>g: &dyn Foo) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2205,7 +2205,7 @@ fn foo(ar<|>g: &dyn Foo<S>) {}
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",
@@ -2265,7 +2265,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         6..15,
                                     ),
                                     name: "ImplTrait",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait ImplTrait",
@@ -2303,7 +2303,7 @@ fn foo(a<|>rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                         28..36,
                                     ),
                                     name: "DynTrait",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait DynTrait",
@@ -2370,7 +2370,7 @@ fn main() { let s<|>t = test().get(); }
                                         6..9,
                                     ),
                                     name: "Foo",
-                                    kind: TRAIT_DEF,
+                                    kind: TRAIT,
                                     container_name: None,
                                     description: Some(
                                         "trait Foo",

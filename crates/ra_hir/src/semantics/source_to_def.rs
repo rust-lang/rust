@@ -65,7 +65,7 @@ impl SourceToDefCtx<'_, '_> {
         Some(ModuleId { krate: parent_module.krate, local_id: child_id })
     }
 
-    pub(super) fn trait_to_def(&mut self, src: InFile<ast::TraitDef>) -> Option<TraitId> {
+    pub(super) fn trait_to_def(&mut self, src: InFile<ast::Trait>) -> Option<TraitId> {
         self.to_def(src, keys::TRAIT)
     }
     pub(super) fn impl_to_def(&mut self, src: InFile<ast::ImplDef>) -> Option<ImplId> {
@@ -154,7 +154,7 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.module_to_def(container.with_value(it))?;
                         def.into()
                     },
-                    ast::TraitDef(it) => {
+                    ast::Trait(it) => {
                         let def = self.trait_to_def(container.with_value(it))?;
                         def.into()
                     },
@@ -207,7 +207,7 @@ impl SourceToDefCtx<'_, '_> {
                     ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
                     ast::Struct(it) => self.struct_to_def(container.with_value(it))?.into(),
                     ast::Enum(it) => self.enum_to_def(container.with_value(it))?.into(),
-                    ast::TraitDef(it) => self.trait_to_def(container.with_value(it))?.into(),
+                    ast::Trait(it) => self.trait_to_def(container.with_value(it))?.into(),
                     ast::TypeAlias(it) => self.type_alias_to_def(container.with_value(it))?.into(),
                     ast::ImplDef(it) => self.impl_to_def(container.with_value(it))?.into(),
                     _ => continue,

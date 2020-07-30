@@ -162,7 +162,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                 let def: hir::Enum = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },
-            ast::TraitDef(it) => {
+            ast::Trait(it) => {
                 let def: hir::Trait = sema.to_def(&it)?;
                 Some(NameClass::Definition(Definition::ModuleDef(def.into())))
             },

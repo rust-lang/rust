@@ -1,5 +1,5 @@
 SOURCE_FILE@0..23
-  TRAIT_DEF@0..22
+  TRAIT@0..22
     UNSAFE_KW@0..6 "unsafe"
     WHITESPACE@6..7 " "
     AUTO_KW@7..11 "auto"

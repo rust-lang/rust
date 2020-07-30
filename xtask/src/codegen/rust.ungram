@@ -14,7 +14,7 @@ Item =
 | Module
 | Static
 | Struct
-| TraitDef
+| Trait
 | TypeAlias
 | Union
 | Use
@@ -123,7 +123,7 @@ Static =
   Attr* Visibility? 'static'? 'mut'? Name ':' ascribed_type:TypeRef
   '=' body:Expr ';'
 
-TraitDef =
+Trait =
   Attr* Visibility? 'unsafe'? 'auto'? 'trait' Name GenericParamList
   (':' TypeBoundList?)? WhereClause
   AssocItemList

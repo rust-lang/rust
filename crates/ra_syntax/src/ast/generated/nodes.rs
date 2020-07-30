@@ -169,15 +169,15 @@ impl Struct {
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitDef {
+pub struct Trait {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for TraitDef {}
-impl ast::NameOwner for TraitDef {}
-impl ast::VisibilityOwner for TraitDef {}
-impl ast::GenericParamsOwner for TraitDef {}
-impl ast::TypeBoundsOwner for TraitDef {}
-impl TraitDef {
+impl ast::AttrsOwner for Trait {}
+impl ast::NameOwner for Trait {}
+impl ast::VisibilityOwner for Trait {}
+impl ast::GenericParamsOwner for Trait {}
+impl ast::TypeBoundsOwner for Trait {}
+impl Trait {
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn auto_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![auto]) }
     pub fn trait_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![trait]) }
@@ -1283,7 +1283,7 @@ pub enum Item {
     Module(Module),
     Static(Static),
     Struct(Struct),
-    TraitDef(TraitDef),
+    Trait(Trait),
     TypeAlias(TypeAlias),
     Union(Union),
     Use(Use),
@@ -1532,8 +1532,8 @@ impl AstNode for Struct {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TraitDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT_DEF }
+impl AstNode for Trait {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TRAIT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2805,8 +2805,8 @@ impl From<Static> for Item {
 impl From<Struct> for Item {
     fn from(node: Struct) -> Item { Item::Struct(node) }
 }
-impl From<TraitDef> for Item {
-    fn from(node: TraitDef) -> Item { Item::TraitDef(node) }
+impl From<Trait> for Item {
+    fn from(node: Trait) -> Item { Item::Trait(node) }
 }
 impl From<TypeAlias> for Item {
     fn from(node: TypeAlias) -> Item { Item::TypeAlias(node) }
@@ -2821,7 +2821,7 @@ impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL_DEF | MACRO_CALL | MODULE
-            | STATIC | STRUCT | TRAIT_DEF | TYPE_ALIAS | UNION | USE => true,
+            | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE => true,
             _ => false,
         }
     }
@@ -2837,7 +2837,7 @@ impl AstNode for Item {
             MODULE => Item::Module(Module { syntax }),
             STATIC => Item::Static(Static { syntax }),
             STRUCT => Item::Struct(Struct { syntax }),
-            TRAIT_DEF => Item::TraitDef(TraitDef { syntax }),
+            TRAIT => Item::Trait(Trait { syntax }),
             TYPE_ALIAS => Item::TypeAlias(TypeAlias { syntax }),
             UNION => Item::Union(Union { syntax }),
             USE => Item::Use(Use { syntax }),
@@ -2857,7 +2857,7 @@ impl AstNode for Item {
             Item::Module(it) => &it.syntax,
             Item::Static(it) => &it.syntax,
             Item::Struct(it) => &it.syntax,
-            Item::TraitDef(it) => &it.syntax,
+            Item::Trait(it) => &it.syntax,
             Item::TypeAlias(it) => &it.syntax,
             Item::Union(it) => &it.syntax,
             Item::Use(it) => &it.syntax,
@@ -3516,7 +3516,7 @@ impl std::fmt::Display for Struct {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TraitDef {
+impl std::fmt::Display for Trait {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

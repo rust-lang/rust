@@ -130,7 +130,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::Union(it) => decl(it),
             ast::Enum(it) => decl(it),
             ast::Variant(it) => decl(it),
-            ast::TraitDef(it) => decl(it),
+            ast::Trait(it) => decl(it),
             ast::Module(it) => decl(it),
             ast::TypeAlias(it) => {
                 let ty = it.type_ref();
