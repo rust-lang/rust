@@ -80,7 +80,7 @@ impl Ctx {
         match item {
             ast::Item::Struct(_)
             | ast::Item::Union(_)
-            | ast::Item::EnumDef(_)
+            | ast::Item::Enum(_)
             | ast::Item::Fn(_)
             | ast::Item::TypeAlias(_)
             | ast::Item::ConstDef(_)
@@ -105,7 +105,7 @@ impl Ctx {
         let items = match item {
             ast::Item::Struct(ast) => self.lower_struct(ast).map(Into::into),
             ast::Item::Union(ast) => self.lower_union(ast).map(Into::into),
-            ast::Item::EnumDef(ast) => self.lower_enum(ast).map(Into::into),
+            ast::Item::Enum(ast) => self.lower_enum(ast).map(Into::into),
             ast::Item::Fn(ast) => self.lower_function(ast).map(Into::into),
             ast::Item::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
             ast::Item::StaticDef(ast) => self.lower_static(ast).map(Into::into),
@@ -246,7 +246,7 @@ impl Ctx {
         Some(id(self.data().unions.alloc(res)))
     }
 
-    fn lower_enum(&mut self, enum_: &ast::EnumDef) -> Option<FileItemTreeId<Enum>> {
+    fn lower_enum(&mut self, enum_: &ast::Enum) -> Option<FileItemTreeId<Enum>> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Enum, enum_);

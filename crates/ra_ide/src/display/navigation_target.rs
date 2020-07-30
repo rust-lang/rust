@@ -381,7 +381,7 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
         match node {
             ast::Fn(it) => it.doc_comment_text(),
             ast::Struct(it) => it.doc_comment_text(),
-            ast::EnumDef(it) => it.doc_comment_text(),
+            ast::Enum(it) => it.doc_comment_text(),
             ast::TraitDef(it) => it.doc_comment_text(),
             ast::Module(it) => it.doc_comment_text(),
             ast::TypeAlias(it) => it.doc_comment_text(),
@@ -406,7 +406,7 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
         match node {
             ast::Fn(it) => it.short_label(),
             ast::Struct(it) => it.short_label(),
-            ast::EnumDef(it) => it.short_label(),
+            ast::Enum(it) => it.short_label(),
             ast::TraitDef(it) => it.short_label(),
             ast::Module(it) => it.short_label(),
             ast::TypeAlias(it) => it.short_label(),
@@ -446,7 +446,7 @@ fn foo() { enum FooInner { } }
                         5..13,
                     ),
                     name: "FooInner",
-                    kind: ENUM_DEF,
+                    kind: ENUM,
                     container_name: None,
                     description: Some(
                         "enum FooInner",
@@ -462,7 +462,7 @@ fn foo() { enum FooInner { } }
                         34..42,
                     ),
                     name: "FooInner",
-                    kind: ENUM_DEF,
+                    kind: ENUM,
                     container_name: Some(
                         "foo",
                     ),

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..94
-  ENUM_DEF@0..8
+  ENUM@0..8
     ENUM_KW@0..4 "enum"
     WHITESPACE@4..5 " "
     NAME@5..6

@@ -69,8 +69,8 @@ impl HasSource for Union {
     }
 }
 impl HasSource for Enum {
-    type Ast = ast::EnumDef;
-    fn source(self, db: &dyn HirDatabase) -> InFile<ast::EnumDef> {
+    type Ast = ast::Enum;
+    fn source(self, db: &dyn HirDatabase) -> InFile<ast::Enum> {
         self.id.lookup(db.upcast()).source(db.upcast())
     }
 }

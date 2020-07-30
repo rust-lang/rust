@@ -45,7 +45,7 @@ fn impls_for_def(
 ) -> Option<Vec<NavigationTarget>> {
     let ty = match node {
         ast::AdtDef::Struct(def) => sema.to_def(def)?.ty(sema.db),
-        ast::AdtDef::EnumDef(def) => sema.to_def(def)?.ty(sema.db),
+        ast::AdtDef::Enum(def) => sema.to_def(def)?.ty(sema.db),
         ast::AdtDef::Union(def) => sema.to_def(def)?.ty(sema.db),
     };
 

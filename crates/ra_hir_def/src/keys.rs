@@ -22,7 +22,7 @@ pub const IMPL: Key<ast::ImplDef, ImplId> = Key::new();
 pub const TRAIT: Key<ast::TraitDef, TraitId> = Key::new();
 pub const STRUCT: Key<ast::Struct, StructId> = Key::new();
 pub const UNION: Key<ast::Union, UnionId> = Key::new();
-pub const ENUM: Key<ast::EnumDef, EnumId> = Key::new();
+pub const ENUM: Key<ast::Enum, EnumId> = Key::new();
 
 pub const ENUM_VARIANT: Key<ast::EnumVariant, EnumVariantId> = Key::new();
 pub const TUPLE_FIELD: Key<ast::TupleField, FieldId> = Key::new();

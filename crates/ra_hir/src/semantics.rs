@@ -581,7 +581,7 @@ macro_rules! to_def_impls {
 to_def_impls![
     (crate::Module, ast::Module, module_to_def),
     (crate::Struct, ast::Struct, struct_to_def),
-    (crate::Enum, ast::EnumDef, enum_to_def),
+    (crate::Enum, ast::Enum, enum_to_def),
     (crate::Union, ast::Union, union_to_def),
     (crate::Trait, ast::TraitDef, trait_to_def),
     (crate::ImplDef, ast::ImplDef, impl_to_def),

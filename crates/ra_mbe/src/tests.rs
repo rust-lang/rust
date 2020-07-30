@@ -1467,7 +1467,7 @@ macro_rules! quick_error {
         buf [ ]
         queue [ ]
     ) => {
-        quick_error!(ENUM_DEFINITION [enum $name $( #[$meta] )*]
+        quick_error!(ENUMINITION [enum $name $( #[$meta] )*]
             body []
             queue [$(
                 $( #[$imeta] )*
@@ -1489,7 +1489,7 @@ quick_error ! (SORT [enum Wrapped # [derive (Debug)]] items [
 "#,
     );
 
-    assert_eq!(expanded.to_string(), "quick_error ! (ENUM_DEFINITION [enum Wrapped # [derive (Debug)]] body [] queue [=> One : UNIT [] => Two : TUPLE [s : String]]) ;");
+    assert_eq!(expanded.to_string(), "quick_error ! (ENUMINITION [enum Wrapped # [derive (Debug)]] body [] queue [=> One : UNIT [] => Two : TUPLE [s : String]]) ;");
 }
 
 #[test]

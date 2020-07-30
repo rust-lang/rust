@@ -11,7 +11,7 @@ SOURCE_FILE@0..111
     BLOCK_EXPR@21..110
       L_CURLY@21..22 "{"
       WHITESPACE@22..27 "\n    "
-      ENUM_DEF@27..75
+      ENUM@27..75
         ENUM_KW@27..31 "enum"
         WHITESPACE@31..32 " "
         NAME@32..41

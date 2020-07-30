@@ -44,14 +44,14 @@ impl ConstDef {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EnumDef {
+pub struct Enum {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for EnumDef {}
-impl ast::NameOwner for EnumDef {}
-impl ast::VisibilityOwner for EnumDef {}
-impl ast::GenericParamsOwner for EnumDef {}
-impl EnumDef {
+impl ast::AttrsOwner for Enum {}
+impl ast::NameOwner for Enum {}
+impl ast::VisibilityOwner for Enum {}
+impl ast::GenericParamsOwner for Enum {}
+impl Enum {
     pub fn enum_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![enum]) }
     pub fn variant_list(&self) -> Option<EnumVariantList> { support::child(&self.syntax) }
 }
@@ -1273,7 +1273,7 @@ impl MetaItem {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Item {
     ConstDef(ConstDef),
-    EnumDef(EnumDef),
+    Enum(Enum),
     ExternBlock(ExternBlock),
     ExternCrate(ExternCrate),
     Fn(Fn),
@@ -1392,7 +1392,7 @@ impl ast::VisibilityOwner for ExternItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AdtDef {
     Struct(Struct),
-    EnumDef(EnumDef),
+    Enum(Enum),
     Union(Union),
 }
 impl ast::AttrsOwner for AdtDef {}
@@ -1432,8 +1432,8 @@ impl AstNode for ConstDef {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for EnumDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM_DEF }
+impl AstNode for Enum {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ENUM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2777,8 +2777,8 @@ impl AstNode for MetaItem {
 impl From<ConstDef> for Item {
     fn from(node: ConstDef) -> Item { Item::ConstDef(node) }
 }
-impl From<EnumDef> for Item {
-    fn from(node: EnumDef) -> Item { Item::EnumDef(node) }
+impl From<Enum> for Item {
+    fn from(node: Enum) -> Item { Item::Enum(node) }
 }
 impl From<ExternBlock> for Item {
     fn from(node: ExternBlock) -> Item { Item::ExternBlock(node) }
@@ -2819,7 +2819,7 @@ impl From<Use> for Item {
 impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            CONST_DEF | ENUM_DEF | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL_DEF | MACRO_CALL
+            CONST_DEF | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL_DEF | MACRO_CALL
             | MODULE | STATIC_DEF | STRUCT | TRAIT_DEF | TYPE_ALIAS | UNION | USE => true,
             _ => false,
         }
@@ -2827,7 +2827,7 @@ impl AstNode for Item {
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             CONST_DEF => Item::ConstDef(ConstDef { syntax }),
-            ENUM_DEF => Item::EnumDef(EnumDef { syntax }),
+            ENUM => Item::Enum(Enum { syntax }),
             EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
             EXTERN_CRATE => Item::ExternCrate(ExternCrate { syntax }),
             FN => Item::Fn(Fn { syntax }),
@@ -2847,7 +2847,7 @@ impl AstNode for Item {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             Item::ConstDef(it) => &it.syntax,
-            Item::EnumDef(it) => &it.syntax,
+            Item::Enum(it) => &it.syntax,
             Item::ExternBlock(it) => &it.syntax,
             Item::ExternCrate(it) => &it.syntax,
             Item::Fn(it) => &it.syntax,
@@ -3375,8 +3375,8 @@ impl AstNode for ExternItem {
 impl From<Struct> for AdtDef {
     fn from(node: Struct) -> AdtDef { AdtDef::Struct(node) }
 }
-impl From<EnumDef> for AdtDef {
-    fn from(node: EnumDef) -> AdtDef { AdtDef::EnumDef(node) }
+impl From<Enum> for AdtDef {
+    fn from(node: Enum) -> AdtDef { AdtDef::Enum(node) }
 }
 impl From<Union> for AdtDef {
     fn from(node: Union) -> AdtDef { AdtDef::Union(node) }
@@ -3384,14 +3384,14 @@ impl From<Union> for AdtDef {
 impl AstNode for AdtDef {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            STRUCT | ENUM_DEF | UNION => true,
+            STRUCT | ENUM | UNION => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             STRUCT => AdtDef::Struct(Struct { syntax }),
-            ENUM_DEF => AdtDef::EnumDef(EnumDef { syntax }),
+            ENUM => AdtDef::Enum(Enum { syntax }),
             UNION => AdtDef::Union(Union { syntax }),
             _ => return None,
         };
@@ -3400,7 +3400,7 @@ impl AstNode for AdtDef {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             AdtDef::Struct(it) => &it.syntax,
-            AdtDef::EnumDef(it) => &it.syntax,
+            AdtDef::Enum(it) => &it.syntax,
             AdtDef::Union(it) => &it.syntax,
         }
     }
@@ -3470,7 +3470,7 @@ impl std::fmt::Display for ConstDef {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for EnumDef {
+impl std::fmt::Display for Enum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
