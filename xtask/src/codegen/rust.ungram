@@ -129,7 +129,13 @@ Trait =
   AssocItemList
 
 AssocItemList =
-  '{' AssocItem* '}'
+  '{' Attr* AssocItem* '}'
+
+AssocItem =
+  Fn
+| TypeAlias
+| Const
+| MacroCall
 
 Impl =
  Attr* Visibility?
@@ -138,6 +144,15 @@ Impl =
  | '!'? TypeRef 'for' TypeRef
  ) WhereClause?
  AssocItemList
+
+ExternBlock =
+  Attr* Abi ExternItemList
+
+ExternItemList =
+  '{' Attr* ExternItem* '}'
+
+ExternItem =
+  Fn | Static | MacroCall
 
 ParenType =
   '(' TypeRef ')'
@@ -449,12 +464,6 @@ LifetimeArg =
 ConstArg =
   Literal | BlockExpr BlockExpr
 
-ExternBlock =
-  Attr* Abi ExternItemList
-
-ExternItemList =
-  '{' extern_items:ExternItem* '}'
-
 MetaItem =
   Path '=' AttrInput nested_meta_items:MetaItem*
 
@@ -477,15 +486,6 @@ TypeRef =
 | ForType
 | ImplTraitType
 | DynTraitType
-
-AssocItem =
-  Fn
-| TypeAlias
-| Const
-| MacroCall
-
-ExternItem =
-  Fn | Static
 
 AttrInput =
   Literal
