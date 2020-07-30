@@ -98,7 +98,7 @@ SOURCE_FILE@0..686
           NAME_REF@529..537
             IDENT@529..537 "Whatever"
     WHITESPACE@537..538 " "
-    ITEM_LIST@538..685
+    ASSOC_ITEM_LIST@538..685
       L_CURLY@538..539 "{"
       WHITESPACE@539..544 "\n    "
       FN_DEF@544..683

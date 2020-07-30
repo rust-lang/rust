@@ -32,7 +32,7 @@ SOURCE_FILE@0..29
                       IDENT@23..24 "N"
             R_ANGLE@24..25 ">"
     WHITESPACE@25..26 " "
-    ITEM_LIST@26..28
+    ASSOC_ITEM_LIST@26..28
       L_CURLY@26..27 "{"
       R_CURLY@27..28 "}"
   WHITESPACE@28..29 "\n"

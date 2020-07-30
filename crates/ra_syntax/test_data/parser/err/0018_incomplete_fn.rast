@@ -8,7 +8,7 @@ SOURCE_FILE@0..183
           NAME_REF@5..13
             IDENT@5..13 "FnScopes"
     WHITESPACE@13..14 " "
-    ITEM_LIST@14..182
+    ASSOC_ITEM_LIST@14..182
       L_CURLY@14..15 "{"
       WHITESPACE@15..20 "\n    "
       FN_DEF@20..161
