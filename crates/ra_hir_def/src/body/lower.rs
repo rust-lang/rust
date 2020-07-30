@@ -671,7 +671,7 @@ impl ExprCollector<'_> {
                     ast::Item::ExternBlock(_) => return None, // FIXME: collect from extern blocks
                     ast::Item::ImplDef(_)
                     | ast::Item::UseItem(_)
-                    | ast::Item::ExternCrateItem(_)
+                    | ast::Item::ExternCrate(_)
                     | ast::Item::Module(_)
                     | ast::Item::MacroCall(_) => return None,
                 };

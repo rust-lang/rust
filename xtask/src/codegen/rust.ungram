@@ -7,7 +7,7 @@ Item =
   ConstDef
 | EnumDef
 | ExternBlock
-| ExternCrateItem
+| ExternCrate
 | FnDef
 | ImplDef
 | MacroCall
@@ -25,6 +25,9 @@ Module =
 
 ItemList =
   '{' Attr* Item* '}'
+
+ExternCrate =
+  Attr* Visibility? 'extern' 'crate' (NameRef | 'self') Rename? ';'
 
 FnDef =
  Attr* Visibility? Abi? 'const' 'default' 'async' 'unsafe' 'fn' Name TypeParamList?
@@ -403,9 +406,6 @@ UseTreeList =
 
 Rename =
   'as' Name
-
-ExternCrateItem =
-  Attr* Visibility? 'extern' 'crate' (NameRef | 'self') Rename? ';'
 
 Path =
   (qualifier:Path '::')? segment:PathSegment

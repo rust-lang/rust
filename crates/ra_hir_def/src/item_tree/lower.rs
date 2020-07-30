@@ -95,7 +95,7 @@ impl Ctx {
             ast::Item::TraitDef(_) | ast::Item::ImplDef(_) | ast::Item::ExternBlock(_) => {}
 
             // These don't have inner items.
-            ast::Item::Module(_) | ast::Item::ExternCrateItem(_) | ast::Item::UseItem(_) => {}
+            ast::Item::Module(_) | ast::Item::ExternCrate(_) | ast::Item::UseItem(_) => {}
         };
 
         let attrs = Attrs::new(item, &self.hygiene);
@@ -113,7 +113,7 @@ impl Ctx {
             ast::Item::UseItem(ast) => Some(ModItems(
                 self.lower_use(ast).into_iter().map(Into::into).collect::<SmallVec<_>>(),
             )),
-            ast::Item::ExternCrateItem(ast) => self.lower_extern_crate(ast).map(Into::into),
+            ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast).map(Into::into),
             ast::Item::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
             ast::Item::ExternBlock(ast) => {
                 Some(ModItems(self.lower_extern_block(ast).into_iter().collect::<SmallVec<_>>()))
@@ -498,7 +498,7 @@ impl Ctx {
 
     fn lower_extern_crate(
         &mut self,
-        extern_crate: &ast::ExternCrateItem,
+        extern_crate: &ast::ExternCrate,
     ) -> Option<FileItemTreeId<ExternCrate>> {
         let path = ModPath::from_name_ref(&extern_crate.name_ref()?);
         let alias = extern_crate.rename().map(|a| {
