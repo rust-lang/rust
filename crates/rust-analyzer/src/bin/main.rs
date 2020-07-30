@@ -33,36 +33,8 @@ fn main() -> Result<()> {
         args::Command::Parse { no_dump } => cli::parse(no_dump)?,
         args::Command::Symbols => cli::symbols()?,
         args::Command::Highlight { rainbow } => cli::highlight(rainbow)?,
-        args::Command::Stats {
-            randomize,
-            parallel,
-            memory_usage,
-            only,
-            with_deps,
-            path,
-            load_output_dirs,
-            with_proc_macro,
-        } => cli::analysis_stats(
-            args.verbosity,
-            memory_usage,
-            path.as_ref(),
-            only.as_ref().map(String::as_ref),
-            with_deps,
-            randomize,
-            parallel,
-            load_output_dirs,
-            with_proc_macro,
-        )?,
-        args::Command::Bench { memory_usage, path, what, load_output_dirs, with_proc_macro } => {
-            cli::analysis_bench(
-                args.verbosity,
-                path.as_ref(),
-                what,
-                memory_usage,
-                load_output_dirs,
-                with_proc_macro,
-            )?
-        }
+        args::Command::AnalysisStats(cmd) => cmd.run(args.verbosity)?,
+        args::Command::Bench(cmd) => cmd.run(args.verbosity)?,
         args::Command::Diagnostics { path, load_output_dirs, with_proc_macro, all } => {
             cli::diagnostics(path.as_ref(), load_output_dirs, with_proc_macro, all)?
         }

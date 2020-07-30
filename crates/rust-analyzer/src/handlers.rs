@@ -26,7 +26,7 @@ use ra_project_model::TargetKind;
 use ra_syntax::{algo, ast, AstNode, SyntaxKind, TextRange, TextSize};
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
-use stdx::{format_to, split_delim};
+use stdx::{format_to, split_once};
 
 use crate::{
     cargo_target_spec::CargoTargetSpec,
@@ -865,7 +865,7 @@ pub(crate) fn handle_resolve_code_action(
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
     let assists = snap.analysis.resolved_assists(&snap.config.assist, frange)?;
-    let (id_string, index) = split_delim(&params.id, ':').unwrap();
+    let (id_string, index) = split_once(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];
     assert!(assist.assist.id.0 == id_string);

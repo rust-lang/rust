@@ -8,7 +8,7 @@ use std::{env, fmt::Write, path::PathBuf};
 use anyhow::{bail, Result};
 use pico_args::Arguments;
 use ra_ssr::{SsrPattern, SsrRule};
-use rust_analyzer::cli::{BenchWhat, Position, Verbosity};
+use rust_analyzer::cli::{AnalysisStatsCmd, BenchCmd, BenchWhat, Position, Verbosity};
 use vfs::AbsPathBuf;
 
 pub(crate) struct Args {
@@ -24,23 +24,8 @@ pub(crate) enum Command {
     Highlight {
         rainbow: bool,
     },
-    Stats {
-        randomize: bool,
-        parallel: bool,
-        memory_usage: bool,
-        only: Option<String>,
-        with_deps: bool,
-        path: PathBuf,
-        load_output_dirs: bool,
-        with_proc_macro: bool,
-    },
-    Bench {
-        memory_usage: bool,
-        path: PathBuf,
-        what: BenchWhat,
-        load_output_dirs: bool,
-        with_proc_macro: bool,
-    },
+    AnalysisStats(AnalysisStatsCmd),
+    Bench(BenchCmd),
     Diagnostics {
         path: PathBuf,
         load_output_dirs: bool,
@@ -199,7 +184,7 @@ ARGS:
                     trailing.pop().unwrap().into()
                 };
 
-                Command::Stats {
+                Command::AnalysisStats(AnalysisStatsCmd {
                     randomize,
                     parallel,
                     memory_usage,
@@ -208,7 +193,7 @@ ARGS:
                     path,
                     load_output_dirs,
                     with_proc_macro,
-                }
+                })
             }
             "analysis-bench" => {
                 if matches.contains(["-h", "--help"]) {
@@ -256,7 +241,13 @@ ARGS:
                 let memory_usage = matches.contains("--memory-usage");
                 let load_output_dirs = matches.contains("--load-output-dirs");
                 let with_proc_macro = matches.contains("--with-proc-macro");
-                Command::Bench { memory_usage, path, what, load_output_dirs, with_proc_macro }
+                Command::Bench(BenchCmd {
+                    memory_usage,
+                    path,
+                    what,
+                    load_output_dirs,
+                    with_proc_macro,
+                })
             }
             "diagnostics" => {
                 if matches.contains(["-h", "--help"]) {
