@@ -506,6 +506,10 @@ impl<'tcx> Validator<'_, 'tcx> {
                 match *elem {
                     ProjectionElem::Deref => {
                         let mut not_promotable = true;
+                        // This is a special treatment for cases like *&STATIC where STATIC is a
+                        // global static variable.
+                        // This pattern is generated only when global static variables are directly
+                        // accessed and is qualified for promotion safely.
                         if let TempState::Defined { location, .. } = self.temps[local] {
                             let def_stmt =
                                 self.body[location.block].statements.get(location.statement_index);
@@ -517,7 +521,15 @@ impl<'tcx> Validator<'_, 'tcx> {
                             {
                                 if let Some(did) = c.check_static_ptr(self.tcx) {
                                     if let Some(hir::ConstContext::Static(..)) = self.const_kind {
-                                        if !self.tcx.is_thread_local_static(did) {
+                                        // The `is_empty` predicate is introduced to exclude the case
+                                        // where the projection operations are [ .field, * ].
+                                        // The reason is because promotion will be illegal if field
+                                        // accesses preceed the dereferencing.
+                                        // Discussion can be found at
+                                        // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247 
+                                        // There may be opportunity for generalization, but this needs to be
+                                        // accounted for.
+                                        if proj_base.is_empty() && !self.tcx.is_thread_local_static(did) {
                                             not_promotable = false;
                                         }
                                     }
