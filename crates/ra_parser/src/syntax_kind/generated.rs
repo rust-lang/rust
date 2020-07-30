@@ -213,6 +213,7 @@ pub enum SyntaxKind {
     TUPLE_FIELD_DEF,
     ENUM_VARIANT_LIST,
     ITEM_LIST,
+    ASSOC_ITEM_LIST,
     ATTR,
     META_ITEM,
     USE_TREE,

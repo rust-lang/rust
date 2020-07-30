@@ -63,7 +63,7 @@ pub fn get_missing_assoc_items(
     let mut impl_fns_consts = FxHashSet::default();
     let mut impl_type = FxHashSet::default();
 
-    if let Some(item_list) = impl_def.item_list() {
+    if let Some(item_list) = impl_def.assoc_item_list() {
         for item in item_list.assoc_items() {
             match item {
                 ast::AssocItem::FnDef(f) => {
@@ -83,6 +83,7 @@ pub fn get_missing_assoc_items(
                         impl_fns_consts.insert(n.syntax().to_string());
                     }
                 }
+                ast::AssocItem::MacroCall(_) => (),
             }
         }
     }

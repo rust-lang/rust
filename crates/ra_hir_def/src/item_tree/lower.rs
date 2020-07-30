@@ -153,13 +153,12 @@ impl Ctx {
         self.forced_visibility = forced_vis;
     }
 
-    fn lower_assoc_item(&mut self, item: &ast::Item) -> Option<AssocItem> {
+    fn lower_assoc_item(&mut self, item: &ast::AssocItem) -> Option<AssocItem> {
         match item {
-            ast::Item::FnDef(ast) => self.lower_function(ast).map(Into::into),
-            ast::Item::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
-            ast::Item::ConstDef(ast) => Some(self.lower_const(ast).into()),
-            ast::Item::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
-            _ => None,
+            ast::AssocItem::FnDef(ast) => self.lower_function(ast).map(Into::into),
+            ast::AssocItem::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
+            ast::AssocItem::ConstDef(ast) => Some(self.lower_const(ast).into()),
+            ast::AssocItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
         }
     }
 
@@ -419,9 +418,9 @@ impl Ctx {
         let generic_params =
             self.lower_generic_params_and_inner_items(GenericsOwner::Trait(trait_def), trait_def);
         let auto = trait_def.auto_token().is_some();
-        let items = trait_def.item_list().map(|list| {
+        let items = trait_def.assoc_item_list().map(|list| {
             self.with_inherited_visibility(visibility, |this| {
-                list.items()
+                list.assoc_items()
                     .filter_map(|item| {
                         let attrs = Attrs::new(&item, &this.hygiene);
                         this.collect_inner_items(item.syntax());
@@ -454,9 +453,9 @@ impl Ctx {
 
         // We cannot use `assoc_items()` here as that does not include macro calls.
         let items = impl_def
-            .item_list()
+            .assoc_item_list()
             .into_iter()
-            .flat_map(|it| it.items())
+            .flat_map(|it| it.assoc_items())
             .filter_map(|item| {
                 self.collect_inner_items(item.syntax());
                 let assoc = self.lower_assoc_item(&item)?;

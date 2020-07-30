@@ -13,7 +13,7 @@ use crate::completion::test_utils::check_pattern_is_applicable;
 
 pub(crate) fn has_trait_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element)
-        .filter(|it| it.kind() == ITEM_LIST)
+        .filter(|it| it.kind() == ASSOC_ITEM_LIST)
         .and_then(|it| it.parent())
         .filter(|it| it.kind() == TRAIT_DEF)
         .is_some()
@@ -25,7 +25,7 @@ fn test_has_trait_parent() {
 
 pub(crate) fn has_impl_parent(element: SyntaxElement) -> bool {
     not_same_range_ancestor(element)
-        .filter(|it| it.kind() == ITEM_LIST)
+        .filter(|it| it.kind() == ASSOC_ITEM_LIST)
         .and_then(|it| it.parent())
         .filter(|it| it.kind() == IMPL_DEF)
         .is_some()
@@ -73,7 +73,7 @@ pub(crate) fn has_item_list_or_source_file_parent(element: SyntaxElement) -> boo
 #[test]
 fn test_has_item_list_or_source_file_parent() {
     check_pattern_is_applicable(r"i<|>", has_item_list_or_source_file_parent);
-    check_pattern_is_applicable(r"impl { f<|> }", has_item_list_or_source_file_parent);
+    check_pattern_is_applicable(r"mod foo { f<|> }", has_item_list_or_source_file_parent);
 }
 
 pub(crate) fn is_match_arm(element: SyntaxElement) -> bool {

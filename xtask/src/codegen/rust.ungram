@@ -19,6 +19,13 @@ Item =
 | UnionDef
 | UseItem
 
+Module =
+  Attr* Visibility? 'mod' Name
+  (ItemList | ';')
+
+ItemList =
+  '{' Item* '}'
+
 FnDef =
  Attr* Visibility? Abi? 'const' 'default' 'async' 'unsafe' 'fn' Name TypeParamList?
  ParamList RetType?
@@ -67,17 +74,10 @@ EnumVariant =
 TraitDef =
   Attr* Visibility? 'unsafe'? 'auto'? 'trait' Name TypeParamList
   (':' TypeBoundList?)? WhereClause
-  ItemList
+  AssocItemList
 
-Module =
-  Attr* Visibility? 'mod' Name
-  (ItemList | ';')
-
-ItemList =
-  '{'
-    AssocItem*
-    Item*
-  '}'
+AssocItemList =
+  '{' AssocItem* '}'
 
 ConstDef =
   Attr* Visibility? 'default'? 'const' Name ':' ascribed_type:TypeRef
@@ -94,7 +94,7 @@ TypeAliasDef =
 ImplDef =
  Attr* Visibility? 'const'? 'default'? 'unsafe'? 'impl' TypeParamList? '!'? 'for'
  WhereClause?
- ItemList
+ AssocItemList
 
 ParenType =
   '(' TypeRef ')'
@@ -467,6 +467,7 @@ AssocItem =
   FnDef
 | TypeAliasDef
 | ConstDef
+| MacroCall
 
 ExternItem =
   FnDef | StaticDef
