@@ -20,7 +20,9 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use crate::{
+    types::CItemKind, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
+};
 use rustc_ast::ast::{self, Expr};
 use rustc_ast::attr::{self, HasAttrs};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
@@ -36,14 +38,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
 use rustc_hir::{HirId, HirIdSet, Node};
 use rustc_middle::lint::LintDiagnosticBuilder;
-use rustc_middle::ty::subst::GenericArgKind;
+use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::FutureIncompatibleInfo;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{LayoutOf, VariantIdx};
 use rustc_trait_selection::traits::misc::can_type_implement_copy;
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
@@ -2144,7 +2146,13 @@ impl ClashingExternDeclarations {
     /// Checks whether two types are structurally the same enough that the declarations shouldn't
     /// clash. We need this so we don't emit a lint when two modules both declare an extern struct,
     /// with the same members (as the declarations shouldn't clash).
-    fn structurally_same_type<'tcx>(cx: &LateContext<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    fn structurally_same_type<'tcx>(
+        cx: &LateContext<'tcx>,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        ckind: CItemKind,
+    ) -> bool {
+        debug!("structurally_same_type(cx, a = {:?}, b = {:?})", a, b);
         let tcx = cx.tcx;
         if a == b || rustc_middle::ty::TyS::same_type(a, b) {
             // All nominally-same types are structurally same, too.
@@ -2155,47 +2163,77 @@ impl ClashingExternDeclarations {
             let a_kind = &a.kind;
             let b_kind = &b.kind;
 
+            let compare_layouts = |a, b| -> bool {
+                let a_layout = &cx.layout_of(a).unwrap().layout.abi;
+                let b_layout = &cx.layout_of(b).unwrap().layout.abi;
+                debug!("{:?} == {:?} = {}", a_layout, b_layout, a_layout == b_layout);
+                a_layout == b_layout
+            };
+
+            #[allow(rustc::usage_of_ty_tykind)]
+            let is_primitive_or_pointer =
+                |kind: &ty::TyKind<'_>| kind.is_primitive() || matches!(kind, RawPtr(..));
+
             match (a_kind, b_kind) {
-                (Adt(..), Adt(..)) => {
-                    // Adts are pretty straightforward: just compare the layouts.
-                    use rustc_target::abi::LayoutOf;
-                    let a_layout = cx.layout_of(a).unwrap().layout;
-                    let b_layout = cx.layout_of(b).unwrap().layout;
-                    a_layout == b_layout
+                (Adt(_, a_substs), Adt(_, b_substs)) => {
+                    let a = a.subst(cx.tcx, a_substs);
+                    let b = b.subst(cx.tcx, b_substs);
+                    debug!("Comparing {:?} and {:?}", a, b);
+
+                    if let (Adt(a_def, ..), Adt(b_def, ..)) = (&a.kind, &b.kind) {
+                        // Grab a flattened representation of all fields.
+                        let a_fields = a_def.variants.iter().flat_map(|v| v.fields.iter());
+                        let b_fields = b_def.variants.iter().flat_map(|v| v.fields.iter());
+                        compare_layouts(a, b)
+                            && a_fields.eq_by(
+                                b_fields,
+                                |&ty::FieldDef { did: a_did, .. },
+                                 &ty::FieldDef { did: b_did, .. }| {
+                                    Self::structurally_same_type(
+                                        cx,
+                                        tcx.type_of(a_did),
+                                        tcx.type_of(b_did),
+                                        ckind,
+                                    )
+                                },
+                            )
+                    } else {
+                        unreachable!()
+                    }
                 }
                 (Array(a_ty, a_const), Array(b_ty, b_const)) => {
                     // For arrays, we also check the constness of the type.
                     a_const.val == b_const.val
-                        && Self::structurally_same_type(cx, a_const.ty, b_const.ty)
-                        && Self::structurally_same_type(cx, a_ty, b_ty)
+                        && Self::structurally_same_type(cx, a_const.ty, b_const.ty, ckind)
+                        && Self::structurally_same_type(cx, a_ty, b_ty, ckind)
                 }
-                (Slice(a_ty), Slice(b_ty)) => Self::structurally_same_type(cx, a_ty, b_ty),
+                (Slice(a_ty), Slice(b_ty)) => Self::structurally_same_type(cx, a_ty, b_ty, ckind),
                 (RawPtr(a_tymut), RawPtr(b_tymut)) => {
                     a_tymut.mutbl == a_tymut.mutbl
-                        && Self::structurally_same_type(cx, &a_tymut.ty, &b_tymut.ty)
+                        && Self::structurally_same_type(cx, &a_tymut.ty, &b_tymut.ty, ckind)
                 }
                 (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
                     // For structural sameness, we don't need the region to be same.
-                    a_mut == b_mut && Self::structurally_same_type(cx, a_ty, b_ty)
+                    a_mut == b_mut && Self::structurally_same_type(cx, a_ty, b_ty, ckind)
                 }
                 (FnDef(..), FnDef(..)) => {
-                    // As we don't compare regions, skip_binder is fine.
                     let a_poly_sig = a.fn_sig(tcx);
                     let b_poly_sig = b.fn_sig(tcx);
 
+                    // As we don't compare regions, skip_binder is fine.
                     let a_sig = a_poly_sig.skip_binder();
                     let b_sig = b_poly_sig.skip_binder();
 
                     (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
                         == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
                         && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
-                            Self::structurally_same_type(cx, a, b)
+                            Self::structurally_same_type(cx, a, b, ckind)
                         })
-                        && Self::structurally_same_type(cx, a_sig.output(), b_sig.output())
+                        && Self::structurally_same_type(cx, a_sig.output(), b_sig.output(), ckind)
                 }
                 (Tuple(a_substs), Tuple(b_substs)) => {
                     a_substs.types().eq_by(b_substs.types(), |a_ty, b_ty| {
-                        Self::structurally_same_type(cx, a_ty, b_ty)
+                        Self::structurally_same_type(cx, a_ty, b_ty, ckind)
                     })
                 }
                 // For these, it's not quite as easy to define structural-sameness quite so easily.
@@ -2208,9 +2246,27 @@ impl ClashingExternDeclarations {
                 | (GeneratorWitness(..), GeneratorWitness(..))
                 | (Projection(..), Projection(..))
                 | (Opaque(..), Opaque(..)) => false,
+
                 // These definitely should have been caught above.
                 (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
-                _ => false,
+
+                // An Adt and a primitive type. This can be FFI-safe is the ADT is an enum with a
+                // non-null field.
+                (Adt(..), other_kind) | (other_kind, Adt(..))
+                    if is_primitive_or_pointer(other_kind) =>
+                {
+                    let (primitive, adt) =
+                        if is_primitive_or_pointer(&a.kind) { (a, b) } else { (b, a) };
+                    if let Some(ty) = crate::types::repr_nullable_ptr(cx, adt, ckind) {
+                        ty == primitive
+                    } else {
+                        compare_layouts(a, b)
+                    }
+                }
+                // Otherwise, just compare the layouts. This may fail to lint for some
+                // incompatible types, but at the very least, will stop reads into
+                // uninitialised memory.
+                _ => compare_layouts(a, b),
             }
         }
     }
@@ -2231,7 +2287,12 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                     existing_hid, existing_decl_ty, this_fi.hir_id, this_decl_ty
                 );
                 // Check that the declarations match.
-                if !Self::structurally_same_type(cx, existing_decl_ty, this_decl_ty) {
+                if !Self::structurally_same_type(
+                    cx,
+                    existing_decl_ty,
+                    this_decl_ty,
+                    CItemKind::Declaration,
+                ) {
                     let orig_fi = tcx.hir().expect_foreign_item(existing_hid);
                     let orig = Self::name_of_extern_decl(tcx, orig_fi);
 

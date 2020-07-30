@@ -3,52 +3,40 @@
 #![crate_type = "lib"]
 #![warn(clashing_extern_declarations)]
 
+mod redeclared_different_signature {
+    mod a {
+        extern "C" {
+            fn clash(x: u8);
+        }
+    }
+    mod b {
+        extern "C" {
+            fn clash(x: u64); //~ WARN `clash` redeclared with a different signature
+        }
+    }
+}
+
+mod redeclared_same_signature {
+    mod a {
+        extern "C" {
+            fn no_clash(x: u8);
+        }
+    }
+    mod b {
+        extern "C" {
+            fn no_clash(x: u8);
+        }
+    }
+}
+
 extern crate external_extern_fn;
-
-extern "C" {
-    fn clash(x: u8);
-    fn no_clash(x: u8);
-}
-
-fn redeclared_different_signature() {
+mod extern_no_clash {
+    // Should not clash with external_extern_fn::extern_fn.
     extern "C" {
-        fn clash(x: u64); //~ WARN `clash` redeclared with a different signature
-    }
-
-    unsafe {
-        clash(123);
-        no_clash(123);
+        fn extern_fn(x: u8);
     }
 }
 
-fn redeclared_same_signature() {
-    extern "C" {
-        fn no_clash(x: u8);
-    }
-    unsafe {
-        no_clash(123);
-    }
-}
-
-extern "C" {
-    fn extern_fn(x: u64);
-}
-
-fn extern_clash() {
-    extern "C" {
-        fn extern_fn(x: u32); //~ WARN `extern_fn` redeclared with a different signature
-    }
-    unsafe {
-        extern_fn(123);
-    }
-}
-
-fn extern_no_clash() {
-    unsafe {
-        external_extern_fn::extern_fn(123);
-        crate::extern_fn(123);
-    }
-}
 extern "C" {
     fn some_other_new_name(x: i16);
 
@@ -134,9 +122,9 @@ mod banana {
             weight: u32,
             length: u16,
         } // note: distinct type
-        extern "C" {
           // This should not trigger the lint because two::Banana is structurally equivalent to
           // one::Banana.
+        extern "C" {
             fn weigh_banana(count: *const Banana) -> u64;
         }
     }
@@ -180,7 +168,120 @@ mod sameish_members {
         // always be the case, for every architecture and situation. This is also a really odd
         // thing to do anyway.
         extern "C" {
-            fn draw_point(p: Point); //~ WARN `draw_point` redeclared with a different
+            fn draw_point(p: Point);
+            //~^ WARN `draw_point` redeclared with a different signature
+        }
+    }
+}
+
+mod same_sized_members_clash {
+    mod a {
+        #[repr(C)]
+        struct Point3 {
+            x: f32,
+            y: f32,
+            z: f32,
+        }
+        extern "C" { fn origin() -> Point3; }
+    }
+    mod b {
+        #[repr(C)]
+        struct Point3 {
+            x: i32,
+            y: i32,
+            z: i32, // NOTE: Incorrectly redeclared as i32
+        }
+        extern "C" { fn origin() -> Point3; }
+        //~^ WARN `origin` redeclared with a different signature
+    }
+}
+
+mod transparent {
+    #[repr(transparent)]
+    struct T(usize);
+    mod a {
+        use super::T;
+        extern "C" {
+            fn transparent() -> T;
+            fn transparent_incorrect() -> T;
+        }
+    }
+
+    mod b {
+        extern "C" {
+            // Shouldn't warn here, because repr(transparent) guarantees that T's layout is the
+            // same as just the usize.
+            fn transparent() -> usize;
+
+            // Should warn, because there's a signedness conversion here:
+            fn transparent_incorrect() -> isize;
+            //~^ WARN `transparent_incorrect` redeclared with a different signature
+        }
+    }
+}
+
+mod missing_return_type {
+    mod a {
+        extern "C" {
+            fn missing_return_type() -> usize;
+        }
+    }
+
+    mod b {
+        extern "C" {
+            // This should output a warning because we can't assume that the first declaration is
+            // the correct one -- if this one is the correct one, then calling the usize-returning
+            // version would allow reads into uninitialised memory.
+            fn missing_return_type();
+            //~^ WARN `missing_return_type` redeclared with a different signature
+        }
+    }
+}
+
+mod non_zero_and_non_null {
+    mod a {
+        extern "C" {
+            fn non_zero_usize() -> core::num::NonZeroUsize;
+            fn non_null_ptr() -> core::ptr::NonNull<usize>;
+        }
+    }
+    mod b {
+        extern "C" {
+            // If there's a clash in either of these cases you're either gaining an incorrect
+            // invariant that the value is non-zero, or you're missing out on that invariant. Both
+            // cases are warning for, from both a caller-convenience and optimisation perspective.
+            fn non_zero_usize() -> usize;
+            //~^ WARN `non_zero_usize` redeclared with a different signature
+            fn non_null_ptr() -> *const usize;
+            //~^ WARN `non_null_ptr` redeclared with a different signature
+        }
+    }
+}
+
+mod null_optimised_enums {
+    mod a {
+        extern "C" {
+            fn option_non_zero_usize() -> usize;
+            fn option_non_zero_isize() -> isize;
+            fn option_non_null_ptr() -> *const usize;
+
+            fn option_non_zero_usize_incorrect() -> usize;
+            fn option_non_null_ptr_incorrect() -> *const usize;
+        }
+    }
+    mod b {
+        extern "C" {
+            // This should be allowed, because these conversions are guaranteed to be FFI-safe (see
+            // #60300)
+            fn option_non_zero_usize() -> Option<core::num::NonZeroUsize>;
+            fn option_non_zero_isize() -> Option<core::num::NonZeroIsize>;
+            fn option_non_null_ptr() -> Option<core::ptr::NonNull<usize>>;
+
+            // However, these should be incorrect (note isize instead of usize)
+            fn option_non_zero_usize_incorrect() -> isize;
+            //~^ WARN `option_non_zero_usize_incorrect` redeclared with a different signature
+            fn option_non_null_ptr_incorrect() -> *const isize;
+            //~^ WARN `option_non_null_ptr_incorrect` redeclared with a different signature
         }
     }
 }
