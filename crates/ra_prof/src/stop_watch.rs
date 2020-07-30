@@ -23,9 +23,14 @@ impl StopWatch {
     pub fn start() -> StopWatch {
         #[cfg(target_os = "linux")]
         let counter = {
-            let mut counter = perf_event::Builder::new().build().ok();
+            let mut counter = perf_event::Builder::new()
+                .build()
+                .map_err(|err| eprintln!("Failed to create perf counter: {}", err))
+                .ok();
             if let Some(counter) = &mut counter {
-                let _ = counter.enable();
+                if let Err(err) = counter.enable() {
+                    eprintln!("Failed to start perf counter: {}", err)
+                }
             }
             counter
         };
@@ -47,7 +52,9 @@ impl StopWatch {
         let time = self.time.elapsed();
 
         #[cfg(target_os = "linux")]
-        let instructions = self.counter.as_mut().and_then(|it| it.read().ok());
+        let instructions = self.counter.as_mut().and_then(|it| {
+            it.read().map_err(|err| eprintln!("Failed to read perf counter: {}", err)).ok()
+        });
         #[cfg(not(target_os = "linux"))]
         let instructions = None;
 
