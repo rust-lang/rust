@@ -607,9 +607,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.78.0"
+version = "0.79.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2e6cf68e3492cfa2035f0382c1da1b6ab045db0320feca505b86b4f13d66c27"
+checksum = "7f1f86677fdbe8df5f88b99131b1424e50aad27bbe3e5900d221bc414bd72e9b"
 dependencies = [
  "base64",
  "bitflags",
@@ -842,9 +842,9 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "perf-event"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cb38a2f363560fb3cfcb47f28848b245a41c7e0d63e0b190918b712b6bf6803"
+checksum = "76c42ba5d85a2f4472b99f475fb60cf336d9b4c85b1ea8bb300fef2e3c7c8f89"
 dependencies = [
  "libc",
  "perf-event-open-sys",
@@ -1344,9 +1344,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "669.0.0"
+version = "671.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "456af5f09c006cf6c22c1a433ee0232c4bb74bdc6c647a010166a47c94ed2a63"
+checksum = "22e1221f3bfa2943c942cf8da319ab2346887f8757778c29c7f1822cd27b521f"
 dependencies = [
  "unicode-xid",
 ]
