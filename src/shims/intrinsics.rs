@@ -484,24 +484,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            "min_align_of_val" => {
-                let &[mplace] = check_arg_count(args)?;
-                let mplace = this.deref_operand(mplace)?;
-                let (_, align) = this
-                    .size_and_align_of_mplace(mplace)?
-                    .expect("size_of_val called on extern type");
-                this.write_scalar(Scalar::from_machine_usize(align.bytes(), this), dest)?;
-            }
-
-            "size_of_val" => {
-                let &[mplace] = check_arg_count(args)?;
-                let mplace = this.deref_operand(mplace)?;
-                let (size, _) = this
-                    .size_and_align_of_mplace(mplace)?
-                    .expect("size_of_val called on extern type");
-                this.write_scalar(Scalar::from_machine_usize(size.bytes(), this), dest)?;
-            }
-
             // Other
             "assume" => {
                 let &[cond] = check_arg_count(args)?;
