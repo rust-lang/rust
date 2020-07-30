@@ -103,7 +103,7 @@ Enum =
   VariantList
 
 VariantList =
- '{' Variant* '}'
+ '{' (Variant (',' Variant)* ','?)? '}'
 
 Variant =
   Attr* Visibility? Name FieldList ('=' Expr)?
