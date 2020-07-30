@@ -16,7 +16,7 @@ SOURCE_FILE@0..69
     NAME_REF@31..34
       IDENT@31..34 "foo"
     WHITESPACE@34..35 " "
-    ALIAS@35..41
+    RENAME@35..41
       AS_KW@35..37 "as"
       WHITESPACE@37..38 " "
       NAME@38..41
@@ -30,7 +30,7 @@ SOURCE_FILE@0..69
     WHITESPACE@55..56 " "
     SELF_KW@56..60 "self"
     WHITESPACE@60..61 " "
-    ALIAS@61..67
+    RENAME@61..67
       AS_KW@61..63 "as"
       WHITESPACE@63..64 " "
       NAME@64..67

@@ -8,7 +8,7 @@ SOURCE_FILE@0..55
           NAME_REF@4..7
             IDENT@4..7 "foo"
       WHITESPACE@7..8 " "
-      ALIAS@8..14
+      RENAME@8..14
         AS_KW@8..10 "as"
         WHITESPACE@10..11 " "
         NAME@11..14
@@ -32,7 +32,7 @@ SOURCE_FILE@0..55
               NAME_REF@26..27
                 IDENT@26..27 "a"
           WHITESPACE@27..28 " "
-          ALIAS@28..32
+          RENAME@28..32
             AS_KW@28..30 "as"
             WHITESPACE@30..31 " "
             NAME@31..32
@@ -55,7 +55,7 @@ SOURCE_FILE@0..55
               NAME_REF@44..47
                 IDENT@44..47 "foo"
           WHITESPACE@47..48 " "
-          ALIAS@48..52
+          RENAME@48..52
             AS_KW@48..50 "as"
             WHITESPACE@50..51 " "
             NAME@51..52
