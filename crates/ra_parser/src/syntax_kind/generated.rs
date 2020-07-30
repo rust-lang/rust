@@ -221,7 +221,7 @@ pub enum SyntaxKind {
     PATH,
     PATH_SEGMENT,
     LITERAL,
-    ALIAS,
+    RENAME,
     VISIBILITY,
     WHERE_CLAUSE,
     WHERE_PRED,

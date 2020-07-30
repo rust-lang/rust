@@ -215,7 +215,7 @@ fn walk_use_tree_for_best_action(
     let prev_len = current_path_segments.len();
 
     let tree_list = current_use_tree.use_tree_list();
-    let alias = current_use_tree.alias();
+    let alias = current_use_tree.rename();
 
     let path = match current_use_tree.path() {
         Some(path) => path,

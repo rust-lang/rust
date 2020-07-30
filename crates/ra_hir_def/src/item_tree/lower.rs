@@ -501,7 +501,7 @@ impl Ctx {
         extern_crate: &ast::ExternCrateItem,
     ) -> Option<FileItemTreeId<ExternCrate>> {
         let path = ModPath::from_name_ref(&extern_crate.name_ref()?);
-        let alias = extern_crate.alias().map(|a| {
+        let alias = extern_crate.rename().map(|a| {
             a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
         });
         let visibility = self.lower_visibility(extern_crate);

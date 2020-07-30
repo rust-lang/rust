@@ -318,7 +318,7 @@ impl ast::UseTree {
             None => return self.clone(),
         };
         let use_tree =
-            make::use_tree(suffix, self.use_tree_list(), self.alias(), self.star_token().is_some());
+            make::use_tree(suffix, self.use_tree_list(), self.rename(), self.star_token().is_some());
         let nested = make::use_tree_list(iter::once(use_tree));
         return make::use_tree(prefix.clone(), Some(nested), None, false);
 

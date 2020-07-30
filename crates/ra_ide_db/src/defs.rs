@@ -119,7 +119,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 
     match_ast! {
         match parent {
-            ast::Alias(it) => {
+            ast::Rename(it) => {
                 let use_tree = it.syntax().parent().and_then(ast::UseTree::cast)?;
                 let path = use_tree.path()?;
                 let path_segment = path.segment()?;
