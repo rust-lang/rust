@@ -473,9 +473,6 @@ LifetimeArg =
 ConstArg =
   Literal | BlockExpr BlockExpr
 
-MetaItem =
-  Path '=' AttrInput nested_meta_items:MetaItem*
-
 AdtDef =
   Struct
 | Enum
