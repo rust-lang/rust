@@ -1692,8 +1692,9 @@ impl<T> Weak<T> {
 
     /// Consumes the `Weak<T>` and turns it into a raw pointer.
     ///
-    /// This converts the weak pointer into a raw pointer, preserving the original weak count. It
-    /// can be turned back into the `Weak<T>` with [`from_raw`].
+    /// This converts the weak pointer into a raw pointer, while still preserving the ownership of
+    /// one weak reference (the weak count is not modified by this operation). It can be turned
+    /// back into the `Weak<T>` with [`from_raw`].
     ///
     /// The same restrictions of accessing the target of the pointer as with
     /// [`as_ptr`] apply.
@@ -1728,17 +1729,18 @@ impl<T> Weak<T> {
     /// This can be used to safely get a strong reference (by calling [`upgrade`]
     /// later) or to deallocate the weak count by dropping the `Weak<T>`.
     ///
-    /// It takes ownership of one weak count (with the exception of pointers created by [`new`],
-    /// as these don't have any corresponding weak count).
+    /// It takes ownership of one weak reference (with the exception of pointers created by [`new`],
+    /// as these don't own anything; the method still works on them).
     ///
     /// # Safety
     ///
-    /// The pointer must have originated from the [`into_raw`]  and must still own its potential
-    /// weak reference count.
+    /// The pointer must have originated from the [`into_raw`] and must still own its potential
+    /// weak reference.
     ///
-    /// It is allowed for the strong count to be 0 at the time of calling this, but the weak count
-    /// must be non-zero or the pointer must have originated from a dangling `Weak<T>` (one created
-    /// by [`new`]).
+    /// It is allowed for the strong count to be 0 at the time of calling this. Nevertheless, this
+    /// takes ownership of one weak reference currently represented as a raw pointer (the weak
+    /// count is not modified by this operation) and therefore it must be paired with a previous
+    /// call to [`into_raw`].
     ///
     /// # Examples
     ///
