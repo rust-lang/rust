@@ -86,7 +86,7 @@ pub enum UnwindAttr {
 }
 
 /// Determine what `#[unwind]` attribute is present in `attrs`, if any.
-pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Option<UnwindAttr> {
+pub fn find_unwind_attr(diagnostic: &Handler, attrs: &[Attribute]) -> Option<UnwindAttr> {
     attrs.iter().fold(None, |ia, attr| {
         if attr.check_name(sym::unwind) {
             if let Some(meta) = attr.meta() {
@@ -99,19 +99,22 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
                         }
                     }
 
-                    if let Some(d) = diagnostic {
-                        struct_span_err!(d, attr.span, E0633, "malformed `unwind` attribute input")
-                            .span_label(attr.span, "invalid argument")
-                            .span_suggestions(
-                                attr.span,
-                                "the allowed arguments are `allowed` and `aborts`",
-                                (vec!["allowed", "aborts"])
-                                    .into_iter()
-                                    .map(|s| format!("#[unwind({})]", s)),
-                                Applicability::MachineApplicable,
-                            )
-                            .emit();
-                    };
+                    struct_span_err!(
+                        diagnostic,
+                        attr.span,
+                        E0633,
+                        "malformed `unwind` attribute input"
+                    )
+                    .span_label(attr.span, "invalid argument")
+                    .span_suggestions(
+                        attr.span,
+                        "the allowed arguments are `allowed` and `aborts`",
+                        (vec!["allowed", "aborts"])
+                            .into_iter()
+                            .map(|s| format!("#[unwind({})]", s)),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
                 }
             }
         }

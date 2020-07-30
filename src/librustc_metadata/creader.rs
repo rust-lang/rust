@@ -895,7 +895,7 @@ impl<'a> CrateLoader<'a> {
                 );
                 let name = match orig_name {
                     Some(orig_name) => {
-                        validate_crate_name(Some(self.sess), &orig_name.as_str(), Some(item.span));
+                        validate_crate_name(self.sess, &orig_name.as_str(), Some(item.span));
                         orig_name
                     }
                     None => item.ident.name,

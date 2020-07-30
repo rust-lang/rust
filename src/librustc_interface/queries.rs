@@ -159,7 +159,7 @@ impl<'tcx> Queries<'tcx> {
                 None => {
                     let parse_result = self.parse()?;
                     let krate = parse_result.peek();
-                    find_crate_name(Some(self.session()), &krate.attrs, &self.compiler.input)
+                    find_crate_name(self.session(), &krate.attrs, &self.compiler.input)
                 }
             })
         })

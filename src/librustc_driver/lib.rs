@@ -677,7 +677,7 @@ impl RustcDefaultCalls {
                     let t_outputs = rustc_interface::util::build_output_filenames(
                         input, odir, ofile, attrs, sess,
                     );
-                    let id = rustc_session::output::find_crate_name(Some(sess), attrs, input);
+                    let id = rustc_session::output::find_crate_name(sess, attrs, input);
                     if *req == PrintRequest::CrateName {
                         println!("{}", id);
                         continue;

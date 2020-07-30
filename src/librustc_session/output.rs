@@ -45,7 +45,7 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn find_crate_name(sess: Option<&Session>, attrs: &[ast::Attribute], input: &Input) -> String {
+pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
         validate_crate_name(sess, &s, span);
         s
@@ -58,25 +58,24 @@ pub fn find_crate_name(sess: Option<&Session>, attrs: &[ast::Attribute], input: 
     let attr_crate_name =
         attr::find_by_name(attrs, sym::crate_name).and_then(|at| at.value_str().map(|s| (at, s)));
 
-    if let Some(sess) = sess {
-        if let Some(ref s) = sess.opts.crate_name {
-            if let Some((attr, name)) = attr_crate_name {
-                if name.as_str() != *s {
-                    let msg = format!(
-                        "`--crate-name` and `#[crate_name]` are \
-                                       required to match, but `{}` != `{}`",
-                        s, name
-                    );
-                    sess.span_err(attr.span, &msg);
-                }
+    if let Some(ref s) = sess.opts.crate_name {
+        if let Some((attr, name)) = attr_crate_name {
+            if name.as_str() != *s {
+                let msg = format!(
+                    "`--crate-name` and `#[crate_name]` are \
+                                   required to match, but `{}` != `{}`",
+                    s, name
+                );
+                sess.span_err(attr.span, &msg);
             }
-            return validate(s.clone(), None);
         }
+        return validate(s.clone(), None);
     }
 
     if let Some((attr, s)) = attr_crate_name {
         return validate(s.to_string(), Some(attr.span));
     }
+
     if let Input::File(ref path) = *input {
         if let Some(s) = path.file_stem().and_then(|s| s.to_str()) {
             if s.starts_with('-') {
@@ -85,9 +84,7 @@ pub fn find_crate_name(sess: Option<&Session>, attrs: &[ast::Attribute], input: 
                                    `{}` has a leading hyphen",
                     s
                 );
-                if let Some(sess) = sess {
-                    sess.err(&msg);
-                }
+                sess.err(&msg);
             } else {
                 return validate(s.replace("-", "_"), None);
             }
@@ -97,14 +94,13 @@ pub fn find_crate_name(sess: Option<&Session>, attrs: &[ast::Attribute], input: 
     "rust_out".to_string()
 }
 
-pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
+pub fn validate_crate_name(sess: &Session, s: &str, sp: Option<Span>) {
     let mut err_count = 0;
     {
         let mut say = |s: &str| {
-            match (sp, sess) {
-                (_, None) => panic!("{}", s),
-                (Some(sp), Some(sess)) => sess.span_err(sp, s),
-                (None, Some(sess)) => sess.err(s),
+            match sp {
+                Some(sp) => sess.span_err(sp, s),
+                None => sess.err(s),
             }
             err_count += 1;
         };
@@ -123,7 +119,7 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
     }
 
     if err_count > 0 {
-        sess.unwrap().abort_if_errors();
+        sess.abort_if_errors();
     }
 }
 
