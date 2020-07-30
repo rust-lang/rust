@@ -125,9 +125,9 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
 name = "chalk-derive"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eea3a22f0c30b2504ac4ab58934dac0d00b92a4d7788df32795cabca24c3f929"
+checksum = "654c611946ba2629c5028cb7708687af975faf2c29d731824cb294c873df4697"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -137,9 +137,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb617b643e145e3b151502799e91a9625dd5daf1cf05dc2cb821bc75ae0c9cbd"
+checksum = "0a5341fbc654ca886b73b804a36aebf0e621057ccc1a68e9815b5b39b3ac9ae8"
 dependencies = [
  "chalk-derive",
  "lazy_static",
@@ -147,9 +147,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d280565c8eefbf9b2bc615df49c7dfd971faad37774bf65734e626fd23864bd6"
+checksum = "4484807b155b5a411e6135d330295f9ba5042e2920b8712c6574ca6ea91e9ee5"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -160,9 +160,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.18.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be906fbca3f3077dce0e76d9864771d0f450c946af0d86b569fb9504148a065a"
+checksum = "281f82facd2538997fbe52132b1941ed213d266748215c31d15f62a8664429ad"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -607,9 +607,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.78.0"
+version = "0.79.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2e6cf68e3492cfa2035f0382c1da1b6ab045db0320feca505b86b4f13d66c27"
+checksum = "7f1f86677fdbe8df5f88b99131b1424e50aad27bbe3e5900d221bc414bd72e9b"
 dependencies = [
  "base64",
  "bitflags",
@@ -842,9 +842,9 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "perf-event"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cb38a2f363560fb3cfcb47f28848b245a41c7e0d63e0b190918b712b6bf6803"
+checksum = "76c42ba5d85a2f4472b99f475fb60cf336d9b4c85b1ea8bb300fef2e3c7c8f89"
 dependencies = [
  "libc",
  "perf-event-open-sys",
@@ -1344,9 +1344,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "669.0.0"
+version = "671.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "456af5f09c006cf6c22c1a433ee0232c4bb74bdc6c647a010166a47c94ed2a63"
+checksum = "22e1221f3bfa2943c942cf8da319ab2346887f8757778c29c7f1822cd27b521f"
 dependencies = [
  "unicode-xid",
 ]

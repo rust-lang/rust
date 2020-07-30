@@ -30,11 +30,16 @@ impl ToChalk for Ty {
             Ty::Apply(apply_ty) => match apply_ty.ctor {
                 TypeCtor::Ref(m) => ref_to_chalk(db, m, apply_ty.parameters),
                 TypeCtor::Array => array_to_chalk(db, apply_ty.parameters),
-                TypeCtor::FnPtr { num_args: _, is_varargs: _ } => {
-                    // FIXME: handle is_varargs
+                TypeCtor::FnPtr { num_args: _, is_varargs } => {
                     let substitution = apply_ty.parameters.to_chalk(db).shifted_in(&Interner);
-                    chalk_ir::TyData::Function(chalk_ir::Fn { num_binders: 0, substitution })
-                        .intern(&Interner)
+                    chalk_ir::TyData::Function(chalk_ir::FnPointer {
+                        num_binders: 0,
+                        abi: (),
+                        safety: chalk_ir::Safety::Safe,
+                        variadic: is_varargs,
+                        substitution,
+                    })
+                    .intern(&Interner)
                 }
                 _ => {
                     let name = apply_ty.ctor.to_chalk(db);
@@ -118,7 +123,12 @@ impl ToChalk for Ty {
                 let parameters = from_chalk(db, opaque_ty.substitution);
                 Ty::Opaque(OpaqueTy { opaque_ty_id: impl_trait_id, parameters })
             }
-            chalk_ir::TyData::Function(chalk_ir::Fn { num_binders, substitution }) => {
+            chalk_ir::TyData::Function(chalk_ir::FnPointer {
+                num_binders,
+                variadic,
+                substitution,
+                ..
+            }) => {
                 assert_eq!(num_binders, 0);
                 let parameters: Substs = from_chalk(
                     db,
@@ -127,7 +137,7 @@ impl ToChalk for Ty {
                 Ty::Apply(ApplicationTy {
                     ctor: TypeCtor::FnPtr {
                         num_args: (parameters.len() - 1) as u16,
-                        is_varargs: false,
+                        is_varargs: variadic,
                     },
                     parameters,
                 })
