@@ -380,7 +380,8 @@ impl<T> Option<T> {
     #[inline]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap(self) -> T {
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn unwrap(self) -> T {
         match self {
             Some(val) => val,
             None => panic!("called `Option::unwrap()` on a `None` value"),
