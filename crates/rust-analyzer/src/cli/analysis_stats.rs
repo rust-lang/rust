@@ -309,8 +309,13 @@ pub fn analysis_stats(
 }
 
 fn shuffle<T>(rng: &mut Rand32, slice: &mut [T]) {
-    for i in (1..slice.len()).rev() {
-        let idx = rng.rand_range(0..i as u32) as usize;
-        slice.swap(idx, i)
+    for i in 0..slice.len() {
+        randomize_first(rng, &mut slice[i..]);
+    }
+
+    fn randomize_first<T>(rng: &mut Rand32, slice: &mut [T]) {
+        assert!(!slice.is_empty());
+        let idx = rng.rand_range(0..slice.len() as u32) as usize;
+        slice.swap(0, idx);
     }
 }
