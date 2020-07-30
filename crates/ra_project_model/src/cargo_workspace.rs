@@ -144,12 +144,15 @@ impl CargoWorkspace {
         meta.manifest_path(cargo_toml.to_path_buf());
         if cargo_features.all_features {
             meta.features(CargoOpt::AllFeatures);
-        } else if cargo_features.no_default_features {
-            // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
-            // https://github.com/oli-obk/cargo_metadata/issues/79
-            meta.features(CargoOpt::NoDefaultFeatures);
-        } else if !cargo_features.features.is_empty() {
-            meta.features(CargoOpt::SomeFeatures(cargo_features.features.clone()));
+        } else {
+            if cargo_features.no_default_features {
+                // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
+                // https://github.com/oli-obk/cargo_metadata/issues/79
+                meta.features(CargoOpt::NoDefaultFeatures);
+            }
+            if !cargo_features.features.is_empty() {
+                meta.features(CargoOpt::SomeFeatures(cargo_features.features.clone()));
+            }
         }
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent.to_path_buf());
@@ -289,12 +292,16 @@ pub fn load_extern_resources(
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
     if cargo_features.all_features {
         cmd.arg("--all-features");
-    } else if cargo_features.no_default_features {
-        // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
-        // https://github.com/oli-obk/cargo_metadata/issues/79
-        cmd.arg("--no-default-features");
     } else {
-        cmd.args(&cargo_features.features);
+        if cargo_features.no_default_features {
+            // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
+            // https://github.com/oli-obk/cargo_metadata/issues/79
+            cmd.arg("--no-default-features");
+        }
+        if !cargo_features.features.is_empty() {
+            cmd.arg("--features");
+            cmd.arg(cargo_features.features.join(" "));
+        }
     }
 
     let output = cmd.output()?;

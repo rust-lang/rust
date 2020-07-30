@@ -323,6 +323,14 @@
                     "default": true,
                     "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)"
                 },
+                "rust-analyzer.checkOnSave.noDefaultFeatures": {
+                    "type": [
+                        "null",
+                        "boolean"
+                    ],
+                    "default": null,
+                    "markdownDescription": "Do not activate the `default` feature"
+                },
                 "rust-analyzer.checkOnSave.allFeatures": {
                     "type": [
                         "null",

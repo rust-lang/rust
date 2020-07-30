@@ -24,6 +24,7 @@ pub enum FlycheckConfig {
         command: String,
         target_triple: Option<String>,
         all_targets: bool,
+        no_default_features: bool,
         all_features: bool,
         features: Vec<String>,
         extra_args: Vec<String>,
@@ -180,6 +181,7 @@ impl FlycheckActor {
             FlycheckConfig::CargoCommand {
                 command,
                 target_triple,
+                no_default_features,
                 all_targets,
                 all_features,
                 extra_args,
@@ -198,9 +200,14 @@ impl FlycheckActor {
                 }
                 if *all_features {
                     cmd.arg("--all-features");
-                } else if !features.is_empty() {
-                    cmd.arg("--features");
-                    cmd.arg(features.join(" "));
+                } else {
+                    if *no_default_features {
+                        cmd.arg("--no-default-features");
+                    }
+                    if !features.is_empty() {
+                        cmd.arg("--features");
+                        cmd.arg(features.join(" "));
+                    }
                 }
                 cmd.args(extra_args);
                 cmd

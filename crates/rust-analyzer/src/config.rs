@@ -151,6 +151,7 @@ impl Config {
             flycheck: Some(FlycheckConfig::CargoCommand {
                 command: "check".to_string(),
                 target_triple: None,
+                no_default_features: false,
                 all_targets: true,
                 all_features: false,
                 extra_args: Vec::new(),
@@ -234,6 +235,9 @@ impl Config {
                     command: data.checkOnSave_command,
                     target_triple: data.checkOnSave_target.or(data.cargo_target),
                     all_targets: data.checkOnSave_allTargets,
+                    no_default_features: data
+                        .checkOnSave_noDefaultFeatures
+                        .unwrap_or(data.cargo_noDefaultFeatures),
                     all_features: data.checkOnSave_allFeatures.unwrap_or(data.cargo_allFeatures),
                     features: data.checkOnSave_features.unwrap_or(data.cargo_features),
                     extra_args: data.checkOnSave_extraArgs,
@@ -398,6 +402,7 @@ config_data! {
         checkOnSave_allFeatures: Option<bool>            = None,
         checkOnSave_allTargets: bool                     = true,
         checkOnSave_command: String                      = "check".into(),
+        checkOnSave_noDefaultFeatures: Option<bool>      = None,
         checkOnSave_target: Option<String>               = None,
         checkOnSave_extraArgs: Vec<String>               = Vec::new(),
         checkOnSave_features: Option<Vec<String>>        = None,
