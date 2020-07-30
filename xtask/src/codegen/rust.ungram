@@ -66,8 +66,11 @@ SelfParam =
   )
 
 Param =
-  Attr* Pat (':' ascribed_type:TypeRef)
-| '...'
+  Attr* (
+    Pat (':' ascribed_type:TypeRef)
+  | ascribed_type:TypeRef
+  | '...'
+  )
 
 RetType =
   '->' TypeRef
