@@ -1,5 +1,5 @@
 SOURCE_FILE@0..67
-  USE_ITEM@0..12
+  USE@0..12
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
     USE_TREE@4..11
@@ -9,7 +9,7 @@ SOURCE_FILE@0..67
           SUPER_KW@6..11 "super"
     SEMICOLON@11..12 ";"
   WHITESPACE@12..13 "\n"
-  USE_ITEM@13..26
+  USE@13..26
     USE_KW@13..16 "use"
     WHITESPACE@16..17 " "
     USE_TREE@17..25
@@ -23,7 +23,7 @@ SOURCE_FILE@0..67
           SUPER_KW@20..25 "super"
     SEMICOLON@25..26 ";"
   WHITESPACE@26..27 "\n"
-  USE_ITEM@27..47
+  USE@27..47
     USE_KW@27..30 "use"
     WHITESPACE@30..31 " "
     USE_TREE@31..46
@@ -41,7 +41,7 @@ SOURCE_FILE@0..67
           SUPER_KW@41..46 "super"
     SEMICOLON@46..47 ";"
   WHITESPACE@47..48 "\n"
-  USE_ITEM@48..66
+  USE@48..66
     USE_KW@48..51 "use"
     WHITESPACE@51..52 " "
     USE_TREE@52..65
