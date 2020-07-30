@@ -1016,7 +1016,17 @@ impl Step for Src {
         let src_files = ["Cargo.lock"];
         // This is the reduced set of paths which will become the rust-src component
         // (essentially libstd and all of its path dependencies).
-        copy_src_dirs(builder, &builder.src, &["library"], &[], &dst_src);
+        copy_src_dirs(
+            builder,
+            &builder.src,
+            &["library"],
+            &[
+                // not needed and contains symlinks which rustup currently
+                // chokes on when unpacking.
+                "library/backtrace/crates",
+            ],
+            &dst_src,
+        );
         for file in src_files.iter() {
             builder.copy(&builder.src.join(file), &dst_src.join(file));
         }

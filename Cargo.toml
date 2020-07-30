@@ -56,6 +56,18 @@ overflow-checks = false
 # per-crate configuration isn't specifiable in the environment.
 codegen-units = 10000
 
+# These dependencies of the standard library implement symbolication for
+# backtraces on most platforms. Their debuginfo causes both linking to be slower
+# (more data to chew through) and binaries to be larger without really all that
+# much benefit. This section turns them all to down to have no debuginfo which
+# helps to improve link times a little bit.
+[profile.release.package]
+addr2line.debug = 0
+adler.debug = 0
+gimli.debug = 0
+miniz_oxide.debug = 0
+object.debug = 0
+
 # We want the RLS to use the version of Cargo that we've got vendored in this
 # repository to ensure that the same exact version of Cargo is used by both the
 # RLS and the Cargo binary itself. The RLS depends on Cargo as a git repository
@@ -79,6 +91,12 @@ rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
 rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
+
+# This crate's integration with libstd is a bit wonky, so we use a submodule
+# instead of a crates.io dependency. Make sure everything else in the repo is
+# also using the submodule, however, so we can avoid duplicate copies of the
+# source code for this crate.
+backtrace = { path = "library/backtrace" }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
