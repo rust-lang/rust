@@ -194,7 +194,7 @@ fn text_edit_from_self_param(
     new_name: &str,
 ) -> Option<TextEdit> {
     fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
-        if let Some(ast::Type::PathType(p)) = impl_def.target_type() {
+        if let Some(ast::Type::PathType(p)) = impl_def.self_ty() {
             return Some(p.path()?.segment()?.name_ref()?.text().to_string());
         }
         None

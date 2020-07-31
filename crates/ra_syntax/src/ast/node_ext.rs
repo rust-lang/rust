@@ -136,14 +136,14 @@ impl ast::UseTreeList {
 }
 
 impl ast::Impl {
-    pub fn target_type(&self) -> Option<ast::Type> {
+    pub fn self_ty(&self) -> Option<ast::Type> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),
             _ => None,
         }
     }
 
-    pub fn target_trait(&self) -> Option<ast::Type> {
+    pub fn trait_(&self) -> Option<ast::Type> {
         match self.target() {
             (Some(t), Some(_)) => Some(t),
             _ => None,

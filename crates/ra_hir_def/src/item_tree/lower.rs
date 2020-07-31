@@ -448,8 +448,8 @@ impl Ctx {
     fn lower_impl(&mut self, impl_def: &ast::Impl) -> Option<FileItemTreeId<Impl>> {
         let generic_params =
             self.lower_generic_params_and_inner_items(GenericsOwner::Impl, impl_def);
-        let target_trait = impl_def.target_trait().map(|tr| self.lower_type_ref(&tr));
-        let target_type = self.lower_type_ref(&impl_def.target_type()?);
+        let target_trait = impl_def.trait_().map(|tr| self.lower_type_ref(&tr));
+        let target_type = self.lower_type_ref(&impl_def.self_ty()?);
         let is_negative = impl_def.excl_token().is_some();
 
         // We cannot use `assoc_items()` here as that does not include macro calls.
