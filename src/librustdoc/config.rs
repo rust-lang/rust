@@ -508,7 +508,7 @@ impl Options {
         let output_format = match matches.opt_str("output-format") {
             Some(s) => match OutputFormat::try_from(s.as_str()) {
                 Ok(o) => {
-                    if o.is_json() && !show_coverage {
+                    if o.is_json() && !(show_coverage || nightly_options::is_nightly_build()) {
                         diag.struct_err("json output format isn't supported for doc generation")
                             .emit();
                         return Err(1);
@@ -626,7 +626,9 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 
     for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            if *flag == "output-format" && matches.opt_present("show-coverage") {
+            if *flag == "output-format"
+                && (matches.opt_present("show-coverage") || nightly_options::is_nightly_build())
+            {
                 continue;
             }
             let mut err =
