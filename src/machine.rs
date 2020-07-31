@@ -246,7 +246,7 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Whether to enforce the validity invariant.
     pub(crate) validate: bool,
 
-    pub(crate) file_handler: shims::posix::FileHandler,
+    pub(crate) file_handler: shims::posix::FileHandler<'tcx>,
     pub(crate) dir_handler: shims::posix::DirHandler,
 
     /// The temporary used for storing the argument of
