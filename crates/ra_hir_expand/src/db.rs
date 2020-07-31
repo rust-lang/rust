@@ -379,7 +379,7 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
 
         FOR_EXPR => FragmentKind::Expr,
         PATH_EXPR => FragmentKind::Expr,
-        LAMBDA_EXPR => FragmentKind::Expr,
+        CLOSURE_EXPR => FragmentKind::Expr,
         CONDITION => FragmentKind::Expr,
         BREAK_EXPR => FragmentKind::Expr,
         RETURN_EXPR => FragmentKind::Expr,

@@ -144,7 +144,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "ARRAY_EXPR",
         "PAREN_EXPR",
         "PATH_EXPR",
-        "LAMBDA_EXPR",
+        "CLOSURE_EXPR",
         "IF_EXPR",
         "WHILE_EXPR",
         "CONDITION",

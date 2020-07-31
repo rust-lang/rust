@@ -13,7 +13,7 @@ SOURCE_FILE@0..34
       WHITESPACE@11..12 " "
       EXPR_STMT@12..31
         CALL_EXPR@12..30
-          LAMBDA_EXPR@12..28
+          CLOSURE_EXPR@12..28
             PARAM_LIST@12..14
               PIPE@12..13 "|"
               PIPE@13..14 "|"

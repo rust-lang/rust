@@ -117,7 +117,7 @@ SOURCE_FILE@0..389
         WHITESPACE@140..141
         EQ@141..142
         WHITESPACE@142..143
-        LAMBDA_EXPR@143..389
+        CLOSURE_EXPR@143..389
           PARAM_LIST@143..388
             PIPE@143..144
             PARAM@144..159

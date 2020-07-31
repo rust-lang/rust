@@ -49,7 +49,7 @@ SOURCE_FILE@0..83
               IDENT@48..51 "map"
             ARG_LIST@51..57
               L_PAREN@51..52 "("
-              LAMBDA_EXPR@52..56
+              CLOSURE_EXPR@52..56
                 PARAM_LIST@52..56
                   PIPE@52..53 "|"
                   PARAM@53..55

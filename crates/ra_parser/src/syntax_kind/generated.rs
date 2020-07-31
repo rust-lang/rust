@@ -173,7 +173,7 @@ pub enum SyntaxKind {
     ARRAY_EXPR,
     PAREN_EXPR,
     PATH_EXPR,
-    LAMBDA_EXPR,
+    CLOSURE_EXPR,
     IF_EXPR,
     WHILE_EXPR,
     CONDITION,

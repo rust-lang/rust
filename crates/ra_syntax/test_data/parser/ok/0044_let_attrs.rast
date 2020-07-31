@@ -52,7 +52,7 @@ SOURCE_FILE@0..166
                   IDENT@134..146 "catch_unwind"
           ARG_LIST@146..162
             L_PAREN@146..147 "("
-            LAMBDA_EXPR@147..161
+            CLOSURE_EXPR@147..161
               MOVE_KW@147..151 "move"
               WHITESPACE@151..152 " "
               PARAM_LIST@152..154

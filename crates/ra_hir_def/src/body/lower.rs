@@ -224,9 +224,22 @@ impl ExprCollector<'_> {
                     self.alloc_expr(Expr::Unsafe { body }, syntax_ptr)
                 }
                 // FIXME: we need to record these effects somewhere...
-                ast::Effect::Async(_) | ast::Effect::Label(_) => {
-                    self.collect_block_opt(e.block_expr())
-                }
+                ast::Effect::Label(label) => match e.block_expr() {
+                    Some(block) => {
+                        let res = self.collect_block(block);
+                        match &mut self.body.exprs[res] {
+                            Expr::Block { label: block_label, .. } => {
+                                *block_label =
+                                    label.lifetime_token().map(|t| Name::new_lifetime(&t))
+                            }
+                            _ => unreachable!(),
+                        }
+                        res
+                    }
+                    None => self.missing_expr(),
+                },
+                // FIXME: we need to record these effects somewhere...
+                ast::Effect::Async(_) => self.collect_block_opt(e.block_expr()),
             },
             ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
@@ -460,7 +473,7 @@ impl ExprCollector<'_> {
                     self.alloc_expr(Expr::Missing, syntax_ptr)
                 }
             }
-            ast::Expr::LambdaExpr(e) => {
+            ast::Expr::ClosureExpr(e) => {
                 let mut args = Vec::new();
                 let mut arg_types = Vec::new();
                 if let Some(pl) = e.param_list() {
@@ -618,8 +631,7 @@ impl ExprCollector<'_> {
             })
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
-        let label = block.label().and_then(|l| l.lifetime_token()).map(|t| Name::new_lifetime(&t));
-        self.alloc_expr(Expr::Block { statements, tail, label }, syntax_node_ptr)
+        self.alloc_expr(Expr::Block { statements, tail, label: None }, syntax_node_ptr)
     }
 
     fn collect_block_items(&mut self, block: &ast::BlockExpr) {

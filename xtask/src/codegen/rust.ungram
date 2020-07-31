@@ -115,8 +115,8 @@ Union =
   RecordFieldList
 
 AdtDef =
-  Struct
-| Enum
+  Enum
+| Struct
 | Union
 
 Const =
@@ -136,10 +136,10 @@ AssocItemList =
   '{' Attr* AssocItem* '}'
 
 AssocItem =
-  Fn
-| TypeAlias
-| Const
+  Const
+| Fn
 | MacroCall
+| TypeAlias
 
 Impl =
  Attr* Visibility?
@@ -162,9 +162,9 @@ GenericParamList =
   '<' (GenericParam (',' GenericParam)* ','?)? '>'
 
 GenericParam =
-  LifetimeParam
+  ConstParam
+| LifetimeParam
 | TypeParam
-| ConstParam
 
 TypeParam =
   Attr* Name (':' TypeBoundList?)?
@@ -195,9 +195,9 @@ Attr =
   '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
 
 Stmt =
-  LetStmt
-| ExprStmt
+  ExprStmt
 | Item
+| LetStmt
 
 LetStmt =
   Attr* 'let' Pat (':' Type)?
@@ -206,20 +206,192 @@ LetStmt =
 ExprStmt =
   Attr* Expr ';'?
 
+Expr =
+  ArrayExpr
+| AwaitExpr
+| BinExpr
+| BlockExpr
+| BoxExpr
+| BreakExpr
+| CallExpr
+| CastExpr
+| ContinueExpr
+| EffectExpr
+| FieldExpr
+| ForExpr
+| IfExpr
+| IndexExpr
+| Label
+| ClosureExpr
+| Literal
+| LoopExpr
+| MacroCall
+| MatchExpr
+| MethodCallExpr
+| ParenExpr
+| PathExpr
+| PrefixExpr
+| RangeExpr
+| RecordExpr
+| RefExpr
+| ReturnExpr
+| TryExpr
+| TupleExpr
+| WhileExpr
+
+Literal =
+  Attr* 'int_number'
+
+PathExpr =
+  Attr* Path
+
+BlockExpr =
+  '{'
+    Attr*
+    statements:Stmt*
+    Expr?
+  '}'
+
+RefExpr =
+  Attr* '&' ('raw' |'mut' | 'const') Expr
+
+TryExpr =
+  Attr* Expr '?'
+
+EffectExpr =
+  Attr* Label? ('try' | 'unsafe' | 'async') BlockExpr
+
+PrefixExpr =
+  Attr* op:('-' | '!' | '*') Expr
+
+BinExpr =
+  Attr*
+  lhs:Expr
+  op:(
+    '||' | '&&'
+    | '==' | '!=' | '<=' | '>=' | '<' | '>'
+    | '+' | '*' | '-' | '/' | '%' | '<<' | '>>' | '^' | '|' | '&'
+    | '=' | '+=' | '/=' | '*=' | '%=' | '>>=' | '<<=' | '-=' | '|=' | '&=' | '^='
+  )
+  rhs:Expr
+
+CastExpr =
+  Attr* Expr 'as' Type
+
+ParenExpr =
+  Attr* '(' Attr* Expr ')'
+
+ArrayExpr =
+  Attr* '[' Attr* (
+    (Expr (',' Expr)* ','?)?
+  | Expr ';' Expr
+  ) ']'
+
+IndexExpr =
+  Attr* base:Expr '[' index:Expr ']'
+
+TupleExpr =
+  Attr* '(' Attr* (Expr (',' Expr)* ','?)? ')'
+
+RecordExpr =
+  Path RecordExprFieldList
+
+RecordExprFieldList =
+  '{'
+    Attr*
+    fields:(RecordExprField (',' RecordExprField)* ','?)
+    ('..' spread:Expr)?
+  '}'
+
+RecordExprField =
+  Attr* NameRef (':' Expr)?
+
+CallExpr =
+  Attr* Expr ArgList
+
+ArgList =
+  '(' args:(Expr (',' Expr)* ','?)? ')'
+
+MethodCallExpr =
+  Attr* Expr '.' NameRef TypeArgList? ArgList
+
+FieldExpr =
+  Attr* Expr '.' NameRef
+
+ClosureExpr =
+  Attr* 'static'? 'async'? 'move'?  ParamList RetType?
+  body:Expr
+
+IfExpr =
+  Attr* 'if' Condition then_branch:BlockExpr
+  ('else' else_branch:(IfExpr | BlockExpr))?
+
+Condition =
+  'let' Pat '=' Expr
+| Expr
+
+LoopExpr =
+  Attr* Label? 'loop'
+  loop_body:BlockExpr
+
+ForExpr =
+  Attr* Label? 'for' Pat 'in' iterable:Expr
+  loop_body:BlockExpr
+
+WhileExpr =
+  Attr* Label? 'while' Condition
+  loop_body:BlockExpr?
+
+Label =
+  'lifetime'
+
+BreakExpr =
+  Attr* 'break' 'lifetime'? Expr?
+
+ContinueExpr =
+  Attr* 'continue' 'lifetime'?
+
+RangeExpr =
+  Attr* start:Expr? op:('..' | '..=') end:Expr?
+
+MatchExpr =
+  Attr* 'match' Expr MatchArmList
+
+MatchArmList =
+  '{'
+    Attr*
+    arms:MatchArm*
+  '}'
+
+MatchArm =
+  Attr* Pat guard:MatchGuard? '=>' Expr ','?
+
+MatchGuard =
+  'if' Expr
+
+ReturnExpr =
+  Attr* 'return' Expr?
+
+AwaitExpr =
+  Attr* Expr '.' 'await'
+
+BoxExpr =
+  Attr* 'box' Expr
+
 Type =
-  ParenType
-| TupleType
-| NeverType
-| PathType
-| PointerType
-| ArrayType
-| SliceType
-| ReferenceType
-| InferType
+  ArrayType
+| DynTraitType
 | FnPointerType
 | ForType
 | ImplTraitType
-| DynTraitType
+| InferType
+| NeverType
+| ParenType
+| PathType
+| PointerType
+| ReferenceType
+| SliceType
+| TupleType
 
 ParenType =
   '(' Type ')'
@@ -266,129 +438,6 @@ TypeBoundList =
 TypeBound =
   'lifetime'
 | '?'? Type
-
-TupleExpr =
-  Attr* '(' Expr* ')'
-
-ArrayExpr =
-  Attr* '[' (Expr* | Expr ';' Expr) ']'
-
-ParenExpr =
-  Attr* '(' Expr ')'
-
-PathExpr =
-  Path
-
-LambdaExpr =
-  Attr* 'static'? 'async'? 'move'?  ParamList RetType?
-  body:Expr
-
-IfExpr =
-  Attr* 'if' Condition
-
-Condition =
-  'let' Pat '=' Expr
-| Expr
-
-EffectExpr =
-  Attr* Label? ('try' | 'unsafe' | 'async') BlockExpr
-
-LoopExpr =
-  Attr* Label? 'loop'
-  loop_body:BlockExpr?
-
-ForExpr =
-  Attr* Label? 'for' Pat 'in' iterable:Expr
-  loop_body:BlockExpr?
-
-WhileExpr =
-  Attr* Label? 'while' Condition
-  loop_body:BlockExpr?
-
-ContinueExpr =
-  Attr* 'continue' 'lifetime'?
-
-BreakExpr =
-  Attr* 'break' 'lifetime'? Expr?
-
-Label =
-  'lifetime'
-
-BlockExpr =
-  Attr* Label
-  '{'
-    statements:Stmt*
-    Expr?
-  '}'
-
-ReturnExpr =
-  Attr* 'return' Expr
-
-CallExpr =
-  Attr* Expr ArgList
-
-MethodCallExpr =
-  Attr* Expr '.' NameRef TypeArgList? ArgList
-
-ArgList =
-  '(' args:Expr* ')'
-
-FieldExpr =
-  Attr* Expr '.' NameRef
-
-IndexExpr =
-  Attr* '[' ']'
-
-AwaitExpr =
-  Attr* Expr '.' 'await'
-
-TryExpr =
-  Attr* Expr '?'
-
-CastExpr =
-  Attr* Expr 'as' Type
-
-RefExpr =
-  Attr* '&' ('raw' | 'mut' | 'const') Expr
-
-PrefixExpr =
-  Attr* Expr
-
-BoxExpr =
-  Attr* 'box' Expr
-
-RangeExpr =
-  Attr*
-
-BinExpr =
-  Attr*
-
-Literal =
-  'int_number'
-
-MatchExpr =
-  Attr* 'match' Expr MatchArmList
-
-MatchArmList =
-  '{' arms:MatchArm* '}'
-
-MatchArm =
-  Attr* Pat guard:MatchGuard? '=>' Expr
-
-MatchGuard =
-  'if' Expr
-
-RecordExpr =
- Path RecordExprFieldList
-
-RecordExprFieldList =
-  '{'
-    fields:RecordExprField*
-    ('..' spread:Expr)?
-  '}'
-
-RecordExprField =
-  Attr* NameRef (':' Expr)?
 
 OrPat =
   Pat*
@@ -510,36 +559,3 @@ Pat =
 | RangePat
 | LiteralPat
 | MacroPat
-
-Expr =
-  TupleExpr
-| ArrayExpr
-| ParenExpr
-| PathExpr
-| LambdaExpr
-| IfExpr
-| LoopExpr
-| ForExpr
-| WhileExpr
-| ContinueExpr
-| BreakExpr
-| Label
-| BlockExpr
-| ReturnExpr
-| MatchExpr
-| RecordExpr
-| CallExpr
-| IndexExpr
-| MethodCallExpr
-| FieldExpr
-| AwaitExpr
-| TryExpr
-| EffectExpr
-| CastExpr
-| RefExpr
-| PrefixExpr
-| RangeExpr
-| BinExpr
-| Literal
-| MacroCall
-| BoxExpr

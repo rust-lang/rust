@@ -105,7 +105,7 @@ SOURCE_FILE@0..135
         WHITESPACE@117..118 " "
         EQ@118..119 "="
         WHITESPACE@119..120 " "
-        LAMBDA_EXPR@120..131
+        CLOSURE_EXPR@120..131
           ATTR@120..127
             POUND@120..121 "#"
             L_BRACK@121..122 "["
