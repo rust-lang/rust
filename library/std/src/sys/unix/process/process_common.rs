@@ -76,6 +76,7 @@ pub struct Command {
     args: Vec<CString>,
     argv: Argv,
     env: CommandEnv,
+    env_size: Option<usize>,
     arg_max: Option<isize>,
     arg_size: usize,
 
@@ -142,13 +143,14 @@ impl Command {
     pub fn new(program: &OsStr) -> Command {
         let mut problem = Problem::Ok;
         let program = os2c(program, &mut problem);
+        let program_size = program.to_bytes_with_nul().len();
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
             args: vec![program.clone()],
             program,
             env: Default::default(),
             arg_max: Default::default(),
-            arg_size: mem::size_of::<*const u8>() + program.to_bytes().len() + 1,
+            arg_size: 2 * mem::size_of::<*const u8>() + program_size,
             cwd: None,
             uid: None,
             gid: None,
@@ -170,6 +172,7 @@ impl Command {
         self.args[0] = arg;
     }
 
+    #[allow(dead_code)]
     pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
         self.arg(arg);
         self.problem.as_result()?;
@@ -183,7 +186,7 @@ impl Command {
         // Overwrite the trailing NULL pointer in `argv` and then add a new null
         // pointer.
         let arg = os2c(arg, &mut self.problem);
-        self.arg_size += arg.to_bytes().len() + 1 + mem::size_of::<*const u8>();
+        self.arg_size += arg.to_bytes_with_nul().len() + mem::size_of::<*const u8>();
         self.argv.0[self.args.len()] = arg.as_ptr();
         self.argv.0.push(ptr::null());
 
@@ -443,7 +446,7 @@ impl Problem {
                 Err(io::Error::new(io::ErrorKind::InvalidInput, "nul byte found in provided data"))
             }
             Problem::Oversized => {
-                Err(io::Error::new(io::ErrorKind::InvalidInput, "Oversized command"))
+                Err(io::Error::new(io::ErrorKind::InvalidInput, "command exceeds maximum size"))
             }
         }
     }

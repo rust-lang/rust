@@ -120,6 +120,7 @@ impl Command {
         }
     }
 
+    #[allow(dead_code)]
     pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
         self.arg(arg);
 
@@ -268,12 +269,14 @@ impl Command {
         Ok((Process { handle: Handle::new(pi.hProcess) }, pipes))
     }
 
+    #[allow(dead_code)]
     pub fn get_size(&mut self) -> io::Result<usize> {
         match &self.problem {
             Some(err) => Err(err.into()),
             None => Ok(self.cmdline.len()),
         }
     }
+    #[allow(dead_code)]
     pub fn check_size(&mut self, _refresh: bool) -> io::Result<bool> {
         Ok(self.get_size()? < CMDLINE_MAX)
     }
@@ -363,19 +366,21 @@ impl From<File> for Stdio {
     }
 }
 
-impl From<&Problem> for io::Error {
-    fn from(problem: &Problem) -> io::Error {
+impl From<&Problem> for Error {
+    fn from(problem: &Problem) -> Error {
         match *problem {
             Problem::SawNul => {
-                io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data")
+                Error::new(ErrorKind::InvalidInput, "nul byte found in provided data")
             }
-            Problem::Oversized => io::Error::new(ErrorKind::InvalidInput, "Oversized command"),
+            Problem::Oversized => {
+                Error::new(ErrorKind::InvalidInput, "command exceeds maximum size")
+            }
         }
     }
 }
 
-impl From<Problem> for io::Error {
-    fn from(problem: Problem) -> io::Error {
+impl From<Problem> for Error {
+    fn from(problem: Problem) -> Error {
         (&problem).into()
     }
 }
@@ -422,7 +427,7 @@ impl Process {
                 c::WAIT_TIMEOUT => {
                     return Ok(None);
                 }
-                _ => return Err(io::Error::last_os_error()),
+                _ => return Err(Error::last_os_error()),
             }
             let mut status = 0;
             cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
@@ -558,6 +563,7 @@ fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> Result<usi
 
 // Produces a wide string *without terminating null*; returns an error if
 // `prog` or any of the `args` contain a nul.
+#[allow(dead_code)]
 fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
