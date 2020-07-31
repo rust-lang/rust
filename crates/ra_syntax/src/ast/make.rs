@@ -37,7 +37,7 @@ fn path_from_text(text: &str) -> ast::Path {
 pub fn use_tree(
     path: ast::Path,
     use_tree_list: Option<ast::UseTreeList>,
-    alias: Option<ast::Alias>,
+    alias: Option<ast::Rename>,
     add_star: bool,
 ) -> ast::UseTree {
     let mut buf = "use ".to_string();
@@ -60,22 +60,22 @@ pub fn use_tree_list(use_trees: impl IntoIterator<Item = ast::UseTree>) -> ast::
     ast_from_text(&format!("use {{{}}};", use_trees))
 }
 
-pub fn use_item(use_tree: ast::UseTree) -> ast::UseItem {
+pub fn use_item(use_tree: ast::UseTree) -> ast::Use {
     ast_from_text(&format!("use {};", use_tree))
 }
 
-pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordField {
+pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordExprField {
     return match expr {
         Some(expr) => from_text(&format!("{}: {}", name, expr)),
         None => from_text(&name.to_string()),
     };
 
-    fn from_text(text: &str) -> ast::RecordField {
+    fn from_text(text: &str) -> ast::RecordExprField {
         ast_from_text(&format!("fn f() {{ S {{ {}, }} }}", text))
     }
 }
 
-pub fn record_field_def(name: ast::NameRef, ty: ast::TypeRef) -> ast::RecordFieldDef {
+pub fn record_field_def(name: ast::NameRef, ty: ast::TypeRef) -> ast::RecordField {
     ast_from_text(&format!("struct S {{ {}: {}, }}", name, ty))
 }
 
@@ -291,10 +291,10 @@ pub fn visibility_pub_crate() -> ast::Visibility {
 pub fn fn_def(
     visibility: Option<ast::Visibility>,
     fn_name: ast::Name,
-    type_params: Option<ast::TypeParamList>,
+    type_params: Option<ast::GenericParamList>,
     params: ast::ParamList,
     body: ast::BlockExpr,
-) -> ast::FnDef {
+) -> ast::Fn {
     let type_params =
         if let Some(type_params) = type_params { format!("<{}>", type_params) } else { "".into() };
     let visibility = match visibility {

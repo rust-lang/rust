@@ -1,37 +1,37 @@
 //! FIXME: write short doc here
 
-use ra_syntax::ast::{self, AstNode, NameOwner, TypeAscriptionOwner, VisibilityOwner};
+use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner};
 use stdx::format_to;
 
 pub(crate) trait ShortLabel {
     fn short_label(&self) -> Option<String>;
 }
 
-impl ShortLabel for ast::FnDef {
+impl ShortLabel for ast::Fn {
     fn short_label(&self) -> Option<String> {
-        Some(crate::display::function_label(self))
+        Some(crate::display::function_declaration(self))
     }
 }
 
-impl ShortLabel for ast::StructDef {
+impl ShortLabel for ast::Struct {
     fn short_label(&self) -> Option<String> {
         short_label_from_node(self, "struct ")
     }
 }
 
-impl ShortLabel for ast::UnionDef {
+impl ShortLabel for ast::Union {
     fn short_label(&self) -> Option<String> {
         short_label_from_node(self, "union ")
     }
 }
 
-impl ShortLabel for ast::EnumDef {
+impl ShortLabel for ast::Enum {
     fn short_label(&self) -> Option<String> {
         short_label_from_node(self, "enum ")
     }
 }
 
-impl ShortLabel for ast::TraitDef {
+impl ShortLabel for ast::Trait {
     fn short_label(&self) -> Option<String> {
         if self.unsafe_token().is_some() {
             short_label_from_node(self, "unsafe trait ")
@@ -47,43 +47,43 @@ impl ShortLabel for ast::Module {
     }
 }
 
-impl ShortLabel for ast::TypeAliasDef {
+impl ShortLabel for ast::TypeAlias {
     fn short_label(&self) -> Option<String> {
         short_label_from_node(self, "type ")
     }
 }
 
-impl ShortLabel for ast::ConstDef {
+impl ShortLabel for ast::Const {
     fn short_label(&self) -> Option<String> {
-        short_label_from_ascribed_node(self, "const ")
+        short_label_from_ty(self, self.ty(), "const ")
     }
 }
 
-impl ShortLabel for ast::StaticDef {
+impl ShortLabel for ast::Static {
     fn short_label(&self) -> Option<String> {
-        short_label_from_ascribed_node(self, "static ")
+        short_label_from_ty(self, self.ty(), "static ")
     }
 }
 
-impl ShortLabel for ast::RecordFieldDef {
+impl ShortLabel for ast::RecordField {
     fn short_label(&self) -> Option<String> {
-        short_label_from_ascribed_node(self, "")
+        short_label_from_ty(self, self.ty(), "")
     }
 }
 
-impl ShortLabel for ast::EnumVariant {
+impl ShortLabel for ast::Variant {
     fn short_label(&self) -> Option<String> {
         Some(self.name()?.text().to_string())
     }
 }
 
-fn short_label_from_ascribed_node<T>(node: &T, prefix: &str) -> Option<String>
+fn short_label_from_ty<T>(node: &T, ty: Option<ast::TypeRef>, prefix: &str) -> Option<String>
 where
-    T: NameOwner + VisibilityOwner + TypeAscriptionOwner,
+    T: NameOwner + VisibilityOwner,
 {
     let mut buf = short_label_from_node(node, prefix)?;
 
-    if let Some(type_ref) = node.ascribed_type() {
+    if let Some(type_ref) = ty {
         format_to!(buf, ": {}", type_ref.syntax());
     }
 

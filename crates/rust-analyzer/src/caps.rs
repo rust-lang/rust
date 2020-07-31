@@ -2,9 +2,9 @@
 use std::env;
 
 use lsp_types::{
-    CallHierarchyServerCapability, ClientCapabilities, CodeActionOptions,
+    CallHierarchyServerCapability, ClientCapabilities, CodeActionKind, CodeActionOptions,
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions,
-    DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability,
+    DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability, HoverProviderCapability,
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability, SaveOptions,
     SelectionRangeProviderCapability, SemanticTokensDocumentProvider, SemanticTokensLegend,
     SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
@@ -28,9 +28,9 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
             }),
             will_save: None,
             will_save_wait_until: None,
-            save: Some(SaveOptions::default()),
+            save: Some(SaveOptions::default().into()),
         })),
-        hover_provider: Some(true),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: None,
             trigger_characters: Some(vec![":".to_string(), ".".to_string()]),
@@ -106,14 +106,12 @@ fn code_action_capabilities(client_caps: &ClientCapabilities) -> CodeActionProvi
                 // Ideally we would base this off of the client capabilities
                 // but the client is supposed to fall back gracefully for unknown values.
                 code_action_kinds: Some(vec![
-                    lsp_types::code_action_kind::EMPTY.to_string(),
-                    lsp_types::code_action_kind::QUICKFIX.to_string(),
-                    lsp_types::code_action_kind::REFACTOR.to_string(),
-                    lsp_types::code_action_kind::REFACTOR_EXTRACT.to_string(),
-                    lsp_types::code_action_kind::REFACTOR_INLINE.to_string(),
-                    lsp_types::code_action_kind::REFACTOR_REWRITE.to_string(),
-                    lsp_types::code_action_kind::SOURCE.to_string(),
-                    lsp_types::code_action_kind::SOURCE_ORGANIZE_IMPORTS.to_string(),
+                    CodeActionKind::EMPTY,
+                    CodeActionKind::QUICKFIX,
+                    CodeActionKind::REFACTOR,
+                    CodeActionKind::REFACTOR_EXTRACT,
+                    CodeActionKind::REFACTOR_INLINE,
+                    CodeActionKind::REFACTOR_REWRITE,
                 ]),
                 work_done_progress_options: Default::default(),
             })

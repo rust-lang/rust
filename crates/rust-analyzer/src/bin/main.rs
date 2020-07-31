@@ -6,16 +6,19 @@ mod args;
 use std::convert::TryFrom;
 
 use lsp_server::Connection;
+use ra_project_model::ProjectManifest;
 use rust_analyzer::{
     cli,
     config::{Config, LinkedProject},
     from_json, Result,
 };
-
-use ra_db::AbsPathBuf;
-use ra_project_model::ProjectManifest;
+use vfs::AbsPathBuf;
 
 use crate::args::HelpPrinted;
+
+#[cfg(all(feature = "mimalloc"))]
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() -> Result<()> {
     setup_logging()?;
@@ -30,38 +33,16 @@ fn main() -> Result<()> {
         args::Command::Parse { no_dump } => cli::parse(no_dump)?,
         args::Command::Symbols => cli::symbols()?,
         args::Command::Highlight { rainbow } => cli::highlight(rainbow)?,
-        args::Command::Stats {
-            randomize,
-            memory_usage,
-            only,
-            with_deps,
-            path,
-            load_output_dirs,
-            with_proc_macro,
-        } => cli::analysis_stats(
-            args.verbosity,
-            memory_usage,
-            path.as_ref(),
-            only.as_ref().map(String::as_ref),
-            with_deps,
-            randomize,
-            load_output_dirs,
-            with_proc_macro,
-        )?,
-        args::Command::Bench { path, what, load_output_dirs, with_proc_macro } => {
-            cli::analysis_bench(
-                args.verbosity,
-                path.as_ref(),
-                what,
-                load_output_dirs,
-                with_proc_macro,
-            )?
-        }
+        args::Command::AnalysisStats(cmd) => cmd.run(args.verbosity)?,
+        args::Command::Bench(cmd) => cmd.run(args.verbosity)?,
         args::Command::Diagnostics { path, load_output_dirs, with_proc_macro, all } => {
             cli::diagnostics(path.as_ref(), load_output_dirs, with_proc_macro, all)?
         }
         args::Command::Ssr { rules } => {
             cli::apply_ssr_rules(rules)?;
+        }
+        args::Command::StructuredSearch { patterns, debug_snippet } => {
+            cli::search_for_patterns(patterns, debug_snippet)?;
         }
         args::Command::Version => println!("rust-analyzer {}", env!("REV")),
     }
@@ -116,8 +97,8 @@ fn run_server() -> Result<()> {
         };
 
         let mut config = Config::new(root_path);
-        if let Some(value) = &initialize_params.initialization_options {
-            config.update(value);
+        if let Some(json) = initialize_params.initialization_options {
+            config.update(json);
         }
         config.update_caps(&initialize_params.capabilities);
 

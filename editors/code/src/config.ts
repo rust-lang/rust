@@ -5,6 +5,8 @@ export type UpdatesChannel = "stable" | "nightly";
 
 export const NIGHTLY_TAG = "nightly";
 
+export type RunnableEnvCfg = undefined | Record<string, string> | { mask?: string; env: Record<string, string> }[];
+
 export class Config {
     readonly extensionId = "matklad.rust-analyzer";
 
@@ -37,10 +39,10 @@ export class Config {
 
     private refreshLogging() {
         log.setEnabled(this.traceExtension);
-        log.debug(
-            "Extension version:", this.package.version,
-            "using configuration:", this.cfg
-        );
+        log.info("Extension version:", this.package.version);
+
+        const cfg = Object.entries(this.cfg).filter(([_, val]) => !(val instanceof Function));
+        log.info("Using configuration", Object.fromEntries(cfg));
     }
 
     private async onDidChangeConfiguration(event: vscode.ConfigurationChangeEvent) {
@@ -112,6 +114,10 @@ export class Config {
 
     get cargoRunner() {
         return this.get<string | undefined>("cargoRunner");
+    }
+
+    get runnableEnv() {
+        return this.get<RunnableEnvCfg>("runnableEnv");
     }
 
     get debug() {

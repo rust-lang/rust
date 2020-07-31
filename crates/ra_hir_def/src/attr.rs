@@ -5,7 +5,7 @@ use std::{ops, sync::Arc};
 use either::Either;
 use hir_expand::{hygiene::Hygiene, AstId, InFile};
 use mbe::ast_to_token_tree;
-use ra_cfg::CfgOptions;
+use ra_cfg::{CfgExpr, CfgOptions};
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
     SmolStr,
@@ -125,9 +125,12 @@ impl Attrs {
         AttrQuery { attrs: self, key }
     }
 
-    pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
+    pub fn cfg(&self) -> impl Iterator<Item = CfgExpr> + '_ {
         // FIXME: handle cfg_attr :-)
-        self.by_key("cfg").tt_values().all(|tt| cfg_options.is_cfg_enabled(tt) != Some(false))
+        self.by_key("cfg").tt_values().map(CfgExpr::parse)
+    }
+    pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
+        self.cfg().all(|cfg| cfg_options.check(&cfg) != Some(false))
     }
 }
 
@@ -148,18 +151,15 @@ pub enum AttrInput {
 impl Attr {
     fn from_src(ast: ast::Attr, hygiene: &Hygiene) -> Option<Attr> {
         let path = ModPath::from_src(ast.path()?, hygiene)?;
-        let input = match ast.input() {
-            None => None,
-            Some(ast::AttrInput::Literal(lit)) => {
-                // FIXME: escape? raw string?
-                let value = lit.syntax().first_token()?.text().trim_matches('"').into();
-                Some(AttrInput::Literal(value))
-            }
-            Some(ast::AttrInput::TokenTree(tt)) => {
-                Some(AttrInput::TokenTree(ast_to_token_tree(&tt)?.0))
-            }
+        let input = if let Some(lit) = ast.literal() {
+            // FIXME: escape? raw string?
+            let value = lit.syntax().first_token()?.text().trim_matches('"').into();
+            Some(AttrInput::Literal(value))
+        } else if let Some(tt) = ast.token_tree() {
+            Some(AttrInput::TokenTree(ast_to_token_tree(&tt)?.0))
+        } else {
+            None
         };
-
         Some(Attr { path, input })
     }
 }

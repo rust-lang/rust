@@ -1,7 +1,7 @@
 //! Database used for testing `hir_expand`.
 
 use std::{
-    panic,
+    fmt, panic,
     sync::{Arc, Mutex},
 };
 
@@ -13,25 +13,23 @@ use rustc_hash::FxHashSet;
     ra_db::SourceDatabaseStorage,
     crate::db::AstDatabaseStorage
 )]
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct TestDB {
-    runtime: salsa::Runtime<TestDB>,
-    events: Mutex<Option<Vec<salsa::Event<TestDB>>>>,
+    storage: salsa::Storage<TestDB>,
+    events: Mutex<Option<Vec<salsa::Event>>>,
+}
+
+impl fmt::Debug for TestDB {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TestDB").finish()
+    }
 }
 
 impl salsa::Database for TestDB {
-    fn salsa_runtime(&self) -> &salsa::Runtime<Self> {
-        &self.runtime
-    }
-
-    fn salsa_runtime_mut(&mut self) -> &mut salsa::Runtime<Self> {
-        &mut self.runtime
-    }
-
-    fn salsa_event(&self, event: impl Fn() -> salsa::Event<TestDB>) {
+    fn salsa_event(&self, event: salsa::Event) {
         let mut events = self.events.lock().unwrap();
         if let Some(events) = &mut *events {
-            events.push(event());
+            events.push(event);
         }
     }
 }

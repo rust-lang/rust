@@ -23,12 +23,12 @@ pub(crate) fn goto_implementation(
 
     let krate = sema.to_module_def(position.file_id)?.krate();
 
-    if let Some(nominal_def) = find_node_at_offset::<ast::NominalDef>(&syntax, position.offset) {
+    if let Some(nominal_def) = find_node_at_offset::<ast::AdtDef>(&syntax, position.offset) {
         return Some(RangeInfo::new(
             nominal_def.syntax().text_range(),
             impls_for_def(&sema, &nominal_def, krate)?,
         ));
-    } else if let Some(trait_def) = find_node_at_offset::<ast::TraitDef>(&syntax, position.offset) {
+    } else if let Some(trait_def) = find_node_at_offset::<ast::Trait>(&syntax, position.offset) {
         return Some(RangeInfo::new(
             trait_def.syntax().text_range(),
             impls_for_trait(&sema, &trait_def, krate)?,
@@ -40,13 +40,13 @@ pub(crate) fn goto_implementation(
 
 fn impls_for_def(
     sema: &Semantics<RootDatabase>,
-    node: &ast::NominalDef,
+    node: &ast::AdtDef,
     krate: Crate,
 ) -> Option<Vec<NavigationTarget>> {
     let ty = match node {
-        ast::NominalDef::StructDef(def) => sema.to_def(def)?.ty(sema.db),
-        ast::NominalDef::EnumDef(def) => sema.to_def(def)?.ty(sema.db),
-        ast::NominalDef::UnionDef(def) => sema.to_def(def)?.ty(sema.db),
+        ast::AdtDef::Struct(def) => sema.to_def(def)?.ty(sema.db),
+        ast::AdtDef::Enum(def) => sema.to_def(def)?.ty(sema.db),
+        ast::AdtDef::Union(def) => sema.to_def(def)?.ty(sema.db),
     };
 
     let impls = ImplDef::all_in_crate(sema.db, krate);
@@ -62,7 +62,7 @@ fn impls_for_def(
 
 fn impls_for_trait(
     sema: &Semantics<RootDatabase>,
-    node: &ast::TraitDef,
+    node: &ast::Trait,
     krate: Crate,
 ) -> Option<Vec<NavigationTarget>> {
     let tr = sema.to_def(node)?;
@@ -74,135 +74,156 @@ fn impls_for_trait(
 
 #[cfg(test)]
 mod tests {
-    use crate::mock_analysis::analysis_and_position;
+    use ra_db::FileRange;
 
-    fn check_goto(fixture: &str, expected: &[&str]) {
-        let (analysis, pos) = analysis_and_position(fixture);
+    use crate::mock_analysis::MockAnalysis;
 
-        let mut navs = analysis.goto_implementation(pos).unwrap().unwrap().info;
-        assert_eq!(navs.len(), expected.len());
-        navs.sort_by_key(|nav| (nav.file_id(), nav.full_range().start()));
-        navs.into_iter().enumerate().for_each(|(i, nav)| nav.assert_match(expected[i]));
+    fn check(ra_fixture: &str) {
+        let (mock, position) = MockAnalysis::with_files_and_position(ra_fixture);
+        let annotations = mock.annotations();
+        let analysis = mock.analysis();
+
+        let navs = analysis.goto_implementation(position).unwrap().unwrap().info;
+
+        let key = |frange: &FileRange| (frange.file_id, frange.range.start());
+
+        let mut expected = annotations
+            .into_iter()
+            .map(|(range, data)| {
+                assert!(data.is_empty());
+                range
+            })
+            .collect::<Vec<_>>();
+        expected.sort_by_key(key);
+
+        let mut actual = navs
+            .into_iter()
+            .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
+            .collect::<Vec<_>>();
+        actual.sort_by_key(key);
+
+        assert_eq!(expected, actual);
     }
 
     #[test]
     fn goto_implementation_works() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo<|>;
-            impl Foo {}
-            ",
-            &["impl IMPL_DEF FileId(1) 12..23"],
+        check(
+            r#"
+struct Foo<|>;
+impl Foo {}
+   //^^^
+"#,
         );
     }
 
     #[test]
     fn goto_implementation_works_multiple_blocks() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo<|>;
-            impl Foo {}
-            impl Foo {}
-            ",
-            &["impl IMPL_DEF FileId(1) 12..23", "impl IMPL_DEF FileId(1) 24..35"],
+        check(
+            r#"
+struct Foo<|>;
+impl Foo {}
+   //^^^
+impl Foo {}
+   //^^^
+"#,
         );
     }
 
     #[test]
     fn goto_implementation_works_multiple_mods() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo<|>;
-            mod a {
-                impl super::Foo {}
-            }
-            mod b {
-                impl super::Foo {}
-            }
-            ",
-            &["impl IMPL_DEF FileId(1) 24..42", "impl IMPL_DEF FileId(1) 57..75"],
+        check(
+            r#"
+struct Foo<|>;
+mod a {
+    impl super::Foo {}
+       //^^^^^^^^^^
+}
+mod b {
+    impl super::Foo {}
+       //^^^^^^^^^^
+}
+"#,
         );
     }
 
     #[test]
     fn goto_implementation_works_multiple_files() {
-        check_goto(
-            "
-            //- /lib.rs
-            struct Foo<|>;
-            mod a;
-            mod b;
-            //- /a.rs
-            impl crate::Foo {}
-            //- /b.rs
-            impl crate::Foo {}
-            ",
-            &["impl IMPL_DEF FileId(2) 0..18", "impl IMPL_DEF FileId(3) 0..18"],
+        check(
+            r#"
+//- /lib.rs
+struct Foo<|>;
+mod a;
+mod b;
+//- /a.rs
+impl crate::Foo {}
+   //^^^^^^^^^^
+//- /b.rs
+impl crate::Foo {}
+   //^^^^^^^^^^
+"#,
         );
     }
 
     #[test]
     fn goto_implementation_for_trait() {
-        check_goto(
-            "
-            //- /lib.rs
-            trait T<|> {}
-            struct Foo;
-            impl T for Foo {}
-            ",
-            &["impl IMPL_DEF FileId(1) 23..40"],
+        check(
+            r#"
+trait T<|> {}
+struct Foo;
+impl T for Foo {}
+         //^^^
+"#,
         );
     }
 
     #[test]
     fn goto_implementation_for_trait_multiple_files() {
-        check_goto(
-            "
-            //- /lib.rs
-            trait T<|> {};
-            struct Foo;
-            mod a;
-            mod b;
-            //- /a.rs
-            impl crate::T for crate::Foo {}
-            //- /b.rs
-            impl crate::T for crate::Foo {}
-            ",
-            &["impl IMPL_DEF FileId(2) 0..31", "impl IMPL_DEF FileId(3) 0..31"],
+        check(
+            r#"
+//- /lib.rs
+trait T<|> {};
+struct Foo;
+mod a;
+mod b;
+//- /a.rs
+impl crate::T for crate::Foo {}
+                //^^^^^^^^^^
+//- /b.rs
+impl crate::T for crate::Foo {}
+                //^^^^^^^^^^
+            "#,
         );
     }
 
     #[test]
     fn goto_implementation_all_impls() {
-        check_goto(
-            "
-            //- /lib.rs
-            trait T {}
-            struct Foo<|>;
-            impl Foo {}
-            impl T for Foo {}
-            impl T for &Foo {}
-            ",
-            &[
-                "impl IMPL_DEF FileId(1) 23..34",
-                "impl IMPL_DEF FileId(1) 35..52",
-                "impl IMPL_DEF FileId(1) 53..71",
-            ],
+        check(
+            r#"
+//- /lib.rs
+trait T {}
+struct Foo<|>;
+impl Foo {}
+   //^^^
+impl T for Foo {}
+         //^^^
+impl T for &Foo {}
+         //^^^^
+"#,
         );
     }
 
     #[test]
     fn goto_implementation_to_builtin_derive() {
-        check_goto(
-            "
-            //- /lib.rs
-            #[derive(Copy)]
-            struct Foo<|>;
-            ",
-            &["impl IMPL_DEF FileId(1) 0..15"],
+        check(
+            r#"
+  #[derive(Copy)]
+//^^^^^^^^^^^^^^^
+struct Foo<|>;
+
+mod marker {
+    trait Copy {}
+}
+"#,
         );
     }
 }

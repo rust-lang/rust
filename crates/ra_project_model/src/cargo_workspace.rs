@@ -1,6 +1,11 @@
 //! FIXME: write short doc here
 
-use std::{ffi::OsStr, ops, path::Path, process::Command};
+use std::{
+    ffi::OsStr,
+    ops,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use anyhow::{Context, Result};
 use cargo_metadata::{BuildScript, CargoOpt, Message, MetadataCommand, PackageId};
@@ -8,6 +13,8 @@ use paths::{AbsPath, AbsPathBuf};
 use ra_arena::{Arena, Idx};
 use ra_db::Edition;
 use rustc_hash::FxHashMap;
+
+use crate::cfg_flag::CfgFlag;
 
 /// `CargoWorkspace` represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -19,7 +26,7 @@ use rustc_hash::FxHashMap;
 ///
 /// We use absolute paths here, `cargo metadata` guarantees to always produce
 /// abs paths.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CargoWorkspace {
     packages: Arena<PackageData>,
     targets: Arena<TargetData>,
@@ -40,7 +47,7 @@ impl ops::Index<Target> for CargoWorkspace {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
     /// Do not activate the `default` feature.
     pub no_default_features: bool,
@@ -59,23 +66,11 @@ pub struct CargoConfig {
     pub target: Option<String>,
 }
 
-impl Default for CargoConfig {
-    fn default() -> Self {
-        CargoConfig {
-            no_default_features: false,
-            all_features: false,
-            features: Vec::new(),
-            load_out_dirs_from_check: false,
-            target: None,
-        }
-    }
-}
-
 pub type Package = Idx<PackageData>;
 
 pub type Target = Idx<TargetData>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PackageData {
     pub version: String,
     pub name: String,
@@ -85,18 +80,18 @@ pub struct PackageData {
     pub dependencies: Vec<PackageDependency>,
     pub edition: Edition,
     pub features: Vec<String>,
-    pub cfgs: Vec<String>,
+    pub cfgs: Vec<CfgFlag>,
     pub out_dir: Option<AbsPathBuf>,
     pub proc_macro_dylib_path: Option<AbsPathBuf>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PackageDependency {
     pub pkg: Package,
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TargetData {
     pub package: Package,
     pub name: String,
@@ -141,28 +136,31 @@ impl PackageData {
 
 impl CargoWorkspace {
     pub fn from_cargo_metadata(
-        cargo_toml: &Path,
+        cargo_toml: &AbsPath,
         cargo_features: &CargoConfig,
     ) -> Result<CargoWorkspace> {
         let mut meta = MetadataCommand::new();
         meta.cargo_path(ra_toolchain::cargo());
-        meta.manifest_path(cargo_toml);
+        meta.manifest_path(cargo_toml.to_path_buf());
         if cargo_features.all_features {
             meta.features(CargoOpt::AllFeatures);
-        } else if cargo_features.no_default_features {
-            // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
-            // https://github.com/oli-obk/cargo_metadata/issues/79
-            meta.features(CargoOpt::NoDefaultFeatures);
-        } else if !cargo_features.features.is_empty() {
-            meta.features(CargoOpt::SomeFeatures(cargo_features.features.clone()));
+        } else {
+            if cargo_features.no_default_features {
+                // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
+                // https://github.com/oli-obk/cargo_metadata/issues/79
+                meta.features(CargoOpt::NoDefaultFeatures);
+            }
+            if !cargo_features.features.is_empty() {
+                meta.features(CargoOpt::SomeFeatures(cargo_features.features.clone()));
+            }
         }
         if let Some(parent) = cargo_toml.parent() {
-            meta.current_dir(parent);
+            meta.current_dir(parent.to_path_buf());
         }
         if let Some(target) = cargo_features.target.as_ref() {
             meta.other_options(vec![String::from("--filter-platform"), target.clone()]);
         }
-        let meta = meta.exec().with_context(|| {
+        let mut meta = meta.exec().with_context(|| {
             format!("Failed to run `cargo metadata --manifest-path {}`", cargo_toml.display())
         })?;
 
@@ -182,6 +180,7 @@ impl CargoWorkspace {
 
         let ws_members = &meta.workspace_members;
 
+        meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in meta.packages {
             let cargo_metadata::Package { id, edition, name, manifest_path, version, .. } =
                 meta_pkg;
@@ -217,7 +216,7 @@ impl CargoWorkspace {
             }
         }
         let resolve = meta.resolve.expect("metadata executed with deps");
-        for node in resolve.nodes {
+        for mut node in resolve.nodes {
             let source = match pkg_by_id.get(&node.id) {
                 Some(&src) => src,
                 // FIXME: replace this and a similar branch below with `.unwrap`, once
@@ -228,6 +227,7 @@ impl CargoWorkspace {
                     continue;
                 }
             };
+            node.deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
             for dep_node in node.deps {
                 let pkg = match pkg_by_id.get(&dep_node.pkg) {
                     Some(&pkg) => pkg,
@@ -281,7 +281,7 @@ impl CargoWorkspace {
 pub struct ExternResources {
     out_dirs: FxHashMap<PackageId, AbsPathBuf>,
     proc_dylib_paths: FxHashMap<PackageId, AbsPathBuf>,
-    cfgs: FxHashMap<PackageId, Vec<String>>,
+    cfgs: FxHashMap<PackageId, Vec<CfgFlag>>,
 }
 
 pub fn load_extern_resources(
@@ -292,12 +292,16 @@ pub fn load_extern_resources(
     cmd.args(&["check", "--message-format=json", "--manifest-path"]).arg(cargo_toml);
     if cargo_features.all_features {
         cmd.arg("--all-features");
-    } else if cargo_features.no_default_features {
-        // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
-        // https://github.com/oli-obk/cargo_metadata/issues/79
-        cmd.arg("--no-default-features");
     } else {
-        cmd.args(&cargo_features.features);
+        if cargo_features.no_default_features {
+            // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
+            // https://github.com/oli-obk/cargo_metadata/issues/79
+            cmd.arg("--no-default-features");
+        }
+        if !cargo_features.features.is_empty() {
+            cmd.arg("--features");
+            cmd.arg(cargo_features.features.join(" "));
+        }
     }
 
     let output = cmd.output()?;
@@ -308,9 +312,25 @@ pub fn load_extern_resources(
         if let Ok(message) = message {
             match message {
                 Message::BuildScriptExecuted(BuildScript { package_id, out_dir, cfgs, .. }) => {
-                    let out_dir = AbsPathBuf::assert(out_dir);
-                    res.out_dirs.insert(package_id.clone(), out_dir);
-                    res.cfgs.insert(package_id, cfgs);
+                    let cfgs = {
+                        let mut acc = Vec::new();
+                        for cfg in cfgs {
+                            match cfg.parse::<CfgFlag>() {
+                                Ok(it) => acc.push(it),
+                                Err(err) => {
+                                    anyhow::bail!("invalid cfg from cargo-metadata: {}", err)
+                                }
+                            };
+                        }
+                        acc
+                    };
+                    // cargo_metadata crate returns default (empty) path for
+                    // older cargos, which is not absolute, so work around that.
+                    if out_dir != PathBuf::default() {
+                        let out_dir = AbsPathBuf::assert(out_dir);
+                        res.out_dirs.insert(package_id.clone(), out_dir);
+                        res.cfgs.insert(package_id, cfgs);
+                    }
                 }
                 Message::CompilerArtifact(message) => {
                     if message.target.kind.contains(&"proc-macro".to_string()) {

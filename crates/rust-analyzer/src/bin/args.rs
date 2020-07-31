@@ -3,12 +3,13 @@
 //! If run started args, we run the LSP server loop. With a subcommand, we do a
 //! one-time batch processing.
 
+use std::{env, fmt::Write, path::PathBuf};
+
 use anyhow::{bail, Result};
 use pico_args::Arguments;
-use ra_ssr::SsrRule;
-use rust_analyzer::cli::{BenchWhat, Position, Verbosity};
-
-use std::{fmt::Write, path::PathBuf};
+use ra_ssr::{SsrPattern, SsrRule};
+use rust_analyzer::cli::{AnalysisStatsCmd, BenchCmd, BenchWhat, Position, Verbosity};
+use vfs::AbsPathBuf;
 
 pub(crate) struct Args {
     pub(crate) verbosity: Verbosity,
@@ -23,21 +24,8 @@ pub(crate) enum Command {
     Highlight {
         rainbow: bool,
     },
-    Stats {
-        randomize: bool,
-        memory_usage: bool,
-        only: Option<String>,
-        with_deps: bool,
-        path: PathBuf,
-        load_output_dirs: bool,
-        with_proc_macro: bool,
-    },
-    Bench {
-        path: PathBuf,
-        what: BenchWhat,
-        load_output_dirs: bool,
-        with_proc_macro: bool,
-    },
+    AnalysisStats(AnalysisStatsCmd),
+    Bench(BenchCmd),
     Diagnostics {
         path: PathBuf,
         load_output_dirs: bool,
@@ -48,6 +36,10 @@ pub(crate) enum Command {
     },
     Ssr {
         rules: Vec<SsrRule>,
+    },
+    StructuredSearch {
+        debug_snippet: Option<String>,
+        patterns: Vec<SsrPattern>,
     },
     ProcMacro,
     RunServer,
@@ -98,7 +90,7 @@ USAGE:
     rust-analyzer parse [FLAGS]
 
 FLAGS:
-    -h, --help       Prints help inforamtion
+    -h, --help       Prints help information
         --no-dump"
                     );
                     return Ok(Err(HelpPrinted));
@@ -157,10 +149,14 @@ USAGE:
     rust-analyzer analysis-stats [FLAGS] [OPTIONS] [PATH]
 
 FLAGS:
+    -o, --only              Only analyze items matching this path
     -h, --help              Prints help information
-        --memory-usage
+        --memory-usage      Collect memory usage statistics
+        --randomize         Randomize order in which crates, modules, and items are processed
+        --parallel          Run type inference in parallel
         --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
-        --with-proc-macro    Use ra-proc-macro-srv for proc-macro expanding
+        --with-proc-macro   Use ra-proc-macro-srv for proc-macro expanding
+        --with-deps         Also analyze all dependencies
     -v, --verbose
     -q, --quiet
 
@@ -174,6 +170,7 @@ ARGS:
                 }
 
                 let randomize = matches.contains("--randomize");
+                let parallel = matches.contains("--parallel");
                 let memory_usage = matches.contains("--memory-usage");
                 let only: Option<String> = matches.opt_value_from_str(["-o", "--only"])?;
                 let with_deps: bool = matches.contains("--with-deps");
@@ -187,15 +184,16 @@ ARGS:
                     trailing.pop().unwrap().into()
                 };
 
-                Command::Stats {
+                Command::AnalysisStats(AnalysisStatsCmd {
                     randomize,
+                    parallel,
                     memory_usage,
                     only,
                     with_deps,
                     path,
                     load_output_dirs,
                     with_proc_macro,
-                }
+                })
             }
             "analysis-bench" => {
                 if matches.contains(["-h", "--help"]) {
@@ -208,8 +206,9 @@ USAGE:
 
 FLAGS:
     -h, --help          Prints help information
+    --memory-usage      Collect memory usage statistics
     --load-output-dirs  Load OUT_DIR values by running `cargo check` before analysis
-    --with-proc-macro    Use ra-proc-macro-srv for proc-macro expanding
+    --with-proc-macro   Use ra-proc-macro-srv for proc-macro expanding
     -v, --verbose
 
 OPTIONS:
@@ -229,16 +228,26 @@ ARGS:
                 let complete_path: Option<Position> = matches.opt_value_from_str("--complete")?;
                 let goto_def_path: Option<Position> = matches.opt_value_from_str("--goto-def")?;
                 let what = match (highlight_path, complete_path, goto_def_path) {
-                    (Some(path), None, None) => BenchWhat::Highlight { path: path.into() },
+                    (Some(path), None, None) => {
+                        let path = env::current_dir().unwrap().join(path);
+                        BenchWhat::Highlight { path: AbsPathBuf::assert(path) }
+                    }
                     (None, Some(position), None) => BenchWhat::Complete(position),
                     (None, None, Some(position)) => BenchWhat::GotoDef(position),
                     _ => panic!(
                         "exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"
                     ),
                 };
+                let memory_usage = matches.contains("--memory-usage");
                 let load_output_dirs = matches.contains("--load-output-dirs");
                 let with_proc_macro = matches.contains("--with-proc-macro");
-                Command::Bench { path, what, load_output_dirs, with_proc_macro }
+                Command::Bench(BenchCmd {
+                    memory_usage,
+                    path,
+                    what,
+                    load_output_dirs,
+                    with_proc_macro,
+                })
             }
             "diagnostics" => {
                 if matches.contains(["-h", "--help"]) {
@@ -287,6 +296,7 @@ EXAMPLE:
     rust-analyzer ssr '$a.foo($b) ==> bar($a, $b)'
 
 FLAGS:
+    --debug <snippet>   Prints debug information for any nodes with source exactly equal to <snippet>
     -h, --help          Prints help information
 
 ARGS:
@@ -299,6 +309,34 @@ ARGS:
                     rules.push(rule);
                 }
                 Command::Ssr { rules }
+            }
+            "search" => {
+                if matches.contains(["-h", "--help"]) {
+                    eprintln!(
+                        "\
+rust-analyzer search
+
+USAGE:
+    rust-analyzer search [FLAGS] [PATTERN...]
+
+EXAMPLE:
+    rust-analyzer search '$a.foo($b)'
+
+FLAGS:
+    --debug <snippet>   Prints debug information for any nodes with source exactly equal to <snippet>
+    -h, --help          Prints help information
+
+ARGS:
+    <PATTERN>           A structured search pattern"
+                    );
+                    return Ok(Err(HelpPrinted));
+                }
+                let debug_snippet = matches.opt_value_from_str("--debug")?;
+                let mut patterns = Vec::new();
+                while let Some(rule) = matches.free_from_str()? {
+                    patterns.push(rule);
+                }
+                Command::StructuredSearch { patterns, debug_snippet }
             }
             _ => {
                 print_subcommands();
@@ -327,6 +365,7 @@ SUBCOMMANDS:
     diagnostics
     proc-macro
     parse
+    search
     ssr
     symbols"
     )

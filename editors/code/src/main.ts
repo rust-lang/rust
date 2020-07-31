@@ -19,6 +19,16 @@ let ctx: Ctx | undefined;
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
 export async function activate(context: vscode.ExtensionContext) {
+    // For some reason vscode not always shows pop-up error notifications
+    // when an extension fails to activate, so we do it explicitly by ourselves.
+    // FIXME: remove this bit of code once vscode fixes this issue: https://github.com/microsoft/vscode/issues/101242
+    await tryActivate(context).catch(err => {
+        void vscode.window.showErrorMessage(`Cannot activate rust-analyzer: ${err.message}`);
+        throw err;
+    });
+}
+
+async function tryActivate(context: vscode.ExtensionContext) {
     // Register a "dumb" onEnter command for the case where server fails to
     // start.
     //
@@ -44,13 +54,13 @@ export async function activate(context: vscode.ExtensionContext) {
     const serverPath = await bootstrap(config, state).catch(err => {
         let message = "bootstrap error. ";
 
-        if (err.code === "EBUSY" || err.code === "ETXTBSY") {
+        if (err.code === "EBUSY" || err.code === "ETXTBSY" || err.code === "EPERM") {
             message += "Other vscode windows might be using rust-analyzer, ";
             message += "you should close them and reload this window to retry. ";
         }
 
-        message += 'Open "Help > Toggle Developer Tools > Console" to see the logs ';
-        message += '(enable verbose logs with "rust-analyzer.trace.extension")';
+        message += 'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
+        message += 'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
 
         log.error("Bootstrap error", err);
         throw new Error(message);
@@ -58,9 +68,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (workspaceFolder === undefined) {
-        const err = "Cannot activate rust-analyzer when no folder is opened";
-        void vscode.window.showErrorMessage(err);
-        throw new Error(err);
+        throw new Error("no folder is opened");
     }
 
     // Note: we try to start the server before we activate type hints so that it
@@ -88,7 +96,8 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
-    ctx.registerCommand('collectGarbage', commands.collectGarbage);
+    ctx.registerCommand('memoryUsage', commands.memoryUsage);
+    ctx.registerCommand('reloadWorkspace', commands.reloadWorkspace);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
     ctx.registerCommand('joinLines', commands.joinLines);
     ctx.registerCommand('parentModule', commands.parentModule);
@@ -152,13 +161,17 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         return;
     };
 
-    const lastCheck = state.lastCheck;
     const now = Date.now();
+    if (config.package.releaseTag === NIGHTLY_TAG) {
+        // Check if we should poll github api for the new nightly version
+        // if we haven't done it during the past hour
+        const lastCheck = state.lastCheck;
 
-    const anHour = 60 * 60 * 1000;
-    const shouldDownloadNightly = state.releaseId === undefined || (now - (lastCheck ?? 0)) > anHour;
+        const anHour = 60 * 60 * 1000;
+        const shouldCheckForNewNightly = state.releaseId === undefined || (now - (lastCheck ?? 0)) > anHour;
 
-    if (!shouldDownloadNightly) return;
+        if (!shouldCheckForNewNightly) return;
+    }
 
     const release = await fetchRelease("nightly").catch((e) => {
         log.error(e);
@@ -202,7 +215,7 @@ async function bootstrapServer(config: Config, state: PersistentState): Promise<
         );
     }
 
-    log.debug("Using server binary at", path);
+    log.info("Using server binary at", path);
 
     if (!isValidExecutable(path)) {
         throw new Error(`Failed to execute ${path} --version`);
@@ -261,13 +274,13 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     };
     if (config.package.releaseTag === null) return "rust-analyzer";
 
-    let binaryName: string | undefined = undefined;
+    let platform: string | undefined;
     if (process.arch === "x64" || process.arch === "ia32") {
-        if (process.platform === "linux") binaryName = "rust-analyzer-linux";
-        if (process.platform === "darwin") binaryName = "rust-analyzer-mac";
-        if (process.platform === "win32") binaryName = "rust-analyzer-windows.exe";
+        if (process.platform === "linux") platform = "linux";
+        if (process.platform === "darwin") platform = "mac";
+        if (process.platform === "win32") platform = "windows";
     }
-    if (binaryName === undefined) {
+    if (platform === undefined) {
         vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
             "You need to manually clone rust-analyzer repository and " +
@@ -278,8 +291,8 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         );
         return undefined;
     }
-
-    const dest = path.join(config.globalStoragePath, binaryName);
+    const ext = platform === "windows" ? ".exe" : "";
+    const dest = path.join(config.globalStoragePath, `rust-analyzer-${platform}${ext}`);
     const exists = await fs.stat(dest).then(() => true, () => false);
     if (!exists) {
         await state.updateServerVersion(undefined);
@@ -296,7 +309,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     }
 
     const release = await fetchRelease(config.package.releaseTag);
-    const artifact = release.assets.find(artifact => artifact.name === binaryName);
+    const artifact = release.assets.find(artifact => artifact.name === `rust-analyzer-${platform}.gz`);
     assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
 
     // Unlinking the exe file before moving new one on its place should prevent ETXTBSY error.
@@ -308,6 +321,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         url: artifact.browser_download_url,
         dest,
         progressTitle: "Downloading rust-analyzer server",
+        gunzip: true,
         mode: 0o755
     });
 

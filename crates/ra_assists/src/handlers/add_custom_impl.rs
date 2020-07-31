@@ -8,7 +8,7 @@ use stdx::SepBy;
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    AssistId,
+    AssistId, AssistKind,
 };
 
 // Assist: add_custom_impl
@@ -29,8 +29,8 @@ use crate::{
 // }
 // ```
 pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let input = ctx.find_node_at_offset::<ast::AttrInput>()?;
-    let attr = input.syntax().parent().and_then(ast::Attr::cast)?;
+    let attr = ctx.find_node_at_offset::<ast::Attr>()?;
+    let input = attr.token_tree()?;
 
     let attr_name = attr
         .syntax()
@@ -52,7 +52,7 @@ pub(crate) fn add_custom_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<
         format!("Add custom impl `{}` for `{}`", trait_token.text().as_str(), annotated_name);
 
     let target = attr.syntax().text_range();
-    acc.add(AssistId("add_custom_impl"), label, target, |builder| {
+    acc.add(AssistId("add_custom_impl", AssistKind::Refactor), label, target, |builder| {
         let new_attr_input = input
             .syntax()
             .descendants_with_tokens()

@@ -1,7 +1,7 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use ra_syntax::ast::{self, TypeAscriptionOwner, TypeBoundsOwner};
+use ra_syntax::ast::{self};
 
 use crate::{body::LowerCtx, path::Path};
 
@@ -63,7 +63,7 @@ pub enum TypeRef {
     Array(Box<TypeRef> /*, Expr*/),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
-    Fn(Vec<TypeRef>),
+    Fn(Vec<TypeRef>, bool /*varargs*/),
     // For
     ImplTrait(Vec<TypeBound>),
     DynTrait(Vec<TypeBound>),
@@ -82,7 +82,7 @@ impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
     pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::TypeRef) -> Self {
         match node {
-            ast::TypeRef::ParenType(inner) => TypeRef::from_ast_opt(&ctx, inner.type_ref()),
+            ast::TypeRef::ParenType(inner) => TypeRef::from_ast_opt(&ctx, inner.ty()),
             ast::TypeRef::TupleType(inner) => {
                 TypeRef::Tuple(inner.fields().map(|it| TypeRef::from_ast(ctx, it)).collect())
             }
@@ -96,18 +96,18 @@ impl TypeRef {
                     .unwrap_or(TypeRef::Error)
             }
             ast::TypeRef::PointerType(inner) => {
-                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.type_ref());
+                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
             ast::TypeRef::ArrayType(inner) => {
-                TypeRef::Array(Box::new(TypeRef::from_ast_opt(&ctx, inner.type_ref())))
+                TypeRef::Array(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())))
             }
             ast::TypeRef::SliceType(inner) => {
-                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(&ctx, inner.type_ref())))
+                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())))
             }
             ast::TypeRef::ReferenceType(inner) => {
-                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.type_ref());
+                let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::Reference(Box::new(inner_ty), mutability)
             }
@@ -115,22 +115,24 @@ impl TypeRef {
             ast::TypeRef::FnPointerType(inner) => {
                 let ret_ty = inner
                     .ret_type()
-                    .and_then(|rt| rt.type_ref())
+                    .and_then(|rt| rt.ty())
                     .map(|it| TypeRef::from_ast(ctx, it))
                     .unwrap_or_else(|| TypeRef::Tuple(Vec::new()));
+                let mut is_varargs = false;
                 let mut params = if let Some(pl) = inner.param_list() {
-                    pl.params()
-                        .map(|p| p.ascribed_type())
-                        .map(|it| TypeRef::from_ast_opt(&ctx, it))
-                        .collect()
+                    if let Some(param) = pl.params().last() {
+                        is_varargs = param.dotdotdot_token().is_some();
+                    }
+
+                    pl.params().map(|p| p.ty()).map(|it| TypeRef::from_ast_opt(&ctx, it)).collect()
                 } else {
                     Vec::new()
                 };
                 params.push(ret_ty);
-                TypeRef::Fn(params)
+                TypeRef::Fn(params, is_varargs)
             }
             // for types are close enough for our purposes to the inner type for now...
-            ast::TypeRef::ForType(inner) => TypeRef::from_ast_opt(&ctx, inner.type_ref()),
+            ast::TypeRef::ForType(inner) => TypeRef::from_ast_opt(&ctx, inner.ty()),
             ast::TypeRef::ImplTraitType(inner) => {
                 TypeRef::ImplTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
@@ -158,7 +160,9 @@ impl TypeRef {
         fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
             f(type_ref);
             match type_ref {
-                TypeRef::Fn(types) | TypeRef::Tuple(types) => types.iter().for_each(|t| go(t, f)),
+                TypeRef::Fn(types, _) | TypeRef::Tuple(types) => {
+                    types.iter().for_each(|t| go(t, f))
+                }
                 TypeRef::RawPtr(type_ref, _)
                 | TypeRef::Reference(type_ref, _)
                 | TypeRef::Array(type_ref)

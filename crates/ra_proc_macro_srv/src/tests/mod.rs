@@ -11,7 +11,7 @@ fn test_derive_serialize_proc_macro() {
         "serde_derive",
         "Serialize",
         "1.0",
-        r##"struct Foo {}"##,
+        r"struct Foo {}",
         include_str!("fixtures/test_serialize_proc_macro.txt"),
     );
 }
@@ -22,9 +22,7 @@ fn test_derive_serialize_proc_macro_failed() {
         "serde_derive",
         "Serialize",
         "1.0",
-        r##"
-    struct {}
-"##,
+        r"struct {}",
         r##"
 SUBTREE $
   IDENT   compile_error 4294967295

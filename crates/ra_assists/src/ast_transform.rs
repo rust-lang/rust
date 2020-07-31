@@ -2,7 +2,6 @@
 use rustc_hash::FxHashMap;
 
 use hir::{HirDisplay, PathResolution, SemanticsScope};
-use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::SyntaxRewriter,
     ast::{self, AstNode},
@@ -32,17 +31,17 @@ impl<'a> AstTransform<'a> for NullTransformer {
 }
 
 pub struct SubstituteTypeParams<'a> {
-    source_scope: &'a SemanticsScope<'a, RootDatabase>,
+    source_scope: &'a SemanticsScope<'a>,
     substs: FxHashMap<hir::TypeParam, ast::TypeRef>,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
 impl<'a> SubstituteTypeParams<'a> {
     pub fn for_trait_impl(
-        source_scope: &'a SemanticsScope<'a, RootDatabase>,
+        source_scope: &'a SemanticsScope<'a>,
         // FIXME: there's implicit invariant that `trait_` and  `source_scope` match...
         trait_: hir::Trait,
-        impl_def: ast::ImplDef,
+        impl_def: ast::Impl,
     ) -> SubstituteTypeParams<'a> {
         let substs = get_syntactic_substs(impl_def).unwrap_or_default();
         let generic_def: hir::GenericDef = trait_.into();
@@ -81,7 +80,7 @@ impl<'a> SubstituteTypeParams<'a> {
 
         // FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
         // trait ref, and then go from the types in the substs back to the syntax)
-        fn get_syntactic_substs(impl_def: ast::ImplDef) -> Option<Vec<ast::TypeRef>> {
+        fn get_syntactic_substs(impl_def: ast::Impl) -> Option<Vec<ast::TypeRef>> {
             let target_trait = impl_def.target_trait()?;
             let path_type = match target_trait {
                 ast::TypeRef::PathType(path) => path,
@@ -126,16 +125,13 @@ impl<'a> AstTransform<'a> for SubstituteTypeParams<'a> {
 }
 
 pub struct QualifyPaths<'a> {
-    target_scope: &'a SemanticsScope<'a, RootDatabase>,
-    source_scope: &'a SemanticsScope<'a, RootDatabase>,
+    target_scope: &'a SemanticsScope<'a>,
+    source_scope: &'a SemanticsScope<'a>,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
 impl<'a> QualifyPaths<'a> {
-    pub fn new(
-        target_scope: &'a SemanticsScope<'a, RootDatabase>,
-        source_scope: &'a SemanticsScope<'a, RootDatabase>,
-    ) -> Self {
+    pub fn new(target_scope: &'a SemanticsScope<'a>, source_scope: &'a SemanticsScope<'a>) -> Self {
         Self { target_scope, source_scope, previous: Box::new(NullTransformer) }
     }
 
@@ -156,7 +152,7 @@ impl<'a> QualifyPaths<'a> {
         let resolution = self.source_scope.resolve_hir_path(&hir_path?)?;
         match resolution {
             PathResolution::Def(def) => {
-                let found_path = from.find_use_path(self.source_scope.db, def)?;
+                let found_path = from.find_use_path(self.source_scope.db.upcast(), def)?;
                 let mut path = path_to_ast(found_path);
 
                 let type_args = p

@@ -9,7 +9,7 @@ use test_utils::mark;
 use super::{InferenceContext, Obligation};
 use crate::{
     BoundVar, Canonical, DebruijnIndex, GenericPredicate, InEnvironment, InferTy, Substs, Ty,
-    TypeCtor, TypeWalk,
+    TyKind, TypeCtor, TypeWalk,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -86,10 +86,20 @@ where
     }
 
     fn into_canonicalized<T>(self, result: T) -> Canonicalized<T> {
-        Canonicalized {
-            value: Canonical { value: result, num_vars: self.free_vars.len() },
-            free_vars: self.free_vars,
-        }
+        let kinds = self
+            .free_vars
+            .iter()
+            .map(|v| match v {
+                // mapping MaybeNeverTypeVar to the same kind as general ones
+                // should be fine, because as opposed to int or float type vars,
+                // they don't restrict what kind of type can go into them, they
+                // just affect fallback.
+                InferTy::TypeVar(_) | InferTy::MaybeNeverTypeVar(_) => TyKind::General,
+                InferTy::IntVar(_) => TyKind::Integer,
+                InferTy::FloatVar(_) => TyKind::Float,
+            })
+            .collect();
+        Canonicalized { value: Canonical { value: result, kinds }, free_vars: self.free_vars }
     }
 
     pub(crate) fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
@@ -131,26 +141,41 @@ impl<T> Canonicalized<T> {
         ty
     }
 
-    pub fn apply_solution(&self, ctx: &mut InferenceContext<'_>, solution: Canonical<Vec<Ty>>) {
+    pub fn apply_solution(&self, ctx: &mut InferenceContext<'_>, solution: Canonical<Substs>) {
         // the solution may contain new variables, which we need to convert to new inference vars
-        let new_vars = Substs((0..solution.num_vars).map(|_| ctx.table.new_type_var()).collect());
+        let new_vars = Substs(
+            solution
+                .kinds
+                .iter()
+                .map(|k| match k {
+                    TyKind::General => ctx.table.new_type_var(),
+                    TyKind::Integer => ctx.table.new_integer_var(),
+                    TyKind::Float => ctx.table.new_float_var(),
+                })
+                .collect(),
+        );
         for (i, ty) in solution.value.into_iter().enumerate() {
             let var = self.free_vars[i];
             // eagerly replace projections in the type; we may be getting types
             // e.g. from where clauses where this hasn't happened yet
-            let ty = ctx.normalize_associated_types_in(ty.subst_bound_vars(&new_vars));
+            let ty = ctx.normalize_associated_types_in(ty.clone().subst_bound_vars(&new_vars));
             ctx.table.unify(&Ty::Infer(var), &ty);
         }
     }
 }
 
-pub fn unify(ty1: &Canonical<Ty>, ty2: &Canonical<Ty>) -> Option<Substs> {
+pub fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substs> {
     let mut table = InferenceTable::new();
-    let num_vars = ty1.num_vars.max(ty2.num_vars);
-    let vars =
-        Substs::builder(num_vars).fill(std::iter::repeat_with(|| table.new_type_var())).build();
-    let ty1_with_vars = ty1.value.clone().subst_bound_vars(&vars);
-    let ty2_with_vars = ty2.value.clone().subst_bound_vars(&vars);
+    let vars = Substs(
+        tys.kinds
+            .iter()
+            // we always use type vars here because we want everything to
+            // fallback to Unknown in the end (kind of hacky, as below)
+            .map(|_| table.new_type_var())
+            .collect(),
+    );
+    let ty1_with_vars = tys.value.0.clone().subst_bound_vars(&vars);
+    let ty2_with_vars = tys.value.1.clone().subst_bound_vars(&vars);
     if !table.unify(&ty1_with_vars, &ty2_with_vars) {
         return None;
     }
@@ -162,7 +187,7 @@ pub fn unify(ty1: &Canonical<Ty>, ty2: &Canonical<Ty>) -> Option<Substs> {
         }
     }
     Some(
-        Substs::builder(ty1.num_vars)
+        Substs::builder(tys.kinds.len())
             .fill(vars.iter().map(|v| table.resolve_ty_completely(v.clone())))
             .build(),
     )

@@ -12,7 +12,7 @@ use crate::{
     assist_context::{AssistContext, Assists},
     ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
     utils::{get_missing_assoc_items, render_snippet, resolve_target_trait, Cursor},
-    AssistId,
+    AssistId, AssistKind,
 };
 
 #[derive(PartialEq)]
@@ -111,16 +111,17 @@ fn add_missing_impl_members_inner(
     label: &'static str,
 ) -> Option<()> {
     let _p = ra_prof::profile("add_missing_impl_members_inner");
-    let impl_def = ctx.find_node_at_offset::<ast::ImplDef>()?;
-    let impl_item_list = impl_def.item_list()?;
+    let impl_def = ctx.find_node_at_offset::<ast::Impl>()?;
+    let impl_item_list = impl_def.assoc_item_list()?;
 
     let trait_ = resolve_target_trait(&ctx.sema, &impl_def)?;
 
     let def_name = |item: &ast::AssocItem| -> Option<SmolStr> {
         match item {
-            ast::AssocItem::FnDef(def) => def.name(),
-            ast::AssocItem::TypeAliasDef(def) => def.name(),
-            ast::AssocItem::ConstDef(def) => def.name(),
+            ast::AssocItem::Fn(def) => def.name(),
+            ast::AssocItem::TypeAlias(def) => def.name(),
+            ast::AssocItem::Const(def) => def.name(),
+            ast::AssocItem::MacroCall(_) => None,
         }
         .map(|it| it.text().clone())
     };
@@ -128,13 +129,13 @@ fn add_missing_impl_members_inner(
     let missing_items = get_missing_assoc_items(&ctx.sema, &impl_def)
         .iter()
         .map(|i| match i {
-            hir::AssocItem::Function(i) => ast::AssocItem::FnDef(i.source(ctx.db).value),
-            hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAliasDef(i.source(ctx.db).value),
-            hir::AssocItem::Const(i) => ast::AssocItem::ConstDef(i.source(ctx.db).value),
+            hir::AssocItem::Function(i) => ast::AssocItem::Fn(i.source(ctx.db()).value),
+            hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(i.source(ctx.db()).value),
+            hir::AssocItem::Const(i) => ast::AssocItem::Const(i.source(ctx.db()).value),
         })
         .filter(|t| def_name(&t).is_some())
         .filter(|t| match t {
-            ast::AssocItem::FnDef(def) => match mode {
+            ast::AssocItem::Fn(def) => match mode {
                 AddMissingImplMembersMode::DefaultMethodsOnly => def.body().is_some(),
                 AddMissingImplMembersMode::NoDefaultMethods => def.body().is_none(),
             },
@@ -147,7 +148,7 @@ fn add_missing_impl_members_inner(
     }
 
     let target = impl_def.syntax().text_range();
-    acc.add(AssistId(assist_id), label, target, |builder| {
+    acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |builder| {
         let n_existing_items = impl_item_list.assoc_items().count();
         let source_scope = ctx.sema.scope_for_def(trait_);
         let target_scope = ctx.sema.scope(impl_item_list.syntax());
@@ -157,7 +158,8 @@ fn add_missing_impl_members_inner(
             .into_iter()
             .map(|it| ast_transform::apply(&*ast_transform, it))
             .map(|it| match it {
-                ast::AssocItem::FnDef(def) => ast::AssocItem::FnDef(add_body(def)),
+                ast::AssocItem::Fn(def) => ast::AssocItem::Fn(add_body(def)),
+                ast::AssocItem::TypeAlias(def) => ast::AssocItem::TypeAlias(def.remove_bounds()),
                 _ => it,
             })
             .map(|it| edit::remove_attrs_and_docs(&it));
@@ -170,7 +172,7 @@ fn add_missing_impl_members_inner(
             Some(cap) => {
                 let mut cursor = Cursor::Before(first_new_item.syntax());
                 let placeholder;
-                if let ast::AssocItem::FnDef(func) = &first_new_item {
+                if let ast::AssocItem::Fn(func) = &first_new_item {
                     if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast) {
                         if m.syntax().text() == "todo!()" {
                             placeholder = m;
@@ -188,7 +190,7 @@ fn add_missing_impl_members_inner(
     })
 }
 
-fn add_body(fn_def: ast::FnDef) -> ast::FnDef {
+fn add_body(fn_def: ast::Fn) -> ast::Fn {
     if fn_def.body().is_some() {
         return fn_def;
     }
@@ -681,6 +683,28 @@ impl Foo<T> for S<T> {
     fn bar(&self, this: &T, that: &Self) {
         ${0:todo!()}
     }
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_assoc_type_bounds_are_removed() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Tr {
+    type Ty: Copy + 'static;
+}
+
+impl Tr for ()<|> {
+}"#,
+            r#"
+trait Tr {
+    type Ty: Copy + 'static;
+}
+
+impl Tr for () {
+    $0type Ty;
 }"#,
         )
     }

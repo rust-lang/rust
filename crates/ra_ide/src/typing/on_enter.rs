@@ -7,10 +7,31 @@ use ra_syntax::{
     ast::{self, AstToken},
     AstNode, SmolStr, SourceFile,
     SyntaxKind::*,
-    SyntaxToken, TextSize, TokenAtOffset,
+    SyntaxToken, TextRange, TextSize, TokenAtOffset,
 };
 use ra_text_edit::TextEdit;
+use test_utils::mark;
 
+// Feature: On Enter
+//
+// rust-analyzer can override kbd:[Enter] key to make it smarter:
+//
+// - kbd:[Enter] inside triple-slash comments automatically inserts `///`
+// - kbd:[Enter] in the middle or after a trailing space in `//` inserts `//`
+//
+// This action needs to be assigned to shortcut explicitly.
+//
+// VS Code::
+//
+// Add the following to `keybindings.json`:
+// [source,json]
+// ----
+// {
+//   "key": "Enter",
+//   "command": "rust-analyzer.onEnter",
+//   "when": "editorTextFocus && !suggestWidgetVisible && editorLangId == rust"
+// }
+// ----
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<TextEdit> {
     let parse = db.parse(position.file_id);
     let file = parse.tree();
@@ -30,15 +51,25 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
         return None;
     }
 
+    let mut remove_last_space = false;
     // Continuing single-line non-doc comments (like this one :) ) is annoying
-    if prefix == "//" && comment_range.end() == position.offset && !followed_by_comment(&comment) {
-        return None;
+    if prefix == "//" && comment_range.end() == position.offset {
+        if comment.text().ends_with(' ') {
+            mark::hit!(continues_end_of_line_comment_with_space);
+            remove_last_space = true;
+        } else if !followed_by_comment(&comment) {
+            return None;
+        }
     }
 
     let indent = node_indent(&file, comment.syntax())?;
     let inserted = format!("\n{}{} $0", indent, prefix);
-    let edit = TextEdit::insert(position.offset, inserted);
-
+    let delete = if remove_last_space {
+        TextRange::new(position.offset - TextSize::of(' '), position.offset)
+    } else {
+        TextRange::empty(position.offset)
+    };
+    let edit = TextEdit::replace(delete, inserted);
     Some(edit)
 }
 
@@ -75,10 +106,10 @@ fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::assert_eq_text;
+    use stdx::trim_indent;
+    use test_utils::{assert_eq_text, mark};
 
     use crate::mock_analysis::analysis_and_position;
-    use stdx::trim_indent;
 
     fn apply_on_enter(before: &str) -> Option<String> {
         let (analysis, position) = analysis_and_position(&before);
@@ -192,7 +223,7 @@ fn main() {
     }
 
     #[test]
-    fn does_not_continue_end_of_code_comment() {
+    fn does_not_continue_end_of_line_comment() {
         do_check_noop(
             r"
 fn main() {
@@ -200,6 +231,26 @@ fn main() {
     let x = 1 + 1;
 }
 ",
+        );
+    }
+
+    #[test]
+    fn continues_end_of_line_comment_with_space() {
+        mark::check!(continues_end_of_line_comment_with_space);
+        do_check(
+            r#"
+fn main() {
+    // Fix me <|>
+    let x = 1 + 1;
+}
+"#,
+            r#"
+fn main() {
+    // Fix me
+    // $0
+    let x = 1 + 1;
+}
+"#,
         );
     }
 }

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..686
-  FN_DEF@0..461
+  FN@0..461
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..8
@@ -89,7 +89,7 @@ SOURCE_FILE@0..686
   WHITESPACE@461..463 "\n\n"
   COMMENT@463..523 "// https://github.com ..."
   WHITESPACE@523..524 "\n"
-  IMPL_DEF@524..685
+  IMPL@524..685
     IMPL_KW@524..528 "impl"
     WHITESPACE@528..529 " "
     PATH_TYPE@529..537
@@ -98,10 +98,10 @@ SOURCE_FILE@0..686
           NAME_REF@529..537
             IDENT@529..537 "Whatever"
     WHITESPACE@537..538 " "
-    ITEM_LIST@538..685
+    ASSOC_ITEM_LIST@538..685
       L_CURLY@538..539 "{"
       WHITESPACE@539..544 "\n    "
-      FN_DEF@544..683
+      FN@544..683
         FN_KW@544..546 "fn"
         WHITESPACE@546..547 " "
         NAME@547..558

@@ -1,6 +1,6 @@
 use ra_syntax::{algo::non_trivia_sibling, Direction, T};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: flip_comma
 //
@@ -28,10 +28,15 @@ pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         return None;
     }
 
-    acc.add(AssistId("flip_comma"), "Flip comma", comma.text_range(), |edit| {
-        edit.replace(prev.text_range(), next.to_string());
-        edit.replace(next.text_range(), prev.to_string());
-    })
+    acc.add(
+        AssistId("flip_comma", AssistKind::RefactorRewrite),
+        "Flip comma",
+        comma.text_range(),
+        |edit| {
+            edit.replace(prev.text_range(), next.to_string());
+            edit.replace(next.text_range(), prev.to_string());
+        },
+    )
 }
 
 #[cfg(test)]

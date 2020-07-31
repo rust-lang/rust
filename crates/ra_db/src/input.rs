@@ -6,7 +6,7 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, ops, str::FromStr, sync::Arc};
+use std::{fmt, iter::FromIterator, ops, str::FromStr, sync::Arc};
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
@@ -67,7 +67,7 @@ pub struct CrateGraph {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateName(SmolStr);
 
 impl CrateName {
@@ -94,6 +94,13 @@ impl fmt::Display for CrateName {
     }
 }
 
+impl ops::Deref for CrateName {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProcMacroId(pub u32);
 
@@ -117,7 +124,7 @@ pub struct CrateData {
     /// The name to display to the end user.
     /// This actual crate name can be different in a particular dependent crate
     /// or may even be missing for some cases, such as a dummy crate for the code snippet.
-    pub display_name: Option<CrateName>,
+    pub display_name: Option<String>,
     pub cfg_options: CfgOptions,
     pub env: Env,
     pub dependencies: Vec<Dependency>,
@@ -138,7 +145,7 @@ pub struct Env {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
     pub crate_id: CrateId,
-    pub name: SmolStr,
+    pub name: CrateName,
 }
 
 impl CrateGraph {
@@ -146,7 +153,7 @@ impl CrateGraph {
         &mut self,
         file_id: FileId,
         edition: Edition,
-        display_name: Option<CrateName>,
+        display_name: Option<String>,
         cfg_options: CfgOptions,
         env: Env,
         proc_macro: Vec<(SmolStr, Arc<dyn ra_tt::TokenExpander>)>,
@@ -178,7 +185,7 @@ impl CrateGraph {
         if self.dfs_find(from, to, &mut FxHashSet::default()) {
             return Err(CyclicDependenciesError);
         }
-        self.arena.get_mut(&from).unwrap().add_dep(name.0, to);
+        self.arena.get_mut(&from).unwrap().add_dep(name, to);
         Ok(())
     }
 
@@ -188,6 +195,23 @@ impl CrateGraph {
 
     pub fn iter(&self) -> impl Iterator<Item = CrateId> + '_ {
         self.arena.keys().copied()
+    }
+
+    /// Returns an iterator over all transitive dependencies of the given crate.
+    pub fn transitive_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> + '_ {
+        let mut worklist = vec![of];
+        let mut deps = FxHashSet::default();
+
+        while let Some(krate) = worklist.pop() {
+            if !deps.insert(krate) {
+                continue;
+            }
+
+            worklist.extend(self[krate].dependencies.iter().map(|dep| dep.crate_id));
+        }
+
+        deps.remove(&of);
+        deps.into_iter()
     }
 
     // FIXME: this only finds one crate with the given root; we could have multiple
@@ -247,7 +271,7 @@ impl CrateId {
 }
 
 impl CrateData {
-    fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
+    fn add_dep(&mut self, name: CrateName, crate_id: CrateId) {
         self.dependencies.push(Dependency { name, crate_id })
     }
 }
@@ -274,18 +298,9 @@ impl fmt::Display for Edition {
     }
 }
 
-impl<'a, T> From<T> for Env
-where
-    T: Iterator<Item = (&'a String, &'a String)>,
-{
-    fn from(iter: T) -> Self {
-        let mut result = Self::default();
-
-        for (k, v) in iter {
-            result.entries.insert(k.to_owned(), v.to_owned());
-        }
-
-        result
+impl FromIterator<(String, String)> for Env {
+    fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
+        Env { entries: FromIterator::from_iter(iter) }
     }
 }
 
@@ -429,7 +444,10 @@ mod tests {
             .is_ok());
         assert_eq!(
             graph[crate1].dependencies,
-            vec![Dependency { crate_id: crate2, name: "crate_name_with_dashes".into() }]
+            vec![Dependency {
+                crate_id: crate2,
+                name: CrateName::new("crate_name_with_dashes").unwrap()
+            }]
         );
     }
 }

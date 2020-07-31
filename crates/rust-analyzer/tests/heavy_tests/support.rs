@@ -12,22 +12,22 @@ use lsp_types::{
     notification::Exit, request::Shutdown, TextDocumentIdentifier, Url, WorkDoneProgress,
 };
 use lsp_types::{ProgressParams, ProgressParamsValue};
-use serde::Serialize;
-use serde_json::{to_string_pretty, Value};
-use tempfile::TempDir;
-use test_utils::{find_mismatch, Fixture};
-
-use ra_db::AbsPathBuf;
 use ra_project_model::ProjectManifest;
 use rust_analyzer::{
     config::{ClientCapsConfig, Config, FilesConfig, FilesWatcher, LinkedProject},
     main_loop,
 };
+use serde::Serialize;
+use serde_json::{to_string_pretty, Value};
+use test_utils::{find_mismatch, Fixture};
+use vfs::AbsPathBuf;
+
+use crate::testdir::TestDir;
 
 pub struct Project<'a> {
     fixture: &'a str,
     with_sysroot: bool,
-    tmp_dir: Option<TempDir>,
+    tmp_dir: Option<TestDir>,
     roots: Vec<PathBuf>,
     config: Option<Box<dyn Fn(&mut Config)>>,
 }
@@ -37,7 +37,7 @@ impl<'a> Project<'a> {
         Project { fixture, tmp_dir: None, roots: vec![], with_sysroot: false, config: None }
     }
 
-    pub fn tmp_dir(mut self, tmp_dir: TempDir) -> Project<'a> {
+    pub fn tmp_dir(mut self, tmp_dir: TestDir) -> Project<'a> {
         self.tmp_dir = Some(tmp_dir);
         self
     }
@@ -58,7 +58,7 @@ impl<'a> Project<'a> {
     }
 
     pub fn server(self) -> Server {
-        let tmp_dir = self.tmp_dir.unwrap_or_else(|| TempDir::new().unwrap());
+        let tmp_dir = self.tmp_dir.unwrap_or_else(|| TestDir::new());
         static INIT: Once = Once::new();
         INIT.call_once(|| {
             env_logger::builder().is_test(true).try_init().unwrap();
@@ -113,11 +113,11 @@ pub struct Server {
     _thread: jod_thread::JoinHandle<()>,
     client: Connection,
     /// XXX: remove the tempdir last
-    dir: TempDir,
+    dir: TestDir,
 }
 
 impl Server {
-    fn new(dir: TempDir, config: Config) -> Server {
+    fn new(dir: TestDir, config: Config) -> Server {
         let (connection, client) = Connection::memory();
 
         let _thread = jod_thread::Builder::new()
@@ -176,12 +176,19 @@ impl Server {
         while let Some(msg) = self.recv() {
             match msg {
                 Message::Request(req) => {
-                    if req.method != "window/workDoneProgress/create"
-                        && !(req.method == "client/registerCapability"
-                            && req.params.to_string().contains("workspace/didChangeWatchedFiles"))
-                    {
-                        panic!("unexpected request: {:?}", req)
+                    if req.method == "window/workDoneProgress/create" {
+                        continue;
                     }
+                    if req.method == "client/registerCapability" {
+                        let params = req.params.to_string();
+                        if ["workspace/didChangeWatchedFiles", "textDocument/didSave"]
+                            .iter()
+                            .any(|&it| params.contains(it))
+                        {
+                            continue;
+                        }
+                    }
+                    panic!("unexpected request: {:?}", req)
                 }
                 Message::Notification(_) => (),
                 Message::Response(res) => {
@@ -246,7 +253,8 @@ impl Drop for Server {
 }
 
 fn recv_timeout(receiver: &Receiver<Message>) -> Option<Message> {
-    let timeout = Duration::from_secs(120);
+    let timeout =
+        if cfg!(target_os = "macos") { Duration::from_secs(300) } else { Duration::from_secs(120) };
     select! {
         recv(receiver) -> msg => msg.ok(),
         recv(after(timeout)) -> _ => panic!("timed out"),

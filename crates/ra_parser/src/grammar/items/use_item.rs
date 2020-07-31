@@ -7,7 +7,7 @@ pub(super) fn use_item(p: &mut Parser, m: Marker) {
     p.bump(T![use]);
     use_tree(p, true);
     p.expect(T![;]);
-    m.complete(p, USE_ITEM);
+    m.complete(p, USE);
 }
 
 /// Parse a use 'tree', such as `some::path` in `use some::path;`

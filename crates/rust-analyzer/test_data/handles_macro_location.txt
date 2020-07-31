@@ -1,0 +1,32 @@
+[
+    MappedRustDiagnostic {
+        url: "file:///test/src/main.rs",
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 4,
+                },
+                end: Position {
+                    line: 1,
+                    character: 26,
+                },
+            },
+            severity: Some(
+                Error,
+            ),
+            code: Some(
+                String(
+                    "E0277",
+                ),
+            ),
+            source: Some(
+                "rustc",
+            ),
+            message: "can\'t compare `{integer}` with `&str`\nthe trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`",
+            related_information: None,
+            tags: None,
+        },
+        fixes: [],
+    },
+]

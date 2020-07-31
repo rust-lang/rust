@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! See `complete_fn_param`.
 
 use ra_syntax::{
     ast::{self, ModuleItemOwner},
@@ -18,35 +18,47 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     }
 
     let mut params = FxHashMap::default();
+
+    let me = ctx.token.ancestors().find_map(ast::Fn::cast);
+    let mut process_fn = |func: ast::Fn| {
+        if Some(&func) == me.as_ref() {
+            return;
+        }
+        func.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
+            let text = param.syntax().text().to_string();
+            params.entry(text).or_insert(param);
+        })
+    };
+
     for node in ctx.token.parent().ancestors() {
-        let items = match_ast! {
+        match_ast! {
             match node {
-                ast::SourceFile(it) => it.items(),
-                ast::ItemList(it) => it.items(),
+                ast::SourceFile(it) => it.items().filter_map(|item| match item {
+                    ast::Item::Fn(it) => Some(it),
+                    _ => None,
+                }).for_each(&mut process_fn),
+                ast::ItemList(it) => it.items().filter_map(|item| match item {
+                    ast::Item::Fn(it) => Some(it),
+                    _ => None,
+                }).for_each(&mut process_fn),
+                ast::AssocItemList(it) => it.assoc_items().filter_map(|item| match item {
+                    ast::AssocItem::Fn(it) => Some(it),
+                    _ => None,
+                }).for_each(&mut process_fn),
                 _ => continue,
             }
         };
-        for item in items {
-            if let ast::ModuleItem::FnDef(func) = item {
-                func.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
-                    let text = param.syntax().text().to_string();
-                    params.entry(text).or_insert((0, param)).0 += 1;
-                })
-            }
-        }
     }
+
     params
         .into_iter()
-        .filter_map(|(label, (count, param))| {
+        .filter_map(|(label, param)| {
             let lookup = param.pat()?.syntax().text().to_string();
-            if count < 2 {
-                None
-            } else {
-                Some((label, lookup))
-            }
+            Some((label, lookup))
         })
         .for_each(|(label, lookup)| {
             CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label)
+                .kind(crate::CompletionItemKind::Binding)
                 .lookup_by(lookup)
                 .add_to(acc)
         });
@@ -54,85 +66,70 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot;
+    use expect::{expect, Expect};
 
-    fn do_magic_completion(code: &str) -> Vec<CompletionItem> {
-        do_completion(code, CompletionKind::Magic)
+    use crate::completion::{test_utils::completion_list, CompletionKind};
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        let actual = completion_list(ra_fixture, CompletionKind::Magic);
+        expect.assert_eq(&actual);
     }
 
     #[test]
     fn test_param_completion_last_param() {
-        assert_debug_snapshot!(
-        do_magic_completion(
-                r"
-                fn foo(file_id: FileId) {}
-                fn bar(file_id: FileId) {}
-                fn baz(file<|>) {}
-                ",
-        ),
-            @r###"
-        [
-            CompletionItem {
-                label: "file_id: FileId",
-                source_range: 61..65,
-                delete: 61..65,
-                insert: "file_id: FileId",
-                lookup: "file_id",
-            },
-        ]
-        "###
+        check(
+            r#"
+fn foo(file_id: FileId) {}
+fn bar(file_id: FileId) {}
+fn baz(file<|>) {}
+"#,
+            expect![[r#"
+                bn file_id: FileId
+            "#]],
         );
     }
 
     #[test]
     fn test_param_completion_nth_param() {
-        assert_debug_snapshot!(
-        do_magic_completion(
-                r"
-                fn foo(file_id: FileId) {}
-                fn bar(file_id: FileId) {}
-                fn baz(file<|>, x: i32) {}
-                ",
-        ),
-            @r###"
-        [
-            CompletionItem {
-                label: "file_id: FileId",
-                source_range: 61..65,
-                delete: 61..65,
-                insert: "file_id: FileId",
-                lookup: "file_id",
-            },
-        ]
-        "###
+        check(
+            r#"
+fn foo(file_id: FileId) {}
+fn baz(file<|>, x: i32) {}
+"#,
+            expect![[r#"
+                bn file_id: FileId
+            "#]],
         );
     }
 
     #[test]
     fn test_param_completion_trait_param() {
-        assert_debug_snapshot!(
-        do_magic_completion(
-                r"
-                pub(crate) trait SourceRoot {
-                    pub fn contains(&self, file_id: FileId) -> bool;
-                    pub fn module_map(&self) -> &ModuleMap;
-                    pub fn lines(&self, file_id: FileId) -> &LineIndex;
-                    pub fn syntax(&self, file<|>)
-                }
-                ",
-        ),
-            @r###"
-        [
-            CompletionItem {
-                label: "file_id: FileId",
-                source_range: 208..212,
-                delete: 208..212,
-                insert: "file_id: FileId",
-                lookup: "file_id",
-            },
-        ]
-        "###
+        check(
+            r#"
+pub(crate) trait SourceRoot {
+    pub fn contains(&self, file_id: FileId) -> bool;
+    pub fn module_map(&self) -> &ModuleMap;
+    pub fn lines(&self, file_id: FileId) -> &LineIndex;
+    pub fn syntax(&self, file<|>)
+}
+"#,
+            expect![[r#"
+                bn file_id: FileId
+            "#]],
         );
+    }
+
+    #[test]
+    fn completes_param_in_inner_function() {
+        check(
+            r#"
+fn outer(text: String) {
+    fn inner(<|>)
+}
+"#,
+            expect![[r#"
+                bn text: String
+            "#]],
+        )
     }
 }

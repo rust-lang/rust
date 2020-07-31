@@ -4,7 +4,7 @@ use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    AssistId,
+    AssistId, AssistKind,
 };
 
 // Assist: add_turbo_fish
@@ -25,7 +25,14 @@ use crate::{
 // }
 // ```
 pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let ident = ctx.find_token_at_offset(SyntaxKind::IDENT)?;
+    let ident = ctx.find_token_at_offset(SyntaxKind::IDENT).or_else(|| {
+        let arg_list = ctx.find_node_at_offset::<ast::ArgList>()?;
+        if arg_list.args().count() > 0 {
+            return None;
+        }
+        mark::hit!(add_turbo_fish_after_call);
+        arg_list.l_paren_token()?.prev_token().filter(|it| it.kind() == SyntaxKind::IDENT)
+    })?;
     let next_token = ident.next_token()?;
     if next_token.kind() == T![::] {
         mark::hit!(add_turbo_fish_one_fish_is_enough);
@@ -45,12 +52,15 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         mark::hit!(add_turbo_fish_non_generic);
         return None;
     }
-    acc.add(AssistId("add_turbo_fish"), "Add `::<>`", ident.text_range(), |builder| {
-        match ctx.config.snippet_cap {
+    acc.add(
+        AssistId("add_turbo_fish", AssistKind::RefactorRewrite),
+        "Add `::<>`",
+        ident.text_range(),
+        |builder| match ctx.config.snippet_cap {
             Some(cap) => builder.insert_snippet(cap, ident.text_range().end(), "::<${0:_}>"),
             None => builder.insert(ident.text_range().end(), "::<_>"),
-        }
-    })
+        },
+    )
 }
 
 #[cfg(test)]
@@ -68,6 +78,26 @@ mod tests {
 fn make<T>() -> T {}
 fn main() {
     make<|>();
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    make::<${0:_}>();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_turbo_fish_after_call() {
+        mark::check!(add_turbo_fish_after_call);
+        check_assist(
+            add_turbo_fish,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    make()<|>;
 }
 "#,
             r#"

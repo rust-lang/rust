@@ -464,7 +464,7 @@ fn highlight_element(
     let db = sema.db;
     let mut binding_hash = None;
     let highlight: Highlight = match element.kind() {
-        FN_DEF => {
+        FN => {
             bindings_shadow_count.clear();
             return None;
         }
@@ -539,20 +539,52 @@ fn highlight_element(
                 _ => h,
             }
         }
-        T![*] => {
-            let prefix_expr = element.parent().and_then(ast::PrefixExpr::cast)?;
-
-            let expr = prefix_expr.expr()?;
-            let ty = sema.type_of_expr(&expr)?;
-            if !ty.is_raw_ptr() {
-                return None;
-            } else {
-                HighlightTag::Operator | HighlightModifier::Unsafe
+        p if p.is_punct() => match p {
+            T![::] | T![->] | T![=>] | T![&] | T![..] | T![=] | T![@] => {
+                HighlightTag::Operator.into()
             }
-        }
-        T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
-            Highlight::new(HighlightTag::Macro)
-        }
+            T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
+                HighlightTag::Macro.into()
+            }
+            T![*] if element.parent().and_then(ast::PointerType::cast).is_some() => {
+                HighlightTag::Keyword.into()
+            }
+            T![*] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
+                let prefix_expr = element.parent().and_then(ast::PrefixExpr::cast)?;
+
+                let expr = prefix_expr.expr()?;
+                let ty = sema.type_of_expr(&expr)?;
+                if ty.is_raw_ptr() {
+                    HighlightTag::Operator | HighlightModifier::Unsafe
+                } else if let Some(ast::PrefixOp::Deref) = prefix_expr.op_kind() {
+                    HighlightTag::Operator.into()
+                } else {
+                    HighlightTag::Punctuation.into()
+                }
+            }
+            T![-] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
+                HighlightTag::NumericLiteral.into()
+            }
+            _ if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::BinExpr::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::RangeExpr::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::RangePat::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::DotDotPat::cast).is_some() => {
+                HighlightTag::Operator.into()
+            }
+            _ if element.parent().and_then(ast::Attr::cast).is_some() => {
+                HighlightTag::Attribute.into()
+            }
+            _ => HighlightTag::Punctuation.into(),
+        },
 
         k if k.is_keyword() => {
             let h = Highlight::new(HighlightTag::Keyword);
@@ -566,10 +598,31 @@ fn highlight_element(
                 | T![return]
                 | T![while]
                 | T![in] => h | HighlightModifier::ControlFlow,
-                T![for] if !is_child_of_impl(element) => h | HighlightModifier::ControlFlow,
+                T![for] if !is_child_of_impl(&element) => h | HighlightModifier::ControlFlow,
                 T![unsafe] => h | HighlightModifier::Unsafe,
                 T![true] | T![false] => HighlightTag::BoolLiteral.into(),
-                T![self] => HighlightTag::SelfKeyword.into(),
+                T![self] => {
+                    let self_param_is_mut = element
+                        .parent()
+                        .and_then(ast::SelfParam::cast)
+                        .and_then(|p| p.mut_token())
+                        .is_some();
+                    // closure to enforce lazyness
+                    let self_path = || {
+                        sema.resolve_path(&element.parent()?.parent().and_then(ast::Path::cast)?)
+                    };
+                    if self_param_is_mut
+                        || matches!(self_path(),
+                            Some(hir::PathResolution::Local(local))
+                                if local.is_self(db)
+                                    && (local.is_mut(db) || local.ty(db).is_mutable_reference())
+                        )
+                    {
+                        HighlightTag::SelfKeyword | HighlightModifier::Mutable
+                    } else {
+                        HighlightTag::SelfKeyword.into()
+                    }
+                }
                 _ => h,
             }
         }
@@ -592,9 +645,9 @@ fn highlight_element(
     }
 }
 
-fn is_child_of_impl(element: SyntaxElement) -> bool {
+fn is_child_of_impl(element: &SyntaxElement) -> bool {
     match element.parent() {
-        Some(e) => e.kind() == IMPL_DEF,
+        Some(e) => e.kind() == IMPL,
         _ => false,
     }
 }
@@ -630,9 +683,10 @@ fn highlight_name(db: &RootDatabase, def: Definition) -> Highlight {
         },
         Definition::SelfType(_) => HighlightTag::SelfType,
         Definition::TypeParam(_) => HighlightTag::TypeParam,
-        // FIXME: distinguish between locals and parameters
         Definition::Local(local) => {
-            let mut h = Highlight::new(HighlightTag::Local);
+            let tag =
+                if local.is_param(db) { HighlightTag::ValueParam } else { HighlightTag::Local };
+            let mut h = Highlight::new(tag);
             if local.is_mut(db) || local.ty(db).is_mutable_reference() {
                 h |= HighlightModifier::Mutable;
             }
@@ -651,18 +705,18 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
     };
 
     let tag = match parent.kind() {
-        STRUCT_DEF => HighlightTag::Struct,
-        ENUM_DEF => HighlightTag::Enum,
-        UNION_DEF => HighlightTag::Union,
-        TRAIT_DEF => HighlightTag::Trait,
-        TYPE_ALIAS_DEF => HighlightTag::TypeAlias,
+        STRUCT => HighlightTag::Struct,
+        ENUM => HighlightTag::Enum,
+        UNION => HighlightTag::Union,
+        TRAIT => HighlightTag::Trait,
+        TYPE_ALIAS => HighlightTag::TypeAlias,
         TYPE_PARAM => HighlightTag::TypeParam,
-        RECORD_FIELD_DEF => HighlightTag::Field,
+        RECORD_FIELD => HighlightTag::Field,
         MODULE => HighlightTag::Module,
-        FN_DEF => HighlightTag::Function,
-        CONST_DEF => HighlightTag::Constant,
-        STATIC_DEF => HighlightTag::Static,
-        ENUM_VARIANT => HighlightTag::EnumVariant,
+        FN => HighlightTag::Function,
+        CONST => HighlightTag::Constant,
+        STATIC => HighlightTag::Static,
+        VARIANT => HighlightTag::EnumVariant,
         BIND_PAT => HighlightTag::Local,
         _ => default,
     };

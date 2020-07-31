@@ -5,10 +5,7 @@
 //!  - Building the type for an item: This happens through the `type_for_def` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
-use std::iter;
-use std::sync::Arc;
-
-use smallvec::SmallVec;
+use std::{iter, sync::Arc};
 
 use hir_def::{
     adt::StructKind,
@@ -24,6 +21,8 @@ use hir_def::{
 use hir_expand::name::Name;
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
+use smallvec::SmallVec;
+use stdx::impl_from;
 use test_utils::mark;
 
 use crate::{
@@ -177,9 +176,12 @@ impl Ty {
                 Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
             }
             TypeRef::Placeholder => Ty::Unknown,
-            TypeRef::Fn(params) => {
+            TypeRef::Fn(params, is_varargs) => {
                 let sig = Substs(params.iter().map(|tr| Ty::from_hir(ctx, tr)).collect());
-                Ty::apply(TypeCtor::FnPtr { num_args: sig.len() as u16 - 1 }, sig)
+                Ty::apply(
+                    TypeCtor::FnPtr { num_args: sig.len() as u16 - 1, is_varargs: *is_varargs },
+                    sig,
+                )
             }
             TypeRef::DynTrait(bounds) => {
                 let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
@@ -339,7 +341,7 @@ impl Ty {
                     let segment = remaining_segments.first().unwrap();
                     let found = associated_type_by_name_including_super_traits(
                         ctx.db,
-                        trait_ref.clone(),
+                        trait_ref,
                         &segment.name,
                     );
                     match found {
@@ -720,8 +722,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
                 None => return SmallVec::<[GenericPredicate; 1]>::new(),
                 Some(t) => t,
             };
-            let projection_ty =
-                ProjectionTy { associated_ty, parameters: super_trait_ref.substs.clone() };
+            let projection_ty = ProjectionTy { associated_ty, parameters: super_trait_ref.substs };
             let mut preds = SmallVec::with_capacity(
                 binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
             );
@@ -767,11 +768,11 @@ fn count_impl_traits(type_ref: &TypeRef) -> usize {
 }
 
 /// Build the signature of a callable item (function, struct or enum variant).
-pub fn callable_item_sig(db: &dyn HirDatabase, def: CallableDef) -> PolyFnSig {
+pub fn callable_item_sig(db: &dyn HirDatabase, def: CallableDefId) -> PolyFnSig {
     match def {
-        CallableDef::FunctionId(f) => fn_sig_for_fn(db, f),
-        CallableDef::StructId(s) => fn_sig_for_struct_constructor(db, s),
-        CallableDef::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
+        CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f),
+        CallableDefId::StructId(s) => fn_sig_for_struct_constructor(db, s),
+        CallableDefId::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
     }
 }
 
@@ -998,7 +999,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
     let ret = Ty::from_hir(&ctx_ret, &data.ret_type);
     let generics = generics(db.upcast(), def.into());
     let num_binders = generics.len();
-    Binders::new(num_binders, FnSig::from_params_and_return(params, ret))
+    Binders::new(num_binders, FnSig::from_params_and_return(params, ret, data.is_varargs))
 }
 
 /// Build the declared type of a function. This should not need to look at the
@@ -1049,7 +1050,7 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
     let params =
         fields.iter().map(|(_, field)| Ty::from_hir(&ctx, &field.type_ref)).collect::<Vec<_>>();
     let ret = type_for_adt(db, def.into());
-    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value))
+    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value, false))
 }
 
 /// Build the type of a tuple struct constructor.
@@ -1073,7 +1074,7 @@ fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId)
     let params =
         fields.iter().map(|(_, field)| Ty::from_hir(&ctx, &field.type_ref)).collect::<Vec<_>>();
     let ret = type_for_adt(db, def.parent.into());
-    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value))
+    Binders::new(ret.num_binders, FnSig::from_params_and_return(params, ret.value, false))
 }
 
 /// Build the type of a tuple enum variant constructor.
@@ -1106,31 +1107,31 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum CallableDef {
+pub enum CallableDefId {
     FunctionId(FunctionId),
     StructId(StructId),
     EnumVariantId(EnumVariantId),
 }
-impl_froms!(CallableDef: FunctionId, StructId, EnumVariantId);
+impl_from!(FunctionId, StructId, EnumVariantId for CallableDefId);
 
-impl CallableDef {
+impl CallableDefId {
     pub fn krate(self, db: &dyn HirDatabase) -> CrateId {
         let db = db.upcast();
         match self {
-            CallableDef::FunctionId(f) => f.lookup(db).module(db),
-            CallableDef::StructId(s) => s.lookup(db).container.module(db),
-            CallableDef::EnumVariantId(e) => e.parent.lookup(db).container.module(db),
+            CallableDefId::FunctionId(f) => f.lookup(db).module(db),
+            CallableDefId::StructId(s) => s.lookup(db).container.module(db),
+            CallableDefId::EnumVariantId(e) => e.parent.lookup(db).container.module(db),
         }
         .krate
     }
 }
 
-impl From<CallableDef> for GenericDefId {
-    fn from(def: CallableDef) -> GenericDefId {
+impl From<CallableDefId> for GenericDefId {
+    fn from(def: CallableDefId) -> GenericDefId {
         match def {
-            CallableDef::FunctionId(f) => f.into(),
-            CallableDef::StructId(s) => s.into(),
-            CallableDef::EnumVariantId(e) => e.into(),
+            CallableDefId::FunctionId(f) => f.into(),
+            CallableDefId::StructId(s) => s.into(),
+            CallableDefId::EnumVariantId(e) => e.into(),
         }
     }
 }
@@ -1141,7 +1142,7 @@ pub enum TyDefId {
     AdtId(AdtId),
     TypeAliasId(TypeAliasId),
 }
-impl_froms!(TyDefId: BuiltinType, AdtId(StructId, EnumId, UnionId), TypeAliasId);
+impl_from!(BuiltinType, AdtId(StructId, EnumId, UnionId), TypeAliasId for TyDefId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ValueTyDefId {
@@ -1151,7 +1152,7 @@ pub enum ValueTyDefId {
     ConstId(ConstId),
     StaticId(StaticId),
 }
-impl_froms!(ValueTyDefId: FunctionId, StructId, EnumVariantId, ConstId, StaticId);
+impl_from!(FunctionId, StructId, EnumVariantId, ConstId, StaticId for ValueTyDefId);
 
 /// Build the declared type of an item. This depends on the namespace; e.g. for
 /// `struct Foo(usize)`, we have two types: The type of the struct itself, and
@@ -1216,7 +1217,7 @@ pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<
 }
 
 pub(crate) fn return_type_impl_traits(
-    db: &impl HirDatabase,
+    db: &dyn HirDatabase,
     def: hir_def::FunctionId,
 ) -> Option<Arc<Binders<ReturnTypeImplTraits>>> {
     // FIXME unify with fn_sig_for_fn instead of doing lowering twice, maybe

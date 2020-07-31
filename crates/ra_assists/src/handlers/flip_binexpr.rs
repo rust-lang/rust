@@ -1,6 +1,6 @@
 use ra_syntax::ast::{AstNode, BinExpr, BinOp};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: flip_binexpr
 //
@@ -33,13 +33,18 @@ pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         return None;
     }
 
-    acc.add(AssistId("flip_binexpr"), "Flip binary expression", op_range, |edit| {
-        if let FlipAction::FlipAndReplaceOp(new_op) = action {
-            edit.replace(op_range, new_op);
-        }
-        edit.replace(lhs.text_range(), rhs.text());
-        edit.replace(rhs.text_range(), lhs.text());
-    })
+    acc.add(
+        AssistId("flip_binexpr", AssistKind::RefactorRewrite),
+        "Flip binary expression",
+        op_range,
+        |edit| {
+            if let FlipAction::FlipAndReplaceOp(new_op) = action {
+                edit.replace(op_range, new_op);
+            }
+            edit.replace(lhs.text_range(), rhs.text());
+            edit.replace(rhs.text_range(), lhs.text());
+        },
+    )
 }
 
 enum FlipAction {

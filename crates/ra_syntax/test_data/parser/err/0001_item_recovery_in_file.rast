@@ -5,13 +5,13 @@ SOURCE_FILE@0..21
   ERROR@3..8
     MATCH_KW@3..8 "match"
   WHITESPACE@8..10 "\n\n"
-  STRUCT_DEF@10..21
+  STRUCT@10..21
     STRUCT_KW@10..16 "struct"
     WHITESPACE@16..17 " "
     NAME@17..18
       IDENT@17..18 "S"
     WHITESPACE@18..19 " "
-    RECORD_FIELD_DEF_LIST@19..21
+    RECORD_FIELD_LIST@19..21
       L_CURLY@19..20 "{"
       R_CURLY@20..21 "}"
 error 0..0: expected an item

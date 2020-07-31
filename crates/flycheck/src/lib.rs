@@ -14,14 +14,17 @@ use std::{
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 
 pub use cargo_metadata::diagnostic::{
-    Applicability, Diagnostic, DiagnosticLevel, DiagnosticSpan, DiagnosticSpanMacroExpansion,
+    Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
+    DiagnosticSpanMacroExpansion,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FlycheckConfig {
     CargoCommand {
         command: String,
+        target_triple: Option<String>,
         all_targets: bool,
+        no_default_features: bool,
         all_features: bool,
         features: Vec<String>,
         extra_args: Vec<String>,
@@ -132,6 +135,7 @@ impl FlycheckActor {
                     self.cancel_check_process();
 
                     let mut command = self.check_command();
+                    log::info!("restart flycheck {:?}", command);
                     command.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null());
                     if let Ok(child) = command.spawn().map(JodChild) {
                         self.cargo_handle = Some(CargoHandle::spawn(child));
@@ -176,6 +180,8 @@ impl FlycheckActor {
         let mut cmd = match &self.config {
             FlycheckConfig::CargoCommand {
                 command,
+                target_triple,
+                no_default_features,
                 all_targets,
                 all_features,
                 extra_args,
@@ -185,14 +191,23 @@ impl FlycheckActor {
                 cmd.arg(command);
                 cmd.args(&["--workspace", "--message-format=json", "--manifest-path"])
                     .arg(self.workspace_root.join("Cargo.toml"));
+
+                if let Some(target) = target_triple {
+                    cmd.args(&["--target", target.as_str()]);
+                }
                 if *all_targets {
                     cmd.arg("--all-targets");
                 }
                 if *all_features {
                     cmd.arg("--all-features");
-                } else if !features.is_empty() {
-                    cmd.arg("--features");
-                    cmd.arg(features.join(" "));
+                } else {
+                    if *no_default_features {
+                        cmd.arg("--no-default-features");
+                    }
+                    if !features.is_empty() {
+                        cmd.arg("--features");
+                        cmd.arg(features.join(" "));
+                    }
                 }
                 cmd.args(extra_args);
                 cmd

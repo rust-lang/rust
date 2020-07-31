@@ -25,7 +25,7 @@ pub(super) fn highlight_injection(
         return None;
     }
     let value = literal.value()?;
-    let (analysis, tmp_file_id) = Analysis::from_single_file(value);
+    let (analysis, tmp_file_id) = Analysis::from_single_file(value.into_owned());
 
     if let Some(range) = literal.open_quote_text_range() {
         acc.add(HighlightedRange {

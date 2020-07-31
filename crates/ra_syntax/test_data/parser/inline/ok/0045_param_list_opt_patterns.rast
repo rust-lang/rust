@@ -1,10 +1,10 @@
 SOURCE_FILE@0..35
-  FN_DEF@0..34
+  FN@0..34
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
       IDENT@3..6 "foo"
-    TYPE_PARAM_LIST@6..30
+    GENERIC_PARAM_LIST@6..30
       L_ANGLE@6..7 "<"
       TYPE_PARAM@7..29
         NAME@7..8

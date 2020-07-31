@@ -1,10 +1,7 @@
 //! AST -> `ItemTree` lowering code.
 
-use super::*;
-use crate::{
-    attr::Attrs,
-    generics::{GenericParams, TypeParamData, TypeParamProvenance},
-};
+use std::{collections::hash_map::Entry, mem, sync::Arc};
+
 use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
 use ra_arena::map::ArenaMap;
 use ra_syntax::{
@@ -12,7 +9,13 @@ use ra_syntax::{
     SyntaxNode,
 };
 use smallvec::SmallVec;
-use std::{collections::hash_map::Entry, mem, sync::Arc};
+
+use crate::{
+    attr::Attrs,
+    generics::{GenericParams, TypeParamData, TypeParamProvenance},
+};
+
+use super::*;
 
 fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
     FileItemTreeId { index, _p: PhantomData }
@@ -70,19 +73,19 @@ impl Ctx {
         self.tree.data_mut()
     }
 
-    fn lower_mod_item(&mut self, item: &ast::ModuleItem, inner: bool) -> Option<ModItems> {
+    fn lower_mod_item(&mut self, item: &ast::Item, inner: bool) -> Option<ModItems> {
         assert!(inner || self.inner_items.is_empty());
 
         // Collect inner items for 1-to-1-lowered items.
         match item {
-            ast::ModuleItem::StructDef(_)
-            | ast::ModuleItem::UnionDef(_)
-            | ast::ModuleItem::EnumDef(_)
-            | ast::ModuleItem::FnDef(_)
-            | ast::ModuleItem::TypeAliasDef(_)
-            | ast::ModuleItem::ConstDef(_)
-            | ast::ModuleItem::StaticDef(_)
-            | ast::ModuleItem::MacroCall(_) => {
+            ast::Item::Struct(_)
+            | ast::Item::Union(_)
+            | ast::Item::Enum(_)
+            | ast::Item::Fn(_)
+            | ast::Item::TypeAlias(_)
+            | ast::Item::Const(_)
+            | ast::Item::Static(_)
+            | ast::Item::MacroCall(_) => {
                 // Skip this if we're already collecting inner items. We'll descend into all nodes
                 // already.
                 if !inner {
@@ -92,34 +95,30 @@ impl Ctx {
 
             // These are handled in their respective `lower_X` method (since we can't just blindly
             // walk them).
-            ast::ModuleItem::TraitDef(_)
-            | ast::ModuleItem::ImplDef(_)
-            | ast::ModuleItem::ExternBlock(_) => {}
+            ast::Item::Trait(_) | ast::Item::Impl(_) | ast::Item::ExternBlock(_) => {}
 
             // These don't have inner items.
-            ast::ModuleItem::Module(_)
-            | ast::ModuleItem::ExternCrateItem(_)
-            | ast::ModuleItem::UseItem(_) => {}
+            ast::Item::Module(_) | ast::Item::ExternCrate(_) | ast::Item::Use(_) => {}
         };
 
         let attrs = Attrs::new(item, &self.hygiene);
         let items = match item {
-            ast::ModuleItem::StructDef(ast) => self.lower_struct(ast).map(Into::into),
-            ast::ModuleItem::UnionDef(ast) => self.lower_union(ast).map(Into::into),
-            ast::ModuleItem::EnumDef(ast) => self.lower_enum(ast).map(Into::into),
-            ast::ModuleItem::FnDef(ast) => self.lower_function(ast).map(Into::into),
-            ast::ModuleItem::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
-            ast::ModuleItem::StaticDef(ast) => self.lower_static(ast).map(Into::into),
-            ast::ModuleItem::ConstDef(ast) => Some(self.lower_const(ast).into()),
-            ast::ModuleItem::Module(ast) => self.lower_module(ast).map(Into::into),
-            ast::ModuleItem::TraitDef(ast) => self.lower_trait(ast).map(Into::into),
-            ast::ModuleItem::ImplDef(ast) => self.lower_impl(ast).map(Into::into),
-            ast::ModuleItem::UseItem(ast) => Some(ModItems(
+            ast::Item::Struct(ast) => self.lower_struct(ast).map(Into::into),
+            ast::Item::Union(ast) => self.lower_union(ast).map(Into::into),
+            ast::Item::Enum(ast) => self.lower_enum(ast).map(Into::into),
+            ast::Item::Fn(ast) => self.lower_function(ast).map(Into::into),
+            ast::Item::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
+            ast::Item::Static(ast) => self.lower_static(ast).map(Into::into),
+            ast::Item::Const(ast) => Some(self.lower_const(ast).into()),
+            ast::Item::Module(ast) => self.lower_module(ast).map(Into::into),
+            ast::Item::Trait(ast) => self.lower_trait(ast).map(Into::into),
+            ast::Item::Impl(ast) => self.lower_impl(ast).map(Into::into),
+            ast::Item::Use(ast) => Some(ModItems(
                 self.lower_use(ast).into_iter().map(Into::into).collect::<SmallVec<_>>(),
             )),
-            ast::ModuleItem::ExternCrateItem(ast) => self.lower_extern_crate(ast).map(Into::into),
-            ast::ModuleItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
-            ast::ModuleItem::ExternBlock(ast) => {
+            ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast).map(Into::into),
+            ast::Item::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
+            ast::Item::ExternBlock(ast) => {
                 Some(ModItems(self.lower_extern_block(ast).into_iter().collect::<SmallVec<_>>()))
             }
         };
@@ -147,27 +146,26 @@ impl Ctx {
     fn collect_inner_items(&mut self, container: &SyntaxNode) {
         let forced_vis = self.forced_visibility.take();
         let mut inner_items = mem::take(&mut self.tree.inner_items);
-        inner_items.extend(
-            container.descendants().skip(1).filter_map(ast::ModuleItem::cast).filter_map(|item| {
+        inner_items.extend(container.descendants().skip(1).filter_map(ast::Item::cast).filter_map(
+            |item| {
                 let ast_id = self.source_ast_id_map.ast_id(&item);
                 Some((ast_id, self.lower_mod_item(&item, true)?.0))
-            }),
-        );
+            },
+        ));
         self.tree.inner_items = inner_items;
         self.forced_visibility = forced_vis;
     }
 
-    fn lower_assoc_item(&mut self, item: &ast::ModuleItem) -> Option<AssocItem> {
+    fn lower_assoc_item(&mut self, item: &ast::AssocItem) -> Option<AssocItem> {
         match item {
-            ast::ModuleItem::FnDef(ast) => self.lower_function(ast).map(Into::into),
-            ast::ModuleItem::TypeAliasDef(ast) => self.lower_type_alias(ast).map(Into::into),
-            ast::ModuleItem::ConstDef(ast) => Some(self.lower_const(ast).into()),
-            ast::ModuleItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
-            _ => None,
+            ast::AssocItem::Fn(ast) => self.lower_function(ast).map(Into::into),
+            ast::AssocItem::TypeAlias(ast) => self.lower_type_alias(ast).map(Into::into),
+            ast::AssocItem::Const(ast) => Some(self.lower_const(ast).into()),
+            ast::AssocItem::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
         }
     }
 
-    fn lower_struct(&mut self, strukt: &ast::StructDef) -> Option<FileItemTreeId<Struct>> {
+    fn lower_struct(&mut self, strukt: &ast::Struct) -> Option<FileItemTreeId<Struct>> {
         let visibility = self.lower_visibility(strukt);
         let name = strukt.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Struct, strukt);
@@ -196,7 +194,7 @@ impl Ctx {
         }
     }
 
-    fn lower_record_fields(&mut self, fields: &ast::RecordFieldDefList) -> IdRange<Field> {
+    fn lower_record_fields(&mut self, fields: &ast::RecordFieldList) -> IdRange<Field> {
         let start = self.next_field_idx();
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
@@ -208,42 +206,39 @@ impl Ctx {
         IdRange::new(start..end)
     }
 
-    fn lower_record_field(&mut self, field: &ast::RecordFieldDef) -> Option<Field> {
+    fn lower_record_field(&mut self, field: &ast::RecordField) -> Option<Field> {
         let name = field.name()?.as_name();
         let visibility = self.lower_visibility(field);
-        let type_ref = self.lower_type_ref(&field.ascribed_type()?);
+        let type_ref = self.lower_type_ref_opt(field.ty());
         let res = Field { name, type_ref, visibility };
         Some(res)
     }
 
-    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldDefList) -> IdRange<Field> {
+    fn lower_tuple_fields(&mut self, fields: &ast::TupleFieldList) -> IdRange<Field> {
         let start = self.next_field_idx();
         for (i, field) in fields.fields().enumerate() {
-            if let Some(data) = self.lower_tuple_field(i, &field) {
-                let idx = self.data().fields.alloc(data);
-                self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
-            }
+            let data = self.lower_tuple_field(i, &field);
+            let idx = self.data().fields.alloc(data);
+            self.add_attrs(idx.into(), Attrs::new(&field, &self.hygiene));
         }
         let end = self.next_field_idx();
         IdRange::new(start..end)
     }
 
-    fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleFieldDef) -> Option<Field> {
+    fn lower_tuple_field(&mut self, idx: usize, field: &ast::TupleField) -> Field {
         let name = Name::new_tuple_field(idx);
         let visibility = self.lower_visibility(field);
-        let type_ref = self.lower_type_ref(&field.type_ref()?);
+        let type_ref = self.lower_type_ref_opt(field.ty());
         let res = Field { name, type_ref, visibility };
-        Some(res)
+        res
     }
 
-    fn lower_union(&mut self, union: &ast::UnionDef) -> Option<FileItemTreeId<Union>> {
+    fn lower_union(&mut self, union: &ast::Union) -> Option<FileItemTreeId<Union>> {
         let visibility = self.lower_visibility(union);
         let name = union.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Union, union);
-        let fields = match union.record_field_def_list() {
-            Some(record_field_def_list) => {
-                self.lower_fields(&StructKind::Record(record_field_def_list))
-            }
+        let fields = match union.record_field_list() {
+            Some(record_field_list) => self.lower_fields(&StructKind::Record(record_field_list)),
             None => Fields::Record(IdRange::new(self.next_field_idx()..self.next_field_idx())),
         };
         let ast_id = self.source_ast_id_map.ast_id(union);
@@ -251,7 +246,7 @@ impl Ctx {
         Some(id(self.data().unions.alloc(res)))
     }
 
-    fn lower_enum(&mut self, enum_: &ast::EnumDef) -> Option<FileItemTreeId<Enum>> {
+    fn lower_enum(&mut self, enum_: &ast::Enum) -> Option<FileItemTreeId<Enum>> {
         let visibility = self.lower_visibility(enum_);
         let name = enum_.name()?.as_name();
         let generic_params = self.lower_generic_params(GenericsOwner::Enum, enum_);
@@ -264,7 +259,7 @@ impl Ctx {
         Some(id(self.data().enums.alloc(res)))
     }
 
-    fn lower_variants(&mut self, variants: &ast::EnumVariantList) -> IdRange<Variant> {
+    fn lower_variants(&mut self, variants: &ast::VariantList) -> IdRange<Variant> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
@@ -276,14 +271,14 @@ impl Ctx {
         IdRange::new(start..end)
     }
 
-    fn lower_variant(&mut self, variant: &ast::EnumVariant) -> Option<Variant> {
+    fn lower_variant(&mut self, variant: &ast::Variant) -> Option<Variant> {
         let name = variant.name()?.as_name();
         let fields = self.lower_fields(&variant.kind());
         let res = Variant { name, fields };
         Some(res)
     }
 
-    fn lower_function(&mut self, func: &ast::FnDef) -> Option<FileItemTreeId<Function>> {
+    fn lower_function(&mut self, func: &ast::Fn) -> Option<FileItemTreeId<Function>> {
         let visibility = self.lower_visibility(func);
         let name = func.name()?.as_name();
 
@@ -291,7 +286,7 @@ impl Ctx {
         let mut has_self_param = false;
         if let Some(param_list) = func.param_list() {
             if let Some(self_param) = param_list.self_param() {
-                let self_type = match self_param.ascribed_type() {
+                let self_type = match self_param.ty() {
                     Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
                     None => {
                         let self_type = TypeRef::Path(name![Self].into());
@@ -310,11 +305,19 @@ impl Ctx {
                 has_self_param = true;
             }
             for param in param_list.params() {
-                let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ascribed_type());
+                let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                 params.push(type_ref);
             }
         }
-        let ret_type = match func.ret_type().and_then(|rt| rt.type_ref()) {
+
+        let mut is_varargs = false;
+        if let Some(params) = func.param_list() {
+            if let Some(last) = params.params().last() {
+                is_varargs = last.dotdotdot_token().is_some();
+            }
+        }
+
+        let ret_type = match func.ret_type().and_then(|rt| rt.ty()) {
             Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
             _ => TypeRef::unit(),
         };
@@ -335,6 +338,7 @@ impl Ctx {
             has_self_param,
             is_unsafe: func.unsafe_token().is_some(),
             params: params.into_boxed_slice(),
+            is_varargs,
             ret_type,
             ast_id,
         };
@@ -345,10 +349,10 @@ impl Ctx {
 
     fn lower_type_alias(
         &mut self,
-        type_alias: &ast::TypeAliasDef,
+        type_alias: &ast::TypeAlias,
     ) -> Option<FileItemTreeId<TypeAlias>> {
         let name = type_alias.name()?.as_name();
-        let type_ref = type_alias.type_ref().map(|it| self.lower_type_ref(&it));
+        let type_ref = type_alias.ty().map(|it| self.lower_type_ref(&it));
         let visibility = self.lower_visibility(type_alias);
         let bounds = self.lower_type_bounds(type_alias);
         let generic_params = self.lower_generic_params(GenericsOwner::TypeAlias, type_alias);
@@ -364,9 +368,9 @@ impl Ctx {
         Some(id(self.data().type_aliases.alloc(res)))
     }
 
-    fn lower_static(&mut self, static_: &ast::StaticDef) -> Option<FileItemTreeId<Static>> {
+    fn lower_static(&mut self, static_: &ast::Static) -> Option<FileItemTreeId<Static>> {
         let name = static_.name()?.as_name();
-        let type_ref = self.lower_type_ref_opt(static_.ascribed_type());
+        let type_ref = self.lower_type_ref_opt(static_.ty());
         let visibility = self.lower_visibility(static_);
         let mutable = static_.mut_token().is_some();
         let ast_id = self.source_ast_id_map.ast_id(static_);
@@ -374,9 +378,9 @@ impl Ctx {
         Some(id(self.data().statics.alloc(res)))
     }
 
-    fn lower_const(&mut self, konst: &ast::ConstDef) -> FileItemTreeId<Const> {
+    fn lower_const(&mut self, konst: &ast::Const) -> FileItemTreeId<Const> {
         let name = konst.name().map(|it| it.as_name());
-        let type_ref = self.lower_type_ref_opt(konst.ascribed_type());
+        let type_ref = self.lower_type_ref_opt(konst.ty());
         let visibility = self.lower_visibility(konst);
         let ast_id = self.source_ast_id_map.ast_id(konst);
         let res = Const { name, visibility, type_ref, ast_id };
@@ -409,15 +413,15 @@ impl Ctx {
         Some(id(self.data().mods.alloc(res)))
     }
 
-    fn lower_trait(&mut self, trait_def: &ast::TraitDef) -> Option<FileItemTreeId<Trait>> {
+    fn lower_trait(&mut self, trait_def: &ast::Trait) -> Option<FileItemTreeId<Trait>> {
         let name = trait_def.name()?.as_name();
         let visibility = self.lower_visibility(trait_def);
         let generic_params =
             self.lower_generic_params_and_inner_items(GenericsOwner::Trait(trait_def), trait_def);
         let auto = trait_def.auto_token().is_some();
-        let items = trait_def.item_list().map(|list| {
+        let items = trait_def.assoc_item_list().map(|list| {
             self.with_inherited_visibility(visibility, |this| {
-                list.items()
+                list.assoc_items()
                     .filter_map(|item| {
                         let attrs = Attrs::new(&item, &this.hygiene);
                         this.collect_inner_items(item.syntax());
@@ -441,7 +445,7 @@ impl Ctx {
         Some(id(self.data().traits.alloc(res)))
     }
 
-    fn lower_impl(&mut self, impl_def: &ast::ImplDef) -> Option<FileItemTreeId<Impl>> {
+    fn lower_impl(&mut self, impl_def: &ast::Impl) -> Option<FileItemTreeId<Impl>> {
         let generic_params =
             self.lower_generic_params_and_inner_items(GenericsOwner::Impl, impl_def);
         let target_trait = impl_def.target_trait().map(|tr| self.lower_type_ref(&tr));
@@ -450,8 +454,9 @@ impl Ctx {
 
         // We cannot use `assoc_items()` here as that does not include macro calls.
         let items = impl_def
-            .item_list()?
-            .items()
+            .assoc_item_list()
+            .into_iter()
+            .flat_map(|it| it.assoc_items())
             .filter_map(|item| {
                 self.collect_inner_items(item.syntax());
                 let assoc = self.lower_assoc_item(&item)?;
@@ -465,7 +470,7 @@ impl Ctx {
         Some(id(self.data().impls.alloc(res)))
     }
 
-    fn lower_use(&mut self, use_item: &ast::UseItem) -> Vec<FileItemTreeId<Import>> {
+    fn lower_use(&mut self, use_item: &ast::Use) -> Vec<FileItemTreeId<Import>> {
         // FIXME: cfg_attr
         let is_prelude = use_item.has_atom_attr("prelude_import");
         let visibility = self.lower_visibility(use_item);
@@ -494,10 +499,10 @@ impl Ctx {
 
     fn lower_extern_crate(
         &mut self,
-        extern_crate: &ast::ExternCrateItem,
+        extern_crate: &ast::ExternCrate,
     ) -> Option<FileItemTreeId<ExternCrate>> {
         let path = ModPath::from_name_ref(&extern_crate.name_ref()?);
-        let alias = extern_crate.alias().map(|a| {
+        let alias = extern_crate.rename().map(|a| {
             a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
         });
         let visibility = self.lower_visibility(extern_crate);
@@ -543,14 +548,16 @@ impl Ctx {
                     self.collect_inner_items(item.syntax());
                     let attrs = Attrs::new(&item, &self.hygiene);
                     let id: ModItem = match item {
-                        ast::ExternItem::FnDef(ast) => {
+                        ast::ExternItem::Fn(ast) => {
                             let func = self.lower_function(&ast)?;
+                            self.data().functions[func.index].is_unsafe = true;
                             func.into()
                         }
-                        ast::ExternItem::StaticDef(ast) => {
+                        ast::ExternItem::Static(ast) => {
                             let statik = self.lower_static(&ast)?;
                             statik.into()
                         }
+                        ast::ExternItem::MacroCall(_) => return None,
                     };
                     self.add_attrs(id.into(), attrs);
                     Some(id)
@@ -563,10 +570,10 @@ impl Ctx {
     fn lower_generic_params_and_inner_items(
         &mut self,
         owner: GenericsOwner<'_>,
-        node: &impl ast::TypeParamsOwner,
+        node: &impl ast::GenericParamsOwner,
     ) -> GenericParamsId {
         // Generics are part of item headers and may contain inner items we need to collect.
-        if let Some(params) = node.type_param_list() {
+        if let Some(params) = node.generic_param_list() {
             self.collect_inner_items(params.syntax());
         }
         if let Some(clause) = node.where_clause() {
@@ -579,7 +586,7 @@ impl Ctx {
     fn lower_generic_params(
         &mut self,
         owner: GenericsOwner<'_>,
-        node: &impl ast::TypeParamsOwner,
+        node: &impl ast::GenericParamsOwner,
     ) -> GenericParamsId {
         let mut sm = &mut ArenaMap::default();
         let mut generics = GenericParams::default();
@@ -692,7 +699,7 @@ enum GenericsOwner<'a> {
     Enum,
     Union,
     /// The `TraitDef` is needed to fill the source map for the implicit `Self` parameter.
-    Trait(&'a ast::TraitDef),
+    Trait(&'a ast::Trait),
     TypeAlias,
     Impl,
 }

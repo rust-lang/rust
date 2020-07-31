@@ -1,28 +1,11 @@
 //! Missing batteries for standard libraries.
 use std::{cell::Cell, fmt, time::Instant};
 
+mod macros;
+
 #[inline(always)]
 pub fn is_ci() -> bool {
     option_env!("CI").is_some()
-}
-
-#[macro_export]
-macro_rules! eprintln {
-    ($($tt:tt)*) => {{
-        if $crate::is_ci() {
-            panic!("Forgot to remove debug-print?")
-        }
-        std::eprintln!($($tt)*)
-    }}
-}
-
-/// Appends formatted string to a `String`.
-#[macro_export]
-macro_rules! format_to {
-    ($buf:expr) => ();
-    ($buf:expr, $lit:literal $($arg:tt)*) => {
-        { use ::std::fmt::Write as _; let _ = ::std::write!($buf, $lit $($arg)*); }
-    };
 }
 
 pub trait SepBy: Sized {
@@ -87,6 +70,8 @@ where
         Ok(())
     }
 }
+
+#[must_use]
 pub fn timeit(label: &'static str) -> impl Drop {
     struct Guard {
         label: &'static str,
@@ -124,9 +109,18 @@ pub fn replace(buf: &mut String, from: char, to: &str) {
     *buf = buf.replace(from, to)
 }
 
-pub fn split_delim(haystack: &str, delim: char) -> Option<(&str, &str)> {
-    let idx = haystack.find(delim)?;
-    Some((&haystack[..idx], &haystack[idx + delim.len_utf8()..]))
+// https://github.com/rust-lang/rust/issues/74773
+pub fn split_once(haystack: &str, delim: char) -> Option<(&str, &str)> {
+    let mut split = haystack.splitn(2, delim);
+    let prefix = split.next()?;
+    let suffix = split.next()?;
+    Some((prefix, suffix))
+}
+pub fn rsplit_once(haystack: &str, delim: char) -> Option<(&str, &str)> {
+    let mut split = haystack.rsplitn(2, delim);
+    let suffix = split.next()?;
+    let prefix = split.next()?;
+    Some((prefix, suffix))
 }
 
 pub fn trim_indent(mut text: &str) -> String {
@@ -171,6 +165,36 @@ impl<'a> Iterator for LinesWithEnds<'a> {
         self.text = next;
         Some(res)
     }
+}
+
+// https://github.com/rust-lang/rust/issues/73831
+pub fn partition_point<T, P>(slice: &[T], mut pred: P) -> usize
+where
+    P: FnMut(&T) -> bool,
+{
+    let mut left = 0;
+    let mut right = slice.len();
+
+    while left != right {
+        let mid = left + (right - left) / 2;
+        // SAFETY:
+        // When left < right, left <= mid < right.
+        // Therefore left always increases and right always decreases,
+        // and either of them is selected.
+        // In both cases left <= right is satisfied.
+        // Therefore if left < right in a step,
+        // left <= right is satisfied in the next step.
+        // Therefore as long as left != right, 0 <= left < right <= len is satisfied
+        // and if this case 0 <= mid < len is satisfied too.
+        let value = unsafe { slice.get_unchecked(mid) };
+        if pred(value) {
+            left = mid + 1;
+        } else {
+            right = mid;
+        }
+    }
+
+    left
 }
 
 #[cfg(test)]

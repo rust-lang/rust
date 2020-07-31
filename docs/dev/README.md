@@ -177,6 +177,9 @@ There are many benefits to this:
 * less stuff printed during printf-debugging
 * less time to run test
 
+It also makes sense to format snippets more compactly (for example, by placing enum defitions like `enum E { Foo, Bar }` on a single line),
+as long as they are still readable.
+
 ## Order of Imports
 
 We separate import groups with blank lines
@@ -311,7 +314,7 @@ We don't have specific rules around git history hygiene.
 Maintaining clean git history is encouraged, but not enforced.
 We use rebase workflow, it's OK to rewrite history during PR review process.
 
-Avoid @mentioning people in commit messages, as such messages create a lot of duplicate notification traffic during rebases.
+Avoid @mentioning people in commit messages and pull request descriptions (they are added to commit message by bors), as such messages create a lot of duplicate notification traffic during rebases.
 
 # Architecture Invariants
 
@@ -358,13 +361,23 @@ There are two kinds of tests:
 The purpose of inline tests is not to achieve full coverage by test cases, but to explain to the reader of the code what each particular `if` and `match` is responsible for.
 If you are tempted to add a large inline test, it might be a good idea to leave only the simplest example in place, and move the test to a manual `parser/ok` test.
 
-To update test data, run with `UPDATE_EXPECTATIONS` variable:
+To update test data, run with `UPDATE_EXPECT` variable:
 
 ```bash
-env UPDATE_EXPECTATIONS=1 cargo qt
+env UPDATE_EXPECT=1 cargo qt
 ```
 
 After adding a new inline test you need to run `cargo xtest codegen` and also update the test data as described above.
+
+## TypeScript Tests
+
+If you change files under `editors/code` and would like to run the tests and linter, install npm and run:
+
+```bash
+cd editors/code
+npm ci
+npm run lint
+```
 
 # Logging
 
@@ -394,13 +407,7 @@ To log all communication between the server and the client, there are two choice
 
 There are also two VS Code commands which might be of interest:
 
-* `Rust Analyzer: Status` shows some memory-usage statistics. To take full
-  advantage of it, you need to compile rust-analyzer with jemalloc support:
-  ```
-  $ cargo install --path crates/rust-analyzer --force --features jemalloc
-  ```
-
-  There's an alias for this: `cargo xtask install --server --jemalloc`.
+* `Rust Analyzer: Status` shows some memory-usage statistics.
 
 * `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
 

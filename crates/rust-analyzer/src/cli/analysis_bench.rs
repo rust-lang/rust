@@ -1,30 +1,36 @@
 //! Benchmark operations like highlighting or goto definition.
 
-use std::{
-    convert::TryFrom,
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Arc,
-    time::Instant,
-};
+use std::{env, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
-use anyhow::{format_err, Result};
+use anyhow::{bail, format_err, Result};
 use ra_db::{
     salsa::{Database, Durability},
-    AbsPathBuf, FileId,
+    FileId,
 };
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, CompletionConfig, FilePosition, LineCol};
+use vfs::AbsPathBuf;
 
-use crate::cli::{load_cargo::load_cargo, Verbosity};
+use crate::{
+    cli::{load_cargo::load_cargo, Verbosity},
+    print_memory_usage,
+};
+
+pub struct BenchCmd {
+    pub path: PathBuf,
+    pub what: BenchWhat,
+    pub memory_usage: bool,
+    pub load_output_dirs: bool,
+    pub with_proc_macro: bool,
+}
 
 pub enum BenchWhat {
-    Highlight { path: PathBuf },
+    Highlight { path: AbsPathBuf },
     Complete(Position),
     GotoDef(Position),
 }
 
 pub struct Position {
-    pub path: PathBuf,
+    pub path: AbsPathBuf,
     pub line: u32,
     pub column: u32,
 }
@@ -32,78 +38,80 @@ pub struct Position {
 impl FromStr for Position {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self> {
-        let (path_line, column) = rsplit_at_char(s, ':')?;
-        let (path, line) = rsplit_at_char(path_line, ':')?;
-        Ok(Position { path: path.into(), line: line.parse()?, column: column.parse()? })
+        let mut split = s.rsplitn(3, ':');
+        match (split.next(), split.next(), split.next()) {
+            (Some(column), Some(line), Some(path)) => {
+                let path = env::current_dir().unwrap().join(path);
+                let path = AbsPathBuf::assert(path);
+                Ok(Position { path, line: line.parse()?, column: column.parse()? })
+            }
+            _ => bail!("position should be in file:line:column format: {:?}", s),
+        }
     }
 }
 
-fn rsplit_at_char(s: &str, c: char) -> Result<(&str, &str)> {
-    let idx = s.rfind(c).ok_or_else(|| format_err!("no `{}` in {}", c, s))?;
-    Ok((&s[..idx], &s[idx + 1..]))
-}
+impl BenchCmd {
+    pub fn run(self, verbosity: Verbosity) -> Result<()> {
+        ra_prof::init();
 
-pub fn analysis_bench(
-    verbosity: Verbosity,
-    path: &Path,
-    what: BenchWhat,
-    load_output_dirs: bool,
-    with_proc_macro: bool,
-) -> Result<()> {
-    ra_prof::init();
+        let start = Instant::now();
+        eprint!("loading: ");
+        let (mut host, vfs) = load_cargo(&self.path, self.load_output_dirs, self.with_proc_macro)?;
+        eprintln!("{:?}\n", start.elapsed());
 
-    let start = Instant::now();
-    eprint!("loading: ");
-    let (mut host, vfs) = load_cargo(path, load_output_dirs, with_proc_macro)?;
-    eprintln!("{:?}\n", start.elapsed());
-
-    let file_id = {
-        let path = match &what {
-            BenchWhat::Highlight { path } => path,
-            BenchWhat::Complete(pos) | BenchWhat::GotoDef(pos) => &pos.path,
+        let file_id = {
+            let path = match &self.what {
+                BenchWhat::Highlight { path } => path,
+                BenchWhat::Complete(pos) | BenchWhat::GotoDef(pos) => &pos.path,
+            };
+            let path = path.clone().into();
+            vfs.file_id(&path).ok_or_else(|| format_err!("Can't find {}", path))?
         };
-        let path = AbsPathBuf::try_from(path.clone()).unwrap();
-        let path = path.into();
-        vfs.file_id(&path).ok_or_else(|| format_err!("Can't find {}", path))?
-    };
 
-    match &what {
-        BenchWhat::Highlight { .. } => {
-            let res = do_work(&mut host, file_id, |analysis| {
-                analysis.diagnostics(file_id).unwrap();
-                analysis.highlight_as_html(file_id, false).unwrap()
-            });
-            if verbosity.is_verbose() {
-                println!("\n{}", res);
-            }
-        }
-        BenchWhat::Complete(pos) | BenchWhat::GotoDef(pos) => {
-            let is_completion = matches!(what, BenchWhat::Complete(..));
-
-            let offset = host
-                .analysis()
-                .file_line_index(file_id)?
-                .offset(LineCol { line: pos.line - 1, col_utf16: pos.column });
-            let file_position = FilePosition { file_id, offset };
-
-            if is_completion {
-                let options = CompletionConfig::default();
+        match &self.what {
+            BenchWhat::Highlight { .. } => {
                 let res = do_work(&mut host, file_id, |analysis| {
-                    analysis.completions(&options, file_position)
+                    analysis.diagnostics(file_id, true).unwrap();
+                    analysis.highlight_as_html(file_id, false).unwrap()
                 });
                 if verbosity.is_verbose() {
-                    println!("\n{:#?}", res);
+                    println!("\n{}", res);
                 }
-            } else {
-                let res =
-                    do_work(&mut host, file_id, |analysis| analysis.goto_definition(file_position));
-                if verbosity.is_verbose() {
-                    println!("\n{:#?}", res);
+            }
+            BenchWhat::Complete(pos) | BenchWhat::GotoDef(pos) => {
+                let is_completion = matches!(self.what, BenchWhat::Complete(..));
+
+                let offset = host
+                    .analysis()
+                    .file_line_index(file_id)?
+                    .offset(LineCol { line: pos.line - 1, col_utf16: pos.column });
+                let file_position = FilePosition { file_id, offset };
+
+                if is_completion {
+                    let options = CompletionConfig::default();
+                    let res = do_work(&mut host, file_id, |analysis| {
+                        analysis.completions(&options, file_position)
+                    });
+                    if verbosity.is_verbose() {
+                        println!("\n{:#?}", res);
+                    }
+                } else {
+                    let res = do_work(&mut host, file_id, |analysis| {
+                        analysis.goto_definition(file_position)
+                    });
+                    if verbosity.is_verbose() {
+                        println!("\n{:#?}", res);
+                    }
                 }
             }
         }
+
+        if self.memory_usage {
+            print_memory_usage(host, vfs);
+        }
+
+        Ok(())
     }
-    Ok(())
 }
 
 fn do_work<F: Fn(&Analysis) -> T, T>(host: &mut AnalysisHost, file_id: FileId, work: F) -> T {
@@ -132,6 +140,19 @@ fn do_work<F: Fn(&Analysis) -> T, T>(host: &mut AnalysisHost, file_id: FileId, w
         {
             let mut text = host.analysis().file_text(file_id).unwrap().to_string();
             text.push_str("\n/* Hello world */\n");
+            let mut change = AnalysisChange::new();
+            change.change_file(file_id, Some(Arc::new(text)));
+            host.apply_change(change);
+        }
+        work(&host.analysis());
+        eprintln!("{:?}", start.elapsed());
+    }
+    {
+        let start = Instant::now();
+        eprint!("item change:    ");
+        {
+            let mut text = host.analysis().file_text(file_id).unwrap().to_string();
+            text.push_str("\npub fn _dummy() {}\n");
             let mut change = AnalysisChange::new();
             change.change_file(file_id, Some(Arc::new(text)));
             host.apply_change(change);

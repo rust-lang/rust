@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
-use ra_syntax::ast;
+use ra_syntax::{ast, SyntaxKind};
+use test_utils::mark;
 
 use crate::completion::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
@@ -34,9 +35,27 @@ pub(super) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
         }
         _ => {}
     }
+
+    // Suggest .await syntax for types that implement Future trait
+    if let Some(receiver) = &ctx.dot_receiver {
+        if let Some(ty) = ctx.sema.type_of_expr(receiver) {
+            if ty.impls_future(ctx.db) {
+                CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
+                    .kind(CompletionItemKind::Keyword)
+                    .detail("expr.await")
+                    .insert_text("await")
+                    .add_to(acc);
+            }
+        };
+    }
 }
 
 pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
+    if ctx.token.kind() == SyntaxKind::COMMENT {
+        mark::hit!(no_keyword_completion_in_comments);
+        return;
+    }
+
     let has_trait_or_impl_parent = ctx.has_impl_parent || ctx.has_trait_parent;
     if ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling {
         add_keyword(ctx, acc, "where", "where ");
@@ -47,73 +66,67 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
             add_keyword(ctx, acc, "fn", "fn $0() {}")
         }
 
-        if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-            || ctx.block_expr_parent
-        {
+        if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
             add_keyword(ctx, acc, "trait", "trait $0 {}");
             add_keyword(ctx, acc, "impl", "impl $0 {}");
         }
 
         return;
     }
-    if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent {
+    if ctx.has_item_list_or_source_file_parent || has_trait_or_impl_parent || ctx.block_expr_parent
+    {
         add_keyword(ctx, acc, "fn", "fn $0() {}");
     }
-    if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-        || ctx.block_expr_parent
-    {
+    if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
         add_keyword(ctx, acc, "use", "use ");
         add_keyword(ctx, acc, "impl", "impl $0 {}");
         add_keyword(ctx, acc, "trait", "trait $0 {}");
     }
 
-    if ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent {
+    if ctx.has_item_list_or_source_file_parent {
         add_keyword(ctx, acc, "enum", "enum $0 {}");
-        add_keyword(ctx, acc, "struct", "struct $0 {}");
+        add_keyword(ctx, acc, "struct", "struct $0");
         add_keyword(ctx, acc, "union", "union $0 {}");
     }
 
-    if ctx.block_expr_parent || ctx.is_match_arm {
+    if ctx.is_expr {
         add_keyword(ctx, acc, "match", "match $0 {}");
-        add_keyword(ctx, acc, "loop", "loop {$0}");
-    }
-    if ctx.block_expr_parent {
         add_keyword(ctx, acc, "while", "while $0 {}");
-    }
-    if ctx.if_is_prev || ctx.block_expr_parent {
-        add_keyword(ctx, acc, "let", "let ");
-    }
-    if ctx.if_is_prev || ctx.block_expr_parent || ctx.is_match_arm {
+        add_keyword(ctx, acc, "loop", "loop {$0}");
         add_keyword(ctx, acc, "if", "if ");
         add_keyword(ctx, acc, "if let", "if let ");
     }
+
+    if ctx.if_is_prev || ctx.block_expr_parent {
+        add_keyword(ctx, acc, "let", "let ");
+    }
+
     if ctx.after_if {
         add_keyword(ctx, acc, "else", "else {$0}");
         add_keyword(ctx, acc, "else if", "else if $0 {}");
     }
-    if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-        || ctx.block_expr_parent
-    {
+    if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
         add_keyword(ctx, acc, "mod", "mod $0 {}");
     }
     if ctx.bind_pat_parent || ctx.ref_pat_parent {
         add_keyword(ctx, acc, "mut", "mut ");
     }
-    if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent {
+    if ctx.has_item_list_or_source_file_parent || has_trait_or_impl_parent || ctx.block_expr_parent
+    {
         add_keyword(ctx, acc, "const", "const ");
         add_keyword(ctx, acc, "type", "type ");
     }
-    if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-        || ctx.block_expr_parent
-    {
+    if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
         add_keyword(ctx, acc, "static", "static ");
     };
-    if (ctx.has_item_list_or_source_file_parent && !has_trait_or_impl_parent)
-        || ctx.block_expr_parent
-    {
+    if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
         add_keyword(ctx, acc, "extern", "extern ");
     }
-    if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent || ctx.is_match_arm {
+    if ctx.has_item_list_or_source_file_parent
+        || has_trait_or_impl_parent
+        || ctx.block_expr_parent
+        || ctx.is_match_arm
+    {
         add_keyword(ctx, acc, "unsafe", "unsafe ");
     }
     if ctx.in_loop_body {
@@ -125,7 +138,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
             add_keyword(ctx, acc, "break", "break");
         }
     }
-    if ctx.has_item_list_or_source_file_parent && !ctx.has_trait_parent {
+    if ctx.has_item_list_or_source_file_parent || ctx.has_impl_parent {
         add_keyword(ctx, acc, "pub", "pub ")
     }
 
@@ -156,7 +169,7 @@ fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet
 
 fn complete_return(
     ctx: &CompletionContext,
-    fn_def: &ast::FnDef,
+    fn_def: &ast::Fn,
     can_be_stmt: bool,
 ) -> Option<CompletionItem> {
     let snip = match (can_be_stmt, fn_def.ret_type().is_some()) {
@@ -170,289 +183,354 @@ fn complete_return(
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::completion_list, CompletionKind};
-    use insta::assert_snapshot;
+    use expect::{expect, Expect};
 
-    fn get_keyword_completions(code: &str) -> String {
-        completion_list(code, CompletionKind::Keyword)
+    use crate::completion::{
+        test_utils::{check_edit, completion_list},
+        CompletionKind,
+    };
+    use test_utils::mark;
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        let actual = completion_list(ra_fixture, CompletionKind::Keyword);
+        expect.assert_eq(&actual)
     }
 
     #[test]
     fn test_keywords_in_use_stmt() {
-        assert_snapshot!(
-            get_keyword_completions(r"use <|>"),
-            @r###"
-            kw crate::
-            kw self
-            kw super::
-        "###
+        check(
+            r"use <|>",
+            expect![[r#"
+                kw crate::
+                kw self
+                kw super::
+            "#]],
         );
 
-        assert_snapshot!(
-            get_keyword_completions(r"use a::<|>"),
-            @r###"
-            kw self
-            kw super::
-        "###
+        check(
+            r"use a::<|>",
+            expect![[r#"
+                kw self
+                kw super::
+            "#]],
         );
 
-        assert_snapshot!(
-            get_keyword_completions(r"use a::{b, <|>}"),
-            @r###"
-            kw self
-            kw super::
-        "###
+        check(
+            r"use a::{b, <|>}",
+            expect![[r#"
+                kw self
+                kw super::
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_at_source_file_level() {
-        assert_snapshot!(
-            get_keyword_completions(r"m<|>"),
-            @r###"
-            kw const
-            kw enum
-            kw extern
-            kw fn
-            kw impl
-            kw mod
-            kw pub
-            kw static
-            kw struct
-            kw trait
-            kw type
-            kw union
-            kw unsafe
-            kw use
-        "###
+        check(
+            r"m<|>",
+            expect![[r#"
+                kw const
+                kw enum
+                kw extern
+                kw fn
+                kw impl
+                kw mod
+                kw pub
+                kw static
+                kw struct
+                kw trait
+                kw type
+                kw union
+                kw unsafe
+                kw use
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_in_function() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn quux() { <|> }"),
-            @r###"
-            kw const
-            kw extern
-            kw fn
-            kw if
-            kw if let
-            kw impl
-            kw let
-            kw loop
-            kw match
-            kw mod
-            kw return
-            kw static
-            kw trait
-            kw type
-            kw unsafe
-            kw use
-            kw while
-        "###
+        check(
+            r"fn quux() { <|> }",
+            expect![[r#"
+                kw const
+                kw extern
+                kw fn
+                kw if
+                kw if let
+                kw impl
+                kw let
+                kw loop
+                kw match
+                kw mod
+                kw return
+                kw static
+                kw trait
+                kw type
+                kw unsafe
+                kw use
+                kw while
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_inside_block() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn quux() { if true { <|> } }"),
-            @r###"
-            kw const
-            kw extern
-            kw fn
-            kw if
-            kw if let
-            kw impl
-            kw let
-            kw loop
-            kw match
-            kw mod
-            kw return
-            kw static
-            kw trait
-            kw type
-            kw unsafe
-            kw use
-            kw while
-        "###
+        check(
+            r"fn quux() { if true { <|> } }",
+            expect![[r#"
+                kw const
+                kw extern
+                kw fn
+                kw if
+                kw if let
+                kw impl
+                kw let
+                kw loop
+                kw match
+                kw mod
+                kw return
+                kw static
+                kw trait
+                kw type
+                kw unsafe
+                kw use
+                kw while
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_after_if() {
-        assert_snapshot!(
-            get_keyword_completions(
-                r"
-                fn quux() {
-                    if true {
-                        ()
-                    } <|>
-                }
-                ",
-            ),
-            @r###"
-            kw const
-            kw else
-            kw else if
-            kw extern
-            kw fn
-            kw if
-            kw if let
-            kw impl
-            kw let
-            kw loop
-            kw match
-            kw mod
-            kw return
-            kw static
-            kw trait
-            kw type
-            kw unsafe
-            kw use
-            kw while
-        "###
+        check(
+            r#"fn quux() { if true { () } <|> }"#,
+            expect![[r#"
+                kw const
+                kw else
+                kw else if
+                kw extern
+                kw fn
+                kw if
+                kw if let
+                kw impl
+                kw let
+                kw loop
+                kw match
+                kw mod
+                kw return
+                kw static
+                kw trait
+                kw type
+                kw unsafe
+                kw use
+                kw while
+            "#]],
+        );
+        check_edit(
+            "else",
+            r#"fn quux() { if true { () } <|> }"#,
+            r#"fn quux() { if true { () } else {$0} }"#,
         );
     }
 
     #[test]
     fn test_keywords_in_match_arm() {
-        assert_snapshot!(
-            get_keyword_completions(
-                r"
-                fn quux() -> i32 {
-                    match () {
-                        () => <|>
-                    }
-                }
-                ",
-            ),
-            @r###"
-            kw if
-            kw if let
-            kw loop
-            kw match
-            kw return
-            kw unsafe
-        "###
+        check(
+            r#"
+fn quux() -> i32 {
+    match () { () => <|> }
+}
+"#,
+            expect![[r#"
+                kw if
+                kw if let
+                kw loop
+                kw match
+                kw return
+                kw unsafe
+                kw while
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_in_trait_def() {
-        assert_snapshot!(
-            get_keyword_completions(r"trait My { <|> }"),
-            @r###"
-            kw const
-            kw fn
-            kw type
-            kw unsafe
-        "###
+        check(
+            r"trait My { <|> }",
+            expect![[r#"
+                kw const
+                kw fn
+                kw type
+                kw unsafe
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_in_impl_def() {
-        assert_snapshot!(
-            get_keyword_completions(r"impl My { <|> }"),
-            @r###"
-            kw const
-            kw fn
-            kw pub
-            kw type
-            kw unsafe
-        "###
+        check(
+            r"impl My { <|> }",
+            expect![[r#"
+                kw const
+                kw fn
+                kw pub
+                kw type
+                kw unsafe
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_in_loop() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn my() { loop { <|> } }"),
-            @r###"
-            kw break
-            kw const
-            kw continue
-            kw extern
-            kw fn
-            kw if
-            kw if let
-            kw impl
-            kw let
-            kw loop
-            kw match
-            kw mod
-            kw return
-            kw static
-            kw trait
-            kw type
-            kw unsafe
-            kw use
-            kw while
-        "###
+        check(
+            r"fn my() { loop { <|> } }",
+            expect![[r#"
+                kw break
+                kw const
+                kw continue
+                kw extern
+                kw fn
+                kw if
+                kw if let
+                kw impl
+                kw let
+                kw loop
+                kw match
+                kw mod
+                kw return
+                kw static
+                kw trait
+                kw type
+                kw unsafe
+                kw use
+                kw while
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_after_unsafe_in_item_list() {
-        assert_snapshot!(
-            get_keyword_completions(r"unsafe <|>"),
-            @r###"
-            kw fn
-            kw impl
-            kw trait
-        "###
+        check(
+            r"unsafe <|>",
+            expect![[r#"
+                kw fn
+                kw impl
+                kw trait
+            "#]],
         );
     }
 
     #[test]
     fn test_keywords_after_unsafe_in_block_expr() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn my_fn() { unsafe <|> }"),
-            @r###"
-            kw fn
-            kw impl
-            kw trait
-        "###
+        check(
+            r"fn my_fn() { unsafe <|> }",
+            expect![[r#"
+                kw fn
+                kw impl
+                kw trait
+            "#]],
         );
     }
 
     #[test]
     fn test_mut_in_ref_and_in_fn_parameters_list() {
-        assert_snapshot!(
-            get_keyword_completions(r"fn my_fn(&<|>) {}"),
-            @r###"
-            kw mut
-        "###
+        check(
+            r"fn my_fn(&<|>) {}",
+            expect![[r#"
+                kw mut
+            "#]],
         );
-        assert_snapshot!(
-            get_keyword_completions(r"fn my_fn(<|>) {}"),
-            @r###"
-            kw mut
-        "###
+        check(
+            r"fn my_fn(<|>) {}",
+            expect![[r#"
+                kw mut
+            "#]],
         );
-        assert_snapshot!(
-            get_keyword_completions(r"fn my_fn() { let &<|> }"),
-            @r###"
-            kw mut
-        "###
+        check(
+            r"fn my_fn() { let &<|> }",
+            expect![[r#"
+                kw mut
+            "#]],
         );
     }
 
     #[test]
     fn test_where_keyword() {
-        assert_snapshot!(
-            get_keyword_completions(r"trait A <|>"),
-            @r###"
-            kw where
-        "###
+        check(
+            r"trait A <|>",
+            expect![[r#"
+                kw where
+            "#]],
         );
-        assert_snapshot!(
-            get_keyword_completions(r"impl A <|>"),
-            @r###"
-            kw where
-        "###
+        check(
+            r"impl A <|>",
+            expect![[r#"
+                kw where
+            "#]],
         );
+    }
+
+    #[test]
+    fn no_keyword_completion_in_comments() {
+        mark::check!(no_keyword_completion_in_comments);
+        check(
+            r#"
+fn test() {
+    let x = 2; // A comment<|>
+}
+"#,
+            expect![[""]],
+        );
+        check(
+            r#"
+/*
+Some multi-line comment<|>
+*/
+"#,
+            expect![[""]],
+        );
+        check(
+            r#"
+/// Some doc comment
+/// let test<|> = 1
+"#,
+            expect![[""]],
+        );
+    }
+
+    #[test]
+    fn test_completion_await_impls_future() {
+        check(
+            r#"
+//- /main.rs
+use std::future::*;
+struct A {}
+impl Future for A {}
+fn foo(a: A) { a.<|> }
+
+//- /std/lib.rs
+pub mod future {
+    #[lang = "future_trait"]
+    pub trait Future {}
+}
+"#,
+            expect![[r#"
+                kw await expr.await
+            "#]],
+        )
+    }
+
+    #[test]
+    fn after_let() {
+        check(
+            r#"fn main() { let _ = <|> }"#,
+            expect![[r#"
+                kw if
+                kw if let
+                kw loop
+                kw match
+                kw return
+                kw while
+            "#]],
+        )
     }
 }

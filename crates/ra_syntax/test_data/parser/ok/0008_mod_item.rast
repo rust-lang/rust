@@ -26,7 +26,7 @@ SOURCE_FILE@0..118
     ITEM_LIST@25..65
       L_CURLY@25..26 "{"
       WHITESPACE@26..31 "\n    "
-      FN_DEF@31..47
+      FN@31..47
         FN_KW@31..33 "fn"
         WHITESPACE@33..34 " "
         NAME@34..37
@@ -40,13 +40,13 @@ SOURCE_FILE@0..118
           WHITESPACE@41..46 "\n    "
           R_CURLY@46..47 "}"
       WHITESPACE@47..52 "\n    "
-      STRUCT_DEF@52..63
+      STRUCT@52..63
         STRUCT_KW@52..58 "struct"
         WHITESPACE@58..59 " "
         NAME@59..60
           IDENT@59..60 "S"
         WHITESPACE@60..61 " "
-        RECORD_FIELD_DEF_LIST@61..63
+        RECORD_FIELD_LIST@61..63
           L_CURLY@61..62 "{"
           R_CURLY@62..63 "}"
       WHITESPACE@63..64 "\n"

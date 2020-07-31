@@ -2,7 +2,7 @@
 //! rust-analyzer database from a single string.
 
 use rustc_hash::FxHashMap;
-use stdx::{lines_with_ends, split_delim, trim_indent};
+use stdx::{lines_with_ends, split_once, trim_indent};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Fixture {
@@ -62,7 +62,7 @@ impl Fixture {
         let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
 
         let path = components[0].to_string();
-        assert!(path.starts_with("/"));
+        assert!(path.starts_with('/'));
 
         let mut krate = None;
         let mut deps = Vec::new();
@@ -71,14 +71,14 @@ impl Fixture {
         let mut cfg_key_values = Vec::new();
         let mut env = FxHashMap::default();
         for component in components[1..].iter() {
-            let (key, value) = split_delim(component, ':').unwrap();
+            let (key, value) = split_once(component, ':').unwrap();
             match key {
                 "crate" => krate = Some(value.to_string()),
                 "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
                 "edition" => edition = Some(value.to_string()),
                 "cfg" => {
                     for entry in value.split(',') {
-                        match split_delim(entry, '=') {
+                        match split_once(entry, '=') {
                             Some((k, v)) => cfg_key_values.push((k.to_string(), v.to_string())),
                             None => cfg_atoms.push(entry.to_string()),
                         }
@@ -86,7 +86,7 @@ impl Fixture {
                 }
                 "env" => {
                     for key in value.split(',') {
-                        if let Some((k, v)) = split_delim(key, '=') {
+                        if let Some((k, v)) = split_once(key, '=') {
                             env.insert(k.into(), v.into());
                         }
                     }

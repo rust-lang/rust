@@ -17,7 +17,7 @@ use crate::{
     autoderef, method_resolution, op,
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    ApplicationTy, Binders, CallableDef, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
+    ApplicationTy, Binders, CallableDefId, InferTy, IntTy, Mutability, Obligation, Rawness, Substs,
     TraitRef, Ty, TypeCtor,
 };
 
@@ -85,10 +85,8 @@ impl<'a> InferenceContext<'a> {
             ctor: TypeCtor::Tuple { cardinality: num_args as u16 },
             parameters,
         });
-        let substs = Substs::build_for_generics(&generic_params)
-            .push(ty.clone())
-            .push(arg_ty.clone())
-            .build();
+        let substs =
+            Substs::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
 
         let trait_env = Arc::clone(&self.trait_env);
         let implements_fn_trait =
@@ -222,7 +220,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = Ty::apply(
-                    TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
+                    TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1, is_varargs: false },
                     Substs(sig_tys.clone().into()),
                 );
                 let closure_ty =
@@ -407,8 +405,15 @@ impl<'a> InferenceContext<'a> {
                                     .subst(&a_ty.parameters)
                             })
                         }
-                        // FIXME:
-                        TypeCtor::Adt(AdtId::UnionId(_)) => None,
+                        TypeCtor::Adt(AdtId::UnionId(u)) => {
+                            self.db.union_data(u).variant_data.field(name).map(|local_id| {
+                                let field = FieldId { parent: u.into(), local_id };
+                                self.write_field_resolution(tgt_expr, field);
+                                self.db.field_types(u.into())[field.local_id]
+                                    .clone()
+                                    .subst(&a_ty.parameters)
+                            })
+                        }
                         _ => None,
                     },
                     _ => None,
@@ -849,7 +854,7 @@ impl<'a> InferenceContext<'a> {
                 }
                 // add obligation for trait implementation, if this is a trait method
                 match def {
-                    CallableDef::FunctionId(f) => {
+                    CallableDefId::FunctionId(f) => {
                         if let AssocContainerId::TraitId(trait_) =
                             f.lookup(self.db.upcast()).container
                         {
@@ -860,7 +865,7 @@ impl<'a> InferenceContext<'a> {
                             self.obligations.push(Obligation::Trait(TraitRef { trait_, substs }));
                         }
                     }
-                    CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {}
+                    CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_) => {}
                 }
             }
         }

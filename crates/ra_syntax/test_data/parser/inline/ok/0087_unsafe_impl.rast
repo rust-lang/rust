@@ -1,5 +1,5 @@
 SOURCE_FILE@0..19
-  IMPL_DEF@0..18
+  IMPL@0..18
     UNSAFE_KW@0..6 "unsafe"
     WHITESPACE@6..7 " "
     IMPL_KW@7..11 "impl"
@@ -10,7 +10,7 @@ SOURCE_FILE@0..19
           NAME_REF@12..15
             IDENT@12..15 "Foo"
     WHITESPACE@15..16 " "
-    ITEM_LIST@16..18
+    ASSOC_ITEM_LIST@16..18
       L_CURLY@16..17 "{"
       R_CURLY@17..18 "}"
   WHITESPACE@18..19 "\n"

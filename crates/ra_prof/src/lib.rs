@@ -1,5 +1,6 @@
 //! A collection of tools for profiling rust-analyzer.
 
+mod stop_watch;
 mod memory_usage;
 #[cfg(feature = "cpu_profiler")]
 mod google_cpu_profiler;
@@ -11,13 +12,8 @@ use std::cell::RefCell;
 pub use crate::{
     hprof::{init, init_from, profile},
     memory_usage::{Bytes, MemoryUsage},
+    stop_watch::{StopWatch, StopWatchSpan},
 };
-
-// We use jemalloc mainly to get heap usage statistics, actual performance
-// difference is not measures.
-#[cfg(all(feature = "jemalloc", not(target_env = "msvc")))]
-#[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 /// Prints backtrace to stderr, useful for debugging.
 #[cfg(feature = "backtrace")]
@@ -43,6 +39,7 @@ pub struct Scope {
 }
 
 impl Scope {
+    #[must_use]
     pub fn enter() -> Scope {
         let prev = IN_SCOPE.with(|slot| std::mem::replace(&mut *slot.borrow_mut(), true));
         Scope { prev }
@@ -65,7 +62,8 @@ impl Drop for Scope {
 /// 2. Build with `cpu_profiler` feature.
 /// 3. Tun the code, the *raw* output would be in the `./out.profile` file.
 /// 4. Install pprof for visualization (https://github.com/google/pprof).
-/// 5. Use something like `pprof -svg target/release/rust-analyzer ./out.profile` to see the results.
+/// 5. Bump sampling frequency to once per ms: `export CPUPROFILE_FREQUENCY=1000`
+/// 6. Use something like `pprof -svg target/release/rust-analyzer ./out.profile` to see the results.
 ///
 /// For example, here's how I run profiling on NixOS:
 ///
@@ -73,11 +71,16 @@ impl Drop for Scope {
 /// $ nix-shell -p gperftools --run \
 ///     'cargo run --release -p rust-analyzer -- parse < ~/projects/rustbench/parser.rs > /dev/null'
 /// ```
+///
+/// See this diff for how to profile completions:
+///
+/// https://github.com/rust-analyzer/rust-analyzer/pull/5306
 #[derive(Debug)]
 pub struct CpuProfiler {
     _private: (),
 }
 
+#[must_use]
 pub fn cpu_profiler() -> CpuProfiler {
     #[cfg(feature = "cpu_profiler")]
     {

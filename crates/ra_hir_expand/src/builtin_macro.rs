@@ -272,7 +272,7 @@ fn format_args_expand(
 fn unquote_str(lit: &tt::Literal) -> Option<String> {
     let lit = ast::make::tokens::literal(&lit.to_string());
     let token = ast::String::cast(lit)?;
-    token.value()
+    token.value().map(|it| it.into_owned())
 }
 
 fn concat_expand(

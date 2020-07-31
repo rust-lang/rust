@@ -39,7 +39,6 @@ pub(crate) const TRIGGER_CHARS: &str = ".=>";
 // Some features trigger on typing certain characters:
 //
 // - typing `let =` tries to smartly add `;` if `=` is followed by an existing expression
-// - Enter inside comments automatically inserts `///`
 // - typing `.` in a chain method call auto-indents
 pub(crate) fn on_char_typed(
     db: &RootDatabase,

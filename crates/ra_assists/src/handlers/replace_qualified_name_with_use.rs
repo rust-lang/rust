@@ -3,7 +3,7 @@ use ra_syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SmolStr, SyntaxNo
 
 use crate::{
     utils::{find_insert_use_container, insert_use_statement},
-    AssistContext, AssistId, Assists,
+    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: replace_qualified_name_with_use
@@ -25,7 +25,7 @@ pub(crate) fn replace_qualified_name_with_use(
 ) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
-    if path.syntax().ancestors().find_map(ast::UseItem::cast).is_some() {
+    if path.syntax().ancestors().find_map(ast::Use::cast).is_some() {
         return None;
     }
 
@@ -37,7 +37,7 @@ pub(crate) fn replace_qualified_name_with_use(
 
     let target = path.syntax().text_range();
     acc.add(
-        AssistId("replace_qualified_name_with_use"),
+        AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
         "Replace qualified path with use",
         target,
         |builder| {
@@ -85,7 +85,7 @@ fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path:
             match child {
                 // Don't modify `use` items, as this can break the `use` item when injecting a new
                 // import into the use tree.
-                ast::UseItem(_it) => continue,
+                ast::Use(_it) => continue,
                 // Don't descend into submodules, they don't have the same `use` items in scope.
                 ast::Module(_it) => continue,
 
@@ -106,7 +106,7 @@ fn maybe_replace_path(
     path: ast::Path,
     target: ast::Path,
 ) -> Option<()> {
-    if !path_eq(path.clone(), target.clone()) {
+    if !path_eq(path.clone(), target) {
         return None;
     }
 

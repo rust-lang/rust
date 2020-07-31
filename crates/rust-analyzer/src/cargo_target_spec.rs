@@ -1,9 +1,9 @@
 //! See `CargoTargetSpec`
 
 use ra_cfg::CfgExpr;
-use ra_db::AbsPathBuf;
 use ra_ide::{FileId, RunnableKind, TestId};
 use ra_project_model::{self, TargetKind};
+use vfs::AbsPathBuf;
 
 use crate::{global_state::GlobalStateSnapshot, Result};
 
@@ -21,6 +21,7 @@ pub(crate) struct CargoTargetSpec {
 
 impl CargoTargetSpec {
     pub(crate) fn runnable_args(
+        snap: &GlobalStateSnapshot,
         spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
         cfgs: &[CfgExpr],
@@ -78,13 +79,21 @@ impl CargoTargetSpec {
             }
         }
 
-        let mut features = Vec::new();
-        for cfg in cfgs {
-            required_features(cfg, &mut features);
-        }
-        for feature in features {
-            args.push("--features".to_string());
-            args.push(feature);
+        if snap.config.cargo.all_features {
+            args.push("--all-features".to_string());
+        } else {
+            let mut features = Vec::new();
+            for cfg in cfgs {
+                required_features(cfg, &mut features);
+            }
+            for feature in &snap.config.cargo.features {
+                features.push(feature.clone());
+            }
+            features.dedup();
+            for feature in features {
+                args.push("--features".to_string());
+                args.push(feature);
+            }
         }
 
         Ok((args, extra_args))
@@ -168,49 +177,35 @@ fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
 mod tests {
     use super::*;
 
-    use mbe::{ast_to_token_tree, TokenMap};
-    use ra_cfg::parse_cfg;
+    use mbe::ast_to_token_tree;
+    use ra_cfg::CfgExpr;
     use ra_syntax::{
         ast::{self, AstNode},
         SmolStr,
     };
 
-    fn get_token_tree_generated(input: &str) -> (tt::Subtree, TokenMap) {
-        let source_file = ast::SourceFile::parse(input).ok().unwrap();
-        let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-        ast_to_token_tree(&tt).unwrap()
+    fn check(cfg: &str, expected_features: &[&str]) {
+        let cfg_expr = {
+            let source_file = ast::SourceFile::parse(cfg).ok().unwrap();
+            let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+            let (tt, _) = ast_to_token_tree(&tt).unwrap();
+            CfgExpr::parse(&tt)
+        };
+
+        let mut features = vec![];
+        required_features(&cfg_expr, &mut features);
+
+        let expected_features =
+            expected_features.iter().map(|&it| SmolStr::new(it)).collect::<Vec<_>>();
+
+        assert_eq!(features, expected_features);
     }
 
     #[test]
     fn test_cfg_expr_minimal_features_needed() {
-        let (subtree, _) = get_token_tree_generated(r#"#![cfg(feature = "baz")]"#);
-        let cfg_expr = parse_cfg(&subtree);
-        let mut min_features = vec![];
-        required_features(&cfg_expr, &mut min_features);
-
-        assert_eq!(min_features, vec![SmolStr::new("baz")]);
-
-        let (subtree, _) =
-            get_token_tree_generated(r#"#![cfg(all(feature = "baz", feature = "foo"))]"#);
-        let cfg_expr = parse_cfg(&subtree);
-
-        let mut min_features = vec![];
-        required_features(&cfg_expr, &mut min_features);
-        assert_eq!(min_features, vec![SmolStr::new("baz"), SmolStr::new("foo")]);
-
-        let (subtree, _) =
-            get_token_tree_generated(r#"#![cfg(any(feature = "baz", feature = "foo", unix))]"#);
-        let cfg_expr = parse_cfg(&subtree);
-
-        let mut min_features = vec![];
-        required_features(&cfg_expr, &mut min_features);
-        assert_eq!(min_features, vec![SmolStr::new("baz")]);
-
-        let (subtree, _) = get_token_tree_generated(r#"#![cfg(foo)]"#);
-        let cfg_expr = parse_cfg(&subtree);
-
-        let mut min_features = vec![];
-        required_features(&cfg_expr, &mut min_features);
-        assert!(min_features.is_empty());
+        check(r#"#![cfg(feature = "baz")]"#, &["baz"]);
+        check(r#"#![cfg(all(feature = "baz", feature = "foo"))]"#, &["baz", "foo"]);
+        check(r#"#![cfg(any(feature = "baz", feature = "foo", unix))]"#, &["baz"]);
+        check(r#"#![cfg(foo)]"#, &[]);
     }
 }

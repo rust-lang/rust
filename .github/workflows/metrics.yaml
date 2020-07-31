@@ -1,0 +1,32 @@
+name: metrics
+on:
+  push:
+   branches:
+   - master
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTFLAGS: -D warnings
+  RUSTUP_MAX_RETRIES: 10
+
+jobs:
+  metrics:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        components: rust-src
+
+    - name: Collect metrics
+      run: cargo xtask metrics
+      env:
+        METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}

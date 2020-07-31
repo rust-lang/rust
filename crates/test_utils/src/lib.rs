@@ -11,8 +11,9 @@ pub mod mark;
 mod fixture;
 
 use std::{
+    convert::{TryFrom, TryInto},
     env, fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use serde_json::Value;
@@ -117,8 +118,8 @@ pub fn extract_range_or_offset(text: &str) -> (RangeOrOffset, String) {
 }
 
 /// Extracts ranges, marked with `<tag> </tag>` pairs from the `text`
-pub fn extract_ranges(mut text: &str, tag: &str) -> (Vec<TextRange>, String) {
-    let open = format!("<{}>", tag);
+pub fn extract_tags(mut text: &str, tag: &str) -> (Vec<(TextRange, Option<String>)>, String) {
+    let open = format!("<{}", tag);
     let close = format!("</{}>", tag);
     let mut ranges = Vec::new();
     let mut res = String::new();
@@ -133,21 +134,34 @@ pub fn extract_ranges(mut text: &str, tag: &str) -> (Vec<TextRange>, String) {
                 res.push_str(&text[..i]);
                 text = &text[i..];
                 if text.starts_with(&open) {
-                    text = &text[open.len()..];
+                    let close_open = text.find('>').unwrap();
+                    let attr = text[open.len()..close_open].trim();
+                    let attr = if attr.is_empty() { None } else { Some(attr.to_string()) };
+                    text = &text[close_open + '>'.len_utf8()..];
                     let from = TextSize::of(&res);
-                    stack.push(from);
+                    stack.push((from, attr));
                 } else if text.starts_with(&close) {
                     text = &text[close.len()..];
-                    let from = stack.pop().unwrap_or_else(|| panic!("unmatched </{}>", tag));
+                    let (from, attr) =
+                        stack.pop().unwrap_or_else(|| panic!("unmatched </{}>", tag));
                     let to = TextSize::of(&res);
-                    ranges.push(TextRange::new(from, to));
+                    ranges.push((TextRange::new(from, to), attr));
+                } else {
+                    res.push('<');
+                    text = &text['<'.len_utf8()..];
                 }
             }
         }
     }
     assert!(stack.is_empty(), "unmatched <{}>", tag);
-    ranges.sort_by_key(|r| (r.start(), r.end()));
+    ranges.sort_by_key(|r| (r.0.start(), r.0.end()));
     (ranges, res)
+}
+#[test]
+fn test_extract_tags() {
+    let (tags, text) = extract_tags(r#"<tag fn>fn <tag>main</tag>() {}</tag>"#, "tag");
+    let actual = tags.into_iter().map(|(range, attr)| (&text[range], attr)).collect::<Vec<_>>();
+    assert_eq!(actual, vec![("fn main() {}", Some("fn".into())), ("main", None),]);
 }
 
 /// Inserts `<|>` marker into the `text` at `offset`.
@@ -165,15 +179,80 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
     let mut res = Vec::new();
     let mut prev_line_start: Option<TextSize> = None;
     let mut line_start: TextSize = 0.into();
+    let mut prev_line_annotations: Vec<(TextSize, usize)> = Vec::new();
     for line in lines_with_ends(text) {
-        if let Some(idx) = line.find("//^") {
-            let offset = prev_line_start.unwrap() + TextSize::of(&line[..idx + "//".len()]);
-            let data = line[idx + "//^".len()..].trim().to_string();
-            res.push((TextRange::at(offset, 1.into()), data))
+        let mut this_line_annotations = Vec::new();
+        if let Some(idx) = line.find("//") {
+            let annotation_offset = TextSize::of(&line[..idx + "//".len()]);
+            for annotation in extract_line_annotations(&line[idx + "//".len()..]) {
+                match annotation {
+                    LineAnnotation::Annotation { mut range, content } => {
+                        range += annotation_offset;
+                        this_line_annotations.push((range.end(), res.len()));
+                        res.push((range + prev_line_start.unwrap(), content))
+                    }
+                    LineAnnotation::Continuation { mut offset, content } => {
+                        offset += annotation_offset;
+                        let &(_, idx) = prev_line_annotations
+                            .iter()
+                            .find(|&&(off, _idx)| off == offset)
+                            .unwrap();
+                        res[idx].1.push('\n');
+                        res[idx].1.push_str(&content);
+                        res[idx].1.push('\n');
+                    }
+                }
+            }
         }
+
         prev_line_start = Some(line_start);
         line_start += TextSize::of(line);
+
+        prev_line_annotations = this_line_annotations;
     }
+    res
+}
+
+enum LineAnnotation {
+    Annotation { range: TextRange, content: String },
+    Continuation { offset: TextSize, content: String },
+}
+
+fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
+    let mut res = Vec::new();
+    let mut offset: TextSize = 0.into();
+    let marker: fn(char) -> bool = if line.contains('^') { |c| c == '^' } else { |c| c == '|' };
+    loop {
+        match line.find(marker) {
+            Some(idx) => {
+                offset += TextSize::try_from(idx).unwrap();
+                line = &line[idx..];
+            }
+            None => break,
+        };
+
+        let mut len = line.chars().take_while(|&it| it == '^').count();
+        let mut continuation = false;
+        if len == 0 {
+            assert!(line.starts_with('|'));
+            continuation = true;
+            len = 1;
+        }
+        let range = TextRange::at(offset, len.try_into().unwrap());
+        let next = line[len..].find(marker).map_or(line.len(), |it| it + len);
+        let content = line[len..][..next - len].trim().to_string();
+
+        let annotation = if continuation {
+            LineAnnotation::Continuation { offset: range.end(), content }
+        } else {
+            LineAnnotation::Annotation { range, content }
+        };
+        res.push(annotation);
+
+        line = &line[next..];
+        offset += TextSize::try_from(next).unwrap();
+    }
+
     res
 }
 
@@ -182,17 +261,21 @@ fn test_extract_annotations() {
     let text = stdx::trim_indent(
         r#"
 fn main() {
-    let x = 92;
-      //^ def
-    z + 1
-} //^ i32
+    let (x,     y) = (9, 2);
+       //^ def  ^ def
+    zoo + 1
+} //^^^ type:
+  //  | i32
     "#,
     );
     let res = extract_annotations(&text)
         .into_iter()
         .map(|(range, ann)| (&text[range], ann))
         .collect::<Vec<_>>();
-    assert_eq!(res, vec![("x", "def".into()), ("z", "i32".into()),]);
+    assert_eq!(
+        res,
+        vec![("x", "def".into()), ("y", "def".into()), ("zoo", "type:\ni32\n".into()),]
+    );
 }
 
 // Comparison functionality borrowed from cargo:
@@ -282,85 +365,6 @@ pub fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a 
     }
 }
 
-/// Calls callback `f` with input code and file paths for each `.rs` file in `test_data_dir`
-/// subdirectories defined by `paths`.
-///
-/// If the content of the matching output file differs from the output of `f()`
-/// the test will fail.
-///
-/// If there is no matching output file it will be created and filled with the
-/// output of `f()`, but the test will fail.
-pub fn dir_tests<F>(test_data_dir: &Path, paths: &[&str], outfile_extension: &str, f: F)
-where
-    F: Fn(&str, &Path) -> String,
-{
-    for (path, input_code) in collect_rust_files(test_data_dir, paths) {
-        let actual = f(&input_code, &path);
-        let path = path.with_extension(outfile_extension);
-        if !path.exists() {
-            println!("\nfile: {}", path.display());
-            println!("No .txt file with expected result, creating...\n");
-            println!("{}\n{}", input_code, actual);
-            fs::write(&path, &actual).unwrap();
-            panic!("No expected result");
-        }
-        let expected = read_text(&path);
-        assert_equal_text(&expected, &actual, &path);
-    }
-}
-
-/// Collects all `.rs` files from `dir` subdirectories defined by `paths`.
-pub fn collect_rust_files(root_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, String)> {
-    paths
-        .iter()
-        .flat_map(|path| {
-            let path = root_dir.to_owned().join(path);
-            rust_files_in_dir(&path).into_iter()
-        })
-        .map(|path| {
-            let text = read_text(&path);
-            (path, text)
-        })
-        .collect()
-}
-
-/// Collects paths to all `.rs` files from `dir` in a sorted `Vec<PathBuf>`.
-fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
-    let mut acc = Vec::new();
-    for file in fs::read_dir(&dir).unwrap() {
-        let file = file.unwrap();
-        let path = file.path();
-        if path.extension().unwrap_or_default() == "rs" {
-            acc.push(path);
-        }
-    }
-    acc.sort();
-    acc
-}
-
-/// Returns the path to the root directory of `rust-analyzer` project.
-pub fn project_dir() -> PathBuf {
-    let dir = env!("CARGO_MANIFEST_DIR");
-    PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
-}
-
-/// Read file and normalize newlines.
-///
-/// `rustc` seems to always normalize `\r\n` newlines to `\n`:
-///
-/// ```
-/// let s = "
-/// ";
-/// assert_eq!(s.as_bytes(), &[10]);
-/// ```
-///
-/// so this should always be correct.
-pub fn read_text(path: &Path) -> String {
-    fs::read_to_string(path)
-        .unwrap_or_else(|_| panic!("File at {:?} should be valid", path))
-        .replace("\r\n", "\n")
-}
-
 /// Returns `false` if slow tests should not run, otherwise returns `true` and
 /// also creates a file at `./target/.slow_tests_cookie` which serves as a flag
 /// that slow tests did run.
@@ -375,25 +379,8 @@ pub fn skip_slow_tests() -> bool {
     should_skip
 }
 
-/// Asserts that `expected` and `actual` strings are equal. If they differ only
-/// in trailing or leading whitespace the test won't fail and
-/// the contents of `actual` will be written to the file located at `path`.
-fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
-    if expected == actual {
-        return;
-    }
-    let dir = project_dir();
-    let pretty_path = path.strip_prefix(&dir).unwrap_or_else(|_| path);
-    if expected.trim() == actual.trim() {
-        println!("whitespace difference, rewriting");
-        println!("file: {}\n", pretty_path.display());
-        fs::write(path, actual).unwrap();
-        return;
-    }
-    if env::var("UPDATE_EXPECTATIONS").is_ok() {
-        println!("rewriting {}", pretty_path.display());
-        fs::write(path, actual).unwrap();
-        return;
-    }
-    assert_eq_text!(expected, actual, "file: {}", pretty_path.display());
+/// Returns the path to the root directory of `rust-analyzer` project.
+pub fn project_dir() -> PathBuf {
+    let dir = env!("CARGO_MANIFEST_DIR");
+    PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
 }

@@ -1,0 +1,102 @@
+[
+    MappedRustDiagnostic {
+        url: "file:///test/src/main.rs",
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 3,
+                    character: 4,
+                },
+                end: Position {
+                    line: 3,
+                    character: 5,
+                },
+            },
+            severity: Some(
+                Warning,
+            ),
+            code: Some(
+                String(
+                    "let_and_return",
+                ),
+            ),
+            source: Some(
+                "clippy",
+            ),
+            message: "returning the result of a let binding from a block\n`#[warn(clippy::let_and_return)]` on by default\nfor further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: "file:///test/src/main.rs",
+                            range: Range {
+                                start: Position {
+                                    line: 2,
+                                    character: 4,
+                                },
+                                end: Position {
+                                    line: 2,
+                                    character: 30,
+                                },
+                            },
+                        },
+                        message: "unnecessary let binding",
+                    },
+                ],
+            ),
+            tags: None,
+        },
+        fixes: [
+            CodeAction {
+                title: "return the expression directly",
+                id: None,
+                group: None,
+                kind: Some(
+                    CodeActionKind(
+                        "quickfix",
+                    ),
+                ),
+                edit: Some(
+                    SnippetWorkspaceEdit {
+                        changes: Some(
+                            {
+                                "file:///test/src/main.rs": [
+                                    TextEdit {
+                                        range: Range {
+                                            start: Position {
+                                                line: 2,
+                                                character: 4,
+                                            },
+                                            end: Position {
+                                                line: 2,
+                                                character: 30,
+                                            },
+                                        },
+                                        new_text: "",
+                                    },
+                                    TextEdit {
+                                        range: Range {
+                                            start: Position {
+                                                line: 3,
+                                                character: 4,
+                                            },
+                                            end: Position {
+                                                line: 3,
+                                                character: 5,
+                                            },
+                                        },
+                                        new_text: "(0..10).collect()",
+                                    },
+                                ],
+                            },
+                        ),
+                        document_changes: None,
+                    },
+                ),
+                is_preferred: Some(
+                    true,
+                ),
+            },
+        ],
+    },
+]

@@ -1,21 +1,19 @@
 //! Trait solving using Chalk.
-use std::{panic, sync::Arc};
+use std::sync::Arc;
 
 use chalk_ir::cast::Cast;
-use hir_def::{
-    expr::ExprId, lang_item::LangItemTarget, DefWithBodyId, ImplId, TraitId, TypeAliasId,
-};
-use ra_db::{impl_intern_key, salsa, CrateId};
+use chalk_solve::Solver;
+use hir_def::{lang_item::LangItemTarget, TraitId};
+use ra_db::CrateId;
 use ra_prof::profile;
 
-use crate::{db::HirDatabase, DebruijnIndex};
+use crate::{db::HirDatabase, DebruijnIndex, Substs};
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 
 use self::chalk::{from_chalk, Interner, ToChalk};
 
 pub(crate) mod chalk;
-mod builtin;
 
 // This controls the maximum size of types Chalk considers. If we set this too
 // high, we can run into slow edge cases; if we set it too low, Chalk won't
@@ -32,9 +30,10 @@ struct ChalkContext<'a> {
     krate: CrateId,
 }
 
-fn create_chalk_solver() -> chalk_solve::Solver<Interner> {
-    let solver_choice = chalk_solve::SolverChoice::recursive();
-    solver_choice.into_solver()
+fn create_chalk_solver() -> chalk_recursive::RecursiveSolver<Interner> {
+    let overflow_depth = 100;
+    let caching_enabled = true;
+    chalk_recursive::RecursiveSolver::new(overflow_depth, caching_enabled)
 }
 
 /// A set of clauses that we assume to be true. E.g. if we are inside this function:
@@ -190,15 +189,7 @@ fn solution_from_chalk(
     solution: chalk_solve::Solution<Interner>,
 ) -> Solution {
     let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<Interner>>| {
-        let value = subst
-            .value
-            .iter(&Interner)
-            .map(|p| match p.ty(&Interner) {
-                Some(ty) => from_chalk(db, ty.clone()),
-                None => unimplemented!(),
-            })
-            .collect();
-        let result = Canonical { value, num_vars: subst.binders.len(&Interner) };
+        let result = from_chalk(db, subst);
         SolutionVariables(result)
     };
     match solution {
@@ -222,7 +213,7 @@ fn solution_from_chalk(
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SolutionVariables(pub Canonical<Vec<Ty>>);
+pub struct SolutionVariables(pub Canonical<Substs>);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A (possible) solution for a proposed goal.
@@ -280,52 +271,3 @@ impl FnTrait {
         }
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ClosureFnTraitImplData {
-    def: DefWithBodyId,
-    expr: ExprId,
-    fn_trait: FnTrait,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UnsizeToSuperTraitObjectData {
-    trait_: TraitId,
-    super_trait: TraitId,
-}
-
-/// An impl. Usually this comes from an impl block, but some built-in types get
-/// synthetic impls.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Impl {
-    /// A normal impl from an impl block.
-    ImplDef(ImplId),
-    /// Closure types implement the Fn traits synthetically.
-    ClosureFnTraitImpl(ClosureFnTraitImplData),
-    /// [T; n]: Unsize<[T]>
-    UnsizeArray,
-    /// T: Unsize<dyn Trait> where T: Trait
-    UnsizeToTraitObject(TraitId),
-    /// dyn Trait: Unsize<dyn SuperTrait> if Trait: SuperTrait
-    UnsizeToSuperTraitObject(UnsizeToSuperTraitObjectData),
-}
-/// This exists just for Chalk, because our ImplIds are only unique per module.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GlobalImplId(salsa::InternId);
-impl_intern_key!(GlobalImplId);
-
-/// An associated type value. Usually this comes from a `type` declaration
-/// inside an impl block, but for built-in impls we have to synthesize it.
-/// (We only need this because Chalk wants a unique ID for each of these.)
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AssocTyValue {
-    /// A normal assoc type value from an impl block.
-    TypeAlias(TypeAliasId),
-    /// The output type of the Fn trait implementation.
-    ClosureFnTraitImplOutput(ClosureFnTraitImplData),
-}
-/// This exists just for Chalk, because it needs a unique ID for each associated
-/// type value in an impl (even synthetic ones).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct AssocTyValueId(salsa::InternId);
-impl_intern_key!(AssocTyValueId);

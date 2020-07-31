@@ -1,18 +1,18 @@
 SOURCE_FILE@0..53
-  STRUCT_DEF@0..33
+  STRUCT@0..33
     STRUCT_KW@0..6 "struct"
     WHITESPACE@6..7 " "
     NAME@7..11
       IDENT@7..11 "Test"
-    TYPE_PARAM_LIST@11..14
+    GENERIC_PARAM_LIST@11..14
       L_ANGLE@11..12 "<"
       TYPE_PARAM@12..13
         NAME@12..13
           IDENT@12..13 "T"
       R_ANGLE@13..14 ">"
-    TUPLE_FIELD_DEF_LIST@14..17
+    TUPLE_FIELD_LIST@14..17
       L_PAREN@14..15 "("
-      TUPLE_FIELD_DEF@15..16
+      TUPLE_FIELD@15..16
         PATH_TYPE@15..16
           PATH@15..16
             PATH_SEGMENT@15..16
@@ -40,20 +40,20 @@ SOURCE_FILE@0..53
                     IDENT@27..32 "Clone"
     SEMICOLON@32..33 ";"
   WHITESPACE@33..34 "\n"
-  STRUCT_DEF@34..52
+  STRUCT@34..52
     STRUCT_KW@34..40 "struct"
     WHITESPACE@40..41 " "
     NAME@41..45
       IDENT@41..45 "Test"
-    TYPE_PARAM_LIST@45..48
+    GENERIC_PARAM_LIST@45..48
       L_ANGLE@45..46 "<"
       TYPE_PARAM@46..47
         NAME@46..47
           IDENT@46..47 "T"
       R_ANGLE@47..48 ">"
-    TUPLE_FIELD_DEF_LIST@48..51
+    TUPLE_FIELD_LIST@48..51
       L_PAREN@48..49 "("
-      TUPLE_FIELD_DEF@49..50
+      TUPLE_FIELD@49..50
         PATH_TYPE@49..50
           PATH@49..50
             PATH_SEGMENT@49..50

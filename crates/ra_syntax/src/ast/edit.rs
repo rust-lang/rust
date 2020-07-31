@@ -29,9 +29,9 @@ impl ast::BinExpr {
     }
 }
 
-impl ast::FnDef {
+impl ast::Fn {
     #[must_use]
-    pub fn with_body(&self, body: ast::BlockExpr) -> ast::FnDef {
+    pub fn with_body(&self, body: ast::BlockExpr) -> ast::Fn {
         let mut to_insert: ArrayVec<[SyntaxElement; 2]> = ArrayVec::new();
         let old_body_or_semi: SyntaxElement = if let Some(old_body) = self.body() {
             old_body.syntax().clone().into()
@@ -80,9 +80,12 @@ where
     }
 }
 
-impl ast::ItemList {
+impl ast::AssocItemList {
     #[must_use]
-    pub fn append_items(&self, items: impl IntoIterator<Item = ast::AssocItem>) -> ast::ItemList {
+    pub fn append_items(
+        &self,
+        items: impl IntoIterator<Item = ast::AssocItem>,
+    ) -> ast::AssocItemList {
         let mut res = self.clone();
         if !self.syntax().text().contains_char('\n') {
             res = make_multiline(res);
@@ -92,7 +95,7 @@ impl ast::ItemList {
     }
 
     #[must_use]
-    pub fn append_item(&self, item: ast::AssocItem) -> ast::ItemList {
+    pub fn append_item(&self, item: ast::AssocItem) -> ast::AssocItemList {
         let (indent, position) = match self.assoc_items().last() {
             Some(it) => (
                 leading_indent(it.syntax()).unwrap_or_default().to_string(),
@@ -113,18 +116,18 @@ impl ast::ItemList {
     }
 }
 
-impl ast::RecordFieldList {
+impl ast::RecordExprFieldList {
     #[must_use]
-    pub fn append_field(&self, field: &ast::RecordField) -> ast::RecordFieldList {
+    pub fn append_field(&self, field: &ast::RecordExprField) -> ast::RecordExprFieldList {
         self.insert_field(InsertPosition::Last, field)
     }
 
     #[must_use]
     pub fn insert_field(
         &self,
-        position: InsertPosition<&'_ ast::RecordField>,
-        field: &ast::RecordField,
-    ) -> ast::RecordFieldList {
+        position: InsertPosition<&'_ ast::RecordExprField>,
+        field: &ast::RecordExprField,
+    ) -> ast::RecordExprFieldList {
         let is_multiline = self.syntax().text().contains_char('\n');
         let ws;
         let space = if is_multiline {
@@ -189,6 +192,21 @@ impl ast::RecordFieldList {
     }
 }
 
+impl ast::TypeAlias {
+    #[must_use]
+    pub fn remove_bounds(&self) -> ast::TypeAlias {
+        let colon = match self.colon_token() {
+            Some(it) => it,
+            None => return self.clone(),
+        };
+        let end = match self.type_bound_list() {
+            Some(it) => it.syntax().clone().into(),
+            None => colon.clone().into(),
+        };
+        self.replace_children(colon.into()..=end, iter::empty())
+    }
+}
+
 impl ast::TypeParam {
     #[must_use]
     pub fn remove_bounds(&self) -> ast::TypeParam {
@@ -244,9 +262,9 @@ impl ast::PathSegment {
     }
 }
 
-impl ast::UseItem {
+impl ast::Use {
     #[must_use]
-    pub fn with_use_tree(&self, use_tree: ast::UseTree) -> ast::UseItem {
+    pub fn with_use_tree(&self, use_tree: ast::UseTree) -> ast::Use {
         if let Some(old) = self.use_tree() {
             return self.replace_descendant(old, use_tree);
         }
@@ -300,9 +318,9 @@ impl ast::UseTree {
             None => return self.clone(),
         };
         let use_tree = make::use_tree(
-            suffix.clone(),
+            suffix,
             self.use_tree_list(),
-            self.alias(),
+            self.rename(),
             self.star_token().is_some(),
         );
         let nested = make::use_tree_list(iter::once(use_tree));

@@ -16,6 +16,7 @@ use ra_syntax::{
     match_ast, AstNode, SyntaxNode,
 };
 use rustc_hash::FxHashMap;
+use stdx::impl_from;
 
 use crate::{db::HirDatabase, InFile, MacroDefId};
 
@@ -64,53 +65,44 @@ impl SourceToDefCtx<'_, '_> {
         Some(ModuleId { krate: parent_module.krate, local_id: child_id })
     }
 
-    pub(super) fn trait_to_def(&mut self, src: InFile<ast::TraitDef>) -> Option<TraitId> {
+    pub(super) fn trait_to_def(&mut self, src: InFile<ast::Trait>) -> Option<TraitId> {
         self.to_def(src, keys::TRAIT)
     }
-    pub(super) fn impl_to_def(&mut self, src: InFile<ast::ImplDef>) -> Option<ImplId> {
+    pub(super) fn impl_to_def(&mut self, src: InFile<ast::Impl>) -> Option<ImplId> {
         self.to_def(src, keys::IMPL)
     }
-    pub(super) fn fn_to_def(&mut self, src: InFile<ast::FnDef>) -> Option<FunctionId> {
+    pub(super) fn fn_to_def(&mut self, src: InFile<ast::Fn>) -> Option<FunctionId> {
         self.to_def(src, keys::FUNCTION)
     }
-    pub(super) fn struct_to_def(&mut self, src: InFile<ast::StructDef>) -> Option<StructId> {
+    pub(super) fn struct_to_def(&mut self, src: InFile<ast::Struct>) -> Option<StructId> {
         self.to_def(src, keys::STRUCT)
     }
-    pub(super) fn enum_to_def(&mut self, src: InFile<ast::EnumDef>) -> Option<EnumId> {
+    pub(super) fn enum_to_def(&mut self, src: InFile<ast::Enum>) -> Option<EnumId> {
         self.to_def(src, keys::ENUM)
     }
-    pub(super) fn union_to_def(&mut self, src: InFile<ast::UnionDef>) -> Option<UnionId> {
+    pub(super) fn union_to_def(&mut self, src: InFile<ast::Union>) -> Option<UnionId> {
         self.to_def(src, keys::UNION)
     }
-    pub(super) fn static_to_def(&mut self, src: InFile<ast::StaticDef>) -> Option<StaticId> {
+    pub(super) fn static_to_def(&mut self, src: InFile<ast::Static>) -> Option<StaticId> {
         self.to_def(src, keys::STATIC)
     }
-    pub(super) fn const_to_def(&mut self, src: InFile<ast::ConstDef>) -> Option<ConstId> {
+    pub(super) fn const_to_def(&mut self, src: InFile<ast::Const>) -> Option<ConstId> {
         self.to_def(src, keys::CONST)
     }
-    pub(super) fn type_alias_to_def(
-        &mut self,
-        src: InFile<ast::TypeAliasDef>,
-    ) -> Option<TypeAliasId> {
+    pub(super) fn type_alias_to_def(&mut self, src: InFile<ast::TypeAlias>) -> Option<TypeAliasId> {
         self.to_def(src, keys::TYPE_ALIAS)
     }
-    pub(super) fn record_field_to_def(
-        &mut self,
-        src: InFile<ast::RecordFieldDef>,
-    ) -> Option<FieldId> {
+    pub(super) fn record_field_to_def(&mut self, src: InFile<ast::RecordField>) -> Option<FieldId> {
         self.to_def(src, keys::RECORD_FIELD)
     }
-    pub(super) fn tuple_field_to_def(
-        &mut self,
-        src: InFile<ast::TupleFieldDef>,
-    ) -> Option<FieldId> {
+    pub(super) fn tuple_field_to_def(&mut self, src: InFile<ast::TupleField>) -> Option<FieldId> {
         self.to_def(src, keys::TUPLE_FIELD)
     }
     pub(super) fn enum_variant_to_def(
         &mut self,
-        src: InFile<ast::EnumVariant>,
+        src: InFile<ast::Variant>,
     ) -> Option<EnumVariantId> {
-        self.to_def(src, keys::ENUM_VARIANT)
+        self.to_def(src, keys::VARIANT)
     }
     pub(super) fn bind_pat_to_def(
         &mut self,
@@ -162,37 +154,41 @@ impl SourceToDefCtx<'_, '_> {
                         let def = self.module_to_def(container.with_value(it))?;
                         def.into()
                     },
-                    ast::TraitDef(it) => {
+                    ast::Trait(it) => {
                         let def = self.trait_to_def(container.with_value(it))?;
                         def.into()
                     },
-                    ast::ImplDef(it) => {
+                    ast::Impl(it) => {
                         let def = self.impl_to_def(container.with_value(it))?;
                         def.into()
                     },
-                    ast::FnDef(it) => {
+                    ast::Fn(it) => {
                         let def = self.fn_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
-                    ast::StructDef(it) => {
+                    ast::Struct(it) => {
                         let def = self.struct_to_def(container.with_value(it))?;
                         VariantId::from(def).into()
                     },
-                    ast::EnumDef(it) => {
+                    ast::Enum(it) => {
                         let def = self.enum_to_def(container.with_value(it))?;
                         def.into()
                     },
-                    ast::UnionDef(it) => {
+                    ast::Union(it) => {
                         let def = self.union_to_def(container.with_value(it))?;
                         VariantId::from(def).into()
                     },
-                    ast::StaticDef(it) => {
+                    ast::Static(it) => {
                         let def = self.static_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
                     },
-                    ast::ConstDef(it) => {
+                    ast::Const(it) => {
                         let def = self.const_to_def(container.with_value(it))?;
                         DefWithBodyId::from(def).into()
+                    },
+                    ast::TypeAlias(it) => {
+                        let def = self.type_alias_to_def(container.with_value(it))?;
+                        def.into()
                     },
                     _ => continue,
                 }
@@ -208,12 +204,12 @@ impl SourceToDefCtx<'_, '_> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: GenericDefId = match_ast! {
                 match (container.value) {
-                    ast::FnDef(it) => self.fn_to_def(container.with_value(it))?.into(),
-                    ast::StructDef(it) => self.struct_to_def(container.with_value(it))?.into(),
-                    ast::EnumDef(it) => self.enum_to_def(container.with_value(it))?.into(),
-                    ast::TraitDef(it) => self.trait_to_def(container.with_value(it))?.into(),
-                    ast::TypeAliasDef(it) => self.type_alias_to_def(container.with_value(it))?.into(),
-                    ast::ImplDef(it) => self.impl_to_def(container.with_value(it))?.into(),
+                    ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
+                    ast::Struct(it) => self.struct_to_def(container.with_value(it))?.into(),
+                    ast::Enum(it) => self.enum_to_def(container.with_value(it))?.into(),
+                    ast::Trait(it) => self.trait_to_def(container.with_value(it))?.into(),
+                    ast::TypeAlias(it) => self.type_alias_to_def(container.with_value(it))?.into(),
+                    ast::Impl(it) => self.impl_to_def(container.with_value(it))?.into(),
                     _ => continue,
                 }
             };
@@ -226,9 +222,9 @@ impl SourceToDefCtx<'_, '_> {
         for container in src.cloned().ancestors_with_macros(self.db.upcast()).skip(1) {
             let res: DefWithBodyId = match_ast! {
                 match (container.value) {
-                    ast::ConstDef(it) => self.const_to_def(container.with_value(it))?.into(),
-                    ast::StaticDef(it) => self.static_to_def(container.with_value(it))?.into(),
-                    ast::FnDef(it) => self.fn_to_def(container.with_value(it))?.into(),
+                    ast::Const(it) => self.const_to_def(container.with_value(it))?.into(),
+                    ast::Static(it) => self.static_to_def(container.with_value(it))?.into(),
+                    ast::Fn(it) => self.fn_to_def(container.with_value(it))?.into(),
                     _ => continue,
                 }
             };
@@ -246,19 +242,21 @@ pub(crate) enum ChildContainer {
     ImplId(ImplId),
     EnumId(EnumId),
     VariantId(VariantId),
+    TypeAliasId(TypeAliasId),
     /// XXX: this might be the same def as, for example an `EnumId`. However,
     /// here the children generic parameters, and not, eg enum variants.
     GenericDefId(GenericDefId),
 }
-impl_froms! {
-    ChildContainer:
+impl_from! {
     DefWithBodyId,
     ModuleId,
     TraitId,
     ImplId,
     EnumId,
     VariantId,
+    TypeAliasId,
     GenericDefId
+    for ChildContainer
 }
 
 impl ChildContainer {
@@ -271,6 +269,7 @@ impl ChildContainer {
             ChildContainer::ImplId(it) => it.child_by_source(db),
             ChildContainer::EnumId(it) => it.child_by_source(db),
             ChildContainer::VariantId(it) => it.child_by_source(db),
+            ChildContainer::TypeAliasId(_) => DynMap::default(),
             ChildContainer::GenericDefId(it) => it.child_by_source(db),
         }
     }

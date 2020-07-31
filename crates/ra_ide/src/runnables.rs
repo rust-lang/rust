@@ -102,7 +102,7 @@ pub(crate) fn runnable(
 ) -> Option<Runnable> {
     match_ast! {
         match item {
-            ast::FnDef(it) => runnable_fn(sema, it, file_id),
+            ast::Fn(it) => runnable_fn(sema, it, file_id),
             ast::Module(it) => runnable_mod(sema, it, file_id),
             _ => None,
         }
@@ -111,7 +111,7 @@ pub(crate) fn runnable(
 
 fn runnable_fn(
     sema: &Semantics<RootDatabase>,
-    fn_def: ast::FnDef,
+    fn_def: ast::Fn,
     file_id: FileId,
 ) -> Option<Runnable> {
     let name_string = fn_def.name()?.text().to_string();
@@ -168,8 +168,7 @@ fn runnable_fn(
     };
 
     let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &fn_def));
-    let cfg_exprs =
-        attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
+    let cfg_exprs = attrs.cfg().collect();
 
     let nav = if let RunnableKind::DocTest { .. } = kind {
         NavigationTarget::from_doc_commented(
@@ -189,7 +188,7 @@ pub struct TestAttr {
 }
 
 impl TestAttr {
-    fn from_fn(fn_def: &ast::FnDef) -> TestAttr {
+    fn from_fn(fn_def: &ast::Fn) -> TestAttr {
         let ignore = fn_def
             .attrs()
             .filter_map(|attr| attr.simple_name())
@@ -204,7 +203,7 @@ impl TestAttr {
 ///
 /// It may produce false positives, for example, `#[wasm_bindgen_test]` requires a different command to run the test,
 /// but it's better than not to have the runnables for the tests at all.
-fn has_test_related_attribute(fn_def: &ast::FnDef) -> bool {
+fn has_test_related_attribute(fn_def: &ast::Fn) -> bool {
     fn_def
         .attrs()
         .filter_map(|attr| attr.path())
@@ -212,7 +211,7 @@ fn has_test_related_attribute(fn_def: &ast::FnDef) -> bool {
         .any(|attribute_text| attribute_text.contains("test"))
 }
 
-fn has_doc_test(fn_def: &ast::FnDef) -> bool {
+fn has_doc_test(fn_def: &ast::Fn) -> bool {
     fn_def.doc_comment_text().map_or(false, |comment| comment.contains("```"))
 }
 
@@ -221,15 +220,7 @@ fn runnable_mod(
     module: ast::Module,
     file_id: FileId,
 ) -> Option<Runnable> {
-    let has_test_function = module
-        .item_list()?
-        .items()
-        .filter_map(|it| match it {
-            ast::ModuleItem::FnDef(it) => Some(it),
-            _ => None,
-        })
-        .any(|f| has_test_related_attribute(&f));
-    if !has_test_function {
+    if !has_test_function_or_multiple_test_submodules(&module) {
         return None;
     }
     let module_def = sema.to_def(&module)?;
@@ -242,22 +233,56 @@ fn runnable_mod(
         .join("::");
 
     let attrs = Attrs::from_attrs_owner(sema.db, InFile::new(HirFileId::from(file_id), &module));
-    let cfg_exprs =
-        attrs.by_key("cfg").tt_values().map(|subtree| ra_cfg::parse_cfg(subtree)).collect();
-
+    let cfg_exprs = attrs.cfg().collect();
     let nav = module_def.to_nav(sema.db);
     Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg_exprs })
 }
 
+// We could create runnables for modules with number_of_test_submodules > 0,
+// but that bloats the runnables for no real benefit, since all tests can be run by the submodule already
+fn has_test_function_or_multiple_test_submodules(module: &ast::Module) -> bool {
+    if let Some(item_list) = module.item_list() {
+        let mut number_of_test_submodules = 0;
+
+        for item in item_list.items() {
+            match item {
+                ast::Item::Fn(f) => {
+                    if has_test_related_attribute(&f) {
+                        return true;
+                    }
+                }
+                ast::Item::Module(submodule) => {
+                    if has_test_function_or_multiple_test_submodules(&submodule) {
+                        number_of_test_submodules += 1;
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        number_of_test_submodules > 1
+    } else {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use insta::assert_debug_snapshot;
+    use expect::{expect, Expect};
 
     use crate::mock_analysis::analysis_and_position;
 
-    use super::{Runnable, RunnableAction, BENCH, BIN, DOCTEST, TEST};
+    use super::{RunnableAction, BENCH, BIN, DOCTEST, TEST};
 
-    fn assert_actions(runnables: &[Runnable], actions: &[&RunnableAction]) {
+    fn check(
+        ra_fixture: &str,
+        // FIXME: fold this into `expect` as well
+        actions: &[&RunnableAction],
+        expect: Expect,
+    ) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
+        let runnables = analysis.runnables(position.file_id).unwrap();
+        expect.assert_debug_eq(&runnables);
         assert_eq!(
             actions,
             runnables.into_iter().map(|it| it.action()).collect::<Vec<_>>().as_slice()
@@ -266,579 +291,593 @@ mod tests {
 
     #[test]
     fn test_runnables() {
-        let (analysis, pos) = analysis_and_position(
+        check(
             r#"
-        //- /lib.rs
-        <|> //empty
-        fn main() {}
+//- /lib.rs
+<|>
+fn main() {}
 
-        #[test]
-        fn test_foo() {}
+#[test]
+fn test_foo() {}
 
-        #[test]
-        #[ignore]
-        fn test_foo() {}
+#[test]
+#[ignore]
+fn test_foo() {}
 
-        #[bench]
-        fn bench() {}
-        "#,
+#[bench]
+fn bench() {}
+"#,
+            &[&BIN, &TEST, &TEST, &BENCH],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 1..13,
+                            focus_range: Some(
+                                4..8,
+                            ),
+                            name: "main",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Bin,
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 15..39,
+                            focus_range: Some(
+                                26..34,
+                            ),
+                            name: "test_foo",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test_foo",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 41..75,
+                            focus_range: Some(
+                                62..70,
+                            ),
+                            name: "test_foo",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test_foo",
+                            ),
+                            attr: TestAttr {
+                                ignore: true,
+                            },
+                        },
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 77..99,
+                            focus_range: Some(
+                                89..94,
+                            ),
+                            name: "bench",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Bench {
+                            test_id: Path(
+                                "bench",
+                            ),
+                        },
+                        cfg_exprs: [],
+                    },
+                ]
+            "#]],
         );
-        let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot!(&runnables,
-        @r###"
-        [
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 1..21,
-                    name: "main",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        12..16,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Bin,
-                cfg_exprs: [],
-            },
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 23..47,
-                    name: "test_foo",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        34..42,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Test {
-                    test_id: Path(
-                        "test_foo",
-                    ),
-                    attr: TestAttr {
-                        ignore: false,
-                    },
-                },
-                cfg_exprs: [],
-            },
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 49..83,
-                    name: "test_foo",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        70..78,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Test {
-                    test_id: Path(
-                        "test_foo",
-                    ),
-                    attr: TestAttr {
-                        ignore: true,
-                    },
-                },
-                cfg_exprs: [],
-            },
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 85..107,
-                    name: "bench",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        97..102,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Bench {
-                    test_id: Path(
-                        "bench",
-                    ),
-                },
-                cfg_exprs: [],
-            },
-        ]
-        "###
-                );
-        assert_actions(&runnables, &[&BIN, &TEST, &TEST, &BENCH]);
     }
 
     #[test]
     fn test_runnables_doc_test() {
-        let (analysis, pos) = analysis_and_position(
+        check(
             r#"
-        //- /lib.rs
-        <|> //empty
-        fn main() {}
+//- /lib.rs
+<|>
+fn main() {}
 
-        /// ```
-        /// let x = 5;
-        /// ```
-        fn foo() {}
-        "#,
+/// ```
+/// let x = 5;
+/// ```
+fn foo() {}
+"#,
+            &[&BIN, &DOCTEST],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 1..13,
+                            focus_range: Some(
+                                4..8,
+                            ),
+                            name: "main",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Bin,
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 15..57,
+                            focus_range: None,
+                            name: "foo",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "foo",
+                            ),
+                        },
+                        cfg_exprs: [],
+                    },
+                ]
+            "#]],
         );
-        let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot!(&runnables,
-        @r###"
-        [
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 1..21,
-                    name: "main",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        12..16,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Bin,
-                cfg_exprs: [],
-            },
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 23..65,
-                    name: "foo",
-                    kind: FN_DEF,
-                    focus_range: None,
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: DocTest {
-                    test_id: Path(
-                        "foo",
-                    ),
-                },
-                cfg_exprs: [],
-            },
-        ]
-        "###
-                );
-        assert_actions(&runnables, &[&BIN, &DOCTEST]);
     }
 
     #[test]
     fn test_runnables_doc_test_in_impl() {
-        let (analysis, pos) = analysis_and_position(
+        check(
             r#"
-        //- /lib.rs
-        <|> //empty
-        fn main() {}
+//- /lib.rs
+<|>
+fn main() {}
 
-        struct Data;
-        impl Data {
-            /// ```
-            /// let x = 5;
-            /// ```
-            fn foo() {}
-        }
-        "#,
+struct Data;
+impl Data {
+    /// ```
+    /// let x = 5;
+    /// ```
+    fn foo() {}
+}
+"#,
+            &[&BIN, &DOCTEST],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 1..13,
+                            focus_range: Some(
+                                4..8,
+                            ),
+                            name: "main",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Bin,
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 44..98,
+                            focus_range: None,
+                            name: "foo",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Data::foo",
+                            ),
+                        },
+                        cfg_exprs: [],
+                    },
+                ]
+            "#]],
         );
-        let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot!(&runnables,
-        @r###"
-        [
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 1..21,
-                    name: "main",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        12..16,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Bin,
-                cfg_exprs: [],
-            },
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 52..106,
-                    name: "foo",
-                    kind: FN_DEF,
-                    focus_range: None,
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: DocTest {
-                    test_id: Path(
-                        "Data::foo",
-                    ),
-                },
-                cfg_exprs: [],
-            },
-        ]
-        "###
-                );
-        assert_actions(&runnables, &[&BIN, &DOCTEST]);
     }
 
     #[test]
     fn test_runnables_module() {
-        let (analysis, pos) = analysis_and_position(
+        check(
             r#"
-        //- /lib.rs
-        <|> //empty
-        mod test_mod {
+//- /lib.rs
+<|>
+mod test_mod {
+    #[test]
+    fn test_foo1() {}
+}
+"#,
+            &[&TEST, &TEST],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 1..51,
+                            focus_range: Some(
+                                5..13,
+                            ),
+                            name: "test_mod",
+                            kind: MODULE,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: TestMod {
+                            path: "test_mod",
+                        },
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 20..49,
+                            focus_range: Some(
+                                35..44,
+                            ),
+                            name: "test_foo1",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test_mod::test_foo1",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg_exprs: [],
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn only_modules_with_test_functions_or_more_than_one_test_submodule_have_runners() {
+        check(
+            r#"
+//- /lib.rs
+<|>
+mod root_tests {
+    mod nested_tests_0 {
+        mod nested_tests_1 {
             #[test]
-            fn test_foo1() {}
+            fn nested_test_11() {}
+
+            #[test]
+            fn nested_test_12() {}
         }
-        "#,
-        );
-        let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot!(&runnables,
-        @r###"
-        [
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 1..59,
-                    name: "test_mod",
-                    kind: MODULE,
-                    focus_range: Some(
-                        13..21,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: TestMod {
-                    path: "test_mod",
-                },
-                cfg_exprs: [],
-            },
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 28..57,
-                    name: "test_foo1",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        43..52,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Test {
-                    test_id: Path(
-                        "test_mod::test_foo1",
-                    ),
-                    attr: TestAttr {
-                        ignore: false,
-                    },
-                },
-                cfg_exprs: [],
-            },
-        ]
-        "###
-                );
-        assert_actions(&runnables, &[&TEST, &TEST]);
+
+        mod nested_tests_2 {
+            #[test]
+            fn nested_test_2() {}
+        }
+
+        mod nested_tests_3 {}
     }
 
-    #[test]
-    fn test_runnables_one_depth_layer_module() {
-        let (analysis, pos) = analysis_and_position(
-            r#"
-        //- /lib.rs
-        <|> //empty
-        mod foo {
-            mod test_mod {
-                #[test]
-                fn test_foo1() {}
-            }
-        }
-        "#,
-        );
-        let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot!(&runnables,
-        @r###"
-        [
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 23..85,
-                    name: "test_mod",
-                    kind: MODULE,
-                    focus_range: Some(
-                        27..35,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: TestMod {
-                    path: "foo::test_mod",
-                },
-                cfg_exprs: [],
-            },
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 46..79,
-                    name: "test_foo1",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        65..74,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Test {
-                    test_id: Path(
-                        "foo::test_mod::test_foo1",
-                    ),
-                    attr: TestAttr {
-                        ignore: false,
+    mod nested_tests_4 {}
+}
+"#,
+            &[&TEST, &TEST, &TEST, &TEST, &TEST, &TEST],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 22..323,
+                            focus_range: Some(
+                                26..40,
+                            ),
+                            name: "nested_tests_0",
+                            kind: MODULE,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: TestMod {
+                            path: "root_tests::nested_tests_0",
+                        },
+                        cfg_exprs: [],
                     },
-                },
-                cfg_exprs: [],
-            },
-        ]
-        "###
-                );
-        assert_actions(&runnables, &[&TEST, &TEST]);
-    }
-
-    #[test]
-    fn test_runnables_multiple_depth_module() {
-        let (analysis, pos) = analysis_and_position(
-            r#"
-        //- /lib.rs
-        <|> //empty
-        mod foo {
-            mod bar {
-                mod test_mod {
-                    #[test]
-                    fn test_foo1() {}
-                }
-            }
-        }
-        "#,
-        );
-        let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot!(&runnables,
-        @r###"
-        [
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 41..115,
-                    name: "test_mod",
-                    kind: MODULE,
-                    focus_range: Some(
-                        45..53,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: TestMod {
-                    path: "foo::bar::test_mod",
-                },
-                cfg_exprs: [],
-            },
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 68..105,
-                    name: "test_foo1",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        91..100,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Test {
-                    test_id: Path(
-                        "foo::bar::test_mod::test_foo1",
-                    ),
-                    attr: TestAttr {
-                        ignore: false,
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 51..192,
+                            focus_range: Some(
+                                55..69,
+                            ),
+                            name: "nested_tests_1",
+                            kind: MODULE,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: TestMod {
+                            path: "root_tests::nested_tests_0::nested_tests_1",
+                        },
+                        cfg_exprs: [],
                     },
-                },
-                cfg_exprs: [],
-            },
-        ]
-        "###
-                );
-        assert_actions(&runnables, &[&TEST, &TEST]);
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 84..126,
+                            focus_range: Some(
+                                107..121,
+                            ),
+                            name: "nested_test_11",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "root_tests::nested_tests_0::nested_tests_1::nested_test_11",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 140..182,
+                            focus_range: Some(
+                                163..177,
+                            ),
+                            name: "nested_test_12",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "root_tests::nested_tests_0::nested_tests_1::nested_test_12",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 202..286,
+                            focus_range: Some(
+                                206..220,
+                            ),
+                            name: "nested_tests_2",
+                            kind: MODULE,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: TestMod {
+                            path: "root_tests::nested_tests_0::nested_tests_2",
+                        },
+                        cfg_exprs: [],
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 235..276,
+                            focus_range: Some(
+                                258..271,
+                            ),
+                            name: "nested_test_2",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "root_tests::nested_tests_0::nested_tests_2::nested_test_2",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg_exprs: [],
+                    },
+                ]
+            "#]],
+        );
     }
 
     #[test]
     fn test_runnables_with_feature() {
-        let (analysis, pos) = analysis_and_position(
+        check(
             r#"
-        //- /lib.rs crate:foo cfg:feature=foo
-        <|> //empty
-        #[test]
-        #[cfg(feature = "foo")]
-        fn test_foo1() {}
-        "#,
-        );
-        let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot!(&runnables,
-        @r###"
-        [
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 1..58,
-                    name: "test_foo1",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        44..53,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Test {
-                    test_id: Path(
-                        "test_foo1",
-                    ),
-                    attr: TestAttr {
-                        ignore: false,
-                    },
-                },
-                cfg_exprs: [
-                    KeyValue {
-                        key: "feature",
-                        value: "foo",
-                    },
-                ],
-            },
-        ]
-        "###
-                );
-        assert_actions(&runnables, &[&TEST]);
-    }
-
-    #[test]
-    fn test_runnables_with_features() {
-        let (analysis, pos) = analysis_and_position(
-            r#"
-        //- /lib.rs crate:foo cfg:feature=foo,feature=bar
-        <|> //empty
-        #[test]
-        #[cfg(all(feature = "foo", feature = "bar"))]
-        fn test_foo1() {}
-        "#,
-        );
-        let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot!(&runnables,
-        @r###"
-        [
-            Runnable {
-                nav: NavigationTarget {
-                    file_id: FileId(
-                        1,
-                    ),
-                    full_range: 1..80,
-                    name: "test_foo1",
-                    kind: FN_DEF,
-                    focus_range: Some(
-                        66..75,
-                    ),
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                },
-                kind: Test {
-                    test_id: Path(
-                        "test_foo1",
-                    ),
-                    attr: TestAttr {
-                        ignore: false,
-                    },
-                },
-                cfg_exprs: [
-                    All(
-                        [
+//- /lib.rs crate:foo cfg:feature=foo
+<|>
+#[test]
+#[cfg(feature = "foo")]
+fn test_foo1() {}
+"#,
+            &[&TEST],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 1..50,
+                            focus_range: Some(
+                                36..45,
+                            ),
+                            name: "test_foo1",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test_foo1",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg_exprs: [
                             KeyValue {
                                 key: "feature",
                                 value: "foo",
                             },
-                            KeyValue {
-                                key: "feature",
-                                value: "bar",
-                            },
                         ],
-                    ),
-                ],
-            },
-        ]
-        "###
-                );
-        assert_actions(&runnables, &[&TEST]);
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_runnables_with_features() {
+        check(
+            r#"
+//- /lib.rs crate:foo cfg:feature=foo,feature=bar
+<|>
+#[test]
+#[cfg(all(feature = "foo", feature = "bar"))]
+fn test_foo1() {}
+"#,
+            &[&TEST],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                1,
+                            ),
+                            full_range: 1..72,
+                            focus_range: Some(
+                                58..67,
+                            ),
+                            name: "test_foo1",
+                            kind: FN,
+                            container_name: None,
+                            description: None,
+                            docs: None,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test_foo1",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg_exprs: [
+                            All(
+                                [
+                                    KeyValue {
+                                        key: "feature",
+                                        value: "foo",
+                                    },
+                                    KeyValue {
+                                        key: "feature",
+                                        value: "bar",
+                                    },
+                                ],
+                            ),
+                        ],
+                    },
+                ]
+            "#]],
+        );
     }
 
     #[test]
     fn test_runnables_no_test_function_in_module() {
-        let (analysis, pos) = analysis_and_position(
+        check(
             r#"
-        //- /lib.rs
-        <|> //empty
-        mod test_mod {
-            fn foo1() {}
-        }
-        "#,
+//- /lib.rs
+<|>
+mod test_mod {
+    fn foo1() {}
+}
+"#,
+            &[],
+            expect![[r#"
+                []
+            "#]],
         );
-        let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert!(runnables.is_empty())
     }
 }

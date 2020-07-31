@@ -1,6 +1,6 @@
 use crate::{
     codegen, is_release_tag,
-    not_bash::{date_iso, fs2, run},
+    not_bash::{date_iso, fs2, pushd, run},
     project_root, Mode, Result,
 };
 
@@ -37,6 +37,8 @@ Release: release:{}[]
 
 == Sponsors
 
+**Become a sponsor:** https://opencollective.com/rust-analyzer/[opencollective.com/rust-analyzer]
+
 == New Features
 
 * pr:[] .
@@ -64,6 +66,38 @@ Release: release:{}[]
         let git_log_dst = website_root.join("git.log");
         fs2::write(git_log_dst, &git_log)?;
 
+        Ok(())
+    }
+}
+
+pub struct PromoteCmd {
+    pub dry_run: bool,
+}
+
+impl PromoteCmd {
+    pub fn run(self) -> Result<()> {
+        let _dir = pushd("../rust-rust-analyzer");
+        run!("git switch master")?;
+        run!("git fetch upstream")?;
+        run!("git reset --hard upstream/master")?;
+        run!("git submodule update --recursive")?;
+
+        let branch = format!("rust-analyzer-{}", date_iso()?);
+        run!("git switch -c {}", branch)?;
+        {
+            let _dir = pushd("src/tools/rust-analyzer");
+            run!("git fetch origin")?;
+            run!("git reset --hard origin/release")?;
+        }
+        run!("git add src/tools/rust-analyzer")?;
+        run!("git commit -m':arrow_up: rust-analyzer'")?;
+        if !self.dry_run {
+            run!("git push")?;
+            run!(
+                "xdg-open https://github.com/matklad/rust/pull/new/{}?body=r%3F%20%40ghost",
+                branch
+            )?;
+        }
         Ok(())
     }
 }

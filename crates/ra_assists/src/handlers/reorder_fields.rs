@@ -5,7 +5,7 @@ use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
 use ra_ide_db::RootDatabase;
 use ra_syntax::{algo, ast, match_ast, AstNode, SyntaxKind, SyntaxKind::*, SyntaxNode};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: reorder_fields
 //
@@ -23,7 +23,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 //
 pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    reorder::<ast::RecordLit>(acc, ctx).or_else(|| reorder::<ast::RecordPat>(acc, ctx))
+    reorder::<ast::RecordExpr>(acc, ctx).or_else(|| reorder::<ast::RecordPat>(acc, ctx))
 }
 
 fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -42,16 +42,21 @@ fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     }
 
     let target = record.syntax().text_range();
-    acc.add(AssistId("reorder_fields"), "Reorder record fields", target, |edit| {
-        for (old, new) in fields.iter().zip(&sorted_fields) {
-            algo::diff(old, new).into_text_edit(edit.text_edit_builder());
-        }
-    })
+    acc.add(
+        AssistId("reorder_fields", AssistKind::RefactorRewrite),
+        "Reorder record fields",
+        target,
+        |edit| {
+            for (old, new) in fields.iter().zip(&sorted_fields) {
+                algo::diff(old, new).into_text_edit(edit.text_edit_builder());
+            }
+        },
+    )
 }
 
 fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {
     match node.kind() {
-        RECORD_LIT => vec![RECORD_FIELD],
+        RECORD_EXPR => vec![RECORD_EXPR_FIELD],
         RECORD_PAT => vec![RECORD_FIELD_PAT, BIND_PAT],
         _ => vec![],
     }
@@ -60,7 +65,7 @@ fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {
 fn get_field_name(node: &SyntaxNode) -> String {
     let res = match_ast! {
         match node {
-            ast::RecordField(field) => field.field_name().map(|it| it.to_string()),
+            ast::RecordExprField(field) => field.field_name().map(|it| it.to_string()),
             ast::RecordFieldPat(field) => field.field_name().map(|it| it.to_string()),
             _ => None,
         }
@@ -90,10 +95,10 @@ fn struct_definition(path: &ast::Path, sema: &Semantics<RootDatabase>) -> Option
 fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashMap<String, usize>> {
     Some(
         struct_definition(path, &ctx.sema)?
-            .fields(ctx.db)
+            .fields(ctx.db())
             .iter()
             .enumerate()
-            .map(|(idx, field)| (field.name(ctx.db).to_string(), idx))
+            .map(|(idx, field)| (field.name(ctx.db()).to_string(), idx))
             .collect(),
     )
 }

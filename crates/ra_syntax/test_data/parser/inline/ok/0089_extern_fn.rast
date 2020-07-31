@@ -1,5 +1,5 @@
 SOURCE_FILE@0..19
-  FN_DEF@0..18
+  FN@0..18
     ABI@0..6
       EXTERN_KW@0..6 "extern"
     WHITESPACE@6..7 " "

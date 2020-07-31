@@ -11,11 +11,13 @@ If you want to be notified about the changes to this document, subscribe to [#46
 
 ## `initializationOptions`
 
-As `initializationOptions`, `rust-analyzer` expects `"rust-analyzer"` section of the configuration.
+For `initializationOptions`, `rust-analyzer` expects `"rust-analyzer"` section of the configuration.
 That is, `rust-analyzer` usually sends `"workspace/configuration"` request with `{ "items": ["rust-analyzer"] }` payload.
 `initializationOptions` should contain the same data that would be in the first item of the result.
-It's OK to not send anything, then all the settings would take their default values.
-However, some settings can not be changed after startup at the moment.
+If a language client does not know about `rust-analyzer`'s configuration options it can get sensible defaults by doing any of the following:
+ * Not sending `initializationOptions`
+ * Send `"initializationOptions": null`
+ * Send `"initializationOptions": {}`
 
 ## Snippet `TextEdit`
 
@@ -272,6 +274,11 @@ interface SsrParams {
     query: string,
     /// If true, only check the syntax of the query and don't compute the actual edit.
     parseOnly: bool,
+    /// The current text document. This and `position` will be used to determine in what scope
+    /// paths in `query` should be resolved.
+    textDocument: lc.TextDocumentIdentifier;
+    /// Position where SSR was invoked.
+    position: lc.Position;
 }
 ```
 
@@ -283,7 +290,7 @@ WorkspaceEdit
 
 ### Example
 
-SSR with query `foo($a:expr, $b:expr) ==>> ($a).foo($b)` will transform, eg `foo(y + 5, z)` into `(y + 5).foo(z)`.
+SSR with query `foo($a, $b) ==>> ($a).foo($b)` will transform, eg `foo(y + 5, z)` into `(y + 5).foo(z)`.
 
 ### Unresolved Question
 
@@ -389,15 +396,27 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
 
 Returns internal status message, mostly for debugging purposes.
 
-## Collect Garbage
+## Reload Workspace
 
-**Method:** `rust-analyzer/collectGarbage`
+**Method:** `rust-analyzer/reloadWorkspace`
 
 **Request:** `null`
 
 **Response:** `null`
 
-Frees some caches. For internal use, and is mostly broken at the moment.
+Reloads project information (that is, re-executes `cargo metadata`).
+
+## Status Notification
+
+**Client Capability:** `{ "statusNotification": boolean }`
+
+**Method:** `rust-analyzer/status`
+
+**Notification:** `"loading" | "ready" | "invalid" | "needsReload"`
+
+This notification is sent from server to client.
+The client can use it to display persistent status to the user (in modline).
+For `needsReload` state, the client can provide a context-menu action to run `rust-analyzer/reloadWorkspace` request.
 
 ## Syntax Tree
 

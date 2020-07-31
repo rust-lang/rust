@@ -3,7 +3,7 @@
 use std::fmt;
 
 use crate::{
-    db::HirDatabase, utils::generics, ApplicationTy, CallableDef, FnSig, GenericPredicate,
+    db::HirDatabase, utils::generics, ApplicationTy, CallableDefId, FnSig, GenericPredicate,
     Obligation, OpaqueTyId, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
 };
 use hir_def::{
@@ -243,22 +243,36 @@ impl HirDisplay for ApplicationTy {
                     write!(f, ")")?;
                 }
             }
-            TypeCtor::FnPtr { .. } => {
-                let sig = FnSig::from_fn_ptr_substs(&self.parameters);
+            TypeCtor::FnPtr { is_varargs, .. } => {
+                let sig = FnSig::from_fn_ptr_substs(&self.parameters, is_varargs);
                 write!(f, "fn(")?;
                 f.write_joined(sig.params(), ", ")?;
+                if is_varargs {
+                    if sig.params().is_empty() {
+                        write!(f, "...")?;
+                    } else {
+                        write!(f, ", ...")?;
+                    }
+                }
                 write!(f, ")")?;
                 let ret = sig.ret();
                 if *ret != Ty::unit() {
-                    write!(f, " -> {}", ret.display(f.db))?;
+                    let ret_display = if f.omit_verbose_types() {
+                        ret.display_truncated(f.db, f.max_size)
+                    } else {
+                        ret.display(f.db)
+                    };
+                    write!(f, " -> {}", ret_display)?;
                 }
             }
             TypeCtor::FnDef(def) => {
                 let sig = f.db.callable_item_signature(def).subst(&self.parameters);
                 match def {
-                    CallableDef::FunctionId(ff) => write!(f, "fn {}", f.db.function_data(ff).name)?,
-                    CallableDef::StructId(s) => write!(f, "{}", f.db.struct_data(s).name)?,
-                    CallableDef::EnumVariantId(e) => {
+                    CallableDefId::FunctionId(ff) => {
+                        write!(f, "fn {}", f.db.function_data(ff).name)?
+                    }
+                    CallableDefId::StructId(s) => write!(f, "{}", f.db.struct_data(s).name)?,
+                    CallableDefId::EnumVariantId(e) => {
                         write!(f, "{}", f.db.enum_data(e.parent).variants[e.local_id].name)?
                     }
                 };
@@ -279,7 +293,12 @@ impl HirDisplay for ApplicationTy {
                 write!(f, ")")?;
                 let ret = sig.ret();
                 if *ret != Ty::unit() {
-                    write!(f, " -> {}", ret.display(f.db))?;
+                    let ret_display = if f.omit_verbose_types() {
+                        ret.display_truncated(f.db, f.max_size)
+                    } else {
+                        ret.display(f.db)
+                    };
+                    write!(f, " -> {}", ret_display)?;
                 }
             }
             TypeCtor::Adt(def_id) => {
@@ -369,7 +388,7 @@ impl HirDisplay for ApplicationTy {
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        data.clone().subst(&self.parameters)
+                        data.subst(&self.parameters)
                     }
                 };
                 write!(f, "impl ")?;
@@ -388,7 +407,13 @@ impl HirDisplay for ApplicationTy {
                         f.write_joined(sig.params(), ", ")?;
                         write!(f, "|")?;
                     };
-                    write!(f, " -> {}", sig.ret().display(f.db))?;
+
+                    let ret_display = if f.omit_verbose_types() {
+                        sig.ret().display_truncated(f.db, f.max_size)
+                    } else {
+                        sig.ret().display(f.db)
+                    };
+                    write!(f, " -> {}", ret_display)?;
                 } else {
                     write!(f, "{{closure}}")?;
                 }
@@ -456,7 +481,7 @@ impl HirDisplay for Ty {
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        data.clone().subst(&opaque_ty.parameters)
+                        data.subst(&opaque_ty.parameters)
                     }
                 };
                 write!(f, "impl ")?;

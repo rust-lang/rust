@@ -2,367 +2,337 @@ use super::*;
 
 #[test]
 fn glob_1() {
-    let map = def_map(
-        r"
-        //- /lib.rs
-        mod foo;
-        use foo::*;
+    check(
+        r#"
+//- /lib.rs
+mod foo;
+use foo::*;
 
-        //- /foo/mod.rs
-        pub mod bar;
-        pub use self::bar::Baz;
-        pub struct Foo;
+//- /foo/mod.rs
+pub mod bar;
+pub use self::bar::Baz;
+pub struct Foo;
 
-        //- /foo/bar.rs
-        pub struct Baz;
-        ",
-    );
-    assert_snapshot!(map, @r###"
-   ⋮crate
-   ⋮Baz: t v
-   ⋮Foo: t v
-   ⋮bar: t
-   ⋮foo: t
-   ⋮
-   ⋮crate::foo
-   ⋮Baz: t v
-   ⋮Foo: t v
-   ⋮bar: t
-   ⋮
-   ⋮crate::foo::bar
-   ⋮Baz: t v
-    "###
+//- /foo/bar.rs
+pub struct Baz;
+"#,
+        expect![[r#"
+            crate
+            Baz: t v
+            Foo: t v
+            bar: t
+            foo: t
+
+            crate::foo
+            Baz: t v
+            Foo: t v
+            bar: t
+
+            crate::foo::bar
+            Baz: t v
+        "#]],
     );
 }
 
 #[test]
 fn glob_2() {
-    let map = def_map(
-        "
-        //- /lib.rs
-        mod foo;
-        use foo::*;
+    check(
+        r#"
+//- /lib.rs
+mod foo;
+use foo::*;
 
-        //- /foo/mod.rs
-        pub mod bar;
-        pub use self::bar::*;
-        pub struct Foo;
+//- /foo/mod.rs
+pub mod bar;
+pub use self::bar::*;
+pub struct Foo;
 
-        //- /foo/bar.rs
-        pub struct Baz;
-        pub use super::*;
-        ",
-    );
-    assert_snapshot!(map, @r###"
-   ⋮crate
-   ⋮Baz: t v
-   ⋮Foo: t v
-   ⋮bar: t
-   ⋮foo: t
-   ⋮
-   ⋮crate::foo
-   ⋮Baz: t v
-   ⋮Foo: t v
-   ⋮bar: t
-   ⋮
-   ⋮crate::foo::bar
-   ⋮Baz: t v
-   ⋮Foo: t v
-   ⋮bar: t
-    "###
+//- /foo/bar.rs
+pub struct Baz;
+pub use super::*;
+"#,
+        expect![[r#"
+            crate
+            Baz: t v
+            Foo: t v
+            bar: t
+            foo: t
+
+            crate::foo
+            Baz: t v
+            Foo: t v
+            bar: t
+
+            crate::foo::bar
+            Baz: t v
+            Foo: t v
+            bar: t
+        "#]],
     );
 }
 
 #[test]
 fn glob_privacy_1() {
-    let map = def_map(
+    check(
         r"
-        //- /lib.rs
-        mod foo;
-        use foo::*;
+//- /lib.rs
+mod foo;
+use foo::*;
 
-        //- /foo/mod.rs
-        pub mod bar;
-        pub use self::bar::*;
-        struct PrivateStructFoo;
+//- /foo/mod.rs
+pub mod bar;
+pub use self::bar::*;
+struct PrivateStructFoo;
 
-        //- /foo/bar.rs
-        pub struct Baz;
-        struct PrivateStructBar;
-        pub use super::*;
-        ",
-    );
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Baz: t v
-        ⋮bar: t
-        ⋮foo: t
-        ⋮
-        ⋮crate::foo
-        ⋮Baz: t v
-        ⋮PrivateStructFoo: t v
-        ⋮bar: t
-        ⋮
-        ⋮crate::foo::bar
-        ⋮Baz: t v
-        ⋮PrivateStructBar: t v
-        ⋮PrivateStructFoo: t v
-        ⋮bar: t
-    "###
+//- /foo/bar.rs
+pub struct Baz;
+struct PrivateStructBar;
+pub use super::*;
+",
+        expect![[r#"
+            crate
+            Baz: t v
+            bar: t
+            foo: t
+
+            crate::foo
+            Baz: t v
+            PrivateStructFoo: t v
+            bar: t
+
+            crate::foo::bar
+            Baz: t v
+            PrivateStructBar: t v
+            PrivateStructFoo: t v
+            bar: t
+        "#]],
     );
 }
 
 #[test]
 fn glob_privacy_2() {
-    let map = def_map(
+    check(
         r"
-        //- /lib.rs
-        mod foo;
-        use foo::*;
-        use foo::bar::*;
+//- /lib.rs
+mod foo;
+use foo::*;
+use foo::bar::*;
 
-        //- /foo/mod.rs
-        mod bar;
-        fn Foo() {};
-        pub struct Foo {};
+//- /foo/mod.rs
+mod bar;
+fn Foo() {};
+pub struct Foo {};
 
-        //- /foo/bar.rs
-        pub(super) struct PrivateBaz;
-        struct PrivateBar;
-        pub(crate) struct PubCrateStruct;
-        ",
-    );
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Foo: t
-        ⋮PubCrateStruct: t v
-        ⋮foo: t
-        ⋮
-        ⋮crate::foo
-        ⋮Foo: t v
-        ⋮bar: t
-        ⋮
-        ⋮crate::foo::bar
-        ⋮PrivateBar: t v
-        ⋮PrivateBaz: t v
-        ⋮PubCrateStruct: t v
-    "###
+//- /foo/bar.rs
+pub(super) struct PrivateBaz;
+struct PrivateBar;
+pub(crate) struct PubCrateStruct;
+",
+        expect![[r#"
+            crate
+            Foo: t
+            PubCrateStruct: t v
+            foo: t
+
+            crate::foo
+            Foo: t v
+            bar: t
+
+            crate::foo::bar
+            PrivateBar: t v
+            PrivateBaz: t v
+            PubCrateStruct: t v
+        "#]],
     );
 }
 
 #[test]
 fn glob_across_crates() {
     mark::check!(glob_across_crates);
-    let map = def_map(
-        r"
-        //- /main.rs crate:main deps:test_crate
-        use test_crate::*;
+    check(
+        r#"
+//- /main.rs crate:main deps:test_crate
+use test_crate::*;
 
-        //- /lib.rs crate:test_crate
-        pub struct Baz;
-        ",
-    );
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Baz: t v
-    "###
+//- /lib.rs crate:test_crate
+pub struct Baz;
+"#,
+        expect![[r#"
+            crate
+            Baz: t v
+        "#]],
     );
 }
 
 #[test]
 fn glob_privacy_across_crates() {
-    let map = def_map(
-        r"
-        //- /main.rs crate:main deps:test_crate
-        use test_crate::*;
+    check(
+        r#"
+//- /main.rs crate:main deps:test_crate
+use test_crate::*;
 
-        //- /lib.rs crate:test_crate
-        pub struct Baz;
-        struct Foo;
-        ",
-    );
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Baz: t v
-    "###
+//- /lib.rs crate:test_crate
+pub struct Baz;
+struct Foo;
+"#,
+        expect![[r#"
+            crate
+            Baz: t v
+        "#]],
     );
 }
 
 #[test]
 fn glob_enum() {
     mark::check!(glob_enum);
-    let map = def_map(
-        "
-        //- /lib.rs
-        enum Foo {
-            Bar, Baz
-        }
-        use self::Foo::*;
-        ",
-    );
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Bar: t v
-        ⋮Baz: t v
-        ⋮Foo: t
-    "###
+    check(
+        r#"
+enum Foo { Bar, Baz }
+use self::Foo::*;
+"#,
+        expect![[r#"
+            crate
+            Bar: t v
+            Baz: t v
+            Foo: t
+        "#]],
     );
 }
 
 #[test]
 fn glob_enum_group() {
     mark::check!(glob_enum_group);
-    let map = def_map(
-        r"
-        //- /lib.rs
-        enum Foo {
-            Bar, Baz
-        }
-        use self::Foo::{*};
-        ",
-    );
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Bar: t v
-        ⋮Baz: t v
-        ⋮Foo: t
-    "###
+    check(
+        r#"
+enum Foo { Bar, Baz }
+use self::Foo::{*};
+"#,
+        expect![[r#"
+            crate
+            Bar: t v
+            Baz: t v
+            Foo: t
+        "#]],
     );
 }
 
 #[test]
 fn glob_shadowed_def() {
     mark::check!(import_shadowed);
-    let map = def_map(
-        r###"
-        //- /lib.rs
-        mod foo;
-        mod bar;
+    check(
+        r#"
+//- /lib.rs
+mod foo;
+mod bar;
+use foo::*;
+use bar::baz;
+use baz::Bar;
 
-        use foo::*;
-        use bar::baz;
+//- /foo.rs
+pub mod baz { pub struct Foo; }
 
-        use baz::Bar;
+//- /bar.rs
+pub mod baz { pub struct Bar; }
+"#,
+        expect![[r#"
+            crate
+            Bar: t v
+            bar: t
+            baz: t
+            foo: t
 
-        //- /foo.rs
-        pub mod baz {
-            pub struct Foo;
-        }
+            crate::bar
+            baz: t
 
-        //- /bar.rs
-        pub mod baz {
-            pub struct Bar;
-        }
-        "###,
-    );
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Bar: t v
-        ⋮bar: t
-        ⋮baz: t
-        ⋮foo: t
-        ⋮
-        ⋮crate::bar
-        ⋮baz: t
-        ⋮
-        ⋮crate::bar::baz
-        ⋮Bar: t v
-        ⋮
-        ⋮crate::foo
-        ⋮baz: t
-        ⋮
-        ⋮crate::foo::baz
-        ⋮Foo: t v
-    "###
+            crate::bar::baz
+            Bar: t v
+
+            crate::foo
+            baz: t
+
+            crate::foo::baz
+            Foo: t v
+        "#]],
     );
 }
 
 #[test]
 fn glob_shadowed_def_reversed() {
-    let map = def_map(
-        r###"
-        //- /lib.rs
-        mod foo;
-        mod bar;
+    check(
+        r#"
+//- /lib.rs
+mod foo;
+mod bar;
+use bar::baz;
+use foo::*;
+use baz::Bar;
 
-        use bar::baz;
-        use foo::*;
+//- /foo.rs
+pub mod baz { pub struct Foo; }
 
-        use baz::Bar;
+//- /bar.rs
+pub mod baz { pub struct Bar; }
+"#,
+        expect![[r#"
+            crate
+            Bar: t v
+            bar: t
+            baz: t
+            foo: t
 
-        //- /foo.rs
-        pub mod baz {
-            pub struct Foo;
-        }
+            crate::bar
+            baz: t
 
-        //- /bar.rs
-        pub mod baz {
-            pub struct Bar;
-        }
-        "###,
-    );
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮Bar: t v
-        ⋮bar: t
-        ⋮baz: t
-        ⋮foo: t
-        ⋮
-        ⋮crate::bar
-        ⋮baz: t
-        ⋮
-        ⋮crate::bar::baz
-        ⋮Bar: t v
-        ⋮
-        ⋮crate::foo
-        ⋮baz: t
-        ⋮
-        ⋮crate::foo::baz
-        ⋮Foo: t v
-    "###
+            crate::bar::baz
+            Bar: t v
+
+            crate::foo
+            baz: t
+
+            crate::foo::baz
+            Foo: t v
+        "#]],
     );
 }
 
 #[test]
 fn glob_shadowed_def_dependencies() {
-    let map = def_map(
-        r###"
-        //- /lib.rs
-        mod a { pub mod foo { pub struct X; } }
-        mod b { pub use super::a::foo; }
-        mod c { pub mod foo { pub struct Y; } }
-        mod d {
-            use super::c::foo;
-            use super::b::*;
-            use foo::Y;
-        }
-        "###,
-    );
-    assert_snapshot!(map, @r###"
-        ⋮crate
-        ⋮a: t
-        ⋮b: t
-        ⋮c: t
-        ⋮d: t
-        ⋮
-        ⋮crate::d
-        ⋮Y: t v
-        ⋮foo: t
-        ⋮
-        ⋮crate::c
-        ⋮foo: t
-        ⋮
-        ⋮crate::c::foo
-        ⋮Y: t v
-        ⋮
-        ⋮crate::b
-        ⋮foo: t
-        ⋮
-        ⋮crate::a
-        ⋮foo: t
-        ⋮
-        ⋮crate::a::foo
-        ⋮X: t v
-    "###
+    check(
+        r#"
+mod a { pub mod foo { pub struct X; } }
+mod b { pub use super::a::foo; }
+mod c { pub mod foo { pub struct Y; } }
+mod d {
+    use super::c::foo;
+    use super::b::*;
+    use foo::Y;
+}
+"#,
+        expect![[r#"
+            crate
+            a: t
+            b: t
+            c: t
+            d: t
+
+            crate::d
+            Y: t v
+            foo: t
+
+            crate::c
+            foo: t
+
+            crate::c::foo
+            Y: t v
+
+            crate::b
+            foo: t
+
+            crate::a
+            foo: t
+
+            crate::a::foo
+            X: t v
+        "#]],
     );
 }

@@ -10,15 +10,15 @@ mod ssr;
 use std::io::Read;
 
 use anyhow::Result;
-use ra_ide::{file_structure, Analysis};
+use ra_ide::Analysis;
 use ra_prof::profile;
 use ra_syntax::{AstNode, SourceFile};
 
-pub use analysis_bench::{analysis_bench, BenchWhat, Position};
-pub use analysis_stats::analysis_stats;
+pub use analysis_bench::{BenchCmd, BenchWhat, Position};
+pub use analysis_stats::AnalysisStatsCmd;
 pub use diagnostics::diagnostics;
 pub use load_cargo::load_cargo;
-pub use ssr::apply_ssr_rules;
+pub use ssr::{apply_ssr_rules, search_for_patterns};
 
 #[derive(Clone, Copy)]
 pub enum Verbosity {
@@ -48,8 +48,10 @@ pub fn parse(no_dump: bool) -> Result<()> {
 }
 
 pub fn symbols() -> Result<()> {
-    let file = file()?;
-    for s in file_structure(&file) {
+    let text = read_stdin()?;
+    let (analysis, file_id) = Analysis::from_single_file(text);
+    let structure = analysis.file_structure(file_id).unwrap();
+    for s in structure {
         println!("{:?}", s);
     }
     Ok(())
@@ -71,4 +73,11 @@ fn read_stdin() -> Result<String> {
     let mut buff = String::new();
     std::io::stdin().read_to_string(&mut buff)?;
     Ok(buff)
+}
+
+fn report_metric(metric: &str, value: u64, unit: &str) {
+    if std::env::var("RA_METRICS").is_err() {
+        return;
+    }
+    println!("METRIC:{}:{}:{}", metric, value, unit)
 }

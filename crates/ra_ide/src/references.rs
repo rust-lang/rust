@@ -74,8 +74,8 @@ impl IntoIterator for ReferenceSearchResult {
         let mut v = Vec::with_capacity(self.len());
         v.push(Reference {
             file_range: FileRange {
-                file_id: self.declaration.nav.file_id(),
-                range: self.declaration.nav.range(),
+                file_id: self.declaration.nav.file_id,
+                range: self.declaration.nav.focus_or_full_range(),
             },
             kind: self.declaration.kind,
             access: self.declaration.access,
@@ -86,12 +86,11 @@ impl IntoIterator for ReferenceSearchResult {
 }
 
 pub(crate) fn find_all_refs(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<RangeInfo<ReferenceSearchResult>> {
     let _p = profile("find_all_refs");
-    let sema = Semantics::new(db);
     let syntax = sema.parse(position.file_id).syntax().clone();
 
     let (opt_name, search_kind) = if let Some(name) =
@@ -108,15 +107,15 @@ pub(crate) fn find_all_refs(
     let RangeInfo { range, info: def } = find_name(&sema, &syntax, position, opt_name)?;
 
     let references = def
-        .find_usages(db, search_scope)
+        .find_usages(sema, search_scope)
         .into_iter()
         .filter(|r| search_kind == ReferenceKind::Other || search_kind == r.kind)
         .collect();
 
-    let decl_range = def.try_to_nav(db)?.range();
+    let decl_range = def.try_to_nav(sema.db)?.focus_or_full_range();
 
     let declaration = Declaration {
-        nav: def.try_to_nav(db)?,
+        nav: def.try_to_nav(sema.db)?,
         kind: ReferenceKind::Other,
         access: decl_access(&def, &syntax, decl_range),
     };
@@ -173,16 +172,16 @@ fn get_struct_def_name_for_struct_literal_search(
         if let Some(name) =
             sema.find_node_at_offset_with_descend::<ast::Name>(&syntax, left.text_range().start())
         {
-            return name.syntax().ancestors().find_map(ast::StructDef::cast).and_then(|l| l.name());
+            return name.syntax().ancestors().find_map(ast::Struct::cast).and_then(|l| l.name());
         }
         if sema
-            .find_node_at_offset_with_descend::<ast::TypeParamList>(
+            .find_node_at_offset_with_descend::<ast::GenericParamList>(
                 &syntax,
                 left.text_range().start(),
             )
             .is_some()
         {
-            return left.ancestors().find_map(ast::StructDef::cast).and_then(|l| l.name());
+            return left.ancestors().find_map(ast::Struct::cast).and_then(|l| l.name());
         }
     }
     None
@@ -213,7 +212,7 @@ fn main() {
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..26 7..10 Other",
+            "Foo STRUCT FileId(1) 0..26 7..10 Other",
             &["FileId(1) 101..104 StructLiteral"],
         );
     }
@@ -231,7 +230,7 @@ struct Foo<|> {}
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..13 7..10 Other",
+            "Foo STRUCT FileId(1) 0..13 7..10 Other",
             &["FileId(1) 41..44 Other", "FileId(1) 54..57 StructLiteral"],
         );
     }
@@ -249,7 +248,7 @@ struct Foo<T> <|>{}
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..16 7..10 Other",
+            "Foo STRUCT FileId(1) 0..16 7..10 Other",
             &["FileId(1) 64..67 StructLiteral"],
         );
     }
@@ -268,7 +267,7 @@ fn main() {
         );
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(1) 0..16 7..10 Other",
+            "Foo STRUCT FileId(1) 0..16 7..10 Other",
             &["FileId(1) 54..57 StructLiteral"],
         );
     }
@@ -362,7 +361,7 @@ fn main(s: Foo) {
         );
         check_result(
             refs,
-            "spam RECORD_FIELD_DEF FileId(1) 17..30 21..25 Other",
+            "spam RECORD_FIELD FileId(1) 17..30 21..25 Other",
             &["FileId(1) 67..71 Other Read"],
         );
     }
@@ -377,7 +376,7 @@ impl Foo {
 }
 "#,
         );
-        check_result(refs, "f FN_DEF FileId(1) 27..43 30..31 Other", &[]);
+        check_result(refs, "f FN FileId(1) 27..43 30..31 Other", &[]);
     }
 
     #[test]
@@ -391,7 +390,7 @@ enum Foo {
 }
 "#,
         );
-        check_result(refs, "B ENUM_VARIANT FileId(1) 22..23 22..23 Other", &[]);
+        check_result(refs, "B VARIANT FileId(1) 22..23 22..23 Other", &[]);
     }
 
     #[test]
@@ -432,7 +431,7 @@ fn f() {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(2) 17..51 28..31 Other",
+            "Foo STRUCT FileId(2) 17..51 28..31 Other",
             &["FileId(1) 53..56 StructLiteral", "FileId(3) 79..82 StructLiteral"],
         );
     }
@@ -487,7 +486,7 @@ pub(super) struct Foo<|> {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "Foo STRUCT_DEF FileId(3) 0..41 18..21 Other",
+            "Foo STRUCT FileId(3) 0..41 18..21 Other",
             &["FileId(2) 20..23 Other", "FileId(2) 47..50 StructLiteral"],
         );
     }
@@ -515,7 +514,7 @@ pub(super) struct Foo<|> {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) 19..35 26..30 Other",
+            "quux FN FileId(1) 19..35 26..30 Other",
             &["FileId(2) 16..20 StructLiteral", "FileId(3) 16..20 StructLiteral"],
         );
 
@@ -523,7 +522,7 @@ pub(super) struct Foo<|> {
             analysis.find_all_refs(pos, Some(SearchScope::single_file(bar))).unwrap().unwrap();
         check_result(
             refs,
-            "quux FN_DEF FileId(1) 19..35 26..30 Other",
+            "quux FN FileId(1) 19..35 26..30 Other",
             &["FileId(3) 16..20 StructLiteral"],
         );
     }
@@ -581,7 +580,7 @@ fn foo() {
         );
         check_result(
             refs,
-            "f RECORD_FIELD_DEF FileId(1) 15..21 15..16 Other",
+            "f RECORD_FIELD FileId(1) 15..21 15..16 Other",
             &["FileId(1) 55..56 Other Read", "FileId(1) 68..69 Other Write"],
         );
     }
@@ -620,7 +619,7 @@ fn main() {
         );
         check_result(
             refs,
-            "new FN_DEF FileId(1) 54..101 61..64 Other",
+            "new FN FileId(1) 54..101 61..64 Other",
             &["FileId(1) 146..149 StructLiteral"],
         );
     }
@@ -647,7 +646,7 @@ fn main() {
         let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
         check_result(
             refs,
-            "f FN_DEF FileId(1) 26..35 29..30 Other",
+            "f FN FileId(1) 26..35 29..30 Other",
             &["FileId(2) 11..12 Other", "FileId(2) 28..29 StructLiteral"],
         );
     }

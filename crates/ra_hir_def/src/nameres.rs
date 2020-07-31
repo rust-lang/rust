@@ -229,37 +229,37 @@ impl CrateDefMap {
     // even), as this should be a great debugging aid.
     pub fn dump(&self) -> String {
         let mut buf = String::new();
-        go(&mut buf, self, "\ncrate", self.root);
-        return buf.trim().to_string();
+        go(&mut buf, self, "crate", self.root);
+        return buf;
 
         fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: LocalModuleId) {
-            *buf += path;
-            *buf += "\n";
+            format_to!(buf, "{}\n", path);
 
             let mut entries: Vec<_> = map.modules[module].scope.resolutions().collect();
             entries.sort_by_key(|(name, _)| name.clone());
 
             for (name, def) in entries {
-                format_to!(buf, "{}:", name);
+                format_to!(buf, "{}:", name.map_or("_".to_string(), |name| name.to_string()));
 
                 if def.types.is_some() {
-                    *buf += " t";
+                    buf.push_str(" t");
                 }
                 if def.values.is_some() {
-                    *buf += " v";
+                    buf.push_str(" v");
                 }
                 if def.macros.is_some() {
-                    *buf += " m";
+                    buf.push_str(" m");
                 }
                 if def.is_none() {
-                    *buf += " _";
+                    buf.push_str(" _");
                 }
 
-                *buf += "\n";
+                buf.push_str("\n");
             }
 
             for (name, child) in map.modules[module].children.iter() {
-                let path = &format!("{}::{}", path, name);
+                let path = format!("{}::{}", path, name);
+                buf.push('\n');
                 go(buf, map, &path, *child);
             }
         }

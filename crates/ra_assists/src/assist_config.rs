@@ -4,9 +4,12 @@
 //! module, and we use to statically check that we only produce snippet
 //! assists if we are allowed to.
 
+use crate::AssistKind;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssistConfig {
     pub snippet_cap: Option<SnippetCap>,
+    pub allowed: Option<Vec<AssistKind>>,
 }
 
 impl AssistConfig {
@@ -22,6 +25,6 @@ pub struct SnippetCap {
 
 impl Default for AssistConfig {
     fn default() -> Self {
-        AssistConfig { snippet_cap: Some(SnippetCap { _private: () }) }
+        AssistConfig { snippet_cap: Some(SnippetCap { _private: () }), allowed: None }
     }
 }

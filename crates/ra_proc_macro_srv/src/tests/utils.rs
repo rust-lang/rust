@@ -44,12 +44,12 @@ pub fn assert_expand(
     crate_name: &str,
     macro_name: &str,
     version: &str,
-    fixture: &str,
+    ra_fixture: &str,
     expect: &str,
 ) {
     let path = fixtures::dylib_path(crate_name, version);
     let expander = dylib::Expander::new(&path).unwrap();
-    let fixture = parse_string(fixture).unwrap();
+    let fixture = parse_string(ra_fixture).unwrap();
 
     let res = expander.expand(macro_name, &fixture.subtree, None).unwrap();
     assert_eq_text!(&format!("{:?}", res), &expect.trim());

@@ -3,6 +3,7 @@ edition = "2018"
 name = "ra_ide"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
+license = "MIT OR Apache-2.0"
 
 [lib]
 doctest = false
@@ -22,6 +23,7 @@ maplit = "*"
 lazy_static = "*"
 pulldown-cmark-to-cmark = "4.0.2"
 pulldown-cmark = "0.7.0"
+oorandom = "11.1.2"
 
 stdx = { path = "../stdx" }
 
@@ -44,4 +46,4 @@ ra_parser = { path = "../ra_parser" }
 hir = { path = "../ra_hir", package = "ra_hir" }
 
 [dev-dependencies]
-insta = "0.16.0"
+expect = { path = "../expect" }

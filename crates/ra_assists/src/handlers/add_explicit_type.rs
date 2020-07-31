@@ -1,10 +1,10 @@
 use hir::HirDisplay;
 use ra_syntax::{
-    ast::{self, AstNode, LetStmt, NameOwner, TypeAscriptionOwner},
+    ast::{self, AstNode, LetStmt, NameOwner},
     TextRange,
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: add_explicit_type
 //
@@ -22,11 +22,11 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // ```
 pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let stmt = ctx.find_node_at_offset::<LetStmt>()?;
-    let module = ctx.sema.scope(stmt.syntax()).module()?;
-    let expr = stmt.initializer()?;
+    let let_stmt = ctx.find_node_at_offset::<LetStmt>()?;
+    let module = ctx.sema.scope(let_stmt.syntax()).module()?;
+    let expr = let_stmt.initializer()?;
     // Must be a binding
-    let pat = match stmt.pat()? {
+    let pat = match let_stmt.pat()? {
         ast::Pat::BindPat(bind_pat) => bind_pat,
         _ => return None,
     };
@@ -34,8 +34,8 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     // The binding must have a name
     let name = pat.name()?;
     let name_range = name.syntax().text_range();
-    let stmt_range = stmt.syntax().text_range();
-    let eq_range = stmt.eq_token()?.text_range();
+    let stmt_range = let_stmt.syntax().text_range();
+    let eq_range = let_stmt.eq_token()?.text_range();
     // Assist should only be applicable if cursor is between 'let' and '='
     let let_range = TextRange::new(stmt_range.start(), eq_range.start());
     let cursor_in_range = let_range.contains_range(ctx.frange.range);
@@ -44,7 +44,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     }
     // Assist not applicable if the type has already been specified
     // and it has no placeholders
-    let ascribed_ty = stmt.ascribed_type();
+    let ascribed_ty = let_stmt.ty();
     if let Some(ty) = &ascribed_ty {
         if ty.syntax().descendants().find_map(ast::PlaceholderType::cast).is_none() {
             return None;
@@ -57,9 +57,9 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
         return None;
     }
 
-    let inferred_type = ty.display_source_code(ctx.db, module.into()).ok()?;
+    let inferred_type = ty.display_source_code(ctx.db(), module.into()).ok()?;
     acc.add(
-        AssistId("add_explicit_type"),
+        AssistId("add_explicit_type", AssistKind::RefactorRewrite),
         format!("Insert explicit type `{}`", inferred_type),
         pat_range,
         |builder| match ascribed_ty {

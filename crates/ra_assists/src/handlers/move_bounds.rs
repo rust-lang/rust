@@ -5,7 +5,7 @@ use ra_syntax::{
     T,
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: move_bounds_to_where_clause
 //
@@ -23,7 +23,7 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // ```
 pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let type_param_list = ctx.find_node_at_offset::<ast::TypeParamList>()?;
+    let type_param_list = ctx.find_node_at_offset::<ast::GenericParamList>()?;
 
     let mut type_params = type_param_list.type_params();
     if type_params.all(|p| p.type_bound_list().is_none()) {
@@ -37,42 +37,49 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
 
     let anchor = match_ast! {
         match parent {
-            ast::FnDef(it) => it.body()?.syntax().clone().into(),
-            ast::TraitDef(it) => it.item_list()?.syntax().clone().into(),
-            ast::ImplDef(it) => it.item_list()?.syntax().clone().into(),
-            ast::EnumDef(it) => it.variant_list()?.syntax().clone().into(),
-            ast::StructDef(it) => {
+            ast::Fn(it) => it.body()?.syntax().clone().into(),
+            ast::Trait(it) => it.assoc_item_list()?.syntax().clone().into(),
+            ast::Impl(it) => it.assoc_item_list()?.syntax().clone().into(),
+            ast::Enum(it) => it.variant_list()?.syntax().clone().into(),
+            ast::Struct(it) => {
                 it.syntax().children_with_tokens()
-                    .find(|it| it.kind() == RECORD_FIELD_DEF_LIST || it.kind() == T![;])?
+                    .find(|it| it.kind() == RECORD_FIELD_LIST || it.kind() == T![;])?
             },
             _ => return None
         }
     };
 
     let target = type_param_list.syntax().text_range();
-    acc.add(AssistId("move_bounds_to_where_clause"), "Move to where clause", target, |edit| {
-        let new_params = type_param_list
-            .type_params()
-            .filter(|it| it.type_bound_list().is_some())
-            .map(|type_param| {
-                let without_bounds = type_param.remove_bounds();
-                (type_param, without_bounds)
-            });
+    acc.add(
+        AssistId("move_bounds_to_where_clause", AssistKind::RefactorRewrite),
+        "Move to where clause",
+        target,
+        |edit| {
+            let new_params = type_param_list
+                .type_params()
+                .filter(|it| it.type_bound_list().is_some())
+                .map(|type_param| {
+                    let without_bounds = type_param.remove_bounds();
+                    (type_param, without_bounds)
+                });
 
-        let new_type_param_list = type_param_list.replace_descendants(new_params);
-        edit.replace_ast(type_param_list.clone(), new_type_param_list);
+            let new_type_param_list = type_param_list.replace_descendants(new_params);
+            edit.replace_ast(type_param_list.clone(), new_type_param_list);
 
-        let where_clause = {
-            let predicates = type_param_list.type_params().filter_map(build_predicate);
-            make::where_clause(predicates)
-        };
+            let where_clause = {
+                let predicates = type_param_list.type_params().filter_map(build_predicate);
+                make::where_clause(predicates)
+            };
 
-        let to_insert = match anchor.prev_sibling_or_token() {
-            Some(ref elem) if elem.kind() == WHITESPACE => format!("{} ", where_clause.syntax()),
-            _ => format!(" {}", where_clause.syntax()),
-        };
-        edit.insert(anchor.text_range().start(), to_insert);
-    })
+            let to_insert = match anchor.prev_sibling_or_token() {
+                Some(ref elem) if elem.kind() == WHITESPACE => {
+                    format!("{} ", where_clause.syntax())
+                }
+                _ => format!(" {}", where_clause.syntax()),
+            };
+            edit.insert(anchor.text_range().start(), to_insert);
+        },
+    )
 }
 
 fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {

@@ -1,8 +1,12 @@
-import fetch from "node-fetch";
+// Replace with `import fetch from "node-fetch"` once this is fixed in rollup:
+// https://github.com/rollup/plugins/issues/491
+const fetch = require("node-fetch") as typeof import("node-fetch")["default"];
+
 import * as vscode from "vscode";
 import * as stream from "stream";
 import * as crypto from "crypto";
 import * as fs from "fs";
+import * as zlib from "zlib";
 import * as util from "util";
 import * as path from "path";
 import { log, assert } from "./util";
@@ -65,6 +69,7 @@ interface DownloadOpts {
     url: string;
     dest: string;
     mode?: number;
+    gunzip?: boolean;
 }
 
 export async function download(opts: DownloadOpts) {
@@ -82,7 +87,7 @@ export async function download(opts: DownloadOpts) {
         },
         async (progress, _cancellationToken) => {
             let lastPercentage = 0;
-            await downloadFile(opts.url, tempFile, opts.mode, (readBytes, totalBytes) => {
+            await downloadFile(opts.url, tempFile, opts.mode, !!opts.gunzip, (readBytes, totalBytes) => {
                 const newPercentage = (readBytes / totalBytes) * 100;
                 progress.report({
                     message: newPercentage.toFixed(0) + "%",
@@ -97,16 +102,11 @@ export async function download(opts: DownloadOpts) {
     await fs.promises.rename(tempFile, opts.dest);
 }
 
-/**
- * Downloads file from `url` and stores it at `destFilePath` with `mode` (unix permissions).
- * `onProgress` callback is called on recieveing each chunk of bytes
- * to track the progress of downloading, it gets the already read and total
- * amount of bytes to read as its parameters.
- */
 async function downloadFile(
     url: string,
     destFilePath: fs.PathLike,
     mode: number | undefined,
+    gunzip: boolean,
     onProgress: (readBytes: number, totalBytes: number) => void
 ): Promise<void> {
     const res = await fetch(url);
@@ -130,7 +130,10 @@ async function downloadFile(
     });
 
     const destFileStream = fs.createWriteStream(destFilePath, { mode });
-    await pipeline(res.body, destFileStream);
+    const srcStream = gunzip ? res.body.pipe(zlib.createGunzip()) : res.body;
+
+    await pipeline(srcStream, destFileStream);
+
     await new Promise<void>(resolve => {
         destFileStream.on("close", resolve);
         destFileStream.destroy();

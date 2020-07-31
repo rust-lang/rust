@@ -11,7 +11,7 @@ use ra_arena::Arena;
 use ra_syntax::{
     ast::{
         self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, ModuleItemOwner, NameOwner,
-        SlicePatComponents, TypeAscriptionOwner,
+        SlicePatComponents,
     },
     AstNode, AstPtr,
 };
@@ -379,10 +379,10 @@ impl ExprCollector<'_> {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
-            ast::Expr::RecordLit(e) => {
+            ast::Expr::RecordExpr(e) => {
                 let path = e.path().and_then(|path| self.expander.parse_path(path));
                 let mut field_ptrs = Vec::new();
-                let record_lit = if let Some(nfl) = e.record_field_list() {
+                let record_lit = if let Some(nfl) = e.record_expr_field_list() {
                     let fields = nfl
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
@@ -432,7 +432,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.type_ref());
+                let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.ty());
                 self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr)
             }
             ast::Expr::RefExpr(e) => {
@@ -466,16 +466,13 @@ impl ExprCollector<'_> {
                 if let Some(pl) = e.param_list() {
                     for param in pl.params() {
                         let pat = self.collect_pat_opt(param.pat());
-                        let type_ref =
-                            param.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                        let type_ref = param.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
                         args.push(pat);
                         arg_types.push(type_ref);
                     }
                 }
-                let ret_type = e
-                    .ret_type()
-                    .and_then(|r| r.type_ref())
-                    .map(|it| TypeRef::from_ast(&self.ctx(), it));
+                let ret_type =
+                    e.ret_type().and_then(|r| r.ty()).map(|it| TypeRef::from_ast(&self.ctx(), it));
                 let body = self.collect_expr_opt(e.body());
                 self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
             }
@@ -607,8 +604,7 @@ impl ExprCollector<'_> {
             .map(|s| match s {
                 ast::Stmt::LetStmt(stmt) => {
                     let pat = self.collect_pat_opt(stmt.pat());
-                    let type_ref =
-                        stmt.ascribed_type().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                    let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
                     let initializer = stmt.initializer().map(|e| self.collect_expr(e));
                     Statement::Let { pat, type_ref, initializer }
                 }
@@ -627,53 +623,53 @@ impl ExprCollector<'_> {
             .items()
             .filter_map(|item| {
                 let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
-                    ast::ModuleItem::FnDef(def) => {
+                    ast::Item::Fn(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             FunctionLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::ModuleItem::TypeAliasDef(def) => {
+                    ast::Item::TypeAlias(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             TypeAliasLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::ModuleItem::ConstDef(def) => {
+                    ast::Item::Const(def) => {
                         let id = self.find_inner_item(&def)?;
                         (
                             ConstLoc { container: container.into(), id }.intern(self.db).into(),
                             def.name(),
                         )
                     }
-                    ast::ModuleItem::StaticDef(def) => {
+                    ast::Item::Static(def) => {
                         let id = self.find_inner_item(&def)?;
                         (StaticLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::StructDef(def) => {
+                    ast::Item::Struct(def) => {
                         let id = self.find_inner_item(&def)?;
                         (StructLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::EnumDef(def) => {
+                    ast::Item::Enum(def) => {
                         let id = self.find_inner_item(&def)?;
                         (EnumLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::UnionDef(def) => {
+                    ast::Item::Union(def) => {
                         let id = self.find_inner_item(&def)?;
                         (UnionLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::TraitDef(def) => {
+                    ast::Item::Trait(def) => {
                         let id = self.find_inner_item(&def)?;
                         (TraitLoc { container, id }.intern(self.db).into(), def.name())
                     }
-                    ast::ModuleItem::ExternBlock(_) => return None, // FIXME: collect from extern blocks
-                    ast::ModuleItem::ImplDef(_)
-                    | ast::ModuleItem::UseItem(_)
-                    | ast::ModuleItem::ExternCrateItem(_)
-                    | ast::ModuleItem::Module(_)
-                    | ast::ModuleItem::MacroCall(_) => return None,
+                    ast::Item::ExternBlock(_) => return None, // FIXME: collect from extern blocks
+                    ast::Item::Impl(_)
+                    | ast::Item::Use(_)
+                    | ast::Item::ExternCrate(_)
+                    | ast::Item::Module(_)
+                    | ast::Item::MacroCall(_) => return None,
                 };
 
                 Some((def, name))

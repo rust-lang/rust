@@ -5,24 +5,22 @@
 //! search patterns, we go further and parse the pattern as each kind of thing that we can match.
 //! e.g. expressions, type references etc.
 
+use crate::errors::bail;
 use crate::{SsrError, SsrPattern, SsrRule};
-use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind};
+use ra_syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::str::FromStr;
+use test_utils::mark;
 
-/// Returns from the current function with an error, supplied by arguments as for format!
-macro_rules! bail {
-    ($e:expr) => {return Err($crate::SsrError::new($e))};
-    ($fmt:expr, $($arg:tt)+) => {return Err($crate::SsrError::new(format!($fmt, $($arg)+)))}
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct SsrTemplate {
-    pub(crate) tokens: Vec<PatternElement>,
+#[derive(Debug)]
+pub(crate) struct ParsedRule {
+    pub(crate) placeholders_by_stand_in: FxHashMap<SmolStr, Placeholder>,
+    pub(crate) pattern: SyntaxNode,
+    pub(crate) template: Option<SyntaxNode>,
 }
 
 #[derive(Debug)]
-pub(crate) struct RawSearchPattern {
+pub(crate) struct RawPattern {
     tokens: Vec<PatternElement>,
 }
 
@@ -39,12 +37,96 @@ pub(crate) struct Placeholder {
     pub(crate) ident: SmolStr,
     /// A unique name used in place of this placeholder when we parse the pattern as Rust code.
     stand_in_name: String,
+    pub(crate) constraints: Vec<Constraint>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Constraint {
+    Kind(NodeKind),
+    Not(Box<Constraint>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum NodeKind {
+    Literal,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Token {
     kind: SyntaxKind,
     pub(crate) text: SmolStr,
+}
+
+impl ParsedRule {
+    fn new(
+        pattern: &RawPattern,
+        template: Option<&RawPattern>,
+    ) -> Result<Vec<ParsedRule>, SsrError> {
+        let raw_pattern = pattern.as_rust_code();
+        let raw_template = template.map(|t| t.as_rust_code());
+        let raw_template = raw_template.as_ref().map(|s| s.as_str());
+        let mut builder = RuleBuilder {
+            placeholders_by_stand_in: pattern.placeholders_by_stand_in(),
+            rules: Vec::new(),
+        };
+        builder.try_add(ast::Expr::parse(&raw_pattern), raw_template.map(ast::Expr::parse));
+        builder.try_add(ast::TypeRef::parse(&raw_pattern), raw_template.map(ast::TypeRef::parse));
+        builder.try_add(ast::Item::parse(&raw_pattern), raw_template.map(ast::Item::parse));
+        builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
+        builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
+        builder.build()
+    }
+}
+
+struct RuleBuilder {
+    placeholders_by_stand_in: FxHashMap<SmolStr, Placeholder>,
+    rules: Vec<ParsedRule>,
+}
+
+impl RuleBuilder {
+    fn try_add<T: AstNode>(&mut self, pattern: Result<T, ()>, template: Option<Result<T, ()>>) {
+        match (pattern, template) {
+            (Ok(pattern), Some(Ok(template))) => self.rules.push(ParsedRule {
+                placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
+                pattern: pattern.syntax().clone(),
+                template: Some(template.syntax().clone()),
+            }),
+            (Ok(pattern), None) => self.rules.push(ParsedRule {
+                placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
+                pattern: pattern.syntax().clone(),
+                template: None,
+            }),
+            _ => {}
+        }
+    }
+
+    fn build(mut self) -> Result<Vec<ParsedRule>, SsrError> {
+        if self.rules.is_empty() {
+            bail!("Not a valid Rust expression, type, item, path or pattern");
+        }
+        // If any rules contain paths, then we reject any rules that don't contain paths. Allowing a
+        // mix leads to strange semantics, since the path-based rules only match things where the
+        // path refers to semantically the same thing, whereas the non-path-based rules could match
+        // anything. Specifically, if we have a rule like `foo ==>> bar` we only want to match the
+        // `foo` that is in the current scope, not any `foo`. However "foo" can be parsed as a
+        // pattern (BIND_PAT -> NAME -> IDENT). Allowing such a rule through would result in
+        // renaming everything called `foo` to `bar`. It'd also be slow, since without a path, we'd
+        // have to use the slow-scan search mechanism.
+        if self.rules.iter().any(|rule| contains_path(&rule.pattern)) {
+            let old_len = self.rules.len();
+            self.rules.retain(|rule| contains_path(&rule.pattern));
+            if self.rules.len() < old_len {
+                mark::hit!(pattern_is_a_single_segment_path);
+            }
+        }
+        Ok(self.rules)
+    }
+}
+
+/// Returns whether there are any paths in `node`.
+fn contains_path(node: &SyntaxNode) -> bool {
+    node.kind() == SyntaxKind::PATH
+        || node.descendants().any(|node| node.kind() == SyntaxKind::PATH)
 }
 
 impl FromStr for SsrRule {
@@ -55,27 +137,30 @@ impl FromStr for SsrRule {
         let pattern = it.next().expect("at least empty string").trim();
         let template = it
             .next()
-            .ok_or_else(|| SsrError("Cannot find delemiter `==>>`".into()))?
+            .ok_or_else(|| SsrError("Cannot find delimiter `==>>`".into()))?
             .trim()
             .to_string();
         if it.next().is_some() {
             return Err(SsrError("More than one delimiter found".into()));
         }
-        let rule = SsrRule { pattern: pattern.parse()?, template: template.parse()? };
+        let raw_pattern = pattern.parse()?;
+        let raw_template = template.parse()?;
+        let parsed_rules = ParsedRule::new(&raw_pattern, Some(&raw_template))?;
+        let rule = SsrRule { pattern: raw_pattern, template: raw_template, parsed_rules };
         validate_rule(&rule)?;
         Ok(rule)
     }
 }
 
-impl FromStr for RawSearchPattern {
+impl FromStr for RawPattern {
     type Err = SsrError;
 
-    fn from_str(pattern_str: &str) -> Result<RawSearchPattern, SsrError> {
-        Ok(RawSearchPattern { tokens: parse_pattern(pattern_str)? })
+    fn from_str(pattern_str: &str) -> Result<RawPattern, SsrError> {
+        Ok(RawPattern { tokens: parse_pattern(pattern_str)? })
     }
 }
 
-impl RawSearchPattern {
+impl RawPattern {
     /// Returns this search pattern as Rust source code that we can feed to the Rust parser.
     fn as_rust_code(&self) -> String {
         let mut res = String::new();
@@ -88,7 +173,7 @@ impl RawSearchPattern {
         res
     }
 
-    fn placeholders_by_stand_in(&self) -> FxHashMap<SmolStr, Placeholder> {
+    pub(crate) fn placeholders_by_stand_in(&self) -> FxHashMap<SmolStr, Placeholder> {
         let mut res = FxHashMap::default();
         for t in &self.tokens {
             if let PatternElement::Placeholder(placeholder) = t {
@@ -103,41 +188,9 @@ impl FromStr for SsrPattern {
     type Err = SsrError;
 
     fn from_str(pattern_str: &str) -> Result<SsrPattern, SsrError> {
-        let raw: RawSearchPattern = pattern_str.parse()?;
-        let raw_str = raw.as_rust_code();
-        let res = SsrPattern {
-            expr: ast::Expr::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            type_ref: ast::TypeRef::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            item: ast::ModuleItem::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            path: ast::Path::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            pattern: ast::Pat::parse(&raw_str).ok().map(|n| n.syntax().clone()),
-            placeholders_by_stand_in: raw.placeholders_by_stand_in(),
-            raw,
-        };
-        if res.expr.is_none()
-            && res.type_ref.is_none()
-            && res.item.is_none()
-            && res.path.is_none()
-            && res.pattern.is_none()
-        {
-            bail!("Pattern is not a valid Rust expression, type, item, path or pattern");
-        }
-        Ok(res)
-    }
-}
-
-impl FromStr for SsrTemplate {
-    type Err = SsrError;
-
-    fn from_str(pattern_str: &str) -> Result<SsrTemplate, SsrError> {
-        let tokens = parse_pattern(pattern_str)?;
-        // Validate that the template is a valid fragment of Rust code. We reuse the validation
-        // logic for search patterns since the only thing that differs is the error message.
-        if SsrPattern::from_str(pattern_str).is_err() {
-            bail!("Replacement is not a valid Rust expression, type, item, path or pattern");
-        }
-        // Our actual template needs to preserve whitespace, so we can't reuse `tokens`.
-        Ok(SsrTemplate { tokens })
+        let raw_pattern = pattern_str.parse()?;
+        let parsed_rules = ParsedRule::new(&raw_pattern, None)?;
+        Ok(SsrPattern { raw: raw_pattern, parsed_rules })
     }
 }
 
@@ -149,7 +202,7 @@ fn parse_pattern(pattern_str: &str) -> Result<Vec<PatternElement>, SsrError> {
     let mut placeholder_names = FxHashSet::default();
     let mut tokens = tokenize(pattern_str)?.into_iter();
     while let Some(token) = tokens.next() {
-        if token.kind == SyntaxKind::DOLLAR {
+        if token.kind == T![$] {
             let placeholder = parse_placeholder(&mut tokens)?;
             if !placeholder_names.insert(placeholder.ident.clone()) {
                 bail!("Name `{}` repeats more than once", placeholder.ident);
@@ -166,7 +219,7 @@ fn parse_pattern(pattern_str: &str) -> Result<Vec<PatternElement>, SsrError> {
 /// pattern didn't define.
 fn validate_rule(rule: &SsrRule) -> Result<(), SsrError> {
     let mut defined_placeholders = FxHashSet::default();
-    for p in &rule.pattern.raw.tokens {
+    for p in &rule.pattern.tokens {
         if let PatternElement::Placeholder(placeholder) = p {
             defined_placeholders.insert(&placeholder.ident);
         }
@@ -176,6 +229,9 @@ fn validate_rule(rule: &SsrRule) -> Result<(), SsrError> {
         if let PatternElement::Placeholder(placeholder) = p {
             if !defined_placeholders.contains(&placeholder.ident) {
                 undefined.push(format!("${}", placeholder.ident));
+            }
+            if !placeholder.constraints.is_empty() {
+                bail!("Replacement placeholders cannot have constraints");
             }
         }
     }
@@ -205,29 +261,90 @@ fn tokenize(source: &str) -> Result<Vec<Token>, SsrError> {
 
 fn parse_placeholder(tokens: &mut std::vec::IntoIter<Token>) -> Result<Placeholder, SsrError> {
     let mut name = None;
+    let mut constraints = Vec::new();
     if let Some(token) = tokens.next() {
         match token.kind {
             SyntaxKind::IDENT => {
                 name = Some(token.text);
             }
+            T!['{'] => {
+                let token =
+                    tokens.next().ok_or_else(|| SsrError::new("Unexpected end of placeholder"))?;
+                if token.kind == SyntaxKind::IDENT {
+                    name = Some(token.text);
+                }
+                loop {
+                    let token = tokens
+                        .next()
+                        .ok_or_else(|| SsrError::new("Placeholder is missing closing brace '}'"))?;
+                    match token.kind {
+                        T![:] => {
+                            constraints.push(parse_constraint(tokens)?);
+                        }
+                        T!['}'] => break,
+                        _ => bail!("Unexpected token while parsing placeholder: '{}'", token.text),
+                    }
+                }
+            }
             _ => {
-                bail!("Placeholders should be $name");
+                bail!("Placeholders should either be $name or ${{name:constraints}}");
             }
         }
     }
     let name = name.ok_or_else(|| SsrError::new("Placeholder ($) with no name"))?;
-    Ok(Placeholder::new(name))
+    Ok(Placeholder::new(name, constraints))
 }
 
-impl Placeholder {
-    fn new(name: SmolStr) -> Self {
-        Self { stand_in_name: format!("__placeholder_{}", name), ident: name }
+fn parse_constraint(tokens: &mut std::vec::IntoIter<Token>) -> Result<Constraint, SsrError> {
+    let constraint_type = tokens
+        .next()
+        .ok_or_else(|| SsrError::new("Found end of placeholder while looking for a constraint"))?
+        .text
+        .to_string();
+    match constraint_type.as_str() {
+        "kind" => {
+            expect_token(tokens, "(")?;
+            let t = tokens.next().ok_or_else(|| {
+                SsrError::new("Unexpected end of constraint while looking for kind")
+            })?;
+            if t.kind != SyntaxKind::IDENT {
+                bail!("Expected ident, found {:?} while parsing kind constraint", t.kind);
+            }
+            expect_token(tokens, ")")?;
+            Ok(Constraint::Kind(NodeKind::from(&t.text)?))
+        }
+        "not" => {
+            expect_token(tokens, "(")?;
+            let sub = parse_constraint(tokens)?;
+            expect_token(tokens, ")")?;
+            Ok(Constraint::Not(Box::new(sub)))
+        }
+        x => bail!("Unsupported constraint type '{}'", x),
     }
 }
 
-impl SsrError {
-    fn new(message: impl Into<String>) -> SsrError {
-        SsrError(message.into())
+fn expect_token(tokens: &mut std::vec::IntoIter<Token>, expected: &str) -> Result<(), SsrError> {
+    if let Some(t) = tokens.next() {
+        if t.text == expected {
+            return Ok(());
+        }
+        bail!("Expected {} found {}", expected, t.text);
+    }
+    bail!("Expected {} found end of stream", expected);
+}
+
+impl NodeKind {
+    fn from(name: &SmolStr) -> Result<NodeKind, SsrError> {
+        Ok(match name.as_str() {
+            "literal" => NodeKind::Literal,
+            _ => bail!("Unknown node kind '{}'", name),
+        })
+    }
+}
+
+impl Placeholder {
+    fn new(name: SmolStr, constraints: Vec<Constraint>) -> Self {
+        Self { stand_in_name: format!("__placeholder_{}", name), constraints, ident: name }
     }
 }
 
@@ -241,31 +358,31 @@ mod tests {
             PatternElement::Token(Token { kind, text: SmolStr::new(text) })
         }
         fn placeholder(name: &str) -> PatternElement {
-            PatternElement::Placeholder(Placeholder::new(SmolStr::new(name)))
+            PatternElement::Placeholder(Placeholder::new(SmolStr::new(name), Vec::new()))
         }
         let result: SsrRule = "foo($a, $b) ==>> bar($b, $a)".parse().unwrap();
         assert_eq!(
-            result.pattern.raw.tokens,
+            result.pattern.tokens,
             vec![
                 token(SyntaxKind::IDENT, "foo"),
-                token(SyntaxKind::L_PAREN, "("),
+                token(T!['('], "("),
                 placeholder("a"),
-                token(SyntaxKind::COMMA, ","),
+                token(T![,], ","),
                 token(SyntaxKind::WHITESPACE, " "),
                 placeholder("b"),
-                token(SyntaxKind::R_PAREN, ")"),
+                token(T![')'], ")"),
             ]
         );
         assert_eq!(
             result.template.tokens,
             vec![
                 token(SyntaxKind::IDENT, "bar"),
-                token(SyntaxKind::L_PAREN, "("),
+                token(T!['('], "("),
                 placeholder("b"),
-                token(SyntaxKind::COMMA, ","),
+                token(T![,], ","),
                 token(SyntaxKind::WHITESPACE, " "),
                 placeholder("a"),
-                token(SyntaxKind::R_PAREN, ")"),
+                token(T![')'], ")"),
             ]
         );
     }

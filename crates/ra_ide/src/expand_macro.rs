@@ -2,7 +2,9 @@ use hir::Semantics;
 use ra_ide_db::RootDatabase;
 use ra_syntax::{
     algo::{find_node_at_offset, SyntaxRewriter},
-    ast, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, WalkEvent, T,
+    ast, AstNode, NodeOrToken, SyntaxKind,
+    SyntaxKind::*,
+    SyntaxNode, WalkEvent, T,
 };
 
 use crate::FilePosition;
@@ -65,8 +67,6 @@ fn expand_macro_recur(
 // FIXME: It would also be cool to share logic here and in the mbe tests,
 // which are pretty unreadable at the moment.
 fn insert_whitespaces(syn: SyntaxNode) -> String {
-    use SyntaxKind::*;
-
     let mut res = String::new();
     let mut token_iter = syn
         .preorder_with_tokens()
@@ -120,175 +120,164 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_snapshot;
+    use expect::{expect, Expect};
 
     use crate::mock_analysis::analysis_and_position;
 
-    use super::*;
-
-    fn check_expand_macro(fixture: &str) -> ExpandedMacro {
-        let (analysis, pos) = analysis_and_position(fixture);
-        analysis.expand_macro(pos).unwrap().unwrap()
+    fn check(ra_fixture: &str, expect: Expect) {
+        let (analysis, pos) = analysis_and_position(ra_fixture);
+        let expansion = analysis.expand_macro(pos).unwrap().unwrap();
+        let actual = format!("{}\n{}", expansion.name, expansion.expansion);
+        expect.assert_eq(&actual);
     }
 
     #[test]
     fn macro_expand_recursive_expansion() {
-        let res = check_expand_macro(
+        check(
             r#"
-        //- /lib.rs
-        macro_rules! bar {
-            () => { fn  b() {} }
-        }
-        macro_rules! foo {
-            () => { bar!(); }
-        }
-        macro_rules! baz {
-            () => { foo!(); }
-        }
-        f<|>oo!();
-        "#,
+macro_rules! bar {
+    () => { fn  b() {} }
+}
+macro_rules! foo {
+    () => { bar!(); }
+}
+macro_rules! baz {
+    () => { foo!(); }
+}
+f<|>oo!();
+"#,
+            expect![[r#"
+                foo
+                fn b(){}
+            "#]],
         );
-
-        assert_eq!(res.name, "foo");
-        assert_snapshot!(res.expansion, @r###"
-fn b(){}
-"###);
     }
 
     #[test]
     fn macro_expand_multiple_lines() {
-        let res = check_expand_macro(
+        check(
             r#"
-        //- /lib.rs
-        macro_rules! foo {
-            () => {
-                fn some_thing() -> u32 {
-                    let a = 0;
-                    a + 10
-                }
-            }
+macro_rules! foo {
+    () => {
+        fn some_thing() -> u32 {
+            let a = 0;
+            a + 10
         }
-        f<|>oo!();
-        "#,
-        );
-
-        assert_eq!(res.name, "foo");
-        assert_snapshot!(res.expansion, @r###"
-fn some_thing() -> u32 {
-  let a = 0;
-  a+10
+    }
 }
-"###);
+f<|>oo!();
+        "#,
+            expect![[r#"
+            foo
+            fn some_thing() -> u32 {
+              let a = 0;
+              a+10
+            }"#]],
+        );
     }
 
     #[test]
     fn macro_expand_match_ast() {
-        let res = check_expand_macro(
+        check(
             r#"
-        //- /lib.rs
-        macro_rules! match_ast {
-            (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
-
-            (match ($node:expr) {
-                $( ast::$ast:ident($it:ident) => $res:block, )*
-                _ => $catch_all:expr $(,)?
-            }) => {{
-                $( if let Some($it) = ast::$ast::cast($node.clone()) $res else )*
-                { $catch_all }
-            }};
-        }
-
-        fn main() {
-            mat<|>ch_ast! {
-                match container {
-                    ast::TraitDef(it) => {},
-                    ast::ImplDef(it) => {},
-                    _ => { continue },
-                }
-            }
-        }
-        "#,
-        );
-
-        assert_eq!(res.name, "match_ast");
-        assert_snapshot!(res.expansion, @r###"
-{
-  if let Some(it) = ast::TraitDef::cast(container.clone()){}
-  else if let Some(it) = ast::ImplDef::cast(container.clone()){}
-  else {
-    {
-      continue
-    }
-  }
+macro_rules! match_ast {
+    (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
+    (match ($node:expr) {
+        $( ast::$ast:ident($it:ident) => $res:block, )*
+        _ => $catch_all:expr $(,)?
+    }) => {{
+        $( if let Some($it) = ast::$ast::cast($node.clone()) $res else )*
+        { $catch_all }
+    }};
 }
-"###);
+
+fn main() {
+    mat<|>ch_ast! {
+        match container {
+            ast::TraitDef(it) => {},
+            ast::ImplDef(it) => {},
+            _ => { continue },
+        }
+    }
+}
+"#,
+            expect![[r#"
+       match_ast
+       {
+         if let Some(it) = ast::TraitDef::cast(container.clone()){}
+         else if let Some(it) = ast::ImplDef::cast(container.clone()){}
+         else {
+           {
+             continue
+           }
+         }
+       }"#]],
+        );
     }
 
     #[test]
     fn macro_expand_match_ast_inside_let_statement() {
-        let res = check_expand_macro(
+        check(
             r#"
-        //- /lib.rs
-        macro_rules! match_ast {
-            (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
-            (match ($node:expr) {}) => {{}};
-        }
+macro_rules! match_ast {
+    (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
+    (match ($node:expr) {}) => {{}};
+}
 
-        fn main() {
-            let p = f(|it| {
-                let res = mat<|>ch_ast! { match c {}};
-                Some(res)
-            })?;
-        }
-        "#,
+fn main() {
+    let p = f(|it| {
+        let res = mat<|>ch_ast! { match c {}};
+        Some(res)
+    })?;
+}
+"#,
+            expect![[r#"
+                match_ast
+                {}
+            "#]],
         );
-
-        assert_eq!(res.name, "match_ast");
-        assert_snapshot!(res.expansion, @r###"{}"###);
     }
 
     #[test]
     fn macro_expand_inner_macro_fail_to_expand() {
-        let res = check_expand_macro(
+        check(
             r#"
-        //- /lib.rs
-        macro_rules! bar {
-            (BAD) => {};
-        }
-        macro_rules! foo {
-            () => {bar!()};
-        }
+macro_rules! bar {
+    (BAD) => {};
+}
+macro_rules! foo {
+    () => {bar!()};
+}
 
-        fn main() {
-            let res = fo<|>o!();
-        }
-        "#,
+fn main() {
+    let res = fo<|>o!();
+}
+"#,
+            expect![[r#"
+                foo
+            "#]],
         );
-
-        assert_eq!(res.name, "foo");
-        assert_snapshot!(res.expansion, @r###""###);
     }
 
     #[test]
     fn macro_expand_with_dollar_crate() {
-        let res = check_expand_macro(
+        check(
             r#"
-        //- /lib.rs
-        #[macro_export]
-        macro_rules! bar {
-            () => {0};
-        }
-        macro_rules! foo {
-            () => {$crate::bar!()};
-        }
+#[macro_export]
+macro_rules! bar {
+    () => {0};
+}
+macro_rules! foo {
+    () => {$crate::bar!()};
+}
 
-        fn main() {
-            let res = fo<|>o!();
-        }
-        "#,
+fn main() {
+    let res = fo<|>o!();
+}
+"#,
+            expect![[r#"
+                foo
+                0 "#]],
         );
-
-        assert_eq!(res.name, "foo");
-        assert_snapshot!(res.expansion, @r###"0"###);
     }
 }

@@ -1,10 +1,10 @@
 SOURCE_FILE@0..24
-  STRUCT_DEF@0..23
+  STRUCT@0..23
     STRUCT_KW@0..6 "struct"
     WHITESPACE@6..7 " "
     NAME@7..8
       IDENT@7..8 "S"
-    TYPE_PARAM_LIST@8..22
+    GENERIC_PARAM_LIST@8..22
       L_ANGLE@8..9 "<"
       CONST_PARAM@9..21
         CONST_KW@9..14 "const"

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..69
-  IMPL_DEF@0..68
+  IMPL@0..68
     IMPL_KW@0..4 "impl"
     WHITESPACE@4..5 " "
     PATH_TYPE@5..6
@@ -16,10 +16,10 @@ SOURCE_FILE@0..69
           NAME_REF@11..14
             IDENT@11..14 "Foo"
     WHITESPACE@14..15 " "
-    ITEM_LIST@15..68
+    ASSOC_ITEM_LIST@15..68
       L_CURLY@15..16 "{"
       WHITESPACE@16..21 "\n    "
-      TYPE_ALIAS_DEF@21..42
+      TYPE_ALIAS@21..42
         DEFAULT_KW@21..28 "default"
         WHITESPACE@28..29 " "
         TYPE_KW@29..33 "type"
@@ -36,7 +36,7 @@ SOURCE_FILE@0..69
                 IDENT@38..41 "Bar"
         SEMICOLON@41..42 ";"
       WHITESPACE@42..47 "\n    "
-      FN_DEF@47..66
+      FN@47..66
         DEFAULT_KW@47..54 "default"
         WHITESPACE@54..55 " "
         FN_KW@55..57 "fn"

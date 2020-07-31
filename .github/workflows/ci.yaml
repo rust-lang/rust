@@ -16,25 +16,25 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
-  rust-audit:
-    name: Audit Rust vulnerabilities
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+  # rust-audit:
+  #   name: Audit Rust vulnerabilities
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v2
 
-    - uses: actions-rs/install@v0.1
-      with:
-        crate: cargo-audit
-        use-tool-cache: true
+  #   - uses: actions-rs/install@v0.1
+  #     with:
+  #       crate: cargo-audit
+  #       use-tool-cache: true
 
-    - run: cargo audit
+  #   - run: cargo audit
 
   rust:
     name: Rust
     runs-on: ${{ matrix.os }}
     env:
-     CC: deny_c
+      CC: deny_c
 
     strategy:
       fail-fast: false
@@ -61,29 +61,22 @@ jobs:
         override: true
         components: rustfmt, rust-src
 
-    - if: matrix.os == 'ubuntu-latest'
-      run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
-
-    - name: Cache cargo registry
-      uses: actions/cache@v1
+    - name: Cache cargo directories
+      uses: actions/cache@v2
       with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo index
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo target dir
-      uses: actions/cache@v1
+      uses: actions/cache@v2
       with:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Compile
-      run: cargo test --no-run
+      run: cargo test --no-run --locked
 
     - name: Test
       run: cargo test
@@ -95,6 +88,34 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: Remove-Item ./target/debug/xtask.exe, ./target/debug/deps/xtask.exe
 
+  # Weird target to catch non-portable code
+  rust-power:
+    name: Rust Power
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        target: 'powerpc-unknown-linux-gnu'
+
+    - name: Cache cargo directories
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Check
+      run: cargo check --target=powerpc-unknown-linux-gnu --all-targets
+
   typescript:
     name: TypeScript
     strategy:
@@ -103,7 +124,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
@@ -116,9 +137,9 @@ jobs:
     - run: npm ci
       working-directory: ./editors/code
 
-    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
-      if: runner.os == 'Linux'
-      working-directory: ./editors/code
+#    - run: npm audit || { sleep 10 && npm audit; } || { sleep 30 && npm audit; }
+#      if: runner.os == 'Linux'
+#      working-directory: ./editors/code
 
     - run: npm run lint
       working-directory: ./editors/code

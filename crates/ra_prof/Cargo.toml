@@ -4,6 +4,7 @@ name = "ra_prof"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 publish = false
+license = "MIT OR Apache-2.0"
 
 [lib]
 doctest = false
@@ -12,11 +13,15 @@ doctest = false
 ra_arena = { path = "../ra_arena" }
 once_cell = "1.3.1"
 backtrace = { version = "0.3.44", optional = true }
+cfg-if = "0.1.10"
+libc = "0.2.73"
 
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
-jemallocator = { version = "0.3.2", optional = true }
-jemalloc-ctl = { version = "0.3.3", optional = true }
+[target.'cfg(target_os = "linux")'.dependencies]
+perf-event = "0.4"
 
 [features]
-jemalloc = [ "jemallocator", "jemalloc-ctl" ]
 cpu_profiler = []
+
+# Uncomment to enable for the whole crate graph
+# default = [ "backtrace" ]
+# default = [ "cpu_profiler" ]

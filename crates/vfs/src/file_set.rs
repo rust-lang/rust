@@ -2,8 +2,9 @@
 //!
 //! Files which do not belong to any explicitly configured `FileSet` belong to
 //! the default `FileSet`.
-use std::{fmt, iter};
+use std::fmt;
 
+use fst::{IntoStreamer, Streamer};
 use rustc_hash::FxHashMap;
 
 use crate::{FileId, Vfs, VfsPath};
@@ -15,6 +16,9 @@ pub struct FileSet {
 }
 
 impl FileSet {
+    pub fn len(&self) -> usize {
+        self.files.len()
+    }
     pub fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId> {
         let mut base = self.paths[&anchor].clone();
         base.pop();
@@ -40,7 +44,7 @@ impl fmt::Debug for FileSet {
 #[derive(Debug)]
 pub struct FileSetConfig {
     n_file_sets: usize,
-    roots: Vec<(VfsPath, usize)>,
+    map: fst::Map<Vec<u8>>,
 }
 
 impl Default for FileSetConfig {
@@ -54,26 +58,27 @@ impl FileSetConfig {
         FileSetConfigBuilder::default()
     }
     pub fn partition(&self, vfs: &Vfs) -> Vec<FileSet> {
+        let mut scratch_space = Vec::new();
         let mut res = vec![FileSet::default(); self.len()];
         for (file_id, path) in vfs.iter() {
-            let root = self.classify(&path);
-            res[root].insert(file_id, path)
+            let root = self.classify(&path, &mut scratch_space);
+            res[root].insert(file_id, path.clone())
         }
         res
     }
     fn len(&self) -> usize {
         self.n_file_sets
     }
-    fn classify(&self, path: &VfsPath) -> usize {
-        let idx = match self.roots.binary_search_by(|(p, _)| p.cmp(path)) {
-            Ok(it) => it,
-            Err(it) => it.saturating_sub(1),
-        };
-        if path.starts_with(&self.roots[idx].0) {
-            self.roots[idx].1
-        } else {
-            self.len() - 1
+    fn classify(&self, path: &VfsPath, scratch_space: &mut Vec<u8>) -> usize {
+        scratch_space.clear();
+        path.encode(scratch_space);
+        let automaton = PrefixOf::new(scratch_space.as_slice());
+        let mut longest_prefix = self.len() - 1;
+        let mut stream = self.map.search(automaton).into_stream();
+        while let Some((_, v)) = stream.next() {
+            longest_prefix = v as usize;
         }
+        longest_prefix
     }
 }
 
@@ -96,13 +101,101 @@ impl FileSetConfigBuilder {
     }
     pub fn build(self) -> FileSetConfig {
         let n_file_sets = self.roots.len() + 1;
-        let mut roots: Vec<(VfsPath, usize)> = self
-            .roots
-            .into_iter()
-            .enumerate()
-            .flat_map(|(i, paths)| paths.into_iter().zip(iter::repeat(i)))
-            .collect();
-        roots.sort();
-        FileSetConfig { n_file_sets, roots }
+        let map = {
+            let mut entries = Vec::new();
+            for (i, paths) in self.roots.into_iter().enumerate() {
+                for p in paths {
+                    let mut buf = Vec::new();
+                    p.encode(&mut buf);
+                    entries.push((buf, i as u64));
+                }
+            }
+            entries.sort();
+            entries.dedup_by(|(a, _), (b, _)| a == b);
+            fst::Map::from_iter(entries).unwrap()
+        };
+        FileSetConfig { n_file_sets, map }
+    }
+}
+
+struct PrefixOf<'a> {
+    prefix_of: &'a [u8],
+}
+
+impl<'a> PrefixOf<'a> {
+    fn new(prefix_of: &'a [u8]) -> Self {
+        Self { prefix_of }
+    }
+}
+
+impl fst::Automaton for PrefixOf<'_> {
+    type State = usize;
+    fn start(&self) -> usize {
+        0
+    }
+    fn is_match(&self, &state: &usize) -> bool {
+        state != !0
+    }
+    fn can_match(&self, &state: &usize) -> bool {
+        state != !0
+    }
+    fn accept(&self, &state: &usize, byte: u8) -> usize {
+        if self.prefix_of.get(state) == Some(&byte) {
+            state + 1
+        } else {
+            !0
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn path_prefix() {
+        let mut file_set = FileSetConfig::builder();
+        file_set.add_file_set(vec![VfsPath::new_virtual_path("/foo".into())]);
+        file_set.add_file_set(vec![VfsPath::new_virtual_path("/foo/bar/baz".into())]);
+        let file_set = file_set.build();
+
+        let mut vfs = Vfs::default();
+        vfs.set_file_contents(
+            VfsPath::new_virtual_path("/foo/src/lib.rs".into()),
+            Some(Vec::new()),
+        );
+        vfs.set_file_contents(
+            VfsPath::new_virtual_path("/foo/src/bar/baz/lib.rs".into()),
+            Some(Vec::new()),
+        );
+        vfs.set_file_contents(
+            VfsPath::new_virtual_path("/foo/bar/baz/lib.rs".into()),
+            Some(Vec::new()),
+        );
+        vfs.set_file_contents(VfsPath::new_virtual_path("/quux/lib.rs".into()), Some(Vec::new()));
+
+        let partition = file_set.partition(&vfs).into_iter().map(|it| it.len()).collect::<Vec<_>>();
+        assert_eq!(partition, vec![2, 1, 1]);
+    }
+
+    #[test]
+    fn name_prefix() {
+        let mut file_set = FileSetConfig::builder();
+        file_set.add_file_set(vec![VfsPath::new_virtual_path("/foo".into())]);
+        file_set.add_file_set(vec![VfsPath::new_virtual_path("/foo-things".into())]);
+        let file_set = file_set.build();
+
+        let mut vfs = Vfs::default();
+        vfs.set_file_contents(
+            VfsPath::new_virtual_path("/foo/src/lib.rs".into()),
+            Some(Vec::new()),
+        );
+        vfs.set_file_contents(
+            VfsPath::new_virtual_path("/foo-things/src/lib.rs".into()),
+            Some(Vec::new()),
+        );
+
+        let partition = file_set.partition(&vfs).into_iter().map(|it| it.len()).collect::<Vec<_>>();
+        assert_eq!(partition, vec![1, 1, 0]);
     }
 }

@@ -4,7 +4,7 @@ mod block;
 
 use crate::{
     ast, match_ast, AstNode, SyntaxError,
-    SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST_DEF, FN_DEF, INT_NUMBER, STRING, TYPE_ALIAS_DEF},
+    SyntaxKind::{BYTE, BYTE_STRING, CHAR, CONST, FN, INT_NUMBER, STRING, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,
 };
 use rustc_lexer::unescape::{
@@ -91,7 +91,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::Literal(it) => validate_literal(it, &mut errors),
                 ast::BlockExpr(it) => block::validate_block_expr(it, &mut errors),
                 ast::FieldExpr(it) => validate_numeric_name(it.name_ref(), &mut errors),
-                ast::RecordField(it) => validate_numeric_name(it.name_ref(), &mut errors),
+                ast::RecordExprField(it) => validate_numeric_name(it.name_ref(), &mut errors),
                 ast::Visibility(it) => validate_visibility(it, &mut errors),
                 ast::RangeExpr(it) => validate_range_expr(it, &mut errors),
                 ast::PathSegment(it) => validate_path_keywords(it, &mut errors),
@@ -200,11 +200,11 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         None => return,
     };
     match parent.kind() {
-        FN_DEF | CONST_DEF | TYPE_ALIAS_DEF => (),
+        FN | CONST | TYPE_ALIAS => (),
         _ => return,
     }
 
-    let impl_def = match parent.parent().and_then(|it| it.parent()).and_then(ast::ImplDef::cast) {
+    let impl_def = match parent.parent().and_then(|it| it.parent()).and_then(ast::Impl::cast) {
         Some(it) => it,
         None => return,
     };

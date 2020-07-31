@@ -5,12 +5,12 @@ use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplicat
 use itertools::Itertools;
 
 use super::{from_chalk, Interner};
-use crate::{db::HirDatabase, CallableDef, TypeCtor};
+use crate::{db::HirDatabase, CallableDefId, TypeCtor};
 use hir_def::{AdtId, AssocContainerId, DefWithBodyId, Lookup, TypeAliasId};
 
 pub use unsafe_tls::{set_current_program, with_current_program};
 
-pub struct DebugContext<'a>(&'a (dyn HirDatabase + 'a));
+pub struct DebugContext<'a>(&'a dyn HirDatabase);
 
 impl DebugContext<'_> {
     pub fn debug_struct_id(
@@ -38,16 +38,16 @@ impl DebugContext<'_> {
             }
             TypeCtor::FnDef(def) => {
                 let name = match def {
-                    CallableDef::FunctionId(ff) => self.0.function_data(ff).name.clone(),
-                    CallableDef::StructId(s) => self.0.struct_data(s).name.clone(),
-                    CallableDef::EnumVariantId(e) => {
+                    CallableDefId::FunctionId(ff) => self.0.function_data(ff).name.clone(),
+                    CallableDefId::StructId(s) => self.0.struct_data(s).name.clone(),
+                    CallableDefId::EnumVariantId(e) => {
                         let enum_data = self.0.enum_data(e.parent);
                         enum_data.variants[e.local_id].name.clone()
                     }
                 };
                 match def {
-                    CallableDef::FunctionId(_) => write!(f, "{{fn {}}}", name)?,
-                    CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {
+                    CallableDefId::FunctionId(_) => write!(f, "{{fn {}}}", name)?,
+                    CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_) => {
                         write!(f, "{{ctor {}}}", name)?
                     }
                 }
@@ -157,7 +157,7 @@ impl DebugContext<'_> {
             _ => panic!("associated type not in trait"),
         };
         let trait_data = self.0.trait_data(trait_);
-        let params = projection_ty.substitution.parameters(&Interner);
+        let params = projection_ty.substitution.as_slice(&Interner);
         write!(fmt, "<{:?} as {}", &params[0], trait_data.name,)?;
         if params.len() > 1 {
             write!(
@@ -255,18 +255,18 @@ impl DebugContext<'_> {
         fn_def_id: chalk_ir::FnDefId<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        let def: CallableDef = from_chalk(self.0, fn_def_id);
+        let def: CallableDefId = from_chalk(self.0, fn_def_id);
         let name = match def {
-            CallableDef::FunctionId(ff) => self.0.function_data(ff).name.clone(),
-            CallableDef::StructId(s) => self.0.struct_data(s).name.clone(),
-            CallableDef::EnumVariantId(e) => {
+            CallableDefId::FunctionId(ff) => self.0.function_data(ff).name.clone(),
+            CallableDefId::StructId(s) => self.0.struct_data(s).name.clone(),
+            CallableDefId::EnumVariantId(e) => {
                 let enum_data = self.0.enum_data(e.parent);
                 enum_data.variants[e.local_id].name.clone()
             }
         };
         match def {
-            CallableDef::FunctionId(_) => write!(fmt, "{{fn {}}}", name),
-            CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {
+            CallableDefId::FunctionId(_) => write!(fmt, "{{fn {}}}", name),
+            CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_) => {
                 write!(fmt, "{{ctor {}}}", name)
             }
         }

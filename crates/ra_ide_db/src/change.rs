@@ -5,8 +5,7 @@ use std::{fmt, sync::Arc, time};
 
 use ra_db::{
     salsa::{Database, Durability, SweepStrategy},
-    CrateGraph, FileId, RelativePathBuf, SourceDatabase, SourceDatabaseExt, SourceRoot,
-    SourceRootId,
+    CrateGraph, FileId, SourceDatabase, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 use ra_prof::{memory_usage, profile, Bytes};
 use rustc_hash::FxHashSet;
@@ -57,14 +56,14 @@ impl AnalysisChange {
 #[derive(Debug)]
 struct AddFile {
     file_id: FileId,
-    path: RelativePathBuf,
+    path: String,
     text: Arc<String>,
 }
 
 #[derive(Debug)]
 struct RemoveFile {
     file_id: FileId,
-    path: RelativePathBuf,
+    path: String,
 }
 
 #[derive(Default)]
@@ -147,37 +146,46 @@ impl RootDatabase {
 
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
 
-        self.query(ra_db::ParseQuery).sweep(sweep);
-        self.query(hir::db::ParseMacroQuery).sweep(sweep);
+        ra_db::ParseQuery.in_db(self).sweep(sweep);
+        hir::db::ParseMacroQuery.in_db(self).sweep(sweep);
 
         // Macros do take significant space, but less then the syntax trees
         // self.query(hir::db::MacroDefQuery).sweep(sweep);
-        // self.query(hir::db::MacroArgQuery).sweep(sweep);
+        // self.query(hir::db::MacroArgTextQuery).sweep(sweep);
         // self.query(hir::db::MacroExpandQuery).sweep(sweep);
 
-        self.query(hir::db::AstIdMapQuery).sweep(sweep);
+        hir::db::AstIdMapQuery.in_db(self).sweep(sweep);
 
-        self.query(hir::db::BodyWithSourceMapQuery).sweep(sweep);
+        hir::db::BodyWithSourceMapQuery.in_db(self).sweep(sweep);
 
-        self.query(hir::db::ExprScopesQuery).sweep(sweep);
-        self.query(hir::db::InferQueryQuery).sweep(sweep);
-        self.query(hir::db::BodyQuery).sweep(sweep);
+        hir::db::ExprScopesQuery.in_db(self).sweep(sweep);
+        hir::db::InferQueryQuery.in_db(self).sweep(sweep);
+        hir::db::BodyQuery.in_db(self).sweep(sweep);
     }
 
+    // Feature: Memory Usage
+    //
+    // Clears rust-analyzer's internal database and prints memory usage statistics.
+    //
+    // |===
+    // | Editor  | Action Name
+    //
+    // | VS Code | **Rust Analyzer: Memory Usage (Clears Database)**
+    // |===
     pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes)> {
         let mut acc: Vec<(String, Bytes)> = vec![];
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
         macro_rules! sweep_each_query {
             ($($q:path)*) => {$(
                 let before = memory_usage().allocated;
-                self.query($q).sweep(sweep);
+                $q.in_db(self).sweep(sweep);
                 let after = memory_usage().allocated;
                 let q: $q = Default::default();
                 let name = format!("{:?}", q);
                 acc.push((name, before - after));
 
                 let before = memory_usage().allocated;
-                self.query($q).sweep(sweep.discard_everything());
+                $q.in_db(self).sweep(sweep.discard_everything());
                 let after = memory_usage().allocated;
                 let q: $q = Default::default();
                 let name = format!("{:?} (deps)", q);
@@ -191,12 +199,10 @@ impl RootDatabase {
 
             // AstDatabase
             hir::db::AstIdMapQuery
-            hir::db::InternMacroQuery
-            hir::db::MacroArgQuery
+            hir::db::MacroArgTextQuery
             hir::db::MacroDefQuery
             hir::db::ParseMacroQuery
             hir::db::MacroExpandQuery
-            hir::db::InternEagerExpansionQuery
 
             // DefDatabase
             hir::db::ItemTreeQuery
@@ -221,17 +227,6 @@ impl RootDatabase {
             hir::db::DocumentationQuery
             hir::db::ImportMapQuery
 
-            // InternDatabase
-            hir::db::InternFunctionQuery
-            hir::db::InternStructQuery
-            hir::db::InternUnionQuery
-            hir::db::InternEnumQuery
-            hir::db::InternConstQuery
-            hir::db::InternStaticQuery
-            hir::db::InternTraitQuery
-            hir::db::InternTypeAliasQuery
-            hir::db::InternImplQuery
-
             // HirDatabase
             hir::db::InferQueryQuery
             hir::db::TyQuery
@@ -243,12 +238,9 @@ impl RootDatabase {
             hir::db::GenericPredicatesForParamQuery
             hir::db::GenericPredicatesQuery
             hir::db::GenericDefaultsQuery
-            hir::db::ImplsInCrateQuery
-            hir::db::ImplsFromDepsQuery
-            hir::db::InternTypeCtorQuery
-            hir::db::InternTypeParamIdQuery
-            hir::db::InternChalkImplQuery
-            hir::db::InternAssocTyValueQuery
+            hir::db::InherentImplsInCrateQuery
+            hir::db::TraitImplsInCrateQuery
+            hir::db::TraitImplsInDepsQuery
             hir::db::AssociatedTyDataQuery
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
@@ -263,6 +255,33 @@ impl RootDatabase {
             // LineIndexDatabase
             crate::LineIndexQuery
         ];
+
+        // To collect interned data, we need to bump the revision counter by performing a synthetic
+        // write.
+        // We do this after collecting the non-interned queries to correctly attribute memory used
+        // by interned data.
+        self.salsa_runtime_mut().synthetic_write(Durability::HIGH);
+
+        sweep_each_query![
+            // AstDatabase
+            hir::db::InternMacroQuery
+            hir::db::InternEagerExpansionQuery
+
+            // InternDatabase
+            hir::db::InternFunctionQuery
+            hir::db::InternStructQuery
+            hir::db::InternUnionQuery
+            hir::db::InternEnumQuery
+            hir::db::InternConstQuery
+            hir::db::InternStaticQuery
+            hir::db::InternTraitQuery
+            hir::db::InternTypeAliasQuery
+            hir::db::InternImplQuery
+
+            // HirDatabase
+            hir::db::InternTypeParamIdQuery
+        ];
+
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));
         acc
     }

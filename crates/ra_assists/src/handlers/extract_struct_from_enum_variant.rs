@@ -10,7 +10,8 @@ use ra_syntax::{
 use rustc_hash::FxHashSet;
 
 use crate::{
-    assist_context::AssistBuilder, utils::insert_use_statement, AssistContext, AssistId, Assists,
+    assist_context::AssistBuilder, utils::insert_use_statement, AssistContext, AssistId,
+    AssistKind, Assists,
 };
 
 // Assist: extract_struct_from_enum_variant
@@ -30,30 +31,30 @@ pub(crate) fn extract_struct_from_enum_variant(
     acc: &mut Assists,
     ctx: &AssistContext,
 ) -> Option<()> {
-    let variant = ctx.find_node_at_offset::<ast::EnumVariant>()?;
+    let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let field_list = match variant.kind() {
         ast::StructKind::Tuple(field_list) => field_list,
         _ => return None,
     };
     let variant_name = variant.name()?.to_string();
     let variant_hir = ctx.sema.to_def(&variant)?;
-    if existing_struct_def(ctx.db, &variant_name, &variant_hir) {
+    if existing_struct_def(ctx.db(), &variant_name, &variant_hir) {
         return None;
     }
     let enum_ast = variant.parent_enum();
     let visibility = enum_ast.visibility();
     let enum_hir = ctx.sema.to_def(&enum_ast)?;
-    let variant_hir_name = variant_hir.name(ctx.db);
+    let variant_hir_name = variant_hir.name(ctx.db());
     let enum_module_def = ModuleDef::from(enum_hir);
-    let current_module = enum_hir.module(ctx.db);
+    let current_module = enum_hir.module(ctx.db());
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("extract_struct_from_enum_variant"),
+        AssistId("extract_struct_from_enum_variant", AssistKind::RefactorRewrite),
         "Extract struct from enum variant",
         target,
         |builder| {
             let definition = Definition::ModuleDef(ModuleDef::EnumVariant(variant_hir));
-            let res = definition.find_usages(&ctx.db, None);
+            let res = definition.find_usages(&ctx.sema, None);
             let start_offset = variant.parent_enum().syntax().text_range().start();
             let mut visited_modules_set = FxHashSet::default();
             visited_modules_set.insert(current_module);
@@ -101,7 +102,7 @@ fn insert_import(
     enum_module_def: &ModuleDef,
     variant_hir_name: &Name,
 ) -> Option<()> {
-    let db = ctx.db;
+    let db = ctx.db();
     let mod_path = module.find_use_path(db, enum_module_def.clone());
     if let Some(mut mod_path) = mod_path {
         mod_path.segments.pop();

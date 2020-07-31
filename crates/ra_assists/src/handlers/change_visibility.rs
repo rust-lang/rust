@@ -1,12 +1,12 @@
 use ra_syntax::{
     ast::{self, NameOwner, VisibilityOwner},
     AstNode,
-    SyntaxKind::{CONST_DEF, ENUM_DEF, FN_DEF, MODULE, STRUCT_DEF, TRAIT_DEF, VISIBILITY},
+    SyntaxKind::{CONST, ENUM, FN, MODULE, STATIC, STRUCT, TRAIT, VISIBILITY},
     T,
 };
 use test_utils::mark;
 
-use crate::{utils::vis_offset, AssistContext, AssistId, Assists};
+use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: change_visibility
 //
@@ -28,12 +28,15 @@ pub(crate) fn change_visibility(acc: &mut Assists, ctx: &AssistContext) -> Optio
 
 fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let item_keyword = ctx.token_at_offset().find(|leaf| {
-        matches!(leaf.kind(), T![const] | T![fn] | T![mod] | T![struct] | T![enum] | T![trait])
+        matches!(
+            leaf.kind(),
+            T![const] | T![static] | T![fn] | T![mod] | T![struct] | T![enum] | T![trait]
+        )
     });
 
     let (offset, target) = if let Some(keyword) = item_keyword {
         let parent = keyword.parent();
-        let def_kws = vec![CONST_DEF, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF];
+        let def_kws = vec![CONST, STATIC, FN, MODULE, STRUCT, ENUM, TRAIT];
         // Parent is not a definition, can't add visibility
         if !def_kws.iter().any(|&def_kw| def_kw == parent.kind()) {
             return None;
@@ -44,7 +47,7 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         }
         (vis_offset(&parent), keyword.text_range())
     } else if let Some(field_name) = ctx.find_node_at_offset::<ast::Name>() {
-        let field = field_name.syntax().ancestors().find_map(ast::RecordFieldDef::cast)?;
+        let field = field_name.syntax().ancestors().find_map(ast::RecordField::cast)?;
         if field.name()? != field_name {
             mark::hit!(change_visibility_field_false_positive);
             return None;
@@ -53,7 +56,7 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
             return None;
         }
         (vis_offset(field.syntax()), field_name.syntax().text_range())
-    } else if let Some(field) = ctx.find_node_at_offset::<ast::TupleFieldDef>() {
+    } else if let Some(field) = ctx.find_node_at_offset::<ast::TupleField>() {
         if field.visibility().is_some() {
             return None;
         }
@@ -62,16 +65,21 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         return None;
     };
 
-    acc.add(AssistId("change_visibility"), "Change visibility to pub(crate)", target, |edit| {
-        edit.insert(offset, "pub(crate) ");
-    })
+    acc.add(
+        AssistId("change_visibility", AssistKind::RefactorRewrite),
+        "Change visibility to pub(crate)",
+        target,
+        |edit| {
+            edit.insert(offset, "pub(crate) ");
+        },
+    )
 }
 
 fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
     if vis.syntax().text() == "pub" {
         let target = vis.syntax().text_range();
         return acc.add(
-            AssistId("change_visibility"),
+            AssistId("change_visibility", AssistKind::RefactorRewrite),
             "Change Visibility to pub(crate)",
             target,
             |edit| {
@@ -82,7 +90,7 @@ fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
     if vis.syntax().text() == "pub(crate)" {
         let target = vis.syntax().text_range();
         return acc.add(
-            AssistId("change_visibility"),
+            AssistId("change_visibility", AssistKind::RefactorRewrite),
             "Change visibility to pub",
             target,
             |edit| {
@@ -144,6 +152,11 @@ mod tests {
     #[test]
     fn change_visibility_const() {
         check_assist(change_visibility, "<|>const FOO = 3u8;", "pub(crate) const FOO = 3u8;");
+    }
+
+    #[test]
+    fn change_visibility_static() {
+        check_assist(change_visibility, "<|>static FOO = 3u8;", "pub(crate) static FOO = 3u8;");
     }
 
     #[test]

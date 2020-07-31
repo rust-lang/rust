@@ -260,7 +260,7 @@ impl<'a> TtIter<'a> {
             | ('|', '=', None)
             | ('|', '|', None) => {
                 let tt2 = self.next().unwrap().clone();
-                Ok(tt::Subtree { delimiter: None, token_trees: vec![tt.clone(), tt2] }.into())
+                Ok(tt::Subtree { delimiter: None, token_trees: vec![tt, tt2] }.into())
             }
             _ => Ok(tt),
         }

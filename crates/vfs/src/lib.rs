@@ -70,7 +70,7 @@ impl ChangedFile {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum ChangeKind {
     Create,
     Modify,
@@ -90,12 +90,12 @@ impl Vfs {
     pub fn file_contents(&self, file_id: FileId) -> &[u8] {
         self.get(file_id).as_deref().unwrap()
     }
-    pub fn iter(&self) -> impl Iterator<Item = (FileId, VfsPath)> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = (FileId, &VfsPath)> + '_ {
         (0..self.data.len())
             .map(|it| FileId(it as u32))
             .filter(move |&file_id| self.get(file_id).is_some())
             .map(move |file_id| {
-                let path = self.interner.lookup(file_id).clone();
+                let path = self.interner.lookup(file_id);
                 (file_id, path)
             })
     }

@@ -39,29 +39,30 @@
         "vscode-languageclient": "7.0.0-next.1"
     },
     "devDependencies": {
-        "@rollup/plugin-commonjs": "^12.0.0",
-        "@rollup/plugin-node-resolve": "^8.0.0",
-        "@types/glob": "^7.1.1",
+        "@rollup/plugin-commonjs": "^13.0.0",
+        "@rollup/plugin-node-resolve": "^8.1.0",
+        "@types/glob": "^7.1.2",
         "@types/mocha": "^7.0.2",
-        "@types/node": "^14.0.5",
+        "@types/node": "~12.7.0",
         "@types/node-fetch": "^2.5.7",
         "@types/vscode": "^1.44.1",
-        "@typescript-eslint/eslint-plugin": "^3.0.0",
-        "@typescript-eslint/parser": "^3.0.0",
-        "eslint": "^7.0.0",
+        "@typescript-eslint/eslint-plugin": "^3.4.0",
+        "@typescript-eslint/parser": "^3.4.0",
+        "eslint": "^7.3.1",
         "glob": "^7.1.6",
-        "mocha": "^7.1.2",
-        "rollup": "^2.10.7",
+        "mocha": "^8.0.1",
+        "rollup": "^2.18.1",
         "tslib": "^2.0.0",
-        "typescript": "^3.9.3",
+        "typescript": "^3.9.5",
         "typescript-formatter": "^7.2.2",
         "vsce": "^1.75.0",
-        "vscode-test": "^1.3.0"
+        "vscode-test": "^1.4.0"
     },
     "activationEvents": [
         "onLanguage:rust",
         "onCommand:rust-analyzer.analyzerStatus",
-        "onCommand:rust-analyzer.collectGarbage",
+        "onCommand:rust-analyzer.memoryUsage",
+        "onCommand:rust-analyzer.reloadWorkspace",
         "workspaceContains:**/Cargo.toml"
     ],
     "main": "./out/src/main",
@@ -143,8 +144,13 @@
                 "category": "Rust Analyzer"
             },
             {
-                "command": "rust-analyzer.collectGarbage",
-                "title": "Run garbage collection",
+                "command": "rust-analyzer.memoryUsage",
+                "title": "Memory Usage (Clears Database)",
+                "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.reloadWorkspace",
+                "title": "Reload workspace",
                 "category": "Rust Analyzer"
             },
             {
@@ -194,11 +200,6 @@
             "type": "object",
             "title": "Rust Analyzer",
             "properties": {
-                "rust-analyzer.diagnostics.enable": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "Whether to show native rust-analyzer diagnostics."
-                },
                 "rust-analyzer.lruCapacity": {
                     "type": [
                         "null",
@@ -230,6 +231,11 @@
                     "type": "boolean",
                     "default": true,
                     "markdownDescription": "Whether to show `can't find Cargo.toml` error message"
+                },
+                "rust-analyzer.cargo.autoreload": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Automatically refresh project info via `cargo metadata` on Cargo.toml changes"
                 },
                 "rust-analyzer.cargo.noDefaultFeatures": {
                     "type": "boolean",
@@ -317,6 +323,14 @@
                     "default": true,
                     "markdownDescription": "Check all targets and tests (will be passed as `--all-targets`)"
                 },
+                "rust-analyzer.checkOnSave.noDefaultFeatures": {
+                    "type": [
+                        "null",
+                        "boolean"
+                    ],
+                    "default": null,
+                    "markdownDescription": "Do not activate the `default` feature"
+                },
                 "rust-analyzer.checkOnSave.allFeatures": {
                     "type": [
                         "null",
@@ -343,6 +357,35 @@
                     ],
                     "default": null,
                     "description": "Custom cargo runner extension ID."
+                },
+                "rust-analyzer.runnableEnv": {
+                    "anyOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "mask": {
+                                        "type": "string",
+                                        "description": "Runnable name mask"
+                                    },
+                                    "env": {
+                                        "type": "object",
+                                        "description": "Variables in form of { \"key\": \"value\"}"
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "description": "Variables in form of { \"key\": \"value\"}"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Environment variables passed to the runnable launched using `Test ` or `Debug` lens or `rust-analyzer.run` command."
                 },
                 "rust-analyzer.inlayHints.enable": {
                     "type": "boolean",
@@ -539,6 +582,16 @@
                     "type": "boolean",
                     "default": true
                 },
+                "rust-analyzer.diagnostics.enable": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Whether to show native rust-analyzer diagnostics."
+                },
+                "rust-analyzer.diagnostics.enableExperimental": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Whether to show experimental rust-analyzer diagnostics that might have more false positives than usual."
+                },
                 "rust-analyzer.diagnostics.warningsAsInfo": {
                     "type": "array",
                     "uniqueItems": true,
@@ -554,7 +607,7 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of warnings warnings that should be displayed with hint severity.\nThe warnings will be indicated by faded text or three dots in code and will not show up in te problems panel.",
+                    "description": "List of warnings warnings that should be displayed with hint severity.\nThe warnings will be indicated by faded text or three dots in code and will not show up in the problems panel.",
                     "default": []
                 }
             }
@@ -615,24 +668,30 @@
         "problemMatchers": [
             {
                 "name": "rustc",
+                "owner": "rustc",
+                "source": "rustc",
                 "fileLocation": [
-                    "relative",
+                    "autoDetect",
                     "${workspaceRoot}"
                 ],
                 "pattern": "$rustc"
             },
             {
                 "name": "rustc-json",
+                "owner": "rustc",
+                "source": "rustc",
                 "fileLocation": [
-                    "relative",
+                    "autoDetect",
                     "${workspaceRoot}"
                 ],
                 "pattern": "$rustc-json"
             },
             {
                 "name": "rustc-watch",
+                "owner": "rustc",
+                "source": "rustc",
                 "fileLocation": [
-                    "relative",
+                    "autoDetect",
                     "${workspaceRoot}"
                 ],
                 "background": {
@@ -815,7 +874,11 @@
                     "when": "inRustProject"
                 },
                 {
-                    "command": "rust-analyzer.collectGarbage",
+                    "command": "rust-analyzer.memoryUsage",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.reloadWorkspace",
                     "when": "inRustProject"
                 },
                 {

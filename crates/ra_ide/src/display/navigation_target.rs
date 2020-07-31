@@ -11,7 +11,7 @@ use ra_syntax::{
     TextRange,
 };
 
-use crate::{FileRange, FileSymbol};
+use crate::FileSymbol;
 
 use super::short_label::ShortLabel;
 
@@ -22,15 +22,28 @@ use super::short_label::ShortLabel;
 /// code, like a function or a struct, but this is not strictly required.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NavigationTarget {
-    // FIXME: use FileRange?
-    file_id: FileId,
-    full_range: TextRange,
-    name: SmolStr,
-    kind: SyntaxKind,
-    focus_range: Option<TextRange>,
-    container_name: Option<SmolStr>,
-    description: Option<String>,
-    docs: Option<String>,
+    pub file_id: FileId,
+    /// Range which encompasses the whole element.
+    ///
+    /// Should include body, doc comments, attributes, etc.
+    ///
+    /// Clients should use this range to answer "is the cursor inside the
+    /// element?" question.
+    pub full_range: TextRange,
+    /// A "most interesting" range withing the `full_range`.
+    ///
+    /// Typically, `full_range` is the whole syntax node, including doc
+    /// comments, and `focus_range` is the range of the identifier. "Most
+    /// interesting" range within the full range, typically the range of
+    /// identifier.
+    ///
+    /// Clients should place the cursor on this range when navigating to this target.
+    pub focus_range: Option<TextRange>,
+    pub name: SmolStr,
+    pub kind: SyntaxKind,
+    pub container_name: Option<SmolStr>,
+    pub description: Option<String>,
+    pub docs: Option<String>,
 }
 
 pub(crate) trait ToNav {
@@ -42,50 +55,8 @@ pub(crate) trait TryToNav {
 }
 
 impl NavigationTarget {
-    /// When `focus_range` is specified, returns it. otherwise
-    /// returns `full_range`
-    pub fn range(&self) -> TextRange {
+    pub fn focus_or_full_range(&self) -> TextRange {
         self.focus_range.unwrap_or(self.full_range)
-    }
-
-    pub fn name(&self) -> &SmolStr {
-        &self.name
-    }
-
-    pub fn container_name(&self) -> Option<&SmolStr> {
-        self.container_name.as_ref()
-    }
-
-    pub fn kind(&self) -> SyntaxKind {
-        self.kind
-    }
-
-    pub fn file_id(&self) -> FileId {
-        self.file_id
-    }
-
-    pub fn file_range(&self) -> FileRange {
-        FileRange { file_id: self.file_id, range: self.full_range }
-    }
-
-    pub fn full_range(&self) -> TextRange {
-        self.full_range
-    }
-
-    pub fn docs(&self) -> Option<&str> {
-        self.docs.as_deref()
-    }
-
-    pub fn description(&self) -> Option<&str> {
-        self.description.as_deref()
-    }
-
-    /// A "most interesting" range withing the `full_range`.
-    ///
-    /// Typically, `full_range` is the whole syntax node,
-    /// including doc comments, and `focus_range` is the range of the identifier.
-    pub fn focus_range(&self) -> Option<TextRange> {
-        self.focus_range
     }
 
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
@@ -114,17 +85,12 @@ impl NavigationTarget {
 
     #[cfg(test)]
     pub(crate) fn debug_render(&self) -> String {
-        let mut buf = format!(
-            "{} {:?} {:?} {:?}",
-            self.name(),
-            self.kind(),
-            self.file_id(),
-            self.full_range()
-        );
-        if let Some(focus_range) = self.focus_range() {
+        let mut buf =
+            format!("{} {:?} {:?} {:?}", self.name, self.kind, self.file_id, self.full_range);
+        if let Some(focus_range) = self.focus_range {
             buf.push_str(&format!(" {:?}", focus_range))
         }
-        if let Some(container_name) = self.container_name() {
+        if let Some(container_name) = &self.container_name {
             buf.push_str(&format!(" {}", container_name))
         }
         buf
@@ -278,16 +244,22 @@ impl ToNav for hir::Module {
 impl ToNav for hir::ImplDef {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let frange = if let Some(item) = self.is_builtin_derive(db) {
+        let derive_attr = self.is_builtin_derive(db);
+        let frange = if let Some(item) = &derive_attr {
             original_range(db, item.syntax())
         } else {
             original_range(db, src.as_ref().map(|it| it.syntax()))
+        };
+        let focus_range = if derive_attr.is_some() {
+            None
+        } else {
+            src.value.target_type().map(|ty| original_range(db, src.with_value(ty.syntax())).range)
         };
 
         NavigationTarget::from_syntax(
             frange.file_id,
             "impl".into(),
-            None,
+            focus_range,
             frange.range,
             src.value.syntax().kind(),
         )
@@ -407,16 +379,16 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
 
     match_ast! {
         match node {
-            ast::FnDef(it) => it.doc_comment_text(),
-            ast::StructDef(it) => it.doc_comment_text(),
-            ast::EnumDef(it) => it.doc_comment_text(),
-            ast::TraitDef(it) => it.doc_comment_text(),
+            ast::Fn(it) => it.doc_comment_text(),
+            ast::Struct(it) => it.doc_comment_text(),
+            ast::Enum(it) => it.doc_comment_text(),
+            ast::Trait(it) => it.doc_comment_text(),
             ast::Module(it) => it.doc_comment_text(),
-            ast::TypeAliasDef(it) => it.doc_comment_text(),
-            ast::ConstDef(it) => it.doc_comment_text(),
-            ast::StaticDef(it) => it.doc_comment_text(),
-            ast::RecordFieldDef(it) => it.doc_comment_text(),
-            ast::EnumVariant(it) => it.doc_comment_text(),
+            ast::TypeAlias(it) => it.doc_comment_text(),
+            ast::Const(it) => it.doc_comment_text(),
+            ast::Static(it) => it.doc_comment_text(),
+            ast::RecordField(it) => it.doc_comment_text(),
+            ast::Variant(it) => it.doc_comment_text(),
             ast::MacroCall(it) => it.doc_comment_text(),
             _ => None,
         }
@@ -432,17 +404,88 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
 
     match_ast! {
         match node {
-            ast::FnDef(it) => it.short_label(),
-            ast::StructDef(it) => it.short_label(),
-            ast::EnumDef(it) => it.short_label(),
-            ast::TraitDef(it) => it.short_label(),
+            ast::Fn(it) => it.short_label(),
+            ast::Struct(it) => it.short_label(),
+            ast::Enum(it) => it.short_label(),
+            ast::Trait(it) => it.short_label(),
             ast::Module(it) => it.short_label(),
-            ast::TypeAliasDef(it) => it.short_label(),
-            ast::ConstDef(it) => it.short_label(),
-            ast::StaticDef(it) => it.short_label(),
-            ast::RecordFieldDef(it) => it.short_label(),
-            ast::EnumVariant(it) => it.short_label(),
+            ast::TypeAlias(it) => it.short_label(),
+            ast::Const(it) => it.short_label(),
+            ast::Static(it) => it.short_label(),
+            ast::RecordField(it) => it.short_label(),
+            ast::Variant(it) => it.short_label(),
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use expect::expect;
+
+    use crate::{mock_analysis::single_file, Query};
+
+    #[test]
+    fn test_nav_for_symbol() {
+        let (analysis, _) = single_file(
+            r#"
+enum FooInner { }
+fn foo() { enum FooInner { } }
+"#,
+        );
+
+        let navs = analysis.symbol_search(Query::new("FooInner".to_string())).unwrap();
+        expect![[r#"
+            [
+                NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 0..17,
+                    focus_range: Some(
+                        5..13,
+                    ),
+                    name: "FooInner",
+                    kind: ENUM,
+                    container_name: None,
+                    description: Some(
+                        "enum FooInner",
+                    ),
+                    docs: None,
+                },
+                NavigationTarget {
+                    file_id: FileId(
+                        1,
+                    ),
+                    full_range: 29..46,
+                    focus_range: Some(
+                        34..42,
+                    ),
+                    name: "FooInner",
+                    kind: ENUM,
+                    container_name: Some(
+                        "foo",
+                    ),
+                    description: Some(
+                        "enum FooInner",
+                    ),
+                    docs: None,
+                },
+            ]
+        "#]]
+        .assert_debug_eq(&navs);
+    }
+
+    #[test]
+    fn test_world_symbols_are_case_sensitive() {
+        let (analysis, _) = single_file(
+            r#"
+fn foo() {}
+struct Foo;
+"#,
+        );
+
+        let navs = analysis.symbol_search(Query::new("foo".to_string())).unwrap();
+        assert_eq!(navs.len(), 2)
     }
 }

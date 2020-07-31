@@ -3,23 +3,22 @@
 use std::sync::Arc;
 
 use hir_def::{
-    db::DefDatabase, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId, TypeParamId,
-    VariantId,
+    db::DefDatabase, expr::ExprId, DefWithBodyId, FunctionId, GenericDefId, ImplId, LocalFieldId,
+    TypeParamId, VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::{impl_intern_key, salsa, CrateId, Upcast};
 use ra_prof::profile;
 
 use crate::{
-    method_resolution::CrateImplDefs,
-    traits::{chalk, AssocTyValue, Impl},
-    Binders, CallableDef, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
-    ReturnTypeImplTraits, TraitRef, Ty, TyDefId, TypeCtor, ValueTyDefId,
+    method_resolution::{InherentImpls, TraitImpls},
+    traits::chalk,
+    Binders, CallableDefId, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
+    ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
 #[salsa::query_group(HirDatabaseStorage)]
-#[salsa::requires(salsa::Database)]
 pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(infer_wait)]
     #[salsa::transparent]
@@ -46,7 +45,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
     #[salsa::invoke(crate::callable_item_sig)]
-    fn callable_item_signature(&self, def: CallableDef) -> PolyFnSig;
+    fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;
 
     #[salsa::invoke(crate::lower::return_type_impl_traits)]
     fn return_type_impl_traits(
@@ -67,25 +66,24 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::lower::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDefId) -> Arc<[Binders<Ty>]>;
 
-    #[salsa::invoke(crate::method_resolution::CrateImplDefs::impls_in_crate_query)]
-    fn impls_in_crate(&self, krate: CrateId) -> Arc<CrateImplDefs>;
+    #[salsa::invoke(InherentImpls::inherent_impls_in_crate_query)]
+    fn inherent_impls_in_crate(&self, krate: CrateId) -> Arc<InherentImpls>;
 
-    #[salsa::invoke(crate::method_resolution::CrateImplDefs::impls_from_deps_query)]
-    fn impls_from_deps(&self, krate: CrateId) -> Arc<CrateImplDefs>;
+    #[salsa::invoke(TraitImpls::trait_impls_in_crate_query)]
+    fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;
+
+    #[salsa::invoke(TraitImpls::trait_impls_in_deps_query)]
+    fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<TraitImpls>;
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
-    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> crate::TypeCtorId;
-    #[salsa::interned]
-    fn intern_callable_def(&self, callable_def: CallableDef) -> crate::CallableDefId;
+    fn intern_callable_def(&self, callable_def: CallableDefId) -> InternedCallableDefId;
     #[salsa::interned]
     fn intern_type_param_id(&self, param_id: TypeParamId) -> GlobalTypeParamId;
     #[salsa::interned]
     fn intern_impl_trait_id(&self, id: OpaqueTyId) -> InternedOpaqueTyId;
     #[salsa::interned]
-    fn intern_chalk_impl(&self, impl_: Impl) -> crate::traits::GlobalImplId;
-    #[salsa::interned]
-    fn intern_assoc_ty_value(&self, assoc_ty_value: AssocTyValue) -> crate::traits::AssocTyValueId;
+    fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> ClosureId;
 
     #[salsa::invoke(chalk::associated_ty_data_query)]
     fn associated_ty_data(&self, id: chalk::AssocTypeId) -> Arc<chalk::AssociatedTyDatum>;
@@ -149,3 +147,13 @@ impl_intern_key!(GlobalTypeParamId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedOpaqueTyId(salsa::InternId);
 impl_intern_key!(InternedOpaqueTyId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ClosureId(salsa::InternId);
+impl_intern_key!(ClosureId);
+
+/// This exists just for Chalk, because Chalk just has a single `FnDefId` where
+/// we have different IDs for struct and enum variant constructors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct InternedCallableDefId(salsa::InternId);
+impl_intern_key!(InternedCallableDefId);

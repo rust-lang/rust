@@ -1,13 +1,14 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
 use std::{
+    borrow::Cow,
     env, fmt, panic,
     time::{Duration, Instant},
 };
 
-use crossbeam_channel::{never, select, Receiver};
+use crossbeam_channel::{select, Receiver};
 use lsp_server::{Connection, Notification, Request, Response};
-use lsp_types::notification::Notification as _;
+use lsp_types::{notification::Notification as _, DidChangeTextDocumentParams};
 use ra_db::VfsPath;
 use ra_ide::{Canceled, FileId};
 use ra_prof::profile;
@@ -15,12 +16,15 @@ use ra_prof::profile;
 use crate::{
     config::Config,
     dispatch::{NotificationDispatcher, RequestDispatcher},
+    document::DocumentData,
     from_proto,
     global_state::{file_id_to_url, url_to_file_id, GlobalState, Status},
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
     Result,
 };
+use ra_project_model::ProjectWorkspace;
+use vfs::ChangeKind;
 
 pub fn main_loop(config: Config, connection: Connection) -> Result<()> {
     log::info!("initial config: {:#?}", config);
@@ -58,6 +62,7 @@ enum Event {
 pub(crate) enum Task {
     Response(Response),
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
+    Workspaces(Vec<anyhow::Result<ProjectWorkspace>>),
     Unit,
 }
 
@@ -94,24 +99,49 @@ impl fmt::Debug for Event {
 }
 
 impl GlobalState {
-    fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
-        select! {
-            recv(inbox) -> msg =>
-                msg.ok().map(Event::Lsp),
-
-            recv(self.task_pool.receiver) -> task =>
-                Some(Event::Task(task.unwrap())),
-
-            recv(self.loader.receiver) -> task =>
-                Some(Event::Vfs(task.unwrap())),
-
-            recv(self.flycheck.as_ref().map_or(&never(), |it| &it.receiver)) -> task =>
-                Some(Event::Flycheck(task.unwrap())),
-        }
-    }
-
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
-        self.reload();
+        if self.config.linked_projects.is_empty() && self.config.notifications.cargo_toml_not_found
+        {
+            self.show_message(
+                lsp_types::MessageType::Error,
+                "rust-analyzer failed to discover workspace".to_string(),
+            );
+        };
+
+        let save_registration_options = lsp_types::TextDocumentSaveRegistrationOptions {
+            include_text: Some(false),
+            text_document_registration_options: lsp_types::TextDocumentRegistrationOptions {
+                document_selector: Some(vec![
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/*.rs".into()),
+                    },
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/Cargo.toml".into()),
+                    },
+                    lsp_types::DocumentFilter {
+                        language: None,
+                        scheme: None,
+                        pattern: Some("**/Cargo.lock".into()),
+                    },
+                ]),
+            },
+        };
+
+        let registration = lsp_types::Registration {
+            id: "textDocument/didSave".to_string(),
+            method: "textDocument/didSave".to_string(),
+            register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
+        };
+        self.send_request::<lsp_types::request::RegisterCapability>(
+            lsp_types::RegistrationParams { registrations: vec![registration] },
+            |_, _| (),
+        );
+
+        self.fetch_workspaces();
 
         while let Some(event) = self.next_event(&inbox) {
             if let Event::Lsp(lsp_server::Message::Notification(not)) = &event {
@@ -125,6 +155,22 @@ impl GlobalState {
         Err("client exited without proper shutdown sequence")?
     }
 
+    fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {
+        select! {
+            recv(inbox) -> msg =>
+                msg.ok().map(Event::Lsp),
+
+            recv(self.task_pool.receiver) -> task =>
+                Some(Event::Task(task.unwrap())),
+
+            recv(self.loader.receiver) -> task =>
+                Some(Event::Vfs(task.unwrap())),
+
+            recv(self.flycheck_receiver) -> task =>
+                Some(Event::Flycheck(task.unwrap())),
+        }
+    }
+
     fn handle_event(&mut self, event: Event) -> Result<()> {
         let loop_start = Instant::now();
         // NOTE: don't count blocking select! call as a loop-turn time
@@ -136,7 +182,7 @@ impl GlobalState {
             log::info!("queued count = {}", queue_count);
         }
 
-        let mut became_ready = false;
+        let prev_status = self.status;
         match event {
             Event::Lsp(msg) => match msg {
                 lsp_server::Message::Request(req) => self.on_request(loop_start, req)?,
@@ -153,39 +199,54 @@ impl GlobalState {
                             self.diagnostics.set_native_diagnostics(file_id, diagnostics)
                         }
                     }
+                    Task::Workspaces(workspaces) => self.switch_workspaces(workspaces),
                     Task::Unit => (),
                 }
                 self.analysis_host.maybe_collect_garbage();
             }
-            Event::Vfs(task) => match task {
-                vfs::loader::Message::Loaded { files } => {
-                    let vfs = &mut self.vfs.write().0;
-                    for (path, contents) in files {
-                        let path = VfsPath::from(path);
-                        if !self.mem_docs.contains(&path) {
-                            vfs.set_file_contents(path, contents)
+            Event::Vfs(mut task) => {
+                let _p = profile("GlobalState::handle_event/vfs");
+                loop {
+                    match task {
+                        vfs::loader::Message::Loaded { files } => {
+                            let vfs = &mut self.vfs.write().0;
+                            for (path, contents) in files {
+                                let path = VfsPath::from(path);
+                                if !self.mem_docs.contains_key(&path) {
+                                    vfs.set_file_contents(path, contents)
+                                }
+                            }
+                        }
+                        vfs::loader::Message::Progress { n_total, n_done } => {
+                            if n_total == 0 {
+                                self.transition(Status::Invalid);
+                            } else {
+                                let state = if n_done == 0 {
+                                    self.transition(Status::Loading);
+                                    Progress::Begin
+                                } else if n_done < n_total {
+                                    Progress::Report
+                                } else {
+                                    assert_eq!(n_done, n_total);
+                                    self.transition(Status::Ready);
+                                    Progress::End
+                                };
+                                self.report_progress(
+                                    "roots scanned",
+                                    state,
+                                    Some(format!("{}/{}", n_done, n_total)),
+                                    Some(Progress::percentage(n_done, n_total)),
+                                )
+                            }
                         }
                     }
+                    // Coalesce many VFS event into a single loop turn
+                    task = match self.loader.receiver.try_recv() {
+                        Ok(task) => task,
+                        Err(_) => break,
+                    }
                 }
-                vfs::loader::Message::Progress { n_total, n_done } => {
-                    let state = if n_done == 0 {
-                        Progress::Begin
-                    } else if n_done < n_total {
-                        Progress::Report
-                    } else {
-                        assert_eq!(n_done, n_total);
-                        self.status = Status::Ready;
-                        became_ready = true;
-                        Progress::End
-                    };
-                    self.report_progress(
-                        "roots scanned",
-                        state,
-                        Some(format!("{}/{}", n_done, n_total)),
-                        Some(Progress::percentage(n_done, n_total)),
-                    )
-                }
-            },
+            }
             Event::Flycheck(task) => match task {
                 flycheck::Message::AddDiagnostic { workspace_root, diagnostic } => {
                     let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
@@ -194,7 +255,7 @@ impl GlobalState {
                         &workspace_root,
                     );
                     for diag in diagnostics {
-                        match url_to_file_id(&self.vfs.read().0, &diag.location.uri) {
+                        match url_to_file_id(&self.vfs.read().0, &diag.url) {
                             Ok(file_id) => self.diagnostics.add_check_diagnostic(
                                 file_id,
                                 diag.diagnostic,
@@ -231,16 +292,16 @@ impl GlobalState {
         }
 
         let state_changed = self.process_changes();
-        if became_ready {
+        if prev_status == Status::Loading && self.status == Status::Ready {
             if let Some(flycheck) = &self.flycheck {
-                flycheck.handle.update();
+                flycheck.update();
             }
         }
 
-        if self.status == Status::Ready && (state_changed || became_ready) {
+        if self.status == Status::Ready && (state_changed || prev_status == Status::Loading) {
             let subscriptions = self
                 .mem_docs
-                .iter()
+                .keys()
                 .map(|path| self.vfs.read().0.file_id(&path).unwrap())
                 .collect::<Vec<_>>();
 
@@ -251,8 +312,12 @@ impl GlobalState {
             for file_id in diagnostic_changes {
                 let url = file_id_to_url(&self.vfs.read().0, file_id);
                 let diagnostics = self.diagnostics.diagnostics_for(file_id).cloned().collect();
+                let version = from_proto::vfs_path(&url)
+                    .map(|path| self.mem_docs.get(&path)?.version)
+                    .unwrap_or_default();
+
                 self.send_notification::<lsp_types::notification::PublishDiagnostics>(
-                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version: None },
+                    lsp_types::PublishDiagnosticsParams { uri: url, diagnostics, version },
                 );
             }
         }
@@ -274,7 +339,7 @@ impl GlobalState {
         self.register_request(&req, request_received);
 
         RequestDispatcher { req: Some(req), global_state: self }
-            .on_sync::<lsp_ext::CollectGarbage>(|s, ()| Ok(s.analysis_host.collect_garbage()))?
+            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.fetch_workspaces()))?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
             .on_sync::<lsp_types::request::Shutdown>(|_, ()| Ok(()))?
@@ -284,6 +349,7 @@ impl GlobalState {
             .on_sync::<lsp_ext::MatchingBrace>(|s, p| {
                 handlers::handle_matching_brace(s.snapshot(), p)
             })?
+            .on_sync::<lsp_ext::MemoryUsage>(|s, p| handlers::handle_memory_usage(s, p))?
             .on::<lsp_ext::AnalyzerStatus>(handlers::handle_analyzer_status)?
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)?
             .on::<lsp_ext::ExpandMacro>(handlers::handle_expand_macro)?
@@ -340,7 +406,11 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidOpenTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if !this.mem_docs.insert(path.clone()) {
+                    if this
+                        .mem_docs
+                        .insert(path.clone(), DocumentData::new(params.text_document.version))
+                        .is_some()
+                    {
                         log::error!("duplicate DidOpenTextDocument: {}", path)
                     }
                     this.vfs
@@ -352,36 +422,56 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    assert!(this.mem_docs.contains(&path));
+                    let DidChangeTextDocumentParams { text_document, content_changes } = params;
                     let vfs = &mut this.vfs.write().0;
+                    let world = this.snapshot();
                     let file_id = vfs.file_id(&path).unwrap();
+
+                    // let file_id = vfs.file_id(&path).unwrap();
                     let mut text = String::from_utf8(vfs.file_contents(file_id).to_vec()).unwrap();
-                    apply_document_changes(&mut text, params.content_changes);
-                    vfs.set_file_contents(path, Some(text.into_bytes()))
+                    let line_index = world.analysis.file_line_index(file_id)?;
+                    apply_document_changes(&mut text, content_changes, Cow::Borrowed(&line_index));
+
+                    // The version passed in DidChangeTextDocument is the version after all edits are applied
+                    // so we should apply it before the vfs is notified.
+                    let doc = this.mem_docs.get_mut(&path).unwrap();
+                    doc.version = text_document.version;
+
+                    vfs.set_file_contents(path.clone(), Some(text.into_bytes()));
                 }
                 Ok(())
             })?
             .on::<lsp_types::notification::DidCloseTextDocument>(|this, params| {
+                let mut version = None;
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
-                    if !this.mem_docs.remove(&path) {
-                        log::error!("orphan DidCloseTextDocument: {}", path)
+                    match this.mem_docs.remove(&path) {
+                        Some(doc) => version = doc.version,
+                        None => log::error!("orphan DidCloseTextDocument: {}", path),
                     }
+
                     if let Some(path) = path.as_path() {
                         this.loader.handle.invalidate(path.to_path_buf());
                     }
                 }
+
+                // Clear the diagnostics for the previously known version of the file.
+                // This prevents stale "cargo check" diagnostics if the file is
+                // closed, "cargo check" is run and then the file is reopened.
                 this.send_notification::<lsp_types::notification::PublishDiagnostics>(
                     lsp_types::PublishDiagnosticsParams {
                         uri: params.text_document.uri,
                         diagnostics: Vec::new(),
-                        version: None,
+                        version,
                     },
                 );
                 Ok(())
             })?
-            .on::<lsp_types::notification::DidSaveTextDocument>(|this, _params| {
+            .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
                 if let Some(flycheck) = &this.flycheck {
-                    flycheck.handle.update();
+                    flycheck.update();
+                }
+                if let Ok(abs_path) = from_proto::abs_path(&params.text_document.uri) {
+                    this.maybe_refresh(&[(abs_path, ChangeKind::Modify)]);
                 }
                 Ok(())
             })?
@@ -403,10 +493,12 @@ impl GlobalState {
                             (Some(err), _) => {
                                 log::error!("failed to fetch the server settings: {:?}", err)
                             }
-                            (None, Some(configs)) => {
-                                if let Some(new_config) = configs.get(0) {
+                            (None, Some(mut configs)) => {
+                                if let Some(json) = configs.get_mut(0) {
+                                    // Note that json can be null according to the spec if the client can't
+                                    // provide a configuration. This is handled in Config::update below.
                                     let mut config = this.config.clone();
-                                    config.update(&new_config);
+                                    config.update(json.take());
                                     this.update_configuration(config);
                                 }
                             }

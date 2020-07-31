@@ -70,95 +70,47 @@ fn ${1:feature}() {
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{test_utils::do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot;
+    use expect::{expect, Expect};
 
-    fn do_snippet_completion(code: &str) -> Vec<CompletionItem> {
-        do_completion(code, CompletionKind::Snippet)
+    use crate::completion::{test_utils::completion_list, CompletionKind};
+
+    fn check(ra_fixture: &str, expect: Expect) {
+        let actual = completion_list(ra_fixture, CompletionKind::Snippet);
+        expect.assert_eq(&actual)
     }
 
     #[test]
     fn completes_snippets_in_expressions() {
-        assert_debug_snapshot!(
-                    do_snippet_completion(r"fn foo(x: i32) { <|> }"),
-        @r###"
-        [
-            CompletionItem {
-                label: "pd",
-                source_range: 17..17,
-                delete: 17..17,
-                insert: "eprintln!(\"$0 = {:?}\", $0);",
-                kind: Snippet,
-            },
-            CompletionItem {
-                label: "ppd",
-                source_range: 17..17,
-                delete: 17..17,
-                insert: "eprintln!(\"$0 = {:#?}\", $0);",
-                kind: Snippet,
-            },
-        ]
-        "###
-                );
+        check(
+            r#"fn foo(x: i32) { <|> }"#,
+            expect![[r#"
+                sn pd
+                sn ppd
+            "#]],
+        );
     }
 
     #[test]
     fn should_not_complete_snippets_in_path() {
-        assert_debug_snapshot!(
-                    do_snippet_completion(r"fn foo(x: i32) { ::foo<|> }"),
-        @"[]"
-                );
-        assert_debug_snapshot!(
-                    do_snippet_completion(r"fn foo(x: i32) { ::<|> }"),
-        @"[]"
-                );
+        check(r#"fn foo(x: i32) { ::foo<|> }"#, expect![[""]]);
+        check(r#"fn foo(x: i32) { ::<|> }"#, expect![[""]]);
     }
 
     #[test]
     fn completes_snippets_in_items() {
-        assert_debug_snapshot!(
-            do_snippet_completion(
-                r"
-                #[cfg(test)]
-                mod tests {
-                    <|>
-                }
-                "
-            ),
-            @r###"
-        [
-            CompletionItem {
-                label: "Test function",
-                source_range: 29..29,
-                delete: 29..29,
-                insert: "#[test]\nfn ${1:feature}() {\n    $0\n}",
-                kind: Snippet,
-                lookup: "tfn",
-            },
-            CompletionItem {
-                label: "Test module",
-                source_range: 29..29,
-                delete: 29..29,
-                insert: "#[cfg(test)]\nmod tests {\n    use super::*;\n\n    #[test]\n    fn ${1:test_name}() {\n        $0\n    }\n}",
-                kind: Snippet,
-                lookup: "tmod",
-            },
-            CompletionItem {
-                label: "macro_rules",
-                source_range: 29..29,
-                delete: 29..29,
-                insert: "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}",
-                kind: Snippet,
-            },
-            CompletionItem {
-                label: "pub(crate)",
-                source_range: 29..29,
-                delete: 29..29,
-                insert: "pub(crate) $0",
-                kind: Snippet,
-            },
-        ]
-        "###
-        );
+        check(
+            r#"
+#[cfg(test)]
+mod tests {
+    <|>
+}
+"#,
+            expect![[r#"
+                sn Test function
+                sn Test module
+                sn macro_rules
+                sn pub(crate)
+            "#]],
+        )
     }
 }

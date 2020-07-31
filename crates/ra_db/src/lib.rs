@@ -16,9 +16,8 @@ pub use crate::{
         SourceRoot, SourceRootId,
     },
 };
-pub use relative_path::{RelativePath, RelativePathBuf};
 pub use salsa;
-pub use vfs::{file_set::FileSet, AbsPathBuf, VfsPath};
+pub use vfs::{file_set::FileSet, VfsPath};
 
 #[macro_export]
 macro_rules! impl_intern_key {
@@ -80,7 +79,7 @@ pub struct FilePosition {
     pub offset: TextSize,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FileRange {
     pub file_id: FileId,
     pub range: TextRange,
@@ -93,9 +92,9 @@ pub trait FileLoader {
     fn file_text(&self, file_id: FileId) -> Arc<String>;
     /// Note that we intentionally accept a `&str` and not a `&Path` here. This
     /// method exists to handle `#[path = "/some/path.rs"] mod foo;` and such,
-    /// so the input is guaranteed to be utf-8 string. We might introduce
-    /// `struct StrPath(str)` for clarity some day, but it's a bit messy, so we
-    /// get by with a `&str` for the time being.
+    /// so the input is guaranteed to be utf-8 string. One might be tempted to
+    /// introduce some kind of "utf-8 path with / separators", but that's a bad idea. Behold
+    /// `#[path = "C://no/way"]`
     fn resolve_path(&self, anchor: FileId, path: &str) -> Option<FileId>;
     fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
 }
@@ -113,7 +112,7 @@ pub trait SourceDatabase: CheckCanceled + FileLoader + std::fmt::Debug {
     fn crate_graph(&self) -> Arc<CrateGraph>;
 }
 
-fn parse_query(db: &impl SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
+fn parse_query(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
     let _p = profile("parse_query").detail(|| format!("{:?}", file_id));
     let text = db.file_text(file_id);
     SourceFile::parse(&*text)
@@ -136,10 +135,7 @@ pub trait SourceDatabaseExt: SourceDatabase {
     fn source_root_crates(&self, id: SourceRootId) -> Arc<FxHashSet<CrateId>>;
 }
 
-fn source_root_crates(
-    db: &(impl SourceDatabaseExt + SourceDatabase),
-    id: SourceRootId,
-) -> Arc<FxHashSet<CrateId>> {
+fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<FxHashSet<CrateId>> {
     let graph = db.crate_graph();
     let res = graph
         .iter()

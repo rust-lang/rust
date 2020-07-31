@@ -13,7 +13,7 @@ use std::{
     sync::Arc,
 };
 
-use ast::{AstNode, AttrsOwner, NameOwner, StructKind, TypeAscriptionOwner};
+use ast::{AstNode, AttrsOwner, NameOwner, StructKind};
 use either::Either;
 use hir_expand::{
     ast_id_map::FileAstId,
@@ -70,7 +70,7 @@ impl GenericParamsId {
 pub struct ItemTree {
     top_level: SmallVec<[ModItem; 1]>,
     attrs: FxHashMap<AttrOwner, Attrs>,
-    inner_items: FxHashMap<FileAstId<ast::ModuleItem>, SmallVec<[ModItem; 1]>>,
+    inner_items: FxHashMap<FileAstId<ast::Item>, SmallVec<[ModItem; 1]>>,
 
     data: Option<Box<ItemTreeData>>,
 }
@@ -187,7 +187,7 @@ impl ItemTree {
     ///
     /// Most AST items are lowered to a single `ModItem`, but some (eg. `use` items) may be lowered
     /// to multiple items in the `ItemTree`.
-    pub fn inner_items(&self, ast: FileAstId<ast::ModuleItem>) -> &[ModItem] {
+    pub fn inner_items(&self, ast: FileAstId<ast::Item>) -> &[ModItem] {
         &self.inner_items[&ast]
     }
 
@@ -310,7 +310,7 @@ from_attrs!(ModItem(ModItem), Variant(Idx<Variant>), Field(Idx<Field>));
 
 /// Trait implemented by all item nodes in the item tree.
 pub trait ItemTreeNode: Clone {
-    type Source: AstNode + Into<ast::ModuleItem>;
+    type Source: AstNode + Into<ast::Item>;
 
     fn ast_id(&self) -> FileAstId<Self::Source>;
 
@@ -411,17 +411,17 @@ macro_rules! mod_items {
 }
 
 mod_items! {
-    Import in imports -> ast::UseItem,
-    ExternCrate in extern_crates -> ast::ExternCrateItem,
-    Function in functions -> ast::FnDef,
-    Struct in structs -> ast::StructDef,
-    Union in unions -> ast::UnionDef,
-    Enum in enums -> ast::EnumDef,
-    Const in consts -> ast::ConstDef,
-    Static in statics -> ast::StaticDef,
-    Trait in traits -> ast::TraitDef,
-    Impl in impls -> ast::ImplDef,
-    TypeAlias in type_aliases -> ast::TypeAliasDef,
+    Import in imports -> ast::Use,
+    ExternCrate in extern_crates -> ast::ExternCrate,
+    Function in functions -> ast::Fn,
+    Struct in structs -> ast::Struct,
+    Union in unions -> ast::Union,
+    Enum in enums -> ast::Enum,
+    Const in consts -> ast::Const,
+    Static in statics -> ast::Static,
+    Trait in traits -> ast::Trait,
+    Impl in impls -> ast::Impl,
+    TypeAlias in type_aliases -> ast::TypeAlias,
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
 }
@@ -482,7 +482,7 @@ pub struct Import {
     pub is_prelude: bool,
     /// AST ID of the `use` or `extern crate` item this import was derived from. Note that many
     /// `Import`s can map to the same `use` item.
-    pub ast_id: FileAstId<ast::UseItem>,
+    pub ast_id: FileAstId<ast::Use>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -492,7 +492,7 @@ pub struct ExternCrate {
     pub visibility: RawVisibilityId,
     /// Whether this is a `#[macro_use] extern crate ...`.
     pub is_macro_use: bool,
-    pub ast_id: FileAstId<ast::ExternCrateItem>,
+    pub ast_id: FileAstId<ast::ExternCrate>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -503,8 +503,9 @@ pub struct Function {
     pub has_self_param: bool,
     pub is_unsafe: bool,
     pub params: Box<[TypeRef]>,
+    pub is_varargs: bool,
     pub ret_type: TypeRef,
-    pub ast_id: FileAstId<ast::FnDef>,
+    pub ast_id: FileAstId<ast::Fn>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -513,7 +514,7 @@ pub struct Struct {
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
     pub fields: Fields,
-    pub ast_id: FileAstId<ast::StructDef>,
+    pub ast_id: FileAstId<ast::Struct>,
     pub kind: StructDefKind,
 }
 
@@ -533,7 +534,7 @@ pub struct Union {
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
     pub fields: Fields,
-    pub ast_id: FileAstId<ast::UnionDef>,
+    pub ast_id: FileAstId<ast::Union>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -542,7 +543,7 @@ pub struct Enum {
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
     pub variants: IdRange<Variant>,
-    pub ast_id: FileAstId<ast::EnumDef>,
+    pub ast_id: FileAstId<ast::Enum>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -551,7 +552,7 @@ pub struct Const {
     pub name: Option<Name>,
     pub visibility: RawVisibilityId,
     pub type_ref: TypeRef,
-    pub ast_id: FileAstId<ast::ConstDef>,
+    pub ast_id: FileAstId<ast::Const>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -560,7 +561,7 @@ pub struct Static {
     pub visibility: RawVisibilityId,
     pub mutable: bool,
     pub type_ref: TypeRef,
-    pub ast_id: FileAstId<ast::StaticDef>,
+    pub ast_id: FileAstId<ast::Static>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -570,7 +571,7 @@ pub struct Trait {
     pub generic_params: GenericParamsId,
     pub auto: bool,
     pub items: Box<[AssocItem]>,
-    pub ast_id: FileAstId<ast::TraitDef>,
+    pub ast_id: FileAstId<ast::Trait>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -580,7 +581,7 @@ pub struct Impl {
     pub target_type: TypeRef,
     pub is_negative: bool,
     pub items: Box<[AssocItem]>,
-    pub ast_id: FileAstId<ast::ImplDef>,
+    pub ast_id: FileAstId<ast::Impl>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -591,7 +592,7 @@ pub struct TypeAlias {
     pub bounds: Box<[TypeBound]>,
     pub generic_params: GenericParamsId,
     pub type_ref: Option<TypeRef>,
-    pub ast_id: FileAstId<ast::TypeAliasDef>,
+    pub ast_id: FileAstId<ast::TypeAlias>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

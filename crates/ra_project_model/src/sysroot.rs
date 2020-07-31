@@ -3,19 +3,19 @@
 use std::{convert::TryFrom, env, ops, path::Path, process::Command};
 
 use anyhow::{bail, format_err, Result};
+use paths::{AbsPath, AbsPathBuf};
 use ra_arena::{Arena, Idx};
 
-use crate::output;
-use paths::{AbsPath, AbsPathBuf};
+use crate::utf8_stdout;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Eq, PartialEq)]
 pub struct Sysroot {
     crates: Arena<SysrootCrateData>,
 }
 
 pub type SysrootCrate = Idx<SysrootCrateData>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SysrootCrateData {
     pub name: String,
     pub root: AbsPathBuf,
@@ -54,6 +54,8 @@ impl Sysroot {
         let src = get_or_install_rust_src(cargo_toml)?;
         let mut sysroot = Sysroot { crates: Arena::default() };
         for name in SYSROOT_CRATES.trim().lines() {
+            // FIXME: remove this path when 1.47 comes out
+            // https://github.com/rust-lang/rust/pull/73265
             let root = src.join(format!("lib{}", name)).join("lib.rs");
             if root.exists() {
                 sysroot.crates.alloc(SysrootCrateData {
@@ -61,6 +63,15 @@ impl Sysroot {
                     root,
                     deps: Vec::new(),
                 });
+            } else {
+                let root = src.join(name).join("src/lib.rs");
+                if root.exists() {
+                    sysroot.crates.alloc(SysrootCrateData {
+                        name: name.into(),
+                        root,
+                        deps: Vec::new(),
+                    });
+                }
             }
         }
         if let Some(std) = sysroot.std() {
@@ -92,26 +103,40 @@ fn get_or_install_rust_src(cargo_toml: &AbsPath) -> Result<AbsPathBuf> {
     let current_dir = cargo_toml.parent().unwrap();
     let mut rustc = Command::new(ra_toolchain::rustc());
     rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
-    let rustc_output = output(rustc)?;
-    let stdout = String::from_utf8(rustc_output.stdout)?;
+    let stdout = utf8_stdout(rustc)?;
     let sysroot_path = AbsPath::assert(Path::new(stdout.trim()));
-    let src_path = sysroot_path.join("lib/rustlib/src/rust/src");
-
-    if !src_path.exists() {
+    let mut src = get_rust_src(sysroot_path);
+    if src.is_none() {
         let mut rustup = Command::new(ra_toolchain::rustup());
         rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
-        let _output = output(rustup)?;
+        utf8_stdout(rustup)?;
+        src = get_rust_src(sysroot_path);
     }
-    if !src_path.exists() {
-        bail!(
+    match src {
+        Some(r) => Ok(r),
+        None => bail!(
             "can't load standard library from sysroot\n\
             {}\n\
             (discovered via `rustc --print sysroot`)\n\
             try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
-            src_path.display(),
-        )
+            sysroot_path.display(),
+        ),
     }
-    Ok(src_path)
+}
+
+fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
+    // try the new path first since the old one still exists
+    let mut src_path = sysroot_path.join("lib/rustlib/src/rust/library");
+    if !src_path.exists() {
+        // FIXME: remove this path when 1.47 comes out
+        // https://github.com/rust-lang/rust/pull/73265
+        src_path = sysroot_path.join("lib/rustlib/src/rust/src");
+    }
+    if src_path.exists() {
+        Some(src_path)
+    } else {
+        None
+    }
 }
 
 impl SysrootCrateData {
@@ -121,43 +146,28 @@ impl SysrootCrateData {
 }
 
 const SYSROOT_CRATES: &str = "
-std
-core
 alloc
-collections
-libc
+core
+panic_abort
 panic_unwind
 proc_macro
-rustc_unicode
-std_unicode
-test
-alloc_jemalloc
-alloc_system
-compiler_builtins
-getopts
-panic_unwind
-panic_abort
-rand
+profiler_builtins
+rtstartup
+std
+stdarch
 term
-unwind
-build_helper
-rustc_asan
-rustc_lsan
-rustc_msan
-rustc_tsan
-syntax";
+test
+unwind";
 
 const STD_DEPS: &str = "
 alloc
-alloc_jemalloc
-alloc_system
 core
 panic_abort
-rand
-compiler_builtins
-unwind
-rustc_asan
-rustc_lsan
-rustc_msan
-rustc_tsan
-build_helper";
+panic_unwind
+profiler_builtins
+rtstartup
+proc_macro
+stdarch
+term
+test
+unwind";

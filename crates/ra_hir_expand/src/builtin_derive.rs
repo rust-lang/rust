@@ -4,7 +4,7 @@ use log::debug;
 
 use ra_parser::FragmentKind;
 use ra_syntax::{
-    ast::{self, AstNode, ModuleItemOwner, NameOwner, TypeParamsOwner},
+    ast::{self, AstNode, GenericParamsOwner, ModuleItemOwner, NameOwner},
     match_ast,
 };
 
@@ -72,9 +72,9 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
     let node = item.syntax();
     let (name, params) = match_ast! {
         match node {
-            ast::StructDef(it) => (it.name(), it.type_param_list()),
-            ast::EnumDef(it) => (it.name(), it.type_param_list()),
-            ast::UnionDef(it) => (it.name(), it.type_param_list()),
+            ast::Struct(it) => (it.name(), it.generic_param_list()),
+            ast::Enum(it) => (it.name(), it.generic_param_list()),
+            ast::Union(it) => (it.name(), it.generic_param_list()),
             _ => {
                 debug!("unexpected node is {:?}", node);
                 return Err(mbe::ExpandError::ConversionError)
@@ -161,7 +161,7 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
     // XXX
     //  All crates except core itself should have a dependency on core,
     //  We detect `core` by seeing whether it doesn't have such a dependency.
-    let tt = if cg[krate].dependencies.iter().any(|dep| dep.name == "core") {
+    let tt = if cg[krate].dependencies.iter().any(|dep| &*dep.name == "core") {
         quote! { core }
     } else {
         quote! { crate }
@@ -276,7 +276,7 @@ mod tests {
         let file_id = file_pos.file_id;
         let parsed = db.parse(file_id);
         let items: Vec<_> =
-            parsed.syntax_node().descendants().filter_map(ast::ModuleItem::cast).collect();
+            parsed.syntax_node().descendants().filter_map(ast::Item::cast).collect();
 
         let ast_id_map = db.ast_id_map(file_id.into());
 

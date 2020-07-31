@@ -6,6 +6,10 @@ export async function applySnippetWorkspaceEdit(edit: vscode.WorkspaceEdit) {
     assert(edit.entries().length === 1, `bad ws edit: ${JSON.stringify(edit)}`);
     const [uri, edits] = edit.entries()[0];
 
+    if (vscode.window.activeTextEditor?.document.uri !== uri) {
+        // `vscode.window.visibleTextEditors` only contains editors whose contents are being displayed
+        await vscode.window.showTextDocument(uri, {});
+    }
     const editor = vscode.window.visibleTextEditors.find((it) => it.document.uri.toString() === uri.toString());
     if (!editor) return;
     await applySnippetTextEdits(editor, edits);

@@ -11,7 +11,7 @@ use ra_syntax::{
 
 use crate::{
     utils::{render_snippet, Cursor, TryEnum},
-    AssistContext, AssistId, Assists,
+    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: replace_unwrap_with_match
@@ -46,37 +46,43 @@ pub(crate) fn replace_unwrap_with_match(acc: &mut Assists, ctx: &AssistContext) 
     let ty = ctx.sema.type_of_expr(&caller)?;
     let happy_variant = TryEnum::from_ty(&ctx.sema, &ty)?.happy_case();
     let target = method_call.syntax().text_range();
-    acc.add(AssistId("replace_unwrap_with_match"), "Replace unwrap with match", target, |builder| {
-        let ok_path = make::path_unqualified(make::path_segment(make::name_ref(happy_variant)));
-        let it = make::bind_pat(make::name("a")).into();
-        let ok_tuple = make::tuple_struct_pat(ok_path, iter::once(it)).into();
+    acc.add(
+        AssistId("replace_unwrap_with_match", AssistKind::RefactorRewrite),
+        "Replace unwrap with match",
+        target,
+        |builder| {
+            let ok_path = make::path_unqualified(make::path_segment(make::name_ref(happy_variant)));
+            let it = make::bind_pat(make::name("a")).into();
+            let ok_tuple = make::tuple_struct_pat(ok_path, iter::once(it)).into();
 
-        let bind_path = make::path_unqualified(make::path_segment(make::name_ref("a")));
-        let ok_arm = make::match_arm(iter::once(ok_tuple), make::expr_path(bind_path));
+            let bind_path = make::path_unqualified(make::path_segment(make::name_ref("a")));
+            let ok_arm = make::match_arm(iter::once(ok_tuple), make::expr_path(bind_path));
 
-        let unreachable_call = make::expr_unreachable();
-        let err_arm = make::match_arm(iter::once(make::placeholder_pat().into()), unreachable_call);
+            let unreachable_call = make::expr_unreachable();
+            let err_arm =
+                make::match_arm(iter::once(make::placeholder_pat().into()), unreachable_call);
 
-        let match_arm_list = make::match_arm_list(vec![ok_arm, err_arm]);
-        let match_expr = make::expr_match(caller.clone(), match_arm_list)
-            .indent(IndentLevel::from_node(method_call.syntax()));
+            let match_arm_list = make::match_arm_list(vec![ok_arm, err_arm]);
+            let match_expr = make::expr_match(caller.clone(), match_arm_list)
+                .indent(IndentLevel::from_node(method_call.syntax()));
 
-        let range = method_call.syntax().text_range();
-        match ctx.config.snippet_cap {
-            Some(cap) => {
-                let err_arm = match_expr
-                    .syntax()
-                    .descendants()
-                    .filter_map(ast::MatchArm::cast)
-                    .last()
-                    .unwrap();
-                let snippet =
-                    render_snippet(cap, match_expr.syntax(), Cursor::Before(err_arm.syntax()));
-                builder.replace_snippet(cap, range, snippet)
+            let range = method_call.syntax().text_range();
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    let err_arm = match_expr
+                        .syntax()
+                        .descendants()
+                        .filter_map(ast::MatchArm::cast)
+                        .last()
+                        .unwrap();
+                    let snippet =
+                        render_snippet(cap, match_expr.syntax(), Cursor::Before(err_arm.syntax()));
+                    builder.replace_snippet(cap, range, snippet)
+                }
+                None => builder.replace(range, match_expr.to_string()),
             }
-            None => builder.replace(range, match_expr.to_string()),
-        }
-    })
+        },
+    )
 }
 
 #[cfg(test)]

@@ -13,11 +13,12 @@ use std::env;
 use pico_args::Arguments;
 use xtask::{
     codegen::{self, Mode},
-    dist::run_dist,
-    install::{ClientOpt, InstallCmd, ServerOpt},
+    dist::DistCmd,
+    install::{ClientOpt, InstallCmd, Malloc, ServerOpt},
+    metrics::MetricsCmd,
     not_bash::pushd,
     pre_commit, project_root,
-    release::ReleaseCmd,
+    release::{PromoteCmd, ReleaseCmd},
     run_clippy, run_fuzzer, run_pre_cache, run_rustfmt, Result,
 };
 
@@ -45,7 +46,7 @@ USAGE:
 FLAGS:
         --client-code    Install only VS Code plugin
         --server         Install only the language server
-        --jemalloc       Use jemalloc for server
+        --mimalloc       Use mimalloc for server
     -h, --help           Prints help information
         "
                 );
@@ -61,13 +62,14 @@ FLAGS:
                 return Ok(());
             }
 
-            let jemalloc = args.contains("--jemalloc");
+            let malloc =
+                if args.contains("--mimalloc") { Malloc::Mimalloc } else { Malloc::System };
 
             args.finish()?;
 
             InstallCmd {
                 client: if server { None } else { Some(ClientOpt::VsCode) },
-                server: if client_code { None } else { Some(ServerOpt { jemalloc }) },
+                server: if client_code { None } else { Some(ServerOpt { malloc }) },
             }
             .run()
         }
@@ -105,11 +107,21 @@ FLAGS:
             args.finish()?;
             ReleaseCmd { dry_run }.run()
         }
+        "promote" => {
+            let dry_run = args.contains("--dry-run");
+            args.finish()?;
+            PromoteCmd { dry_run }.run()
+        }
         "dist" => {
             let nightly = args.contains("--nightly");
             let client_version: Option<String> = args.opt_value_from_str("--client")?;
             args.finish()?;
-            run_dist(nightly, client_version)
+            DistCmd { nightly, client_version }.run()
+        }
+        "metrics" => {
+            let dry_run = args.contains("--dry-run");
+            args.finish()?;
+            MetricsCmd { dry_run }.run()
         }
         _ => {
             eprintln!(
@@ -127,7 +139,8 @@ SUBCOMMANDS:
     codegen
     install
     lint
-    dist"
+    dist
+    promote"
             );
             Ok(())
         }

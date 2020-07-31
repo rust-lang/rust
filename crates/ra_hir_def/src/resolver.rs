@@ -511,11 +511,9 @@ impl Scope {
                     });
                 }
             }
-            Scope::LocalItemsScope(body) => {
-                body.item_scope.entries_without_primitives().for_each(|(name, def)| {
-                    f(name.clone(), ScopeDef::PerNs(def));
-                })
-            }
+            Scope::LocalItemsScope(body) => body.item_scope.entries().for_each(|(name, def)| {
+                f(name.clone(), ScopeDef::PerNs(def));
+            }),
             Scope::GenericParams { params, def } => {
                 for (local_id, param) in params.types.iter() {
                     if let Some(name) = &param.name {

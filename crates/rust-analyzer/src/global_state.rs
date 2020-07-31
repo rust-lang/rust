@@ -12,11 +12,12 @@ use parking_lot::RwLock;
 use ra_db::{CrateId, VfsPath};
 use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FileId};
 use ra_project_model::{CargoWorkspace, ProcMacroClient, ProjectWorkspace, Target};
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::{
     config::Config,
     diagnostics::{CheckFixes, DiagnosticCollection},
+    document::DocumentData,
     from_proto,
     line_endings::LineEndings,
     main_loop::Task,
@@ -26,11 +27,14 @@ use crate::{
     to_proto::url_from_abs_path,
     Result,
 };
+use ra_prof::profile;
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub(crate) enum Status {
     Loading,
     Ready,
+    Invalid,
+    NeedsReload,
 }
 
 impl Default for Status {
@@ -60,11 +64,13 @@ pub(crate) struct GlobalState {
     req_queue: ReqQueue,
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
-    pub(crate) flycheck: Option<Handle<FlycheckHandle, Receiver<flycheck::Message>>>,
+    pub(crate) flycheck: Option<FlycheckHandle>,
+    pub(crate) flycheck_sender: Sender<flycheck::Message>,
+    pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
     pub(crate) config: Config,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
-    pub(crate) mem_docs: FxHashSet<VfsPath>,
+    pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
     pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) status: Status,
     pub(crate) source_root_config: SourceRootConfig,
@@ -79,6 +85,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) analysis: Analysis,
     pub(crate) check_fixes: CheckFixes,
     pub(crate) latest_requests: Arc<RwLock<LatestRequests>>,
+    mem_docs: FxHashMap<VfsPath, DocumentData>,
     vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
 }
@@ -100,16 +107,19 @@ impl GlobalState {
         };
 
         let analysis_host = AnalysisHost::new(config.lru_capacity);
+        let (flycheck_sender, flycheck_receiver) = unbounded();
         GlobalState {
             sender,
             req_queue: ReqQueue::default(),
             task_pool,
             loader,
             flycheck: None,
+            flycheck_sender,
+            flycheck_receiver,
             config,
             analysis_host,
             diagnostics: Default::default(),
-            mem_docs: FxHashSet::default(),
+            mem_docs: FxHashMap::default(),
             vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
             status: Status::default(),
             source_root_config: SourceRootConfig::default(),
@@ -120,6 +130,10 @@ impl GlobalState {
     }
 
     pub(crate) fn process_changes(&mut self) -> bool {
+        let _p = profile("GlobalState::process_changes");
+        let mut fs_changes = Vec::new();
+        let mut has_fs_changes = false;
+
         let change = {
             let mut change = AnalysisChange::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
@@ -128,13 +142,14 @@ impl GlobalState {
                 return false;
             }
 
-            let fs_op = changed_files.iter().any(|it| it.is_created_or_deleted());
-            if fs_op {
-                let roots = self.source_root_config.partition(&vfs);
-                change.set_roots(roots)
-            }
-
             for file in changed_files {
+                if file.is_created_or_deleted() {
+                    if let Some(path) = vfs.file_path(file.file_id).as_path() {
+                        fs_changes.push((path.to_path_buf(), file.change_kind));
+                        has_fs_changes = true;
+                    }
+                }
+
                 let text = if file.exists() {
                     let bytes = vfs.file_contents(file.file_id).to_vec();
                     match String::from_utf8(bytes).ok() {
@@ -150,10 +165,15 @@ impl GlobalState {
                 };
                 change.change_file(file.file_id, text);
             }
+            if has_fs_changes {
+                let roots = self.source_root_config.partition(&vfs);
+                change.set_roots(roots);
+            }
             change
         };
 
         self.analysis_host.apply_change(change);
+        self.maybe_refresh(&fs_changes);
         true
     }
 
@@ -165,6 +185,7 @@ impl GlobalState {
             vfs: Arc::clone(&self.vfs),
             latest_requests: Arc::clone(&self.latest_requests),
             check_fixes: Arc::clone(&self.diagnostics.check_fixes),
+            mem_docs: self.mem_docs.clone(),
         }
     }
 
@@ -202,8 +223,7 @@ impl GlobalState {
         if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
             let duration = start.elapsed();
             log::info!("handled req#{} in {:?}", response.id, duration);
-            let metrics =
-                RequestMetrics { id: response.id.clone(), method: method.to_string(), duration };
+            let metrics = RequestMetrics { id: response.id.clone(), method, duration };
             self.latest_requests.write().record(metrics);
             self.send(response.into());
         }
@@ -236,6 +256,11 @@ impl GlobalStateSnapshot {
 
     pub(crate) fn file_line_endings(&self, id: FileId) -> LineEndings {
         self.vfs.read().1[&id]
+    }
+
+    pub(crate) fn url_file_version(&self, url: &Url) -> Option<i64> {
+        let path = from_proto::vfs_path(&url).ok()?;
+        self.mem_docs.get(&path)?.version
     }
 
     pub(crate) fn anchored_path(&self, file_id: FileId, path: &str) -> Url {

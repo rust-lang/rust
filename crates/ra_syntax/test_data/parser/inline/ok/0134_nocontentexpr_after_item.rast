@@ -1,5 +1,5 @@
 SOURCE_FILE@0..111
-  FN_DEF@0..110
+  FN@0..110
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..18
@@ -11,21 +11,21 @@ SOURCE_FILE@0..111
     BLOCK_EXPR@21..110
       L_CURLY@21..22 "{"
       WHITESPACE@22..27 "\n    "
-      ENUM_DEF@27..75
+      ENUM@27..75
         ENUM_KW@27..31 "enum"
         WHITESPACE@31..32 " "
         NAME@32..41
           IDENT@32..41 "LocalEnum"
         WHITESPACE@41..42 " "
-        ENUM_VARIANT_LIST@42..75
+        VARIANT_LIST@42..75
           L_CURLY@42..43 "{"
           WHITESPACE@43..52 "\n        "
-          ENUM_VARIANT@52..55
+          VARIANT@52..55
             NAME@52..55
               IDENT@52..55 "One"
           COMMA@55..56 ","
           WHITESPACE@56..65 "\n        "
-          ENUM_VARIANT@65..68
+          VARIANT@65..68
             NAME@65..68
               IDENT@65..68 "Two"
           COMMA@68..69 ","
@@ -33,7 +33,7 @@ SOURCE_FILE@0..111
           R_CURLY@74..75 "}"
       SEMICOLON@75..76 ";"
       WHITESPACE@76..81 "\n    "
-      FN_DEF@81..90
+      FN@81..90
         FN_KW@81..83 "fn"
         WHITESPACE@83..84 " "
         NAME@84..85
@@ -47,13 +47,13 @@ SOURCE_FILE@0..111
           R_CURLY@89..90 "}"
       SEMICOLON@90..91 ";"
       WHITESPACE@91..96 "\n    "
-      STRUCT_DEF@96..107
+      STRUCT@96..107
         STRUCT_KW@96..102 "struct"
         WHITESPACE@102..103 " "
         NAME@103..104
           IDENT@103..104 "S"
         WHITESPACE@104..105 " "
-        RECORD_FIELD_DEF_LIST@105..107
+        RECORD_FIELD_LIST@105..107
           L_CURLY@105..106 "{"
           R_CURLY@106..107 "}"
       SEMICOLON@107..108 ";"

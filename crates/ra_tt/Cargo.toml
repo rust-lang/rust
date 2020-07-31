@@ -3,11 +3,13 @@ edition = "2018"
 name = "ra_tt"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
+license = "MIT OR Apache-2.0"
 
 [lib]
 doctest = false
 
 [dependencies]
+stdx = { path = "../stdx" }
 # ideally, `serde` should be enabled by `rust-analyzer`, but we enable it here
 # to reduce number of compilations
 smol_str = { version = "0.1.15", features = ["serde"] }

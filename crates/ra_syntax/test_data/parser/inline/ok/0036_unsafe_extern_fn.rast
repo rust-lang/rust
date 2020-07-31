@@ -1,5 +1,5 @@
 SOURCE_FILE@0..30
-  FN_DEF@0..29
+  FN@0..29
     UNSAFE_KW@0..6 "unsafe"
     WHITESPACE@6..7 " "
     ABI@7..17

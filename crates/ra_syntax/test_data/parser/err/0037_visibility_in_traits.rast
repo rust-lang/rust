@@ -1,5 +1,5 @@
 SOURCE_FILE@0..118
-  IMPL_DEF@0..117
+  IMPL@0..117
     IMPL_KW@0..4 "impl"
     WHITESPACE@4..5 " "
     PATH_TYPE@5..6
@@ -14,10 +14,10 @@ SOURCE_FILE@0..118
       L_PAREN@11..12 "("
       R_PAREN@12..13 ")"
     WHITESPACE@13..14 " "
-    ITEM_LIST@14..117
+    ASSOC_ITEM_LIST@14..117
       L_CURLY@14..15 "{"
       WHITESPACE@15..20 "\n    "
-      FN_DEF@20..31
+      FN@20..31
         FN_KW@20..22 "fn"
         WHITESPACE@22..23 " "
         NAME@23..26
@@ -30,7 +30,7 @@ SOURCE_FILE@0..118
           L_CURLY@29..30 "{"
           R_CURLY@30..31 "}"
       WHITESPACE@31..36 "\n    "
-      FN_DEF@36..51
+      FN@36..51
         VISIBILITY@36..39
           PUB_KW@36..39 "pub"
         WHITESPACE@39..40 " "
@@ -46,7 +46,7 @@ SOURCE_FILE@0..118
           L_CURLY@49..50 "{"
           R_CURLY@50..51 "}"
       WHITESPACE@51..56 "\n    "
-      TYPE_ALIAS_DEF@56..81
+      TYPE_ALIAS@56..81
         VISIBILITY@56..66
           PUB_KW@56..59 "pub"
           L_PAREN@59..60 "("
@@ -65,7 +65,7 @@ SOURCE_FILE@0..118
           R_PAREN@79..80 ")"
         SEMICOLON@80..81 ";"
       WHITESPACE@81..86 "\n    "
-      CONST_DEF@86..115
+      CONST@86..115
         VISIBILITY@86..96
           PUB_KW@86..89 "pub"
           L_PAREN@89..90 "("

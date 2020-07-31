@@ -9,6 +9,9 @@ mod syntax_bridge;
 mod tt_iter;
 mod subtree_source;
 
+#[cfg(test)]
+mod tests;
+
 pub use tt::{Delimiter, Punct};
 
 use crate::{
@@ -273,6 +276,3 @@ impl<T: Default> From<Result<T, ExpandError>> for ExpandResult<T> {
             .map_or_else(|e| ExpandResult(Default::default(), Some(e)), |it| ExpandResult(it, None))
     }
 }
-
-#[cfg(test)]
-mod tests;

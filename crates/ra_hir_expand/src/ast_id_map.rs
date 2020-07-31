@@ -73,7 +73,7 @@ impl AstIdMap {
         // change parent's id. This means that, say, adding a new function to a
         // trait does not change ids of top-level items, which helps caching.
         bfs(node, |it| {
-            if let Some(module_item) = ast::ModuleItem::cast(it) {
+            if let Some(module_item) = ast::Item::cast(it) {
                 res.alloc(module_item.syntax());
             }
         });

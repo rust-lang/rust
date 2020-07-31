@@ -4,7 +4,7 @@ use ra_syntax::{
     Direction, T,
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: flip_trait_bound
 //
@@ -33,10 +33,15 @@ pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext) -> Option
     );
 
     let target = plus.text_range();
-    acc.add(AssistId("flip_trait_bound"), "Flip trait bounds", target, |edit| {
-        edit.replace(before.text_range(), after.to_string());
-        edit.replace(after.text_range(), before.to_string());
-    })
+    acc.add(
+        AssistId("flip_trait_bound", AssistKind::RefactorRewrite),
+        "Flip trait bounds",
+        target,
+        |edit| {
+            edit.replace(before.text_range(), after.to_string());
+            edit.replace(after.text_range(), before.to_string());
+        },
+    )
 }
 
 #[cfg(test)]

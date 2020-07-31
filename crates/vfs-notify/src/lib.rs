@@ -6,18 +6,13 @@
 //!
 //! Hopefully, one day a reliable file watching/walking crate appears on
 //! crates.io, and we can reduce this to trivial glue code.
-mod include;
+use std::convert::TryFrom;
 
-use std::convert::{TryFrom, TryInto};
-
-use crossbeam_channel::{select, unbounded, Receiver, Sender};
+use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use paths::{AbsPath, AbsPathBuf};
-use rustc_hash::FxHashSet;
 use vfs::loader;
 use walkdir::WalkDir;
-
-use crate::include::Include;
 
 #[derive(Debug)]
 pub struct NotifyHandle {
@@ -54,11 +49,9 @@ type NotifyEvent = notify::Result<notify::Event>;
 
 struct NotifyActor {
     sender: loader::Sender,
-    config: Vec<(AbsPathBuf, Include, bool)>,
-    watched_paths: FxHashSet<AbsPathBuf>,
-    // Drop order of fields bellow is significant,
-    watcher: Option<RecommendedWatcher>,
-    watcher_receiver: Receiver<NotifyEvent>,
+    watched_entries: Vec<loader::Entry>,
+    // Drop order is significant.
+    watcher: Option<(RecommendedWatcher, Receiver<NotifyEvent>)>,
 }
 
 #[derive(Debug)]
@@ -69,23 +62,13 @@ enum Event {
 
 impl NotifyActor {
     fn new(sender: loader::Sender) -> NotifyActor {
-        let (watcher_sender, watcher_receiver) = unbounded();
-        let watcher = log_notify_error(Watcher::new_immediate(move |event| {
-            watcher_sender.send(event).unwrap()
-        }));
-
-        NotifyActor {
-            sender,
-            config: Vec::new(),
-            watched_paths: FxHashSet::default(),
-            watcher,
-            watcher_receiver,
-        }
+        NotifyActor { sender, watched_entries: Vec::new(), watcher: None }
     }
     fn next_event(&self, receiver: &Receiver<Message>) -> Option<Event> {
+        let watcher_receiver = self.watcher.as_ref().map(|(_, receiver)| receiver);
         select! {
             recv(receiver) -> it => it.ok().map(Event::Message),
-            recv(&self.watcher_receiver) -> it => Some(Event::NotifyEvent(it.unwrap())),
+            recv(watcher_receiver.unwrap_or(&never())) -> it => Some(Event::NotifyEvent(it.unwrap())),
         }
     }
     fn run(mut self, inbox: Receiver<Message>) {
@@ -94,19 +77,29 @@ impl NotifyActor {
             match event {
                 Event::Message(msg) => match msg {
                     Message::Config(config) => {
+                        self.watcher = None;
+                        if !config.watch.is_empty() {
+                            let (watcher_sender, watcher_receiver) = unbounded();
+                            let watcher = log_notify_error(Watcher::new_immediate(move |event| {
+                                watcher_sender.send(event).unwrap()
+                            }));
+                            self.watcher = watcher.map(|it| (it, watcher_receiver));
+                        }
+
                         let n_total = config.load.len();
                         self.send(loader::Message::Progress { n_total, n_done: 0 });
 
-                        self.unwatch_all();
-                        self.config.clear();
+                        self.watched_entries.clear();
 
                         for (i, entry) in config.load.into_iter().enumerate() {
                             let watch = config.watch.contains(&i);
+                            if watch {
+                                self.watched_entries.push(entry.clone())
+                            }
                             let files = self.load_entry(entry, watch);
                             self.send(loader::Message::Loaded { files });
                             self.send(loader::Message::Progress { n_total, n_done: i + 1 });
                         }
-                        self.config.sort_by(|x, y| x.0.cmp(&y.0));
                     }
                     Message::Invalidate(path) => {
                         let contents = read(path.as_path());
@@ -121,34 +114,27 @@ impl NotifyActor {
                             .into_iter()
                             .map(|path| AbsPathBuf::try_from(path).unwrap())
                             .filter_map(|path| {
-                                let is_dir = path.is_dir();
-                                let is_file = path.is_file();
-
-                                let config_idx =
-                                    match self.config.binary_search_by(|it| it.0.cmp(&path)) {
-                                        Ok(it) => it,
-                                        Err(it) => it.saturating_sub(1),
-                                    };
-                                let include = self.config.get(config_idx).and_then(|it| {
-                                    let rel_path = path.strip_prefix(&it.0)?;
-                                    Some((rel_path, &it.1))
-                                });
-
-                                if let Some((rel_path, include)) = include {
-                                    if is_dir && include.exclude_dir(&rel_path)
-                                        || is_file && !include.include_file(&rel_path)
-                                    {
-                                        return None;
-                                    }
-                                }
-
-                                if is_dir {
+                                if path.is_dir()
+                                    && self
+                                        .watched_entries
+                                        .iter()
+                                        .any(|entry| entry.contains_dir(&path))
+                                {
                                     self.watch(path);
                                     return None;
                                 }
-                                if !is_file {
+
+                                if !path.is_file() {
                                     return None;
                                 }
+                                if !self
+                                    .watched_entries
+                                    .iter()
+                                    .any(|entry| entry.contains_file(&path))
+                                {
+                                    return None;
+                                }
+
                                 let contents = read(&path);
                                 Some((path, contents))
                             })
@@ -175,58 +161,49 @@ impl NotifyActor {
                     (file, contents)
                 })
                 .collect::<Vec<_>>(),
-            loader::Entry::Directory { path, include } => {
-                let include = Include::new(include);
-                self.config.push((path.clone(), include.clone(), watch));
+            loader::Entry::Directories(dirs) => {
+                let mut res = Vec::new();
 
-                let files = WalkDir::new(&path)
-                    .into_iter()
-                    .filter_entry(|entry| {
-                        let abs_path: &AbsPath = entry.path().try_into().unwrap();
-                        match abs_path.strip_prefix(&path) {
-                            Some(rel_path) => {
-                                !(entry.file_type().is_dir() && include.exclude_dir(rel_path))
-                            }
-                            None => false,
+                for root in dirs.include.iter() {
+                    let walkdir = WalkDir::new(root).into_iter().filter_entry(|entry| {
+                        if !entry.file_type().is_dir() {
+                            return true;
                         }
-                    })
-                    .filter_map(|entry| entry.ok())
-                    .filter_map(|entry| {
+                        let path = AbsPath::assert(entry.path());
+                        root == path
+                            || dirs.exclude.iter().chain(&dirs.include).all(|it| it != path)
+                    });
+
+                    let files = walkdir.filter_map(|it| it.ok()).filter_map(|entry| {
                         let is_dir = entry.file_type().is_dir();
                         let is_file = entry.file_type().is_file();
-                        let abs_path = AbsPathBuf::try_from(entry.into_path()).unwrap();
+                        let abs_path = AbsPathBuf::assert(entry.into_path());
                         if is_dir && watch {
                             self.watch(abs_path.clone());
                         }
-                        let rel_path = abs_path.strip_prefix(&path)?;
-                        if is_file && include.include_file(&rel_path) {
-                            Some(abs_path)
-                        } else {
-                            None
+                        if !is_file {
+                            return None;
                         }
+                        let ext = abs_path.extension().unwrap_or_default();
+                        if dirs.extensions.iter().all(|it| it.as_str() != ext) {
+                            return None;
+                        }
+                        Some(abs_path)
                     });
 
-                files
-                    .map(|file| {
+                    res.extend(files.map(|file| {
                         let contents = read(file.as_path());
                         (file, contents)
-                    })
-                    .collect()
+                    }));
+                }
+                res
             }
         }
     }
 
     fn watch(&mut self, path: AbsPathBuf) {
-        if let Some(watcher) = &mut self.watcher {
+        if let Some((watcher, _)) = &mut self.watcher {
             log_notify_error(watcher.watch(&path, RecursiveMode::NonRecursive));
-            self.watched_paths.insert(path);
-        }
-    }
-    fn unwatch_all(&mut self) {
-        if let Some(watcher) = &mut self.watcher {
-            for path in self.watched_paths.drain() {
-                log_notify_error(watcher.unwatch(path));
-            }
         }
     }
     fn send(&mut self, msg: loader::Message) {

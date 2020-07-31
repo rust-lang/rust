@@ -1,5 +1,6 @@
 //! Renders a bit of code as HTML.
 
+use oorandom::Rand32;
 use ra_db::SourceDatabase;
 use ra_syntax::{AstNode, TextRange, TextSize};
 
@@ -9,13 +10,12 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
     let parse = db.parse(file_id);
 
     fn rainbowify(seed: u64) -> String {
-        use rand::prelude::*;
-        let mut rng = SmallRng::seed_from_u64(seed);
+        let mut rng = Rand32::new(seed);
         format!(
             "hsl({h},{s}%,{l}%)",
-            h = rng.gen_range::<u16, _, _>(0, 361),
-            s = rng.gen_range::<u16, _, _>(42, 99),
-            l = rng.gen_range::<u16, _, _>(40, 91),
+            h = rng.rand_range(0..361),
+            s = rng.rand_range(42..99),
+            l = rng.rand_range(40..91),
         )
     }
 
@@ -83,14 +83,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .bool_literal       { color: #BFE6EB; }
 .macro              { color: #94BFF3; }
 .module             { color: #AFD8AF; }
+.value_param        { color: #DCDCCC; }
 .variable           { color: #DCDCCC; }
 .format_specifier   { color: #CC696B; }
 .mutable            { text-decoration: underline; }
-.unresolved_reference { color: #FC5555; }
 .escape_sequence    { color: #94BFF3; }
-
 .keyword            { color: #F0DFAF; font-weight: bold; }
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
 .control            { font-style: italic; }
+
+.unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
 ";

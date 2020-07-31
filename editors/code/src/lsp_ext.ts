@@ -5,8 +5,12 @@
 import * as lc from "vscode-languageclient";
 
 export const analyzerStatus = new lc.RequestType<null, string, void>("rust-analyzer/analyzerStatus");
+export const memoryUsage = new lc.RequestType<null, string, void>("rust-analyzer/memoryUsage");
 
-export const collectGarbage = new lc.RequestType<null, null, void>("rust-analyzer/collectGarbage");
+export type Status = "loading" | "ready" | "invalid" | "needsReload";
+export const status = new lc.NotificationType<Status>("rust-analyzer/status");
+
+export const reloadWorkspace = new lc.RequestType<null, null, void>("rust-analyzer/reloadWorkspace");
 
 export interface SyntaxTreeParams {
     textDocument: lc.TextDocumentIdentifier;
@@ -60,6 +64,7 @@ export interface Runnable {
         workspaceRoot?: string;
         cargoArgs: string[];
         executableArgs: string[];
+        expectTest?: boolean;
     };
 }
 export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("experimental/runnables");
@@ -88,6 +93,9 @@ export const inlayHints = new lc.RequestType<InlayHintsParams, InlayHint[], void
 export interface SsrParams {
     query: string;
     parseOnly: boolean;
+    textDocument: lc.TextDocumentIdentifier;
+    position: lc.Position;
+    selections: lc.Range[];
 }
 export const ssr = new lc.RequestType<SsrParams, lc.WorkspaceEdit, void>('experimental/ssr');
 

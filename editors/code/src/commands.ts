@@ -55,6 +55,38 @@ export function analyzerStatus(ctx: Ctx): Cmd {
     };
 }
 
+export function memoryUsage(ctx: Ctx): Cmd {
+    const tdcp = new class implements vscode.TextDocumentContentProvider {
+        readonly uri = vscode.Uri.parse('rust-analyzer-memory://memory');
+        readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
+
+        provideTextDocumentContent(_uri: vscode.Uri): vscode.ProviderResult<string> {
+            if (!vscode.window.activeTextEditor) return '';
+
+            return ctx.client.sendRequest(ra.memoryUsage, null).then((mem) => {
+                return 'Per-query memory usage:\n' + mem + '\n(note: database has been cleared)';
+            });
+        }
+
+        get onDidChange(): vscode.Event<vscode.Uri> {
+            return this.eventEmitter.event;
+        }
+    }();
+
+    ctx.pushCleanup(
+        vscode.workspace.registerTextDocumentContentProvider(
+            'rust-analyzer-memory',
+            tdcp,
+        ),
+    );
+
+    return async () => {
+        tdcp.eventEmitter.fire(tdcp.uri);
+        const document = await vscode.workspace.openTextDocument(tdcp.uri);
+        return vscode.window.showTextDocument(document, vscode.ViewColumn.Two, true);
+    };
+}
+
 export function matchingBrace(ctx: Ctx): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
@@ -153,15 +185,22 @@ export function parentModule(ctx: Ctx): Cmd {
 
 export function ssr(ctx: Ctx): Cmd {
     return async () => {
+        const editor = vscode.window.activeTextEditor;
         const client = ctx.client;
-        if (!client) return;
+        if (!editor || !client) return;
+
+        const position = editor.selection.active;
+        const selections = editor.selections;
+        const textDocument = { uri: editor.document.uri.toString() };
 
         const options: vscode.InputBoxOptions = {
             value: "() ==>> ()",
             prompt: "Enter request, for example 'Foo($a) ==> Foo::new($a)' ",
             validateInput: async (x: string) => {
                 try {
-                    await client.sendRequest(ra.ssr, { query: x, parseOnly: true });
+                    await client.sendRequest(ra.ssr, {
+                        query: x, parseOnly: true, textDocument, position, selections,
+                    });
                 } catch (e) {
                     return e.toString();
                 }
@@ -176,7 +215,9 @@ export function ssr(ctx: Ctx): Cmd {
             title: "Structured search replace in progress...",
             cancellable: false,
         }, async (_progress, _token) => {
-            const edit = await client.sendRequest(ra.ssr, { query: request, parseOnly: false });
+            const edit = await client.sendRequest(ra.ssr, {
+                query: request, parseOnly: false, textDocument, position, selections,
+            });
 
             await vscode.workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));
         });
@@ -330,8 +371,8 @@ export function expandMacro(ctx: Ctx): Cmd {
     };
 }
 
-export function collectGarbage(ctx: Ctx): Cmd {
-    return async () => ctx.client.sendRequest(ra.collectGarbage, null);
+export function reloadWorkspace(ctx: Ctx): Cmd {
+    return async () => ctx.client.sendRequest(ra.reloadWorkspace, null);
 }
 
 export function showReferences(ctx: Ctx): Cmd {

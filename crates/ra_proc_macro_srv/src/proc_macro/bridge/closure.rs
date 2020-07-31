@@ -11,6 +11,9 @@ pub struct Closure<'a, A, R> {
 
 struct Env;
 
+// impl<'a, A, R> !Sync for Closure<'a, A, R> {}
+// impl<'a, A, R> !Send for Closure<'a, A, R> {}
+
 impl<'a, A, R, F: FnMut(A) -> R> From<&'a mut F> for Closure<'a, A, R> {
     fn from(f: &'a mut F) -> Self {
         unsafe extern "C" fn call<A, R, F: FnMut(A) -> R>(env: &mut Env, arg: A) -> R {

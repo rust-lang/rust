@@ -27,11 +27,12 @@ pub struct FunctionData {
     /// can be called as a method.
     pub has_self_param: bool,
     pub is_unsafe: bool,
+    pub is_varargs: bool,
     pub visibility: RawVisibility,
 }
 
 impl FunctionData {
-    pub(crate) fn fn_data_query(db: &impl DefDatabase, func: FunctionId) -> Arc<FunctionData> {
+    pub(crate) fn fn_data_query(db: &dyn DefDatabase, func: FunctionId) -> Arc<FunctionData> {
         let loc = func.lookup(db);
         let item_tree = db.item_tree(loc.id.file_id);
         let func = &item_tree[loc.id.value];
@@ -43,6 +44,7 @@ impl FunctionData {
             attrs: item_tree.attrs(ModItem::from(loc.id.value).into()).clone(),
             has_self_param: func.has_self_param,
             is_unsafe: func.is_unsafe,
+            is_varargs: func.is_varargs,
             visibility: item_tree[func.visibility].clone(),
         })
     }

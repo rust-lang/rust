@@ -4,6 +4,7 @@ name = "ra_text_edit"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 publish = false
+license = "MIT OR Apache-2.0"
 
 [lib]
 doctest = false

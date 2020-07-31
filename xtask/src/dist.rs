@@ -1,4 +1,10 @@
-use std::path::PathBuf;
+use flate2::{write::GzEncoder, Compression};
+use std::{
+    env,
+    fs::File,
+    io,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Result;
 
@@ -7,17 +13,24 @@ use crate::{
     project_root,
 };
 
-pub fn run_dist(nightly: bool, client_version: Option<String>) -> Result<()> {
-    let dist = project_root().join("dist");
-    rm_rf(&dist)?;
-    fs2::create_dir_all(&dist)?;
+pub struct DistCmd {
+    pub nightly: bool,
+    pub client_version: Option<String>,
+}
 
-    if let Some(version) = client_version {
-        let release_tag = if nightly { "nightly".to_string() } else { date_iso()? };
-        dist_client(&version, &release_tag)?;
+impl DistCmd {
+    pub fn run(self) -> Result<()> {
+        let dist = project_root().join("dist");
+        rm_rf(&dist)?;
+        fs2::create_dir_all(&dist)?;
+
+        if let Some(version) = self.client_version {
+            let release_tag = if self.nightly { "nightly".to_string() } else { date_iso()? };
+            dist_client(&version, &release_tag)?;
+        }
+        dist_server()?;
+        Ok(())
     }
-    dist_server(nightly)?;
-    Ok(())
 }
 
 fn dist_client(version: &str, release_tag: &str) -> Result<()> {
@@ -46,17 +59,12 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
     Ok(())
 }
 
-fn dist_server(nightly: bool) -> Result<()> {
+fn dist_server() -> Result<()> {
     if cfg!(target_os = "linux") {
-        std::env::set_var("CC", "clang");
+        env::set_var("CC", "clang");
         run!(
             "cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release"
-            // We'd want to add, but that requires setting the right linker somehow
-            // --features=jemalloc
         )?;
-        if !nightly {
-            run!("strip ./target/release/rust-analyzer")?;
-        }
     } else {
         run!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --release")?;
     }
@@ -71,8 +79,20 @@ fn dist_server(nightly: bool) -> Result<()> {
         panic!("Unsupported OS")
     };
 
-    fs2::copy(src, dst)?;
+    let src = Path::new(src);
+    let dst = Path::new(dst);
 
+    fs2::copy(&src, &dst)?;
+    gzip(&src, &dst.with_extension("gz"))?;
+
+    Ok(())
+}
+
+fn gzip(src_path: &Path, dest_path: &Path) -> Result<()> {
+    let mut encoder = GzEncoder::new(File::create(dest_path)?, Compression::best());
+    let mut input = io::BufReader::new(File::open(src_path)?);
+    io::copy(&mut input, &mut encoder)?;
+    encoder.finish()?;
     Ok(())
 }
 

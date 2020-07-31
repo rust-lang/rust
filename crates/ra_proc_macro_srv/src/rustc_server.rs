@@ -463,9 +463,16 @@ impl server::Ident for Rustc {
 }
 
 impl server::Literal for Rustc {
-    // FIXME(eddyb) `Literal` should not expose internal `Debug` impls.
-    fn debug(&mut self, literal: &Self::Literal) -> String {
-        format!("{:?}", literal)
+    fn debug_kind(&mut self, _literal: &Self::Literal) -> String {
+        // r-a: debug_kind and suffix are unsupported; corresponding client code has been changed to not call these.
+        // They must still be present to be ABI-compatible and work with upstream proc_macro.
+        "".to_owned()
+    }
+    fn symbol(&mut self, literal: &Self::Literal) -> String {
+        literal.text.to_string()
+    }
+    fn suffix(&mut self, _literal: &Self::Literal) -> Option<String> {
+        None
     }
 
     fn integer(&mut self, n: &str) -> Self::Literal {

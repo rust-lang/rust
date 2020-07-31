@@ -1,10 +1,10 @@
 SOURCE_FILE@0..54
-  FN_DEF@0..53
+  FN@0..53
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..12
       IDENT@3..12 "for_trait"
-    TYPE_PARAM_LIST@12..15
+    GENERIC_PARAM_LIST@12..15
       L_ANGLE@12..13 "<"
       TYPE_PARAM@13..14
         NAME@13..14
@@ -19,7 +19,7 @@ SOURCE_FILE@0..54
       WHITESPACE@23..27 "\n   "
       WHERE_PRED@27..49
         FOR_KW@27..30 "for"
-        TYPE_PARAM_LIST@30..34
+        GENERIC_PARAM_LIST@30..34
           L_ANGLE@30..31 "<"
           LIFETIME_PARAM@31..33
             LIFETIME@31..33 "\'a"

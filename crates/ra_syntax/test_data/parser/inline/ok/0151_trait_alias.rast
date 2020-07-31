@@ -1,10 +1,10 @@
 SOURCE_FILE@0..83
-  TRAIT_DEF@0..18
+  TRAIT@0..18
     TRAIT_KW@0..5 "trait"
     WHITESPACE@5..6 " "
     NAME@6..7
       IDENT@6..7 "Z"
-    TYPE_PARAM_LIST@7..10
+    GENERIC_PARAM_LIST@7..10
       L_ANGLE@7..8 "<"
       TYPE_PARAM@8..9
         NAME@8..9
@@ -31,12 +31,12 @@ SOURCE_FILE@0..83
                 R_ANGLE@16..17 ">"
     SEMICOLON@17..18 ";"
   WHITESPACE@18..19 "\n"
-  TRAIT_DEF@19..51
+  TRAIT@19..51
     TRAIT_KW@19..24 "trait"
     WHITESPACE@24..25 " "
     NAME@25..26
       IDENT@25..26 "Z"
-    TYPE_PARAM_LIST@26..29
+    GENERIC_PARAM_LIST@26..29
       L_ANGLE@26..27 "<"
       TYPE_PARAM@27..28
         NAME@27..28
@@ -82,12 +82,12 @@ SOURCE_FILE@0..83
                     IDENT@46..50 "Copy"
     SEMICOLON@50..51 ";"
   WHITESPACE@51..52 "\n"
-  TRAIT_DEF@52..82
+  TRAIT@52..82
     TRAIT_KW@52..57 "trait"
     WHITESPACE@57..58 " "
     NAME@58..59
       IDENT@58..59 "Z"
-    TYPE_PARAM_LIST@59..62
+    GENERIC_PARAM_LIST@59..62
       L_ANGLE@59..60 "<"
       TYPE_PARAM@60..61
         NAME@60..61

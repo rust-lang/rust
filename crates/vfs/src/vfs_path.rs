@@ -48,6 +48,37 @@ impl VfsPath {
             (VfsPathRepr::VirtualPath(_), _) => false,
         }
     }
+
+    // Don't make this `pub`
+    pub(crate) fn encode(&self, buf: &mut Vec<u8>) {
+        let tag = match &self.0 {
+            VfsPathRepr::PathBuf(_) => 0,
+            VfsPathRepr::VirtualPath(_) => 1,
+        };
+        buf.push(tag);
+        match &self.0 {
+            VfsPathRepr::PathBuf(it) => {
+                let path: &std::ffi::OsStr = it.as_os_str();
+                #[cfg(windows)]
+                {
+                    use std::os::windows::ffi::OsStrExt;
+                    for wchar in path.encode_wide() {
+                        buf.extend(wchar.to_le_bytes().iter().copied());
+                    }
+                }
+                #[cfg(unix)]
+                {
+                    use std::os::unix::ffi::OsStrExt;
+                    buf.extend(path.as_bytes());
+                }
+                #[cfg(not(any(windows, unix)))]
+                {
+                    buf.extend(path.to_string_lossy().as_bytes());
+                }
+            }
+            VfsPathRepr::VirtualPath(VirtualPath(s)) => buf.extend(s.as_bytes()),
+        }
+    }
 }
 
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]

@@ -3,6 +3,7 @@ edition = "2018"
 name = "ra_project_model"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
+license = "MIT OR Apache-2.0"
 
 [lib]
 doctest = false
@@ -11,7 +12,7 @@ doctest = false
 log = "0.4.8"
 rustc-hash = "1.1.0"
 
-cargo_metadata = "0.10.0"
+cargo_metadata = "0.11.1"
 
 ra_arena = { path = "../ra_arena" }
 ra_cfg = { path = "../ra_cfg" }

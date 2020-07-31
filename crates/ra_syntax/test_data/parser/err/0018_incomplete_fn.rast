@@ -1,5 +1,5 @@
 SOURCE_FILE@0..183
-  IMPL_DEF@0..182
+  IMPL@0..182
     IMPL_KW@0..4 "impl"
     WHITESPACE@4..5 " "
     PATH_TYPE@5..13
@@ -8,10 +8,10 @@ SOURCE_FILE@0..183
           NAME_REF@5..13
             IDENT@5..13 "FnScopes"
     WHITESPACE@13..14 " "
-    ITEM_LIST@14..182
+    ASSOC_ITEM_LIST@14..182
       L_CURLY@14..15 "{"
       WHITESPACE@15..20 "\n    "
-      FN_DEF@20..161
+      FN@20..161
         FN_KW@20..22 "fn"
         WHITESPACE@22..23 " "
         NAME@23..32
@@ -75,16 +75,16 @@ SOURCE_FILE@0..183
               IDENT@106..110 "push"
             ARG_LIST@110..155
               L_PAREN@110..111 "("
-              RECORD_LIT@111..154
+              RECORD_EXPR@111..154
                 PATH@111..120
                   PATH_SEGMENT@111..120
                     NAME_REF@111..120
                       IDENT@111..120 "ScopeData"
                 WHITESPACE@120..121 " "
-                RECORD_FIELD_LIST@121..154
+                RECORD_EXPR_FIELD_LIST@121..154
                   L_CURLY@121..122 "{"
                   WHITESPACE@122..123 " "
-                  RECORD_FIELD@123..135
+                  RECORD_EXPR_FIELD@123..135
                     NAME_REF@123..129
                       IDENT@123..129 "parent"
                     COLON@129..130 ":"
@@ -96,7 +96,7 @@ SOURCE_FILE@0..183
                             IDENT@131..135 "None"
                   COMMA@135..136 ","
                   WHITESPACE@136..137 " "
-                  RECORD_FIELD@137..152
+                  RECORD_EXPR_FIELD@137..152
                     NAME_REF@137..144
                       IDENT@137..144 "entries"
                     COLON@144..145 ":"
@@ -116,7 +116,7 @@ SOURCE_FILE@0..183
           WHITESPACE@155..160 "\n    "
           R_CURLY@160..161 "}"
       WHITESPACE@161..167 "\n\n    "
-      FN_DEF@167..180
+      FN@167..180
         FN_KW@167..169 "fn"
         WHITESPACE@169..170 " "
         NAME@170..180

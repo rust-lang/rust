@@ -4,10 +4,10 @@ use std::path::{self, Path};
 use itertools::Itertools;
 use ra_db::{FileId, FileRange};
 use ra_ide::{
-    Assist, CompletionItem, CompletionItemKind, Documentation, FileSystemEdit, Fold, FoldKind,
-    FunctionSignature, Highlight, HighlightModifier, HighlightTag, HighlightedRange, Indel,
-    InlayHint, InlayKind, InsertTextFormat, LineIndex, NavigationTarget, ReferenceAccess,
-    ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
+    Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind, Documentation,
+    FileSystemEdit, Fold, FoldKind, Highlight, HighlightModifier, HighlightTag, HighlightedRange,
+    Indel, InlayHint, InlayKind, InsertTextFormat, LineIndex, Markup, NavigationTarget,
+    ReferenceAccess, ResolvedAssist, Runnable, Severity, SourceChange, SourceFileEdit, TextEdit,
 };
 use ra_syntax::{SyntaxKind, TextRange, TextSize};
 
@@ -31,18 +31,18 @@ pub(crate) fn range(line_index: &LineIndex, range: TextRange) -> lsp_types::Rang
 
 pub(crate) fn symbol_kind(syntax_kind: SyntaxKind) -> lsp_types::SymbolKind {
     match syntax_kind {
-        SyntaxKind::FN_DEF => lsp_types::SymbolKind::Function,
-        SyntaxKind::STRUCT_DEF => lsp_types::SymbolKind::Struct,
-        SyntaxKind::ENUM_DEF => lsp_types::SymbolKind::Enum,
-        SyntaxKind::ENUM_VARIANT => lsp_types::SymbolKind::EnumMember,
-        SyntaxKind::TRAIT_DEF => lsp_types::SymbolKind::Interface,
+        SyntaxKind::FN => lsp_types::SymbolKind::Function,
+        SyntaxKind::STRUCT => lsp_types::SymbolKind::Struct,
+        SyntaxKind::ENUM => lsp_types::SymbolKind::Enum,
+        SyntaxKind::VARIANT => lsp_types::SymbolKind::EnumMember,
+        SyntaxKind::TRAIT => lsp_types::SymbolKind::Interface,
         SyntaxKind::MACRO_CALL => lsp_types::SymbolKind::Function,
         SyntaxKind::MODULE => lsp_types::SymbolKind::Module,
-        SyntaxKind::TYPE_ALIAS_DEF => lsp_types::SymbolKind::TypeParameter,
-        SyntaxKind::RECORD_FIELD_DEF => lsp_types::SymbolKind::Field,
-        SyntaxKind::STATIC_DEF => lsp_types::SymbolKind::Constant,
-        SyntaxKind::CONST_DEF => lsp_types::SymbolKind::Constant,
-        SyntaxKind::IMPL_DEF => lsp_types::SymbolKind::Object,
+        SyntaxKind::TYPE_ALIAS => lsp_types::SymbolKind::TypeParameter,
+        SyntaxKind::RECORD_FIELD => lsp_types::SymbolKind::Field,
+        SyntaxKind::STATIC => lsp_types::SymbolKind::Constant,
+        SyntaxKind::CONST => lsp_types::SymbolKind::Constant,
+        SyntaxKind::IMPL => lsp_types::SymbolKind::Object,
         _ => lsp_types::SymbolKind::Variable,
     }
 }
@@ -100,6 +100,7 @@ pub(crate) fn completion_item_kind(
         CompletionItemKind::TypeParam => lsp_types::CompletionItemKind::TypeParameter,
         CompletionItemKind::Macro => lsp_types::CompletionItemKind::Method,
         CompletionItemKind::Attribute => lsp_types::CompletionItemKind::EnumMember,
+        CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::Reference,
     }
 }
 
@@ -218,29 +219,76 @@ pub(crate) fn completion_item(
     res
 }
 
-pub(crate) fn signature_information(
-    signature: FunctionSignature,
+pub(crate) fn signature_help(
+    call_info: CallInfo,
     concise: bool,
-) -> lsp_types::SignatureInformation {
-    let (label, documentation, params) = if concise {
-        let mut params = signature.parameters;
-        if signature.has_self_param {
-            params.remove(0);
+    label_offsets: bool,
+) -> lsp_types::SignatureHelp {
+    let (label, parameters) = match (concise, label_offsets) {
+        (_, false) => {
+            let params = call_info
+                .parameter_labels()
+                .map(|label| lsp_types::ParameterInformation {
+                    label: lsp_types::ParameterLabel::Simple(label.to_string()),
+                    documentation: None,
+                })
+                .collect::<Vec<_>>();
+            let label =
+                if concise { call_info.parameter_labels().join(", ") } else { call_info.signature };
+            (label, params)
         }
-        (params.join(", "), None, params)
-    } else {
-        (signature.to_string(), signature.doc.map(documentation), signature.parameters)
+        (false, true) => {
+            let params = call_info
+                .parameter_ranges()
+                .iter()
+                .map(|it| [u32::from(it.start()).into(), u32::from(it.end()).into()])
+                .map(|label_offsets| lsp_types::ParameterInformation {
+                    label: lsp_types::ParameterLabel::LabelOffsets(label_offsets),
+                    documentation: None,
+                })
+                .collect::<Vec<_>>();
+            (call_info.signature, params)
+        }
+        (true, true) => {
+            let mut params = Vec::new();
+            let mut label = String::new();
+            let mut first = true;
+            for param in call_info.parameter_labels() {
+                if !first {
+                    label.push_str(", ");
+                }
+                first = false;
+                let start = label.len() as u64;
+                label.push_str(param);
+                let end = label.len() as u64;
+                params.push(lsp_types::ParameterInformation {
+                    label: lsp_types::ParameterLabel::LabelOffsets([start, end]),
+                    documentation: None,
+                });
+            }
+
+            (label, params)
+        }
     };
 
-    let parameters: Vec<lsp_types::ParameterInformation> = params
-        .into_iter()
-        .map(|param| lsp_types::ParameterInformation {
-            label: lsp_types::ParameterLabel::Simple(param),
-            documentation: None,
+    let documentation = if concise {
+        None
+    } else {
+        call_info.doc.map(|doc| {
+            lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: doc,
+            })
         })
-        .collect();
+    };
 
-    lsp_types::SignatureInformation { label, documentation, parameters: Some(parameters) }
+    let signature =
+        lsp_types::SignatureInformation { label, documentation, parameters: Some(parameters) };
+    lsp_types::SignatureHelp {
+        signatures: vec![signature],
+        active_signature: None,
+        active_parameter: call_info.active_parameter.map(|it| it as i64),
+    }
 }
 
 pub(crate) fn inlay_int(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_ext::InlayHint {
@@ -308,6 +356,7 @@ fn semantic_token_type_and_modifiers(
         }
         HighlightTag::EnumVariant => semantic_tokens::ENUM_MEMBER,
         HighlightTag::Macro => lsp_types::SemanticTokenType::MACRO,
+        HighlightTag::ValueParam => lsp_types::SemanticTokenType::PARAMETER,
         HighlightTag::Local => lsp_types::SemanticTokenType::VARIABLE,
         HighlightTag::TypeParam => lsp_types::SemanticTokenType::TYPE_PARAMETER,
         HighlightTag::Lifetime => semantic_tokens::LIFETIME,
@@ -325,6 +374,7 @@ fn semantic_token_type_and_modifiers(
         HighlightTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
         HighlightTag::Operator => lsp_types::SemanticTokenType::OPERATOR,
         HighlightTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
+        HighlightTag::Punctuation => semantic_tokens::PUNCTUATION,
     };
 
     for modifier in highlight.modifiers.iter() {
@@ -352,7 +402,7 @@ pub(crate) fn folding_range(
     let kind = match fold.kind {
         FoldKind::Comment => Some(lsp_types::FoldingRangeKind::Comment),
         FoldKind::Imports => Some(lsp_types::FoldingRangeKind::Imports),
-        FoldKind::Mods | FoldKind::Block => None,
+        FoldKind::Mods | FoldKind::Block | FoldKind::ArgList => None,
     };
 
     let range = range(line_index, fold.range);
@@ -430,9 +480,10 @@ pub(crate) fn url_from_abs_path(path: &Path) -> lsp_types::Url {
 pub(crate) fn versioned_text_document_identifier(
     snap: &GlobalStateSnapshot,
     file_id: FileId,
-    version: Option<i64>,
 ) -> lsp_types::VersionedTextDocumentIdentifier {
-    lsp_types::VersionedTextDocumentIdentifier { uri: url(snap, file_id), version }
+    let url = url(snap, file_id);
+    let version = snap.url_file_version(&url);
+    lsp_types::VersionedTextDocumentIdentifier { uri: url, version }
 }
 
 pub(crate) fn location(
@@ -442,6 +493,18 @@ pub(crate) fn location(
     let url = url(snap, frange.file_id);
     let line_index = snap.analysis.file_line_index(frange.file_id)?;
     let range = range(&line_index, frange.range);
+    let loc = lsp_types::Location::new(url, range);
+    Ok(loc)
+}
+
+/// Perefer using `location_link`, if the client has the cap.
+pub(crate) fn location_from_nav(
+    snap: &GlobalStateSnapshot,
+    nav: NavigationTarget,
+) -> Result<lsp_types::Location> {
+    let url = url(snap, nav.file_id);
+    let line_index = snap.analysis.file_line_index(nav.file_id)?;
+    let range = range(&line_index, nav.full_range);
     let loc = lsp_types::Location::new(url, range);
     Ok(loc)
 }
@@ -473,12 +536,12 @@ fn location_info(
     snap: &GlobalStateSnapshot,
     target: NavigationTarget,
 ) -> Result<(lsp_types::Url, lsp_types::Range, lsp_types::Range)> {
-    let line_index = snap.analysis.file_line_index(target.file_id())?;
+    let line_index = snap.analysis.file_line_index(target.file_id)?;
 
-    let target_uri = url(snap, target.file_id());
-    let target_range = range(&line_index, target.full_range());
+    let target_uri = url(snap, target.file_id);
+    let target_range = range(&line_index, target.full_range);
     let target_selection_range =
-        target.focus_range().map(|it| range(&line_index, it)).unwrap_or(target_range);
+        target.focus_range.map(|it| range(&line_index, it)).unwrap_or(target_range);
     Ok((target_uri, target_range, target_selection_range))
 }
 
@@ -497,13 +560,7 @@ pub(crate) fn goto_definition_response(
         let locations = targets
             .into_iter()
             .map(|nav| {
-                location(
-                    snap,
-                    FileRange {
-                        file_id: nav.file_id(),
-                        range: nav.focus_range().unwrap_or(nav.range()),
-                    },
-                )
+                location(snap, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
             })
             .collect::<Result<Vec<_>>>()?;
         Ok(locations.into())
@@ -515,7 +572,7 @@ pub(crate) fn snippet_text_document_edit(
     is_snippet: bool,
     source_file_edit: SourceFileEdit,
 ) -> Result<lsp_ext::SnippetTextDocumentEdit> {
-    let text_document = versioned_text_document_identifier(snap, source_file_edit.file_id, None);
+    let text_document = versioned_text_document_identifier(snap, source_file_edit.file_id);
     let line_index = snap.analysis.file_line_index(source_file_edit.file_id)?;
     let line_endings = snap.file_line_endings(source_file_edit.file_id);
     let edits = source_file_edit
@@ -608,11 +665,22 @@ pub(crate) fn call_hierarchy_item(
     snap: &GlobalStateSnapshot,
     target: NavigationTarget,
 ) -> Result<lsp_types::CallHierarchyItem> {
-    let name = target.name().to_string();
-    let detail = target.description().map(|it| it.to_string());
-    let kind = symbol_kind(target.kind());
+    let name = target.name.to_string();
+    let detail = target.description.clone();
+    let kind = symbol_kind(target.kind);
     let (uri, range, selection_range) = location_info(snap, target)?;
     Ok(lsp_types::CallHierarchyItem { name, kind, tags: None, detail, uri, range, selection_range })
+}
+
+pub(crate) fn code_action_kind(kind: AssistKind) -> lsp_types::CodeActionKind {
+    match kind {
+        AssistKind::None | AssistKind::Generate => lsp_types::CodeActionKind::EMPTY,
+        AssistKind::QuickFix => lsp_types::CodeActionKind::QUICKFIX,
+        AssistKind::Refactor => lsp_types::CodeActionKind::REFACTOR,
+        AssistKind::RefactorExtract => lsp_types::CodeActionKind::REFACTOR_EXTRACT,
+        AssistKind::RefactorInline => lsp_types::CodeActionKind::REFACTOR_INLINE,
+        AssistKind::RefactorRewrite => lsp_types::CodeActionKind::REFACTOR_REWRITE,
+    }
 }
 
 pub(crate) fn unresolved_code_action(
@@ -624,9 +692,9 @@ pub(crate) fn unresolved_code_action(
         title: assist.label,
         id: Some(format!("{}:{}", assist.id.0.to_owned(), index.to_string())),
         group: assist.group.filter(|_| snap.config.client_caps.code_action_group).map(|gr| gr.0),
-        kind: Some(String::new()),
+        kind: Some(code_action_kind(assist.id.1)),
         edit: None,
-        command: None,
+        is_preferred: None,
     };
     Ok(res)
 }
@@ -654,7 +722,7 @@ pub(crate) fn runnable(
     let workspace_root = spec.as_ref().map(|it| it.workspace_root.clone());
     let target = spec.as_ref().map(|s| s.target.clone());
     let (cargo_args, executable_args) =
-        CargoTargetSpec::runnable_args(spec, &runnable.kind, &runnable.cfg_exprs)?;
+        CargoTargetSpec::runnable_args(snap, spec, &runnable.kind, &runnable.cfg_exprs)?;
     let label = runnable.label(target);
     let location = location_link(snap, None, runnable.nav)?;
 
@@ -666,38 +734,38 @@ pub(crate) fn runnable(
             workspace_root: workspace_root.map(|it| it.into()),
             cargo_args,
             executable_args,
+            expect_test: None,
         },
     })
 }
 
+pub(crate) fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
+    lsp_types::MarkupContent { kind: lsp_types::MarkupKind::Markdown, value: markup.into() }
+}
+
 #[cfg(test)]
 mod tests {
-    use test_utils::extract_ranges;
+    use ra_ide::Analysis;
 
     use super::*;
 
     #[test]
     fn conv_fold_line_folding_only_fixup() {
-        let text = r#"<fold>mod a;
+        let text = r#"mod a;
 mod b;
-mod c;</fold>
+mod c;
 
-fn main() <fold>{
-    if cond <fold>{
+fn main() {
+    if cond {
         a::do_a();
-    }</fold> else <fold>{
+    } else {
         b::do_b();
-    }</fold>
-}</fold>"#;
+    }
+}"#;
 
-        let (ranges, text) = extract_ranges(text, "fold");
-        assert_eq!(ranges.len(), 4);
-        let folds = vec![
-            Fold { range: ranges[0], kind: FoldKind::Mods },
-            Fold { range: ranges[1], kind: FoldKind::Block },
-            Fold { range: ranges[2], kind: FoldKind::Block },
-            Fold { range: ranges[3], kind: FoldKind::Block },
-        ];
+        let (analysis, file_id) = Analysis::from_single_file(text.to_string());
+        let folds = analysis.folding_ranges(file_id).unwrap();
+        assert_eq!(folds.len(), 4);
 
         let line_index = LineIndex::new(&text);
         let converted: Vec<lsp_types::FoldingRange> =

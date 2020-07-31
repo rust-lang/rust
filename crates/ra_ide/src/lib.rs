@@ -17,30 +17,33 @@ macro_rules! eprintln {
 
 pub mod mock_analysis;
 
+mod markup;
 mod prime_caches;
-mod status;
-mod completion;
-mod runnables;
-mod goto_definition;
-mod goto_type_definition;
-mod goto_implementation;
-mod extend_selection;
-mod hover;
+mod display;
+
 mod call_hierarchy;
 mod call_info;
-mod syntax_highlighting;
+mod completion;
+mod diagnostics;
+mod expand_macro;
+mod extend_selection;
+mod file_structure;
+mod folding_ranges;
+mod goto_definition;
+mod goto_implementation;
+mod goto_type_definition;
+mod hover;
+mod inlay_hints;
+mod join_lines;
+mod matching_brace;
 mod parent_module;
 mod references;
-mod diagnostics;
-mod syntax_tree;
-mod folding_ranges;
-mod join_lines;
-mod typing;
-mod matching_brace;
-mod display;
-mod inlay_hints;
-mod expand_macro;
+mod runnables;
 mod ssr;
+mod status;
+mod syntax_highlighting;
+mod syntax_tree;
+mod typing;
 
 use std::sync::Arc;
 
@@ -59,15 +62,18 @@ use crate::display::ToNav;
 
 pub use crate::{
     call_hierarchy::CallItem,
+    call_info::CallInfo,
     completion::{
         CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, InsertTextFormat,
     },
     diagnostics::Severity,
-    display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
+    display::NavigationTarget,
     expand_macro::ExpandedMacro,
+    file_structure::StructureNode,
     folding_ranges::{Fold, FoldKind},
     hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
+    markup::Markup,
     references::{Declaration, Reference, ReferenceAccess, ReferenceKind, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{
@@ -75,8 +81,8 @@ pub use crate::{
     },
 };
 
-pub use hir::Documentation;
-pub use ra_assists::{Assist, AssistConfig, AssistId, ResolvedAssist};
+pub use hir::{Documentation, Semantics};
+pub use ra_assists::{Assist, AssistConfig, AssistId, AssistKind, ResolvedAssist};
 pub use ra_db::{
     Canceled, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange, SourceRoot,
     SourceRootId,
@@ -127,14 +133,6 @@ impl<T> RangeInfo<T> {
     pub fn new(range: TextRange, info: T) -> RangeInfo<T> {
         RangeInfo { range, info }
     }
-}
-
-/// Contains information about a call site. Specifically the
-/// `FunctionSignature`and current parameter.
-#[derive(Debug)]
-pub struct CallInfo {
-    pub signature: FunctionSignature,
-    pub active_parameter: Option<usize>,
 }
 
 /// `AnalysisHost` stores the current state of the world.
@@ -328,7 +326,7 @@ impl Analysis {
     /// Returns a tree representation of symbols in the file. Useful to draw a
     /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Cancelable<Vec<StructureNode>> {
-        self.with_db(|db| file_structure(&db.parse(file_id).tree()))
+        self.with_db(|db| file_structure::file_structure(&db.parse(file_id).tree()))
     }
 
     /// Returns a list of the places in the file where type hints can be displayed.
@@ -385,7 +383,9 @@ impl Analysis {
         position: FilePosition,
         search_scope: Option<SearchScope>,
     ) -> Cancelable<Option<ReferenceSearchResult>> {
-        self.with_db(|db| references::find_all_refs(db, position, search_scope).map(|it| it.info))
+        self.with_db(|db| {
+            references::find_all_refs(&Semantics::new(db), position, search_scope).map(|it| it.info)
+        })
     }
 
     /// Returns a short text describing element at position.
@@ -487,8 +487,12 @@ impl Analysis {
     }
 
     /// Computes the set of diagnostics for the given file.
-    pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::diagnostics(db, file_id))
+    pub fn diagnostics(
+        &self,
+        file_id: FileId,
+        enable_experimental: bool,
+    ) -> Cancelable<Vec<Diagnostic>> {
+        self.with_db(|db| diagnostics::diagnostics(db, file_id, enable_experimental))
     }
 
     /// Returns the edit required to rename reference at the position to the new
@@ -505,9 +509,11 @@ impl Analysis {
         &self,
         query: &str,
         parse_only: bool,
+        position: FilePosition,
+        selections: Vec<FileRange>,
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
-            let edits = ssr::parse_search_replace(query, parse_only, db)?;
+            let edits = ssr::parse_search_replace(query, parse_only, db, position, selections)?;
             Ok(SourceChange::from(edits))
         })
     }
@@ -525,78 +531,4 @@ impl Analysis {
 fn analysis_is_send() {
     fn is_send<T: Send>() {}
     is_send::<Analysis>();
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{display::NavigationTarget, mock_analysis::single_file, Query};
-    use ra_syntax::{
-        SmolStr,
-        SyntaxKind::{FN_DEF, STRUCT_DEF},
-    };
-
-    #[test]
-    fn test_world_symbols_with_no_container() {
-        let code = r#"
-    enum FooInner { }
-    "#;
-
-        let mut symbols = get_symbols_matching(code, "FooInner");
-
-        let s = symbols.pop().unwrap();
-
-        assert_eq!(s.name(), "FooInner");
-        assert!(s.container_name().is_none());
-    }
-
-    #[test]
-    fn test_world_symbols_include_container_name() {
-        let code = r#"
-fn foo() {
-    enum FooInner { }
-}
-    "#;
-
-        let mut symbols = get_symbols_matching(code, "FooInner");
-
-        let s = symbols.pop().unwrap();
-
-        assert_eq!(s.name(), "FooInner");
-        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
-
-        let code = r#"
-mod foo {
-    struct FooInner;
-}
-    "#;
-
-        let mut symbols = get_symbols_matching(code, "FooInner");
-
-        let s = symbols.pop().unwrap();
-
-        assert_eq!(s.name(), "FooInner");
-        assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
-    }
-
-    #[test]
-    fn test_world_symbols_are_case_sensitive() {
-        let code = r#"
-fn foo() {}
-
-struct Foo;
-        "#;
-
-        let symbols = get_symbols_matching(code, "Foo");
-
-        let fn_match = symbols.iter().find(|s| s.name() == "foo").map(|s| s.kind());
-        let struct_match = symbols.iter().find(|s| s.name() == "Foo").map(|s| s.kind());
-
-        assert_eq!(fn_match, Some(FN_DEF));
-        assert_eq!(struct_match, Some(STRUCT_DEF));
-    }
-
-    fn get_symbols_matching(text: &str, query: &str) -> Vec<NavigationTarget> {
-        let (analysis, _) = single_file(text);
-        analysis.symbol_search(Query::new(query.into())).unwrap()
-    }
 }

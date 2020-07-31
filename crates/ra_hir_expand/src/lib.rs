@@ -88,6 +88,25 @@ impl HirFileId {
         }
     }
 
+    pub fn expansion_level(self, db: &dyn db::AstDatabase) -> u32 {
+        let mut level = 0;
+        let mut curr = self;
+        while let HirFileIdRepr::MacroFile(macro_file) = curr.0 {
+            level += 1;
+            curr = match macro_file.macro_call_id {
+                MacroCallId::LazyMacro(id) => {
+                    let loc = db.lookup_intern_macro(id);
+                    loc.kind.file_id()
+                }
+                MacroCallId::EagerMacro(id) => {
+                    let loc = db.lookup_intern_eager_expansion(id);
+                    loc.file_id
+                }
+            };
+        }
+        level
+    }
+
     /// If this is a macro call, returns the syntax node of the call.
     pub fn call_node(self, db: &dyn db::AstDatabase) -> Option<InFile<SyntaxNode>> {
         match self.0 {
@@ -140,7 +159,7 @@ impl HirFileId {
     }
 
     /// Indicate it is macro file generated for builtin derive
-    pub fn is_builtin_derive(&self, db: &dyn db::AstDatabase) -> Option<InFile<ast::ModuleItem>> {
+    pub fn is_builtin_derive(&self, db: &dyn db::AstDatabase) -> Option<InFile<ast::Item>> {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
@@ -155,7 +174,7 @@ impl HirFileId {
                     MacroDefKind::BuiltInDerive(_) => loc.kind.node(db),
                     _ => return None,
                 };
-                Some(item.with_value(ast::ModuleItem::cast(item.value.clone())?))
+                Some(item.with_value(ast::Item::cast(item.value.clone())?))
             }
         }
     }
@@ -239,18 +258,18 @@ pub struct MacroCallLoc {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroCallKind {
     FnLike(AstId<ast::MacroCall>),
-    Attr(AstId<ast::ModuleItem>, String),
+    Attr(AstId<ast::Item>, String),
 }
 
 impl MacroCallKind {
-    pub fn file_id(&self) -> HirFileId {
+    fn file_id(&self) -> HirFileId {
         match self {
             MacroCallKind::FnLike(ast_id) => ast_id.file_id,
             MacroCallKind::Attr(ast_id, _) => ast_id.file_id,
         }
     }
 
-    pub fn node(&self, db: &dyn db::AstDatabase) -> InFile<SyntaxNode> {
+    fn node(&self, db: &dyn db::AstDatabase) -> InFile<SyntaxNode> {
         match self {
             MacroCallKind::FnLike(ast_id) => ast_id.with_value(ast_id.to_node(db).syntax().clone()),
             MacroCallKind::Attr(ast_id, _) => {
@@ -259,7 +278,7 @@ impl MacroCallKind {
         }
     }
 
-    pub fn arg(&self, db: &dyn db::AstDatabase) -> Option<SyntaxNode> {
+    fn arg(&self, db: &dyn db::AstDatabase) -> Option<SyntaxNode> {
         match self {
             MacroCallKind::FnLike(ast_id) => {
                 Some(ast_id.to_node(db).token_tree()?.syntax().clone())

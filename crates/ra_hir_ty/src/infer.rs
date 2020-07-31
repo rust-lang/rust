@@ -18,8 +18,6 @@ use std::mem;
 use std::ops::Index;
 use std::sync::Arc;
 
-use rustc_hash::FxHashMap;
-
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -28,13 +26,15 @@ use hir_def::{
     path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, TraitId, TypeAliasId,
-    VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, Lookup, TraitId,
+    TypeAliasId, VariantId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use ra_arena::map::ArenaMap;
 use ra_prof::profile;
 use ra_syntax::SmolStr;
+use rustc_hash::FxHashMap;
+use stdx::impl_from;
 
 use super::{
     primitive::{FloatTy, IntTy},
@@ -84,8 +84,7 @@ enum ExprOrPatId {
     ExprId(ExprId),
     PatId(PatId),
 }
-
-impl_froms!(ExprOrPatId: ExprId, PatId);
+impl_from!(ExprId, PatId for ExprOrPatId);
 
 /// Binding modes inferred for patterns.
 /// https://doc.rust-lang.org/reference/patterns.html#binding-modes
@@ -169,7 +168,7 @@ impl InferenceResult {
     pub fn add_diagnostics(
         &self,
         db: &dyn HirDatabase,
-        owner: FunctionId,
+        owner: DefWithBodyId,
         sink: &mut DiagnosticSink,
     ) {
         self.diagnostics.iter().for_each(|it| it.add_to(db, owner, sink))
@@ -376,17 +375,21 @@ impl<'a> InferenceContext<'a> {
     ) -> Ty {
         match assoc_ty {
             Some(res_assoc_ty) => {
+                let trait_ = match res_assoc_ty.lookup(self.db.upcast()).container {
+                    hir_def::AssocContainerId::TraitId(trait_) => trait_,
+                    _ => panic!("resolve_associated_type called with non-associated type"),
+                };
                 let ty = self.table.new_type_var();
-                let builder = Substs::build_for_def(self.db, res_assoc_ty)
+                let substs = Substs::build_for_def(self.db, res_assoc_ty)
                     .push(inner_ty)
-                    .fill(params.iter().cloned());
+                    .fill(params.iter().cloned())
+                    .build();
+                let trait_ref = TraitRef { trait_, substs: substs.clone() };
                 let projection = ProjectionPredicate {
                     ty: ty.clone(),
-                    projection_ty: ProjectionTy {
-                        associated_ty: res_assoc_ty,
-                        parameters: builder.build(),
-                    },
+                    projection_ty: ProjectionTy { associated_ty: res_assoc_ty, parameters: substs },
                 };
+                self.obligations.push(Obligation::Trait(trait_ref));
                 self.obligations.push(Obligation::Projection(projection));
                 self.resolve_ty_as_possible(ty)
             }
@@ -757,7 +760,7 @@ impl std::ops::BitOrAssign for Diverges {
 }
 
 mod diagnostics {
-    use hir_def::{expr::ExprId, FunctionId};
+    use hir_def::{expr::ExprId, DefWithBodyId};
     use hir_expand::diagnostics::DiagnosticSink;
 
     use crate::{
@@ -775,17 +778,17 @@ mod diagnostics {
         pub(super) fn add_to(
             &self,
             db: &dyn HirDatabase,
-            owner: FunctionId,
+            owner: DefWithBodyId,
             sink: &mut DiagnosticSink,
         ) {
             match self {
                 InferenceDiagnostic::NoSuchField { expr, field } => {
-                    let (_, source_map) = db.body_with_source_map(owner.into());
+                    let (_, source_map) = db.body_with_source_map(owner);
                     let field = source_map.field_syntax(*expr, *field);
                     sink.push(NoSuchField { file: field.file_id, field: field.value })
                 }
                 InferenceDiagnostic::BreakOutsideOfLoop { expr } => {
-                    let (_, source_map) = db.body_with_source_map(owner.into());
+                    let (_, source_map) = db.body_with_source_map(owner);
                     let ptr = source_map
                         .expr_syntax(*expr)
                         .expect("break outside of loop in synthetic syntax");

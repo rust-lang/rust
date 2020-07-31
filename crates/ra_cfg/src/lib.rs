@@ -5,7 +5,7 @@ mod cfg_expr;
 use ra_syntax::SmolStr;
 use rustc_hash::FxHashSet;
 
-pub use cfg_expr::{parse_cfg, CfgExpr};
+pub use cfg_expr::CfgExpr;
 
 /// Configuration options used for conditional compilition on items with `cfg` attributes.
 /// We have two kind of options in different namespaces: atomic options like `unix`, and
@@ -31,19 +31,21 @@ impl CfgOptions {
         })
     }
 
-    pub fn is_cfg_enabled(&self, attr: &tt::Subtree) -> Option<bool> {
-        self.check(&parse_cfg(attr))
-    }
-
     pub fn insert_atom(&mut self, key: SmolStr) {
         self.atoms.insert(key);
     }
 
-    pub fn remove_atom(&mut self, name: &str) {
-        self.atoms.remove(name);
-    }
-
     pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
         self.key_values.insert((key, value));
+    }
+
+    pub fn append(&mut self, other: &CfgOptions) {
+        for atom in &other.atoms {
+            self.atoms.insert(atom.clone());
+        }
+
+        for (key, value) in &other.key_values {
+            self.key_values.insert((key.clone(), value.clone()));
+        }
     }
 }

@@ -1,5 +1,5 @@
 SOURCE_FILE@0..167
-  FN_DEF@0..166
+  FN@0..166
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -49,14 +49,14 @@ SOURCE_FILE@0..167
                   WHITESPACE@60..61 " "
                   R_ANGLE@61..62 ">"
                   WHITESPACE@62..63 " "
-                  RECORD_LIT@63..77
+                  RECORD_EXPR@63..77
                     PATH@63..67
                       PATH_SEGMENT@63..67
                         NAME_REF@63..67
                           IDENT@63..67 "Test"
-                    RECORD_FIELD_LIST@67..77
+                    RECORD_EXPR_FIELD_LIST@67..77
                       L_CURLY@67..68 "{"
-                      RECORD_FIELD@68..76
+                      RECORD_EXPR_FIELD@68..76
                         NAME_REF@68..73
                           IDENT@68..73 "field"
                         COLON@73..74 ":"

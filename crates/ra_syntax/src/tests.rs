@@ -1,9 +1,12 @@
 use std::{
     fmt::Write,
-    path::{Component, Path, PathBuf},
+    fs,
+    path::{Path, PathBuf},
 };
 
-use test_utils::{collect_rust_files, dir_tests, project_dir, read_text};
+use expect::expect_file;
+use rayon::prelude::*;
+use test_utils::project_dir;
 
 use crate::{fuzz, tokenize, SourceFile, SyntaxError, TextRange, TextSize, Token};
 
@@ -86,7 +89,7 @@ fn item_parser_tests() {
     fragment_parser_dir_test(
         &["parser/fragments/item/ok"],
         &["parser/fragments/item/err"],
-        crate::ast::ModuleItem::parse,
+        crate::ast::Item::parse,
     );
 }
 
@@ -119,33 +122,43 @@ fn reparse_fuzz_tests() {
 /// FIXME: Use this as a benchmark
 #[test]
 fn self_hosting_parsing() {
-    use std::ffi::OsStr;
     let dir = project_dir().join("crates");
-    let mut count = 0;
-    for entry in walkdir::WalkDir::new(dir)
+    let files = walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_entry(|entry| {
-            !entry.path().components().any(|component| {
-                // Get all files which are not in the crates/ra_syntax/test_data folder
-                component == Component::Normal(OsStr::new("test_data"))
-            })
+            // Get all files which are not in the crates/ra_syntax/test_data folder
+            !entry.path().components().any(|component| component.as_os_str() == "test_data")
         })
         .map(|e| e.unwrap())
         .filter(|entry| {
             // Get all `.rs ` files
-            !entry.path().is_dir() && (entry.path().extension() == Some(OsStr::new("rs")))
+            !entry.path().is_dir() && (entry.path().extension().unwrap_or_default() == "rs")
         })
-    {
-        count += 1;
-        let text = read_text(entry.path());
-        if let Err(errors) = SourceFile::parse(&text).ok() {
-            panic!("Parsing errors:\n{:?}\n{}\n", errors, entry.path().display());
-        }
-    }
+        .map(|entry| entry.into_path())
+        .collect::<Vec<_>>();
     assert!(
-        count > 30,
+        files.len() > 100,
         "self_hosting_parsing found too few files - is it running in the right directory?"
-    )
+    );
+
+    let errors = files
+        .into_par_iter()
+        .filter_map(|file| {
+            let text = read_text(&file);
+            match SourceFile::parse(&text).ok() {
+                Ok(_) => None,
+                Err(err) => Some((file, err)),
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if !errors.is_empty() {
+        let errors = errors
+            .into_iter()
+            .map(|(path, err)| format!("{}: {:?}\n", path.display(), err))
+            .collect::<String>();
+        panic!("Parsing errors:\n{}\n", errors);
+    }
 }
 
 fn test_data_dir() -> PathBuf {
@@ -199,4 +212,69 @@ where
             "ERROR\n".to_owned()
         }
     });
+}
+
+/// Calls callback `f` with input code and file paths for each `.rs` file in `test_data_dir`
+/// subdirectories defined by `paths`.
+///
+/// If the content of the matching output file differs from the output of `f()`
+/// the test will fail.
+///
+/// If there is no matching output file it will be created and filled with the
+/// output of `f()`, but the test will fail.
+fn dir_tests<F>(test_data_dir: &Path, paths: &[&str], outfile_extension: &str, f: F)
+where
+    F: Fn(&str, &Path) -> String,
+{
+    for (path, input_code) in collect_rust_files(test_data_dir, paths) {
+        let actual = f(&input_code, &path);
+        let path = path.with_extension(outfile_extension);
+        expect_file![path].assert_eq(&actual)
+    }
+}
+
+/// Collects all `.rs` files from `dir` subdirectories defined by `paths`.
+fn collect_rust_files(root_dir: &Path, paths: &[&str]) -> Vec<(PathBuf, String)> {
+    paths
+        .iter()
+        .flat_map(|path| {
+            let path = root_dir.to_owned().join(path);
+            rust_files_in_dir(&path).into_iter()
+        })
+        .map(|path| {
+            let text = read_text(&path);
+            (path, text)
+        })
+        .collect()
+}
+
+/// Collects paths to all `.rs` files from `dir` in a sorted `Vec<PathBuf>`.
+fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
+    let mut acc = Vec::new();
+    for file in fs::read_dir(&dir).unwrap() {
+        let file = file.unwrap();
+        let path = file.path();
+        if path.extension().unwrap_or_default() == "rs" {
+            acc.push(path);
+        }
+    }
+    acc.sort();
+    acc
+}
+
+/// Read file and normalize newlines.
+///
+/// `rustc` seems to always normalize `\r\n` newlines to `\n`:
+///
+/// ```
+/// let s = "
+/// ";
+/// assert_eq!(s.as_bytes(), &[10]);
+/// ```
+///
+/// so this should always be correct.
+fn read_text(path: &Path) -> String {
+    fs::read_to_string(path)
+        .unwrap_or_else(|_| panic!("File at {:?} should be valid", path))
+        .replace("\r\n", "\n")
 }

@@ -1,10 +1,10 @@
 SOURCE_FILE@0..240
-  FN_DEF@0..53
+  FN@0..53
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..4
       IDENT@3..4 "f"
-    TYPE_PARAM_LIST@4..48
+    GENERIC_PARAM_LIST@4..48
       L_ANGLE@4..5 "<"
       TYPE_PARAM@5..47
         NAME@5..6
@@ -39,7 +39,7 @@ SOURCE_FILE@0..240
             L_PAREN@28..29 "("
             FOR_TYPE@29..46
               FOR_KW@29..32 "for"
-              TYPE_PARAM_LIST@32..36
+              GENERIC_PARAM_LIST@32..36
                 L_ANGLE@32..33 "<"
                 LIFETIME_PARAM@33..35
                   LIFETIME@33..35 "\'a"
@@ -65,7 +65,7 @@ SOURCE_FILE@0..240
       L_CURLY@51..52 "{"
       R_CURLY@52..53 "}"
   WHITESPACE@53..55 "\n\n"
-  FN_DEF@55..239
+  FN@55..239
     FN_KW@55..57 "fn"
     WHITESPACE@57..58 " "
     NAME@58..62
@@ -122,7 +122,7 @@ SOURCE_FILE@0..240
               L_PAREN@102..103 "("
               FOR_TYPE@103..120
                 FOR_KW@103..106 "for"
-                TYPE_PARAM_LIST@106..110
+                GENERIC_PARAM_LIST@106..110
                   L_ANGLE@106..107 "<"
                   LIFETIME_PARAM@107..109
                     LIFETIME@107..109 "\'a"
@@ -242,7 +242,7 @@ SOURCE_FILE@0..240
                           L_PAREN@196..197 "("
                           FOR_TYPE@197..214
                             FOR_KW@197..200 "for"
-                            TYPE_PARAM_LIST@200..204
+                            GENERIC_PARAM_LIST@200..204
                               L_ANGLE@200..201 "<"
                               LIFETIME_PARAM@201..203
                                 LIFETIME@201..203 "\'a"

@@ -7,6 +7,7 @@ pub mod install;
 pub mod release;
 pub mod dist;
 pub mod pre_commit;
+pub mod metrics;
 
 pub mod codegen;
 mod ast_src;
@@ -20,7 +21,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::{
     codegen::Mode,
-    not_bash::{fs2, pushd, pushenv, rm_rf, run},
+    not_bash::{fs2, pushd, pushenv, rm_rf},
 };
 
 pub use anyhow::{bail, Context as _, Result};

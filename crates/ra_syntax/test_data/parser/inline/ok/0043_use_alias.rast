@@ -1,5 +1,5 @@
 SOURCE_FILE@0..198
-  USE_ITEM@0..28
+  USE@0..28
     USE_KW@0..3 "use"
     WHITESPACE@3..4 " "
     USE_TREE@4..27
@@ -13,14 +13,14 @@ SOURCE_FILE@0..198
           NAME_REF@10..14
             IDENT@10..14 "path"
       WHITESPACE@14..15 " "
-      ALIAS@15..27
+      RENAME@15..27
         AS_KW@15..17 "as"
         WHITESPACE@17..18 " "
         NAME@18..27
           IDENT@18..27 "some_name"
     SEMICOLON@27..28 ";"
   WHITESPACE@28..29 "\n"
-  USE_ITEM@29..181
+  USE@29..181
     USE_KW@29..32 "use"
     WHITESPACE@32..33 " "
     USE_TREE@33..180
@@ -43,7 +43,7 @@ SOURCE_FILE@0..198
               NAME_REF@49..53
                 IDENT@49..53 "path"
           WHITESPACE@53..54 " "
-          ALIAS@54..72
+          RENAME@54..72
             AS_KW@54..56 "as"
             WHITESPACE@56..57 " "
             NAME@57..72
@@ -61,7 +61,7 @@ SOURCE_FILE@0..198
               NAME_REF@86..90
                 IDENT@86..90 "path"
           WHITESPACE@90..91 " "
-          ALIAS@91..108
+          RENAME@91..108
             AS_KW@91..93 "as"
             WHITESPACE@93..94 " "
             NAME@94..108
@@ -121,7 +121,7 @@ SOURCE_FILE@0..198
         R_CURLY@179..180 "}"
     SEMICOLON@180..181 ";"
   WHITESPACE@181..182 "\n"
-  USE_ITEM@182..197
+  USE@182..197
     USE_KW@182..185 "use"
     WHITESPACE@185..186 " "
     USE_TREE@186..196
@@ -130,7 +130,7 @@ SOURCE_FILE@0..198
           NAME_REF@186..191
             IDENT@186..191 "Trait"
       WHITESPACE@191..192 " "
-      ALIAS@192..196
+      RENAME@192..196
         AS_KW@192..194 "as"
         WHITESPACE@194..195 " "
         UNDERSCORE@195..196 "_"

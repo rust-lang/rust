@@ -4,7 +4,7 @@ use std::iter;
 
 use ra_syntax::{TextRange, TextSize};
 use rustc_hash::FxHashMap;
-use superslice::Ext;
+use stdx::partition_point;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LineIndex {
@@ -89,7 +89,7 @@ impl LineIndex {
     }
 
     pub fn line_col(&self, offset: TextSize) -> LineCol {
-        let line = self.newlines.upper_bound(&offset) - 1;
+        let line = partition_point(&self.newlines, |&it| it <= offset) - 1;
         let line_start_offset = self.newlines[line];
         let col = offset - line_start_offset;
 
@@ -103,8 +103,8 @@ impl LineIndex {
     }
 
     pub fn lines(&self, range: TextRange) -> impl Iterator<Item = TextRange> + '_ {
-        let lo = self.newlines.lower_bound(&range.start());
-        let hi = self.newlines.upper_bound(&range.end());
+        let lo = partition_point(&self.newlines, |&it| it < range.start());
+        let hi = partition_point(&self.newlines, |&it| it <= range.end());
         let all = iter::once(range.start())
             .chain(self.newlines[lo..hi].iter().copied())
             .chain(iter::once(range.end()));

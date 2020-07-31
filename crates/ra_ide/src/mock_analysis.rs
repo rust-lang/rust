@@ -2,8 +2,10 @@
 use std::sync::Arc;
 
 use ra_cfg::CfgOptions;
-use ra_db::{CrateName, Env, FileSet, SourceRoot, VfsPath};
-use test_utils::{extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER};
+use ra_db::{CrateName, FileSet, SourceRoot, VfsPath};
+use test_utils::{
+    extract_annotations, extract_range_or_offset, Fixture, RangeOrOffset, CURSOR_MARKER,
+};
 
 use crate::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, Edition, FileId, FilePosition, FileRange,
@@ -69,13 +71,27 @@ impl MockAnalysis {
     }
 
     pub fn id_of(&self, path: &str) -> FileId {
-        let (idx, _) = self
-            .files
-            .iter()
-            .enumerate()
-            .find(|(_, data)| path == data.path)
-            .expect("no file in this mock");
-        FileId(idx as u32 + 1)
+        let (file_id, _) =
+            self.files().find(|(_, data)| path == data.path).expect("no file in this mock");
+        file_id
+    }
+    pub fn annotations(&self) -> Vec<(FileRange, String)> {
+        self.files()
+            .flat_map(|(file_id, fixture)| {
+                let annotations = extract_annotations(&fixture.text);
+                annotations
+                    .into_iter()
+                    .map(move |(range, data)| (FileRange { file_id, range }, data))
+            })
+            .collect()
+    }
+    pub fn files(&self) -> impl Iterator<Item = (FileId, &Fixture)> + '_ {
+        self.files.iter().enumerate().map(|(idx, fixture)| (FileId(idx as u32 + 1), fixture))
+    }
+    pub fn annotation(&self) -> (FileRange, String) {
+        let mut all = self.annotations();
+        assert_eq!(all.len(), 1);
+        all.pop().unwrap()
     }
     pub fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();
@@ -94,12 +110,12 @@ impl MockAnalysis {
                 data.edition.and_then(|it| it.parse().ok()).unwrap_or(Edition::Edition2018);
 
             let file_id = FileId(i as u32 + 1);
-            let env = Env::from(data.env.iter());
+            let env = data.env.into_iter().collect();
             if path == "/lib.rs" || path == "/main.rs" {
                 root_crate = Some(crate_graph.add_crate_root(
                     file_id,
                     edition,
-                    Some(CrateName::new("test").unwrap()),
+                    Some("test".to_string()),
                     cfg,
                     env,
                     Default::default(),
@@ -110,7 +126,7 @@ impl MockAnalysis {
                 let other_crate = crate_graph.add_crate_root(
                     file_id,
                     edition,
-                    Some(CrateName::new(crate_name).unwrap()),
+                    Some(crate_name.to_string()),
                     cfg,
                     env,
                     Default::default(),

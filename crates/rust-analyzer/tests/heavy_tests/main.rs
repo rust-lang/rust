@@ -1,3 +1,4 @@
+mod testdir;
 mod support;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
@@ -12,10 +13,12 @@ use lsp_types::{
 };
 use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
-use tempfile::TempDir;
 use test_utils::skip_slow_tests;
 
-use crate::support::{project, Project};
+use crate::{
+    support::{project, Project},
+    testdir::TestDir,
+};
 
 const PROFILE: &str = "";
 // const PROFILE: &'static str = "*@3>100";
@@ -112,21 +115,21 @@ fn main() {}
           },
           {
             "args": {
-              "cargoArgs": ["check", "--package", "foo"],
+              "cargoArgs": ["check", "--package", "foo", "--all-targets"],
               "executableArgs": [],
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
-            "label": "cargo check -p foo"
+            "label": "cargo check -p foo --all-targets"
           },
           {
             "args": {
-              "cargoArgs": ["test", "--package", "foo"],
+              "cargoArgs": ["test", "--package", "foo", "--all-targets"],
               "executableArgs": [],
               "workspaceRoot": server.path().join("foo")
             },
             "kind": "cargo",
-            "label": "cargo test -p foo"
+            "label": "cargo test -p foo --all-targets"
           }
         ]),
     );
@@ -284,6 +287,7 @@ fn main() {}
                 }
               ]
             },
+            "isPreferred": false,
             "kind": "quickfix",
             "title": "Create module"
         }]),
@@ -307,7 +311,7 @@ fn test_missing_module_code_action_in_json_project() {
         return;
     }
 
-    let tmp_dir = TempDir::new().unwrap();
+    let tmp_dir = TestDir::new();
 
     let path = tmp_dir.path();
 
@@ -317,7 +321,7 @@ fn test_missing_module_code_action_in_json_project() {
             "root_module": path.join("src/lib.rs"),
             "deps": [],
             "edition": "2015",
-            "cfg": [ "cfg_atom_1", "feature=cfg_1"],
+            "cfg": [ "cfg_atom_1", "feature=\"cfg_1\""],
         } ]
     });
 
@@ -355,6 +359,7 @@ fn main() {{}}
                 }
               ]
             },
+            "isPreferred": false,
             "kind": "quickfix",
             "title": "Create module"
         }]),
@@ -447,6 +452,7 @@ version = \"0.0.0\"
 ",
     )
     .server();
+    server.wait_until_workspace_is_loaded();
 
     server.request::<OnEnter>(
         TextDocumentPositionParams {

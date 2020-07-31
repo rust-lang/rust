@@ -3,12 +3,12 @@
 mod cargo_workspace;
 mod project_json;
 mod sysroot;
+mod cfg_flag;
 
 use std::{
     fs::{self, read_dir, ReadDir},
     io,
-    path::Path,
-    process::{Command, Output},
+    process::Command,
 };
 
 use anyhow::{bail, Context, Result};
@@ -17,14 +17,17 @@ use ra_cfg::CfgOptions;
 use ra_db::{CrateGraph, CrateId, CrateName, Edition, Env, FileId};
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use crate::cfg_flag::CfgFlag;
+
 pub use crate::{
     cargo_workspace::{CargoConfig, CargoWorkspace, Package, Target, TargetKind},
     project_json::{ProjectJson, ProjectJsonData},
     sysroot::Sysroot,
 };
+
 pub use ra_proc_macro::ProcMacroClient;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ProjectWorkspace {
     /// Project workspace was discovered by running `cargo metadata` and `rustc --print sysroot`.
     Cargo { cargo: CargoWorkspace, sysroot: Sysroot },
@@ -35,30 +38,12 @@ pub enum ProjectWorkspace {
 /// `PackageRoot` describes a package root folder.
 /// Which may be an external dependency, or a member of
 /// the current workspace.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct PackageRoot {
-    /// Path to the root folder
-    path: AbsPathBuf,
     /// Is a member of the current workspace
-    is_member: bool,
-    out_dir: Option<AbsPathBuf>,
-}
-impl PackageRoot {
-    pub fn new_member(path: AbsPathBuf) -> PackageRoot {
-        Self { path, is_member: true, out_dir: None }
-    }
-    pub fn new_non_member(path: AbsPathBuf) -> PackageRoot {
-        Self { path, is_member: false, out_dir: None }
-    }
-    pub fn path(&self) -> &AbsPath {
-        &self.path
-    }
-    pub fn out_dir(&self) -> Option<&AbsPath> {
-        self.out_dir.as_deref()
-    }
-    pub fn is_member(&self) -> bool {
-        self.is_member
-    }
+    pub is_member: bool,
+    pub include: Vec<AbsPathBuf>,
+    pub exclude: Vec<AbsPathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
@@ -150,7 +135,7 @@ impl ProjectManifest {
 impl ProjectWorkspace {
     pub fn load(
         manifest: ProjectManifest,
-        cargo_features: &CargoConfig,
+        cargo_config: &CargoConfig,
         with_sysroot: bool,
     ) -> Result<ProjectWorkspace> {
         let res = match manifest {
@@ -166,7 +151,7 @@ impl ProjectWorkspace {
                 ProjectWorkspace::Json { project }
             }
             ProjectManifest::CargoToml(cargo_toml) => {
-                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_features)
+                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml, cargo_config)
                     .with_context(|| {
                         format!(
                             "Failed to read Cargo metadata from Cargo.toml file {}",
@@ -195,18 +180,40 @@ impl ProjectWorkspace {
     /// the root is a member of the current workspace
     pub fn to_roots(&self) -> Vec<PackageRoot> {
         match self {
-            ProjectWorkspace::Json { project } => {
-                project.roots.iter().map(|r| PackageRoot::new_member(r.path.clone())).collect()
-            }
+            ProjectWorkspace::Json { project } => project
+                .crates
+                .iter()
+                .map(|krate| PackageRoot {
+                    is_member: krate.is_workspace_member,
+                    include: krate.include.clone(),
+                    exclude: krate.exclude.clone(),
+                })
+                .collect::<FxHashSet<_>>()
+                .into_iter()
+                .collect::<Vec<_>>(),
             ProjectWorkspace::Cargo { cargo, sysroot } => cargo
                 .packages()
-                .map(|pkg| PackageRoot {
-                    path: cargo[pkg].root().to_path_buf(),
-                    is_member: cargo[pkg].is_member,
-                    out_dir: cargo[pkg].out_dir.clone(),
+                .map(|pkg| {
+                    let is_member = cargo[pkg].is_member;
+                    let pkg_root = cargo[pkg].root().to_path_buf();
+
+                    let mut include = vec![pkg_root.clone()];
+                    include.extend(cargo[pkg].out_dir.clone());
+
+                    let mut exclude = vec![pkg_root.join(".git")];
+                    if is_member {
+                        exclude.push(pkg_root.join("target"));
+                    } else {
+                        exclude.push(pkg_root.join("tests"));
+                        exclude.push(pkg_root.join("examples"));
+                        exclude.push(pkg_root.join("benches"));
+                    }
+                    PackageRoot { is_member, include, exclude }
                 })
-                .chain(sysroot.crates().map(|krate| {
-                    PackageRoot::new_non_member(sysroot[krate].root_dir().to_path_buf())
+                .chain(sysroot.crates().map(|krate| PackageRoot {
+                    is_member: false,
+                    include: vec![sysroot[krate].root_dir().to_path_buf()],
+                    exclude: Vec::new(),
                 }))
                 .collect(),
         }
@@ -246,6 +253,7 @@ impl ProjectWorkspace {
         let mut crate_graph = CrateGraph::default();
         match self {
             ProjectWorkspace::Json { project } => {
+                let mut cfg_cache: FxHashMap<Option<&str>, Vec<CfgFlag>> = FxHashMap::default();
                 let crates: FxHashMap<_, _> = project
                     .crates
                     .iter()
@@ -254,17 +262,20 @@ impl ProjectWorkspace {
                         let file_path = &krate.root_module;
                         let file_id = load(&file_path)?;
 
-                        let mut env = Env::default();
-                        if let Some(out_dir) = &krate.out_dir {
-                            // NOTE: cargo and rustc seem to hide non-UTF-8 strings from env! and option_env!()
-                            if let Some(out_dir) = out_dir.to_str().map(|s| s.to_owned()) {
-                                env.set("OUT_DIR", out_dir);
-                            }
-                        }
+                        let env = krate.env.clone().into_iter().collect();
                         let proc_macro = krate
                             .proc_macro_dylib_path
                             .clone()
                             .map(|it| proc_macro_client.by_dylib_path(&it));
+
+                        let target = krate.target.as_deref().or(target);
+                        let target_cfgs = cfg_cache
+                            .entry(target)
+                            .or_insert_with(|| get_rustc_cfg_options(target));
+
+                        let mut cfg_options = CfgOptions::default();
+                        cfg_options.extend(target_cfgs.iter().chain(krate.cfg.iter()).cloned());
+
                         // FIXME: No crate name in json definition such that we cannot add OUT_DIR to env
                         Some((
                             CrateId(seq_index as u32),
@@ -273,7 +284,7 @@ impl ProjectWorkspace {
                                 krate.edition,
                                 // FIXME json definitions can store the crate name
                                 None,
-                                krate.cfg.clone(),
+                                cfg_options,
                                 env,
                                 proc_macro.unwrap_or_default(),
                             ),
@@ -288,10 +299,7 @@ impl ProjectWorkspace {
                         if let (Some(&from), Some(&to)) =
                             (crates.get(&from_crate_id), crates.get(&to_crate_id))
                         {
-                            if crate_graph
-                                .add_dep(from, CrateName::new(&dep.name).unwrap(), to)
-                                .is_err()
-                            {
+                            if crate_graph.add_dep(from, dep.name.clone(), to).is_err() {
                                 log::error!(
                                     "cyclic dependency {:?} -> {:?}",
                                     from_crate_id,
@@ -303,7 +311,8 @@ impl ProjectWorkspace {
                 }
             }
             ProjectWorkspace::Cargo { cargo, sysroot } => {
-                let mut cfg_options = get_rustc_cfg_options(target);
+                let mut cfg_options = CfgOptions::default();
+                cfg_options.extend(get_rustc_cfg_options(target));
 
                 let sysroot_crates: FxHashMap<_, _> = sysroot
                     .crates()
@@ -312,13 +321,11 @@ impl ProjectWorkspace {
 
                         let env = Env::default();
                         let proc_macro = vec![];
-                        let crate_name = CrateName::new(&sysroot[krate].name)
-                            .expect("Sysroot crate names should not contain dashes");
-
+                        let name = sysroot[krate].name.clone();
                         let crate_id = crate_graph.add_crate_root(
                             file_id,
                             Edition::Edition2018,
-                            Some(crate_name),
+                            Some(name),
                             cfg_options.clone(),
                             env,
                             proc_macro,
@@ -352,6 +359,7 @@ impl ProjectWorkspace {
 
                 // Add test cfg for non-sysroot crates
                 cfg_options.insert_atom("test".into());
+                cfg_options.insert_atom("debug_assertions".into());
 
                 // Next, create crates for each package, target pair
                 for pkg in cargo.packages() {
@@ -365,15 +373,7 @@ impl ProjectWorkspace {
                                 for feature in cargo[pkg].features.iter() {
                                     opts.insert_key_value("feature".into(), feature.into());
                                 }
-                                for cfg in cargo[pkg].cfgs.iter() {
-                                    match cfg.find('=') {
-                                        Some(split) => opts.insert_key_value(
-                                            cfg[..split].into(),
-                                            cfg[split + 1..].trim_matches('"').into(),
-                                        ),
-                                        None => opts.insert_atom(cfg.into()),
-                                    };
-                                }
+                                opts.extend(cargo[pkg].cfgs.iter().cloned());
                                 opts
                             };
                             let mut env = Env::default();
@@ -392,7 +392,7 @@ impl ProjectWorkspace {
                             let crate_id = crate_graph.add_crate_root(
                                 file_id,
                                 edition,
-                                Some(CrateName::normalize_dashes(&cargo[pkg].name)),
+                                Some(cargo[pkg].name.clone()),
                                 cfg_options,
                                 env,
                                 proc_macro.clone(),
@@ -499,66 +499,37 @@ impl ProjectWorkspace {
         }
         crate_graph
     }
-
-    pub fn workspace_root_for(&self, path: &Path) -> Option<&AbsPath> {
-        match self {
-            ProjectWorkspace::Cargo { cargo, .. } => {
-                Some(cargo.workspace_root()).filter(|root| path.starts_with(root))
-            }
-            ProjectWorkspace::Json { project: ProjectJson { roots, .. }, .. } => roots
-                .iter()
-                .find(|root| path.starts_with(&root.path))
-                .map(|root| root.path.as_path()),
-        }
-    }
 }
 
-fn get_rustc_cfg_options(target: Option<&str>) -> CfgOptions {
-    let mut cfg_options = CfgOptions::default();
+fn get_rustc_cfg_options(target: Option<&str>) -> Vec<CfgFlag> {
+    let mut res = Vec::new();
 
     // Some nightly-only cfgs, which are required for stdlib
-    {
-        cfg_options.insert_atom("target_thread_local".into());
-        for &target_has_atomic in ["8", "16", "32", "64", "cas", "ptr"].iter() {
-            cfg_options.insert_key_value("target_has_atomic".into(), target_has_atomic.into());
-            cfg_options
-                .insert_key_value("target_has_atomic_load_store".into(), target_has_atomic.into());
+    res.push(CfgFlag::Atom("target_thread_local".into()));
+    for &ty in ["8", "16", "32", "64", "cas", "ptr"].iter() {
+        for &key in ["target_has_atomic", "target_has_atomic_load_store"].iter() {
+            res.push(CfgFlag::KeyValue { key: key.to_string(), value: ty.into() });
         }
     }
 
-    let rustc_cfgs = || -> Result<String> {
-        // `cfg(test)` and `cfg(debug_assertion)` are handled outside, so we suppress them here.
+    let rustc_cfgs = {
         let mut cmd = Command::new(ra_toolchain::rustc());
         cmd.args(&["--print", "cfg", "-O"]);
         if let Some(target) = target {
             cmd.args(&["--target", target]);
         }
-        let output = output(cmd)?;
-        Ok(String::from_utf8(output.stdout)?)
-    }();
+        utf8_stdout(cmd)
+    };
 
     match rustc_cfgs {
-        Ok(rustc_cfgs) => {
-            for line in rustc_cfgs.lines() {
-                match line.find('=') {
-                    None => cfg_options.insert_atom(line.into()),
-                    Some(pos) => {
-                        let key = &line[..pos];
-                        let value = line[pos + 1..].trim_matches('"');
-                        cfg_options.insert_key_value(key.into(), value.into());
-                    }
-                }
-            }
-        }
+        Ok(rustc_cfgs) => res.extend(rustc_cfgs.lines().map(|it| it.parse().unwrap())),
         Err(e) => log::error!("failed to get rustc cfgs: {:#}", e),
     }
 
-    cfg_options.insert_atom("debug_assertions".into());
-
-    cfg_options
+    res
 }
 
-fn output(mut cmd: Command) -> Result<Output> {
+fn utf8_stdout(mut cmd: Command) -> Result<String> {
     let output = cmd.output().with_context(|| format!("{:?} failed", cmd))?;
     if !output.status.success() {
         match String::from_utf8(output.stderr) {
@@ -568,5 +539,6 @@ fn output(mut cmd: Command) -> Result<Output> {
             _ => bail!("{:?} failed, {}", cmd, output.status),
         }
     }
-    Ok(output)
+    let stdout = String::from_utf8(output.stdout)?;
+    Ok(stdout)
 }

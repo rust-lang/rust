@@ -2,6 +2,9 @@ mod completion_config;
 mod completion_item;
 mod completion_context;
 mod presentation;
+mod patterns;
+#[cfg(test)]
+mod test_utils;
 
 mod complete_attribute;
 mod complete_dot;
@@ -15,9 +18,6 @@ mod complete_unqualified_path;
 mod complete_postfix;
 mod complete_macro_in_item_position;
 mod complete_trait_impl;
-mod patterns;
-#[cfg(test)]
-mod test_utils;
 
 use ra_ide_db::RootDatabase;
 
@@ -63,11 +63,11 @@ pub use crate::completion::{
 // There also snippet completions:
 //
 // .Expressions
-// - `pd` -> `println!("{:?}")`
-// - `ppd` -> `println!("{:#?}")`
+// - `pd` -> `eprintln!(" = {:?}", );`
+// - `ppd` -> `eprintln!(" = {:#?}", );`
 //
 // .Items
-// - `tfn` -> `#[test] fn f(){}`
+// - `tfn` -> `#[test] fn feature(){}`
 // - `tmod` ->
 // ```rust
 // #[cfg(test)]
@@ -75,7 +75,7 @@ pub use crate::completion::{
 //     use super::*;
 //
 //     #[test]
-//     fn test_fn() {}
+//     fn test_name() {}
 // }
 // ```
 
@@ -137,8 +137,8 @@ mod tests {
         documentation: &'a str,
     }
 
-    fn check_detail_and_documentation(fixture: &str, expected: DetailAndDocumentation) {
-        let (analysis, position) = analysis_and_position(fixture);
+    fn check_detail_and_documentation(ra_fixture: &str, expected: DetailAndDocumentation) {
+        let (analysis, position) = analysis_and_position(ra_fixture);
         let config = CompletionConfig::default();
         let completions = analysis.completions(&config, position).unwrap().unwrap();
         for item in completions {

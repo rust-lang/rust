@@ -1,13 +1,15 @@
-use hir::{Adt, HirDisplay, Semantics, Type};
+use hir::{Adt, Callable, HirDisplay, Semantics, Type};
 use ra_ide_db::RootDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, ArgListOwner, AstNode, TypeAscriptionOwner},
-    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange,
+    ast::{self, ArgListOwner, AstNode},
+    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
 };
-
-use crate::{FileId, FunctionSignature};
 use stdx::to_lower_snake_case;
+
+use crate::FileId;
+use ast::NameOwner;
+use either::Either;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -94,7 +96,7 @@ fn get_chaining_hints(
         return None;
     }
 
-    if matches!(expr, ast::Expr::RecordLit(_)) {
+    if matches!(expr, ast::Expr::RecordExpr(_)) {
         return None;
     }
 
@@ -112,7 +114,7 @@ fn get_chaining_hints(
     // Ignoring extra whitespace and comments
     let next = tokens.next()?.kind();
     let next_next = tokens.next()?.kind();
-    if next == SyntaxKind::WHITESPACE && next_next == SyntaxKind::DOT {
+    if next == SyntaxKind::WHITESPACE && next_next == T![.] {
         let ty = sema.type_of_expr(&expr)?;
         if ty.is_unknown() {
             return None;
@@ -150,19 +152,22 @@ fn get_param_name_hints(
         _ => return None,
     };
 
-    let fn_signature = get_fn_signature(sema, &expr)?;
-    let n_params_to_skip =
-        if fn_signature.has_self_param && matches!(&expr, ast::Expr::MethodCallExpr(_)) {
-            1
-        } else {
-            0
-        };
-    let hints = fn_signature
-        .parameter_names
-        .iter()
-        .skip(n_params_to_skip)
+    let callable = get_callable(sema, &expr)?;
+    let hints = callable
+        .params(sema.db)
+        .into_iter()
         .zip(args)
-        .filter(|(param, arg)| should_show_param_name_hint(sema, &fn_signature, param, &arg))
+        .filter_map(|((param, _ty), arg)| match param? {
+            Either::Left(self_param) => Some((self_param.to_string(), arg)),
+            Either::Right(pat) => {
+                let param_name = match pat {
+                    ast::Pat::BindPat(it) => it.name()?.to_string(),
+                    it => it.to_string(),
+                };
+                Some((param_name, arg))
+            }
+        })
+        .filter(|(param_name, arg)| should_show_param_name_hint(sema, &callable, &param_name, &arg))
         .map(|(param_name, arg)| InlayHint {
             range: arg.syntax().text_range(),
             kind: InlayKind::ParameterHint,
@@ -225,10 +230,10 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
         match_ast! {
             match node {
                 ast::LetStmt(it) => {
-                    return it.ascribed_type().is_some()
+                    return it.ty().is_some()
                 },
                 ast::Param(it) => {
-                    return it.ascribed_type().is_some()
+                    return it.ty().is_some()
                 },
                 ast::MatchArm(_it) => {
                     return pat_is_enum_variant(db, bind_pat, pat_ty);
@@ -250,28 +255,28 @@ fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_
 
 fn should_show_param_name_hint(
     sema: &Semantics<RootDatabase>,
-    fn_signature: &FunctionSignature,
+    callable: &Callable,
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
     let param_name = param_name.trim_start_matches('_');
+    let fn_name = match callable.kind() {
+        hir::CallableKind::Function(it) => Some(it.name(sema.db).to_string()),
+        hir::CallableKind::TupleStruct(_)
+        | hir::CallableKind::TupleEnumVariant(_)
+        | hir::CallableKind::Closure => None,
+    };
     if param_name.is_empty()
-        || Some(param_name) == fn_signature.name.as_ref().map(|s| s.trim_start_matches('_'))
+        || Some(param_name) == fn_name.as_ref().map(|s| s.trim_start_matches('_'))
         || is_argument_similar_to_param_name(sema, argument, param_name)
         || param_name.starts_with("ra_fixture")
     {
         return false;
     }
 
-    let parameters_len = if fn_signature.has_self_param {
-        fn_signature.parameters.len() - 1
-    } else {
-        fn_signature.parameters.len()
-    };
-
     // avoid displaying hints for common functions like map, filter, etc.
     // or other obvious words used in std
-    !(parameters_len == 1 && is_obvious_param(param_name))
+    !(callable.n_params() == 1 && is_obvious_param(param_name))
 }
 
 fn is_argument_similar_to_param_name(
@@ -318,610 +323,264 @@ fn is_obvious_param(param_name: &str) -> bool {
     param_name.len() == 1 || is_obvious_param_name
 }
 
-fn get_fn_signature(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<FunctionSignature> {
+fn get_callable(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<Callable> {
     match expr {
-        ast::Expr::CallExpr(expr) => {
-            // FIXME: Type::as_callable is broken for closures
-            let callable_def = sema.type_of_expr(&expr.expr()?)?.as_callable()?;
-            match callable_def {
-                hir::CallableDef::FunctionId(it) => {
-                    Some(FunctionSignature::from_hir(sema.db, it.into()))
-                }
-                hir::CallableDef::StructId(it) => {
-                    FunctionSignature::from_struct(sema.db, it.into())
-                }
-                hir::CallableDef::EnumVariantId(it) => {
-                    FunctionSignature::from_enum_variant(sema.db, it.into())
-                }
-            }
-        }
-        ast::Expr::MethodCallExpr(expr) => {
-            let fn_def = sema.resolve_method_call(&expr)?;
-            Some(FunctionSignature::from_hir(sema.db, fn_def))
-        }
+        ast::Expr::CallExpr(expr) => sema.type_of_expr(&expr.expr()?)?.as_callable(sema.db),
+        ast::Expr::MethodCallExpr(expr) => sema.resolve_method_call_as_callable(expr),
         _ => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::inlay_hints::InlayHintsConfig;
-    use insta::assert_debug_snapshot;
+    use expect::{expect, Expect};
+    use test_utils::extract_annotations;
 
-    use crate::mock_analysis::single_file;
+    use crate::{inlay_hints::InlayHintsConfig, mock_analysis::single_file};
+
+    fn check(ra_fixture: &str) {
+        check_with_config(InlayHintsConfig::default(), ra_fixture);
+    }
+
+    fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
+        let (analysis, file_id) = single_file(ra_fixture);
+        let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
+        let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
+        let actual =
+            inlay_hints.into_iter().map(|it| (it.range, it.label.to_string())).collect::<Vec<_>>();
+        assert_eq!(expected, actual, "\nExpected:\n{:#?}\n\nActual:\n{:#?}", expected, actual);
+    }
+
+    fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
+        let (analysis, file_id) = single_file(ra_fixture);
+        let inlay_hints = analysis.inlay_hints(file_id, &config).unwrap();
+        expect.assert_debug_eq(&inlay_hints)
+    }
 
     #[test]
     fn param_hints_only() {
-        let (analysis, file_id) = single_file(
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: true,
+                type_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
             r#"
-            fn foo(a: i32, b: i32) -> i32 { a + b }
-            fn main() {
-                let _x = foo(4, 4);
-            }"#,
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    let _x = foo(
+        4,
+      //^ a
+        4,
+      //^ b
+    );
+}"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: true, type_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 69..70,
-                kind: ParameterHint,
-                label: "a",
-            },
-            InlayHint {
-                range: 72..73,
-                kind: ParameterHint,
-                label: "b",
-            },
-        ]
-        "###);
     }
 
     #[test]
     fn hints_disabled() {
-        let (analysis, file_id) = single_file(
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: false,
+                parameter_hints: false,
+                chaining_hints: false,
+                max_length: None,
+            },
             r#"
-            fn foo(a: i32, b: i32) -> i32 { a + b }
-            fn main() {
-                let _x = foo(4, 4);
-            }"#,
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    let _x = foo(4, 4);
+}"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ type_hints: false, parameter_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"[]"###);
     }
 
     #[test]
     fn type_hints_only() {
-        let (analysis, file_id) = single_file(
-            r#"
-            fn foo(a: i32, b: i32) -> i32 { a + b }
-            fn main() {
-                let _x = foo(4, 4);
-            }"#,
-        );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ type_hints: true, parameter_hints: false, chaining_hints: false, max_length: None}).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 60..62,
-                kind: TypeHint,
-                label: "i32",
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                parameter_hints: false,
+                chaining_hints: false,
+                max_length: None,
             },
-        ]
-        "###);
+            r#"
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    let _x = foo(4, 4);
+      //^^ i32
+}"#,
+        );
     }
+
     #[test]
     fn default_generic_types_should_not_be_displayed() {
-        let (analysis, file_id) = single_file(
+        check(
             r#"
-struct Test<K, T = u8> {
-    k: K,
-    t: T,
-}
+struct Test<K, T = u8> { k: K, t: T }
 
 fn main() {
     let zz = Test { t: 23u8, k: 33 };
+      //^^ Test<i32>
     let zz_ref = &zz;
+      //^^^^^^ &Test<i32>
+    let test = || zz;
+      //^^^^ || -> Test<i32>
 }"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 68..70,
-                kind: TypeHint,
-                label: "Test<i32>",
-            },
-            InlayHint {
-                range: 106..112,
-                kind: TypeHint,
-                label: "&Test<i32>",
-            },
-        ]
-        "###
         );
     }
 
     #[test]
     fn let_statement() {
-        let (analysis, file_id) = single_file(
+        check(
             r#"
 #[derive(PartialEq)]
-enum CustomOption<T> {
-    None,
-    Some(T),
-}
+enum Option<T> { None, Some(T) }
 
 #[derive(PartialEq)]
-struct Test {
-    a: CustomOption<u32>,
-    b: u8,
-}
+struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
     struct InnerStruct {}
 
     let test = 54;
+      //^^^^ i32
     let test: i32 = 33;
     let mut test = 33;
+      //^^^^^^^^ i32
     let _ = 22;
     let test = "test";
+      //^^^^ &str
     let test = InnerStruct {};
 
-    let test = vec![222];
-    let test: Vec<_> = (0..3).collect();
-    let test = (0..3).collect::<Vec<i128>>();
-    let test = (0..3).collect::<Vec<_>>();
-
-    let mut test = Vec::new();
-    test.push(333);
+    let test = unresolved();
 
     let test = (42, 'a');
-    let (a, (b, c, (d, e), f)) = (2, (3, 4, (6.6, 7.7), 5));
+      //^^^^ (i32, char)
+    let (a,    (b,     (c,)) = (2, (3, (9.2,));
+       //^ i32  ^ i32   ^ f64
     let &x = &92;
+       //^ i32
 }"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 192..196,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 235..243,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 274..278,
-                kind: TypeHint,
-                label: "&str",
-            },
-            InlayHint {
-                range: 538..542,
-                kind: TypeHint,
-                label: "(i32, char)",
-            },
-            InlayHint {
-                range: 565..566,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 569..570,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 572..573,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 576..577,
-                kind: TypeHint,
-                label: "f64",
-            },
-            InlayHint {
-                range: 579..580,
-                kind: TypeHint,
-                label: "f64",
-            },
-            InlayHint {
-                range: 583..584,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 626..627,
-                kind: TypeHint,
-                label: "i32",
-            },
-        ]
-        "###
         );
     }
 
     #[test]
     fn closure_parameters() {
-        let (analysis, file_id) = single_file(
+        check(
             r#"
 fn main() {
     let mut start = 0;
-    (0..2).for_each(|increment| {
-        start += increment;
-    });
+      //^^^^^^^^^ i32
+    (0..2).for_each(|increment| { start += increment; });
+                   //^^^^^^^^^ i32
 
-    let multiply = |a, b, c, d| a * b * c * d;
-    let _: i32 = multiply(1, 2, 3, 4);
+    let multiply =
+      //^^^^^^^^ |…| -> i32
+      | a,     b| a * b
+      //^ i32  ^ i32
+    ;
+
+    let _: i32 = multiply(1, 2);
     let multiply_ref = &multiply;
+      //^^^^^^^^^^^^ &|…| -> i32
 
     let return_42 = || 42;
+      //^^^^^^^^^ || -> i32
 }"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 20..29,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 56..65,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 114..122,
-                kind: TypeHint,
-                label: "|…| -> i32",
-            },
-            InlayHint {
-                range: 126..127,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 129..130,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 132..133,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 135..136,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 200..212,
-                kind: TypeHint,
-                label: "&|…| -> i32",
-            },
-            InlayHint {
-                range: 235..244,
-                kind: TypeHint,
-                label: "|| -> i32",
-            },
-        ]
-        "###
         );
     }
 
     #[test]
     fn for_expression() {
-        let (analysis, file_id) = single_file(
+        check(
             r#"
 fn main() {
     let mut start = 0;
-    for increment in 0..2 {
-        start += increment;
-    }
+      //^^^^^^^^^ i32
+    for increment in 0..2 { start += increment; }
+      //^^^^^^^^^ i32
 }"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 20..29,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 43..52,
-                kind: TypeHint,
-                label: "i32",
-            },
-        ]
-        "###
         );
     }
 
     #[test]
     fn if_expr() {
-        let (analysis, file_id) = single_file(
+        check(
             r#"
-#[derive(PartialEq)]
-enum CustomOption<T> {
-    None,
-    Some(T),
-}
+enum Option<T> { None, Some(T) }
+use Option::*;
 
-#[derive(PartialEq)]
-struct Test {
-    a: CustomOption<u32>,
-    b: u8,
-}
-
-use CustomOption::*;
+struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
     let test = Some(Test { a: Some(3), b: 1 });
+      //^^^^ Option<Test>
     if let None = &test {};
     if let test = &test {};
+         //^^^^ &Option<Test>
     if let Some(test) = &test {};
-    if let Some(Test { a, b }) = &test {};
-    if let Some(Test { a: x, b: y }) = &test {};
-    if let Some(Test { a: Some(x), b: y }) = &test {};
-    if let Some(Test { a: None, b: y }) = &test {};
+              //^^^^ &Test
+    if let Some(Test { a,             b }) = &test {};
+                     //^ &Option<u32> ^ &u8
+    if let Some(Test { a: x,             b: y }) = &test {};
+                        //^ &Option<u32>    ^ &u8
+    if let Some(Test { a: Some(x),  b: y }) = &test {};
+                             //^ &u32  ^ &u8
+    if let Some(Test { a: None,  b: y }) = &test {};
+                                  //^ &u8
     if let Some(Test { b: y, .. }) = &test {};
-
+                        //^ &u8
     if test == None {}
 }"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 187..191,
-                kind: TypeHint,
-                label: "CustomOption<Test>",
-            },
-            InlayHint {
-                range: 266..270,
-                kind: TypeHint,
-                label: "&CustomOption<Test>",
-            },
-            InlayHint {
-                range: 299..303,
-                kind: TypeHint,
-                label: "&Test",
-            },
-            InlayHint {
-                range: 340..341,
-                kind: TypeHint,
-                label: "&CustomOption<u32>",
-            },
-            InlayHint {
-                range: 343..344,
-                kind: TypeHint,
-                label: "&u8",
-            },
-            InlayHint {
-                range: 386..387,
-                kind: TypeHint,
-                label: "&CustomOption<u32>",
-            },
-            InlayHint {
-                range: 392..393,
-                kind: TypeHint,
-                label: "&u8",
-            },
-            InlayHint {
-                range: 440..441,
-                kind: TypeHint,
-                label: "&u32",
-            },
-            InlayHint {
-                range: 447..448,
-                kind: TypeHint,
-                label: "&u8",
-            },
-            InlayHint {
-                range: 499..500,
-                kind: TypeHint,
-                label: "&u8",
-            },
-            InlayHint {
-                range: 542..543,
-                kind: TypeHint,
-                label: "&u8",
-            },
-        ]
-        "###
         );
     }
 
     #[test]
     fn while_expr() {
-        let (analysis, file_id) = single_file(
+        check(
             r#"
-#[derive(PartialEq)]
-enum CustomOption<T> {
-    None,
-    Some(T),
-}
+enum Option<T> { None, Some(T) }
+use Option::*;
 
-#[derive(PartialEq)]
-struct Test {
-    a: CustomOption<u32>,
-    b: u8,
-}
-
-use CustomOption::*;
+struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
     let test = Some(Test { a: Some(3), b: 1 });
-    while let None = &test {};
-    while let test = &test {};
-    while let Some(test) = &test {};
-    while let Some(Test { a, b }) = &test {};
-    while let Some(Test { a: x, b: y }) = &test {};
-    while let Some(Test { a: Some(x), b: y }) = &test {};
-    while let Some(Test { a: None, b: y }) = &test {};
-    while let Some(Test { b: y, .. }) = &test {};
-
-    while test == None {}
+      //^^^^ Option<Test>
+    while let Some(Test { a: Some(x),  b: y }) = &test {};
+                                //^ &u32  ^ &u8
 }"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 187..191,
-                kind: TypeHint,
-                label: "CustomOption<Test>",
-            },
-            InlayHint {
-                range: 272..276,
-                kind: TypeHint,
-                label: "&CustomOption<Test>",
-            },
-            InlayHint {
-                range: 308..312,
-                kind: TypeHint,
-                label: "&Test",
-            },
-            InlayHint {
-                range: 352..353,
-                kind: TypeHint,
-                label: "&CustomOption<u32>",
-            },
-            InlayHint {
-                range: 355..356,
-                kind: TypeHint,
-                label: "&u8",
-            },
-            InlayHint {
-                range: 401..402,
-                kind: TypeHint,
-                label: "&CustomOption<u32>",
-            },
-            InlayHint {
-                range: 407..408,
-                kind: TypeHint,
-                label: "&u8",
-            },
-            InlayHint {
-                range: 458..459,
-                kind: TypeHint,
-                label: "&u32",
-            },
-            InlayHint {
-                range: 465..466,
-                kind: TypeHint,
-                label: "&u8",
-            },
-            InlayHint {
-                range: 520..521,
-                kind: TypeHint,
-                label: "&u8",
-            },
-            InlayHint {
-                range: 566..567,
-                kind: TypeHint,
-                label: "&u8",
-            },
-        ]
-        "###
         );
     }
 
     #[test]
     fn match_arm_list() {
-        let (analysis, file_id) = single_file(
+        check(
             r#"
-#[derive(PartialEq)]
-enum CustomOption<T> {
-    None,
-    Some(T),
-}
+enum Option<T> { None, Some(T) }
+use Option::*;
 
-#[derive(PartialEq)]
-struct Test {
-    a: CustomOption<u32>,
-    b: u8,
-}
-
-use CustomOption::*;
+struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
     match Some(Test { a: Some(3), b: 1 }) {
         None => (),
         test => (),
-        Some(test) => (),
-        Some(Test { a, b }) => (),
-        Some(Test { a: x, b: y }) => (),
+      //^^^^ Option<Test>
         Some(Test { a: Some(x), b: y }) => (),
-        Some(Test { a: None, b: y }) => (),
-        Some(Test { b: y, .. }) => (),
+                          //^ u32  ^ u8
         _ => {}
     }
 }"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 251..255,
-                kind: TypeHint,
-                label: "CustomOption<Test>",
-            },
-            InlayHint {
-                range: 276..280,
-                kind: TypeHint,
-                label: "Test",
-            },
-            InlayHint {
-                range: 309..310,
-                kind: TypeHint,
-                label: "CustomOption<u32>",
-            },
-            InlayHint {
-                range: 312..313,
-                kind: TypeHint,
-                label: "u8",
-            },
-            InlayHint {
-                range: 347..348,
-                kind: TypeHint,
-                label: "CustomOption<u32>",
-            },
-            InlayHint {
-                range: 353..354,
-                kind: TypeHint,
-                label: "u8",
-            },
-            InlayHint {
-                range: 393..394,
-                kind: TypeHint,
-                label: "u32",
-            },
-            InlayHint {
-                range: 400..401,
-                kind: TypeHint,
-                label: "u8",
-            },
-            InlayHint {
-                range: 444..445,
-                kind: TypeHint,
-                label: "u8",
-            },
-            InlayHint {
-                range: 479..480,
-                kind: TypeHint,
-                label: "u8",
-            },
-        ]
-        "###
         );
     }
 
     #[test]
     fn hint_truncation() {
-        let (analysis, file_id) = single_file(
+        check_with_config(
+            InlayHintsConfig { max_length: Some(8), ..Default::default() },
             r#"
 struct Smol<T>(T);
 
@@ -929,51 +588,24 @@ struct VeryLongOuterName<T>(T);
 
 fn main() {
     let a = Smol(0u32);
+      //^ Smol<u32>
     let b = VeryLongOuterName(0usize);
+      //^ VeryLongOuterName<…>
     let c = Smol(Smol(0u32))
+      //^ Smol<Smol<…>>
 }"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 73..74,
-                kind: TypeHint,
-                label: "Smol<u32>",
-            },
-            InlayHint {
-                range: 97..98,
-                kind: TypeHint,
-                label: "VeryLongOuterName<…>",
-            },
-            InlayHint {
-                range: 136..137,
-                kind: TypeHint,
-                label: "Smol<Smol<…>>",
-            },
-        ]
-        "###
         );
     }
 
     #[test]
     fn function_call_parameter_hint() {
-        let (analysis, file_id) = single_file(
+        check(
             r#"
-enum CustomOption<T> {
-    None,
-    Some(T),
-}
-use CustomOption::*;
+enum Option<T> { None, Some(T) }
+use Option::*;
 
 struct FileId {}
 struct SmolStr {}
-
-impl From<&str> for SmolStr {
-    fn from(_: &str) -> Self {
-        unimplemented!()
-    }
-}
 
 struct TextRange {}
 struct SyntaxKind {}
@@ -982,18 +614,15 @@ struct NavigationTarget {}
 struct Test {}
 
 impl Test {
-    fn method(&self, mut param: i32) -> i32 {
-        param * 2
-    }
+    fn method(&self, mut param: i32) -> i32 { param * 2 }
 
     fn from_syntax(
         file_id: FileId,
         name: SmolStr,
-        focus_range: CustomOption<TextRange>,
+        focus_range: Option<TextRange>,
         full_range: TextRange,
         kind: SyntaxKind,
-        docs: CustomOption<String>,
-        description: CustomOption<String>,
+        docs: Option<String>,
     ) -> NavigationTarget {
         NavigationTarget {}
     }
@@ -1005,108 +634,36 @@ fn test_func(mut foo: i32, bar: i32, msg: &str, _: i32, last: i32) -> i32 {
 
 fn main() {
     let not_literal = 1;
-    let _: i32 = test_func(1, 2, "hello", 3, not_literal);
+      //^^^^^^^^^^^ i32
+    let _: i32 = test_func(1,    2,      "hello", 3,  not_literal);
+                         //^ foo ^ bar   ^^^^^^^ msg  ^^^^^^^^^^^ last
     let t: Test = Test {};
     t.method(123);
-    Test::method(&t, 3456);
-
+           //^^^ param
+    Test::method(&t,      3456);
+               //^^ &self ^^^^ param
     Test::from_syntax(
         FileId {},
+      //^^^^^^^^^ file_id
         "impl".into(),
+      //^^^^^^^^^^^^^ name
         None,
+      //^^^^ focus_range
         TextRange {},
+      //^^^^^^^^^^^^ full_range
         SyntaxKind {},
+      //^^^^^^^^^^^^^ kind
         None,
-        None,
+      //^^^^ docs
     );
 }"#,
-        );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig::default()).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 797..808,
-                kind: TypeHint,
-                label: "i32",
-            },
-            InlayHint {
-                range: 841..842,
-                kind: ParameterHint,
-                label: "foo",
-            },
-            InlayHint {
-                range: 844..845,
-                kind: ParameterHint,
-                label: "bar",
-            },
-            InlayHint {
-                range: 847..854,
-                kind: ParameterHint,
-                label: "msg",
-            },
-            InlayHint {
-                range: 859..870,
-                kind: ParameterHint,
-                label: "last",
-            },
-            InlayHint {
-                range: 913..916,
-                kind: ParameterHint,
-                label: "param",
-            },
-            InlayHint {
-                range: 936..938,
-                kind: ParameterHint,
-                label: "&self",
-            },
-            InlayHint {
-                range: 940..944,
-                kind: ParameterHint,
-                label: "param",
-            },
-            InlayHint {
-                range: 979..988,
-                kind: ParameterHint,
-                label: "file_id",
-            },
-            InlayHint {
-                range: 998..1011,
-                kind: ParameterHint,
-                label: "name",
-            },
-            InlayHint {
-                range: 1021..1025,
-                kind: ParameterHint,
-                label: "focus_range",
-            },
-            InlayHint {
-                range: 1035..1047,
-                kind: ParameterHint,
-                label: "full_range",
-            },
-            InlayHint {
-                range: 1057..1070,
-                kind: ParameterHint,
-                label: "kind",
-            },
-            InlayHint {
-                range: 1080..1084,
-                kind: ParameterHint,
-                label: "docs",
-            },
-            InlayHint {
-                range: 1094..1098,
-                kind: ParameterHint,
-                label: "description",
-            },
-        ]
-        "###
         );
     }
 
     #[test]
     fn omitted_parameters_hints_heuristics() {
-        let (analysis, file_id) = single_file(
+        check_with_config(
+            InlayHintsConfig { max_length: Some(8), ..Default::default() },
             r#"
 fn map(f: i32) {}
 fn filter(predicate: i32) {}
@@ -1188,22 +745,15 @@ fn main() {
     let _: f64 = a.abs_sub(b);
 }"#,
         );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
-        []
-        "###
-        );
     }
 
     #[test]
     fn unit_structs_have_no_type_hints() {
-        let (analysis, file_id) = single_file(
+        check_with_config(
+            InlayHintsConfig { max_length: Some(8), ..Default::default() },
             r#"
-enum CustomResult<T, E> {
-    Ok(T),
-    Err(E),
-}
-use CustomResult::*;
+enum Result<T, E> { Ok(T), Err(E) }
+use Result::*;
 
 struct SyntheticSyntax;
 
@@ -1214,135 +764,155 @@ fn main() {
     }
 }"#,
         );
-
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig { max_length: Some(8), ..Default::default() }).unwrap(), @r###"
-        []
-        "###
-        );
     }
 
     #[test]
     fn chaining_hints_ignore_comments() {
-        let (analysis, file_id) = single_file(
+        check_expect(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
             r#"
-            struct A(B);
-            impl A { fn into_b(self) -> B { self.0 } }
-            struct B(C);
-            impl B { fn into_c(self) -> C { self.0 } }
-            struct C;
+struct A(B);
+impl A { fn into_b(self) -> B { self.0 } }
+struct B(C);
+impl B { fn into_c(self) -> C { self.0 } }
+struct C;
 
-            fn main() {
-                let c = A(B(C))
-                    .into_b() // This is a comment
-                    .into_c();
-            }"#,
+fn main() {
+    let c = A(B(C))
+        .into_b() // This is a comment
+        .into_c();
+}
+"#,
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 147..172,
+                        kind: ChainingHint,
+                        label: "B",
+                    },
+                    InlayHint {
+                        range: 147..154,
+                        kind: ChainingHint,
+                        label: "A",
+                    },
+                ]
+            "#]],
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 147..172,
-                kind: ChainingHint,
-                label: "B",
-            },
-            InlayHint {
-                range: 147..154,
-                kind: ChainingHint,
-                label: "A",
-            },
-        ]
-        "###);
     }
 
     #[test]
     fn chaining_hints_without_newlines() {
-        let (analysis, file_id) = single_file(
+        check_with_config(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
             r#"
-            struct A(B);
-            impl A { fn into_b(self) -> B { self.0 } }
-            struct B(C);
-            impl B { fn into_c(self) -> C { self.0 } }
-            struct C;
+struct A(B);
+impl A { fn into_b(self) -> B { self.0 } }
+struct B(C);
+impl B { fn into_c(self) -> C { self.0 } }
+struct C;
 
-            fn main() {
-                let c = A(B(C)).into_b().into_c();
-            }"#,
+fn main() {
+    let c = A(B(C)).into_b().into_c();
+}"#,
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"[]"###);
     }
 
     #[test]
     fn struct_access_chaining_hints() {
-        let (analysis, file_id) = single_file(
+        check_expect(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
             r#"
-            struct A { pub b: B }
-            struct B { pub c: C }
-            struct C(pub bool);
-            struct D;
+struct A { pub b: B }
+struct B { pub c: C }
+struct C(pub bool);
+struct D;
 
-            impl D {
-                fn foo(&self) -> i32 { 42 }
-            }
+impl D {
+    fn foo(&self) -> i32 { 42 }
+}
 
-            fn main() {
-                let x = A { b: B { c: C(true) } }
-                    .b
-                    .c
-                    .0;
-                let x = D
-                    .foo();
-            }"#,
+fn main() {
+    let x = A { b: B { c: C(true) } }
+        .b
+        .c
+        .0;
+    let x = D
+        .foo();
+}"#,
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 143..190,
+                        kind: ChainingHint,
+                        label: "C",
+                    },
+                    InlayHint {
+                        range: 143..179,
+                        kind: ChainingHint,
+                        label: "B",
+                    },
+                ]
+            "#]],
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 143..190,
-                kind: ChainingHint,
-                label: "C",
-            },
-            InlayHint {
-                range: 143..179,
-                kind: ChainingHint,
-                label: "B",
-            },
-        ]
-        "###);
     }
 
     #[test]
     fn generic_chaining_hints() {
-        let (analysis, file_id) = single_file(
+        check_expect(
+            InlayHintsConfig {
+                parameter_hints: false,
+                type_hints: false,
+                chaining_hints: true,
+                max_length: None,
+            },
             r#"
-            struct A<T>(T);
-            struct B<T>(T);
-            struct C<T>(T);
-            struct X<T,R>(T, R);
+struct A<T>(T);
+struct B<T>(T);
+struct C<T>(T);
+struct X<T,R>(T, R);
 
-            impl<T> A<T> {
-                fn new(t: T) -> Self { A(t) }
-                fn into_b(self) -> B<T> { B(self.0) }
-            }
-            impl<T> B<T> {
-                fn into_c(self) -> C<T> { C(self.0) }
-            }
-            fn main() {
-                let c = A::new(X(42, true))
-                    .into_b()
-                    .into_c();
-            }"#,
+impl<T> A<T> {
+    fn new(t: T) -> Self { A(t) }
+    fn into_b(self) -> B<T> { B(self.0) }
+}
+impl<T> B<T> {
+    fn into_c(self) -> C<T> { C(self.0) }
+}
+fn main() {
+    let c = A::new(X(42, true))
+        .into_b()
+        .into_c();
+}
+"#,
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 246..283,
+                        kind: ChainingHint,
+                        label: "B<X<i32, bool>>",
+                    },
+                    InlayHint {
+                        range: 246..265,
+                        kind: ChainingHint,
+                        label: "A<X<i32, bool>>",
+                    },
+                ]
+            "#]],
         );
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, &InlayHintsConfig{ parameter_hints: false, type_hints: false, chaining_hints: true, max_length: None}).unwrap(), @r###"
-        [
-            InlayHint {
-                range: 246..283,
-                kind: ChainingHint,
-                label: "B<X<i32, bool>>",
-            },
-            InlayHint {
-                range: 246..265,
-                kind: ChainingHint,
-                label: "A<X<i32, bool>>",
-            },
-        ]
-        "###);
     }
 }

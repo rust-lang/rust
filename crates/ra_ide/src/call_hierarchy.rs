@@ -39,10 +39,11 @@ pub(crate) fn call_hierarchy(
 
 pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Option<Vec<CallItem>> {
     let sema = Semantics::new(db);
+
     // 1. Find all refs
     // 2. Loop through refs and determine unique fndef. This will become our `from: CallHierarchyItem,` in the reply.
     // 3. Add ranges relative to the start of the fndef.
-    let refs = references::find_all_refs(db, position, None)?;
+    let refs = references::find_all_refs(&sema, position, None)?;
 
     let mut calls = CallLocations::default();
 
@@ -58,7 +59,7 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
         if let Some(nav) = syntax.ancestors().find_map(|node| {
             match_ast! {
                 match node {
-                    ast::FnDef(it) => {
+                    ast::Fn(it) => {
                         let def = sema.to_def(&it)?;
                         Some(def.to_nav(sema.db))
                     },
@@ -94,9 +95,9 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
             if let Some(func_target) = match &call_node {
                 FnCallNode::CallExpr(expr) => {
                     //FIXME: Type::as_callable is broken
-                    let callable_def = sema.type_of_expr(&expr.expr()?)?.as_callable()?;
-                    match callable_def {
-                        hir::CallableDef::FunctionId(it) => {
+                    let callable = sema.type_of_expr(&expr.expr()?)?.as_callable(db)?;
+                    match callable.kind() {
+                        hir::CallableKind::Function(it) => {
                             let fn_def: hir::Function = it.into();
                             let nav = fn_def.to_nav(db);
                             Some(nav)
@@ -107,10 +108,6 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
                 FnCallNode::MethodCallExpr(expr) => {
                     let function = sema.resolve_method_call(&expr)?;
                     Some(function.to_nav(db))
-                }
-                FnCallNode::MacroCallExpr(macro_call) => {
-                    let macro_def = sema.resolve_macro_call(&macro_call)?;
-                    Some(macro_def.to_nav(db))
                 }
             } {
                 Some((func_target, name_ref.syntax().text_range()))
@@ -157,7 +154,8 @@ mod tests {
         let nav = navs.pop().unwrap();
         nav.assert_match(expected);
 
-        let item_pos = FilePosition { file_id: nav.file_id(), offset: nav.range().start() };
+        let item_pos =
+            FilePosition { file_id: nav.file_id, offset: nav.focus_or_full_range().start() };
         let incoming_calls = analysis.incoming_calls(item_pos).unwrap().unwrap();
         assert_eq!(incoming_calls.len(), expected_incoming.len());
 
@@ -183,8 +181,8 @@ fn caller() {
     call<|>ee();
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
-            &["caller FN_DEF FileId(1) 15..44 18..24 : [33..39]"],
+            "callee FN FileId(1) 0..14 3..9",
+            &["caller FN FileId(1) 15..44 18..24 : [33..39]"],
             &[],
         );
     }
@@ -199,8 +197,8 @@ fn caller() {
     callee();
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
-            &["caller FN_DEF FileId(1) 15..44 18..24 : [33..39]"],
+            "callee FN FileId(1) 0..14 3..9",
+            &["caller FN FileId(1) 15..44 18..24 : [33..39]"],
             &[],
         );
     }
@@ -216,8 +214,8 @@ fn caller() {
     callee();
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
-            &["caller FN_DEF FileId(1) 15..58 18..24 : [33..39, 47..53]"],
+            "callee FN FileId(1) 0..14 3..9",
+            &["caller FN FileId(1) 15..58 18..24 : [33..39, 47..53]"],
             &[],
         );
     }
@@ -236,10 +234,10 @@ fn caller2() {
     callee();
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
+            "callee FN FileId(1) 0..14 3..9",
             &[
-                "caller1 FN_DEF FileId(1) 15..45 18..25 : [34..40]",
-                "caller2 FN_DEF FileId(1) 47..77 50..57 : [66..72]",
+                "caller1 FN FileId(1) 15..45 18..25 : [34..40]",
+                "caller2 FN FileId(1) 47..77 50..57 : [66..72]",
             ],
             &[],
         );
@@ -265,10 +263,10 @@ mod tests {
     }
 }
 "#,
-            "callee FN_DEF FileId(1) 0..14 3..9",
+            "callee FN FileId(1) 0..14 3..9",
             &[
-                "caller1 FN_DEF FileId(1) 15..45 18..25 : [34..40]",
-                "test_caller FN_DEF FileId(1) 95..149 110..121 : [134..140]",
+                "caller1 FN FileId(1) 15..45 18..25 : [34..40]",
+                "test_caller FN FileId(1) 95..149 110..121 : [134..140]",
             ],
             &[],
         );
@@ -289,8 +287,8 @@ fn caller() {
 //- /foo/mod.rs
 pub fn callee() {}
 "#,
-            "callee FN_DEF FileId(2) 0..18 7..13",
-            &["caller FN_DEF FileId(1) 27..56 30..36 : [45..51]"],
+            "callee FN FileId(2) 0..18 7..13",
+            &["caller FN FileId(1) 27..56 30..36 : [45..51]"],
             &[],
         );
     }
@@ -306,9 +304,9 @@ fn call<|>er() {
     callee();
 }
 "#,
-            "caller FN_DEF FileId(1) 15..58 18..24",
+            "caller FN FileId(1) 15..58 18..24",
             &[],
-            &["callee FN_DEF FileId(1) 0..14 3..9 : [33..39, 47..53]"],
+            &["callee FN FileId(1) 0..14 3..9 : [33..39, 47..53]"],
         );
     }
 
@@ -327,9 +325,9 @@ fn call<|>er() {
 //- /foo/mod.rs
 pub fn callee() {}
 "#,
-            "caller FN_DEF FileId(1) 27..56 30..36",
+            "caller FN FileId(1) 27..56 30..36",
             &[],
-            &["callee FN_DEF FileId(2) 0..18 7..13 : [45..51]"],
+            &["callee FN FileId(2) 0..18 7..13 : [45..51]"],
         );
     }
 
@@ -350,9 +348,46 @@ fn caller3() {
 
 }
 "#,
-            "caller2 FN_DEF FileId(1) 33..64 36..43",
-            &["caller1 FN_DEF FileId(1) 0..31 3..10 : [19..26]"],
-            &["caller3 FN_DEF FileId(1) 66..83 69..76 : [52..59]"],
+            "caller2 FN FileId(1) 33..64 36..43",
+            &["caller1 FN FileId(1) 0..31 3..10 : [19..26]"],
+            &["caller3 FN FileId(1) 66..83 69..76 : [52..59]"],
+        );
+    }
+
+    #[test]
+    fn test_call_hierarchy_issue_5103() {
+        check_hierarchy(
+            r#"
+fn a() {
+    b()
+}
+
+fn b() {}
+
+fn main() {
+    a<|>()
+}
+"#,
+            "a FN FileId(1) 0..18 3..4",
+            &["main FN FileId(1) 31..52 34..38 : [47..48]"],
+            &["b FN FileId(1) 20..29 23..24 : [13..14]"],
+        );
+
+        check_hierarchy(
+            r#"
+fn a() {
+    b<|>()
+}
+
+fn b() {}
+
+fn main() {
+    a()
+}
+"#,
+            "b FN FileId(1) 20..29 23..24",
+            &["a FN FileId(1) 0..18 3..4 : [13..14]"],
+            &[],
         );
     }
 }

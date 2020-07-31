@@ -1,5 +1,5 @@
 SOURCE_FILE@0..26
-  FN_DEF@0..25
+  FN@0..25
     COMMENT@0..11 "/// Example"
     WHITESPACE@11..13 "\n\n"
     FN_KW@13..15 "fn"
