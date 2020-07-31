@@ -194,6 +194,17 @@ Visibility =
 Attr =
   '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
 
+Stmt =
+  LetStmt
+| ExprStmt
+
+LetStmt =
+  Attr* 'let' Pat (':' Type)?
+  '=' initializer:Expr ';'
+
+ExprStmt =
+  Attr* Expr ';'?
+
 Type =
   ParenType
 | TupleType
@@ -456,13 +467,6 @@ MacroStmts =
   statements:Stmt*
   Expr?
 
-ExprStmt =
-  Attr* Expr ';'
-
-LetStmt =
-  Attr* 'let' Pat (':' Type)
-  '=' initializer:Expr ';'
-
 Path =
   (qualifier:Path '::')? segment:PathSegment
 
@@ -489,10 +493,6 @@ LifetimeArg =
 
 ConstArg =
   Literal | BlockExpr BlockExpr
-
-Stmt =
-  LetStmt
-| ExprStmt
 
 Pat =
   OrPat
