@@ -16,11 +16,7 @@ note: ...which requires const-evaluating `C`...
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires const-evaluating `C`, completing the cycle
-note: cycle used when const-evaluating + checking `C`
-  --> $DIR/write-to-static-mut-in-static.rs:5:1
-   |
-LL | pub static mut C: u32 = unsafe { C = 1; 0 };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: cycle used when running analysis passes on this crate
 
 error: aborting due to 2 previous errors
 

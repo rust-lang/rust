@@ -914,13 +914,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             self.param_env
         };
-        // We use `const_eval_raw` here, and get an unvalidated result.  That is okay:
-        // Our result will later be validated anyway, and there seems no good reason
-        // to have to fail early here.  This is also more consistent with
-        // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
-        // FIXME: We can hit delay_span_bug if this is an invalid const, interning finds
-        // that problem, but we never run validation to show an error. Can we ensure
-        // this does not happen?
         let val = self.tcx.const_eval_raw(param_env.and(gid))?;
         self.raw_const_to_mplace(val)
     }

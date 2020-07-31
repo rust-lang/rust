@@ -182,7 +182,7 @@ pub(super) fn op_to_const<'tcx>(
     }
 }
 
-fn validate_and_turn_into_const<'tcx>(
+fn turn_into_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
@@ -191,30 +191,21 @@ fn validate_and_turn_into_const<'tcx>(
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
     let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env, is_static);
-    let val = (|| {
-        let mplace = ecx.raw_const_to_mplace(constant)?;
-        // Turn this into a proper constant.
-        // Statics/promoteds are always `ByRef`, for the rest `op_to_const` decides
-        // whether they become immediates.
-        if is_static || cid.promoted.is_some() {
-            let ptr = mplace.ptr.assert_ptr();
-            Ok(ConstValue::ByRef {
-                alloc: ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(),
-                offset: ptr.offset,
-            })
-        } else {
-            Ok(op_to_const(&ecx, mplace.into()))
-        }
-    })();
 
-    // FIXME: Can this ever be an error and not be a compiler bug or can we just ICE here?
-    val.map_err(|error| {
+    let mplace = ecx.raw_const_to_mplace(constant).map_err(|error| {
+        // FIXME: Can the above ever error and not be a compiler bug or can we just ICE here?
         let err = ConstEvalErr::new(&ecx, error, None);
         err.struct_error(ecx.tcx, "it is undefined behavior to use this value", |mut diag| {
             diag.note(note_on_undefined_behavior_error());
             diag.emit();
         })
-    })
+    })?;
+    assert!(
+        !is_static || cid.promoted.is_some(),
+        "the const eval query should not be used for statics, use `const_eval_raw` instead"
+    );
+    // Turn this into a proper constant.
+    Ok(op_to_const(&ecx, mplace.into()))
 }
 
 pub fn const_eval_validated_provider<'tcx>(
@@ -248,7 +239,7 @@ pub fn const_eval_validated_provider<'tcx>(
         });
     }
 
-    tcx.const_eval_raw(key).and_then(|val| validate_and_turn_into_const(tcx, val, key))
+    tcx.const_eval_raw(key).and_then(|val| turn_into_const(tcx, val, key))
 }
 
 pub fn const_eval_raw_provider<'tcx>(

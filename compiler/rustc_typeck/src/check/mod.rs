@@ -111,7 +111,6 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_infer::infer::{InferCtxt, InferOk, InferResult, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::hir::map::blocks::FnLikeNode;
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
@@ -2070,8 +2069,8 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
     // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
-    match tcx.const_eval_poly(id.to_def_id()) {
-        Ok(ConstValue::ByRef { alloc, .. }) => {
+    match tcx.eval_static_initializer(id.to_def_id()) {
+        Ok(alloc) => {
             if alloc.relocations().len() != 0 {
                 let msg = "statics with a custom `#[link_section]` must be a \
                            simple list of bytes on the wasm target with no \
@@ -2079,7 +2078,6 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
                 tcx.sess.span_err(span, msg);
             }
         }
-        Ok(_) => bug!("Matching on non-ByRef static"),
         Err(_) => {}
     }
 }
