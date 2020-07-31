@@ -529,7 +529,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                                         // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247
                                         // There may be opportunity for generalization, but this needs to be
                                         // accounted for.
-                                        if proj_base.is_empty() && !self.tcx.is_thread_local_static(did) {
+                                        if proj_base.is_empty()
+                                            && !self.tcx.is_thread_local_static(did)
+                                        {
                                             not_promotable = false;
                                         }
                                     }
