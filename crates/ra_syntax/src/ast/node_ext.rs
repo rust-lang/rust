@@ -290,7 +290,7 @@ pub struct SlicePatComponents {
 
 impl ast::SlicePat {
     pub fn components(&self) -> SlicePatComponents {
-        let mut args = self.args().peekable();
+        let mut args = self.pats().peekable();
         let prefix = args
             .peeking_take_while(|p| match p {
                 ast::Pat::RestPat(_) => false,

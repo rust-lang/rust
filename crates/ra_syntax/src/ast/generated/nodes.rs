@@ -893,7 +893,7 @@ pub struct TupleExpr {
 impl ast::AttrsOwner for TupleExpr {}
 impl TupleExpr {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn exprs(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
+    pub fn fields(&self) -> AstChildren<Expr> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1210,7 +1210,7 @@ pub struct SlicePat {
 }
 impl SlicePat {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
+    pub fn pats(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1219,7 +1219,7 @@ pub struct TuplePat {
 }
 impl TuplePat {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
+    pub fn fields(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1229,7 +1229,7 @@ pub struct TupleStructPat {
 impl TupleStructPat {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
+    pub fn fields(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

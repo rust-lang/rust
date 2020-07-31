@@ -496,7 +496,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
             ast::Expr::TupleExpr(e) => {
-                let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
+                let exprs = e.fields().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
             ast::Expr::BoxExpr(e) => {
@@ -762,7 +762,7 @@ impl ExprCollector<'_> {
             }
             ast::Pat::TupleStructPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
-                let (args, ellipsis) = self.collect_tuple_pat(p.args());
+                let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::TupleStruct { path, args, ellipsis }
             }
             ast::Pat::RefPat(p) => {
@@ -780,7 +780,7 @@ impl ExprCollector<'_> {
             }
             ast::Pat::ParenPat(p) => return self.collect_pat_opt(p.pat()),
             ast::Pat::TuplePat(p) => {
-                let (args, ellipsis) = self.collect_tuple_pat(p.args());
+                let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::Tuple { args, ellipsis }
             }
             ast::Pat::WildcardPat(_) => Pat::Wild,

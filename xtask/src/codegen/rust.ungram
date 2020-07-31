@@ -359,7 +359,7 @@ IndexExpr =
   Attr* base:Expr '[' index:Expr ']'
 
 TupleExpr =
-  Attr* '(' Attr* (Expr (',' Expr)* ','?)? ')'
+  Attr* '(' Attr* fields:(Expr (',' Expr)* ','?)? ')'
 
 RecordExpr =
   Path RecordExprFieldList
@@ -560,16 +560,16 @@ RecordPatField =
   Attr* (NameRef ':')? Pat
 
 TupleStructPat =
-   Path '(' args:(Pat (',' Pat)* ','?)? ')'
+   Path '(' fields:(Pat (',' Pat)* ','?)? ')'
 
 TuplePat =
-   '(' args:(Pat (',' Pat)* ','?)? ')'
+   '(' fields:(Pat (',' Pat)* ','?)? ')'
 
 ParenPat =
   '(' Pat ')'
 
 SlicePat =
-  '[' args:(Pat (',' Pat)* ','?)? ']'
+  '[' (Pat (',' Pat)* ','?)? ']'
 
 PathPat =
   Path
