@@ -1,3 +1,9 @@
+Name =
+  'ident'
+
+NameRef =
+  'ident' | 'int_number'
+
 Path =
   (qualifier:Path '::')? segment:PathSegment
 
@@ -28,6 +34,21 @@ LifetimeArg =
 
 ConstArg =
   Expr
+
+MacroCall =
+  Attr* Path '!' Name? TokenTree ';'?
+
+TokenTree =
+  '(' ')'
+| '{' '}'
+| '[' ']'
+
+MacroItems =
+  Item*
+
+MacroStmts =
+  statements:Stmt*
+  Expr?
 
 SourceFile =
   'shebang'?
@@ -475,41 +496,37 @@ TypeBound =
   'lifetime'
 | '?'? Type
 
-OrPat =
-  Pat*
-
-ParenPat =
-  '(' Pat ')'
-
-RefPat =
-  '&' 'mut'? Pat
-
-BoxPat =
-  'box' Path
-
-BindPat =
-  Attr* 'ref'? 'mut'? Name ('@' Pat)?
-
-PlaceholderPat =
-  '_'
-
-DotDotPat =
-  '..'
-
-PathPat =
-  Path
-
-SlicePat =
-  '[' args:Pat* ']'
-
-RangePat =
-  '..' | '..='
+Pat =
+  BindPat
+| BoxPat
+| DotDotPat
+| LiteralPat
+| MacroPat
+| OrPat
+| ParenPat
+| PathPat
+| PlaceholderPat
+| RangePat
+| RecordPat
+| RefPat
+| SlicePat
+| TuplePat
+| TupleStructPat
 
 LiteralPat =
   Literal
 
-MacroPat =
-  MacroCall
+PathPat =
+  Path
+
+PlaceholderPat =
+  '_'
+
+RangePat =
+  start:Pat op:('..' | '..=') end:Pat
+
+RefPat =
+  '&' 'mut'? Pat
 
 RecordPat =
   Path RecordFieldPatList
@@ -522,46 +539,31 @@ RecordFieldPatList =
   '}'
 
 RecordFieldPat =
-  Attr* NameRef ':' Pat
+  Attr* (NameRef ':')? Pat
+
+OrPat =
+  Pat*
+
+ParenPat =
+  '(' Pat ')'
+
+BoxPat =
+  'box' Path
+
+BindPat =
+  Attr* 'ref'? 'mut'? Name ('@' Pat)?
+
+DotDotPat =
+  '..'
+
+SlicePat =
+  '[' args:Pat* ']'
+
+MacroPat =
+  MacroCall
 
 TupleStructPat =
    Path '(' args:Pat* ')'
 
 TuplePat =
    '(' args:Pat* ')'
-
-Name =
-  'ident'
-
-NameRef =
-  'ident' | 'int_number'
-
-MacroCall =
-  Attr* Path '!' Name? TokenTree ';'?
-
-TokenTree =
-  '(' ')' | '{' '}' | '[' ']'
-
-MacroItems =
-  Item*
-
-MacroStmts =
-  statements:Stmt*
-  Expr?
-
-Pat =
-  OrPat
-| ParenPat
-| RefPat
-| BoxPat
-| BindPat
-| PlaceholderPat
-| DotDotPat
-| PathPat
-| RecordPat
-| TupleStructPat
-| TuplePat
-| SlicePat
-| RangePat
-| LiteralPat
-| MacroPat
