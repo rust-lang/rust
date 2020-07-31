@@ -52,7 +52,7 @@ LL |         println!("{}", &y);
    |                        ^^ value borrowed here after move
    |
 note: this function consumes the receiver `self` by taking ownership of it, which moves `y`
-  --> $DIR/borrow-after-move.rs:4:12
+  --> $DIR/borrow-after-move.rs:5:12
    |
 LL |     fn foo(self) -> String;
    |            ^^^^

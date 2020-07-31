@@ -1246,7 +1246,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
 
             if self.within_fn_param {
                 if !self.fcx.tcx.features().unsized_fn_params {
-                    self.fcx.require_type_is_sized(var_ty, p.span, traits::SizedArgumentType);
+                    self.fcx.require_type_is_sized(var_ty, p.span, traits::SizedArgumentType(None));
                 }
             } else {
                 if !self.fcx.tcx.features().unsized_locals {
