@@ -217,7 +217,7 @@ fn record_field_pat_list(p: &mut Parser) {
                         bind_pat(p, false);
                     }
                 }
-                m.complete(p, RECORD_FIELD_PAT);
+                m.complete(p, RECORD_PAT_FIELD);
             }
         }
         if !p.at(T!['}']) {
@@ -225,7 +225,7 @@ fn record_field_pat_list(p: &mut Parser) {
         }
     }
     p.expect(T!['}']);
-    m.complete(p, RECORD_FIELD_PAT_LIST);
+    m.complete(p, RECORD_PAT_FIELD_LIST);
 }
 
 // test placeholder_pat

@@ -57,7 +57,7 @@ fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 fn get_fields_kind(node: &SyntaxNode) -> Vec<SyntaxKind> {
     match node.kind() {
         RECORD_EXPR => vec![RECORD_EXPR_FIELD],
-        RECORD_PAT => vec![RECORD_FIELD_PAT, BIND_PAT],
+        RECORD_PAT => vec![RECORD_PAT_FIELD, BIND_PAT],
         _ => vec![],
     }
 }
@@ -66,7 +66,7 @@ fn get_field_name(node: &SyntaxNode) -> String {
     let res = match_ast! {
         match node {
             ast::RecordExprField(field) => field.field_name().map(|it| it.to_string()),
-            ast::RecordFieldPat(field) => field.field_name().map(|it| it.to_string()),
+            ast::RecordPatField(field) => field.field_name().map(|it| it.to_string()),
             _ => None,
         }
     };

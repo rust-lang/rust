@@ -92,7 +92,7 @@ impl AstDiagnostic for MissingFields {
 #[derive(Debug)]
 pub struct MissingPatFields {
     pub file: HirFileId,
-    pub field_list: AstPtr<ast::RecordFieldPatList>,
+    pub field_list: AstPtr<ast::RecordPatFieldList>,
     pub missed_fields: Vec<Name>,
 }
 

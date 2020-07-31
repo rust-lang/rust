@@ -216,7 +216,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_record_field(field)
     }
 
-    pub fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<Field> {
+    pub fn resolve_record_field_pat(&self, field: &ast::RecordPatField) -> Option<Field> {
         self.imp.resolve_record_field_pat(field)
     }
 
@@ -429,7 +429,7 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
-    fn resolve_record_field_pat(&self, field: &ast::RecordFieldPat) -> Option<Field> {
+    fn resolve_record_field_pat(&self, field: &ast::RecordPatField) -> Option<Field> {
         self.analyze(field.syntax()).resolve_record_field_pat(self.db, field)
     }
 

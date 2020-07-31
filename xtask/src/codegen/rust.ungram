@@ -529,16 +529,15 @@ RefPat =
   '&' 'mut'? Pat
 
 RecordPat =
-  Path RecordFieldPatList
+  Path RecordPatFieldList
 
-RecordFieldPatList =
+RecordPatFieldList =
   '{'
-    record_field_pats:RecordFieldPat*
-    BindPat*
+    fields:(RecordPatField (',' RecordPatField)* ','?)
     '..'?
   '}'
 
-RecordFieldPat =
+RecordPatField =
   Attr* (NameRef ':')? Pat
 
 OrPat =

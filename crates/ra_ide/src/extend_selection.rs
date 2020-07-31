@@ -37,7 +37,7 @@ fn try_extend_selection(
 
     let string_kinds = [COMMENT, STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
     let list_kinds = [
-        RECORD_FIELD_PAT_LIST,
+        RECORD_PAT_FIELD_LIST,
         MATCH_ARM_LIST,
         RECORD_FIELD_LIST,
         TUPLE_FIELD_LIST,

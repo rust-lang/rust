@@ -67,16 +67,16 @@ SOURCE_FILE@0..137
                   NAME_REF@56..57
                     IDENT@56..57 "S"
               WHITESPACE@57..58 " "
-              RECORD_FIELD_PAT_LIST@58..66
+              RECORD_PAT_FIELD_LIST@58..66
                 L_CURLY@58..59 "{"
                 WHITESPACE@59..60 " "
-                RECORD_FIELD_PAT@60..61
+                RECORD_PAT_FIELD@60..61
                   BIND_PAT@60..61
                     NAME@60..61
                       IDENT@60..61 "a"
                 COMMA@61..62 ","
                 WHITESPACE@62..63 " "
-                RECORD_FIELD_PAT@63..64
+                RECORD_PAT_FIELD@63..64
                   BIND_PAT@63..64
                     NAME@63..64
                       IDENT@63..64 "b"

@@ -182,7 +182,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_record_field_pat(
         &self,
         _db: &dyn HirDatabase,
-        field: &ast::RecordFieldPat,
+        field: &ast::RecordPatField,
     ) -> Option<Field> {
         let pat_id = self.pat_id(&field.pat()?)?;
         let struct_field = self.infer.as_ref()?.record_field_pat_resolution(pat_id)?;

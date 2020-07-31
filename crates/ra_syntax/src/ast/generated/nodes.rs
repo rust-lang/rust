@@ -1192,7 +1192,7 @@ pub struct RecordPat {
 }
 impl RecordPat {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn record_field_pat_list(&self) -> Option<RecordFieldPatList> {
+    pub fn record_pat_field_list(&self) -> Option<RecordPatFieldList> {
         support::child(&self.syntax)
     }
 }
@@ -1234,24 +1234,21 @@ impl TupleStructPat {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordFieldPatList {
+pub struct RecordPatFieldList {
     pub(crate) syntax: SyntaxNode,
 }
-impl RecordFieldPatList {
+impl RecordPatFieldList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn record_field_pats(&self) -> AstChildren<RecordFieldPat> {
-        support::children(&self.syntax)
-    }
-    pub fn bind_pats(&self) -> AstChildren<BindPat> { support::children(&self.syntax) }
+    pub fn fields(&self) -> AstChildren<RecordPatField> { support::children(&self.syntax) }
     pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordFieldPat {
+pub struct RecordPatField {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RecordFieldPat {}
-impl RecordFieldPat {
+impl ast::AttrsOwner for RecordPatField {}
+impl RecordPatField {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
@@ -2724,8 +2721,8 @@ impl AstNode for TupleStructPat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for RecordFieldPatList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_PAT_LIST }
+impl AstNode for RecordPatFieldList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT_FIELD_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2735,8 +2732,8 @@ impl AstNode for RecordFieldPatList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for RecordFieldPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_PAT }
+impl AstNode for RecordPatField {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT_FIELD }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -4059,12 +4056,12 @@ impl std::fmt::Display for TupleStructPat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for RecordFieldPatList {
+impl std::fmt::Display for RecordPatFieldList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for RecordFieldPat {
+impl std::fmt::Display for RecordPatField {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

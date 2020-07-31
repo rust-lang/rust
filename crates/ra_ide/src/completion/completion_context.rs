@@ -265,7 +265,7 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
             // FIXME: remove this (V) duplication and make the check more precise
-            if name_ref.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
+            if name_ref.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
                 self.record_pat_syntax =
                     self.sema.find_node_at_offset_with_macros(&original_file, offset);
             }
@@ -283,7 +283,7 @@ impl<'a> CompletionContext<'a> {
                 {
                     self.is_pat_binding_or_const = false;
                 }
-                if bind_pat.syntax().parent().and_then(ast::RecordFieldPatList::cast).is_some() {
+                if bind_pat.syntax().parent().and_then(ast::RecordPatFieldList::cast).is_some() {
                     self.is_pat_binding_or_const = false;
                 }
                 if let Some(let_stmt) = bind_pat.syntax().ancestors().find_map(ast::LetStmt::cast) {
@@ -300,7 +300,7 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
             // FIXME: remove this (^) duplication and make the check more precise
-            if name.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
+            if name.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
                 self.record_pat_syntax =
                     self.sema.find_node_at_offset_with_macros(&original_file, offset);
             }

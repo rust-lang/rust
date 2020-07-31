@@ -40,10 +40,10 @@ SOURCE_FILE@0..118
                 NAME_REF@44..49
                   IDENT@44..49 "Outer"
             WHITESPACE@49..50 " "
-            RECORD_FIELD_PAT_LIST@50..81
+            RECORD_PAT_FIELD_LIST@50..81
               L_CURLY@50..51 "{"
               WHITESPACE@51..52 " "
-              RECORD_FIELD_PAT@52..57
+              RECORD_PAT_FIELD@52..57
                 BOX_PAT@52..57
                   BOX_KW@52..55 "box"
                   WHITESPACE@55..56 " "
@@ -52,7 +52,7 @@ SOURCE_FILE@0..118
                       IDENT@56..57 "i"
               COMMA@57..58 ","
               WHITESPACE@58..59 " "
-              RECORD_FIELD_PAT@59..79
+              RECORD_PAT_FIELD@59..79
                 NAME_REF@59..60
                   IDENT@59..60 "j"
                 COLON@60..61 ":"

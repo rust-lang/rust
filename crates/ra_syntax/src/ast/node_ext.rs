@@ -227,7 +227,7 @@ impl fmt::Display for NameOrNameRef {
     }
 }
 
-impl ast::RecordFieldPat {
+impl ast::RecordPatField {
     /// Deals with field init shorthand
     pub fn field_name(&self) -> Option<NameOrNameRef> {
         if let Some(name_ref) = self.name_ref() {
