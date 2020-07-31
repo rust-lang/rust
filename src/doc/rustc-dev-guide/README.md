@@ -103,13 +103,16 @@ There is not a workaround for this error at the moment.  Comment out the `[outpu
 
 ## How to fix toolstate failures
 
+> **NOTE**: Currently, we do not track the toolstate due to the spurious failure,
+but we leave this for when we do it again in the future.
+
 1. You will get a ping from the toolstate commit. e.g. https://github.com/rust-lang-nursery/rust-toolstate/commit/8ffa0e4c30ac9ba8546b7046e5c4ccc2b96ebdd4
 
 2. The commit contains a link to the PR that caused the breakage. e.g. https://github.com/rust-lang/rust/pull/64321
 
 3. If you go to that PR's thread, there is a post from bors with a link to the CI status: https://github.com/rust-lang/rust/pull/64321#issuecomment-529763807
 
-4. Follow the check-azure link to get to the Azure website for that build: https://dev.azure.com/rust-lang/e71b0ddf-dd27-435a-873c-e30f86eea377/_build/results?buildId=7780
+4. Follow the check-actions link to get to the Actions page for that build
 
 5. There will be approximately 1 billion different jobs for the build. They are for different configurations and platforms. The rustc-dev-guide build only runs on the Linux x86_64-gnu-tools job. So click on that job in the list, which is about 60% down in the list.
 

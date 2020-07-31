@@ -9,9 +9,9 @@ you will almost never want to use! – is as follows:
 
 This will build the stage 1 compiler and then run the whole test
 suite. You probably don't want to do this very often, because it takes
-a very long time, and anyway bors / travis will do it for you. (Often,
-I will run this command in the background after opening a PR that I
-think is done, but rarely otherwise. -nmatsakis)
+a very long time, and anyway bors / GitHub Actions will do it for you.
+(Often, I will run this command in the background after opening a PR that
+I think is done, but rarely otherwise. -nmatsakis)
 
 The test results are cached and previously successful tests are
 `ignored` during testing. The stdout/stderr contents as well as a

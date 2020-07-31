@@ -116,19 +116,21 @@ including:
 
 ## Testing infrastructure
 
-When a Pull Request is opened on Github, [Azure Pipelines] will automatically
+When a Pull Request is opened on Github, [GitHub Actions] will automatically
 launch a build that will run all tests on some configurations
-(x86_64-gnu-llvm-6.0 linux. x86_64-gnu-tools linux, mingw-check linux). In
+(x86_64-gnu-llvm-8 linux. x86_64-gnu-tools linux, mingw-check linux). In
 essence, it runs `./x.py test` after building for each of them.
 
 The integration bot [bors] is used for coordinating merges to the master
 branch. When a PR is approved, it goes into a [queue] where merges are tested
-one at a time on a wide set of platforms using Azure Pipelines (currently over
-50 different configurations). Most platforms only run the build steps, some run
-a restricted set of tests, only a subset run the full suite of tests (see
-Rust's [platform tiers]).
+one at a time on a wide set of platforms using GitHub Actions (currently over
+50 different configurations). Due to the limit on the number of parallel jobs,
+we run CI under the [rust-lang-ci] organization except for PRs.
+Most platforms only run the build steps, some run a restricted set of tests,
+only a subset run the full suite of tests (see Rust's [platform tiers]).
 
-[Azure Pipelines]: https://dev.azure.com/rust-lang/rust/
+[GitHub Actions]: https://github.com/rust-lang/rust/actions
+[rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions
 [bors]: https://github.com/servo/homu
 [queue]: https://buildbot2.rust-lang.org/homu/queue/rust
 [platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
@@ -136,7 +138,7 @@ Rust's [platform tiers]).
 ## Testing with Docker images
 
 The Rust tree includes [Docker] image definitions for the platforms used on
-Azure Pipelines in [`src/ci/docker`].  The script [`src/ci/docker/run.sh`] is used to build
+GitHub Actions in [`src/ci/docker`]. The script [`src/ci/docker/run.sh`] is used to build
 the Docker image, run it, build Rust within the image, and run the tests.
 
 You can run these images on your local development machine. This can be
@@ -260,9 +262,9 @@ above instructions for testing on a remote machine (in this case the
 remote machine is emulated).
 
 There is also a set of tools for orchestrating running the
-tests within the emulator.  Platforms such as `arm-android` and
+tests within the emulator. Platforms such as `arm-android` and
 `arm-unknown-linux-gnueabihf` are set up to automatically run the tests under
-emulation on Travis.  The following will take a look at how a target's tests
+emulation on GitHub Actions. The following will take a look at how a target's tests
 are run under emulation.
 
 The Docker image for [armhf-gnu] includes [QEMU] to emulate the ARM CPU
