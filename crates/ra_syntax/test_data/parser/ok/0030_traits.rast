@@ -37,7 +37,7 @@ SOURCE_FILE@0..96
         PARAM_LIST@79..92
           L_PAREN@79..80 "("
           PARAM@80..91
-            BIND_PAT@80..81
+            IDENT_PAT@80..81
               NAME@80..81
                 IDENT@80..81 "x"
             COLON@81..82 ":"

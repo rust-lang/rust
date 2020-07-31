@@ -78,7 +78,7 @@ pub(crate) fn inlay_hints(
             match node {
                 ast::CallExpr(it) => { get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it)); },
                 ast::MethodCallExpr(it) => { get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it)); },
-                ast::BindPat(it) => { get_bind_pat_hints(&mut res, &sema, config, it); },
+                ast::IdentPat(it) => { get_bind_pat_hints(&mut res, &sema, config, it); },
                 _ => (),
             }
         }
@@ -161,7 +161,7 @@ fn get_param_name_hints(
             Either::Left(self_param) => Some((self_param.to_string(), arg)),
             Either::Right(pat) => {
                 let param_name = match pat {
-                    ast::Pat::BindPat(it) => it.name()?.to_string(),
+                    ast::Pat::IdentPat(it) => it.name()?.to_string(),
                     it => it.to_string(),
                 };
                 Some((param_name, arg))
@@ -182,7 +182,7 @@ fn get_bind_pat_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
-    pat: ast::BindPat,
+    pat: ast::IdentPat,
 ) -> Option<()> {
     if !config.type_hints {
         return None;
@@ -202,7 +202,7 @@ fn get_bind_pat_hints(
     Some(())
 }
 
-fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::BindPat, pat_ty: &Type) -> bool {
+fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &Type) -> bool {
     if let Some(Adt::Enum(enum_data)) = pat_ty.as_adt() {
         let pat_text = bind_pat.to_string();
         enum_data
@@ -215,7 +215,11 @@ fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::BindPat, pat_ty: &Type
     }
 }
 
-fn should_not_display_type_hint(db: &RootDatabase, bind_pat: &ast::BindPat, pat_ty: &Type) -> bool {
+fn should_not_display_type_hint(
+    db: &RootDatabase,
+    bind_pat: &ast::IdentPat,
+    pat_ty: &Type,
+) -> bool {
     if pat_ty.is_unknown() {
         return true;
     }

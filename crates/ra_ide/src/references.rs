@@ -150,7 +150,7 @@ fn decl_access(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> Optio
     let stmt = find_node_at_offset::<ast::LetStmt>(syntax, range.start())?;
     if stmt.initializer().is_some() {
         let pat = stmt.pat()?;
-        if let ast::Pat::BindPat(it) = pat {
+        if let ast::Pat::IdentPat(it) = pat {
             if it.mut_token().is_some() {
                 return Some(ReferenceAccess::Write);
             }
@@ -290,7 +290,7 @@ fn main() {
         );
         check_result(
             refs,
-            "i BIND_PAT FileId(1) 24..25 Other Write",
+            "i IDENT_PAT FileId(1) 24..25 Other Write",
             &[
                 "FileId(1) 50..51 Other Write",
                 "FileId(1) 54..55 Other Read",
@@ -316,7 +316,7 @@ fn bar() {
         );
         check_result(
             refs,
-            "spam BIND_PAT FileId(1) 19..23 Other",
+            "spam IDENT_PAT FileId(1) 19..23 Other",
             &["FileId(1) 34..38 Other Read", "FileId(1) 41..45 Other Read"],
         );
     }
@@ -330,7 +330,7 @@ fn foo(i : u32) -> u32 {
 }
 "#,
         );
-        check_result(refs, "i BIND_PAT FileId(1) 7..8 Other", &["FileId(1) 29..30 Other Read"]);
+        check_result(refs, "i IDENT_PAT FileId(1) 7..8 Other", &["FileId(1) 29..30 Other Read"]);
     }
 
     #[test]
@@ -342,7 +342,7 @@ fn foo(i<|> : u32) -> u32 {
 }
 "#,
         );
-        check_result(refs, "i BIND_PAT FileId(1) 7..8 Other", &["FileId(1) 29..30 Other Read"]);
+        check_result(refs, "i IDENT_PAT FileId(1) 7..8 Other", &["FileId(1) 29..30 Other Read"]);
     }
 
     #[test]
@@ -559,7 +559,7 @@ fn foo() {
         );
         check_result(
             refs,
-            "i BIND_PAT FileId(1) 23..24 Other Write",
+            "i IDENT_PAT FileId(1) 23..24 Other Write",
             &["FileId(1) 34..35 Other Write", "FileId(1) 38..39 Other Read"],
         );
     }
@@ -595,7 +595,7 @@ fn foo() {
 }
 "#,
         );
-        check_result(refs, "i BIND_PAT FileId(1) 19..20 Other", &["FileId(1) 26..27 Other Write"]);
+        check_result(refs, "i IDENT_PAT FileId(1) 19..20 Other", &["FileId(1) 26..27 Other Write"]);
     }
 
     #[test]

@@ -43,7 +43,7 @@ SOURCE_FILE@0..64
     PARAM_LIST@49..59
       L_PAREN@49..50 "("
       PARAM@50..58
-        PLACEHOLDER_PAT@50..51
+        WILDCARD_PAT@50..51
           UNDERSCORE@50..51 "_"
         COLON@51..52 ":"
         WHITESPACE@52..53 " "

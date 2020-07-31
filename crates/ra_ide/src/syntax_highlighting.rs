@@ -717,7 +717,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
         CONST => HighlightTag::Constant,
         STATIC => HighlightTag::Static,
         VARIANT => HighlightTag::EnumVariant,
-        BIND_PAT => HighlightTag::Local,
+        IDENT_PAT => HighlightTag::Local,
         _ => default,
     };
 

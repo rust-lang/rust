@@ -16,12 +16,12 @@ SOURCE_FILE@0..94
         WHITESPACE@19..20 " "
         TUPLE_PAT@20..30
           L_PAREN@20..21 "("
-          BIND_PAT@21..22
+          IDENT_PAT@21..22
             NAME@21..22
               IDENT@21..22 "a"
           COMMA@22..23 ","
           WHITESPACE@23..24 " "
-          BIND_PAT@24..25
+          IDENT_PAT@24..25
             NAME@24..25
               IDENT@24..25 "b"
           COMMA@25..26 ","
@@ -42,7 +42,7 @@ SOURCE_FILE@0..94
         WHITESPACE@44..45 " "
         TUPLE_PAT@45..49
           L_PAREN@45..46 "("
-          BIND_PAT@46..47
+          IDENT_PAT@46..47
             NAME@46..47
               IDENT@46..47 "a"
           COMMA@47..48 ","

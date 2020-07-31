@@ -6,6 +6,20 @@ use crate::{
     SyntaxNode, SyntaxToken, T,
 };
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Name {
+    pub(crate) syntax: SyntaxNode,
+}
+impl Name {
+    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NameRef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl NameRef {
+    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub(crate) syntax: SyntaxNode,
 }
@@ -31,13 +45,6 @@ impl PathSegment {
     pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NameRef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl NameRef {
-    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArgList {
@@ -116,13 +123,16 @@ impl TypeBoundList {
     pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SourceFile {
+pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for SourceFile {}
-impl ast::ModuleItemOwner for SourceFile {}
-impl SourceFile {
-    pub fn shebang_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![shebang]) }
+impl ast::AttrsOwner for MacroCall {}
+impl ast::NameOwner for MacroCall {}
+impl MacroCall {
+    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
+    pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Attr {
@@ -137,6 +147,41 @@ impl Attr {
     pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
     pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TokenTree {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TokenTree {
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroItems {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::ModuleItemOwner for MacroItems {}
+impl MacroItems {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroStmts {
+    pub(crate) syntax: SyntaxNode,
+}
+impl MacroStmts {
+    pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SourceFile {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for SourceFile {}
+impl ast::ModuleItemOwner for SourceFile {}
+impl SourceFile {
+    pub fn shebang_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![shebang]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Const {
@@ -226,18 +271,6 @@ impl Impl {
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MacroCall {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for MacroCall {}
-impl ast::NameOwner for MacroCall {}
-impl MacroCall {
-    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
-    pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
-    pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Module {
@@ -347,13 +380,6 @@ impl Visibility {
     pub fn in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![in]) }
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Name {
-    pub(crate) syntax: SyntaxNode,
-}
-impl Name {
-    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ItemList {
@@ -588,18 +614,6 @@ pub struct Literal {
 }
 impl ast::AttrsOwner for Literal {}
 impl Literal {}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TokenTree {
-    pub(crate) syntax: SyntaxNode,
-}
-impl TokenTree {
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
-}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExprStmt {
     pub(crate) syntax: SyntaxNode,
@@ -1097,28 +1111,15 @@ impl TypeBound {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct OrPat {
+pub struct IdentPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl OrPat {
-    pub fn pats(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParenPat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ParenPat {
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RefPat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl RefPat {
-    pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
+impl ast::AttrsOwner for IdentPat {}
+impl ast::NameOwner for IdentPat {}
+impl IdentPat {
+    pub fn ref_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ref]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
+    pub fn at_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![@]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1127,26 +1128,7 @@ pub struct BoxPat {
 }
 impl BoxPat {
     pub fn box_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![box]) }
-    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BindPat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for BindPat {}
-impl ast::NameOwner for BindPat {}
-impl BindPat {
-    pub fn ref_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ref]) }
-    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
-    pub fn at_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![@]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PlaceholderPat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl PlaceholderPat {
-    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DotDotPat {
@@ -1154,30 +1136,6 @@ pub struct DotDotPat {
 }
 impl DotDotPat {
     pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PathPat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl PathPat {
-    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SlicePat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl SlicePat {
-    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
-    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RangePat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl RangePat {
-    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
-    pub fn dotdoteq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..=]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LiteralPat {
@@ -1194,37 +1152,76 @@ impl MacroPat {
     pub fn macro_call(&self) -> Option<MacroCall> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct OrPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl OrPat {
+    pub fn pats(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParenPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ParenPat {
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PathPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl PathPat {
+    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct WildcardPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl WildcardPat {
+    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RangePat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl RangePat {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordPat {
     pub(crate) syntax: SyntaxNode,
 }
 impl RecordPat {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn record_field_pat_list(&self) -> Option<RecordFieldPatList> {
+    pub fn record_pat_field_list(&self) -> Option<RecordPatFieldList> {
         support::child(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordFieldPatList {
+pub struct RefPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl RecordFieldPatList {
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn record_field_pats(&self) -> AstChildren<RecordFieldPat> {
-        support::children(&self.syntax)
-    }
-    pub fn bind_pats(&self) -> AstChildren<BindPat> { support::children(&self.syntax) }
-    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+impl RefPat {
+    pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
+    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordFieldPat {
+pub struct SlicePat {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for RecordFieldPat {}
-impl RecordFieldPat {
-    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
+impl SlicePat {
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
+    pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TuplePat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TuplePat {
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleStructPat {
@@ -1237,27 +1234,24 @@ impl TupleStructPat {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TuplePat {
+pub struct RecordPatFieldList {
     pub(crate) syntax: SyntaxNode,
 }
-impl TuplePat {
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn args(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+impl RecordPatFieldList {
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn fields(&self) -> AstChildren<RecordPatField> { support::children(&self.syntax) }
+    pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MacroItems {
+pub struct RecordPatField {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::ModuleItemOwner for MacroItems {}
-impl MacroItems {}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MacroStmts {
-    pub(crate) syntax: SyntaxNode,
-}
-impl MacroStmts {
-    pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+impl ast::AttrsOwner for RecordPatField {}
+impl RecordPatField {
+    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
+    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
+    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericArg {
@@ -1334,22 +1328,28 @@ pub enum Item {
 }
 impl ast::AttrsOwner for Item {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Stmt {
+    ExprStmt(ExprStmt),
+    Item(Item),
+    LetStmt(LetStmt),
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
-    OrPat(OrPat),
-    ParenPat(ParenPat),
-    RefPat(RefPat),
+    IdentPat(IdentPat),
     BoxPat(BoxPat),
-    BindPat(BindPat),
-    PlaceholderPat(PlaceholderPat),
     DotDotPat(DotDotPat),
-    PathPat(PathPat),
-    RecordPat(RecordPat),
-    TupleStructPat(TupleStructPat),
-    TuplePat(TuplePat),
-    SlicePat(SlicePat),
-    RangePat(RangePat),
     LiteralPat(LiteralPat),
     MacroPat(MacroPat),
+    OrPat(OrPat),
+    ParenPat(ParenPat),
+    PathPat(PathPat),
+    WildcardPat(WildcardPat),
+    RangePat(RangePat),
+    RecordPat(RecordPat),
+    RefPat(RefPat),
+    SlicePat(SlicePat),
+    TuplePat(TuplePat),
+    TupleStructPat(TupleStructPat),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FieldList {
@@ -1390,11 +1390,27 @@ pub enum GenericParam {
     TypeParam(TypeParam),
 }
 impl ast::AttrsOwner for GenericParam {}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Stmt {
-    ExprStmt(ExprStmt),
-    Item(Item),
-    LetStmt(LetStmt),
+impl AstNode for Name {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for NameRef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME_REF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl AstNode for Path {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH }
@@ -1409,17 +1425,6 @@ impl AstNode for Path {
 }
 impl AstNode for PathSegment {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_SEGMENT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for NameRef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME_REF }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1528,8 +1533,8 @@ impl AstNode for TypeBoundList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for SourceFile {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == SOURCE_FILE }
+impl AstNode for MacroCall {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_CALL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1541,6 +1546,50 @@ impl AstNode for SourceFile {
 }
 impl AstNode for Attr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ATTR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for TokenTree {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TOKEN_TREE }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for MacroItems {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_ITEMS }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for MacroStmts {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_STMTS }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for SourceFile {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SOURCE_FILE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1607,17 +1656,6 @@ impl AstNode for Fn {
 }
 impl AstNode for Impl {
     fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for MacroCall {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_CALL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1706,17 +1744,6 @@ impl AstNode for Use {
 }
 impl AstNode for Visibility {
     fn can_cast(kind: SyntaxKind) -> bool { kind == VISIBILITY }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for Name {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1970,17 +1997,6 @@ impl AstNode for WherePred {
 }
 impl AstNode for Literal {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LITERAL }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for TokenTree {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TOKEN_TREE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2540,30 +2556,8 @@ impl AstNode for TypeBound {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for OrPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == OR_PAT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for ParenPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_PAT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for RefPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == REF_PAT }
+impl AstNode for IdentPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IDENT_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2584,63 +2578,8 @@ impl AstNode for BoxPat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for BindPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == BIND_PAT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for PlaceholderPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PLACEHOLDER_PAT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for DotDotPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == DOT_DOT_PAT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for PathPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_PAT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for SlicePat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == SLICE_PAT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for RangePat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RANGE_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2672,6 +2611,61 @@ impl AstNode for MacroPat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for OrPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == OR_PAT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ParenPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_PAT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for PathPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_PAT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for WildcardPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == WILDCARD_PAT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for RangePat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RANGE_PAT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for RecordPat {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2683,8 +2677,8 @@ impl AstNode for RecordPat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for RecordFieldPatList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_PAT_LIST }
+impl AstNode for RefPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == REF_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2694,19 +2688,8 @@ impl AstNode for RecordFieldPatList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for RecordFieldPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_FIELD_PAT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for TupleStructPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_STRUCT_PAT }
+impl AstNode for SlicePat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == SLICE_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2727,8 +2710,8 @@ impl AstNode for TuplePat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for MacroItems {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_ITEMS }
+impl AstNode for TupleStructPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_STRUCT_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2738,8 +2721,19 @@ impl AstNode for MacroItems {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for MacroStmts {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_STMTS }
+impl AstNode for RecordPatFieldList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT_FIELD_LIST }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for RecordPatField {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RECORD_PAT_FIELD }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3133,44 +3127,23 @@ impl AstNode for Item {
         }
     }
 }
-impl From<OrPat> for Pat {
-    fn from(node: OrPat) -> Pat { Pat::OrPat(node) }
+impl From<ExprStmt> for Stmt {
+    fn from(node: ExprStmt) -> Stmt { Stmt::ExprStmt(node) }
 }
-impl From<ParenPat> for Pat {
-    fn from(node: ParenPat) -> Pat { Pat::ParenPat(node) }
+impl From<Item> for Stmt {
+    fn from(node: Item) -> Stmt { Stmt::Item(node) }
 }
-impl From<RefPat> for Pat {
-    fn from(node: RefPat) -> Pat { Pat::RefPat(node) }
+impl From<LetStmt> for Stmt {
+    fn from(node: LetStmt) -> Stmt { Stmt::LetStmt(node) }
+}
+impl From<IdentPat> for Pat {
+    fn from(node: IdentPat) -> Pat { Pat::IdentPat(node) }
 }
 impl From<BoxPat> for Pat {
     fn from(node: BoxPat) -> Pat { Pat::BoxPat(node) }
 }
-impl From<BindPat> for Pat {
-    fn from(node: BindPat) -> Pat { Pat::BindPat(node) }
-}
-impl From<PlaceholderPat> for Pat {
-    fn from(node: PlaceholderPat) -> Pat { Pat::PlaceholderPat(node) }
-}
 impl From<DotDotPat> for Pat {
     fn from(node: DotDotPat) -> Pat { Pat::DotDotPat(node) }
-}
-impl From<PathPat> for Pat {
-    fn from(node: PathPat) -> Pat { Pat::PathPat(node) }
-}
-impl From<RecordPat> for Pat {
-    fn from(node: RecordPat) -> Pat { Pat::RecordPat(node) }
-}
-impl From<TupleStructPat> for Pat {
-    fn from(node: TupleStructPat) -> Pat { Pat::TupleStructPat(node) }
-}
-impl From<TuplePat> for Pat {
-    fn from(node: TuplePat) -> Pat { Pat::TuplePat(node) }
-}
-impl From<SlicePat> for Pat {
-    fn from(node: SlicePat) -> Pat { Pat::SlicePat(node) }
-}
-impl From<RangePat> for Pat {
-    fn from(node: RangePat) -> Pat { Pat::RangePat(node) }
 }
 impl From<LiteralPat> for Pat {
     fn from(node: LiteralPat) -> Pat { Pat::LiteralPat(node) }
@@ -3178,53 +3151,83 @@ impl From<LiteralPat> for Pat {
 impl From<MacroPat> for Pat {
     fn from(node: MacroPat) -> Pat { Pat::MacroPat(node) }
 }
+impl From<OrPat> for Pat {
+    fn from(node: OrPat) -> Pat { Pat::OrPat(node) }
+}
+impl From<ParenPat> for Pat {
+    fn from(node: ParenPat) -> Pat { Pat::ParenPat(node) }
+}
+impl From<PathPat> for Pat {
+    fn from(node: PathPat) -> Pat { Pat::PathPat(node) }
+}
+impl From<WildcardPat> for Pat {
+    fn from(node: WildcardPat) -> Pat { Pat::WildcardPat(node) }
+}
+impl From<RangePat> for Pat {
+    fn from(node: RangePat) -> Pat { Pat::RangePat(node) }
+}
+impl From<RecordPat> for Pat {
+    fn from(node: RecordPat) -> Pat { Pat::RecordPat(node) }
+}
+impl From<RefPat> for Pat {
+    fn from(node: RefPat) -> Pat { Pat::RefPat(node) }
+}
+impl From<SlicePat> for Pat {
+    fn from(node: SlicePat) -> Pat { Pat::SlicePat(node) }
+}
+impl From<TuplePat> for Pat {
+    fn from(node: TuplePat) -> Pat { Pat::TuplePat(node) }
+}
+impl From<TupleStructPat> for Pat {
+    fn from(node: TupleStructPat) -> Pat { Pat::TupleStructPat(node) }
+}
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            OR_PAT | PAREN_PAT | REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | DOT_DOT_PAT
-            | PATH_PAT | RECORD_PAT | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT
-            | LITERAL_PAT | MACRO_PAT => true,
+            IDENT_PAT | BOX_PAT | DOT_DOT_PAT | LITERAL_PAT | MACRO_PAT | OR_PAT | PAREN_PAT
+            | PATH_PAT | WILDCARD_PAT | RANGE_PAT | RECORD_PAT | REF_PAT | SLICE_PAT
+            | TUPLE_PAT | TUPLE_STRUCT_PAT => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            OR_PAT => Pat::OrPat(OrPat { syntax }),
-            PAREN_PAT => Pat::ParenPat(ParenPat { syntax }),
-            REF_PAT => Pat::RefPat(RefPat { syntax }),
+            IDENT_PAT => Pat::IdentPat(IdentPat { syntax }),
             BOX_PAT => Pat::BoxPat(BoxPat { syntax }),
-            BIND_PAT => Pat::BindPat(BindPat { syntax }),
-            PLACEHOLDER_PAT => Pat::PlaceholderPat(PlaceholderPat { syntax }),
             DOT_DOT_PAT => Pat::DotDotPat(DotDotPat { syntax }),
-            PATH_PAT => Pat::PathPat(PathPat { syntax }),
-            RECORD_PAT => Pat::RecordPat(RecordPat { syntax }),
-            TUPLE_STRUCT_PAT => Pat::TupleStructPat(TupleStructPat { syntax }),
-            TUPLE_PAT => Pat::TuplePat(TuplePat { syntax }),
-            SLICE_PAT => Pat::SlicePat(SlicePat { syntax }),
-            RANGE_PAT => Pat::RangePat(RangePat { syntax }),
             LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
             MACRO_PAT => Pat::MacroPat(MacroPat { syntax }),
+            OR_PAT => Pat::OrPat(OrPat { syntax }),
+            PAREN_PAT => Pat::ParenPat(ParenPat { syntax }),
+            PATH_PAT => Pat::PathPat(PathPat { syntax }),
+            WILDCARD_PAT => Pat::WildcardPat(WildcardPat { syntax }),
+            RANGE_PAT => Pat::RangePat(RangePat { syntax }),
+            RECORD_PAT => Pat::RecordPat(RecordPat { syntax }),
+            REF_PAT => Pat::RefPat(RefPat { syntax }),
+            SLICE_PAT => Pat::SlicePat(SlicePat { syntax }),
+            TUPLE_PAT => Pat::TuplePat(TuplePat { syntax }),
+            TUPLE_STRUCT_PAT => Pat::TupleStructPat(TupleStructPat { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            Pat::OrPat(it) => &it.syntax,
-            Pat::ParenPat(it) => &it.syntax,
-            Pat::RefPat(it) => &it.syntax,
+            Pat::IdentPat(it) => &it.syntax,
             Pat::BoxPat(it) => &it.syntax,
-            Pat::BindPat(it) => &it.syntax,
-            Pat::PlaceholderPat(it) => &it.syntax,
             Pat::DotDotPat(it) => &it.syntax,
-            Pat::PathPat(it) => &it.syntax,
-            Pat::RecordPat(it) => &it.syntax,
-            Pat::TupleStructPat(it) => &it.syntax,
-            Pat::TuplePat(it) => &it.syntax,
-            Pat::SlicePat(it) => &it.syntax,
-            Pat::RangePat(it) => &it.syntax,
             Pat::LiteralPat(it) => &it.syntax,
             Pat::MacroPat(it) => &it.syntax,
+            Pat::OrPat(it) => &it.syntax,
+            Pat::ParenPat(it) => &it.syntax,
+            Pat::PathPat(it) => &it.syntax,
+            Pat::WildcardPat(it) => &it.syntax,
+            Pat::RangePat(it) => &it.syntax,
+            Pat::RecordPat(it) => &it.syntax,
+            Pat::RefPat(it) => &it.syntax,
+            Pat::SlicePat(it) => &it.syntax,
+            Pat::TuplePat(it) => &it.syntax,
+            Pat::TupleStructPat(it) => &it.syntax,
         }
     }
 }
@@ -3393,15 +3396,6 @@ impl AstNode for GenericParam {
         }
     }
 }
-impl From<ExprStmt> for Stmt {
-    fn from(node: ExprStmt) -> Stmt { Stmt::ExprStmt(node) }
-}
-impl From<Item> for Stmt {
-    fn from(node: Item) -> Stmt { Stmt::Item(node) }
-}
-impl From<LetStmt> for Stmt {
-    fn from(node: LetStmt) -> Stmt { Stmt::LetStmt(node) }
-}
 impl std::fmt::Display for GenericArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3418,6 +3412,11 @@ impl std::fmt::Display for Expr {
     }
 }
 impl std::fmt::Display for Item {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Stmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3452,7 +3451,12 @@ impl std::fmt::Display for GenericParam {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for Stmt {
+impl std::fmt::Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for NameRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3463,11 +3467,6 @@ impl std::fmt::Display for Path {
     }
 }
 impl std::fmt::Display for PathSegment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for NameRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3517,12 +3516,32 @@ impl std::fmt::Display for TypeBoundList {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for SourceFile {
+impl std::fmt::Display for MacroCall {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
 impl std::fmt::Display for Attr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TokenTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroItems {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroStmts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for SourceFile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3553,11 +3572,6 @@ impl std::fmt::Display for Fn {
     }
 }
 impl std::fmt::Display for Impl {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for MacroCall {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3598,11 +3612,6 @@ impl std::fmt::Display for Use {
     }
 }
 impl std::fmt::Display for Visibility {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3718,11 +3727,6 @@ impl std::fmt::Display for WherePred {
     }
 }
 impl std::fmt::Display for Literal {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TokenTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3977,17 +3981,7 @@ impl std::fmt::Display for TypeBound {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for OrPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ParenPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for RefPat {
+impl std::fmt::Display for IdentPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3997,32 +3991,7 @@ impl std::fmt::Display for BoxPat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for BindPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for PlaceholderPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for DotDotPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for PathPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for SlicePat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for RangePat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -4037,22 +4006,42 @@ impl std::fmt::Display for MacroPat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for OrPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ParenPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PathPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for WildcardPat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RangePat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for RecordPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for RecordFieldPatList {
+impl std::fmt::Display for RefPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for RecordFieldPat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TupleStructPat {
+impl std::fmt::Display for SlicePat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -4062,12 +4051,17 @@ impl std::fmt::Display for TuplePat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for MacroItems {
+impl std::fmt::Display for TupleStructPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for MacroStmts {
+impl std::fmt::Display for RecordPatFieldList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RecordPatField {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

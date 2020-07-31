@@ -114,7 +114,7 @@ SOURCE_FILE@0..686
           COMMA@564..565 ","
           WHITESPACE@565..566 " "
           PARAM@566..600
-            BIND_PAT@566..574
+            IDENT_PAT@566..574
               NAME@566..574
                 IDENT@566..574 "event_fn"
             COLON@574..575 ":"

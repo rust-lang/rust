@@ -14,7 +14,7 @@ SOURCE_FILE@0..51
       FOR_EXPR@14..48
         FOR_KW@14..17 "for"
         WHITESPACE@17..18 " "
-        BIND_PAT@18..19
+        IDENT_PAT@18..19
           NAME@18..19
             IDENT@18..19 "x"
         WHITESPACE@19..20 " "

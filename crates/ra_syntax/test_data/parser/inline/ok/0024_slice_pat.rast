@@ -16,12 +16,12 @@ SOURCE_FILE@0..39
         WHITESPACE@19..20 " "
         SLICE_PAT@20..30
           L_BRACK@20..21 "["
-          BIND_PAT@21..22
+          IDENT_PAT@21..22
             NAME@21..22
               IDENT@21..22 "a"
           COMMA@22..23 ","
           WHITESPACE@23..24 " "
-          BIND_PAT@24..25
+          IDENT_PAT@24..25
             NAME@24..25
               IDENT@24..25 "b"
           COMMA@25..26 ","

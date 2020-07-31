@@ -1,6 +1,8 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
+use std::{any::type_name, sync::Arc};
+
 use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
@@ -10,11 +12,12 @@ use hir_expand::{
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
-        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, NameOwner,
+        self, ArgListOwner, ArrayExprKind, AstChildren, LiteralKind, LoopBodyOwner, NameOwner,
         SlicePatComponents,
     },
     AstNode, AstPtr,
 };
+use rustc_hash::FxHashMap;
 use test_utils::mark;
 
 use crate::{
@@ -35,9 +38,6 @@ use crate::{
 };
 
 use super::{ExprSource, PatSource};
-use ast::AstChildren;
-use rustc_hash::FxHashMap;
-use std::{any::type_name, sync::Arc};
 
 pub(crate) struct LowerCtx {
     hygiene: Hygiene,
@@ -723,7 +723,7 @@ impl ExprCollector<'_> {
 
     fn collect_pat(&mut self, pat: ast::Pat) -> PatId {
         let pattern = match &pat {
-            ast::Pat::BindPat(bp) => {
+            ast::Pat::IdentPat(bp) => {
                 let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let annotation =
                     BindingAnnotation::new(bp.mut_token().is_some(), bp.ref_token().is_some());
@@ -783,32 +783,28 @@ impl ExprCollector<'_> {
                 let (args, ellipsis) = self.collect_tuple_pat(p.args());
                 Pat::Tuple { args, ellipsis }
             }
-            ast::Pat::PlaceholderPat(_) => Pat::Wild,
+            ast::Pat::WildcardPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
-                let record_field_pat_list =
-                    p.record_field_pat_list().expect("every struct should have a field list");
-                let mut fields: Vec<_> = record_field_pat_list
-                    .bind_pats()
-                    .filter_map(|bind_pat| {
-                        let ast_pat =
-                            ast::Pat::cast(bind_pat.syntax().clone()).expect("bind pat is a pat");
+                let args: Vec<_> = p
+                    .record_pat_field_list()
+                    .expect("every struct should have a field list")
+                    .fields()
+                    .filter_map(|f| {
+                        let ast_pat = f.pat()?;
                         let pat = self.collect_pat(ast_pat);
-                        let name = bind_pat.name()?.as_name();
+                        let name = f.field_name()?.as_name();
                         Some(RecordFieldPat { name, pat })
                     })
                     .collect();
-                let iter = record_field_pat_list.record_field_pats().filter_map(|f| {
-                    let ast_pat = f.pat()?;
-                    let pat = self.collect_pat(ast_pat);
-                    let name = f.field_name()?.as_name();
-                    Some(RecordFieldPat { name, pat })
-                });
-                fields.extend(iter);
 
-                let ellipsis = record_field_pat_list.dotdot_token().is_some();
+                let ellipsis = p
+                    .record_pat_field_list()
+                    .expect("every struct should have a field list")
+                    .dotdot_token()
+                    .is_some();
 
-                Pat::Record { path, args: fields, ellipsis }
+                Pat::Record { path, args, ellipsis }
             }
             ast::Pat::SlicePat(p) => {
                 let SlicePatComponents { prefix, slice, suffix } = p.components();

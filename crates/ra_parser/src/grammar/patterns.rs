@@ -217,7 +217,7 @@ fn record_field_pat_list(p: &mut Parser) {
                         bind_pat(p, false);
                     }
                 }
-                m.complete(p, RECORD_FIELD_PAT);
+                m.complete(p, RECORD_PAT_FIELD);
             }
         }
         if !p.at(T!['}']) {
@@ -225,7 +225,7 @@ fn record_field_pat_list(p: &mut Parser) {
         }
     }
     p.expect(T!['}']);
-    m.complete(p, RECORD_FIELD_PAT_LIST);
+    m.complete(p, RECORD_PAT_FIELD_LIST);
 }
 
 // test placeholder_pat
@@ -234,7 +234,7 @@ fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![_]));
     let m = p.start();
     p.bump(T![_]);
-    m.complete(p, PLACEHOLDER_PAT)
+    m.complete(p, WILDCARD_PAT)
 }
 
 // test dot_dot_pat
@@ -361,7 +361,7 @@ fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
     if with_at && p.eat(T![@]) {
         pattern_single(p);
     }
-    m.complete(p, BIND_PAT)
+    m.complete(p, IDENT_PAT)
 }
 
 // test box_pat

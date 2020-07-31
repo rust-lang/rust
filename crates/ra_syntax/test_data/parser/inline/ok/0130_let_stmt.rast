@@ -14,7 +14,7 @@ SOURCE_FILE@0..135
       LET_STMT@15..21
         LET_KW@15..18 "let"
         WHITESPACE@18..19 " "
-        BIND_PAT@19..20
+        IDENT_PAT@19..20
           NAME@19..20
             IDENT@19..20 "a"
         SEMICOLON@20..21 ";"
@@ -22,7 +22,7 @@ SOURCE_FILE@0..135
       LET_STMT@26..37
         LET_KW@26..29 "let"
         WHITESPACE@29..30 " "
-        BIND_PAT@30..31
+        IDENT_PAT@30..31
           NAME@30..31
             IDENT@30..31 "b"
         COLON@31..32 ":"
@@ -37,7 +37,7 @@ SOURCE_FILE@0..135
       LET_STMT@42..53
         LET_KW@42..45 "let"
         WHITESPACE@45..46 " "
-        BIND_PAT@46..47
+        IDENT_PAT@46..47
           NAME@46..47
             IDENT@46..47 "c"
         WHITESPACE@47..48 " "
@@ -50,7 +50,7 @@ SOURCE_FILE@0..135
       LET_STMT@58..74
         LET_KW@58..61 "let"
         WHITESPACE@61..62 " "
-        BIND_PAT@62..63
+        IDENT_PAT@62..63
           NAME@62..63
             IDENT@62..63 "d"
         COLON@63..64 ":"
@@ -70,7 +70,7 @@ SOURCE_FILE@0..135
       LET_STMT@79..88
         LET_KW@79..82 "let"
         WHITESPACE@82..83 " "
-        BIND_PAT@83..84
+        IDENT_PAT@83..84
           NAME@83..84
             IDENT@83..84 "e"
         COLON@84..85 ":"
@@ -82,7 +82,7 @@ SOURCE_FILE@0..135
       LET_STMT@93..107
         LET_KW@93..96 "let"
         WHITESPACE@96..97 " "
-        PLACEHOLDER_PAT@97..98
+        WILDCARD_PAT@97..98
           UNDERSCORE@97..98 "_"
         COLON@98..99 ":"
         WHITESPACE@99..100 " "
@@ -99,7 +99,7 @@ SOURCE_FILE@0..135
       LET_STMT@112..132
         LET_KW@112..115 "let"
         WHITESPACE@115..116 " "
-        BIND_PAT@116..117
+        IDENT_PAT@116..117
           NAME@116..117
             IDENT@116..117 "f"
         WHITESPACE@117..118 " "

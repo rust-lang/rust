@@ -144,7 +144,7 @@ SOURCE_FILE@0..3813
       LET_STMT@543..570
         LET_KW@543..546 "let"
         WHITESPACE@546..547 " "
-        BIND_PAT@547..549
+        IDENT_PAT@547..549
           NAME@547..549
             IDENT@547..549 "_x"
         COLON@549..550 ":"
@@ -186,7 +186,7 @@ SOURCE_FILE@0..3813
         PARAM_LIST@595..603
           L_PAREN@595..596 "("
           PARAM@596..602
-            BIND_PAT@596..598
+            IDENT_PAT@596..598
               NAME@596..598
                 IDENT@596..598 "_x"
             COLON@598..599 ":"
@@ -237,7 +237,7 @@ SOURCE_FILE@0..3813
         PARAM_LIST@648..664
           L_PAREN@648..649 "("
           PARAM@649..663
-            BIND_PAT@649..650
+            IDENT_PAT@649..650
               NAME@649..650
                 IDENT@649..650 "x"
             COLON@650..651 ":"
@@ -314,7 +314,7 @@ SOURCE_FILE@0..3813
       LET_STMT@725..751
         LET_KW@725..728 "let"
         WHITESPACE@728..729 " "
-        BIND_PAT@729..730
+        IDENT_PAT@729..730
           NAME@729..730
             IDENT@729..730 "i"
         WHITESPACE@730..731 " "
@@ -343,7 +343,7 @@ SOURCE_FILE@0..3813
       LET_STMT@756..778
         LET_KW@756..759 "let"
         WHITESPACE@759..760 " "
-        BIND_PAT@760..764
+        IDENT_PAT@760..764
           NAME@760..764
             IDENT@760..764 "dont"
         WHITESPACE@764..765 " "
@@ -506,7 +506,7 @@ SOURCE_FILE@0..3813
                               R_CURLY@1146..1147 "}"
                           WHITESPACE@1147..1168 "\n                    "
                           MATCH_ARM@1168..1183
-                            PLACEHOLDER_PAT@1168..1169
+                            WILDCARD_PAT@1168..1169
                               UNDERSCORE@1168..1169 "_"
                             WHITESPACE@1169..1170 " "
                             FAT_ARROW@1170..1172 "=>"
@@ -587,7 +587,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1343..1361
         LET_KW@1343..1346 "let"
         WHITESPACE@1346..1347 " "
-        BIND_PAT@1347..1353
+        IDENT_PAT@1347..1353
           MUT_KW@1347..1350 "mut"
           WHITESPACE@1350..1351 " "
           NAME@1351..1353
@@ -604,7 +604,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1366..1400
         LET_KW@1366..1369 "let"
         WHITESPACE@1369..1370 " "
-        BIND_PAT@1370..1376
+        IDENT_PAT@1370..1376
           MUT_KW@1370..1373 "mut"
           WHITESPACE@1373..1374 " "
           NAME@1374..1376
@@ -649,7 +649,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1405..1438
         LET_KW@1405..1408 "let"
         WHITESPACE@1408..1409 " "
-        BIND_PAT@1409..1415
+        IDENT_PAT@1409..1415
           MUT_KW@1409..1412 "mut"
           WHITESPACE@1412..1413 " "
           NAME@1413..1415
@@ -694,7 +694,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1443..1474
         LET_KW@1443..1446 "let"
         WHITESPACE@1446..1447 " "
-        BIND_PAT@1447..1449
+        IDENT_PAT@1447..1449
           NAME@1447..1449
             IDENT@1447..1449 "_a"
         WHITESPACE@1449..1450 " "
@@ -737,7 +737,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1479..1537
         LET_KW@1479..1482 "let"
         WHITESPACE@1482..1483 " "
-        BIND_PAT@1483..1485
+        IDENT_PAT@1483..1485
           NAME@1483..1485
             IDENT@1483..1485 "_b"
         WHITESPACE@1485..1486 " "
@@ -859,7 +859,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1603..1648
         LET_KW@1603..1606 "let"
         WHITESPACE@1606..1607 " "
-        BIND_PAT@1607..1609
+        IDENT_PAT@1607..1609
           NAME@1607..1609
             IDENT@1607..1609 "_a"
         WHITESPACE@1609..1610 " "
@@ -906,7 +906,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1653..1685
         LET_KW@1653..1656 "let"
         WHITESPACE@1656..1657 " "
-        BIND_PAT@1657..1659
+        IDENT_PAT@1657..1659
           NAME@1657..1659
             IDENT@1657..1659 "_c"
         WHITESPACE@1659..1660 " "
@@ -943,7 +943,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1690..1739
         LET_KW@1690..1693 "let"
         WHITESPACE@1693..1694 " "
-        BIND_PAT@1694..1696
+        IDENT_PAT@1694..1696
           NAME@1694..1696
             IDENT@1694..1696 "_b"
         COLON@1696..1697 ":"
@@ -1024,7 +1024,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1790..1804
         LET_KW@1790..1793 "let"
         WHITESPACE@1793..1794 " "
-        BIND_PAT@1794..1799
+        IDENT_PAT@1794..1799
           MUT_KW@1794..1797 "mut"
           WHITESPACE@1797..1798 " "
           NAME@1798..1799
@@ -1102,7 +1102,7 @@ SOURCE_FILE@0..3813
                     COMMA@1863..1864 ","
                     WHITESPACE@1864..1865 " "
                     MATCH_ARM@1865..1883
-                      PLACEHOLDER_PAT@1865..1866
+                      WILDCARD_PAT@1865..1866
                         UNDERSCORE@1865..1866 "_"
                       WHITESPACE@1866..1867 " "
                       FAT_ARROW@1867..1869 "=>"
@@ -1146,7 +1146,7 @@ SOURCE_FILE@0..3813
       LET_STMT@1926..1958
         LET_KW@1926..1929 "let"
         WHITESPACE@1929..1930 " "
-        BIND_PAT@1930..1935
+        IDENT_PAT@1930..1935
           NAME@1930..1935
             IDENT@1930..1935 "_evil"
         WHITESPACE@1935..1936 " "
@@ -1292,7 +1292,7 @@ SOURCE_FILE@0..3813
     PARAM_LIST@2205..2213
       L_PAREN@2205..2206 "("
       PARAM@2206..2212
-        BIND_PAT@2206..2208
+        IDENT_PAT@2206..2208
           NAME@2206..2208
             IDENT@2206..2208 "u8"
         COLON@2208..2209 ":"
@@ -1614,7 +1614,7 @@ SOURCE_FILE@0..3813
       LET_STMT@2938..3021
         LET_KW@2938..2941 "let"
         WHITESPACE@2941..2942 " "
-        BIND_PAT@2942..2945
+        IDENT_PAT@2942..2945
           NAME@2942..2945
             IDENT@2942..2945 "val"
         WHITESPACE@2945..2946 " "
@@ -1648,11 +1648,11 @@ SOURCE_FILE@0..3813
                           R_PAREN@2961..2962 ")"
                       COMMA@2962..2963 ","
                       PARAM@2963..2967
-                        BIND_PAT@2963..2967
+                        IDENT_PAT@2963..2967
                           NAME@2963..2965
                             IDENT@2963..2965 "__"
                           AT@2965..2966 "@"
-                          PLACEHOLDER_PAT@2966..2967
+                          WILDCARD_PAT@2966..2967
                             UNDERSCORE@2966..2967 "_"
                       PIPE@2967..2968 "|"
                     PATH_EXPR@2968..2970

@@ -182,7 +182,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_record_field_pat(
         &self,
         _db: &dyn HirDatabase,
-        field: &ast::RecordFieldPat,
+        field: &ast::RecordPatField,
     ) -> Option<Field> {
         let pat_id = self.pat_id(&field.pat()?)?;
         let struct_field = self.infer.as_ref()?.record_field_pat_resolution(pat_id)?;
@@ -202,7 +202,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_bind_pat_to_const(
         &self,
         db: &dyn HirDatabase,
-        pat: &ast::BindPat,
+        pat: &ast::IdentPat,
     ) -> Option<ModuleDef> {
         let pat_id = self.pat_id(&pat.clone().into())?;
         let body = self.body.as_ref()?;

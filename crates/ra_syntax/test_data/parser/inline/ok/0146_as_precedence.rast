@@ -14,7 +14,7 @@ SOURCE_FILE@0..43
       LET_STMT@15..40
         LET_KW@15..18 "let"
         WHITESPACE@18..19 " "
-        PLACEHOLDER_PAT@19..20
+        WILDCARD_PAT@19..20
           UNDERSCORE@19..20 "_"
         WHITESPACE@20..21 " "
         EQ@21..22 "="

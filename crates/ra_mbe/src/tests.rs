@@ -625,7 +625,7 @@ fn test_tt_to_stmts() {
         r#"MACRO_STMTS@0..15
   LET_STMT@0..7
     LET_KW@0..3 "let"
-    BIND_PAT@3..4
+    IDENT_PAT@3..4
       NAME@3..4
         IDENT@3..4 "a"
     EQ@4..5 "="
@@ -1116,7 +1116,7 @@ fn test_vec() {
   L_CURLY@0..1 "{"
   LET_STMT@1..20
     LET_KW@1..4 "let"
-    BIND_PAT@4..8
+    IDENT_PAT@4..8
       MUT_KW@4..7 "mut"
       NAME@7..8
         IDENT@7..8 "v"

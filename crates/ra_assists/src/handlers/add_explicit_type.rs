@@ -27,7 +27,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     let expr = let_stmt.initializer()?;
     // Must be a binding
     let pat = match let_stmt.pat()? {
-        ast::Pat::BindPat(bind_pat) => bind_pat,
+        ast::Pat::IdentPat(bind_pat) => bind_pat,
         _ => return None,
     };
     let pat_range = pat.syntax().text_range();

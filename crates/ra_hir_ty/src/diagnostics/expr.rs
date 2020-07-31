@@ -131,7 +131,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             if let Some(expr) = source_ptr.value.as_ref().left() {
                 let root = source_ptr.file_syntax(db.upcast());
                 if let ast::Pat::RecordPat(record_pat) = expr.to_node(&root) {
-                    if let Some(field_list) = record_pat.record_field_pat_list() {
+                    if let Some(field_list) = record_pat.record_pat_field_list() {
                         let variant_data = variant_data(db.upcast(), variant_def);
                         let missed_fields = missed_fields
                             .into_iter()

@@ -265,7 +265,7 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
             // FIXME: remove this (V) duplication and make the check more precise
-            if name_ref.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
+            if name_ref.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
                 self.record_pat_syntax =
                     self.sema.find_node_at_offset_with_macros(&original_file, offset);
             }
@@ -275,7 +275,7 @@ impl<'a> CompletionContext<'a> {
         // Otherwise, see if this is a declaration. We can use heuristics to
         // suggest declaration names, see `CompletionKind::Magic`.
         if let Some(name) = find_node_at_offset::<ast::Name>(&file_with_fake_ident, offset) {
-            if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
+            if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::IdentPat::cast) {
                 self.is_pat_binding_or_const = true;
                 if bind_pat.at_token().is_some()
                     || bind_pat.ref_token().is_some()
@@ -283,7 +283,7 @@ impl<'a> CompletionContext<'a> {
                 {
                     self.is_pat_binding_or_const = false;
                 }
-                if bind_pat.syntax().parent().and_then(ast::RecordFieldPatList::cast).is_some() {
+                if bind_pat.syntax().parent().and_then(ast::RecordPatFieldList::cast).is_some() {
                     self.is_pat_binding_or_const = false;
                 }
                 if let Some(let_stmt) = bind_pat.syntax().ancestors().find_map(ast::LetStmt::cast) {
@@ -300,7 +300,7 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
             // FIXME: remove this (^) duplication and make the check more precise
-            if name.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
+            if name.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
                 self.record_pat_syntax =
                     self.sema.find_node_at_offset_with_macros(&original_file, offset);
             }

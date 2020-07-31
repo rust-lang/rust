@@ -29,7 +29,7 @@ use crate::{
 pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
     let bind_pat = match let_stmt.pat()? {
-        ast::Pat::BindPat(pat) => pat,
+        ast::Pat::IdentPat(pat) => pat,
         _ => return None,
     };
     if bind_pat.mut_token().is_some() {

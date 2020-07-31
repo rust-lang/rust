@@ -33,7 +33,7 @@ SOURCE_FILE@0..166
         WHITESPACE@106..111 "\n    "
         LET_KW@111..114 "let"
         WHITESPACE@114..115 " "
-        BIND_PAT@115..124
+        IDENT_PAT@115..124
           NAME@115..124
             IDENT@115..124 "exit_code"
         WHITESPACE@124..125 " "

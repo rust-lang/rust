@@ -390,7 +390,7 @@ impl ast::MatchArmList {
     #[must_use]
     pub fn remove_placeholder(&self) -> ast::MatchArmList {
         let placeholder =
-            self.arms().find(|arm| matches!(arm.pat(), Some(ast::Pat::PlaceholderPat(_))));
+            self.arms().find(|arm| matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))));
         if let Some(placeholder) = placeholder {
             self.remove_arm(&placeholder)
         } else {

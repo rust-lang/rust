@@ -148,18 +148,18 @@ pub fn condition(expr: ast::Expr, pattern: Option<ast::Pat>) -> ast::Condition {
     }
 }
 
-pub fn bind_pat(name: ast::Name) -> ast::BindPat {
+pub fn bind_pat(name: ast::Name) -> ast::IdentPat {
     return from_text(name.text());
 
-    fn from_text(text: &str) -> ast::BindPat {
+    fn from_text(text: &str) -> ast::IdentPat {
         ast_from_text(&format!("fn f({}: ())", text))
     }
 }
 
-pub fn placeholder_pat() -> ast::PlaceholderPat {
+pub fn placeholder_pat() -> ast::WildcardPat {
     return from_text("_");
 
-    fn from_text(text: &str) -> ast::PlaceholderPat {
+    fn from_text(text: &str) -> ast::WildcardPat {
         ast_from_text(&format!("fn f({}: ())", text))
     }
 }

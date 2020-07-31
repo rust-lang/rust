@@ -127,7 +127,7 @@ SOURCE_FILE@0..506
       LET_STMT@301..503
         LET_KW@301..304 "let"
         WHITESPACE@304..305 " "
-        BIND_PAT@305..311
+        IDENT_PAT@305..311
           NAME@305..311
             IDENT@305..311 "result"
         WHITESPACE@311..312 " "

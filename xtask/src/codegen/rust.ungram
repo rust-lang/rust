@@ -1,3 +1,9 @@
+Name =
+  'ident'
+
+NameRef =
+  'ident' | 'int_number'
+
 Path =
   (qualifier:Path '::')? segment:PathSegment
 
@@ -28,6 +34,21 @@ LifetimeArg =
 
 ConstArg =
   Expr
+
+MacroCall =
+  Attr* Path '!' Name? TokenTree ';'?
+
+TokenTree =
+  '(' ')'
+| '{' '}'
+| '[' ']'
+
+MacroItems =
+  Item*
+
+MacroStmts =
+  statements:Stmt*
+  Expr?
 
 SourceFile =
   'shebang'?
@@ -475,93 +496,73 @@ TypeBound =
   'lifetime'
 | '?'? Type
 
-OrPat =
-  Pat*
-
-ParenPat =
-  '(' Pat ')'
-
-RefPat =
-  '&' 'mut'? Pat
-
-BoxPat =
-  'box' Path
-
-BindPat =
-  Attr* 'ref'? 'mut'? Name ('@' Pat)?
-
-PlaceholderPat =
-  '_'
-
-DotDotPat =
-  '..'
-
-PathPat =
-  Path
-
-SlicePat =
-  '[' args:Pat* ']'
-
-RangePat =
-  '..' | '..='
+Pat =
+  IdentPat
+| BoxPat
+| DotDotPat
+| LiteralPat
+| MacroPat
+| OrPat
+| ParenPat
+| PathPat
+| WildcardPat
+| RangePat
+| RecordPat
+| RefPat
+| SlicePat
+| TuplePat
+| TupleStructPat
 
 LiteralPat =
   Literal
 
-MacroPat =
-  MacroCall
+IdentPat =
+  Attr* 'ref'? 'mut'? Name ('@' Pat)?
+
+WildcardPat =
+  '_'
+
+RangePat =
+  start:Pat op:('..' | '..=') end:Pat
+
+RefPat =
+  '&' 'mut'? Pat
 
 RecordPat =
-  Path RecordFieldPatList
+  Path RecordPatFieldList
 
-RecordFieldPatList =
+RecordPatFieldList =
   '{'
-    record_field_pats:RecordFieldPat*
-    BindPat*
+    fields:(RecordPatField (',' RecordPatField)* ','?)
     '..'?
   '}'
 
-RecordFieldPat =
-  Attr* NameRef ':' Pat
+RecordPatField =
+  Attr* (NameRef ':')? Pat
 
 TupleStructPat =
-   Path '(' args:Pat* ')'
+   Path '(' args:(Pat (',' Pat)* ','?)? ')'
 
 TuplePat =
-   '(' args:Pat* ')'
+   '(' args:(Pat (',' Pat)* ','?)? ')'
 
-Name =
-  'ident'
+ParenPat =
+  '(' Pat ')'
 
-NameRef =
-  'ident' | 'int_number'
+SlicePat =
+  '[' args:(Pat (',' Pat)* ','?)? ']'
 
-MacroCall =
-  Attr* Path '!' Name? TokenTree ';'?
+PathPat =
+  Path
 
-TokenTree =
-  '(' ')' | '{' '}' | '[' ']'
+OrPat =
+  (Pat ('|' Pat)* '|'?)
 
-MacroItems =
-  Item*
+BoxPat =
+  'box' Pat
 
-MacroStmts =
-  statements:Stmt*
-  Expr?
+DotDotPat =
+  '..'
 
-Pat =
-  OrPat
-| ParenPat
-| RefPat
-| BoxPat
-| BindPat
-| PlaceholderPat
-| DotDotPat
-| PathPat
-| RecordPat
-| TupleStructPat
-| TuplePat
-| SlicePat
-| RangePat
-| LiteralPat
-| MacroPat
+MacroPat =
+  MacroCall

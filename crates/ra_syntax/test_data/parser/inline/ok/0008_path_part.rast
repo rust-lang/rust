@@ -58,7 +58,7 @@ SOURCE_FILE@0..103
               NAME_REF@62..65
                 IDENT@62..65 "Bar"
           WHITESPACE@65..66 " "
-          RECORD_FIELD_PAT_LIST@66..72
+          RECORD_PAT_FIELD_LIST@66..72
             L_CURLY@66..67 "{"
             WHITESPACE@67..68 " "
             DOT2@68..70 ".."

@@ -14,7 +14,7 @@ SOURCE_FILE@0..248
       LET_STMT@25..55
         LET_KW@25..28 "let"
         WHITESPACE@28..29 " "
-        BIND_PAT@29..30
+        IDENT_PAT@29..30
           NAME@29..30
             IDENT@29..30 "x"
         WHITESPACE@30..31 " "

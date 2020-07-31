@@ -59,7 +59,7 @@ SOURCE_FILE@0..167
         FOR_EXPR@76..90
           FOR_KW@76..79 "for"
           WHITESPACE@79..80 " "
-          PLACEHOLDER_PAT@80..81
+          WILDCARD_PAT@80..81
             UNDERSCORE@80..81 "_"
           WHITESPACE@81..82 " "
           IN_KW@82..84 "in"

@@ -16,7 +16,7 @@ SOURCE_FILE@0..57
         PARAM_LIST@22..46
           L_PAREN@22..23 "("
           PARAM@23..40
-            BIND_PAT@23..29
+            IDENT_PAT@23..29
               NAME@23..29
                 IDENT@23..29 "format"
             COLON@29..30 ":"

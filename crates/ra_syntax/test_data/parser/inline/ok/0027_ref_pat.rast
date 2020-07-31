@@ -16,7 +16,7 @@ SOURCE_FILE@0..52
         WHITESPACE@19..20 " "
         REF_PAT@20..22
           AMP@20..21 "&"
-          BIND_PAT@21..22
+          IDENT_PAT@21..22
             NAME@21..22
               IDENT@21..22 "a"
         WHITESPACE@22..23 " "
@@ -34,7 +34,7 @@ SOURCE_FILE@0..52
           AMP@37..38 "&"
           MUT_KW@38..41 "mut"
           WHITESPACE@41..42 " "
-          BIND_PAT@42..43
+          IDENT_PAT@42..43
             NAME@42..43
               IDENT@42..43 "b"
         WHITESPACE@43..44 " "

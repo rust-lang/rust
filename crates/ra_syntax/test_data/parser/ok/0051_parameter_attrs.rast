@@ -25,7 +25,7 @@ SOURCE_FILE@0..519
         R_BRACK@22..23 "]"
       WHITESPACE@23..24 " "
       PARAM@24..33
-        BIND_PAT@24..27
+        IDENT_PAT@24..27
           NAME@24..27
             IDENT@24..27 "pat"
         COLON@27..28 ":"
@@ -58,7 +58,7 @@ SOURCE_FILE@0..519
         R_BRACK@51..52 "]"
       WHITESPACE@52..53 " "
       PARAM@53..58
-        BIND_PAT@53..54
+        IDENT_PAT@53..54
           NAME@53..54
             IDENT@53..54 "x"
         COLON@54..55 ":"
@@ -91,7 +91,7 @@ SOURCE_FILE@0..519
         PARAM_LIST@86..118
           L_PAREN@86..87 "("
           PARAM@87..104
-            BIND_PAT@87..93
+            IDENT_PAT@87..93
               NAME@87..93
                 IDENT@87..93 "format"
             COLON@93..94 ":"
@@ -212,7 +212,7 @@ SOURCE_FILE@0..519
             R_BRACK@203..204 "]"
           WHITESPACE@204..205 " "
           PARAM@205..211
-            PLACEHOLDER_PAT@205..206
+            WILDCARD_PAT@205..206
               UNDERSCORE@205..206 "_"
             COLON@206..207 ":"
             WHITESPACE@207..208 " "
@@ -234,7 +234,7 @@ SOURCE_FILE@0..519
             R_BRACK@220..221 "]"
           WHITESPACE@221..222 " "
           PARAM@222..232
-            BIND_PAT@222..227
+            IDENT_PAT@222..227
               MUT_KW@222..225 "mut"
               WHITESPACE@225..226 " "
               NAME@226..227

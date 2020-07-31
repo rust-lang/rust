@@ -924,7 +924,7 @@ fn ufcs_matches_method_call() {
 fn pattern_is_a_single_segment_path() {
     mark::check!(pattern_is_a_single_segment_path);
     // The first function should not be altered because the `foo` in scope at the cursor position is
-    // a different `foo`. This case is special because "foo" can be parsed as a pattern (BIND_PAT ->
+    // a different `foo`. This case is special because "foo" can be parsed as a pattern (IDENT_PAT ->
     // NAME -> IDENT), which contains no path. If we're not careful we'll end up matching the `foo`
     // in `let foo` from the first function. Whether we should match the `let foo` in the second
     // function is less clear. At the moment, we don't. Doing so sounds like a rename operation,

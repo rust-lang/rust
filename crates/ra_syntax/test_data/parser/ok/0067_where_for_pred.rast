@@ -245,7 +245,7 @@ SOURCE_FILE@0..374
     PARAM_LIST@239..247
       L_PAREN@239..240 "("
       PARAM@240..246
-        BIND_PAT@240..242
+        IDENT_PAT@240..242
           NAME@240..242
             IDENT@240..242 "_t"
         COLON@242..243 ":"

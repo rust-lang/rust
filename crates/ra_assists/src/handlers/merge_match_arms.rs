@@ -86,7 +86,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
 }
 
 fn contains_placeholder(a: &ast::MatchArm) -> bool {
-    matches!(a.pat(), Some(ast::Pat::PlaceholderPat(..)))
+    matches!(a.pat(), Some(ast::Pat::WildcardPat(..)))
 }
 
 #[cfg(test)]
