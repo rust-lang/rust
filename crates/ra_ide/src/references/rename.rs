@@ -157,7 +157,7 @@ fn rename_to_self(
     }
     let first_param = params.params().next()?;
     let mutable = match first_param.ty() {
-        Some(ast::TypeRef::ReferenceType(rt)) => rt.mut_token().is_some(),
+        Some(ast::Type::ReferenceType(rt)) => rt.mut_token().is_some(),
         _ => return None, // not renaming other types
     };
 
@@ -194,7 +194,7 @@ fn text_edit_from_self_param(
     new_name: &str,
 ) -> Option<TextEdit> {
     fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
-        if let Some(ast::TypeRef::PathType(p)) = impl_def.target_type() {
+        if let Some(ast::Type::PathType(p)) = impl_def.target_type() {
             return Some(p.path()?.segment()?.name_ref()?.text().to_string());
         }
         None

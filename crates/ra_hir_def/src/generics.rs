@@ -253,7 +253,7 @@ impl GenericParams {
 
     fn fill_where_predicates(&mut self, lower_ctx: &LowerCtx, where_clause: ast::WhereClause) {
         for pred in where_clause.predicates() {
-            let type_ref = match pred.type_ref() {
+            let type_ref = match pred.ty() {
                 Some(type_ref) => type_ref,
                 None => continue,
             };

@@ -70,7 +70,7 @@ impl ParsedRule {
             rules: Vec::new(),
         };
         builder.try_add(ast::Expr::parse(&raw_pattern), raw_template.map(ast::Expr::parse));
-        builder.try_add(ast::TypeRef::parse(&raw_pattern), raw_template.map(ast::TypeRef::parse));
+        builder.try_add(ast::Type::parse(&raw_pattern), raw_template.map(ast::Type::parse));
         builder.try_add(ast::Item::parse(&raw_pattern), raw_template.map(ast::Item::parse));
         builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
         builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));

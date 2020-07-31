@@ -17,7 +17,7 @@ pub fn name_ref(text: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {}; }}", text))
 }
 
-pub fn type_ref(text: &str) -> ast::TypeRef {
+pub fn type_ref(text: &str) -> ast::Type {
     ast_from_text(&format!("impl {} for D {{}};", text))
 }
 
@@ -75,7 +75,7 @@ pub fn record_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordE
     }
 }
 
-pub fn record_field_def(name: ast::NameRef, ty: ast::TypeRef) -> ast::RecordField {
+pub fn record_field_def(name: ast::NameRef, ty: ast::Type) -> ast::RecordField {
     ast_from_text(&format!("struct S {{ {}: {}, }}", name, ty))
 }
 

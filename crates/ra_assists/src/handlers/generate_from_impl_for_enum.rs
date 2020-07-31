@@ -34,7 +34,7 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
     }
     let field_type = field_list.fields().next()?.ty()?;
     let path = match field_type {
-        ast::TypeRef::PathType(it) => it,
+        ast::Type::PathType(it) => it,
         _ => return None,
     };
 

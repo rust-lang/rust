@@ -152,7 +152,7 @@ pub(super) fn lower_generic_args(
 ) -> Option<GenericArgs> {
     let mut args = Vec::new();
     for type_arg in node.type_args() {
-        let type_ref = TypeRef::from_ast_opt(lower_ctx, type_arg.type_ref());
+        let type_ref = TypeRef::from_ast_opt(lower_ctx, type_arg.ty());
         args.push(GenericArg::Type(type_ref));
     }
     // lifetimes ignored for now
@@ -161,7 +161,7 @@ pub(super) fn lower_generic_args(
         let assoc_type_arg: ast::AssocTypeArg = assoc_type_arg;
         if let Some(name_ref) = assoc_type_arg.name_ref() {
             let name = name_ref.as_name();
-            let type_ref = assoc_type_arg.type_ref().map(|it| TypeRef::from_ast(lower_ctx, it));
+            let type_ref = assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
             let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
                 l.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
             } else {

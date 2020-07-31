@@ -40,7 +40,7 @@ impl Const {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -112,7 +112,7 @@ impl Impl {
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
@@ -152,7 +152,7 @@ impl Static {
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -198,7 +198,7 @@ impl TypeAlias {
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
     pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -333,7 +333,7 @@ pub struct RetType {
 }
 impl RetType {
     pub fn thin_arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![->]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhereClause {
@@ -369,7 +369,7 @@ impl SelfParam {
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Param {
@@ -379,7 +379,7 @@ impl ast::AttrsOwner for Param {}
 impl Param {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![...]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -416,7 +416,7 @@ impl ast::NameOwner for RecordField {}
 impl ast::VisibilityOwner for RecordField {}
 impl RecordField {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleField {
@@ -425,7 +425,7 @@ pub struct TupleField {
 impl ast::AttrsOwner for TupleField {}
 impl ast::VisibilityOwner for TupleField {}
 impl TupleField {
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariantList {
@@ -487,7 +487,7 @@ impl ast::NameOwner for TypeParam {}
 impl ast::TypeBoundsOwner for TypeParam {}
 impl TypeParam {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn default_type(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn default_type(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstParam {
@@ -498,7 +498,7 @@ impl ast::NameOwner for ConstParam {}
 impl ConstParam {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn default_val(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
@@ -525,7 +525,7 @@ pub struct ParenType {
 }
 impl ParenType {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -534,7 +534,7 @@ pub struct TupleType {
 }
 impl TupleType {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn fields(&self) -> AstChildren<TypeRef> { support::children(&self.syntax) }
+    pub fn fields(&self) -> AstChildren<Type> { support::children(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -559,7 +559,7 @@ impl PointerType {
     pub fn star_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ArrayType {
@@ -567,7 +567,7 @@ pub struct ArrayType {
 }
 impl ArrayType {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
@@ -578,7 +578,7 @@ pub struct SliceType {
 }
 impl SliceType {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -591,7 +591,7 @@ impl ReferenceType {
         support::token(&self.syntax, T![lifetime])
     }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PlaceholderType {
@@ -618,7 +618,7 @@ pub struct ForType {
 impl ForType {
     pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
     pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplTraitType {
@@ -882,7 +882,7 @@ impl ast::AttrsOwner for CastExpr {}
 impl CastExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefExpr {
@@ -1174,7 +1174,7 @@ impl TypeBound {
         support::token(&self.syntax, T![lifetime])
     }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePred {
@@ -1187,7 +1187,7 @@ impl WherePred {
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![lifetime])
     }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExprStmt {
@@ -1207,7 +1207,7 @@ impl LetStmt {
     pub fn let_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![let]) }
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn ty(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn initializer(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
@@ -1234,7 +1234,7 @@ pub struct TypeArg {
     pub(crate) syntax: SyntaxNode,
 }
 impl TypeArg {
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LifetimeArg {
@@ -1253,7 +1253,7 @@ impl ast::TypeBoundsOwner for AssocTypeArg {}
 impl AssocTypeArg {
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn type_ref(&self) -> Option<TypeRef> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstArg {
@@ -1282,7 +1282,7 @@ pub enum Item {
 }
 impl ast::AttrsOwner for Item {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TypeRef {
+pub enum Type {
     ParenType(ParenType),
     TupleType(TupleType),
     NeverType(NeverType),
@@ -1355,6 +1355,16 @@ pub enum Expr {
     BoxExpr(BoxExpr),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AdtDef {
+    Struct(Struct),
+    Enum(Enum),
+    Union(Union),
+}
+impl ast::AttrsOwner for AdtDef {}
+impl ast::GenericParamsOwner for AdtDef {}
+impl ast::NameOwner for AdtDef {}
+impl ast::VisibilityOwner for AdtDef {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {
     Fn(Fn),
     TypeAlias(TypeAlias),
@@ -1384,16 +1394,6 @@ pub enum Stmt {
     ExprStmt(ExprStmt),
 }
 impl ast::AttrsOwner for Stmt {}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AdtDef {
-    Struct(Struct),
-    Enum(Enum),
-    Union(Union),
-}
-impl ast::AttrsOwner for AdtDef {}
-impl ast::GenericParamsOwner for AdtDef {}
-impl ast::NameOwner for AdtDef {}
-impl ast::VisibilityOwner for AdtDef {}
 impl AstNode for SourceFile {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SOURCE_FILE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2847,46 +2847,46 @@ impl AstNode for Item {
         }
     }
 }
-impl From<ParenType> for TypeRef {
-    fn from(node: ParenType) -> TypeRef { TypeRef::ParenType(node) }
+impl From<ParenType> for Type {
+    fn from(node: ParenType) -> Type { Type::ParenType(node) }
 }
-impl From<TupleType> for TypeRef {
-    fn from(node: TupleType) -> TypeRef { TypeRef::TupleType(node) }
+impl From<TupleType> for Type {
+    fn from(node: TupleType) -> Type { Type::TupleType(node) }
 }
-impl From<NeverType> for TypeRef {
-    fn from(node: NeverType) -> TypeRef { TypeRef::NeverType(node) }
+impl From<NeverType> for Type {
+    fn from(node: NeverType) -> Type { Type::NeverType(node) }
 }
-impl From<PathType> for TypeRef {
-    fn from(node: PathType) -> TypeRef { TypeRef::PathType(node) }
+impl From<PathType> for Type {
+    fn from(node: PathType) -> Type { Type::PathType(node) }
 }
-impl From<PointerType> for TypeRef {
-    fn from(node: PointerType) -> TypeRef { TypeRef::PointerType(node) }
+impl From<PointerType> for Type {
+    fn from(node: PointerType) -> Type { Type::PointerType(node) }
 }
-impl From<ArrayType> for TypeRef {
-    fn from(node: ArrayType) -> TypeRef { TypeRef::ArrayType(node) }
+impl From<ArrayType> for Type {
+    fn from(node: ArrayType) -> Type { Type::ArrayType(node) }
 }
-impl From<SliceType> for TypeRef {
-    fn from(node: SliceType) -> TypeRef { TypeRef::SliceType(node) }
+impl From<SliceType> for Type {
+    fn from(node: SliceType) -> Type { Type::SliceType(node) }
 }
-impl From<ReferenceType> for TypeRef {
-    fn from(node: ReferenceType) -> TypeRef { TypeRef::ReferenceType(node) }
+impl From<ReferenceType> for Type {
+    fn from(node: ReferenceType) -> Type { Type::ReferenceType(node) }
 }
-impl From<PlaceholderType> for TypeRef {
-    fn from(node: PlaceholderType) -> TypeRef { TypeRef::PlaceholderType(node) }
+impl From<PlaceholderType> for Type {
+    fn from(node: PlaceholderType) -> Type { Type::PlaceholderType(node) }
 }
-impl From<FnPointerType> for TypeRef {
-    fn from(node: FnPointerType) -> TypeRef { TypeRef::FnPointerType(node) }
+impl From<FnPointerType> for Type {
+    fn from(node: FnPointerType) -> Type { Type::FnPointerType(node) }
 }
-impl From<ForType> for TypeRef {
-    fn from(node: ForType) -> TypeRef { TypeRef::ForType(node) }
+impl From<ForType> for Type {
+    fn from(node: ForType) -> Type { Type::ForType(node) }
 }
-impl From<ImplTraitType> for TypeRef {
-    fn from(node: ImplTraitType) -> TypeRef { TypeRef::ImplTraitType(node) }
+impl From<ImplTraitType> for Type {
+    fn from(node: ImplTraitType) -> Type { Type::ImplTraitType(node) }
 }
-impl From<DynTraitType> for TypeRef {
-    fn from(node: DynTraitType) -> TypeRef { TypeRef::DynTraitType(node) }
+impl From<DynTraitType> for Type {
+    fn from(node: DynTraitType) -> Type { Type::DynTraitType(node) }
 }
-impl AstNode for TypeRef {
+impl AstNode for Type {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             PAREN_TYPE | TUPLE_TYPE | NEVER_TYPE | PATH_TYPE | POINTER_TYPE | ARRAY_TYPE
@@ -2897,38 +2897,38 @@ impl AstNode for TypeRef {
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            PAREN_TYPE => TypeRef::ParenType(ParenType { syntax }),
-            TUPLE_TYPE => TypeRef::TupleType(TupleType { syntax }),
-            NEVER_TYPE => TypeRef::NeverType(NeverType { syntax }),
-            PATH_TYPE => TypeRef::PathType(PathType { syntax }),
-            POINTER_TYPE => TypeRef::PointerType(PointerType { syntax }),
-            ARRAY_TYPE => TypeRef::ArrayType(ArrayType { syntax }),
-            SLICE_TYPE => TypeRef::SliceType(SliceType { syntax }),
-            REFERENCE_TYPE => TypeRef::ReferenceType(ReferenceType { syntax }),
-            PLACEHOLDER_TYPE => TypeRef::PlaceholderType(PlaceholderType { syntax }),
-            FN_POINTER_TYPE => TypeRef::FnPointerType(FnPointerType { syntax }),
-            FOR_TYPE => TypeRef::ForType(ForType { syntax }),
-            IMPL_TRAIT_TYPE => TypeRef::ImplTraitType(ImplTraitType { syntax }),
-            DYN_TRAIT_TYPE => TypeRef::DynTraitType(DynTraitType { syntax }),
+            PAREN_TYPE => Type::ParenType(ParenType { syntax }),
+            TUPLE_TYPE => Type::TupleType(TupleType { syntax }),
+            NEVER_TYPE => Type::NeverType(NeverType { syntax }),
+            PATH_TYPE => Type::PathType(PathType { syntax }),
+            POINTER_TYPE => Type::PointerType(PointerType { syntax }),
+            ARRAY_TYPE => Type::ArrayType(ArrayType { syntax }),
+            SLICE_TYPE => Type::SliceType(SliceType { syntax }),
+            REFERENCE_TYPE => Type::ReferenceType(ReferenceType { syntax }),
+            PLACEHOLDER_TYPE => Type::PlaceholderType(PlaceholderType { syntax }),
+            FN_POINTER_TYPE => Type::FnPointerType(FnPointerType { syntax }),
+            FOR_TYPE => Type::ForType(ForType { syntax }),
+            IMPL_TRAIT_TYPE => Type::ImplTraitType(ImplTraitType { syntax }),
+            DYN_TRAIT_TYPE => Type::DynTraitType(DynTraitType { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            TypeRef::ParenType(it) => &it.syntax,
-            TypeRef::TupleType(it) => &it.syntax,
-            TypeRef::NeverType(it) => &it.syntax,
-            TypeRef::PathType(it) => &it.syntax,
-            TypeRef::PointerType(it) => &it.syntax,
-            TypeRef::ArrayType(it) => &it.syntax,
-            TypeRef::SliceType(it) => &it.syntax,
-            TypeRef::ReferenceType(it) => &it.syntax,
-            TypeRef::PlaceholderType(it) => &it.syntax,
-            TypeRef::FnPointerType(it) => &it.syntax,
-            TypeRef::ForType(it) => &it.syntax,
-            TypeRef::ImplTraitType(it) => &it.syntax,
-            TypeRef::DynTraitType(it) => &it.syntax,
+            Type::ParenType(it) => &it.syntax,
+            Type::TupleType(it) => &it.syntax,
+            Type::NeverType(it) => &it.syntax,
+            Type::PathType(it) => &it.syntax,
+            Type::PointerType(it) => &it.syntax,
+            Type::ArrayType(it) => &it.syntax,
+            Type::SliceType(it) => &it.syntax,
+            Type::ReferenceType(it) => &it.syntax,
+            Type::PlaceholderType(it) => &it.syntax,
+            Type::FnPointerType(it) => &it.syntax,
+            Type::ForType(it) => &it.syntax,
+            Type::ImplTraitType(it) => &it.syntax,
+            Type::DynTraitType(it) => &it.syntax,
         }
     }
 }
@@ -3234,6 +3234,39 @@ impl AstNode for Expr {
         }
     }
 }
+impl From<Struct> for AdtDef {
+    fn from(node: Struct) -> AdtDef { AdtDef::Struct(node) }
+}
+impl From<Enum> for AdtDef {
+    fn from(node: Enum) -> AdtDef { AdtDef::Enum(node) }
+}
+impl From<Union> for AdtDef {
+    fn from(node: Union) -> AdtDef { AdtDef::Union(node) }
+}
+impl AstNode for AdtDef {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            STRUCT | ENUM | UNION => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            STRUCT => AdtDef::Struct(Struct { syntax }),
+            ENUM => AdtDef::Enum(Enum { syntax }),
+            UNION => AdtDef::Union(Union { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            AdtDef::Struct(it) => &it.syntax,
+            AdtDef::Enum(it) => &it.syntax,
+            AdtDef::Union(it) => &it.syntax,
+        }
+    }
+}
 impl From<Fn> for AssocItem {
     fn from(node: Fn) -> AssocItem { AssocItem::Fn(node) }
 }
@@ -3366,45 +3399,12 @@ impl AstNode for Stmt {
         }
     }
 }
-impl From<Struct> for AdtDef {
-    fn from(node: Struct) -> AdtDef { AdtDef::Struct(node) }
-}
-impl From<Enum> for AdtDef {
-    fn from(node: Enum) -> AdtDef { AdtDef::Enum(node) }
-}
-impl From<Union> for AdtDef {
-    fn from(node: Union) -> AdtDef { AdtDef::Union(node) }
-}
-impl AstNode for AdtDef {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            STRUCT | ENUM | UNION => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            STRUCT => AdtDef::Struct(Struct { syntax }),
-            ENUM => AdtDef::Enum(Enum { syntax }),
-            UNION => AdtDef::Union(Union { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            AdtDef::Struct(it) => &it.syntax,
-            AdtDef::Enum(it) => &it.syntax,
-            AdtDef::Union(it) => &it.syntax,
-        }
-    }
-}
 impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TypeRef {
+impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3420,6 +3420,11 @@ impl std::fmt::Display for FieldList {
     }
 }
 impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AdtDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3440,11 +3445,6 @@ impl std::fmt::Display for GenericParam {
     }
 }
 impl std::fmt::Display for Stmt {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for AdtDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

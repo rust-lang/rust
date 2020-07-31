@@ -61,22 +61,22 @@ ParamList =
 SelfParam =
   Attr* (
     ('&' 'lifetime'?)? 'mut'? 'self'
-  | 'mut'? 'self' ':' ty:TypeRef
+  | 'mut'? 'self' ':' Type
   )
 
 Param =
   Attr* (
-    Pat (':' ty:TypeRef)
-  | ty:TypeRef
+    Pat (':' Type)
+  | Type
   | '...'
   )
 
 RetType =
-  '->' ty:TypeRef
+  '->' Type
 
 TypeAlias =
   Attr* Visibility? 'default'? 'type' Name GenericParamList? (':' TypeBoundList?)? WhereClause?
-  '=' ty:TypeRef ';'
+  '=' Type ';'
 
 Struct =
   Attr* Visibility? 'struct' Name GenericParamList? (
@@ -88,13 +88,13 @@ RecordFieldList =
  '{' fields:(RecordField (',' RecordField)* ','?)? '}'
 
 RecordField =
-  Attr* Visibility? Name ':' ty:TypeRef
+  Attr* Visibility? Name ':' Type
 
 TupleFieldList =
   '(' fields:(TupleField (',' TupleField)* ','?)? ')'
 
 TupleField =
-  Attr* Visibility? ty:TypeRef
+  Attr* Visibility? Type
 
 FieldList =
   RecordFieldList
@@ -114,12 +114,17 @@ Union =
   Attr* Visibility? 'union' Name GenericParamList? WhereClause?
   RecordFieldList
 
+AdtDef =
+  Struct
+| Enum
+| Union
+
 Const =
-  Attr* Visibility? 'default'? 'const' (Name | '_') ':' ty:TypeRef
+  Attr* Visibility? 'default'? 'const' (Name | '_') ':' Type
   '=' body:Expr ';'
 
 Static =
-  Attr* Visibility? 'static'? 'mut'? Name ':' ty:TypeRef
+  Attr* Visibility? 'static'? 'mut'? Name ':' Type
   '=' body:Expr ';'
 
 Trait =
@@ -139,8 +144,8 @@ AssocItem =
 Impl =
  Attr* Visibility?
  'default'? 'unsafe'? 'impl' 'const'? GenericParamList? (
-   TypeRef
- | '!'? TypeRef 'for' TypeRef
+   Type
+ | '!'? Type 'for' Type
  ) WhereClause?
  AssocItemList
 
@@ -163,10 +168,10 @@ GenericParam =
 
 TypeParam =
   Attr* Name (':' TypeBoundList?)?
-  ('=' default_type:TypeRef)?
+  ('=' default_type:Type)?
 
 ConstParam =
-  Attr* 'const' Name ':' ty:TypeRef
+  Attr* 'const' Name ':' Type
   ('=' default_val:Expr)?
 
 LifetimeParam =
@@ -183,11 +188,26 @@ Visibility =
 Attr =
   '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
 
+Type =
+  ParenType
+| TupleType
+| NeverType
+| PathType
+| PointerType
+| ArrayType
+| SliceType
+| ReferenceType
+| PlaceholderType
+| FnPointerType
+| ForType
+| ImplTraitType
+| DynTraitType
+
 ParenType =
-  '(' ty:TypeRef ')'
+  '(' Type ')'
 
 TupleType =
-  '(' fields:TypeRef* ')'
+  '(' fields:Type* ')'
 
 NeverType =
   '!'
@@ -196,16 +216,16 @@ PathType =
   Path
 
 PointerType =
-  '*' ('const' | 'mut') ty:TypeRef
+  '*' ('const' | 'mut') Type
 
 ArrayType =
-  '[' ty:TypeRef ';' Expr ']'
+  '[' Type ';' Expr ']'
 
 SliceType =
-  '[' ty:TypeRef ']'
+  '[' Type ']'
 
 ReferenceType =
-  '&' 'lifetime'? 'mut'? ty:TypeRef
+  '&' 'lifetime'? 'mut'? Type
 
 PlaceholderType =
    '_'
@@ -214,7 +234,7 @@ FnPointerType =
    Abi 'unsafe'? 'fn' ParamList RetType?
 
 ForType =
-   'for' GenericParamList ty:TypeRef
+   'for' GenericParamList Type
 
 ImplTraitType =
   'impl' TypeBoundList
@@ -302,7 +322,7 @@ TryExpr =
   Attr* Expr '?'
 
 CastExpr =
-  Attr* Expr 'as' ty:TypeRef
+  Attr* Expr 'as' Type
 
 RefExpr =
   Attr* '&' ('raw' | 'mut' | 'const') Expr
@@ -424,13 +444,13 @@ MacroStmts =
   Expr?
 
 TypeBound =
-  'lifetime' | 'const'? TypeRef
+  'lifetime' | 'const'? Type
 
 TypeBoundList =
    bounds:TypeBound*
 
 WherePred =
-  ('for' GenericParamList)?  ('lifetime' | TypeRef) ':' TypeBoundList
+  ('for' GenericParamList)?  ('lifetime' | Type) ':' TypeBoundList
 
 WhereClause =
   'where' predicates:WherePred*
@@ -439,7 +459,7 @@ ExprStmt =
   Attr* Expr ';'
 
 LetStmt =
-  Attr* 'let' Pat (':' ty:TypeRef)
+  Attr* 'let' Pat (':' Type)
   '=' initializer:Expr ';'
 
 Path =
@@ -458,36 +478,16 @@ TypeArgList =
   '>'
 
 TypeArg =
-  TypeRef
+  Type
 
 AssocTypeArg =
-  NameRef (':' TypeBoundList | '=' TypeRef)
+  NameRef (':' TypeBoundList | '=' Type)
 
 LifetimeArg =
   'lifetime'
 
 ConstArg =
   Literal | BlockExpr BlockExpr
-
-AdtDef =
-  Struct
-| Enum
-| Union
-
-TypeRef =
-  ParenType
-| TupleType
-| NeverType
-| PathType
-| PointerType
-| ArrayType
-| SliceType
-| ReferenceType
-| PlaceholderType
-| FnPointerType
-| ForType
-| ImplTraitType
-| DynTraitType
 
 Stmt =
   LetStmt
