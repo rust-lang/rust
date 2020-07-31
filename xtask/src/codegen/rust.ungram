@@ -175,7 +175,13 @@ ConstParam =
   ('=' default_val:Expr)?
 
 LifetimeParam =
-  Attr* 'lifetime'
+  Attr* 'lifetime' (':' TypeBoundList?)?
+
+WhereClause =
+  'where' predicates:(WherePred (',' WherePred)* ','?)
+
+WherePred =
+  ('for' GenericParamList)?  ('lifetime' | Type) ':' TypeBoundList
 
 Visibility =
   'pub' ('('
@@ -187,6 +193,17 @@ Visibility =
 
 Attr =
   '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
+
+Stmt =
+  LetStmt
+| ExprStmt
+
+LetStmt =
+  Attr* 'let' Pat (':' Type)?
+  '=' initializer:Expr ';'
+
+ExprStmt =
+  Attr* Expr ';'?
 
 Type =
   ParenType
@@ -450,19 +467,6 @@ MacroStmts =
   statements:Stmt*
   Expr?
 
-WherePred =
-  ('for' GenericParamList)?  ('lifetime' | Type) ':' TypeBoundList
-
-WhereClause =
-  'where' predicates:WherePred*
-
-ExprStmt =
-  Attr* Expr ';'
-
-LetStmt =
-  Attr* 'let' Pat (':' Type)
-  '=' initializer:Expr ';'
-
 Path =
   (qualifier:Path '::')? segment:PathSegment
 
@@ -489,10 +493,6 @@ LifetimeArg =
 
 ConstArg =
   Literal | BlockExpr BlockExpr
-
-Stmt =
-  LetStmt
-| ExprStmt
 
 Pat =
   OrPat
