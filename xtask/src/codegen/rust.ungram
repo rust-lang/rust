@@ -215,14 +215,13 @@ Expr =
 | BreakExpr
 | CallExpr
 | CastExpr
+| ClosureExpr
 | ContinueExpr
 | EffectExpr
 | FieldExpr
 | ForExpr
 | IfExpr
 | IndexExpr
-| Label
-| ClosureExpr
 | Literal
 | LoopExpr
 | MacroCall
@@ -340,7 +339,7 @@ ForExpr =
 
 WhileExpr =
   Attr* Label? 'while' Condition
-  loop_body:BlockExpr?
+  loop_body:BlockExpr
 
 Label =
   'lifetime'
@@ -418,13 +417,13 @@ SliceType =
   '[' Type ']'
 
 InferType =
-   '_'
+  '_'
 
 FnPointerType =
-   'const'? 'async'? 'unsafe'? Abi? 'fn' ParamList RetType?
+  'const'? 'async'? 'unsafe'? Abi? 'fn' ParamList RetType?
 
 ForType =
-   'for' GenericParamList Type
+  'for' GenericParamList Type
 
 ImplTraitType =
   'impl' TypeBoundList
@@ -433,7 +432,7 @@ DynTraitType =
   'dyn' TypeBoundList
 
 TypeBoundList =
-   bounds:(TypeBound ('+' TypeBound)* '+'?)
+  bounds:(TypeBound ('+' TypeBound)* '+'?)
 
 TypeBound =
   'lifetime'

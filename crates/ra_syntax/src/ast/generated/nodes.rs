@@ -624,6 +624,19 @@ impl CastExpr {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ClosureExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for ClosureExpr {}
+impl ClosureExpr {
+    pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
+    pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
+    pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }
+    pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
+    pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
+    pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ContinueExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -688,28 +701,6 @@ impl ast::AttrsOwner for IndexExpr {}
 impl IndexExpr {
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Label {
-    pub(crate) syntax: SyntaxNode,
-}
-impl Label {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ClosureExpr {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for ClosureExpr {}
-impl ClosureExpr {
-    pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
-    pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
-    pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }
-    pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
-    pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
-    pub fn body(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LoopExpr {
@@ -833,6 +824,15 @@ impl ast::LoopBodyOwner for WhileExpr {}
 impl WhileExpr {
     pub fn while_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![while]) }
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Label {
+    pub(crate) syntax: SyntaxNode,
+}
+impl Label {
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![lifetime])
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordExprFieldList {
@@ -1337,14 +1337,13 @@ pub enum Expr {
     BreakExpr(BreakExpr),
     CallExpr(CallExpr),
     CastExpr(CastExpr),
+    ClosureExpr(ClosureExpr),
     ContinueExpr(ContinueExpr),
     EffectExpr(EffectExpr),
     FieldExpr(FieldExpr),
     ForExpr(ForExpr),
     IfExpr(IfExpr),
     IndexExpr(IndexExpr),
-    Label(Label),
-    ClosureExpr(ClosureExpr),
     Literal(Literal),
     LoopExpr(LoopExpr),
     MacroCall(MacroCall),
@@ -2017,6 +2016,17 @@ impl AstNode for CastExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for ClosureExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for ContinueExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONTINUE_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2074,28 +2084,6 @@ impl AstNode for IfExpr {
 }
 impl AstNode for IndexExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == INDEX_EXPR }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for Label {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == LABEL }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for ClosureExpr {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2239,6 +2227,17 @@ impl AstNode for TupleExpr {
 }
 impl AstNode for WhileExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == WHILE_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for Label {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LABEL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3086,6 +3085,9 @@ impl From<CallExpr> for Expr {
 impl From<CastExpr> for Expr {
     fn from(node: CastExpr) -> Expr { Expr::CastExpr(node) }
 }
+impl From<ClosureExpr> for Expr {
+    fn from(node: ClosureExpr) -> Expr { Expr::ClosureExpr(node) }
+}
 impl From<ContinueExpr> for Expr {
     fn from(node: ContinueExpr) -> Expr { Expr::ContinueExpr(node) }
 }
@@ -3103,12 +3105,6 @@ impl From<IfExpr> for Expr {
 }
 impl From<IndexExpr> for Expr {
     fn from(node: IndexExpr) -> Expr { Expr::IndexExpr(node) }
-}
-impl From<Label> for Expr {
-    fn from(node: Label) -> Expr { Expr::Label(node) }
-}
-impl From<ClosureExpr> for Expr {
-    fn from(node: ClosureExpr) -> Expr { Expr::ClosureExpr(node) }
 }
 impl From<Literal> for Expr {
     fn from(node: Literal) -> Expr { Expr::Literal(node) }
@@ -3159,8 +3155,8 @@ impl AstNode for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             ARRAY_EXPR | AWAIT_EXPR | BIN_EXPR | BLOCK_EXPR | BOX_EXPR | BREAK_EXPR | CALL_EXPR
-            | CAST_EXPR | CONTINUE_EXPR | EFFECT_EXPR | FIELD_EXPR | FOR_EXPR | IF_EXPR
-            | INDEX_EXPR | LABEL | CLOSURE_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MATCH_EXPR
+            | CAST_EXPR | CLOSURE_EXPR | CONTINUE_EXPR | EFFECT_EXPR | FIELD_EXPR | FOR_EXPR
+            | IF_EXPR | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MATCH_EXPR
             | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
             | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR => true,
             _ => false,
@@ -3176,14 +3172,13 @@ impl AstNode for Expr {
             BREAK_EXPR => Expr::BreakExpr(BreakExpr { syntax }),
             CALL_EXPR => Expr::CallExpr(CallExpr { syntax }),
             CAST_EXPR => Expr::CastExpr(CastExpr { syntax }),
+            CLOSURE_EXPR => Expr::ClosureExpr(ClosureExpr { syntax }),
             CONTINUE_EXPR => Expr::ContinueExpr(ContinueExpr { syntax }),
             EFFECT_EXPR => Expr::EffectExpr(EffectExpr { syntax }),
             FIELD_EXPR => Expr::FieldExpr(FieldExpr { syntax }),
             FOR_EXPR => Expr::ForExpr(ForExpr { syntax }),
             IF_EXPR => Expr::IfExpr(IfExpr { syntax }),
             INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
-            LABEL => Expr::Label(Label { syntax }),
-            CLOSURE_EXPR => Expr::ClosureExpr(ClosureExpr { syntax }),
             LITERAL => Expr::Literal(Literal { syntax }),
             LOOP_EXPR => Expr::LoopExpr(LoopExpr { syntax }),
             MACRO_CALL => Expr::MacroCall(MacroCall { syntax }),
@@ -3213,14 +3208,13 @@ impl AstNode for Expr {
             Expr::BreakExpr(it) => &it.syntax,
             Expr::CallExpr(it) => &it.syntax,
             Expr::CastExpr(it) => &it.syntax,
+            Expr::ClosureExpr(it) => &it.syntax,
             Expr::ContinueExpr(it) => &it.syntax,
             Expr::EffectExpr(it) => &it.syntax,
             Expr::FieldExpr(it) => &it.syntax,
             Expr::ForExpr(it) => &it.syntax,
             Expr::IfExpr(it) => &it.syntax,
             Expr::IndexExpr(it) => &it.syntax,
-            Expr::Label(it) => &it.syntax,
-            Expr::ClosureExpr(it) => &it.syntax,
             Expr::Literal(it) => &it.syntax,
             Expr::LoopExpr(it) => &it.syntax,
             Expr::MacroCall(it) => &it.syntax,
@@ -3715,6 +3709,11 @@ impl std::fmt::Display for CastExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for ClosureExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for ContinueExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3741,16 +3740,6 @@ impl std::fmt::Display for IfExpr {
     }
 }
 impl std::fmt::Display for IndexExpr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Label {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ClosureExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3816,6 +3805,11 @@ impl std::fmt::Display for TupleExpr {
     }
 }
 impl std::fmt::Display for WhileExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Label {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
