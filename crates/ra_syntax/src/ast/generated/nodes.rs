@@ -582,9 +582,7 @@ pub struct BinExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for BinExpr {}
-impl BinExpr {
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-}
+impl BinExpr {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BoxExpr {
     pub(crate) syntax: SyntaxNode,
@@ -680,9 +678,7 @@ impl ast::AttrsOwner for IfExpr {}
 impl IfExpr {
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
     pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
-    pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
     pub fn else_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![else]) }
-    pub fn if_expr(&self) -> Option<IfExpr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IndexExpr {
@@ -690,7 +686,6 @@ pub struct IndexExpr {
 }
 impl ast::AttrsOwner for IndexExpr {}
 impl IndexExpr {
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
     pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
 }
@@ -704,11 +699,11 @@ impl Label {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LambdaExpr {
+pub struct ClosureExpr {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for LambdaExpr {}
-impl LambdaExpr {
+impl ast::AttrsOwner for ClosureExpr {}
+impl ClosureExpr {
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
     pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }
@@ -778,9 +773,7 @@ pub struct RangeExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for RangeExpr {}
-impl RangeExpr {
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-}
+impl RangeExpr {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordExpr {
     pub(crate) syntax: SyntaxNode,
@@ -1351,7 +1344,7 @@ pub enum Expr {
     IfExpr(IfExpr),
     IndexExpr(IndexExpr),
     Label(Label),
-    LambdaExpr(LambdaExpr),
+    ClosureExpr(ClosureExpr),
     Literal(Literal),
     LoopExpr(LoopExpr),
     MacroCall(MacroCall),
@@ -2101,8 +2094,8 @@ impl AstNode for Label {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for LambdaExpr {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == LAMBDA_EXPR }
+impl AstNode for ClosureExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3114,8 +3107,8 @@ impl From<IndexExpr> for Expr {
 impl From<Label> for Expr {
     fn from(node: Label) -> Expr { Expr::Label(node) }
 }
-impl From<LambdaExpr> for Expr {
-    fn from(node: LambdaExpr) -> Expr { Expr::LambdaExpr(node) }
+impl From<ClosureExpr> for Expr {
+    fn from(node: ClosureExpr) -> Expr { Expr::ClosureExpr(node) }
 }
 impl From<Literal> for Expr {
     fn from(node: Literal) -> Expr { Expr::Literal(node) }
@@ -3167,7 +3160,7 @@ impl AstNode for Expr {
         match kind {
             ARRAY_EXPR | AWAIT_EXPR | BIN_EXPR | BLOCK_EXPR | BOX_EXPR | BREAK_EXPR | CALL_EXPR
             | CAST_EXPR | CONTINUE_EXPR | EFFECT_EXPR | FIELD_EXPR | FOR_EXPR | IF_EXPR
-            | INDEX_EXPR | LABEL | LAMBDA_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MATCH_EXPR
+            | INDEX_EXPR | LABEL | CLOSURE_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MATCH_EXPR
             | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
             | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR => true,
             _ => false,
@@ -3190,7 +3183,7 @@ impl AstNode for Expr {
             IF_EXPR => Expr::IfExpr(IfExpr { syntax }),
             INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
             LABEL => Expr::Label(Label { syntax }),
-            LAMBDA_EXPR => Expr::LambdaExpr(LambdaExpr { syntax }),
+            CLOSURE_EXPR => Expr::ClosureExpr(ClosureExpr { syntax }),
             LITERAL => Expr::Literal(Literal { syntax }),
             LOOP_EXPR => Expr::LoopExpr(LoopExpr { syntax }),
             MACRO_CALL => Expr::MacroCall(MacroCall { syntax }),
@@ -3227,7 +3220,7 @@ impl AstNode for Expr {
             Expr::IfExpr(it) => &it.syntax,
             Expr::IndexExpr(it) => &it.syntax,
             Expr::Label(it) => &it.syntax,
-            Expr::LambdaExpr(it) => &it.syntax,
+            Expr::ClosureExpr(it) => &it.syntax,
             Expr::Literal(it) => &it.syntax,
             Expr::LoopExpr(it) => &it.syntax,
             Expr::MacroCall(it) => &it.syntax,
@@ -3757,7 +3750,7 @@ impl std::fmt::Display for Label {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for LambdaExpr {
+impl std::fmt::Display for ClosureExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

@@ -1,7 +1,7 @@
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxKind::{
-        BLOCK_EXPR, BREAK_EXPR, COMMENT, LAMBDA_EXPR, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
+        BLOCK_EXPR, BREAK_EXPR, CLOSURE_EXPR, COMMENT, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
     },
     SyntaxNode,
 };
@@ -148,7 +148,7 @@ impl Anchor {
             }
 
             if let Some(parent) = node.parent() {
-                if parent.kind() == MATCH_ARM || parent.kind() == LAMBDA_EXPR {
+                if parent.kind() == MATCH_ARM || parent.kind() == CLOSURE_EXPR {
                     return Some(Anchor::WrapInBlock(node));
                 }
             }

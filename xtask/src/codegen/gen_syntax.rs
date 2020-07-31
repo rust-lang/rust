@@ -579,7 +579,19 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
         }
         Rule::Labeled { label: l, rule } => {
             assert!(label.is_none());
-            if l == "op" {
+            let manually_implemented = matches!(
+                l.as_str(),
+                "lhs"
+                    | "rhs"
+                    | "then_branch"
+                    | "else_branch"
+                    | "start"
+                    | "end"
+                    | "op"
+                    | "index"
+                    | "base"
+            );
+            if manually_implemented {
                 return;
             }
             lower_rule(acc, grammar, Some(l), rule);

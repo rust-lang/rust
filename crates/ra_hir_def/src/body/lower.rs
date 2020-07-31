@@ -473,7 +473,7 @@ impl ExprCollector<'_> {
                     self.alloc_expr(Expr::Missing, syntax_ptr)
                 }
             }
-            ast::Expr::LambdaExpr(e) => {
+            ast::Expr::ClosureExpr(e) => {
                 let mut args = Vec::new();
                 let mut arg_types = Vec::new();
                 if let Some(pl) = e.param_list() {

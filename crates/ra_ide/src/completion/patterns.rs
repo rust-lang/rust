@@ -134,7 +134,7 @@ pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
         NodeOrToken::Token(token) => token.parent(),
     };
     for node in leaf.ancestors() {
-        if node.kind() == FN || node.kind() == LAMBDA_EXPR {
+        if node.kind() == FN || node.kind() == CLOSURE_EXPR {
             break;
         }
         let loop_body = match_ast! {

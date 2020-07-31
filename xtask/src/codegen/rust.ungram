@@ -222,7 +222,7 @@ Expr =
 | IfExpr
 | IndexExpr
 | Label
-| LambdaExpr
+| ClosureExpr
 | Literal
 | LoopExpr
 | MacroCall
@@ -266,14 +266,14 @@ PrefixExpr =
 
 BinExpr =
   Attr*
-  Expr
+  lhs:Expr
   op:(
     '||' | '&&'
     | '==' | '!=' | '<=' | '>=' | '<' | '>'
     | '+' | '*' | '-' | '/' | '%' | '<<' | '>>' | '^' | '|' | '&'
     | '=' | '+=' | '/=' | '*=' | '%=' | '>>=' | '<<=' | '-=' | '|=' | '&=' | '^='
   )
-  Expr
+  rhs:Expr
 
 CastExpr =
   Attr* Expr 'as' Type
@@ -288,7 +288,7 @@ ArrayExpr =
   ) ']'
 
 IndexExpr =
-  Attr* Expr '[' Expr ']'
+  Attr* base:Expr '[' index:Expr ']'
 
 TupleExpr =
   Attr* '(' Attr* (Expr (',' Expr)* ','?)? ')'
@@ -318,13 +318,13 @@ MethodCallExpr =
 FieldExpr =
   Attr* Expr '.' NameRef
 
-LambdaExpr =
+ClosureExpr =
   Attr* 'static'? 'async'? 'move'?  ParamList RetType?
   body:Expr
 
 IfExpr =
-  Attr* 'if' Condition BlockExpr
-  ('else' (IfExpr | BlockExpr))?
+  Attr* 'if' Condition then_branch:BlockExpr
+  ('else' else_branch:(IfExpr | BlockExpr))?
 
 Condition =
   'let' Pat '=' Expr
@@ -352,7 +352,7 @@ ContinueExpr =
   Attr* 'continue' 'lifetime'?
 
 RangeExpr =
-  Attr* Expr? op:('..' | '..=') Expr?
+  Attr* start:Expr? op:('..' | '..=') end:Expr?
 
 MatchExpr =
   Attr* 'match' Expr MatchArmList

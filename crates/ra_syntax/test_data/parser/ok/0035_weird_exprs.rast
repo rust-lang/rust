@@ -351,7 +351,7 @@ SOURCE_FILE@0..3813
         WHITESPACE@766..767 " "
         BLOCK_EXPR@767..777
           L_CURLY@767..768 "{"
-          LAMBDA_EXPR@768..776
+          CLOSURE_EXPR@768..776
             PARAM_LIST@768..770
               PIPE@768..769 "|"
               PIPE@769..770 "|"
@@ -1628,7 +1628,7 @@ SOURCE_FILE@0..3813
               CALL_EXPR@2950..2995
                 PAREN_EXPR@2950..2971
                   L_PAREN@2950..2951 "("
-                  LAMBDA_EXPR@2951..2970
+                  CLOSURE_EXPR@2951..2970
                     PARAM_LIST@2951..2968
                       PIPE@2951..2952 "|"
                       PARAM@2952..2962

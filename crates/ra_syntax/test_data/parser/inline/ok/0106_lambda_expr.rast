@@ -12,7 +12,7 @@ SOURCE_FILE@0..134
       L_CURLY@9..10 "{"
       WHITESPACE@10..15 "\n    "
       EXPR_STMT@15..21
-        LAMBDA_EXPR@15..20
+        CLOSURE_EXPR@15..20
           PARAM_LIST@15..17
             PIPE@15..16 "|"
             PIPE@16..17 "|"
@@ -23,7 +23,7 @@ SOURCE_FILE@0..134
         SEMICOLON@20..21 ";"
       WHITESPACE@21..26 "\n    "
       EXPR_STMT@26..43
-        LAMBDA_EXPR@26..42
+        CLOSURE_EXPR@26..42
           PARAM_LIST@26..28
             PIPE@26..27 "|"
             PIPE@27..28 "|"
@@ -47,7 +47,7 @@ SOURCE_FILE@0..134
         SEMICOLON@42..43 ";"
       WHITESPACE@43..48 "\n    "
       EXPR_STMT@48..54
-        LAMBDA_EXPR@48..53
+        CLOSURE_EXPR@48..53
           PARAM_LIST@48..51
             PIPE@48..49 "|"
             PARAM@49..50
@@ -64,7 +64,7 @@ SOURCE_FILE@0..134
         SEMICOLON@53..54 ";"
       WHITESPACE@54..59 "\n    "
       EXPR_STMT@59..76
-        LAMBDA_EXPR@59..75
+        CLOSURE_EXPR@59..75
           MOVE_KW@59..63 "move"
           WHITESPACE@63..64 " "
           PARAM_LIST@64..73
@@ -91,7 +91,7 @@ SOURCE_FILE@0..134
         SEMICOLON@75..76 ";"
       WHITESPACE@76..81 "\n    "
       EXPR_STMT@81..93
-        LAMBDA_EXPR@81..92
+        CLOSURE_EXPR@81..92
           ASYNC_KW@81..86 "async"
           WHITESPACE@86..87 " "
           PARAM_LIST@87..89
@@ -104,7 +104,7 @@ SOURCE_FILE@0..134
         SEMICOLON@92..93 ";"
       WHITESPACE@93..98 "\n    "
       EXPR_STMT@98..109
-        LAMBDA_EXPR@98..108
+        CLOSURE_EXPR@98..108
           MOVE_KW@98..102 "move"
           WHITESPACE@102..103 " "
           PARAM_LIST@103..105
@@ -117,7 +117,7 @@ SOURCE_FILE@0..134
         SEMICOLON@108..109 ";"
       WHITESPACE@109..114 "\n    "
       EXPR_STMT@114..131
-        LAMBDA_EXPR@114..130
+        CLOSURE_EXPR@114..130
           ASYNC_KW@114..119 "async"
           WHITESPACE@119..120 " "
           MOVE_KW@120..124 "move"
