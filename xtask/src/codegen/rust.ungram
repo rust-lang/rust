@@ -3,7 +3,7 @@ Path =
 
 PathSegment =
   '::' | 'crate' | 'self' | 'super'
-| (NameRef ('::'? GenericArgList)?)
+| NameRef GenericArgList?
 | NameRef ParamList RetType?
 | '<' PathType ('as' PathType)? '>'
 
