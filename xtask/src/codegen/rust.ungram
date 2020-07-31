@@ -114,6 +114,11 @@ Union =
   Attr* Visibility? 'union' Name GenericParamList? WhereClause?
   RecordFieldList
 
+AdtDef =
+  Struct
+| Enum
+| Union
+
 Const =
   Attr* Visibility? 'default'? 'const' (Name | '_') ':' ty:TypeRef
   '=' body:Expr ';'
@@ -182,6 +187,21 @@ Visibility =
 
 Attr =
   '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
+
+TypeRef =
+  ParenType
+| TupleType
+| NeverType
+| PathType
+| PointerType
+| ArrayType
+| SliceType
+| ReferenceType
+| PlaceholderType
+| FnPointerType
+| ForType
+| ImplTraitType
+| DynTraitType
 
 ParenType =
   '(' ty:TypeRef ')'
@@ -468,26 +488,6 @@ LifetimeArg =
 
 ConstArg =
   Literal | BlockExpr BlockExpr
-
-AdtDef =
-  Struct
-| Enum
-| Union
-
-TypeRef =
-  ParenType
-| TupleType
-| NeverType
-| PathType
-| PointerType
-| ArrayType
-| SliceType
-| ReferenceType
-| PlaceholderType
-| FnPointerType
-| ForType
-| ImplTraitType
-| DynTraitType
 
 Stmt =
   LetStmt
