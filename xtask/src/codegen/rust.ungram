@@ -231,7 +231,7 @@ InferType =
    '_'
 
 FnPointerType =
-   Abi 'unsafe'? 'fn' ParamList RetType?
+   'const'? 'async'? 'unsafe'? Abi? 'fn' ParamList RetType?
 
 ForType =
    'for' GenericParamList Type
