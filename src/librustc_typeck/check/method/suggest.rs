@@ -678,6 +678,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .collect::<Vec<(usize, String)>>();
                     for ((span, empty_where), obligations) in type_params.into_iter() {
                         restrict_type_params = true;
+                        // #74886: Sort here so that the output is always the same.
+                        let mut obligations = obligations.into_iter().collect::<Vec<_>>();
+                        obligations.sort();
                         err.span_suggestion_verbose(
                             span,
                             &format!(
@@ -688,7 +691,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!(
                                 "{} {}",
                                 if empty_where { " where" } else { "," },
-                                obligations.into_iter().collect::<Vec<_>>().join(", ")
+                                obligations.join(", ")
                             ),
                             Applicability::MaybeIncorrect,
                         );
