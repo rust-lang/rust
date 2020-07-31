@@ -161,7 +161,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_sig(current_item, tcx.fn_sig(def_id), self.covariant);
             }
 
-            _ => {}
+            ty::Error(_) => {}
+            _ => {
+                span_bug!(
+                    tcx.def_span(def_id),
+                    "`build_constraints_for_item` unsupported for this item"
+                );
+            }
         }
     }
 
