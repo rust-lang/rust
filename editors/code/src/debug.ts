@@ -87,9 +87,17 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
         debugOutput.show(true);
     }
 
-    const wsFolder = path.normalize(vscode.workspace.workspaceFolders![0].uri.fsPath); // folder exists or RA is not active.
+    const isMultiFolderWorkspace = vscode.workspace.workspaceFolders!.length > 1;
+    const firstWorkspace = vscode.workspace.workspaceFolders![0]; // folder exists or RA is not active.
+    const workspace = !isMultiFolderWorkspace || !runnable.args.workspaceRoot ?
+        firstWorkspace :
+        vscode.workspace.workspaceFolders!.find(w => runnable.args.workspaceRoot?.includes(w.uri.fsPath)) || firstWorkspace;
+
+    const wsFolder = path.normalize(workspace.uri.fsPath);
+    const workspaceQualifier = isMultiFolderWorkspace ? `:${workspace.name}` : '';
     function simplifyPath(p: string): string {
-        return path.normalize(p).replace(wsFolder, '${workspaceRoot}');
+        // see https://github.com/rust-analyzer/rust-analyzer/pull/5513#issuecomment-663458818 for why this is needed
+        return path.normalize(p).replace(wsFolder, '${workspaceFolder' + workspaceQualifier + '}');
     }
 
     const executable = await getDebugExecutable(runnable);
