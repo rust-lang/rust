@@ -3,11 +3,11 @@ Path =
 
 PathSegment =
   '::' | 'crate' | 'self' | 'super'
-| (NameRef ('::'? TypeArgList)?)
+| (NameRef ('::'? GenericArgList)?)
 | NameRef ParamList RetType?
 | '<' PathType ('as' PathType)? '>'
 
-TypeArgList =
+GenericArgList =
   '::'? '<'
     TypeArg*
     LifetimeArg*
@@ -348,7 +348,7 @@ ArgList =
   '(' args:(Expr (',' Expr)* ','?)? ')'
 
 MethodCallExpr =
-  Attr* Expr '.' NameRef TypeArgList? ArgList
+  Attr* Expr '.' NameRef GenericArgList? ArgList
 
 FieldExpr =
   Attr* Expr '.' NameRef

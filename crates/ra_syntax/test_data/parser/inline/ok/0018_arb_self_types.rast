@@ -53,7 +53,7 @@ SOURCE_FILE@0..69
                 PATH_SEGMENT@53..62
                   NAME_REF@53..56
                     IDENT@53..56 "Box"
-                  TYPE_ARG_LIST@56..62
+                  GENERIC_ARG_LIST@56..62
                     L_ANGLE@56..57 "<"
                     TYPE_ARG@57..61
                       PATH_TYPE@57..61

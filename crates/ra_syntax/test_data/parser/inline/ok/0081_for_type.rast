@@ -95,7 +95,7 @@ SOURCE_FILE@0..121
           PATH_SEGMENT@101..119
             NAME_REF@101..110
               IDENT@101..110 "PartialEq"
-            TYPE_ARG_LIST@110..119
+            GENERIC_ARG_LIST@110..119
               L_ANGLE@110..111 "<"
               TYPE_ARG@111..118
                 REFERENCE_TYPE@111..118

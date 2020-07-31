@@ -31,7 +31,7 @@ SOURCE_FILE@0..38
         PATH_SEGMENT@23..34
           NAME_REF@23..31
             IDENT@23..31 "OnceCell"
-          TYPE_ARG_LIST@31..34
+          GENERIC_ARG_LIST@31..34
             L_ANGLE@31..32 "<"
             TYPE_ARG@32..33
               PATH_TYPE@32..33

@@ -24,7 +24,7 @@ impl PathSegment {
     pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
     pub fn super_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![super]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn type_arg_list(&self) -> Option<TypeArgList> { support::child(&self.syntax) }
+    pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
@@ -40,10 +40,10 @@ impl NameRef {
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeArgList {
+pub struct GenericArgList {
     pub(crate) syntax: SyntaxNode,
 }
-impl TypeArgList {
+impl GenericArgList {
     pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
     pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
     pub fn type_args(&self) -> AstChildren<TypeArg> { support::children(&self.syntax) }
@@ -803,7 +803,7 @@ impl MethodCallExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn type_arg_list(&self) -> Option<TypeArgList> { support::child(&self.syntax) }
+    pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenExpr {
@@ -1434,8 +1434,8 @@ impl AstNode for NameRef {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TypeArgList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ARG_LIST }
+impl AstNode for GenericArgList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == GENERIC_ARG_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3445,7 +3445,7 @@ impl std::fmt::Display for NameRef {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TypeArgList {
+impl std::fmt::Display for GenericArgList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

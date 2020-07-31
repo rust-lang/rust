@@ -16,7 +16,7 @@ SOURCE_FILE@0..88
           PATH_SEGMENT@10..23
             NAME_REF@10..13
               IDENT@10..13 "Foo"
-            TYPE_ARG_LIST@13..23
+            GENERIC_ARG_LIST@13..23
               L_ANGLE@13..14 "<"
               TYPE_ARG@14..22
                 PATH_TYPE@14..22

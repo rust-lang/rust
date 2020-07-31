@@ -235,7 +235,7 @@ pub enum SyntaxKind {
     LIFETIME_PARAM,
     TYPE_PARAM,
     CONST_PARAM,
-    TYPE_ARG_LIST,
+    GENERIC_ARG_LIST,
     LIFETIME_ARG,
     TYPE_ARG,
     ASSOC_TYPE_ARG,

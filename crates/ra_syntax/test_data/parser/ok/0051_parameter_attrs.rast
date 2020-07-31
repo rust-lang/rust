@@ -172,7 +172,7 @@ SOURCE_FILE@0..519
                             PATH_SEGMENT@159..166
                               NAME_REF@159..162
                                 IDENT@159..162 "Foo"
-                              TYPE_ARG_LIST@162..166
+                              GENERIC_ARG_LIST@162..166
                                 L_ANGLE@162..163 "<"
                                 LIFETIME_ARG@163..165
                                   LIFETIME@163..165 "\'a"
@@ -490,7 +490,7 @@ SOURCE_FILE@0..519
                 PATH_SEGMENT@505..513
                   NAME_REF@505..507
                     IDENT@505..507 "Rc"
-                  TYPE_ARG_LIST@507..513
+                  GENERIC_ARG_LIST@507..513
                     L_ANGLE@507..508 "<"
                     TYPE_ARG@508..512
                       PATH_TYPE@508..512

@@ -41,7 +41,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                 match hygiene.name_ref_to_name(name_ref) {
                     Either::Left(name) => {
                         let args = segment
-                            .type_arg_list()
+                            .generic_arg_list()
                             .and_then(|it| lower_generic_args(&ctx, it))
                             .or_else(|| {
                                 lower_generic_args_from_fn_path(
@@ -148,7 +148,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
 
 pub(super) fn lower_generic_args(
     lower_ctx: &LowerCtx,
-    node: ast::TypeArgList,
+    node: ast::GenericArgList,
 ) -> Option<GenericArgs> {
     let mut args = Vec::new();
     for type_arg in node.type_args() {

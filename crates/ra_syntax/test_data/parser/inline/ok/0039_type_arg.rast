@@ -12,7 +12,7 @@ SOURCE_FILE@0..46
         PATH_SEGMENT@9..44
           NAME_REF@9..10
             IDENT@9..10 "B"
-          TYPE_ARG_LIST@10..44
+          GENERIC_ARG_LIST@10..44
             L_ANGLE@10..11 "<"
             LIFETIME_ARG@11..18
               LIFETIME@11..18 "\'static"

@@ -141,7 +141,7 @@ SOURCE_FILE@0..686
                               PATH_SEGMENT@589..600
                                 NAME_REF@589..594
                                   IDENT@589..594 "Event"
-                                TYPE_ARG_LIST@594..600
+                                GENERIC_ARG_LIST@594..600
                                   L_ANGLE@594..595 "<"
                                   TYPE_ARG@595..599
                                     PATH_TYPE@595..599

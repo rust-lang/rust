@@ -86,7 +86,7 @@ impl<'a> SubstituteTypeParams<'a> {
                 ast::Type::PathType(path) => path,
                 _ => return None,
             };
-            let type_arg_list = path_type.path()?.segment()?.type_arg_list()?;
+            let type_arg_list = path_type.path()?.segment()?.generic_arg_list()?;
             let mut result = Vec::new();
             for type_arg in type_arg_list.type_args() {
                 let type_arg: ast::TypeArg = type_arg;
@@ -157,7 +157,7 @@ impl<'a> QualifyPaths<'a> {
 
                 let type_args = p
                     .segment()
-                    .and_then(|s| s.type_arg_list())
+                    .and_then(|s| s.generic_arg_list())
                     .map(|arg_list| apply(self, arg_list));
                 if let Some(type_args) = type_args {
                     let last_segment = path.segment().unwrap();

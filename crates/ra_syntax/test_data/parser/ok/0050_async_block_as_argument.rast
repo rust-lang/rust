@@ -32,7 +32,7 @@ SOURCE_FILE@0..95
                   PATH_SEGMENT@28..48
                     NAME_REF@28..34
                       IDENT@28..34 "Future"
-                    TYPE_ARG_LIST@34..48
+                    GENERIC_ARG_LIST@34..48
                       L_ANGLE@34..35 "<"
                       ASSOC_TYPE_ARG@35..47
                         NAME_REF@35..41

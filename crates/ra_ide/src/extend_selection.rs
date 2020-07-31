@@ -45,7 +45,7 @@ fn try_extend_selection(
         VARIANT_LIST,
         USE_TREE_LIST,
         GENERIC_PARAM_LIST,
-        TYPE_ARG_LIST,
+        GENERIC_ARG_LIST,
         TYPE_BOUND_LIST,
         PARAM_LIST,
         ARG_LIST,

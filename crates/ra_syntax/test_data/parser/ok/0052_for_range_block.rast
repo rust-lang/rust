@@ -50,7 +50,7 @@ SOURCE_FILE@0..80
             DOT@43..44 "."
             NAME_REF@44..47
               IDENT@44..47 "sum"
-            TYPE_ARG_LIST@47..54
+            GENERIC_ARG_LIST@47..54
               COLON2@47..49 "::"
               L_ANGLE@49..50 "<"
               TYPE_ARG@50..53

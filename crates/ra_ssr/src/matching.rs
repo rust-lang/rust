@@ -348,8 +348,8 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 // separately via comparing what the path resolves to below.
                 self.attempt_match_opt(
                     phase,
-                    pattern_segment.type_arg_list(),
-                    code_segment.type_arg_list(),
+                    pattern_segment.generic_arg_list(),
+                    code_segment.generic_arg_list(),
                 )?;
                 self.attempt_match_opt(
                     phase,

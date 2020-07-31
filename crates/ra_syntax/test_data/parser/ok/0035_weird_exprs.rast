@@ -249,7 +249,7 @@ SOURCE_FILE@0..3813
                   PATH_SEGMENT@653..663
                     NAME_REF@653..657
                       IDENT@653..657 "Cell"
-                    TYPE_ARG_LIST@657..663
+                    GENERIC_ARG_LIST@657..663
                       L_ANGLE@657..658 "<"
                       TYPE_ARG@658..662
                         PATH_TYPE@658..662
@@ -1588,7 +1588,7 @@ SOURCE_FILE@0..3813
                   PATH_SEGMENT@2888..2901
                     NAME_REF@2888..2893
                       IDENT@2888..2893 "union"
-                    TYPE_ARG_LIST@2893..2901
+                    GENERIC_ARG_LIST@2893..2901
                       L_ANGLE@2893..2894 "<"
                       LIFETIME_ARG@2894..2900
                         LIFETIME@2894..2900 "\'union"

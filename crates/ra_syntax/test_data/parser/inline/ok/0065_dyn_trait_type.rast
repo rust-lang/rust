@@ -17,7 +17,7 @@ SOURCE_FILE@0..42
               PATH_SEGMENT@13..35
                 NAME_REF@13..21
                   IDENT@13..21 "Iterator"
-                TYPE_ARG_LIST@21..35
+                GENERIC_ARG_LIST@21..35
                   L_ANGLE@21..22 "<"
                   ASSOC_TYPE_ARG@22..34
                     NAME_REF@22..26
@@ -28,7 +28,7 @@ SOURCE_FILE@0..42
                         PATH_SEGMENT@27..34
                           NAME_REF@27..30
                             IDENT@27..30 "Foo"
-                          TYPE_ARG_LIST@30..34
+                          GENERIC_ARG_LIST@30..34
                             L_ANGLE@30..31 "<"
                             LIFETIME_ARG@31..33
                               LIFETIME@31..33 "\'a"

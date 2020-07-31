@@ -60,7 +60,7 @@ SOURCE_FILE@0..91
               COLON2@56..58 "::"
               NAME_REF@58..59
                 IDENT@58..59 "a"
-              TYPE_ARG_LIST@59..64
+              GENERIC_ARG_LIST@59..64
                 COLON2@59..61 "::"
                 L_ANGLE@61..62 "<"
                 TYPE_ARG@62..63
