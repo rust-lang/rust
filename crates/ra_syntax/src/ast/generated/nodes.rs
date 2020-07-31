@@ -594,10 +594,10 @@ impl ReferenceType {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PlaceholderType {
+pub struct InferType {
     pub(crate) syntax: SyntaxNode,
 }
-impl PlaceholderType {
+impl InferType {
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1291,7 +1291,7 @@ pub enum Type {
     ArrayType(ArrayType),
     SliceType(SliceType),
     ReferenceType(ReferenceType),
-    PlaceholderType(PlaceholderType),
+    InferType(InferType),
     FnPointerType(FnPointerType),
     ForType(ForType),
     ImplTraitType(ImplTraitType),
@@ -1988,8 +1988,8 @@ impl AstNode for ReferenceType {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for PlaceholderType {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PLACEHOLDER_TYPE }
+impl AstNode for InferType {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == INFER_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2871,8 +2871,8 @@ impl From<SliceType> for Type {
 impl From<ReferenceType> for Type {
     fn from(node: ReferenceType) -> Type { Type::ReferenceType(node) }
 }
-impl From<PlaceholderType> for Type {
-    fn from(node: PlaceholderType) -> Type { Type::PlaceholderType(node) }
+impl From<InferType> for Type {
+    fn from(node: InferType) -> Type { Type::InferType(node) }
 }
 impl From<FnPointerType> for Type {
     fn from(node: FnPointerType) -> Type { Type::FnPointerType(node) }
@@ -2890,7 +2890,7 @@ impl AstNode for Type {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             PAREN_TYPE | TUPLE_TYPE | NEVER_TYPE | PATH_TYPE | POINTER_TYPE | ARRAY_TYPE
-            | SLICE_TYPE | REFERENCE_TYPE | PLACEHOLDER_TYPE | FN_POINTER_TYPE | FOR_TYPE
+            | SLICE_TYPE | REFERENCE_TYPE | INFER_TYPE | FN_POINTER_TYPE | FOR_TYPE
             | IMPL_TRAIT_TYPE | DYN_TRAIT_TYPE => true,
             _ => false,
         }
@@ -2905,7 +2905,7 @@ impl AstNode for Type {
             ARRAY_TYPE => Type::ArrayType(ArrayType { syntax }),
             SLICE_TYPE => Type::SliceType(SliceType { syntax }),
             REFERENCE_TYPE => Type::ReferenceType(ReferenceType { syntax }),
-            PLACEHOLDER_TYPE => Type::PlaceholderType(PlaceholderType { syntax }),
+            INFER_TYPE => Type::InferType(InferType { syntax }),
             FN_POINTER_TYPE => Type::FnPointerType(FnPointerType { syntax }),
             FOR_TYPE => Type::ForType(ForType { syntax }),
             IMPL_TRAIT_TYPE => Type::ImplTraitType(ImplTraitType { syntax }),
@@ -2924,7 +2924,7 @@ impl AstNode for Type {
             Type::ArrayType(it) => &it.syntax,
             Type::SliceType(it) => &it.syntax,
             Type::ReferenceType(it) => &it.syntax,
-            Type::PlaceholderType(it) => &it.syntax,
+            Type::InferType(it) => &it.syntax,
             Type::FnPointerType(it) => &it.syntax,
             Type::ForType(it) => &it.syntax,
             Type::ImplTraitType(it) => &it.syntax,
@@ -3719,7 +3719,7 @@ impl std::fmt::Display for ReferenceType {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for PlaceholderType {
+impl std::fmt::Display for InferType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

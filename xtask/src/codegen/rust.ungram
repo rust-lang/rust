@@ -197,7 +197,7 @@ Type =
 | ArrayType
 | SliceType
 | ReferenceType
-| PlaceholderType
+| InferType
 | FnPointerType
 | ForType
 | ImplTraitType
@@ -206,17 +206,20 @@ Type =
 ParenType =
   '(' Type ')'
 
-TupleType =
-  '(' fields:Type* ')'
-
 NeverType =
   '!'
 
 PathType =
   Path
 
+TupleType =
+  '(' fields:(Type (',' Type)* ','?)? ')'
+
 PointerType =
   '*' ('const' | 'mut') Type
+
+ReferenceType =
+  '&' 'lifetime'? 'mut'? Type
 
 ArrayType =
   '[' Type ';' Expr ']'
@@ -224,10 +227,7 @@ ArrayType =
 SliceType =
   '[' Type ']'
 
-ReferenceType =
-  '&' 'lifetime'? 'mut'? Type
-
-PlaceholderType =
+InferType =
    '_'
 
 FnPointerType =

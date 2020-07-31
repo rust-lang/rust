@@ -117,7 +117,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "ARRAY_TYPE",
         "SLICE_TYPE",
         "REFERENCE_TYPE",
-        "PLACEHOLDER_TYPE",
+        "INFER_TYPE",
         "FN_POINTER_TYPE",
         "FOR_TYPE",
         "IMPL_TRAIT_TYPE",

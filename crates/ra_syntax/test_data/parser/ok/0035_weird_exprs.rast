@@ -1640,10 +1640,10 @@ SOURCE_FILE@0..3813
                         COLON@2956..2957 ":"
                         TUPLE_TYPE@2957..2962
                           L_PAREN@2957..2958 "("
-                          PLACEHOLDER_TYPE@2958..2959
+                          INFER_TYPE@2958..2959
                             UNDERSCORE@2958..2959 "_"
                           COMMA@2959..2960 ","
-                          PLACEHOLDER_TYPE@2960..2961
+                          INFER_TYPE@2960..2961
                             UNDERSCORE@2960..2961 "_"
                           R_PAREN@2961..2962 ")"
                       COMMA@2962..2963 ","
