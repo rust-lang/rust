@@ -1128,7 +1128,7 @@ pub struct BoxPat {
 }
 impl BoxPat {
     pub fn box_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![box]) }
-    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DotDotPat {

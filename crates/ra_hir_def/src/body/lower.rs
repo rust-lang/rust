@@ -786,7 +786,6 @@ impl ExprCollector<'_> {
             ast::Pat::PlaceholderPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
-
                 let args: Vec<_> = p
                     .record_pat_field_list()
                     .expect("every struct should have a field list")

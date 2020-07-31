@@ -516,8 +516,8 @@ Pat =
 LiteralPat =
   Literal
 
-PathPat =
-  Path
+BindPat =
+  Attr* 'ref'? 'mut'? Name ('@' Pat)?
 
 PlaceholderPat =
   '_'
@@ -540,29 +540,29 @@ RecordPatFieldList =
 RecordPatField =
   Attr* (NameRef ':')? Pat
 
-OrPat =
-  Pat*
+TupleStructPat =
+   Path '(' args:(Pat (',' Pat)* ','?)? ')'
+
+TuplePat =
+   '(' args:(Pat (',' Pat)* ','?)? ')'
 
 ParenPat =
   '(' Pat ')'
 
-BoxPat =
-  'box' Path
+SlicePat =
+  '[' args:(Pat (',' Pat)* ','?)? ']'
 
-BindPat =
-  Attr* 'ref'? 'mut'? Name ('@' Pat)?
+PathPat =
+  Path
+
+OrPat =
+  (Pat ('|' Pat)* '|'?)
+
+BoxPat =
+  'box' Pat
 
 DotDotPat =
   '..'
 
-SlicePat =
-  '[' args:Pat* ']'
-
 MacroPat =
   MacroCall
-
-TupleStructPat =
-   Path '(' args:Pat* ')'
-
-TuplePat =
-   '(' args:Pat* ')'
