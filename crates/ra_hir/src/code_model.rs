@@ -212,9 +212,7 @@ impl ModuleDef {
             ModuleDef::EnumVariant(ev) => {
                 GenericDefId::from(GenericDef::from(ev.clone())).resolver(db)
             }
-            ModuleDef::Const(c) => {
-                GenericDefId::from(GenericDef::from(c.clone())).resolver(db)
-            }
+            ModuleDef::Const(c) => GenericDefId::from(GenericDef::from(c.clone())).resolver(db),
             ModuleDef::Static(s) => StaticId::from(s.clone()).resolver(db),
             ModuleDef::Trait(t) => TraitId::from(t.clone()).resolver(db),
             ModuleDef::TypeAlias(t) => ModuleId::from(t.module(db)).resolver(db),

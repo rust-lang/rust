@@ -53,9 +53,11 @@ fn rust_files_are_tidy() {
 fn check_licenses() {
     let expected = "
 0BSD OR MIT OR Apache-2.0
+Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
 Apache-2.0 OR BSL-1.0
 Apache-2.0 OR MIT
 Apache-2.0/MIT
+Apache-2.0
 BSD-2-Clause
 BSD-3-Clause
 CC0-1.0
@@ -82,7 +84,10 @@ Zlib
         .collect::<Vec<_>>();
     licenses.sort();
     licenses.dedup();
-    assert_eq!(licenses, expected);
+    assert_eq!(
+        licenses.iter().filter(|license| !expected.contains(license)).collect::<Vec<_>>(),
+        Vec::<&&str>::new()
+    );
 }
 
 fn check_todo(path: &Path, text: &str) {
