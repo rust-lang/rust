@@ -87,6 +87,7 @@ pub const ASAN_SUPPORTED_TARGETS: &'static [&'static str] = &[
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
     "x86_64-fuchsia",
+    "x86_64-unknown-freebsd",
     "x86_64-unknown-linux-gnu",
 ];
 
@@ -94,10 +95,14 @@ pub const LSAN_SUPPORTED_TARGETS: &'static [&'static str] =
     &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
 
 pub const MSAN_SUPPORTED_TARGETS: &'static [&'static str] =
-    &["aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"];
+    &["aarch64-unknown-linux-gnu", "x86_64-unknown-freebsd", "x86_64-unknown-linux-gnu"];
 
-pub const TSAN_SUPPORTED_TARGETS: &'static [&'static str] =
-    &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
+pub const TSAN_SUPPORTED_TARGETS: &'static [&'static str] = &[
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-freebsd",
+    "x86_64-unknown-linux-gnu",
+];
 
 pub fn matches_os(triple: &str, name: &str) -> bool {
     // For the wasm32 bare target we ignore anything also ignored on emscripten
