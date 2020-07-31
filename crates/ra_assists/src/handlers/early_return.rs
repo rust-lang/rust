@@ -51,11 +51,11 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
     // Check if there is an IfLet that we can handle.
     let if_let_pat = match cond.pat() {
         None => None, // No IfLet, supported.
-        Some(ast::Pat::TupleStructPat(pat)) if pat.args().count() == 1 => {
+        Some(ast::Pat::TupleStructPat(pat)) if pat.fields().count() == 1 => {
             let path = pat.path()?;
             match path.qualifier() {
                 None => {
-                    let bound_ident = pat.args().next().unwrap();
+                    let bound_ident = pat.fields().next().unwrap();
                     Some((path, bound_ident))
                 }
                 Some(_) => return None,

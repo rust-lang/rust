@@ -496,7 +496,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
             ast::Expr::TupleExpr(e) => {
-                let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
+                let exprs = e.fields().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
             ast::Expr::BoxExpr(e) => {
@@ -762,7 +762,7 @@ impl ExprCollector<'_> {
             }
             ast::Pat::TupleStructPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
-                let (args, ellipsis) = self.collect_tuple_pat(p.args());
+                let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::TupleStruct { path, args, ellipsis }
             }
             ast::Pat::RefPat(p) => {
@@ -780,7 +780,7 @@ impl ExprCollector<'_> {
             }
             ast::Pat::ParenPat(p) => return self.collect_pat_opt(p.pat()),
             ast::Pat::TuplePat(p) => {
-                let (args, ellipsis) = self.collect_tuple_pat(p.args());
+                let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::Tuple { args, ellipsis }
             }
             ast::Pat::WildcardPat(_) => Pat::Wild,
@@ -809,7 +809,7 @@ impl ExprCollector<'_> {
             ast::Pat::SlicePat(p) => {
                 let SlicePatComponents { prefix, slice, suffix } = p.components();
 
-                // FIXME properly handle `DotDotPat`
+                // FIXME properly handle `RestPat`
                 Pat::Slice {
                     prefix: prefix.into_iter().map(|p| self.collect_pat(p)).collect(),
                     slice: slice.map(|p| self.collect_pat(p)),
@@ -827,9 +827,9 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Pat::RestPat(_) => {
-                // `DotDotPat` requires special handling and should not be mapped
+                // `RestPat` requires special handling and should not be mapped
                 // to a Pat. Here we are using `Pat::Missing` as a fallback for
-                // when `DotDotPat` is mapped to `Pat`, which can easily happen
+                // when `RestPat` is mapped to `Pat`, which can easily happen
                 // when the source code being analyzed has a malformed pattern
                 // which includes `..` in a place where it isn't valid.
 
