@@ -101,7 +101,7 @@ fn remove_derive_attrs(tt: &tt::Subtree) -> Option<tt::Subtree> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use test_utils::assert_eq_text;
 
