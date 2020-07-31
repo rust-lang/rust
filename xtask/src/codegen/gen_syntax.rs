@@ -579,6 +579,9 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
         }
         Rule::Labeled { label: l, rule } => {
             assert!(label.is_none());
+            if l == "op" {
+                return;
+            }
             lower_rule(acc, grammar, Some(l), rule);
         }
         Rule::Seq(rules) | Rule::Alt(rules) => {
