@@ -1,3 +1,7 @@
+//*************************//
+// Names, Paths and Macros //
+//*************************//
+
 Name =
   'ident'
 
@@ -49,6 +53,10 @@ MacroItems =
 MacroStmts =
   statements:Stmt*
   Expr?
+
+//*************************//
+//          Items          //
+//*************************//
 
 SourceFile =
   'shebang'?
@@ -245,6 +253,10 @@ Visibility =
 Attr =
   '#' '!'? '[' Path ('=' Literal | TokenTree)? ']'
 
+//****************************//
+// Statements and Expressions //
+//****************************//
+
 Stmt =
   ExprStmt
 | Item
@@ -434,6 +446,10 @@ AwaitExpr =
 BoxExpr =
   Attr* 'box' Expr
 
+//*************************//
+//          Types          //
+//*************************//
+
 Type =
   ArrayType
 | DynTraitType
@@ -494,6 +510,10 @@ TypeBoundList =
 TypeBound =
   'lifetime'
 | '?'? Type
+
+//************************//
+//        Patterns        //
+//************************//
 
 Pat =
   IdentPat
