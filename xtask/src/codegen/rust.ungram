@@ -175,7 +175,13 @@ ConstParam =
   ('=' default_val:Expr)?
 
 LifetimeParam =
-  Attr* 'lifetime'
+  Attr* 'lifetime' (':' TypeBoundList?)?
+
+WhereClause =
+  'where' predicates:(WherePred (',' WherePred)* ','?)
+
+WherePred =
+  ('for' GenericParamList)?  ('lifetime' | Type) ':' TypeBoundList
 
 Visibility =
   'pub' ('('
@@ -449,12 +455,6 @@ MacroItems =
 MacroStmts =
   statements:Stmt*
   Expr?
-
-WherePred =
-  ('for' GenericParamList)?  ('lifetime' | Type) ':' TypeBoundList
-
-WhereClause =
-  'where' predicates:WherePred*
 
 ExprStmt =
   Attr* Expr ';'
