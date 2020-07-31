@@ -2,7 +2,8 @@ Path =
   (qualifier:Path '::')? segment:PathSegment
 
 PathSegment =
-  '::' | 'crate' | 'self' | 'super'
+  'crate' | 'self' | 'super'
+| '::' NameRef
 | NameRef GenericArgList?
 | NameRef ParamList RetType?
 | '<' PathType ('as' PathType)? '>'
