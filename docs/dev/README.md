@@ -166,6 +166,12 @@ That said, adding an innocent-looking `pub use` is a very simple way to break en
 Note: if you enjoyed this abstract hand-waving about boundaries, you might appreciate
 https://www.tedinski.com/2018/02/06/system-boundaries.html
 
+## Crates.io Dependencies
+
+We try to be very conservative with usage of crates.io dependencies.
+Don't use small "helper" crates (exception: `itertools` is allowed).
+If there's some general reusable bit of code you need, consider adding it to the `stdx` crate.
+
 ## Minimal Tests
 
 Most tests in rust-analyzer start with a snippet of Rust code.
