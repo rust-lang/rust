@@ -3898,6 +3898,8 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
         }
     }
 
+    write!(buffer, "<div class=\"sidebar-elems\">");
+
     if it.is_crate() && !cx.shared.crate_root_links.is_empty() {
         let mut links_html = String::new();
         for (name, url) in &cx.shared.crate_root_links {
@@ -3918,7 +3920,6 @@ fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer, cache: &Ca
         );
     };
 
-    write!(buffer, "<div class=\"sidebar-elems\">");
     if it.is_crate() {
         write!(
             buffer,
