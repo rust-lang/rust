@@ -8,12 +8,13 @@ PathSegment =
 | '<' PathType ('as' PathType)? '>'
 
 GenericArgList =
-  '::'? '<'
-    TypeArg*
-    LifetimeArg*
-    AssocTypeArg*
-    ConstArg*
-  '>'
+  '::'? '<' (GenericArg (',' GenericArg)* ','?)? '>'
+
+GenericArg =
+  TypeArg
+| AssocTypeArg
+| LifetimeArg
+| ConstArg
 
 TypeArg =
   Type
@@ -26,7 +27,6 @@ LifetimeArg =
 
 ConstArg =
   Literal | BlockExpr BlockExpr
-
 
 SourceFile =
   'shebang'?

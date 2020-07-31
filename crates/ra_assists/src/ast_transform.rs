@@ -79,19 +79,25 @@ impl<'a> SubstituteTypeParams<'a> {
         };
 
         // FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
-        // trait ref, and then go from the types in the substs back to the syntax)
+        // trait ref, and then go from the types in the substs back to the syntax).
         fn get_syntactic_substs(impl_def: ast::Impl) -> Option<Vec<ast::Type>> {
             let target_trait = impl_def.target_trait()?;
             let path_type = match target_trait {
                 ast::Type::PathType(path) => path,
                 _ => return None,
             };
-            let type_arg_list = path_type.path()?.segment()?.generic_arg_list()?;
+            let generic_arg_list = path_type.path()?.segment()?.generic_arg_list()?;
+
             let mut result = Vec::new();
-            for type_arg in type_arg_list.type_args() {
-                let type_arg: ast::TypeArg = type_arg;
-                result.push(type_arg.ty()?);
+            for generic_arg in generic_arg_list.generic_args() {
+                match generic_arg {
+                    ast::GenericArg::TypeArg(type_arg) => result.push(type_arg.ty()?),
+                    ast::GenericArg::AssocTypeArg(_)
+                    | ast::GenericArg::LifetimeArg(_)
+                    | ast::GenericArg::ConstArg(_) => (),
+                }
             }
+
             Some(result)
         }
     }
