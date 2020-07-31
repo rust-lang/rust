@@ -52,7 +52,7 @@ fn type_arg(p: &mut Parser) {
             m.complete(p, CONST_ARG);
         }
         k if k.is_literal() => {
-            p.bump(k);
+            expressions::literal(p);
             m.complete(p, CONST_ARG);
         }
         _ => {

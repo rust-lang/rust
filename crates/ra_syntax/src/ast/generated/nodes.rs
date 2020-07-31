@@ -106,8 +106,7 @@ pub struct ConstArg {
     pub(crate) syntax: SyntaxNode,
 }
 impl ConstArg {
-    pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
-    pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeBoundList {
@@ -115,23 +114,6 @@ pub struct TypeBoundList {
 }
 impl TypeBoundList {
     pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Literal {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for Literal {}
-impl Literal {}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BlockExpr {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::AttrsOwner for BlockExpr {}
-impl BlockExpr {
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceFile {
@@ -437,6 +419,17 @@ impl WhereClause {
     pub fn predicates(&self) -> AstChildren<WherePred> { support::children(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BlockExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for BlockExpr {}
+impl BlockExpr {
+    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
+    pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
 }
@@ -589,6 +582,12 @@ impl WherePred {
     }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Literal {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::AttrsOwner for Literal {}
+impl Literal {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TokenTree {
     pub(crate) syntax: SyntaxNode,
@@ -1292,6 +1291,39 @@ pub enum Type {
     TupleType(TupleType),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Expr {
+    ArrayExpr(ArrayExpr),
+    AwaitExpr(AwaitExpr),
+    BinExpr(BinExpr),
+    BlockExpr(BlockExpr),
+    BoxExpr(BoxExpr),
+    BreakExpr(BreakExpr),
+    CallExpr(CallExpr),
+    CastExpr(CastExpr),
+    ClosureExpr(ClosureExpr),
+    ContinueExpr(ContinueExpr),
+    EffectExpr(EffectExpr),
+    FieldExpr(FieldExpr),
+    ForExpr(ForExpr),
+    IfExpr(IfExpr),
+    IndexExpr(IndexExpr),
+    Literal(Literal),
+    LoopExpr(LoopExpr),
+    MacroCall(MacroCall),
+    MatchExpr(MatchExpr),
+    MethodCallExpr(MethodCallExpr),
+    ParenExpr(ParenExpr),
+    PathExpr(PathExpr),
+    PrefixExpr(PrefixExpr),
+    RangeExpr(RangeExpr),
+    RecordExpr(RecordExpr),
+    RefExpr(RefExpr),
+    ReturnExpr(ReturnExpr),
+    TryExpr(TryExpr),
+    TupleExpr(TupleExpr),
+    WhileExpr(WhileExpr),
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Item {
     Const(Const),
     Enum(Enum),
@@ -1331,39 +1363,6 @@ pub enum Pat {
 pub enum FieldList {
     RecordFieldList(RecordFieldList),
     TupleFieldList(TupleFieldList),
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Expr {
-    ArrayExpr(ArrayExpr),
-    AwaitExpr(AwaitExpr),
-    BinExpr(BinExpr),
-    BlockExpr(BlockExpr),
-    BoxExpr(BoxExpr),
-    BreakExpr(BreakExpr),
-    CallExpr(CallExpr),
-    CastExpr(CastExpr),
-    ClosureExpr(ClosureExpr),
-    ContinueExpr(ContinueExpr),
-    EffectExpr(EffectExpr),
-    FieldExpr(FieldExpr),
-    ForExpr(ForExpr),
-    IfExpr(IfExpr),
-    IndexExpr(IndexExpr),
-    Literal(Literal),
-    LoopExpr(LoopExpr),
-    MacroCall(MacroCall),
-    MatchExpr(MatchExpr),
-    MethodCallExpr(MethodCallExpr),
-    ParenExpr(ParenExpr),
-    PathExpr(PathExpr),
-    PrefixExpr(PrefixExpr),
-    RangeExpr(RangeExpr),
-    RecordExpr(RecordExpr),
-    RefExpr(RefExpr),
-    ReturnExpr(ReturnExpr),
-    TryExpr(TryExpr),
-    TupleExpr(TupleExpr),
-    WhileExpr(WhileExpr),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AdtDef {
@@ -1528,28 +1527,6 @@ impl AstNode for ConstArg {
 }
 impl AstNode for TypeBoundList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND_LIST }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for Literal {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == LITERAL }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for BlockExpr {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == BLOCK_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1834,6 +1811,17 @@ impl AstNode for WhereClause {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for BlockExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BLOCK_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for SelfParam {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SELF_PARAM }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1979,6 +1967,17 @@ impl AstNode for TypeParam {
 }
 impl AstNode for WherePred {
     fn can_cast(kind: SyntaxKind) -> bool { kind == WHERE_PRED }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for Literal {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LITERAL }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2892,6 +2891,178 @@ impl AstNode for Type {
         }
     }
 }
+impl From<ArrayExpr> for Expr {
+    fn from(node: ArrayExpr) -> Expr { Expr::ArrayExpr(node) }
+}
+impl From<AwaitExpr> for Expr {
+    fn from(node: AwaitExpr) -> Expr { Expr::AwaitExpr(node) }
+}
+impl From<BinExpr> for Expr {
+    fn from(node: BinExpr) -> Expr { Expr::BinExpr(node) }
+}
+impl From<BlockExpr> for Expr {
+    fn from(node: BlockExpr) -> Expr { Expr::BlockExpr(node) }
+}
+impl From<BoxExpr> for Expr {
+    fn from(node: BoxExpr) -> Expr { Expr::BoxExpr(node) }
+}
+impl From<BreakExpr> for Expr {
+    fn from(node: BreakExpr) -> Expr { Expr::BreakExpr(node) }
+}
+impl From<CallExpr> for Expr {
+    fn from(node: CallExpr) -> Expr { Expr::CallExpr(node) }
+}
+impl From<CastExpr> for Expr {
+    fn from(node: CastExpr) -> Expr { Expr::CastExpr(node) }
+}
+impl From<ClosureExpr> for Expr {
+    fn from(node: ClosureExpr) -> Expr { Expr::ClosureExpr(node) }
+}
+impl From<ContinueExpr> for Expr {
+    fn from(node: ContinueExpr) -> Expr { Expr::ContinueExpr(node) }
+}
+impl From<EffectExpr> for Expr {
+    fn from(node: EffectExpr) -> Expr { Expr::EffectExpr(node) }
+}
+impl From<FieldExpr> for Expr {
+    fn from(node: FieldExpr) -> Expr { Expr::FieldExpr(node) }
+}
+impl From<ForExpr> for Expr {
+    fn from(node: ForExpr) -> Expr { Expr::ForExpr(node) }
+}
+impl From<IfExpr> for Expr {
+    fn from(node: IfExpr) -> Expr { Expr::IfExpr(node) }
+}
+impl From<IndexExpr> for Expr {
+    fn from(node: IndexExpr) -> Expr { Expr::IndexExpr(node) }
+}
+impl From<Literal> for Expr {
+    fn from(node: Literal) -> Expr { Expr::Literal(node) }
+}
+impl From<LoopExpr> for Expr {
+    fn from(node: LoopExpr) -> Expr { Expr::LoopExpr(node) }
+}
+impl From<MacroCall> for Expr {
+    fn from(node: MacroCall) -> Expr { Expr::MacroCall(node) }
+}
+impl From<MatchExpr> for Expr {
+    fn from(node: MatchExpr) -> Expr { Expr::MatchExpr(node) }
+}
+impl From<MethodCallExpr> for Expr {
+    fn from(node: MethodCallExpr) -> Expr { Expr::MethodCallExpr(node) }
+}
+impl From<ParenExpr> for Expr {
+    fn from(node: ParenExpr) -> Expr { Expr::ParenExpr(node) }
+}
+impl From<PathExpr> for Expr {
+    fn from(node: PathExpr) -> Expr { Expr::PathExpr(node) }
+}
+impl From<PrefixExpr> for Expr {
+    fn from(node: PrefixExpr) -> Expr { Expr::PrefixExpr(node) }
+}
+impl From<RangeExpr> for Expr {
+    fn from(node: RangeExpr) -> Expr { Expr::RangeExpr(node) }
+}
+impl From<RecordExpr> for Expr {
+    fn from(node: RecordExpr) -> Expr { Expr::RecordExpr(node) }
+}
+impl From<RefExpr> for Expr {
+    fn from(node: RefExpr) -> Expr { Expr::RefExpr(node) }
+}
+impl From<ReturnExpr> for Expr {
+    fn from(node: ReturnExpr) -> Expr { Expr::ReturnExpr(node) }
+}
+impl From<TryExpr> for Expr {
+    fn from(node: TryExpr) -> Expr { Expr::TryExpr(node) }
+}
+impl From<TupleExpr> for Expr {
+    fn from(node: TupleExpr) -> Expr { Expr::TupleExpr(node) }
+}
+impl From<WhileExpr> for Expr {
+    fn from(node: WhileExpr) -> Expr { Expr::WhileExpr(node) }
+}
+impl AstNode for Expr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            ARRAY_EXPR | AWAIT_EXPR | BIN_EXPR | BLOCK_EXPR | BOX_EXPR | BREAK_EXPR | CALL_EXPR
+            | CAST_EXPR | CLOSURE_EXPR | CONTINUE_EXPR | EFFECT_EXPR | FIELD_EXPR | FOR_EXPR
+            | IF_EXPR | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MATCH_EXPR
+            | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
+            | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            ARRAY_EXPR => Expr::ArrayExpr(ArrayExpr { syntax }),
+            AWAIT_EXPR => Expr::AwaitExpr(AwaitExpr { syntax }),
+            BIN_EXPR => Expr::BinExpr(BinExpr { syntax }),
+            BLOCK_EXPR => Expr::BlockExpr(BlockExpr { syntax }),
+            BOX_EXPR => Expr::BoxExpr(BoxExpr { syntax }),
+            BREAK_EXPR => Expr::BreakExpr(BreakExpr { syntax }),
+            CALL_EXPR => Expr::CallExpr(CallExpr { syntax }),
+            CAST_EXPR => Expr::CastExpr(CastExpr { syntax }),
+            CLOSURE_EXPR => Expr::ClosureExpr(ClosureExpr { syntax }),
+            CONTINUE_EXPR => Expr::ContinueExpr(ContinueExpr { syntax }),
+            EFFECT_EXPR => Expr::EffectExpr(EffectExpr { syntax }),
+            FIELD_EXPR => Expr::FieldExpr(FieldExpr { syntax }),
+            FOR_EXPR => Expr::ForExpr(ForExpr { syntax }),
+            IF_EXPR => Expr::IfExpr(IfExpr { syntax }),
+            INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
+            LITERAL => Expr::Literal(Literal { syntax }),
+            LOOP_EXPR => Expr::LoopExpr(LoopExpr { syntax }),
+            MACRO_CALL => Expr::MacroCall(MacroCall { syntax }),
+            MATCH_EXPR => Expr::MatchExpr(MatchExpr { syntax }),
+            METHOD_CALL_EXPR => Expr::MethodCallExpr(MethodCallExpr { syntax }),
+            PAREN_EXPR => Expr::ParenExpr(ParenExpr { syntax }),
+            PATH_EXPR => Expr::PathExpr(PathExpr { syntax }),
+            PREFIX_EXPR => Expr::PrefixExpr(PrefixExpr { syntax }),
+            RANGE_EXPR => Expr::RangeExpr(RangeExpr { syntax }),
+            RECORD_EXPR => Expr::RecordExpr(RecordExpr { syntax }),
+            REF_EXPR => Expr::RefExpr(RefExpr { syntax }),
+            RETURN_EXPR => Expr::ReturnExpr(ReturnExpr { syntax }),
+            TRY_EXPR => Expr::TryExpr(TryExpr { syntax }),
+            TUPLE_EXPR => Expr::TupleExpr(TupleExpr { syntax }),
+            WHILE_EXPR => Expr::WhileExpr(WhileExpr { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Expr::ArrayExpr(it) => &it.syntax,
+            Expr::AwaitExpr(it) => &it.syntax,
+            Expr::BinExpr(it) => &it.syntax,
+            Expr::BlockExpr(it) => &it.syntax,
+            Expr::BoxExpr(it) => &it.syntax,
+            Expr::BreakExpr(it) => &it.syntax,
+            Expr::CallExpr(it) => &it.syntax,
+            Expr::CastExpr(it) => &it.syntax,
+            Expr::ClosureExpr(it) => &it.syntax,
+            Expr::ContinueExpr(it) => &it.syntax,
+            Expr::EffectExpr(it) => &it.syntax,
+            Expr::FieldExpr(it) => &it.syntax,
+            Expr::ForExpr(it) => &it.syntax,
+            Expr::IfExpr(it) => &it.syntax,
+            Expr::IndexExpr(it) => &it.syntax,
+            Expr::Literal(it) => &it.syntax,
+            Expr::LoopExpr(it) => &it.syntax,
+            Expr::MacroCall(it) => &it.syntax,
+            Expr::MatchExpr(it) => &it.syntax,
+            Expr::MethodCallExpr(it) => &it.syntax,
+            Expr::ParenExpr(it) => &it.syntax,
+            Expr::PathExpr(it) => &it.syntax,
+            Expr::PrefixExpr(it) => &it.syntax,
+            Expr::RangeExpr(it) => &it.syntax,
+            Expr::RecordExpr(it) => &it.syntax,
+            Expr::RefExpr(it) => &it.syntax,
+            Expr::ReturnExpr(it) => &it.syntax,
+            Expr::TryExpr(it) => &it.syntax,
+            Expr::TupleExpr(it) => &it.syntax,
+            Expr::WhileExpr(it) => &it.syntax,
+        }
+    }
+}
 impl From<Const> for Item {
     fn from(node: Const) -> Item { Item::Const(node) }
 }
@@ -3104,178 +3275,6 @@ impl AstNode for FieldList {
         }
     }
 }
-impl From<ArrayExpr> for Expr {
-    fn from(node: ArrayExpr) -> Expr { Expr::ArrayExpr(node) }
-}
-impl From<AwaitExpr> for Expr {
-    fn from(node: AwaitExpr) -> Expr { Expr::AwaitExpr(node) }
-}
-impl From<BinExpr> for Expr {
-    fn from(node: BinExpr) -> Expr { Expr::BinExpr(node) }
-}
-impl From<BlockExpr> for Expr {
-    fn from(node: BlockExpr) -> Expr { Expr::BlockExpr(node) }
-}
-impl From<BoxExpr> for Expr {
-    fn from(node: BoxExpr) -> Expr { Expr::BoxExpr(node) }
-}
-impl From<BreakExpr> for Expr {
-    fn from(node: BreakExpr) -> Expr { Expr::BreakExpr(node) }
-}
-impl From<CallExpr> for Expr {
-    fn from(node: CallExpr) -> Expr { Expr::CallExpr(node) }
-}
-impl From<CastExpr> for Expr {
-    fn from(node: CastExpr) -> Expr { Expr::CastExpr(node) }
-}
-impl From<ClosureExpr> for Expr {
-    fn from(node: ClosureExpr) -> Expr { Expr::ClosureExpr(node) }
-}
-impl From<ContinueExpr> for Expr {
-    fn from(node: ContinueExpr) -> Expr { Expr::ContinueExpr(node) }
-}
-impl From<EffectExpr> for Expr {
-    fn from(node: EffectExpr) -> Expr { Expr::EffectExpr(node) }
-}
-impl From<FieldExpr> for Expr {
-    fn from(node: FieldExpr) -> Expr { Expr::FieldExpr(node) }
-}
-impl From<ForExpr> for Expr {
-    fn from(node: ForExpr) -> Expr { Expr::ForExpr(node) }
-}
-impl From<IfExpr> for Expr {
-    fn from(node: IfExpr) -> Expr { Expr::IfExpr(node) }
-}
-impl From<IndexExpr> for Expr {
-    fn from(node: IndexExpr) -> Expr { Expr::IndexExpr(node) }
-}
-impl From<Literal> for Expr {
-    fn from(node: Literal) -> Expr { Expr::Literal(node) }
-}
-impl From<LoopExpr> for Expr {
-    fn from(node: LoopExpr) -> Expr { Expr::LoopExpr(node) }
-}
-impl From<MacroCall> for Expr {
-    fn from(node: MacroCall) -> Expr { Expr::MacroCall(node) }
-}
-impl From<MatchExpr> for Expr {
-    fn from(node: MatchExpr) -> Expr { Expr::MatchExpr(node) }
-}
-impl From<MethodCallExpr> for Expr {
-    fn from(node: MethodCallExpr) -> Expr { Expr::MethodCallExpr(node) }
-}
-impl From<ParenExpr> for Expr {
-    fn from(node: ParenExpr) -> Expr { Expr::ParenExpr(node) }
-}
-impl From<PathExpr> for Expr {
-    fn from(node: PathExpr) -> Expr { Expr::PathExpr(node) }
-}
-impl From<PrefixExpr> for Expr {
-    fn from(node: PrefixExpr) -> Expr { Expr::PrefixExpr(node) }
-}
-impl From<RangeExpr> for Expr {
-    fn from(node: RangeExpr) -> Expr { Expr::RangeExpr(node) }
-}
-impl From<RecordExpr> for Expr {
-    fn from(node: RecordExpr) -> Expr { Expr::RecordExpr(node) }
-}
-impl From<RefExpr> for Expr {
-    fn from(node: RefExpr) -> Expr { Expr::RefExpr(node) }
-}
-impl From<ReturnExpr> for Expr {
-    fn from(node: ReturnExpr) -> Expr { Expr::ReturnExpr(node) }
-}
-impl From<TryExpr> for Expr {
-    fn from(node: TryExpr) -> Expr { Expr::TryExpr(node) }
-}
-impl From<TupleExpr> for Expr {
-    fn from(node: TupleExpr) -> Expr { Expr::TupleExpr(node) }
-}
-impl From<WhileExpr> for Expr {
-    fn from(node: WhileExpr) -> Expr { Expr::WhileExpr(node) }
-}
-impl AstNode for Expr {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            ARRAY_EXPR | AWAIT_EXPR | BIN_EXPR | BLOCK_EXPR | BOX_EXPR | BREAK_EXPR | CALL_EXPR
-            | CAST_EXPR | CLOSURE_EXPR | CONTINUE_EXPR | EFFECT_EXPR | FIELD_EXPR | FOR_EXPR
-            | IF_EXPR | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MATCH_EXPR
-            | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
-            | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            ARRAY_EXPR => Expr::ArrayExpr(ArrayExpr { syntax }),
-            AWAIT_EXPR => Expr::AwaitExpr(AwaitExpr { syntax }),
-            BIN_EXPR => Expr::BinExpr(BinExpr { syntax }),
-            BLOCK_EXPR => Expr::BlockExpr(BlockExpr { syntax }),
-            BOX_EXPR => Expr::BoxExpr(BoxExpr { syntax }),
-            BREAK_EXPR => Expr::BreakExpr(BreakExpr { syntax }),
-            CALL_EXPR => Expr::CallExpr(CallExpr { syntax }),
-            CAST_EXPR => Expr::CastExpr(CastExpr { syntax }),
-            CLOSURE_EXPR => Expr::ClosureExpr(ClosureExpr { syntax }),
-            CONTINUE_EXPR => Expr::ContinueExpr(ContinueExpr { syntax }),
-            EFFECT_EXPR => Expr::EffectExpr(EffectExpr { syntax }),
-            FIELD_EXPR => Expr::FieldExpr(FieldExpr { syntax }),
-            FOR_EXPR => Expr::ForExpr(ForExpr { syntax }),
-            IF_EXPR => Expr::IfExpr(IfExpr { syntax }),
-            INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
-            LITERAL => Expr::Literal(Literal { syntax }),
-            LOOP_EXPR => Expr::LoopExpr(LoopExpr { syntax }),
-            MACRO_CALL => Expr::MacroCall(MacroCall { syntax }),
-            MATCH_EXPR => Expr::MatchExpr(MatchExpr { syntax }),
-            METHOD_CALL_EXPR => Expr::MethodCallExpr(MethodCallExpr { syntax }),
-            PAREN_EXPR => Expr::ParenExpr(ParenExpr { syntax }),
-            PATH_EXPR => Expr::PathExpr(PathExpr { syntax }),
-            PREFIX_EXPR => Expr::PrefixExpr(PrefixExpr { syntax }),
-            RANGE_EXPR => Expr::RangeExpr(RangeExpr { syntax }),
-            RECORD_EXPR => Expr::RecordExpr(RecordExpr { syntax }),
-            REF_EXPR => Expr::RefExpr(RefExpr { syntax }),
-            RETURN_EXPR => Expr::ReturnExpr(ReturnExpr { syntax }),
-            TRY_EXPR => Expr::TryExpr(TryExpr { syntax }),
-            TUPLE_EXPR => Expr::TupleExpr(TupleExpr { syntax }),
-            WHILE_EXPR => Expr::WhileExpr(WhileExpr { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            Expr::ArrayExpr(it) => &it.syntax,
-            Expr::AwaitExpr(it) => &it.syntax,
-            Expr::BinExpr(it) => &it.syntax,
-            Expr::BlockExpr(it) => &it.syntax,
-            Expr::BoxExpr(it) => &it.syntax,
-            Expr::BreakExpr(it) => &it.syntax,
-            Expr::CallExpr(it) => &it.syntax,
-            Expr::CastExpr(it) => &it.syntax,
-            Expr::ClosureExpr(it) => &it.syntax,
-            Expr::ContinueExpr(it) => &it.syntax,
-            Expr::EffectExpr(it) => &it.syntax,
-            Expr::FieldExpr(it) => &it.syntax,
-            Expr::ForExpr(it) => &it.syntax,
-            Expr::IfExpr(it) => &it.syntax,
-            Expr::IndexExpr(it) => &it.syntax,
-            Expr::Literal(it) => &it.syntax,
-            Expr::LoopExpr(it) => &it.syntax,
-            Expr::MacroCall(it) => &it.syntax,
-            Expr::MatchExpr(it) => &it.syntax,
-            Expr::MethodCallExpr(it) => &it.syntax,
-            Expr::ParenExpr(it) => &it.syntax,
-            Expr::PathExpr(it) => &it.syntax,
-            Expr::PrefixExpr(it) => &it.syntax,
-            Expr::RangeExpr(it) => &it.syntax,
-            Expr::RecordExpr(it) => &it.syntax,
-            Expr::RefExpr(it) => &it.syntax,
-            Expr::ReturnExpr(it) => &it.syntax,
-            Expr::TryExpr(it) => &it.syntax,
-            Expr::TupleExpr(it) => &it.syntax,
-            Expr::WhileExpr(it) => &it.syntax,
-        }
-    }
-}
 impl From<Enum> for AdtDef {
     fn from(node: Enum) -> AdtDef { AdtDef::Enum(node) }
 }
@@ -3432,6 +3431,11 @@ impl std::fmt::Display for Type {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3443,11 +3447,6 @@ impl std::fmt::Display for Pat {
     }
 }
 impl std::fmt::Display for FieldList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3533,16 +3532,6 @@ impl std::fmt::Display for ConstArg {
     }
 }
 impl std::fmt::Display for TypeBoundList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Literal {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for BlockExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3672,6 +3661,11 @@ impl std::fmt::Display for WhereClause {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for BlockExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for SelfParam {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3738,6 +3732,11 @@ impl std::fmt::Display for TypeParam {
     }
 }
 impl std::fmt::Display for WherePred {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

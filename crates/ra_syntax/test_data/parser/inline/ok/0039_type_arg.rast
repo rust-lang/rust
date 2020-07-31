@@ -27,7 +27,8 @@ SOURCE_FILE@0..46
             COMMA@23..24 ","
             WHITESPACE@24..25 " "
             CONST_ARG@25..26
-              INT_NUMBER@25..26 "1"
+              LITERAL@25..26
+                INT_NUMBER@25..26 "1"
             COMMA@26..27 ","
             WHITESPACE@27..28 " "
             CONST_ARG@28..33
