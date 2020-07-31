@@ -14,7 +14,8 @@ use rustc_hir as hir;
 use rustc_span::def_id::DefId;
 use rustc_target::spec::abi::Abi;
 
-use crate::clean::{self, primitives, PrimitiveType};
+use crate::clean::{self, PrimitiveType};
+use crate::core::primitives;
 use crate::formats::cache::cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -578,13 +579,21 @@ fn primitive_link(
                 needs_termination = true;
             }
             Some(&def_id) => {
-                let loc = match m.extern_locations[&def_id.krate] {
-                    (ref cname, _, ExternalLocation::Remote(ref s)) => Some((cname, s.to_string())),
-                    (ref cname, _, ExternalLocation::Local) => {
-                        let len = CURRENT_DEPTH.with(|s| s.get());
-                        Some((cname, "../".repeat(len)))
+                let loc = match m.extern_locations.get(&def_id.krate) {
+                    Some((ref cname, _, ExternalLocation::Remote(ref s))) => {
+                        Some((cname.as_str(), s.to_string()))
                     }
-                    (.., ExternalLocation::Unknown) => None,
+                    Some((ref cname, _, ExternalLocation::Local)) => {
+                        let len = CURRENT_DEPTH.with(|s| s.get());
+                        Some((cname.as_str(), "../".repeat(len)))
+                    }
+                    Some((.., ExternalLocation::Unknown)) => None,
+                    None => {
+                        // It means we're in core, since the primitive types aren't "accessible"
+                        // from it so we have to simulate it.
+                        let len = CURRENT_DEPTH.with(|s| s.get());
+                        Some(("core", "../".repeat(len)))
+                    }
                 };
                 if let Some((cname, root)) = loc {
                     write!(

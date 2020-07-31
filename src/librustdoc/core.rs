@@ -5,7 +5,8 @@ use rustc_driver::abort_on_err;
 use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
-use rustc_hir::def::{Namespace::TypeNS, Res};
+use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Namespace::TypeNS, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_hir::{
@@ -29,15 +30,24 @@ use rustc_span::DUMMY_SP;
 use std::cell::RefCell;
 use std::mem;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::clean;
-use crate::clean::{AttributesExt, MAX_DEF_ID};
+use crate::clean::types::PrimitiveType;
+use crate::clean::{as_primitive, AttributesExt, MAX_DEF_ID};
 use crate::config::RenderInfo;
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::passes::{self, Condition::*, ConditionalPass};
 
 pub use rustc_session::config::{CodegenOptions, DebuggingOptions, Input, Options};
 pub use rustc_session::search_paths::SearchPath;
+
+thread_local!(static PRIMITIVES: RefCell<Arc<FxHashMap<PrimitiveType, DefId>>> =
+    Default::default());
+
+crate fn primitives() -> Arc<FxHashMap<PrimitiveType, DefId>> {
+    PRIMITIVES.with(|c| c.borrow().clone())
+}
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
@@ -498,6 +508,65 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     render_options,
                 };
                 debug!("crate: {:?}", tcx.hir().krate());
+
+                PRIMITIVES.with(|v| {
+                    let mut tmp = v.borrow_mut();
+                    let stored_primitives = Arc::make_mut(&mut *tmp);
+
+                    let mut externs = Vec::new();
+                    for &cnum in ctxt.tcx.crates().iter() {
+                        externs.push(cnum);
+                    }
+                    externs.sort_by(|a, b| a.cmp(&b));
+
+                    for krate in externs.iter().chain([LOCAL_CRATE].iter()) {
+                        let root = DefId { krate: *krate, index: CRATE_DEF_INDEX };
+                        let iter: Vec<(DefId, PrimitiveType)> = if root.is_local() {
+                            ctxt.tcx.hir_crate(*krate).item.module.item_ids.iter().filter_map(
+                                |&id| {
+                                    let item = ctxt.tcx.hir().expect_item(id.id);
+                                    match item.kind {
+                                        hir::ItemKind::Mod(_) => as_primitive(
+                                            &ctxt,
+                                            Res::Def(
+                                                DefKind::Mod,
+                                                ctxt.tcx.hir().local_def_id(id.id).to_def_id(),
+                                            ),
+                                        )
+                                        .map(|(did, prim, _)| (did, prim)),
+                                        hir::ItemKind::Use(ref path, hir::UseKind::Single)
+                                            if item.vis.node.is_pub() =>
+                                        {
+                                            as_primitive(&ctxt, path.res).map(|(_, prim, _)| {
+                                                // Pretend the primitive is local.
+                                                (
+                                                    ctxt.tcx
+                                                        .hir()
+                                                        .local_def_id(id.id)
+                                                        .to_def_id(),
+                                                    prim,
+                                                )
+                                            })
+                                        }
+                                        _ => None,
+                                    }
+                                },
+                            )
+                            .collect()
+                        } else {
+                            ctxt
+                                .tcx
+                                .item_children(root)
+                                .iter()
+                                .map(|item| item.res)
+                                .filter_map(|res| as_primitive(&ctxt, res).map(|(did, prim, _)| (did, prim)))
+                                .collect()
+                        };
+                        for (did, prim) in iter {
+                            stored_primitives.insert(prim, did);
+                        }
+                    }
+                });
 
                 let mut krate = clean::krate(&mut ctxt);
 

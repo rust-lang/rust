@@ -9,8 +9,9 @@ use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_span::source_map::FileName;
 
-use crate::clean::{self, primitives, GetDefId};
+use crate::clean::{self, GetDefId};
 use crate::config::RenderInfo;
+use crate::core::primitives;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;

@@ -28,12 +28,10 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, Pos};
 use rustc_typeck::hir_ty_to_ty;
 
-use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::default::Default;
 use std::hash::Hash;
 use std::rc::Rc;
-use std::sync::Arc;
 use std::{mem, vec};
 
 use crate::core::{self, DocContext, ImplTraitParam};
@@ -49,13 +47,6 @@ pub use self::types::SelfTy::*;
 pub use self::types::Type::*;
 pub use self::types::Visibility::{Inherited, Public};
 pub use self::types::*;
-
-thread_local!(static PRIMITIVES: RefCell<Arc<FxHashMap<PrimitiveType, DefId>>> =
-    Default::default());
-
-crate fn primitives() -> Arc<FxHashMap<PrimitiveType, DefId>> {
-    PRIMITIVES.with(|c| c.borrow().clone())
-}
 
 const FN_OUTPUT_NAME: &str = "Output";
 
@@ -93,48 +84,49 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
     }
 }
 
+/// Collect all inner modules which are tagged as implementations of
+/// primitives.
+///
+/// Note that this loop only searches the top-level items of the crate,
+/// and this is intentional. If we were to search the entire crate for an
+/// item tagged with `#[doc(primitive)]` then we would also have to
+/// search the entirety of external modules for items tagged
+/// `#[doc(primitive)]`, which is a pretty inefficient process (decoding
+/// all that metadata unconditionally).
+///
+/// In order to keep the metadata load under control, the
+/// `#[doc(primitive)]` feature is explicitly designed to only allow the
+/// primitive tags to show up as the top level items in a crate.
+///
+/// Also note that this does not attempt to deal with modules tagged
+/// duplicately for the same primitive. This is handled later on when
+/// rendering by delegating everything to a hash map.
+crate fn as_primitive(cx: &DocContext<'_>, res: Res) -> Option<(DefId, PrimitiveType, Attributes)> {
+    if let Res::Def(DefKind::Mod, def_id) = res {
+        let attrs = cx.tcx.get_attrs(def_id).clean(cx);
+        let mut prim = None;
+        for attr in attrs.lists(sym::doc) {
+            if let Some(v) = attr.value_str() {
+                if attr.check_name(sym::primitive) {
+                    prim = PrimitiveType::from_symbol(v);
+                    if prim.is_some() {
+                        break;
+                    }
+                    // FIXME: should warn on unknown primitives?
+                }
+            }
+        }
+        return prim.map(|p| (def_id, p, attrs));
+    }
+    None
+}
+
 impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &DocContext<'_>) -> ExternalCrate {
         let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
         let krate_span = cx.tcx.def_span(root);
         let krate_src = cx.sess().source_map().span_to_filename(krate_span);
 
-        // Collect all inner modules which are tagged as implementations of
-        // primitives.
-        //
-        // Note that this loop only searches the top-level items of the crate,
-        // and this is intentional. If we were to search the entire crate for an
-        // item tagged with `#[doc(primitive)]` then we would also have to
-        // search the entirety of external modules for items tagged
-        // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
-        // all that metadata unconditionally).
-        //
-        // In order to keep the metadata load under control, the
-        // `#[doc(primitive)]` feature is explicitly designed to only allow the
-        // primitive tags to show up as the top level items in a crate.
-        //
-        // Also note that this does not attempt to deal with modules tagged
-        // duplicately for the same primitive. This is handled later on when
-        // rendering by delegating everything to a hash map.
-        let as_primitive = |res: Res| {
-            if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = cx.tcx.get_attrs(def_id).clean(cx);
-                let mut prim = None;
-                for attr in attrs.lists(sym::doc) {
-                    if let Some(v) = attr.value_str() {
-                        if attr.check_name(sym::primitive) {
-                            prim = PrimitiveType::from_symbol(v);
-                            if prim.is_some() {
-                                break;
-                            }
-                            // FIXME: should warn on unknown primitives?
-                        }
-                    }
-                }
-                return prim.map(|p| (def_id, p, attrs));
-            }
-            None
-        };
         let primitives: Vec<(DefId, PrimitiveType, Attributes)> = if root.is_local() {
             cx.tcx
                 .hir()
@@ -146,14 +138,14 @@ impl Clean<ExternalCrate> for CrateNum {
                 .filter_map(|&id| {
                     let item = cx.tcx.hir().expect_item(id.id);
                     match item.kind {
-                        hir::ItemKind::Mod(_) => as_primitive(Res::Def(
-                            DefKind::Mod,
-                            cx.tcx.hir().local_def_id(id.id).to_def_id(),
-                        )),
+                        hir::ItemKind::Mod(_) => as_primitive(
+                            cx,
+                            Res::Def(DefKind::Mod, cx.tcx.hir().local_def_id(id.id).to_def_id()),
+                        ),
                         hir::ItemKind::Use(ref path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
-                            as_primitive(path.res).map(|(_, prim, attrs)| {
+                            as_primitive(cx, path.res).map(|(_, prim, attrs)| {
                                 // Pretend the primitive is local.
                                 (cx.tcx.hir().local_def_id(id.id).to_def_id(), prim, attrs)
                             })
@@ -167,16 +159,9 @@ impl Clean<ExternalCrate> for CrateNum {
                 .item_children(root)
                 .iter()
                 .map(|item| item.res)
-                .filter_map(as_primitive)
+                .filter_map(|res| as_primitive(cx, res))
                 .collect()
         };
-        PRIMITIVES.with(|v| {
-            let mut tmp = v.borrow_mut();
-            let stored_primitives = Arc::make_mut(&mut *tmp);
-            for (prim, did) in primitives.iter().map(|x| (x.1, x.0)) {
-                stored_primitives.insert(prim, did);
-            }
-        });
 
         let as_keyword = |res: Res| {
             if let Res::Def(DefKind::Mod, def_id) = res {
