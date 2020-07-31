@@ -867,46 +867,40 @@ fn report_diagnostic(
     let attrs = &item.attrs;
     let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
-    cx.tcx.struct_span_lint_hir(
-        lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-        hir_id,
-        sp,
-        |lint| {
-            let mut diag = lint.build(msg);
+    cx.tcx.struct_span_lint_hir(lint::builtin::BROKEN_INTRA_DOC_LINKS, hir_id, sp, |lint| {
+        let mut diag = lint.build(msg);
 
-            let span = link_range
-                .as_ref()
-                .and_then(|range| super::source_span_for_markdown_range(cx, dox, range, attrs));
+        let span = link_range
+            .as_ref()
+            .and_then(|range| super::source_span_for_markdown_range(cx, dox, range, attrs));
 
-            if let Some(link_range) = link_range {
-                if let Some(sp) = span {
-                    diag.set_span(sp);
-                } else {
-                    // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-                    //                       ^     ~~~~
-                    //                       |     link_range
-                    //                       last_new_line_offset
-                    let last_new_line_offset =
-                        dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
-                    let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+        if let Some(link_range) = link_range {
+            if let Some(sp) = span {
+                diag.set_span(sp);
+            } else {
+                // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+                //                       ^     ~~~~
+                //                       |     link_range
+                //                       last_new_line_offset
+                let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+                let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-                    // Print the line containing the `link_range` and manually mark it with '^'s.
-                    diag.note(&format!(
-                        "the link appears in this line:\n\n{line}\n\
+                // Print the line containing the `link_range` and manually mark it with '^'s.
+                diag.note(&format!(
+                    "the link appears in this line:\n\n{line}\n\
                          {indicator: <before$}{indicator:^<found$}",
-                        line = line,
-                        indicator = "",
-                        before = link_range.start - last_new_line_offset,
-                        found = link_range.len(),
-                    ));
-                }
+                    line = line,
+                    indicator = "",
+                    before = link_range.start - last_new_line_offset,
+                    found = link_range.len(),
+                ));
             }
+        }
 
-            decorate(&mut diag, span);
+        decorate(&mut diag, span);
 
-            diag.emit();
-        },
-    );
+        diag.emit();
+    });
 }
 
 fn resolution_failure(

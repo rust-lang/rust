@@ -398,7 +398,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub INTRA_DOC_LINK_RESOLUTION_FAILURE,
+    pub BROKEN_INTRA_DOC_LINKS,
     Warn,
     "failures in resolving intra-doc link targets"
 }
@@ -601,7 +601,7 @@ declare_lint_pass! {
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
-        INTRA_DOC_LINK_RESOLUTION_FAILURE,
+        BROKEN_INTRA_DOC_LINKS,
         INVALID_CODEBLOCK_ATTRIBUTES,
         MISSING_CRATE_LEVEL_DOCS,
         MISSING_DOC_CODE_EXAMPLES,

@@ -4,7 +4,7 @@ warning: unresolved link to `Foo::baz`
 LL |        //! Test with [Foo::baz], [Bar::foo], ...
    |                       ^^^^^^^^ unresolved link
    |
-   = note: `#[warn(intra_doc_link_resolution_failure)]` on by default
+   = note: `#[warn(broken_intra_doc_links)]` on by default
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `Bar::foo`
