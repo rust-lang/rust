@@ -668,7 +668,7 @@ impl<T: ?Sized> *const T {
     /// arithmetic on potentially fat pointers:
     ///
     /// ```
-    /// ![feature(set_ptr_value)]
+    /// #![feature(set_ptr_value)]
     /// # use core::fmt::Debug;
     /// let arr: [i32; 3] = [1, 2, 3];
     /// let mut ptr = &arr[0] as *const dyn Debug;
