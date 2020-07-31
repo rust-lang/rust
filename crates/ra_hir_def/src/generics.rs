@@ -270,7 +270,7 @@ impl GenericParams {
         bound: ast::TypeBound,
         type_ref: TypeRef,
     ) {
-        if bound.question_token().is_some() {
+        if bound.question_mark_token().is_some() {
             // FIXME: remove this bound
             return;
         }

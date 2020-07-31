@@ -639,6 +639,17 @@ impl DynTraitType {
     pub fn type_bound_list(&self) -> Option<TypeBoundList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeBound {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TypeBound {
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![lifetime])
+    }
+    pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TupleExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1166,17 +1177,6 @@ pub struct MacroStmts {
 impl MacroStmts {
     pub fn statements(&self) -> AstChildren<Stmt> { support::children(&self.syntax) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeBound {
-    pub(crate) syntax: SyntaxNode,
-}
-impl TypeBound {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
-    pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
-    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WherePred {
@@ -2045,6 +2045,17 @@ impl AstNode for DynTraitType {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for TypeBound {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for TupleExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TUPLE_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2652,17 +2663,6 @@ impl AstNode for MacroItems {
 }
 impl AstNode for MacroStmts {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_STMTS }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for TypeBound {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3746,6 +3746,11 @@ impl std::fmt::Display for DynTraitType {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for TypeBound {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for TupleExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -4022,11 +4027,6 @@ impl std::fmt::Display for MacroItems {
     }
 }
 impl std::fmt::Display for MacroStmts {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TypeBound {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

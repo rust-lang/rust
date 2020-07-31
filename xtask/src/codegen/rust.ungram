@@ -242,6 +242,13 @@ ImplTraitType =
 DynTraitType =
   'dyn' TypeBoundList
 
+TypeBoundList =
+   bounds:(TypeBound ('+' TypeBound)* '+'?)
+
+TypeBound =
+  'lifetime'
+| '?'? Type
+
 TupleExpr =
   Attr* '(' Expr* ')'
 
@@ -442,12 +449,6 @@ MacroItems =
 MacroStmts =
   statements:Stmt*
   Expr?
-
-TypeBound =
-  'lifetime' | 'const'? Type
-
-TypeBoundList =
-   bounds:TypeBound*
 
 WherePred =
   ('for' GenericParamList)?  ('lifetime' | Type) ':' TypeBoundList

@@ -362,26 +362,6 @@ impl ast::TypeBound {
             unreachable!()
         }
     }
-
-    pub fn const_question_token(&self) -> Option<SyntaxToken> {
-        self.syntax()
-            .children_with_tokens()
-            .filter_map(|it| it.into_token())
-            .take_while(|it| it.kind() != T![const])
-            .find(|it| it.kind() == T![?])
-    }
-
-    pub fn question_token(&self) -> Option<SyntaxToken> {
-        if self.const_token().is_some() {
-            self.syntax()
-                .children_with_tokens()
-                .filter_map(|it| it.into_token())
-                .skip_while(|it| it.kind() != T![const])
-                .find(|it| it.kind() == T![?])
-        } else {
-            support::token(&self.syntax, T![?])
-        }
-    }
 }
 
 pub enum VisibilityKind {
