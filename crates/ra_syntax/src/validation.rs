@@ -208,7 +208,7 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
         Some(it) => it,
         None => return,
     };
-    if impl_def.target_trait().is_some() {
+    if impl_def.trait_().is_some() {
         errors.push(SyntaxError::new("Unnecessary visibility qualifier", vis.syntax.text_range()));
     }
 }

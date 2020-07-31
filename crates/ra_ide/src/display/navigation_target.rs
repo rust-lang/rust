@@ -253,7 +253,7 @@ impl ToNav for hir::ImplDef {
         let focus_range = if derive_attr.is_some() {
             None
         } else {
-            src.value.target_type().map(|ty| original_range(db, src.with_value(ty.syntax())).range)
+            src.value.self_ty().map(|ty| original_range(db, src.with_value(ty.syntax())).range)
         };
 
         NavigationTarget::from_syntax(

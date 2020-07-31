@@ -130,8 +130,8 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             ast::Const(it) => decl_with_type_ref(&it, it.ty()),
             ast::Static(it) => decl_with_type_ref(&it, it.ty()),
             ast::Impl(it) => {
-                let target_type = it.target_type()?;
-                let target_trait = it.target_trait();
+                let target_type = it.self_ty()?;
+                let target_trait = it.trait_();
                 let label = match target_trait {
                     None => format!("impl {}", target_type.syntax().text()),
                     Some(t) => {
