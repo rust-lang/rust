@@ -1477,33 +1477,35 @@ fn foo() { let bar = Ba<|>r; }
 
     #[test]
     fn test_hover_path_link() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
             /// [Foo](struct.Foo.html)
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+            expect![[
+                "pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"
+            ]],
         );
     }
 
     #[test]
     fn test_hover_path_link_no_strip() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
             /// [struct Foo](struct.Foo.html)
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[struct Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+            expect![["pub struct Bar\n```\n___\n\n[struct Foo](https://docs.rs/test/*/test/struct.Foo.html)"]],
         );
     }
 
     #[test]
     fn test_hover_intra_link() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub mod foo {
@@ -1512,39 +1514,43 @@ fn foo() { let bar = Ba<|>r; }
             /// [Foo](foo::Foo)
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/foo/struct.Foo.html)"],
+            expect![["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/foo/struct.Foo.html)"]],
         );
     }
 
     #[test]
     fn test_hover_intra_link_shortlink() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
             /// [Foo]
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+            expect![[
+                "pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"
+            ]],
         );
     }
 
     #[test]
     fn test_hover_intra_link_shortlink_code() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
             /// [`Foo`]
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"],
+            expect![[
+                "pub struct Bar\n```\n___\n\n[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"
+            ]],
         );
     }
 
     #[test]
     fn test_hover_intra_link_namespaced() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
@@ -1552,39 +1558,45 @@ fn foo() { let bar = Ba<|>r; }
             /// [Foo()]
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+            expect![[
+                "pub struct Bar\n```\n___\n\n[Foo](https://docs.rs/test/*/test/struct.Foo.html)"
+            ]],
         );
     }
 
     #[test]
     fn test_hover_intra_link_shortlink_namspaced_code() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
             /// [`struct Foo`]
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"],
+            expect![[
+                "pub struct Bar\n```\n___\n\n[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"
+            ]],
         );
     }
 
     #[test]
     fn test_hover_intra_link_shortlink_namspaced_code_with_at() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
             /// [`struct@Foo`]
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"],
+            expect![[
+                "pub struct Bar\n```\n___\n\n[`Foo`](https://docs.rs/test/*/test/struct.Foo.html)"
+            ]],
         );
     }
 
     #[test]
     fn test_hover_intra_link_reference() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
@@ -1593,34 +1605,36 @@ fn foo() { let bar = Ba<|>r; }
             /// [foo]: Foo
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[my Foo](https://docs.rs/test/*/test/struct.Foo.html)"],
+            expect![[
+                "pub struct Bar\n```\n___\n\n[my Foo](https://docs.rs/test/*/test/struct.Foo.html)"
+            ]],
         );
     }
 
     #[test]
     fn test_hover_external_url() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
             /// [external](https://www.google.com)
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[external](https://www.google.com)"],
+            expect![["pub struct Bar\n```\n___\n\n[external](https://www.google.com)"]],
         );
     }
 
     // Check that we don't rewrite links which we can't identify
     #[test]
     fn test_hover_unknown_target() {
-        check_hover_result(
+        check(
             r"
             //- /lib.rs
             pub struct Foo;
             /// [baz](Baz)
             pub struct B<|>ar
             ",
-            &["pub struct Bar\n```\n___\n\n[baz](Baz)"],
+            expect![["pub struct Bar\n```\n___\n\n[baz](Baz)"]],
         );
     }
 
