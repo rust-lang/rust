@@ -111,7 +111,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 
     let parent = name.syntax().parent()?;
 
-    if let Some(bind_pat) = ast::BindPat::cast(parent.clone()) {
+    if let Some(bind_pat) = ast::IdentPat::cast(parent.clone()) {
         if let Some(def) = sema.resolve_bind_pat_to_const(&bind_pat) {
             return Some(NameClass::ConstReference(Definition::ModuleDef(def)));
         }
@@ -128,7 +128,7 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
 
                 Some(NameClass::Definition(name_ref_class.definition()))
             },
-            ast::BindPat(it) => {
+            ast::IdentPat(it) => {
                 let local = sema.to_def(&it)?;
 
                 if let Some(record_field_pat) = it.syntax().parent().and_then(ast::RecordPatField::cast) {

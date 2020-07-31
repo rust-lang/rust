@@ -361,7 +361,7 @@ fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
     if with_at && p.eat(T![@]) {
         pattern_single(p);
     }
-    m.complete(p, BIND_PAT)
+    m.complete(p, IDENT_PAT)
 }
 
 // test box_pat

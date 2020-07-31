@@ -1111,12 +1111,12 @@ impl TypeBound {
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BindPat {
+pub struct IdentPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl ast::AttrsOwner for BindPat {}
-impl ast::NameOwner for BindPat {}
-impl BindPat {
+impl ast::AttrsOwner for IdentPat {}
+impl ast::NameOwner for IdentPat {}
+impl IdentPat {
     pub fn ref_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ref]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn at_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![@]) }
@@ -1335,7 +1335,7 @@ pub enum Stmt {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
-    BindPat(BindPat),
+    IdentPat(IdentPat),
     BoxPat(BoxPat),
     DotDotPat(DotDotPat),
     LiteralPat(LiteralPat),
@@ -2556,8 +2556,8 @@ impl AstNode for TypeBound {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for BindPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == BIND_PAT }
+impl AstNode for IdentPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IDENT_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3136,8 +3136,8 @@ impl From<Item> for Stmt {
 impl From<LetStmt> for Stmt {
     fn from(node: LetStmt) -> Stmt { Stmt::LetStmt(node) }
 }
-impl From<BindPat> for Pat {
-    fn from(node: BindPat) -> Pat { Pat::BindPat(node) }
+impl From<IdentPat> for Pat {
+    fn from(node: IdentPat) -> Pat { Pat::IdentPat(node) }
 }
 impl From<BoxPat> for Pat {
     fn from(node: BoxPat) -> Pat { Pat::BoxPat(node) }
@@ -3184,7 +3184,7 @@ impl From<TupleStructPat> for Pat {
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            BIND_PAT | BOX_PAT | DOT_DOT_PAT | LITERAL_PAT | MACRO_PAT | OR_PAT | PAREN_PAT
+            IDENT_PAT | BOX_PAT | DOT_DOT_PAT | LITERAL_PAT | MACRO_PAT | OR_PAT | PAREN_PAT
             | PATH_PAT | WILDCARD_PAT | RANGE_PAT | RECORD_PAT | REF_PAT | SLICE_PAT
             | TUPLE_PAT | TUPLE_STRUCT_PAT => true,
             _ => false,
@@ -3192,7 +3192,7 @@ impl AstNode for Pat {
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            BIND_PAT => Pat::BindPat(BindPat { syntax }),
+            IDENT_PAT => Pat::IdentPat(IdentPat { syntax }),
             BOX_PAT => Pat::BoxPat(BoxPat { syntax }),
             DOT_DOT_PAT => Pat::DotDotPat(DotDotPat { syntax }),
             LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
@@ -3213,7 +3213,7 @@ impl AstNode for Pat {
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            Pat::BindPat(it) => &it.syntax,
+            Pat::IdentPat(it) => &it.syntax,
             Pat::BoxPat(it) => &it.syntax,
             Pat::DotDotPat(it) => &it.syntax,
             Pat::LiteralPat(it) => &it.syntax,
@@ -3981,7 +3981,7 @@ impl std::fmt::Display for TypeBound {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for BindPat {
+impl std::fmt::Display for IdentPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

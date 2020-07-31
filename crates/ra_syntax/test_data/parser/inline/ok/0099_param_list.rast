@@ -20,7 +20,7 @@ SOURCE_FILE@0..67
     PARAM_LIST@14..22
       L_PAREN@14..15 "("
       PARAM@15..21
-        BIND_PAT@15..16
+        IDENT_PAT@15..16
           NAME@15..16
             IDENT@15..16 "x"
         COLON@16..17 ":"
@@ -44,7 +44,7 @@ SOURCE_FILE@0..67
     PARAM_LIST@30..40
       L_PAREN@30..31 "("
       PARAM@31..37
-        BIND_PAT@31..32
+        IDENT_PAT@31..32
           NAME@31..32
             IDENT@31..32 "x"
         COLON@32..33 ":"
@@ -70,7 +70,7 @@ SOURCE_FILE@0..67
     PARAM_LIST@48..63
       L_PAREN@48..49 "("
       PARAM@49..55
-        BIND_PAT@49..50
+        IDENT_PAT@49..50
           NAME@49..50
             IDENT@49..50 "x"
         COLON@50..51 ":"
@@ -83,7 +83,7 @@ SOURCE_FILE@0..67
       COMMA@55..56 ","
       WHITESPACE@56..57 " "
       PARAM@57..62
-        BIND_PAT@57..58
+        IDENT_PAT@57..58
           NAME@57..58
             IDENT@57..58 "y"
         COLON@58..59 ":"

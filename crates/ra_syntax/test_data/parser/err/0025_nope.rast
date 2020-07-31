@@ -69,7 +69,7 @@ SOURCE_FILE@0..575
       LET_STMT@176..186
         LET_KW@176..179 "let"
         WHITESPACE@179..180 " "
-        BIND_PAT@180..181
+        IDENT_PAT@180..181
           NAME@180..181
             IDENT@180..181 "a"
         WHITESPACE@181..182 " "
@@ -175,7 +175,7 @@ SOURCE_FILE@0..575
       LET_STMT@491..510
         LET_KW@491..494 "let"
         WHITESPACE@494..495 " "
-        BIND_PAT@495..505
+        IDENT_PAT@495..505
           NAME@495..505
             IDENT@495..505 "bad_syntax"
         WHITESPACE@505..506 " "

@@ -198,7 +198,7 @@ fn pick_node_for_resolution(node: SyntaxNode) -> SyntaxNode {
                 return n;
             }
         }
-        SyntaxKind::LET_STMT | SyntaxKind::BIND_PAT => {
+        SyntaxKind::LET_STMT | SyntaxKind::IDENT_PAT => {
             if let Some(next) = node.next_sibling() {
                 return pick_node_for_resolution(next);
             }

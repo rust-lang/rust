@@ -37,7 +37,7 @@ SOURCE_FILE@0..59
     PARAM_LIST@40..55
       L_PAREN@40..41 "("
       PARAM@41..54
-        BIND_PAT@41..51
+        IDENT_PAT@41..51
           NAME@41..51
             IDENT@41..51 "printables"
         COLON@51..52 ":"

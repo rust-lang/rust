@@ -202,7 +202,7 @@ impl SourceAnalyzer {
     pub(crate) fn resolve_bind_pat_to_const(
         &self,
         db: &dyn HirDatabase,
-        pat: &ast::BindPat,
+        pat: &ast::IdentPat,
     ) -> Option<ModuleDef> {
         let pat_id = self.pat_id(&pat.clone().into())?;
         let body = self.body.as_ref()?;

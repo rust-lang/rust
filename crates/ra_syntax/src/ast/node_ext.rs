@@ -233,7 +233,7 @@ impl ast::RecordPatField {
         if let Some(name_ref) = self.name_ref() {
             return Some(NameOrNameRef::NameRef(name_ref));
         }
-        if let Some(ast::Pat::BindPat(pat)) = self.pat() {
+        if let Some(ast::Pat::IdentPat(pat)) = self.pat() {
             let name = pat.name()?;
             return Some(NameOrNameRef::Name(name));
         }
@@ -294,13 +294,13 @@ impl ast::SlicePat {
         let prefix = args
             .peeking_take_while(|p| match p {
                 ast::Pat::DotDotPat(_) => false,
-                ast::Pat::BindPat(bp) => match bp.pat() {
+                ast::Pat::IdentPat(bp) => match bp.pat() {
                     Some(ast::Pat::DotDotPat(_)) => false,
                     _ => true,
                 },
                 ast::Pat::RefPat(rp) => match rp.pat() {
                     Some(ast::Pat::DotDotPat(_)) => false,
-                    Some(ast::Pat::BindPat(bp)) => match bp.pat() {
+                    Some(ast::Pat::IdentPat(bp)) => match bp.pat() {
                         Some(ast::Pat::DotDotPat(_)) => false,
                         _ => true,
                     },

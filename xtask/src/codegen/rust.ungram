@@ -497,7 +497,7 @@ TypeBound =
 | '?'? Type
 
 Pat =
-  BindPat
+  IdentPat
 | BoxPat
 | DotDotPat
 | LiteralPat
@@ -516,7 +516,7 @@ Pat =
 LiteralPat =
   Literal
 
-BindPat =
+IdentPat =
   Attr* 'ref'? 'mut'? Name ('@' Pat)?
 
 WildcardPat =

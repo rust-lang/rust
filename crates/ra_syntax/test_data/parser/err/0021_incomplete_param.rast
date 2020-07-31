@@ -7,7 +7,7 @@ SOURCE_FILE@0..22
     PARAM_LIST@6..17
       L_PAREN@6..7 "("
       PARAM@7..13
-        BIND_PAT@7..8
+        IDENT_PAT@7..8
           NAME@7..8
             IDENT@7..8 "x"
         COLON@8..9 ":"
@@ -20,7 +20,7 @@ SOURCE_FILE@0..22
       COMMA@13..14 ","
       WHITESPACE@14..15 " "
       PARAM@15..16
-        BIND_PAT@15..16
+        IDENT_PAT@15..16
           NAME@15..16
             IDENT@15..16 "y"
       R_PAREN@16..17 ")"

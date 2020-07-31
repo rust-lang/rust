@@ -108,17 +108,17 @@ SOURCE_FILE@0..126
           PARAM@106..120
             SLICE_PAT@106..115
               L_BRACK@106..107 "["
-              BIND_PAT@107..108
+              IDENT_PAT@107..108
                 NAME@107..108
                   IDENT@107..108 "w"
               COMMA@108..109 ","
               WHITESPACE@109..110 " "
-              BIND_PAT@110..111
+              IDENT_PAT@110..111
                 NAME@110..111
                   IDENT@110..111 "t"
               COMMA@111..112 ","
               WHITESPACE@112..113 " "
-              BIND_PAT@113..114
+              IDENT_PAT@113..114
                 NAME@113..114
                   IDENT@113..114 "f"
               R_BRACK@114..115 "]"

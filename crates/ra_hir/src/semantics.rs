@@ -236,7 +236,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.lower_path(path)
     }
 
-    pub fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {
+    pub fn resolve_bind_pat_to_const(&self, pat: &ast::IdentPat) -> Option<ModuleDef> {
         self.imp.resolve_bind_pat_to_const(pat)
     }
 
@@ -452,7 +452,7 @@ impl<'db> SemanticsImpl<'db> {
         Path::from_src(path.clone(), &Hygiene::new(self.db.upcast(), src.file_id.into()))
     }
 
-    fn resolve_bind_pat_to_const(&self, pat: &ast::BindPat) -> Option<ModuleDef> {
+    fn resolve_bind_pat_to_const(&self, pat: &ast::IdentPat) -> Option<ModuleDef> {
         self.analyze(pat.syntax()).resolve_bind_pat_to_const(self.db, pat)
     }
 
@@ -594,7 +594,7 @@ to_def_impls![
     (crate::EnumVariant, ast::Variant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::MacroDef, ast::MacroCall, macro_call_to_def), // this one is dubious, not all calls are macros
-    (crate::Local, ast::BindPat, bind_pat_to_def),
+    (crate::Local, ast::IdentPat, bind_pat_to_def),
 ];
 
 fn find_root(node: &SyntaxNode) -> SyntaxNode {

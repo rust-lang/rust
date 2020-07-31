@@ -34,7 +34,7 @@ SOURCE_FILE@0..389
     PARAM_LIST@38..93
       L_PAREN@38..39
       PARAM@39..54
-        BIND_PAT@39..46
+        IDENT_PAT@39..46
           NAME@39..46
             IDENT@39..46 "builder"
         COLON@46..47
@@ -51,7 +51,7 @@ SOURCE_FILE@0..389
       COMMA@54..55
       WHITESPACE@55..56
       PARAM@56..72
-        BIND_PAT@56..62
+        IDENT_PAT@56..62
           NAME@56..62
             IDENT@56..62 "tokens"
         COLON@62..63
@@ -69,7 +69,7 @@ SOURCE_FILE@0..389
       COMMA@72..73
       WHITESPACE@73..74
       PARAM@74..92
-        BIND_PAT@74..80
+        IDENT_PAT@74..80
           NAME@74..80
             IDENT@74..80 "events"
         COLON@80..81
@@ -96,7 +96,7 @@ SOURCE_FILE@0..389
       LET_STMT@100..125
         LET_KW@100..103
         WHITESPACE@103..104
-        BIND_PAT@104..120
+        IDENT_PAT@104..120
           MUT_KW@104..107
           WHITESPACE@107..108
           NAME@108..120
@@ -111,7 +111,7 @@ SOURCE_FILE@0..389
       LET_STMT@130..389
         LET_KW@130..133
         WHITESPACE@133..134
-        BIND_PAT@134..140
+        IDENT_PAT@134..140
           NAME@134..140
             IDENT@134..140 "eat_ws"
         WHITESPACE@140..141
@@ -121,7 +121,7 @@ SOURCE_FILE@0..389
           PARAM_LIST@143..388
             PIPE@143..144
             PARAM@144..159
-              BIND_PAT@144..147
+              IDENT_PAT@144..147
                 NAME@144..147
                   IDENT@144..147 "idx"
               COLON@147..148
@@ -172,7 +172,7 @@ SOURCE_FILE@0..389
                     NAME_REF@188..192
                       IDENT@188..192 "Some"
                 L_PAREN@192..193
-                BIND_PAT@193..198
+                IDENT_PAT@193..198
                   NAME@193..198
                     IDENT@193..198 "token"
                 R_PAREN@198..199
@@ -185,7 +185,7 @@ SOURCE_FILE@0..389
                 err: `expected COMMA`
             WHITESPACE@201..202
             PARAM@202..208
-              BIND_PAT@202..208
+              IDENT_PAT@202..208
                 NAME@202..208
                   IDENT@202..208 "tokens"
                   err: `expected COMMA`
@@ -205,7 +205,7 @@ SOURCE_FILE@0..389
                 ERROR@213..214
                   STAR@213..214
                   err: `expected COMMA`
-                BIND_PAT@214..217
+                IDENT_PAT@214..217
                   NAME@214..217
                     IDENT@214..217 "idx"
                 R_PAREN@217..218
@@ -229,7 +229,7 @@ SOURCE_FILE@0..389
                 BANG@236..237
                 err: `expected COMMA`
             PARAM@237..242
-              BIND_PAT@237..242
+              IDENT_PAT@237..242
                 NAME@237..242
                   IDENT@237..242 "token"
                   err: `expected COMMA`
@@ -239,7 +239,7 @@ SOURCE_FILE@0..389
                 DOT@242..243
                 err: `expected COMMA`
             PARAM@243..247
-              BIND_PAT@243..247
+              IDENT_PAT@243..247
                 NAME@243..247
                   IDENT@243..247 "kind"
                   err: `expected COMMA`
@@ -265,7 +265,7 @@ SOURCE_FILE@0..389
                 err: `expected COMMA`
             WHITESPACE@261..278
             PARAM@278..283
-              BIND_PAT@278..283
+              IDENT_PAT@278..283
                 NAME@278..283
                   IDENT@278..283 "break"
                   err: `expected COMMA`
@@ -282,7 +282,7 @@ SOURCE_FILE@0..389
                 err: `expected COMMA`
             WHITESPACE@298..311
             PARAM@311..318
-              BIND_PAT@311..318
+              IDENT_PAT@311..318
                 NAME@311..318
                   IDENT@311..318 "builder"
                   err: `expected COMMA`
@@ -298,7 +298,7 @@ SOURCE_FILE@0..389
                     NAME_REF@319..323
                       IDENT@319..323 "leaf"
                 L_PAREN@323..324
-                BIND_PAT@324..329
+                IDENT_PAT@324..329
                   NAME@324..329
                     IDENT@324..329 "token"
                     err: `expected COMMA`
@@ -306,12 +306,12 @@ SOURCE_FILE@0..389
                 ERROR@329..330
                   DOT@329..330
                   err: `expected COMMA`
-                BIND_PAT@330..334
+                IDENT_PAT@330..334
                   NAME@330..334
                     IDENT@330..334 "kind"
                 COMMA@334..335
                 WHITESPACE@335..336
-                BIND_PAT@336..341
+                IDENT_PAT@336..341
                   NAME@336..341
                     IDENT@336..341 "token"
                     err: `expected COMMA`
@@ -319,7 +319,7 @@ SOURCE_FILE@0..389
                 ERROR@341..342
                   DOT@341..342
                   err: `expected COMMA`
-                BIND_PAT@342..345
+                IDENT_PAT@342..345
                   NAME@342..345
                     IDENT@342..345 "len"
                 R_PAREN@345..346
@@ -336,7 +336,7 @@ SOURCE_FILE@0..389
                 STAR@360..361
                 err: `expected COMMA`
             PARAM@361..364
-              BIND_PAT@361..364
+              IDENT_PAT@361..364
                 NAME@361..364
                   IDENT@361..364 "idx"
                   err: `expected COMMA`

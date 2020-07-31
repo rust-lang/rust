@@ -44,13 +44,13 @@ SOURCE_FILE@0..119
             L_CURLY@40..41 "{"
             WHITESPACE@41..42 " "
             RECORD_PAT_FIELD@42..43
-              BIND_PAT@42..43
+              IDENT_PAT@42..43
                 NAME@42..43
                   IDENT@42..43 "f"
             COMMA@43..44 ","
             WHITESPACE@44..45 " "
             RECORD_PAT_FIELD@45..54
-              BIND_PAT@45..54
+              IDENT_PAT@45..54
                 REF_KW@45..48 "ref"
                 WHITESPACE@48..49 " "
                 MUT_KW@49..52 "mut"

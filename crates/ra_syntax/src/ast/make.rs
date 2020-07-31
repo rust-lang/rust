@@ -148,10 +148,10 @@ pub fn condition(expr: ast::Expr, pattern: Option<ast::Pat>) -> ast::Condition {
     }
 }
 
-pub fn bind_pat(name: ast::Name) -> ast::BindPat {
+pub fn bind_pat(name: ast::Name) -> ast::IdentPat {
     return from_text(name.text());
 
-    fn from_text(text: &str) -> ast::BindPat {
+    fn from_text(text: &str) -> ast::IdentPat {
         ast_from_text(&format!("fn f({}: ())", text))
     }
 }

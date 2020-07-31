@@ -106,7 +106,7 @@ impl SourceToDefCtx<'_, '_> {
     }
     pub(super) fn bind_pat_to_def(
         &mut self,
-        src: InFile<ast::BindPat>,
+        src: InFile<ast::IdentPat>,
     ) -> Option<(DefWithBodyId, PatId)> {
         let container = self.find_pat_container(src.as_ref().map(|it| it.syntax()))?;
         let (_body, source_map) = self.db.body_with_source_map(container);

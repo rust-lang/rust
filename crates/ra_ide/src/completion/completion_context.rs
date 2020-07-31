@@ -275,7 +275,7 @@ impl<'a> CompletionContext<'a> {
         // Otherwise, see if this is a declaration. We can use heuristics to
         // suggest declaration names, see `CompletionKind::Magic`.
         if let Some(name) = find_node_at_offset::<ast::Name>(&file_with_fake_ident, offset) {
-            if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::BindPat::cast) {
+            if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::IdentPat::cast) {
                 self.is_pat_binding_or_const = true;
                 if bind_pat.at_token().is_some()
                     || bind_pat.ref_token().is_some()

@@ -723,7 +723,7 @@ impl ExprCollector<'_> {
 
     fn collect_pat(&mut self, pat: ast::Pat) -> PatId {
         let pattern = match &pat {
-            ast::Pat::BindPat(bp) => {
+            ast::Pat::IdentPat(bp) => {
                 let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let annotation =
                     BindingAnnotation::new(bp.mut_token().is_some(), bp.ref_token().is_some());

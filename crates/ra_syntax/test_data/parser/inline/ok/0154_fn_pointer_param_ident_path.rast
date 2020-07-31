@@ -38,7 +38,7 @@ SOURCE_FILE@0..55
       PARAM_LIST@38..53
         L_PAREN@38..39 "("
         PARAM@39..52
-          BIND_PAT@39..42
+          IDENT_PAT@39..42
             NAME@39..42
               IDENT@39..42 "baz"
           COLON@42..43 ":"

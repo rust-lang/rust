@@ -7,7 +7,7 @@ use ra_ide_db::{defs::Definition, RootDatabase};
 use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
-    SyntaxKind::{self, BIND_PAT, TYPE_PARAM},
+    SyntaxKind::{self, IDENT_PAT, TYPE_PARAM},
     TextRange,
 };
 
@@ -339,7 +339,7 @@ impl ToNav for hir::Local {
         NavigationTarget {
             file_id: full_range.file_id,
             name,
-            kind: BIND_PAT,
+            kind: IDENT_PAT,
             full_range: full_range.range,
             focus_range: None,
             container_name: None,

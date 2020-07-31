@@ -53,7 +53,7 @@ SOURCE_FILE@0..83
                 PARAM_LIST@52..56
                   PIPE@52..53 "|"
                   PARAM@53..55
-                    BIND_PAT@53..55
+                    IDENT_PAT@53..55
                       NAME@53..55
                         IDENT@53..55 "it"
                   PIPE@55..56 "|"

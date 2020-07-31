@@ -46,7 +46,7 @@ SOURCE_FILE@0..74
         WHITESPACE@56..57 " "
         FOR_KW@57..60 "for"
         WHITESPACE@60..61 " "
-        BIND_PAT@61..62
+        IDENT_PAT@61..62
           NAME@61..62
             IDENT@61..62 "x"
         WHITESPACE@62..63 " "

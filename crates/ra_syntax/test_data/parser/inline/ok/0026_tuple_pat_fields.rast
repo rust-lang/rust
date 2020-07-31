@@ -88,7 +88,7 @@ SOURCE_FILE@0..97
           WHITESPACE@83..84 " "
           COMMA@84..85 ","
           WHITESPACE@85..86 " "
-          BIND_PAT@86..87
+          IDENT_PAT@86..87
             NAME@86..87
               IDENT@86..87 "x"
           R_PAREN@87..88 ")"

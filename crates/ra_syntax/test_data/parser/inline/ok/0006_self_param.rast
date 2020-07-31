@@ -79,7 +79,7 @@ SOURCE_FILE@0..128
           COMMA@91..92 ","
           WHITESPACE@92..93 " "
           PARAM@93..99
-            BIND_PAT@93..94
+            IDENT_PAT@93..94
               NAME@93..94
                 IDENT@93..94 "x"
             COLON@94..95 ":"

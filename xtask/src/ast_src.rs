@@ -126,7 +126,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "PAREN_PAT",
         "REF_PAT",
         "BOX_PAT",
-        "BIND_PAT",
+        "IDENT_PAT",
         "WILDCARD_PAT",
         "DOT_DOT_PAT",
         "PATH_PAT",

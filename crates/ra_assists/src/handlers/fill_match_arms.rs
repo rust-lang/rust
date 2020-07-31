@@ -150,7 +150,7 @@ fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
     let first_node_text = |pat: &Pat| pat.syntax().first_child().map(|node| node.text());
 
     let pat_head = match pat {
-        Pat::BindPat(bind_pat) => {
+        Pat::IdentPat(bind_pat) => {
             if let Some(p) = bind_pat.pat() {
                 first_node_text(&p)
             } else {

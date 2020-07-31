@@ -51,7 +51,7 @@ SOURCE_FILE@0..134
           PARAM_LIST@48..51
             PIPE@48..49 "|"
             PARAM@49..50
-              BIND_PAT@49..50
+              IDENT_PAT@49..50
                 NAME@49..50
                   IDENT@49..50 "x"
             PIPE@50..51 "|"
@@ -70,7 +70,7 @@ SOURCE_FILE@0..134
           PARAM_LIST@64..73
             PIPE@64..65 "|"
             PARAM@65..71
-              BIND_PAT@65..66
+              IDENT_PAT@65..66
                 NAME@65..66
                   IDENT@65..66 "x"
               COLON@66..67 ":"

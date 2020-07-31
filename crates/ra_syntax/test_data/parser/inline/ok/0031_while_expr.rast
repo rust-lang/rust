@@ -37,7 +37,7 @@ SOURCE_FILE@0..93
                   NAME_REF@44..48
                     IDENT@44..48 "Some"
               L_PAREN@48..49 "("
-              BIND_PAT@49..50
+              IDENT_PAT@49..50
                 NAME@49..50
                   IDENT@49..50 "x"
               R_PAREN@50..51 ")"

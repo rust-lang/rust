@@ -109,7 +109,7 @@ impl RuleBuilder {
         // path refers to semantically the same thing, whereas the non-path-based rules could match
         // anything. Specifically, if we have a rule like `foo ==>> bar` we only want to match the
         // `foo` that is in the current scope, not any `foo`. However "foo" can be parsed as a
-        // pattern (BIND_PAT -> NAME -> IDENT). Allowing such a rule through would result in
+        // pattern (IDENT_PAT -> NAME -> IDENT). Allowing such a rule through would result in
         // renaming everything called `foo` to `bar`. It'd also be slow, since without a path, we'd
         // have to use the slow-scan search mechanism.
         if self.rules.iter().any(|rule| contains_path(&rule.pattern)) {

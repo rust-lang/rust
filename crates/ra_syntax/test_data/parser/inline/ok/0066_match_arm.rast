@@ -74,13 +74,13 @@ SOURCE_FILE@0..167
             WHITESPACE@84..93 "\n        "
             MATCH_ARM@93..109
               OR_PAT@93..98
-                BIND_PAT@93..94
+                IDENT_PAT@93..94
                   NAME@93..94
                     IDENT@93..94 "X"
                 WHITESPACE@94..95 " "
                 PIPE@95..96 "|"
                 WHITESPACE@96..97 " "
-                BIND_PAT@97..98
+                IDENT_PAT@97..98
                   NAME@97..98
                     IDENT@97..98 "Y"
               WHITESPACE@98..99 " "
@@ -104,13 +104,13 @@ SOURCE_FILE@0..167
               PIPE@119..120 "|"
               WHITESPACE@120..121 " "
               OR_PAT@121..126
-                BIND_PAT@121..122
+                IDENT_PAT@121..122
                   NAME@121..122
                     IDENT@121..122 "X"
                 WHITESPACE@122..123 " "
                 PIPE@123..124 "|"
                 WHITESPACE@124..125 " "
-                BIND_PAT@125..126
+                IDENT_PAT@125..126
                   NAME@125..126
                     IDENT@125..126 "Y"
               WHITESPACE@126..127 " "
@@ -133,7 +133,7 @@ SOURCE_FILE@0..167
             MATCH_ARM@147..156
               PIPE@147..148 "|"
               WHITESPACE@148..149 " "
-              BIND_PAT@149..150
+              IDENT_PAT@149..150
                 NAME@149..150
                   IDENT@149..150 "X"
               WHITESPACE@150..151 " "
