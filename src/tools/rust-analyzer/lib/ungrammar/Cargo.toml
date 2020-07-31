@@ -7,5 +7,7 @@ repository = "https://github.com/matklad/ungrammar"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 edition = "2018"
 
+exclude = ["/bors.toml", "/.github"]
+
 [dependencies]
 # nope
