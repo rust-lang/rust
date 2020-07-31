@@ -98,7 +98,7 @@ fn type_parser_tests() {
     fragment_parser_dir_test(
         &["parser/fragments/type/ok"],
         &["parser/fragments/type/err"],
-        crate::ast::TypeRef::parse,
+        crate::ast::Type::parse,
     );
 }
 

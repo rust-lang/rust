@@ -82,7 +82,7 @@ impl ast::Attr {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathSegmentKind {
     Name(ast::NameRef),
-    Type { type_ref: Option<ast::TypeRef>, trait_ref: Option<ast::PathType> },
+    Type { type_ref: Option<ast::Type>, trait_ref: Option<ast::PathType> },
     SelfKw,
     SuperKw,
     CrateKw,
@@ -108,8 +108,8 @@ impl ast::PathSegment {
                     // <T> or <T as Trait>
                     // T is any TypeRef, Trait has to be a PathType
                     let mut type_refs =
-                        self.syntax().children().filter(|node| ast::TypeRef::can_cast(node.kind()));
-                    let type_ref = type_refs.next().and_then(ast::TypeRef::cast);
+                        self.syntax().children().filter(|node| ast::Type::can_cast(node.kind()));
+                    let type_ref = type_refs.next().and_then(ast::Type::cast);
                     let trait_ref = type_refs.next().and_then(ast::PathType::cast);
                     PathSegmentKind::Type { type_ref, trait_ref }
                 }
@@ -136,21 +136,21 @@ impl ast::UseTreeList {
 }
 
 impl ast::Impl {
-    pub fn target_type(&self) -> Option<ast::TypeRef> {
+    pub fn target_type(&self) -> Option<ast::Type> {
         match self.target() {
             (Some(t), None) | (_, Some(t)) => Some(t),
             _ => None,
         }
     }
 
-    pub fn target_trait(&self) -> Option<ast::TypeRef> {
+    pub fn target_trait(&self) -> Option<ast::Type> {
         match self.target() {
             (Some(t), Some(_)) => Some(t),
             _ => None,
         }
     }
 
-    fn target(&self) -> (Option<ast::TypeRef>, Option<ast::TypeRef>) {
+    fn target(&self) -> (Option<ast::Type>, Option<ast::Type>) {
         let mut types = support::children(self.syntax());
         let first = types.next();
         let second = types.next();

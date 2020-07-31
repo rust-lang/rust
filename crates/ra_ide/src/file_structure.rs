@@ -57,7 +57,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 
     fn decl_with_type_ref<N: NameOwner + AttrsOwner>(
         node: &N,
-        type_ref: Option<ast::TypeRef>,
+        type_ref: Option<ast::Type>,
     ) -> Option<StructureNode> {
         let detail = type_ref.map(|type_ref| {
             let mut detail = String::new();

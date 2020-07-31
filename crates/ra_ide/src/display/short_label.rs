@@ -77,7 +77,7 @@ impl ShortLabel for ast::Variant {
     }
 }
 
-fn short_label_from_ty<T>(node: &T, ty: Option<ast::TypeRef>, prefix: &str) -> Option<String>
+fn short_label_from_ty<T>(node: &T, ty: Option<ast::Type>, prefix: &str) -> Option<String>
 where
     T: NameOwner + VisibilityOwner,
 {

@@ -287,7 +287,7 @@ where
 
     assert!(pred.for_token().is_none());
     assert!(pred.generic_param_list().is_none());
-    assert_eq!("T", pred.type_ref().unwrap().syntax().text().to_string());
+    assert_eq!("T", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("Clone", bounds.next());
     assert_bound("Copy", bounds.next());
     assert_bound("Debug", bounds.next());
@@ -304,20 +304,20 @@ where
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("Iterator::Item", pred.type_ref().unwrap().syntax().text().to_string());
+    assert_eq!("Iterator::Item", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("'a", bounds.next());
 
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("Iterator::Item", pred.type_ref().unwrap().syntax().text().to_string());
+    assert_eq!("Iterator::Item", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("Debug", bounds.next());
     assert_bound("'a", bounds.next());
 
     let pred = predicates.next().unwrap();
     let mut bounds = pred.type_bound_list().unwrap().bounds();
 
-    assert_eq!("<T as Iterator>::Item", pred.type_ref().unwrap().syntax().text().to_string());
+    assert_eq!("<T as Iterator>::Item", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("Debug", bounds.next());
     assert_bound("'a", bounds.next());
 
@@ -326,6 +326,6 @@ where
 
     assert!(pred.for_token().is_some());
     assert_eq!("<'a>", pred.generic_param_list().unwrap().syntax().text().to_string());
-    assert_eq!("F", pred.type_ref().unwrap().syntax().text().to_string());
+    assert_eq!("F", pred.ty().unwrap().syntax().text().to_string());
     assert_bound("Fn(&'a str)", bounds.next());
 }

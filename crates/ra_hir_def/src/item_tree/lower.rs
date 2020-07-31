@@ -648,10 +648,10 @@ impl Ctx {
         self.data().vis.alloc(vis)
     }
 
-    fn lower_type_ref(&self, type_ref: &ast::TypeRef) -> TypeRef {
+    fn lower_type_ref(&self, type_ref: &ast::Type) -> TypeRef {
         TypeRef::from_ast(&self.body_ctx, type_ref.clone())
     }
-    fn lower_type_ref_opt(&self, type_ref: Option<ast::TypeRef>) -> TypeRef {
+    fn lower_type_ref_opt(&self, type_ref: Option<ast::Type>) -> TypeRef {
         type_ref.map(|ty| self.lower_type_ref(&ty)).unwrap_or(TypeRef::Error)
     }
 

@@ -32,7 +32,7 @@ impl<'a> AstTransform<'a> for NullTransformer {
 
 pub struct SubstituteTypeParams<'a> {
     source_scope: &'a SemanticsScope<'a>,
-    substs: FxHashMap<hir::TypeParam, ast::TypeRef>,
+    substs: FxHashMap<hir::TypeParam, ast::Type>,
     previous: Box<dyn AstTransform<'a> + 'a>,
 }
 
@@ -80,17 +80,17 @@ impl<'a> SubstituteTypeParams<'a> {
 
         // FIXME: It would probably be nicer if we could get this via HIR (i.e. get the
         // trait ref, and then go from the types in the substs back to the syntax)
-        fn get_syntactic_substs(impl_def: ast::Impl) -> Option<Vec<ast::TypeRef>> {
+        fn get_syntactic_substs(impl_def: ast::Impl) -> Option<Vec<ast::Type>> {
             let target_trait = impl_def.target_trait()?;
             let path_type = match target_trait {
-                ast::TypeRef::PathType(path) => path,
+                ast::Type::PathType(path) => path,
                 _ => return None,
             };
             let type_arg_list = path_type.path()?.segment()?.type_arg_list()?;
             let mut result = Vec::new();
             for type_arg in type_arg_list.type_args() {
                 let type_arg: ast::TypeArg = type_arg;
-                result.push(type_arg.type_ref()?);
+                result.push(type_arg.ty()?);
             }
             Some(result)
         }
@@ -99,9 +99,9 @@ impl<'a> SubstituteTypeParams<'a> {
         &self,
         node: &ra_syntax::SyntaxNode,
     ) -> Option<ra_syntax::SyntaxNode> {
-        let type_ref = ast::TypeRef::cast(node.clone())?;
+        let type_ref = ast::Type::cast(node.clone())?;
         let path = match &type_ref {
-            ast::TypeRef::PathType(path_type) => path_type.path()?,
+            ast::Type::PathType(path_type) => path_type.path()?,
             _ => return None,
         };
         // FIXME: use `hir::Path::from_src` instead.

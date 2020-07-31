@@ -476,7 +476,13 @@ impl Field {
                 };
                 format_ident!("{}_token", name)
             }
-            Field::Node { name, .. } => format_ident!("{}", name),
+            Field::Node { name, .. } => {
+                if name == "type" {
+                    format_ident!("ty")
+                } else {
+                    format_ident!("{}", name)
+                }
+            }
         }
     }
     fn ty(&self) -> proc_macro2::Ident {
