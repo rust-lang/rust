@@ -10,7 +10,7 @@ use hir_expand::{
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
-        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, ModuleItemOwner, NameOwner,
+        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, NameOwner,
         SlicePatComponents,
     },
     AstNode, AstPtr,
@@ -601,14 +601,20 @@ impl ExprCollector<'_> {
         self.collect_block_items(&block);
         let statements = block
             .statements()
-            .map(|s| match s {
-                ast::Stmt::LetStmt(stmt) => {
-                    let pat = self.collect_pat_opt(stmt.pat());
-                    let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
-                    let initializer = stmt.initializer().map(|e| self.collect_expr(e));
-                    Statement::Let { pat, type_ref, initializer }
-                }
-                ast::Stmt::ExprStmt(stmt) => Statement::Expr(self.collect_expr_opt(stmt.expr())),
+            .filter_map(|s| {
+                let stmt = match s {
+                    ast::Stmt::LetStmt(stmt) => {
+                        let pat = self.collect_pat_opt(stmt.pat());
+                        let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                        let initializer = stmt.initializer().map(|e| self.collect_expr(e));
+                        Statement::Let { pat, type_ref, initializer }
+                    }
+                    ast::Stmt::ExprStmt(stmt) => {
+                        Statement::Expr(self.collect_expr_opt(stmt.expr()))
+                    }
+                    ast::Stmt::Item(_) => return None,
+                };
+                Some(stmt)
             })
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
@@ -620,7 +626,11 @@ impl ExprCollector<'_> {
         let container = ContainerId::DefWithBodyId(self.def);
 
         let items = block
-            .items()
+            .statements()
+            .filter_map(|stmt| match stmt {
+                ast::Stmt::Item(it) => Some(it),
+                ast::Stmt::LetStmt(_) | ast::Stmt::ExprStmt(_) => None,
+            })
             .filter_map(|item| {
                 let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
                     ast::Item::Fn(def) => {

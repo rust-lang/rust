@@ -694,6 +694,9 @@ fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str
 
 fn extract_enum_traits(ast: &mut AstSrc) {
     for enm in &mut ast.enums {
+        if enm.name == "Stmt" {
+            continue;
+        }
         let nodes = &ast.nodes;
         let mut variant_traits = enm
             .variants

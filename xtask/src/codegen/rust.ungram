@@ -197,6 +197,7 @@ Attr =
 Stmt =
   LetStmt
 | ExprStmt
+| Item
 
 LetStmt =
   Attr* 'let' Pat (':' Type)?
@@ -316,7 +317,6 @@ Label =
 BlockExpr =
   Attr* Label
   '{'
-    Item*
     statements:Stmt*
     Expr?
   '}'
