@@ -352,7 +352,7 @@ pub struct TypeckResults<'tcx> {
     pat_binding_modes: ItemLocalMap<BindingMode>,
 
     /// Stores the types which were implicitly dereferenced in pattern binding modes
-    /// for later usage in HAIR lowering. For example,
+    /// for later usage in THIR lowering. For example,
     ///
     /// ```
     /// match &&Some(5i32) {

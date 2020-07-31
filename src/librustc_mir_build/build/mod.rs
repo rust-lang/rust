@@ -1,7 +1,7 @@
 use crate::build;
 use crate::build::scope::DropKind;
-use crate::hair::cx::Cx;
-use crate::hair::{BindingMode, LintLevel, PatKind};
+use crate::thir::cx::Cx;
+use crate::thir::{BindingMode, LintLevel, PatKind};
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -294,7 +294,7 @@ struct Builder<'a, 'tcx> {
     /// see the `scope` module for more details.
     scopes: scope::Scopes<'tcx>,
 
-    /// The block-context: each time we build the code within an hair::Block,
+    /// The block-context: each time we build the code within an thir::Block,
     /// we push a frame here tracking whether we are building a statement or
     /// if we are pushing the tail expression of the block. This is used to
     /// embed information in generated temps about whether they were created

@@ -1,9 +1,9 @@
 //! This module contains the functionality to convert from the wacky tcx data
-//! structures into the HAIR. The `builder` is generally ignorant of the tcx,
+//! structures into the THIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
-use crate::hair::util::UserAnnotatedTyHelpers;
-use crate::hair::*;
+use crate::thir::util::UserAnnotatedTyHelpers;
+use crate::thir::*;
 
 use rustc_ast::ast;
 use rustc_ast::attr;

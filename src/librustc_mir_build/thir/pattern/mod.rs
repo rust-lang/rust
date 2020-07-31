@@ -6,7 +6,7 @@ mod const_to_pat;
 
 pub(crate) use self::check_match::check_match;
 
-use crate::hair::util::UserAnnotatedTyHelpers;
+use crate::thir::util::UserAnnotatedTyHelpers;
 
 use rustc_ast::ast;
 use rustc_errors::struct_span_err;
@@ -402,7 +402,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         //
         // `vec![&&Option<i32>, &Option<i32>]`.
         //
-        // Applying the adjustments, we want to instead output `&&Some(n)` (as a HAIR pattern). So
+        // Applying the adjustments, we want to instead output `&&Some(n)` (as a THIR pattern). So
         // we wrap the unadjusted pattern in `PatKind::Deref` repeatedly, consuming the
         // adjustments in *reverse order* (last-in-first-out, so that the last `Deref` inserted
         // gets the least-dereferenced type).

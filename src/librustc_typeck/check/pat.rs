@@ -345,7 +345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("inspecting {:?}", expected);
 
             debug!("current discriminant is Ref, inserting implicit deref");
-            // Preserve the reference type. We'll need it later during HAIR lowering.
+            // Preserve the reference type. We'll need it later during THIR lowering.
             pat_adjustments.push(expected);
 
             expected = inner_ty;

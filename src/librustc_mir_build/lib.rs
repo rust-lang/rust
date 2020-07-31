@@ -17,13 +17,13 @@ extern crate log;
 extern crate rustc_middle;
 
 mod build;
-mod hair;
 mod lints;
+mod thir;
 
 use rustc_middle::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers) {
-    providers.check_match = hair::pattern::check_match;
-    providers.lit_to_const = hair::constant::lit_to_const;
+    providers.check_match = thir::pattern::check_match;
+    providers.lit_to_const = thir::constant::lit_to_const;
     providers.mir_built = build::mir_built;
 }

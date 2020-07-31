@@ -6,7 +6,7 @@
 
 #![cfg_attr(const_fn, feature(const_fn))]
 
-// Ctor(..) is transformed to Ctor { 0: ... } in HAIR lowering, so directly
+// Ctor(..) is transformed to Ctor { 0: ... } in THIR lowering, so directly
 // calling constructors doesn't require them to be const.
 
 type ExternalType = std::panic::AssertUnwindSafe<(Option<i32>, Result<i32, bool>)>;

@@ -1,8 +1,8 @@
-use crate::hair::cx::block;
-use crate::hair::cx::to_ref::ToRef;
-use crate::hair::cx::Cx;
-use crate::hair::util::UserAnnotatedTyHelpers;
-use crate::hair::*;
+use crate::thir::cx::block;
+use crate::thir::cx::to_ref::ToRef;
+use crate::thir::cx::Cx;
+use crate::thir::util::UserAnnotatedTyHelpers;
+use crate::thir::*;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
@@ -1020,7 +1020,7 @@ fn overloaded_place<'a, 'tcx>(
     // line up (this is because `*x` and `x[y]` represent places):
 
     let recv_ty = match args[0] {
-        ExprRef::Hair(e) => cx.typeck_results().expr_ty_adjusted(e),
+        ExprRef::Thir(e) => cx.typeck_results().expr_ty_adjusted(e),
         ExprRef::Mirror(ref e) => e.ty,
     };
 

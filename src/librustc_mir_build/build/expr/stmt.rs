@@ -1,11 +1,11 @@
 use crate::build::scope::BreakableTarget;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use crate::hair::*;
+use crate::thir::*;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Builds a block of MIR statements to evaluate the HAIR `expr`.
+    /// Builds a block of MIR statements to evaluate the THIR `expr`.
     /// If the original expression was an AST statement,
     /// (e.g., `some().code(&here());`) then `opt_stmt_span` is the
     /// span of that statement (including its semicolon, if any).
@@ -150,8 +150,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     break;
                                 }
                             }
-                            this.block_context
-                                .push(BlockFrame::TailExpr { tail_result_is_ignored: true, span: expr.span });
+                            this.block_context.push(BlockFrame::TailExpr {
+                                tail_result_is_ignored: true,
+                                span: expr.span,
+                            });
                             return Some(expr.span);
                         }
                     }
