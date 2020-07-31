@@ -526,7 +526,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                         // The reason is because promotion will be illegal if field
                                         // accesses preceed the dereferencing.
                                         // Discussion can be found at
-                                        // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247 
+                                        // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247
                                         // There may be opportunity for generalization, but this needs to be
                                         // accounted for.
                                         if proj_base.is_empty() && !self.tcx.is_thread_local_static(did) {
