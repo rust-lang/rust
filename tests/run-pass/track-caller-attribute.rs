@@ -35,6 +35,28 @@ fn test_fn_ptr() {
     pass_to_ptr_call(tracked_unit, ());
 }
 
+fn test_trait_obj() {
+    trait Tracked {
+        #[track_caller]
+        fn handle(&self) { // `fn` here is what the `location` should point at.
+            let location = std::panic::Location::caller();
+            assert_eq!(location.file(), file!());
+            // we only call this via trait object, so the def site should *always* be returned
+            assert_eq!(location.line(), line!() - 4);
+            assert_eq!(location.column(), 9);
+        }
+    }
+
+    impl Tracked for () {}
+    impl Tracked for u8 {}
+
+    let tracked: &dyn Tracked = &5u8;
+    tracked.handle();
+
+    const TRACKED: &dyn Tracked = &();
+    TRACKED.handle();
+}
+
 fn main() {
     let location = Location::caller();
     let expected_line = line!() - 1;
@@ -73,4 +95,5 @@ fn main() {
     assert_eq!(intrinsic.column(), 21);
 
     test_fn_ptr();
+    test_trait_obj();
 }
