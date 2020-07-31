@@ -1,7 +1,7 @@
 // run-pass
 
 #![allow(incomplete_features)]
-#![feature(unsized_locals, unsized_fn_params)]
+#![feature(unsized_fn_params)]
 
 pub fn f0(_f: dyn FnOnce()) {}
 pub fn f1(_s: str) {}

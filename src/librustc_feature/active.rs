@@ -580,7 +580,7 @@ declare_features! (
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
     /// Allows unsized fn parameters.
-    (active, unsized_fn_params, "1.45.0", Some(48055), None),
+    (active, unsized_fn_params, "1.47.0", Some(48055), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
