@@ -22,7 +22,7 @@ SOURCE_FILE@0..83
           L_CURLY@24..25 "{"
           WHITESPACE@25..34 "\n        "
           MATCH_ARM@34..41
-            PLACEHOLDER_PAT@34..35
+            WILDCARD_PAT@34..35
               UNDERSCORE@34..35 "_"
             WHITESPACE@35..36 " "
             FAT_ARROW@36..38 "=>"
@@ -33,7 +33,7 @@ SOURCE_FILE@0..83
           COMMA@41..42 ","
           WHITESPACE@42..51 "\n        "
           MATCH_ARM@51..58
-            PLACEHOLDER_PAT@51..52
+            WILDCARD_PAT@51..52
               UNDERSCORE@51..52 "_"
             WHITESPACE@52..53 " "
             FAT_ARROW@53..55 "=>"
@@ -43,7 +43,7 @@ SOURCE_FILE@0..83
               R_CURLY@57..58 "}"
           WHITESPACE@58..67 "\n        "
           MATCH_ARM@67..74
-            PLACEHOLDER_PAT@67..68
+            WILDCARD_PAT@67..68
               UNDERSCORE@67..68 "_"
             WHITESPACE@68..69 " "
             FAT_ARROW@69..71 "=>"

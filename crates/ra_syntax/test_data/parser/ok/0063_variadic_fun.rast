@@ -16,7 +16,7 @@ SOURCE_FILE@0..126
         PARAM_LIST@21..39
           L_PAREN@21..22 "("
           PARAM@22..32
-            PLACEHOLDER_PAT@22..23
+            WILDCARD_PAT@22..23
               UNDERSCORE@22..23 "_"
             COLON@23..24 ":"
             WHITESPACE@24..25 " "
@@ -45,7 +45,7 @@ SOURCE_FILE@0..126
         PARAM_LIST@49..69
           L_PAREN@49..50 "("
           PARAM@50..60
-            PLACEHOLDER_PAT@50..51
+            WILDCARD_PAT@50..51
               UNDERSCORE@50..51 "_"
             COLON@51..52 ":"
             WHITESPACE@52..53 " "
@@ -61,7 +61,7 @@ SOURCE_FILE@0..126
           COMMA@60..61 ","
           WHITESPACE@61..62 " "
           PARAM@62..68
-            PLACEHOLDER_PAT@62..63
+            WILDCARD_PAT@62..63
               UNDERSCORE@62..63 "_"
             COLON@63..64 ":"
             WHITESPACE@64..65 " "
@@ -77,7 +77,7 @@ SOURCE_FILE@0..126
         PARAM_LIST@79..122
           L_PAREN@79..80 "("
           PARAM@80..90
-            PLACEHOLDER_PAT@80..81
+            WILDCARD_PAT@80..81
               UNDERSCORE@80..81 "_"
             COLON@81..82 ":"
             WHITESPACE@82..83 " "

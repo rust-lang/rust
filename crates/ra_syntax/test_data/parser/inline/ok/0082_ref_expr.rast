@@ -16,7 +16,7 @@ SOURCE_FILE@0..200
       LET_STMT@41..52
         LET_KW@41..44 "let"
         WHITESPACE@44..45 " "
-        PLACEHOLDER_PAT@45..46
+        WILDCARD_PAT@45..46
           UNDERSCORE@45..46 "_"
         WHITESPACE@46..47 " "
         EQ@47..48 "="
@@ -30,7 +30,7 @@ SOURCE_FILE@0..200
       LET_STMT@57..75
         LET_KW@57..60 "let"
         WHITESPACE@60..61 " "
-        PLACEHOLDER_PAT@61..62
+        WILDCARD_PAT@61..62
           UNDERSCORE@61..62 "_"
         WHITESPACE@62..63 " "
         EQ@63..64 "="
@@ -55,7 +55,7 @@ SOURCE_FILE@0..200
       LET_STMT@80..93
         LET_KW@80..83 "let"
         WHITESPACE@83..84 " "
-        PLACEHOLDER_PAT@84..85
+        WILDCARD_PAT@84..85
           UNDERSCORE@84..85 "_"
         WHITESPACE@85..86 " "
         EQ@86..87 "="
@@ -72,7 +72,7 @@ SOURCE_FILE@0..200
       LET_STMT@98..113
         LET_KW@98..101 "let"
         WHITESPACE@101..102 " "
-        PLACEHOLDER_PAT@102..103
+        WILDCARD_PAT@102..103
           UNDERSCORE@102..103 "_"
         WHITESPACE@103..104 " "
         EQ@104..105 "="
@@ -95,7 +95,7 @@ SOURCE_FILE@0..200
       LET_STMT@148..169
         LET_KW@148..151 "let"
         WHITESPACE@151..152 " "
-        PLACEHOLDER_PAT@152..153
+        WILDCARD_PAT@152..153
           UNDERSCORE@152..153 "_"
         WHITESPACE@153..154 " "
         EQ@154..155 "="
@@ -116,7 +116,7 @@ SOURCE_FILE@0..200
       LET_STMT@174..197
         LET_KW@174..177 "let"
         WHITESPACE@177..178 " "
-        PLACEHOLDER_PAT@178..179
+        WILDCARD_PAT@178..179
           UNDERSCORE@178..179 "_"
         WHITESPACE@179..180 " "
         EQ@180..181 "="

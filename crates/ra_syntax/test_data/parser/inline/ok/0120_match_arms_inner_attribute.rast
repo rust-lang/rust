@@ -64,7 +64,7 @@ SOURCE_FILE@0..139
             R_BRACK@112..113 "]"
           WHITESPACE@113..122 "\n        "
           MATCH_ARM@122..129
-            PLACEHOLDER_PAT@122..123
+            WILDCARD_PAT@122..123
               UNDERSCORE@122..123 "_"
             WHITESPACE@123..124 " "
             FAT_ARROW@124..126 "=>"

@@ -234,7 +234,7 @@ fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![_]));
     let m = p.start();
     p.bump(T![_]);
-    m.complete(p, PLACEHOLDER_PAT)
+    m.complete(p, WILDCARD_PAT)
 }
 
 // test dot_dot_pat

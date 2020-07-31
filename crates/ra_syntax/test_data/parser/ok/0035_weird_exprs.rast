@@ -506,7 +506,7 @@ SOURCE_FILE@0..3813
                               R_CURLY@1146..1147 "}"
                           WHITESPACE@1147..1168 "\n                    "
                           MATCH_ARM@1168..1183
-                            PLACEHOLDER_PAT@1168..1169
+                            WILDCARD_PAT@1168..1169
                               UNDERSCORE@1168..1169 "_"
                             WHITESPACE@1169..1170 " "
                             FAT_ARROW@1170..1172 "=>"
@@ -1102,7 +1102,7 @@ SOURCE_FILE@0..3813
                     COMMA@1863..1864 ","
                     WHITESPACE@1864..1865 " "
                     MATCH_ARM@1865..1883
-                      PLACEHOLDER_PAT@1865..1866
+                      WILDCARD_PAT@1865..1866
                         UNDERSCORE@1865..1866 "_"
                       WHITESPACE@1866..1867 " "
                       FAT_ARROW@1867..1869 "=>"
@@ -1652,7 +1652,7 @@ SOURCE_FILE@0..3813
                           NAME@2963..2965
                             IDENT@2963..2965 "__"
                           AT@2965..2966 "@"
-                          PLACEHOLDER_PAT@2966..2967
+                          WILDCARD_PAT@2966..2967
                             UNDERSCORE@2966..2967 "_"
                       PIPE@2967..2968 "|"
                     PATH_EXPR@2968..2970

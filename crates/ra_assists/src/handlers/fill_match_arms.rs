@@ -43,7 +43,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
 
     let mut arms: Vec<MatchArm> = match_arm_list.arms().collect();
     if arms.len() == 1 {
-        if let Some(Pat::PlaceholderPat(..)) = arms[0].pat() {
+        if let Some(Pat::WildcardPat(..)) = arms[0].pat() {
             arms.clear();
         }
     }
@@ -116,17 +116,15 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             match (first_new_arm, ctx.config.snippet_cap) {
                 (Some(first_new_arm), Some(cap)) => {
                     let extend_lifetime;
-                    let cursor = match first_new_arm
-                        .syntax()
-                        .descendants()
-                        .find_map(ast::PlaceholderPat::cast)
-                    {
-                        Some(it) => {
-                            extend_lifetime = it.syntax().clone();
-                            Cursor::Replace(&extend_lifetime)
-                        }
-                        None => Cursor::Before(first_new_arm.syntax()),
-                    };
+                    let cursor =
+                        match first_new_arm.syntax().descendants().find_map(ast::WildcardPat::cast)
+                        {
+                            Some(it) => {
+                                extend_lifetime = it.syntax().clone();
+                                Cursor::Replace(&extend_lifetime)
+                            }
+                            None => Cursor::Before(first_new_arm.syntax()),
+                        };
                     let snippet = render_snippet(cap, new_arm_list.syntax(), cursor);
                     builder.replace_snippet(cap, old_range, snippet);
                 }

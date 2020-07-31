@@ -84,7 +84,7 @@ SOURCE_FILE@0..146
           WHITESPACE@101..102 " "
           AT@102..103 "@"
           WHITESPACE@103..104 " "
-          PLACEHOLDER_PAT@104..105
+          WILDCARD_PAT@104..105
             UNDERSCORE@104..105 "_"
         WHITESPACE@105..106 " "
         EQ@106..107 "="
@@ -113,7 +113,7 @@ SOURCE_FILE@0..146
             WHITESPACE@133..134 " "
             AT@134..135 "@"
             WHITESPACE@135..136 " "
-            PLACEHOLDER_PAT@136..137
+            WILDCARD_PAT@136..137
               UNDERSCORE@136..137 "_"
         WHITESPACE@137..138 " "
         EQ@138..139 "="

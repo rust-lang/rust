@@ -212,7 +212,7 @@ SOURCE_FILE@0..519
             R_BRACK@203..204 "]"
           WHITESPACE@204..205 " "
           PARAM@205..211
-            PLACEHOLDER_PAT@205..206
+            WILDCARD_PAT@205..206
               UNDERSCORE@205..206 "_"
             COLON@206..207 ":"
             WHITESPACE@207..208 " "

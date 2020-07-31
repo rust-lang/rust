@@ -783,7 +783,7 @@ impl ExprCollector<'_> {
                 let (args, ellipsis) = self.collect_tuple_pat(p.args());
                 Pat::Tuple { args, ellipsis }
             }
-            ast::Pat::PlaceholderPat(_) => Pat::Wild,
+            ast::Pat::WildcardPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
                 let path = p.path().and_then(|path| self.expander.parse_path(path));
                 let args: Vec<_> = p

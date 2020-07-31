@@ -38,7 +38,7 @@ SOURCE_FILE@0..97
               NAME_REF@37..38
                 IDENT@37..38 "S"
           L_PAREN@38..39 "("
-          PLACEHOLDER_PAT@39..40
+          WILDCARD_PAT@39..40
             UNDERSCORE@39..40 "_"
           R_PAREN@40..41 ")"
         WHITESPACE@41..42 " "
@@ -58,7 +58,7 @@ SOURCE_FILE@0..97
               NAME_REF@56..57
                 IDENT@56..57 "S"
           L_PAREN@57..58 "("
-          PLACEHOLDER_PAT@58..59
+          WILDCARD_PAT@58..59
             UNDERSCORE@58..59 "_"
           COMMA@59..60 ","
           R_PAREN@60..61 ")"
@@ -79,7 +79,7 @@ SOURCE_FILE@0..97
               NAME_REF@76..77
                 IDENT@76..77 "S"
           L_PAREN@77..78 "("
-          PLACEHOLDER_PAT@78..79
+          WILDCARD_PAT@78..79
             UNDERSCORE@78..79 "_"
           COMMA@79..80 ","
           WHITESPACE@80..81 " "

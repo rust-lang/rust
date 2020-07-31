@@ -157,7 +157,7 @@ pub enum SyntaxKind {
     REF_PAT,
     BOX_PAT,
     BIND_PAT,
-    PLACEHOLDER_PAT,
+    WILDCARD_PAT,
     DOT_DOT_PAT,
     PATH_PAT,
     RECORD_PAT,

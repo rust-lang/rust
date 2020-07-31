@@ -505,7 +505,7 @@ Pat =
 | OrPat
 | ParenPat
 | PathPat
-| PlaceholderPat
+| WildcardPat
 | RangePat
 | RecordPat
 | RefPat
@@ -519,7 +519,7 @@ LiteralPat =
 BindPat =
   Attr* 'ref'? 'mut'? Name ('@' Pat)?
 
-PlaceholderPat =
+WildcardPat =
   '_'
 
 RangePat =

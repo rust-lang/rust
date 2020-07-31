@@ -82,7 +82,7 @@ SOURCE_FILE@0..135
       LET_STMT@93..107
         LET_KW@93..96 "let"
         WHITESPACE@96..97 " "
-        PLACEHOLDER_PAT@97..98
+        WILDCARD_PAT@97..98
           UNDERSCORE@97..98 "_"
         COLON@98..99 ":"
         WHITESPACE@99..100 " "

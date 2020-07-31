@@ -84,7 +84,7 @@ SOURCE_FILE@0..119
                 IDENT@75..76 "h"
               COLON@76..77 ":"
               WHITESPACE@77..78 " "
-              PLACEHOLDER_PAT@78..79
+              WILDCARD_PAT@78..79
                 UNDERSCORE@78..79 "_"
             COMMA@79..80 ","
             WHITESPACE@80..81 " "
@@ -115,7 +115,7 @@ SOURCE_FILE@0..119
                 IDENT@103..104 "h"
               COLON@104..105 ":"
               WHITESPACE@105..106 " "
-              PLACEHOLDER_PAT@106..107
+              WILDCARD_PAT@106..107
                 UNDERSCORE@106..107 "_"
             COMMA@107..108 ","
             WHITESPACE@108..109 " "

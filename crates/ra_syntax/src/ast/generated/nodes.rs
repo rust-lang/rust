@@ -1175,10 +1175,10 @@ impl PathPat {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PlaceholderPat {
+pub struct WildcardPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl PlaceholderPat {
+impl WildcardPat {
     pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1343,7 +1343,7 @@ pub enum Pat {
     OrPat(OrPat),
     ParenPat(ParenPat),
     PathPat(PathPat),
-    PlaceholderPat(PlaceholderPat),
+    WildcardPat(WildcardPat),
     RangePat(RangePat),
     RecordPat(RecordPat),
     RefPat(RefPat),
@@ -2644,8 +2644,8 @@ impl AstNode for PathPat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for PlaceholderPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PLACEHOLDER_PAT }
+impl AstNode for WildcardPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == WILDCARD_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3160,8 +3160,8 @@ impl From<ParenPat> for Pat {
 impl From<PathPat> for Pat {
     fn from(node: PathPat) -> Pat { Pat::PathPat(node) }
 }
-impl From<PlaceholderPat> for Pat {
-    fn from(node: PlaceholderPat) -> Pat { Pat::PlaceholderPat(node) }
+impl From<WildcardPat> for Pat {
+    fn from(node: WildcardPat) -> Pat { Pat::WildcardPat(node) }
 }
 impl From<RangePat> for Pat {
     fn from(node: RangePat) -> Pat { Pat::RangePat(node) }
@@ -3185,7 +3185,7 @@ impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
             BIND_PAT | BOX_PAT | DOT_DOT_PAT | LITERAL_PAT | MACRO_PAT | OR_PAT | PAREN_PAT
-            | PATH_PAT | PLACEHOLDER_PAT | RANGE_PAT | RECORD_PAT | REF_PAT | SLICE_PAT
+            | PATH_PAT | WILDCARD_PAT | RANGE_PAT | RECORD_PAT | REF_PAT | SLICE_PAT
             | TUPLE_PAT | TUPLE_STRUCT_PAT => true,
             _ => false,
         }
@@ -3200,7 +3200,7 @@ impl AstNode for Pat {
             OR_PAT => Pat::OrPat(OrPat { syntax }),
             PAREN_PAT => Pat::ParenPat(ParenPat { syntax }),
             PATH_PAT => Pat::PathPat(PathPat { syntax }),
-            PLACEHOLDER_PAT => Pat::PlaceholderPat(PlaceholderPat { syntax }),
+            WILDCARD_PAT => Pat::WildcardPat(WildcardPat { syntax }),
             RANGE_PAT => Pat::RangePat(RangePat { syntax }),
             RECORD_PAT => Pat::RecordPat(RecordPat { syntax }),
             REF_PAT => Pat::RefPat(RefPat { syntax }),
@@ -3221,7 +3221,7 @@ impl AstNode for Pat {
             Pat::OrPat(it) => &it.syntax,
             Pat::ParenPat(it) => &it.syntax,
             Pat::PathPat(it) => &it.syntax,
-            Pat::PlaceholderPat(it) => &it.syntax,
+            Pat::WildcardPat(it) => &it.syntax,
             Pat::RangePat(it) => &it.syntax,
             Pat::RecordPat(it) => &it.syntax,
             Pat::RefPat(it) => &it.syntax,
@@ -4021,7 +4021,7 @@ impl std::fmt::Display for PathPat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for PlaceholderPat {
+impl std::fmt::Display for WildcardPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

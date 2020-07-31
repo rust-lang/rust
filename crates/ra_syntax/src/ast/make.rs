@@ -156,10 +156,10 @@ pub fn bind_pat(name: ast::Name) -> ast::BindPat {
     }
 }
 
-pub fn placeholder_pat() -> ast::PlaceholderPat {
+pub fn placeholder_pat() -> ast::WildcardPat {
     return from_text("_");
 
-    fn from_text(text: &str) -> ast::PlaceholderPat {
+    fn from_text(text: &str) -> ast::WildcardPat {
         ast_from_text(&format!("fn f({}: ())", text))
     }
 }

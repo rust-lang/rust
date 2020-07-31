@@ -22,7 +22,7 @@ SOURCE_FILE@0..58
           L_CURLY@24..25 "{"
           WHITESPACE@25..34 "\n        "
           MATCH_ARM@34..48
-            PLACEHOLDER_PAT@34..35
+            WILDCARD_PAT@34..35
               UNDERSCORE@34..35 "_"
             WHITESPACE@35..36 " "
             MATCH_GUARD@36..42

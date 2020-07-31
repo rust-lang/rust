@@ -163,7 +163,7 @@ SOURCE_FILE@0..170
         PARAM_LIST@146..166
           L_PAREN@146..147 "("
           PARAM@147..153
-            PLACEHOLDER_PAT@147..148
+            WILDCARD_PAT@147..148
               UNDERSCORE@147..148 "_"
             COLON@148..149 ":"
             WHITESPACE@149..150 " "

@@ -39,7 +39,7 @@ SOURCE_FILE@0..259
                 R_PAREN@56..57 ")"
               R_BRACK@57..58 "]"
             WHITESPACE@58..67 "\n        "
-            PLACEHOLDER_PAT@67..68
+            WILDCARD_PAT@67..68
               UNDERSCORE@67..68 "_"
             WHITESPACE@68..69 " "
             FAT_ARROW@69..71 "=>"
@@ -67,7 +67,7 @@ SOURCE_FILE@0..259
                 R_PAREN@107..108 ")"
               R_BRACK@108..109 "]"
             WHITESPACE@109..118 "\n        "
-            PLACEHOLDER_PAT@118..119
+            WILDCARD_PAT@118..119
               UNDERSCORE@118..119 "_"
             WHITESPACE@119..120 " "
             FAT_ARROW@120..122 "=>"
@@ -129,7 +129,7 @@ SOURCE_FILE@0..259
                 R_PAREN@231..232 ")"
               R_BRACK@232..233 "]"
             WHITESPACE@233..242 "\n        "
-            PLACEHOLDER_PAT@242..243
+            WILDCARD_PAT@242..243
               UNDERSCORE@242..243 "_"
             WHITESPACE@243..244 " "
             FAT_ARROW@244..246 "=>"
