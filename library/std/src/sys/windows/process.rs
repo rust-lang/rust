@@ -57,9 +57,9 @@ impl AsRef<OsStr> for EnvKey {
     }
 }
 
-fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
+fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> Result<T, Problem> {
     if str.as_ref().encode_wide().any(|b| b == 0) {
-        Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"))
+        Err(Problem::SawNul)
     } else {
         Ok(str)
     }
@@ -78,7 +78,7 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
     cmdline: Vec<u16>,
-    cmdline_error: Option<io::Error>,
+    problem: Option<Problem>,
 }
 
 pub enum Stdio {
@@ -98,6 +98,11 @@ struct DropGuard<'a> {
     lock: &'a Mutex,
 }
 
+enum Problem {
+    SawNul,
+    Oversized,
+}
+
 impl Command {
     pub fn new(program: &OsStr) -> Command {
         Command {
@@ -111,36 +116,39 @@ impl Command {
             stdout: None,
             stderr: None,
             cmdline: Vec::new(),
-            cmdline_error: None,
+            problem: None,
         }
     }
 
     pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
+        self.arg(arg);
+
+        match &self.problem {
+            Some(err) => Err(err.into()),
+            None => Ok(()),
+        }
+    }
+    pub fn arg(&mut self, arg: &OsStr) {
+        if self.problem.is_some() {
+            return;
+        }
+
         self.args.push(arg.to_os_string());
         self.cmdline.push(' ' as u16);
         let result = append_arg(&mut self.cmdline, arg, false);
         match result {
             Err(err) => {
                 self.cmdline.truncate(self.cmdline.len() - 1);
-                return Err(err);
+                self.problem = Some(err);
             }
             Ok(length) => {
                 if self.cmdline.len() >= CMDLINE_MAX {
                     // Roll back oversized
                     self.cmdline.truncate(self.cmdline.len() - 1 - length);
-                    return Err(io::Error::new(ErrorKind::InvalidInput, "Oversized cmdline"));
+                    self.problem = Some(Problem::Oversized)
                 }
             }
         };
-        Ok(())
-    }
-    pub fn arg(&mut self, arg: &OsStr) {
-        if self.cmdline_error.is_none() {
-            let result = self.maybe_arg(arg);
-            if let Err(err) = result {
-                self.cmdline_error = Some(err);
-            }
-        }
     }
     pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
@@ -166,8 +174,8 @@ impl Command {
         default: Stdio,
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
-        if let Some(err) = &self.cmdline_error {
-            return Err(err);
+        if let Some(err) = &self.problem {
+            return Err(err.into());
         }
 
         let maybe_env = self.env.capture_if_changed();
@@ -261,13 +269,13 @@ impl Command {
     }
 
     pub fn get_size(&mut self) -> io::Result<usize> {
-        match &self.cmdline_error {
-            Some(err) => Err(err),
+        match &self.problem {
+            Some(err) => Err(err.into()),
             None => Ok(self.cmdline.len()),
         }
     }
     pub fn check_size(&mut self, _refresh: bool) -> io::Result<bool> {
-        Ok(self.get_size()? < 32767)
+        Ok(self.get_size()? < CMDLINE_MAX)
     }
 }
 
@@ -352,6 +360,23 @@ impl From<AnonPipe> for Stdio {
 impl From<File> for Stdio {
     fn from(file: File) -> Stdio {
         Stdio::Handle(file.into_handle())
+    }
+}
+
+impl From<&Problem> for io::Error {
+    fn from(problem: &Problem) -> io::Error {
+        match *problem {
+            Problem::SawNul => {
+                io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data")
+            }
+            Problem::Oversized => io::Error::new(ErrorKind::InvalidInput, "Oversized command"),
+        }
+    }
+}
+
+impl From<Problem> for io::Error {
+    fn from(problem: Problem) -> io::Error {
+        (&problem).into()
     }
 }
 
@@ -493,7 +518,7 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
     }
 }
 
-fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> io::Result<usize> {
+fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> Result<usize, Problem> {
     let mut addsize: usize = 0;
     // If an argument has 0 characters then we need to quote it to ensure
     // that it actually gets passed through on the command line or otherwise
