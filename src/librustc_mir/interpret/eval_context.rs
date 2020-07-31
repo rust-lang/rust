@@ -718,6 +718,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         );
 
+        if unwinding && self.frame_idx() == 0 {
+            throw_ub_format!("unwinding past the topmost frame of the stack");
+        }
+
         ::log_settings::settings().indentation -= 1;
         let frame =
             self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
