@@ -1130,10 +1130,10 @@ impl BoxPat {
     pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DotDotPat {
+pub struct RestPat {
     pub(crate) syntax: SyntaxNode,
 }
-impl DotDotPat {
+impl RestPat {
     pub fn dotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![..]) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1336,7 +1336,7 @@ pub enum Stmt {
 pub enum Pat {
     IdentPat(IdentPat),
     BoxPat(BoxPat),
-    DotDotPat(DotDotPat),
+    RestPat(RestPat),
     LiteralPat(LiteralPat),
     MacroPat(MacroPat),
     OrPat(OrPat),
@@ -2577,8 +2577,8 @@ impl AstNode for BoxPat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for DotDotPat {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == DOT_DOT_PAT }
+impl AstNode for RestPat {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == REST_PAT }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3141,8 +3141,8 @@ impl From<IdentPat> for Pat {
 impl From<BoxPat> for Pat {
     fn from(node: BoxPat) -> Pat { Pat::BoxPat(node) }
 }
-impl From<DotDotPat> for Pat {
-    fn from(node: DotDotPat) -> Pat { Pat::DotDotPat(node) }
+impl From<RestPat> for Pat {
+    fn from(node: RestPat) -> Pat { Pat::RestPat(node) }
 }
 impl From<LiteralPat> for Pat {
     fn from(node: LiteralPat) -> Pat { Pat::LiteralPat(node) }
@@ -3183,7 +3183,7 @@ impl From<TupleStructPat> for Pat {
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            IDENT_PAT | BOX_PAT | DOT_DOT_PAT | LITERAL_PAT | MACRO_PAT | OR_PAT | PAREN_PAT
+            IDENT_PAT | BOX_PAT | REST_PAT | LITERAL_PAT | MACRO_PAT | OR_PAT | PAREN_PAT
             | PATH_PAT | WILDCARD_PAT | RANGE_PAT | RECORD_PAT | REF_PAT | SLICE_PAT
             | TUPLE_PAT | TUPLE_STRUCT_PAT => true,
             _ => false,
@@ -3193,7 +3193,7 @@ impl AstNode for Pat {
         let res = match syntax.kind() {
             IDENT_PAT => Pat::IdentPat(IdentPat { syntax }),
             BOX_PAT => Pat::BoxPat(BoxPat { syntax }),
-            DOT_DOT_PAT => Pat::DotDotPat(DotDotPat { syntax }),
+            REST_PAT => Pat::RestPat(RestPat { syntax }),
             LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
             MACRO_PAT => Pat::MacroPat(MacroPat { syntax }),
             OR_PAT => Pat::OrPat(OrPat { syntax }),
@@ -3214,7 +3214,7 @@ impl AstNode for Pat {
         match self {
             Pat::IdentPat(it) => &it.syntax,
             Pat::BoxPat(it) => &it.syntax,
-            Pat::DotDotPat(it) => &it.syntax,
+            Pat::RestPat(it) => &it.syntax,
             Pat::LiteralPat(it) => &it.syntax,
             Pat::MacroPat(it) => &it.syntax,
             Pat::OrPat(it) => &it.syntax,
@@ -3990,7 +3990,7 @@ impl std::fmt::Display for BoxPat {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for DotDotPat {
+impl std::fmt::Display for RestPat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

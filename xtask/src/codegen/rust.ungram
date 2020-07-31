@@ -498,7 +498,7 @@ TypeBound =
 Pat =
   IdentPat
 | BoxPat
-| DotDotPat
+| RestPat
 | LiteralPat
 | MacroPat
 | OrPat
@@ -560,7 +560,7 @@ OrPat =
 BoxPat =
   'box' Pat
 
-DotDotPat =
+RestPat =
   '..'
 
 MacroPat =
