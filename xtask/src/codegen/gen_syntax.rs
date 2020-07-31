@@ -153,25 +153,10 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
                 quote!(impl ast::#trait_name for #name {})
             });
 
-            (
+            let ast_node = if en.name == "Stmt" {
+                quote! {}
+            } else {
                 quote! {
-                    #[pretty_doc_comment_placeholder_workaround]
-                    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-                    pub enum #name {
-                        #(#variants(#variants),)*
-                    }
-
-                    #(#traits)*
-                },
-                quote! {
-                    #(
-                    impl From<#variants> for #name {
-                        fn from(node: #variants) -> #name {
-                            #name::#variants(node)
-                        }
-                    }
-                    )*
-
                     impl AstNode for #name {
                         fn can_cast(kind: SyntaxKind) -> bool {
                             match kind {
@@ -196,6 +181,28 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> Result<String> {
                             }
                         }
                     }
+                }
+            };
+
+            (
+                quote! {
+                    #[pretty_doc_comment_placeholder_workaround]
+                    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                    pub enum #name {
+                        #(#variants(#variants),)*
+                    }
+
+                    #(#traits)*
+                },
+                quote! {
+                    #(
+                        impl From<#variants> for #name {
+                            fn from(node: #variants) -> #name {
+                                #name::#variants(node)
+                            }
+                        }
+                    )*
+                    #ast_node
                 },
             )
         })
@@ -497,13 +504,7 @@ fn lower(grammar: &Grammar) -> AstSrc {
     let mut res = AstSrc::default();
     res.tokens = vec!["Whitespace".into(), "Comment".into(), "String".into(), "RawString".into()];
 
-    let nodes = grammar
-        .iter()
-        .filter(|&node| match grammar[node].rule {
-            Rule::Node(it) if it == node => false,
-            _ => true,
-        })
-        .collect::<Vec<_>>();
+    let nodes = grammar.iter().collect::<Vec<_>>();
 
     for &node in &nodes {
         let name = grammar[node].name.clone();
@@ -693,6 +694,9 @@ fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str
 
 fn extract_enum_traits(ast: &mut AstSrc) {
     for enm in &mut ast.enums {
+        if enm.name == "Stmt" {
+            continue;
+        }
         let nodes = &ast.nodes;
         let mut variant_traits = enm
             .variants

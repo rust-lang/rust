@@ -348,7 +348,6 @@ pub struct BlockExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::AttrsOwner for BlockExpr {}
-impl ast::ModuleItemOwner for BlockExpr {}
 impl BlockExpr {
     pub fn label(&self) -> Option<Label> { support::child(&self.syntax) }
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
@@ -1395,8 +1394,8 @@ impl ast::AttrsOwner for GenericParam {}
 pub enum Stmt {
     LetStmt(LetStmt),
     ExprStmt(ExprStmt),
+    Item(Item),
 }
-impl ast::AttrsOwner for Stmt {}
 impl AstNode for SourceFile {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SOURCE_FILE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3380,27 +3379,8 @@ impl From<LetStmt> for Stmt {
 impl From<ExprStmt> for Stmt {
     fn from(node: ExprStmt) -> Stmt { Stmt::ExprStmt(node) }
 }
-impl AstNode for Stmt {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            LET_STMT | EXPR_STMT => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            LET_STMT => Stmt::LetStmt(LetStmt { syntax }),
-            EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            Stmt::LetStmt(it) => &it.syntax,
-            Stmt::ExprStmt(it) => &it.syntax,
-        }
-    }
+impl From<Item> for Stmt {
+    fn from(node: Item) -> Stmt { Stmt::Item(node) }
 }
 impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

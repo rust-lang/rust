@@ -74,6 +74,7 @@ impl TailReturnCollector {
             let expr = match &stmt {
                 ast::Stmt::ExprStmt(stmt) => stmt.expr(),
                 ast::Stmt::LetStmt(stmt) => stmt.initializer(),
+                ast::Stmt::Item(_) => continue,
             };
             if let Some(expr) = &expr {
                 self.handle_exprs(expr, collect_break);
@@ -94,6 +95,7 @@ impl TailReturnCollector {
                         let expr_stmt = match &expr_stmt {
                             ast::Stmt::ExprStmt(stmt) => stmt.expr(),
                             ast::Stmt::LetStmt(stmt) => stmt.initializer(),
+                            ast::Stmt::Item(_) => None,
                         };
                         if let Some(expr) = &expr_stmt {
                             self.handle_exprs(expr, collect_break);
