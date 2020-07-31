@@ -1,5 +1,8 @@
 use std::collections::{HashMap, HashSet};
-use std::iter::once;
+use std::{
+    iter::{once, FromIterator},
+    sync::Mutex,
+};
 
 use hir::{
     db::DefDatabase, Adt, AsAssocItem, AsName, AssocItemContainer, AttrDef, Crate, Documentation,
@@ -7,8 +10,7 @@ use hir::{
     ModuleSource, Semantics,
 };
 use itertools::Itertools;
-use lazy_static::lazy_static;
-use maplit::{hashmap, hashset};
+use once_cell::sync::Lazy;
 use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::cmark;
 use ra_db::SourceDatabase;
@@ -419,14 +421,26 @@ enum Namespace {
     Macros,
 }
 
-lazy_static!(
-    /// Map of namespaces to identifying prefixes and suffixes as defined by RFC1946.
-    static ref NS_MAP: HashMap<Namespace, (HashSet<&'static str>, HashSet<&'static str>)> = hashmap!{
-        Namespace::Types => (hashset!{"type", "struct", "enum", "mod", "trait", "union", "module"}, hashset!{}),
-        Namespace::Values => (hashset!{"value", "function", "fn", "method", "const", "static", "mod", "module"}, hashset!{"()"}),
-        Namespace::Macros => (hashset!{"macro"}, hashset!{"!"})
-    };
-);
+static NS_MAP: Lazy<
+    HashMap<Namespace, (HashSet<&'static &'static str>, HashSet<&'static &'static str>)>,
+> = Lazy::new(|| {
+    let mut map = HashMap::new();
+    map.insert(Namespace::Types, (HashSet::new(), HashSet::new()));
+    map.insert(
+        Namespace::Values,
+        (
+            HashSet::from_iter(
+                ["value", "function", "fn", "method", "const", "static", "mod", "module"].iter(),
+            ),
+            HashSet::from_iter(["()"].iter()),
+        ),
+    );
+    map.insert(
+        Namespace::Macros,
+        (HashSet::from_iter(["macro"].iter()), HashSet::from_iter(["!"].iter())),
+    );
+    map
+});
 
 impl Namespace {
     /// Extract the specified namespace from an intra-doc-link if one exists.
@@ -437,7 +451,7 @@ impl Namespace {
                 prefixes
                     .iter()
                     .map(|prefix| {
-                        s.starts_with(prefix)
+                        s.starts_with(*prefix)
                             && s.chars()
                                 .nth(prefix.len() + 1)
                                 .map(|c| c == '@' || c == ' ')
@@ -447,7 +461,7 @@ impl Namespace {
                     || suffixes
                         .iter()
                         .map(|suffix| {
-                            s.starts_with(suffix)
+                            s.starts_with(*suffix)
                                 && s.chars()
                                     .nth(suffix.len() + 1)
                                     .map(|c| c == '@' || c == ' ')
@@ -464,8 +478,8 @@ impl Namespace {
 fn strip_prefixes_suffixes(mut s: &str) -> &str {
     s = s.trim_matches('`');
     NS_MAP.iter().for_each(|(_, (prefixes, suffixes))| {
-        prefixes.iter().for_each(|prefix| s = s.trim_start_matches(prefix));
-        suffixes.iter().for_each(|suffix| s = s.trim_end_matches(suffix));
+        prefixes.iter().for_each(|prefix| s = s.trim_start_matches(*prefix));
+        suffixes.iter().for_each(|suffix| s = s.trim_end_matches(*suffix));
     });
     s.trim_start_matches("@").trim()
 }
