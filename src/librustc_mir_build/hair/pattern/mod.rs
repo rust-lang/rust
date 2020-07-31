@@ -776,7 +776,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         // Use `Reveal::All` here because patterns are always monomorphic even if their function
         // isn't.
-        let param_env_reveal_all = self.param_env.with_reveal_all();
+        let param_env_reveal_all = self.param_env.with_reveal_all_normalized(self.tcx);
         let substs = self.typeck_results.node_substs(id);
         let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, substs) {
             Ok(Some(i)) => i,

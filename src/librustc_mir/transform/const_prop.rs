@@ -328,7 +328,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> ConstPropagator<'mir, 'tcx> {
         let def_id = source.def_id();
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
-        let param_env = tcx.param_env(def_id).with_reveal_all();
+        let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let span = tcx.def_span(def_id);
         let can_const_prop = CanConstProp::check(body);
