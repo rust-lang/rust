@@ -480,6 +480,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 .clean(self.cx)
                 .params;
 
+        debug!(
+            "param_env_to_generics({:?}): generic_params={:?}",
+            param_env_def_id, generic_params
+        );
+
         let mut has_sized = FxHashSet::default();
         let mut ty_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
         let mut lifetime_to_bounds: FxHashMap<_, FxHashSet<_>> = Default::default();
