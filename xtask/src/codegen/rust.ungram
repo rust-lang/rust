@@ -539,9 +539,6 @@ NameRef =
 MacroCall =
   Attr* Path '!' Name? TokenTree ';'?
 
-MacroDef =
-  Name TokenTree
-
 TokenTree =
   '(' ')' | '{' '}' | '[' ']'
 

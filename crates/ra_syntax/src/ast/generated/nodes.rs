@@ -1246,14 +1246,6 @@ impl TuplePat {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MacroDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::NameOwner for MacroDef {}
-impl MacroDef {
-    pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroItems {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2735,17 +2727,6 @@ impl AstNode for TuplePat {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for MacroDef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_DEF }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for MacroItems {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_ITEMS }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -4077,11 +4058,6 @@ impl std::fmt::Display for TupleStructPat {
     }
 }
 impl std::fmt::Display for TuplePat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for MacroDef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
