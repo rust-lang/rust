@@ -2051,7 +2051,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
 declare_lint! {
     pub CLASHING_EXTERN_DECLARATIONS,
-    Warn,
+    Allow,
     "detects when an extern fn has been declared with the same name but different types"
 }
 
