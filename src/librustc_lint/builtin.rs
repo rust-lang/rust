@@ -2209,7 +2209,7 @@ impl ClashingExternDeclarations {
                 }
                 (Slice(a_ty), Slice(b_ty)) => Self::structurally_same_type(cx, a_ty, b_ty, ckind),
                 (RawPtr(a_tymut), RawPtr(b_tymut)) => {
-                    a_tymut.mutbl == a_tymut.mutbl
+                    a_tymut.mutbl == b_tymut.mutbl
                         && Self::structurally_same_type(cx, &a_tymut.ty, &b_tymut.ty, ckind)
                 }
                 (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
