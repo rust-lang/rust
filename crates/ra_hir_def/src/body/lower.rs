@@ -569,9 +569,6 @@ impl ExprCollector<'_> {
                     }
                 }
             }
-
-            // FIXME implement HIR for these:
-            ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
 
