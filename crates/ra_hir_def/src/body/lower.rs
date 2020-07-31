@@ -809,7 +809,7 @@ impl ExprCollector<'_> {
             ast::Pat::SlicePat(p) => {
                 let SlicePatComponents { prefix, slice, suffix } = p.components();
 
-                // FIXME properly handle `DotDotPat`
+                // FIXME properly handle `RestPat`
                 Pat::Slice {
                     prefix: prefix.into_iter().map(|p| self.collect_pat(p)).collect(),
                     slice: slice.map(|p| self.collect_pat(p)),
@@ -827,9 +827,9 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Pat::RestPat(_) => {
-                // `DotDotPat` requires special handling and should not be mapped
+                // `RestPat` requires special handling and should not be mapped
                 // to a Pat. Here we are using `Pat::Missing` as a fallback for
-                // when `DotDotPat` is mapped to `Pat`, which can easily happen
+                // when `RestPat` is mapped to `Pat`, which can easily happen
                 // when the source code being analyzed has a malformed pattern
                 // which includes `..` in a place where it isn't valid.
 
