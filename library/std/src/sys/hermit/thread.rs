@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::CStr;
 use crate::io;
@@ -25,18 +26,22 @@ impl Thread {
         core_id: isize,
     ) -> io::Result<Thread> {
         let p = Box::into_raw(box p);
-        let tid = abi::spawn2(
-            thread_start,
-            p as usize,
-            abi::Priority::into(abi::NORMAL_PRIO),
-            stack,
-            core_id,
-        );
+        let tid = unsafe {
+            abi::spawn2(
+                thread_start,
+                p as usize,
+                abi::Priority::into(abi::NORMAL_PRIO),
+                stack,
+                core_id,
+            )
+        };
 
         return if tid == 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            drop(Box::from_raw(p));
+            unsafe {
+                drop(Box::from_raw(p));
+            }
             Err(io::Error::new(io::ErrorKind::Other, "Unable to create thread!"))
         } else {
             Ok(Thread { tid: tid })

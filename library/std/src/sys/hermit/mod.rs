@@ -13,6 +13,8 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::intrinsics;
 use crate::os::raw::c_char;
 
@@ -62,8 +64,12 @@ pub enum Void {}
 pub unsafe fn strlen(start: *const c_char) -> usize {
     let mut str = start;
 
-    while *str != 0 {
-        str = str.offset(1);
+    // SAFETY: The safety contract for `*str != 0` must be upheld by the caller.
+    // `start` must not be null.
+    unsafe {
+        while *str != 0 {
+            str = str.offset(1);
+        }
     }
 
     (str as usize) - (start as usize)
@@ -111,13 +117,15 @@ pub unsafe extern "C" fn runtime_entry(
         fn main(argc: isize, argv: *const *const c_char) -> i32;
     }
 
-    // initialize environment
-    os::init_environment(env as *const *const i8);
+    unsafe {
+        // initialize environment
+        os::init_environment(env as *const *const i8);
 
-    let result = main(argc as isize, argv);
+        let result = main(argc as isize, argv);
 
-    run_dtors();
-    abi::exit(result);
+        run_dtors();
+        abi::exit(result);
+    }
 }
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {

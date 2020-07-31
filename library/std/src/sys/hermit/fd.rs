@@ -1,3 +1,4 @@
+#![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
 use crate::io::{self, ErrorKind, Read};

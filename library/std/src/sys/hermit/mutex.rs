@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::ffi::c_void;
 use crate::ptr;
 use crate::sys::hermit::abi;
@@ -16,28 +18,34 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn init(&mut self) {
-        let _ = abi::sem_init(&mut self.inner as *mut *const c_void, 1);
+        unsafe {
+            let _ = abi::sem_init(&mut self.inner as *mut *const c_void, 1);
+        }
     }
 
     #[inline]
     pub unsafe fn lock(&self) {
-        let _ = abi::sem_timedwait(self.inner, 0);
+        unsafe {
+            let _ = abi::sem_timedwait(self.inner, 0);
+        }
     }
 
     #[inline]
     pub unsafe fn unlock(&self) {
-        let _ = abi::sem_post(self.inner);
+        unsafe {
+            let _ = abi::sem_post(self.inner);
+        }
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        let result = abi::sem_trywait(self.inner);
+        let result = unsafe { abi::sem_trywait(self.inner) };
         result == 0
     }
 
     #[inline]
     pub unsafe fn destroy(&self) {
-        let _ = abi::sem_destroy(self.inner);
+        let _ = unsafe { abi::sem_destroy(self.inner) };
     }
 }
 
@@ -52,12 +60,12 @@ impl ReentrantMutex {
 
     #[inline]
     pub unsafe fn init(&self) {
-        let _ = abi::recmutex_init(&self.inner as *const *const c_void as *mut _);
+        let _ = unsafe { abi::recmutex_init(&self.inner as *const *const c_void as *mut _) };
     }
 
     #[inline]
     pub unsafe fn lock(&self) {
-        let _ = abi::recmutex_lock(self.inner);
+        let _ = unsafe { abi::recmutex_lock(self.inner) };
     }
 
     #[inline]
@@ -67,11 +75,11 @@ impl ReentrantMutex {
 
     #[inline]
     pub unsafe fn unlock(&self) {
-        let _ = abi::recmutex_unlock(self.inner);
+        let _ = unsafe { abi::recmutex_unlock(self.inner) };
     }
 
     #[inline]
     pub unsafe fn destroy(&self) {
-        let _ = abi::recmutex_destroy(self.inner);
+        let _ = unsafe { abi::recmutex_destroy(self.inner) };
     }
 }

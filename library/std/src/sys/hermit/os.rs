@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::collections::HashMap;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, OsStr, OsString};

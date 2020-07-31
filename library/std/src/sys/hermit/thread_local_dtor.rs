@@ -1,5 +1,6 @@
 #![cfg(target_thread_local)]
 #![unstable(feature = "thread_local_internals", issue = "none")]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 // Simplify dtor registration by using a list of destructors.
 // The this solution works like the implementation of macOS and
@@ -19,7 +20,8 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
         DTORS.set(Box::into_raw(v));
     }
 
-    let list: &mut List = &mut *DTORS.get();
+    // SAFETY: `DTORS.get()` is not null.
+    let list: &mut List = unsafe { &mut *DTORS.get() };
     list.push((t, dtor));
 }
 
@@ -27,7 +29,8 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 pub unsafe fn run_dtors() {
     let mut ptr = DTORS.replace(ptr::null_mut());
     while !ptr.is_null() {
-        let list = Box::from_raw(ptr);
+        // SAFETY: `ptr` is not null.
+        let list = unsafe { Box::from_raw(ptr) };
         for (ptr, dtor) in list.into_iter() {
             dtor(ptr);
         }
