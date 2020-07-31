@@ -1267,7 +1267,7 @@ fn sort_unstable() {
     use core::slice::heapsort;
     use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 
-    // Miri is too slow
+    // Miri is too slow (but still need to `chain` to make the types match)
     let lens = if cfg!(miri) { (2..20).chain(0..0) } else { (2..25).chain(500..510) };
     let rounds = if cfg!(miri) { 1 } else { 100 };
 

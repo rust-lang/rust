@@ -1721,7 +1721,7 @@ fn panic_safe() {
 
     let mut rng = thread_rng();
 
-    // Miri is too slow
+    // Miri is too slow (but still need to `chain` to make the types match)
     let lens = if cfg!(miri) { (1..10).chain(0..0) } else { (1..20).chain(70..MAX_LEN) };
     let moduli: &[u32] = if cfg!(miri) { &[5] } else { &[5, 20, 50] };
 
