@@ -591,6 +591,8 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
                     | "index"
                     | "base"
                     | "value"
+                    | "target_type"
+                    | "target_trait"
             );
             if manually_implemented {
                 return;

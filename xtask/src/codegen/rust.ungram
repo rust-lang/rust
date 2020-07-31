@@ -194,12 +194,11 @@ AssocItem =
 | TypeAlias
 
 Impl =
- Attr* Visibility?
- 'default'? 'unsafe'? 'impl' 'const'? GenericParamList? (
-   Type
- | '!'? Type 'for' Type
- ) WhereClause?
- AssocItemList
+  Attr* Visibility?
+  'default'? 'unsafe'? 'impl' 'const'? GenericParamList?
+  ('!'? target_trait:Type 'for')? target_type:Type
+  WhereClause?
+  AssocItemList
 
 ExternBlock =
   Attr* Abi ExternItemList
