@@ -12,6 +12,12 @@ fn test_highlighting() {
 use inner::{self as inner_mod};
 mod inner {}
 
+// Needed for function consuming vs normal
+pub mod marker {
+    #[lang = "copy"]
+    pub trait Copy {}
+}
+
 #[derive(Clone, Debug)]
 struct Foo {
     pub x: i32,
@@ -38,6 +44,25 @@ impl Foo {
     }
 
     fn quop(&self) -> i32 {
+        self.x
+    }
+}
+
+#[derive(Copy, Clone)]
+struct FooCopy {
+    x: u32,
+}
+
+impl FooCopy {
+    fn baz(self) -> u32 {
+        self.x
+    }
+
+    fn qux(&mut self) {
+        self.x = 0;
+    }
+
+    fn quop(&self) -> u32 {
         self.x
     }
 }
@@ -96,6 +121,11 @@ fn main() {
     foo.quop();
     foo.qux();
     foo.baz();
+
+    let mut copy = FooCopy { x };
+    copy.quop();
+    copy.qux();
+    copy.baz();
 }
 
 enum Option<T> {
