@@ -49,7 +49,7 @@ SOURCE_FILE@0..116
                   PATH_SEGMENT@65..81
                     NAME_REF@65..76
                       IDENT@65..76 "Deserialize"
-                    TYPE_ARG_LIST@76..81
+                    GENERIC_ARG_LIST@76..81
                       L_ANGLE@76..77 "<"
                       LIFETIME_ARG@77..80
                         LIFETIME@77..80 "\'de"

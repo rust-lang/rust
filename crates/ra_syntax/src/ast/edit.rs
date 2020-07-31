@@ -237,17 +237,17 @@ impl ast::Path {
 
 impl ast::PathSegment {
     #[must_use]
-    pub fn with_type_args(&self, type_args: ast::TypeArgList) -> ast::PathSegment {
+    pub fn with_type_args(&self, type_args: ast::GenericArgList) -> ast::PathSegment {
         self._with_type_args(type_args, false)
     }
 
     #[must_use]
-    pub fn with_turbo_fish(&self, type_args: ast::TypeArgList) -> ast::PathSegment {
+    pub fn with_turbo_fish(&self, type_args: ast::GenericArgList) -> ast::PathSegment {
         self._with_type_args(type_args, true)
     }
 
-    fn _with_type_args(&self, type_args: ast::TypeArgList, turbo: bool) -> ast::PathSegment {
-        if let Some(old) = self.type_arg_list() {
+    fn _with_type_args(&self, type_args: ast::GenericArgList, turbo: bool) -> ast::PathSegment {
+        if let Some(old) = self.generic_arg_list() {
             return self.replace_children(
                 single_node(old.syntax().clone()),
                 iter::once(type_args.syntax().clone().into()),

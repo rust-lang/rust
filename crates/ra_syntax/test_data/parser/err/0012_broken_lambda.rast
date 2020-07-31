@@ -25,7 +25,7 @@ SOURCE_FILE@0..389
           PATH_SEGMENT@29..37
             NAME_REF@29..33
               IDENT@29..33 "Sink"
-            TYPE_ARG_LIST@33..37
+            GENERIC_ARG_LIST@33..37
               L_ANGLE@33..34
               LIFETIME_ARG@34..36
                 LIFETIME@34..36 "'a"
@@ -79,7 +79,7 @@ SOURCE_FILE@0..389
             PATH_SEGMENT@82..92
               NAME_REF@82..85
                 IDENT@82..85 "Vec"
-              TYPE_ARG_LIST@85..92
+              GENERIC_ARG_LIST@85..92
                 L_ANGLE@85..86
                 TYPE_ARG@86..91
                   PATH_TYPE@86..91

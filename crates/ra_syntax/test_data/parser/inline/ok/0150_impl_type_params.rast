@@ -22,7 +22,7 @@ SOURCE_FILE@0..29
         PATH_SEGMENT@19..25
           NAME_REF@19..22
             IDENT@19..22 "Bar"
-          TYPE_ARG_LIST@22..25
+          GENERIC_ARG_LIST@22..25
             L_ANGLE@22..23 "<"
             TYPE_ARG@23..24
               PATH_TYPE@23..24

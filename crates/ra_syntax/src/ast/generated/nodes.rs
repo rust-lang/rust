@@ -6,6 +6,116 @@ use crate::{
     SyntaxNode, SyntaxToken, T,
 };
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Path {
+    pub(crate) syntax: SyntaxNode,
+}
+impl Path {
+    pub fn qualifier(&self) -> Option<Path> { support::child(&self.syntax) }
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
+    pub fn segment(&self) -> Option<PathSegment> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PathSegment {
+    pub(crate) syntax: SyntaxNode,
+}
+impl PathSegment {
+    pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
+    pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
+    pub fn super_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![super]) }
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
+    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
+    pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
+    pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
+    pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
+    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
+    pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
+    pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
+    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NameRef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl NameRef {
+    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenericArgList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl GenericArgList {
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
+    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
+    pub fn generic_args(&self) -> AstChildren<GenericArg> { support::children(&self.syntax) }
+    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParamList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ParamList {
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    pub fn self_param(&self) -> Option<SelfParam> { support::child(&self.syntax) }
+    pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
+    pub fn params(&self) -> AstChildren<Param> { support::children(&self.syntax) }
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RetType {
+    pub(crate) syntax: SyntaxNode,
+}
+impl RetType {
+    pub fn thin_arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![->]) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PathType {
+    pub(crate) syntax: SyntaxNode,
+}
+impl PathType {
+    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeArg {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TypeArg {
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AssocTypeArg {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::TypeBoundsOwner for AssocTypeArg {}
+impl AssocTypeArg {
+    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LifetimeArg {
+    pub(crate) syntax: SyntaxNode,
+}
+impl LifetimeArg {
+    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![lifetime])
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstArg {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ConstArg {
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeBoundList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TypeBoundList {
+    pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceFile {
     pub(crate) syntax: SyntaxNode,
 }
@@ -256,13 +366,6 @@ impl ItemList {
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NameRef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl NameRef {
-    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rename {
     pub(crate) syntax: SyntaxNode,
 }
@@ -281,15 +384,6 @@ impl UseTree {
     pub fn star_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*]) }
     pub fn use_tree_list(&self) -> Option<UseTreeList> { support::child(&self.syntax) }
     pub fn rename(&self) -> Option<Rename> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Path {
-    pub(crate) syntax: SyntaxNode,
-}
-impl Path {
-    pub fn qualifier(&self) -> Option<Path> { support::child(&self.syntax) }
-    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
-    pub fn segment(&self) -> Option<PathSegment> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseTreeList {
@@ -315,25 +409,6 @@ impl GenericParamList {
     pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
     pub fn generic_params(&self) -> AstChildren<GenericParam> { support::children(&self.syntax) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParamList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ParamList {
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    pub fn self_param(&self) -> Option<SelfParam> { support::child(&self.syntax) }
-    pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
-    pub fn params(&self) -> AstChildren<Param> { support::children(&self.syntax) }
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RetType {
-    pub(crate) syntax: SyntaxNode,
-}
-impl RetType {
-    pub fn thin_arrow_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![->]) }
-    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct WhereClause {
@@ -379,13 +454,6 @@ impl Param {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn dotdotdot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![...]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeBoundList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl TypeBoundList {
-    pub fn bounds(&self) -> AstChildren<TypeBound> { support::children(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RecordFieldList {
@@ -731,7 +799,7 @@ impl MethodCallExpr {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn dot_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![.]) }
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn type_arg_list(&self) -> Option<TypeArgList> { support::child(&self.syntax) }
+    pub fn generic_arg_list(&self) -> Option<GenericArgList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParenExpr {
@@ -866,19 +934,6 @@ impl ArgList {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeArgList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl TypeArgList {
-    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
-    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
-    pub fn type_args(&self) -> AstChildren<TypeArg> { support::children(&self.syntax) }
-    pub fn lifetime_args(&self) -> AstChildren<LifetimeArg> { support::children(&self.syntax) }
-    pub fn assoc_type_args(&self) -> AstChildren<AssocTypeArg> { support::children(&self.syntax) }
-    pub fn const_args(&self) -> AstChildren<ConstArg> { support::children(&self.syntax) }
-    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Condition {
     pub(crate) syntax: SyntaxNode,
 }
@@ -989,13 +1044,6 @@ impl ParenType {
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PathType {
-    pub(crate) syntax: SyntaxNode,
-}
-impl PathType {
-    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PointerType {
@@ -1220,74 +1268,12 @@ impl MacroStmts {
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PathSegment {
-    pub(crate) syntax: SyntaxNode,
+pub enum GenericArg {
+    TypeArg(TypeArg),
+    AssocTypeArg(AssocTypeArg),
+    LifetimeArg(LifetimeArg),
+    ConstArg(ConstArg),
 }
-impl PathSegment {
-    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
-    pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
-    pub fn self_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![self]) }
-    pub fn super_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![super]) }
-    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
-    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn type_arg_list(&self) -> Option<TypeArgList> { support::child(&self.syntax) }
-    pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
-    pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
-    pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
-    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeArg {
-    pub(crate) syntax: SyntaxNode,
-}
-impl TypeArg {
-    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LifetimeArg {
-    pub(crate) syntax: SyntaxNode,
-}
-impl LifetimeArg {
-    pub fn lifetime_token(&self) -> Option<SyntaxToken> {
-        support::token(&self.syntax, T![lifetime])
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AssocTypeArg {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ast::TypeBoundsOwner for AssocTypeArg {}
-impl AssocTypeArg {
-    pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConstArg {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ConstArg {
-    pub fn literal(&self) -> Option<Literal> { support::child(&self.syntax) }
-    pub fn block_expr(&self) -> Option<BlockExpr> { support::child(&self.syntax) }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Item {
-    Const(Const),
-    Enum(Enum),
-    ExternBlock(ExternBlock),
-    ExternCrate(ExternCrate),
-    Fn(Fn),
-    Impl(Impl),
-    MacroCall(MacroCall),
-    Module(Module),
-    Static(Static),
-    Struct(Struct),
-    Trait(Trait),
-    TypeAlias(TypeAlias),
-    Union(Union),
-    Use(Use),
-}
-impl ast::AttrsOwner for Item {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     ArrayType(ArrayType),
@@ -1303,29 +1289,6 @@ pub enum Type {
     ReferenceType(ReferenceType),
     SliceType(SliceType),
     TupleType(TupleType),
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Pat {
-    OrPat(OrPat),
-    ParenPat(ParenPat),
-    RefPat(RefPat),
-    BoxPat(BoxPat),
-    BindPat(BindPat),
-    PlaceholderPat(PlaceholderPat),
-    DotDotPat(DotDotPat),
-    PathPat(PathPat),
-    RecordPat(RecordPat),
-    TupleStructPat(TupleStructPat),
-    TuplePat(TuplePat),
-    SlicePat(SlicePat),
-    RangePat(RangePat),
-    LiteralPat(LiteralPat),
-    MacroPat(MacroPat),
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum FieldList {
-    RecordFieldList(RecordFieldList),
-    TupleFieldList(TupleFieldList),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
@@ -1359,6 +1322,47 @@ pub enum Expr {
     TryExpr(TryExpr),
     TupleExpr(TupleExpr),
     WhileExpr(WhileExpr),
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Item {
+    Const(Const),
+    Enum(Enum),
+    ExternBlock(ExternBlock),
+    ExternCrate(ExternCrate),
+    Fn(Fn),
+    Impl(Impl),
+    MacroCall(MacroCall),
+    Module(Module),
+    Static(Static),
+    Struct(Struct),
+    Trait(Trait),
+    TypeAlias(TypeAlias),
+    Union(Union),
+    Use(Use),
+}
+impl ast::AttrsOwner for Item {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Pat {
+    OrPat(OrPat),
+    ParenPat(ParenPat),
+    RefPat(RefPat),
+    BoxPat(BoxPat),
+    BindPat(BindPat),
+    PlaceholderPat(PlaceholderPat),
+    DotDotPat(DotDotPat),
+    PathPat(PathPat),
+    RecordPat(RecordPat),
+    TupleStructPat(TupleStructPat),
+    TuplePat(TuplePat),
+    SlicePat(SlicePat),
+    RangePat(RangePat),
+    LiteralPat(LiteralPat),
+    MacroPat(MacroPat),
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FieldList {
+    RecordFieldList(RecordFieldList),
+    TupleFieldList(TupleFieldList),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AdtDef {
@@ -1399,6 +1403,138 @@ pub enum Stmt {
     ExprStmt(ExprStmt),
     Item(Item),
     LetStmt(LetStmt),
+}
+impl AstNode for Path {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for PathSegment {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_SEGMENT }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for NameRef {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME_REF }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for GenericArgList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == GENERIC_ARG_LIST }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ParamList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM_LIST }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for RetType {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == RET_TYPE }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for PathType {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_TYPE }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for TypeArg {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ARG }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for AssocTypeArg {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == ASSOC_TYPE_ARG }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for LifetimeArg {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME_ARG }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ConstArg {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_ARG }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for TypeBoundList {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND_LIST }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
 impl AstNode for SourceFile {
     fn can_cast(kind: SyntaxKind) -> bool { kind == SOURCE_FILE }
@@ -1609,17 +1745,6 @@ impl AstNode for ItemList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for NameRef {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == NAME_REF }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for Rename {
     fn can_cast(kind: SyntaxKind) -> bool { kind == RENAME }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -1633,17 +1758,6 @@ impl AstNode for Rename {
 }
 impl AstNode for UseTree {
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE_TREE }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for Path {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1677,28 +1791,6 @@ impl AstNode for Abi {
 }
 impl AstNode for GenericParamList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == GENERIC_PARAM_LIST }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for ParamList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM_LIST }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for RetType {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == RET_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -1743,17 +1835,6 @@ impl AstNode for SelfParam {
 }
 impl AstNode for Param {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PARAM }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for TypeBoundList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_BOUND_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2280,17 +2361,6 @@ impl AstNode for ArgList {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for TypeArgList {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ARG_LIST }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
 impl AstNode for Condition {
     fn can_cast(kind: SyntaxKind) -> bool { kind == CONDITION }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2414,17 +2484,6 @@ impl AstNode for NeverType {
 }
 impl AstNode for ParenType {
     fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_TYPE }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for PathType {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2709,147 +2768,41 @@ impl AstNode for MacroStmts {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for PathSegment {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_SEGMENT }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+impl From<TypeArg> for GenericArg {
+    fn from(node: TypeArg) -> GenericArg { GenericArg::TypeArg(node) }
 }
-impl AstNode for TypeArg {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ARG }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+impl From<AssocTypeArg> for GenericArg {
+    fn from(node: AssocTypeArg) -> GenericArg { GenericArg::AssocTypeArg(node) }
 }
-impl AstNode for LifetimeArg {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == LIFETIME_ARG }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+impl From<LifetimeArg> for GenericArg {
+    fn from(node: LifetimeArg) -> GenericArg { GenericArg::LifetimeArg(node) }
 }
-impl AstNode for AssocTypeArg {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == ASSOC_TYPE_ARG }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+impl From<ConstArg> for GenericArg {
+    fn from(node: ConstArg) -> GenericArg { GenericArg::ConstArg(node) }
 }
-impl AstNode for ConstArg {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == CONST_ARG }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl From<Const> for Item {
-    fn from(node: Const) -> Item { Item::Const(node) }
-}
-impl From<Enum> for Item {
-    fn from(node: Enum) -> Item { Item::Enum(node) }
-}
-impl From<ExternBlock> for Item {
-    fn from(node: ExternBlock) -> Item { Item::ExternBlock(node) }
-}
-impl From<ExternCrate> for Item {
-    fn from(node: ExternCrate) -> Item { Item::ExternCrate(node) }
-}
-impl From<Fn> for Item {
-    fn from(node: Fn) -> Item { Item::Fn(node) }
-}
-impl From<Impl> for Item {
-    fn from(node: Impl) -> Item { Item::Impl(node) }
-}
-impl From<MacroCall> for Item {
-    fn from(node: MacroCall) -> Item { Item::MacroCall(node) }
-}
-impl From<Module> for Item {
-    fn from(node: Module) -> Item { Item::Module(node) }
-}
-impl From<Static> for Item {
-    fn from(node: Static) -> Item { Item::Static(node) }
-}
-impl From<Struct> for Item {
-    fn from(node: Struct) -> Item { Item::Struct(node) }
-}
-impl From<Trait> for Item {
-    fn from(node: Trait) -> Item { Item::Trait(node) }
-}
-impl From<TypeAlias> for Item {
-    fn from(node: TypeAlias) -> Item { Item::TypeAlias(node) }
-}
-impl From<Union> for Item {
-    fn from(node: Union) -> Item { Item::Union(node) }
-}
-impl From<Use> for Item {
-    fn from(node: Use) -> Item { Item::Use(node) }
-}
-impl AstNode for Item {
+impl AstNode for GenericArg {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL | MACRO_CALL | MODULE
-            | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE => true,
+            TYPE_ARG | ASSOC_TYPE_ARG | LIFETIME_ARG | CONST_ARG => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
-            CONST => Item::Const(Const { syntax }),
-            ENUM => Item::Enum(Enum { syntax }),
-            EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
-            EXTERN_CRATE => Item::ExternCrate(ExternCrate { syntax }),
-            FN => Item::Fn(Fn { syntax }),
-            IMPL => Item::Impl(Impl { syntax }),
-            MACRO_CALL => Item::MacroCall(MacroCall { syntax }),
-            MODULE => Item::Module(Module { syntax }),
-            STATIC => Item::Static(Static { syntax }),
-            STRUCT => Item::Struct(Struct { syntax }),
-            TRAIT => Item::Trait(Trait { syntax }),
-            TYPE_ALIAS => Item::TypeAlias(TypeAlias { syntax }),
-            UNION => Item::Union(Union { syntax }),
-            USE => Item::Use(Use { syntax }),
+            TYPE_ARG => GenericArg::TypeArg(TypeArg { syntax }),
+            ASSOC_TYPE_ARG => GenericArg::AssocTypeArg(AssocTypeArg { syntax }),
+            LIFETIME_ARG => GenericArg::LifetimeArg(LifetimeArg { syntax }),
+            CONST_ARG => GenericArg::ConstArg(ConstArg { syntax }),
             _ => return None,
         };
         Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
         match self {
-            Item::Const(it) => &it.syntax,
-            Item::Enum(it) => &it.syntax,
-            Item::ExternBlock(it) => &it.syntax,
-            Item::ExternCrate(it) => &it.syntax,
-            Item::Fn(it) => &it.syntax,
-            Item::Impl(it) => &it.syntax,
-            Item::MacroCall(it) => &it.syntax,
-            Item::Module(it) => &it.syntax,
-            Item::Static(it) => &it.syntax,
-            Item::Struct(it) => &it.syntax,
-            Item::Trait(it) => &it.syntax,
-            Item::TypeAlias(it) => &it.syntax,
-            Item::Union(it) => &it.syntax,
-            Item::Use(it) => &it.syntax,
+            GenericArg::TypeArg(it) => &it.syntax,
+            GenericArg::AssocTypeArg(it) => &it.syntax,
+            GenericArg::LifetimeArg(it) => &it.syntax,
+            GenericArg::ConstArg(it) => &it.syntax,
         }
     }
 }
@@ -2935,129 +2888,6 @@ impl AstNode for Type {
             Type::ReferenceType(it) => &it.syntax,
             Type::SliceType(it) => &it.syntax,
             Type::TupleType(it) => &it.syntax,
-        }
-    }
-}
-impl From<OrPat> for Pat {
-    fn from(node: OrPat) -> Pat { Pat::OrPat(node) }
-}
-impl From<ParenPat> for Pat {
-    fn from(node: ParenPat) -> Pat { Pat::ParenPat(node) }
-}
-impl From<RefPat> for Pat {
-    fn from(node: RefPat) -> Pat { Pat::RefPat(node) }
-}
-impl From<BoxPat> for Pat {
-    fn from(node: BoxPat) -> Pat { Pat::BoxPat(node) }
-}
-impl From<BindPat> for Pat {
-    fn from(node: BindPat) -> Pat { Pat::BindPat(node) }
-}
-impl From<PlaceholderPat> for Pat {
-    fn from(node: PlaceholderPat) -> Pat { Pat::PlaceholderPat(node) }
-}
-impl From<DotDotPat> for Pat {
-    fn from(node: DotDotPat) -> Pat { Pat::DotDotPat(node) }
-}
-impl From<PathPat> for Pat {
-    fn from(node: PathPat) -> Pat { Pat::PathPat(node) }
-}
-impl From<RecordPat> for Pat {
-    fn from(node: RecordPat) -> Pat { Pat::RecordPat(node) }
-}
-impl From<TupleStructPat> for Pat {
-    fn from(node: TupleStructPat) -> Pat { Pat::TupleStructPat(node) }
-}
-impl From<TuplePat> for Pat {
-    fn from(node: TuplePat) -> Pat { Pat::TuplePat(node) }
-}
-impl From<SlicePat> for Pat {
-    fn from(node: SlicePat) -> Pat { Pat::SlicePat(node) }
-}
-impl From<RangePat> for Pat {
-    fn from(node: RangePat) -> Pat { Pat::RangePat(node) }
-}
-impl From<LiteralPat> for Pat {
-    fn from(node: LiteralPat) -> Pat { Pat::LiteralPat(node) }
-}
-impl From<MacroPat> for Pat {
-    fn from(node: MacroPat) -> Pat { Pat::MacroPat(node) }
-}
-impl AstNode for Pat {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            OR_PAT | PAREN_PAT | REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | DOT_DOT_PAT
-            | PATH_PAT | RECORD_PAT | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT
-            | LITERAL_PAT | MACRO_PAT => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            OR_PAT => Pat::OrPat(OrPat { syntax }),
-            PAREN_PAT => Pat::ParenPat(ParenPat { syntax }),
-            REF_PAT => Pat::RefPat(RefPat { syntax }),
-            BOX_PAT => Pat::BoxPat(BoxPat { syntax }),
-            BIND_PAT => Pat::BindPat(BindPat { syntax }),
-            PLACEHOLDER_PAT => Pat::PlaceholderPat(PlaceholderPat { syntax }),
-            DOT_DOT_PAT => Pat::DotDotPat(DotDotPat { syntax }),
-            PATH_PAT => Pat::PathPat(PathPat { syntax }),
-            RECORD_PAT => Pat::RecordPat(RecordPat { syntax }),
-            TUPLE_STRUCT_PAT => Pat::TupleStructPat(TupleStructPat { syntax }),
-            TUPLE_PAT => Pat::TuplePat(TuplePat { syntax }),
-            SLICE_PAT => Pat::SlicePat(SlicePat { syntax }),
-            RANGE_PAT => Pat::RangePat(RangePat { syntax }),
-            LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
-            MACRO_PAT => Pat::MacroPat(MacroPat { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            Pat::OrPat(it) => &it.syntax,
-            Pat::ParenPat(it) => &it.syntax,
-            Pat::RefPat(it) => &it.syntax,
-            Pat::BoxPat(it) => &it.syntax,
-            Pat::BindPat(it) => &it.syntax,
-            Pat::PlaceholderPat(it) => &it.syntax,
-            Pat::DotDotPat(it) => &it.syntax,
-            Pat::PathPat(it) => &it.syntax,
-            Pat::RecordPat(it) => &it.syntax,
-            Pat::TupleStructPat(it) => &it.syntax,
-            Pat::TuplePat(it) => &it.syntax,
-            Pat::SlicePat(it) => &it.syntax,
-            Pat::RangePat(it) => &it.syntax,
-            Pat::LiteralPat(it) => &it.syntax,
-            Pat::MacroPat(it) => &it.syntax,
-        }
-    }
-}
-impl From<RecordFieldList> for FieldList {
-    fn from(node: RecordFieldList) -> FieldList { FieldList::RecordFieldList(node) }
-}
-impl From<TupleFieldList> for FieldList {
-    fn from(node: TupleFieldList) -> FieldList { FieldList::TupleFieldList(node) }
-}
-impl AstNode for FieldList {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            RECORD_FIELD_LIST | TUPLE_FIELD_LIST => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            RECORD_FIELD_LIST => FieldList::RecordFieldList(RecordFieldList { syntax }),
-            TUPLE_FIELD_LIST => FieldList::TupleFieldList(TupleFieldList { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            FieldList::RecordFieldList(it) => &it.syntax,
-            FieldList::TupleFieldList(it) => &it.syntax,
         }
     }
 }
@@ -3233,6 +3063,218 @@ impl AstNode for Expr {
         }
     }
 }
+impl From<Const> for Item {
+    fn from(node: Const) -> Item { Item::Const(node) }
+}
+impl From<Enum> for Item {
+    fn from(node: Enum) -> Item { Item::Enum(node) }
+}
+impl From<ExternBlock> for Item {
+    fn from(node: ExternBlock) -> Item { Item::ExternBlock(node) }
+}
+impl From<ExternCrate> for Item {
+    fn from(node: ExternCrate) -> Item { Item::ExternCrate(node) }
+}
+impl From<Fn> for Item {
+    fn from(node: Fn) -> Item { Item::Fn(node) }
+}
+impl From<Impl> for Item {
+    fn from(node: Impl) -> Item { Item::Impl(node) }
+}
+impl From<MacroCall> for Item {
+    fn from(node: MacroCall) -> Item { Item::MacroCall(node) }
+}
+impl From<Module> for Item {
+    fn from(node: Module) -> Item { Item::Module(node) }
+}
+impl From<Static> for Item {
+    fn from(node: Static) -> Item { Item::Static(node) }
+}
+impl From<Struct> for Item {
+    fn from(node: Struct) -> Item { Item::Struct(node) }
+}
+impl From<Trait> for Item {
+    fn from(node: Trait) -> Item { Item::Trait(node) }
+}
+impl From<TypeAlias> for Item {
+    fn from(node: TypeAlias) -> Item { Item::TypeAlias(node) }
+}
+impl From<Union> for Item {
+    fn from(node: Union) -> Item { Item::Union(node) }
+}
+impl From<Use> for Item {
+    fn from(node: Use) -> Item { Item::Use(node) }
+}
+impl AstNode for Item {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL | MACRO_CALL | MODULE
+            | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            CONST => Item::Const(Const { syntax }),
+            ENUM => Item::Enum(Enum { syntax }),
+            EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
+            EXTERN_CRATE => Item::ExternCrate(ExternCrate { syntax }),
+            FN => Item::Fn(Fn { syntax }),
+            IMPL => Item::Impl(Impl { syntax }),
+            MACRO_CALL => Item::MacroCall(MacroCall { syntax }),
+            MODULE => Item::Module(Module { syntax }),
+            STATIC => Item::Static(Static { syntax }),
+            STRUCT => Item::Struct(Struct { syntax }),
+            TRAIT => Item::Trait(Trait { syntax }),
+            TYPE_ALIAS => Item::TypeAlias(TypeAlias { syntax }),
+            UNION => Item::Union(Union { syntax }),
+            USE => Item::Use(Use { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Item::Const(it) => &it.syntax,
+            Item::Enum(it) => &it.syntax,
+            Item::ExternBlock(it) => &it.syntax,
+            Item::ExternCrate(it) => &it.syntax,
+            Item::Fn(it) => &it.syntax,
+            Item::Impl(it) => &it.syntax,
+            Item::MacroCall(it) => &it.syntax,
+            Item::Module(it) => &it.syntax,
+            Item::Static(it) => &it.syntax,
+            Item::Struct(it) => &it.syntax,
+            Item::Trait(it) => &it.syntax,
+            Item::TypeAlias(it) => &it.syntax,
+            Item::Union(it) => &it.syntax,
+            Item::Use(it) => &it.syntax,
+        }
+    }
+}
+impl From<OrPat> for Pat {
+    fn from(node: OrPat) -> Pat { Pat::OrPat(node) }
+}
+impl From<ParenPat> for Pat {
+    fn from(node: ParenPat) -> Pat { Pat::ParenPat(node) }
+}
+impl From<RefPat> for Pat {
+    fn from(node: RefPat) -> Pat { Pat::RefPat(node) }
+}
+impl From<BoxPat> for Pat {
+    fn from(node: BoxPat) -> Pat { Pat::BoxPat(node) }
+}
+impl From<BindPat> for Pat {
+    fn from(node: BindPat) -> Pat { Pat::BindPat(node) }
+}
+impl From<PlaceholderPat> for Pat {
+    fn from(node: PlaceholderPat) -> Pat { Pat::PlaceholderPat(node) }
+}
+impl From<DotDotPat> for Pat {
+    fn from(node: DotDotPat) -> Pat { Pat::DotDotPat(node) }
+}
+impl From<PathPat> for Pat {
+    fn from(node: PathPat) -> Pat { Pat::PathPat(node) }
+}
+impl From<RecordPat> for Pat {
+    fn from(node: RecordPat) -> Pat { Pat::RecordPat(node) }
+}
+impl From<TupleStructPat> for Pat {
+    fn from(node: TupleStructPat) -> Pat { Pat::TupleStructPat(node) }
+}
+impl From<TuplePat> for Pat {
+    fn from(node: TuplePat) -> Pat { Pat::TuplePat(node) }
+}
+impl From<SlicePat> for Pat {
+    fn from(node: SlicePat) -> Pat { Pat::SlicePat(node) }
+}
+impl From<RangePat> for Pat {
+    fn from(node: RangePat) -> Pat { Pat::RangePat(node) }
+}
+impl From<LiteralPat> for Pat {
+    fn from(node: LiteralPat) -> Pat { Pat::LiteralPat(node) }
+}
+impl From<MacroPat> for Pat {
+    fn from(node: MacroPat) -> Pat { Pat::MacroPat(node) }
+}
+impl AstNode for Pat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            OR_PAT | PAREN_PAT | REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | DOT_DOT_PAT
+            | PATH_PAT | RECORD_PAT | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT
+            | LITERAL_PAT | MACRO_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            OR_PAT => Pat::OrPat(OrPat { syntax }),
+            PAREN_PAT => Pat::ParenPat(ParenPat { syntax }),
+            REF_PAT => Pat::RefPat(RefPat { syntax }),
+            BOX_PAT => Pat::BoxPat(BoxPat { syntax }),
+            BIND_PAT => Pat::BindPat(BindPat { syntax }),
+            PLACEHOLDER_PAT => Pat::PlaceholderPat(PlaceholderPat { syntax }),
+            DOT_DOT_PAT => Pat::DotDotPat(DotDotPat { syntax }),
+            PATH_PAT => Pat::PathPat(PathPat { syntax }),
+            RECORD_PAT => Pat::RecordPat(RecordPat { syntax }),
+            TUPLE_STRUCT_PAT => Pat::TupleStructPat(TupleStructPat { syntax }),
+            TUPLE_PAT => Pat::TuplePat(TuplePat { syntax }),
+            SLICE_PAT => Pat::SlicePat(SlicePat { syntax }),
+            RANGE_PAT => Pat::RangePat(RangePat { syntax }),
+            LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
+            MACRO_PAT => Pat::MacroPat(MacroPat { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Pat::OrPat(it) => &it.syntax,
+            Pat::ParenPat(it) => &it.syntax,
+            Pat::RefPat(it) => &it.syntax,
+            Pat::BoxPat(it) => &it.syntax,
+            Pat::BindPat(it) => &it.syntax,
+            Pat::PlaceholderPat(it) => &it.syntax,
+            Pat::DotDotPat(it) => &it.syntax,
+            Pat::PathPat(it) => &it.syntax,
+            Pat::RecordPat(it) => &it.syntax,
+            Pat::TupleStructPat(it) => &it.syntax,
+            Pat::TuplePat(it) => &it.syntax,
+            Pat::SlicePat(it) => &it.syntax,
+            Pat::RangePat(it) => &it.syntax,
+            Pat::LiteralPat(it) => &it.syntax,
+            Pat::MacroPat(it) => &it.syntax,
+        }
+    }
+}
+impl From<RecordFieldList> for FieldList {
+    fn from(node: RecordFieldList) -> FieldList { FieldList::RecordFieldList(node) }
+}
+impl From<TupleFieldList> for FieldList {
+    fn from(node: TupleFieldList) -> FieldList { FieldList::TupleFieldList(node) }
+}
+impl AstNode for FieldList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_FIELD_LIST | TUPLE_FIELD_LIST => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            RECORD_FIELD_LIST => FieldList::RecordFieldList(RecordFieldList { syntax }),
+            TUPLE_FIELD_LIST => FieldList::TupleFieldList(TupleFieldList { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            FieldList::RecordFieldList(it) => &it.syntax,
+            FieldList::TupleFieldList(it) => &it.syntax,
+        }
+    }
+}
 impl From<Enum> for AdtDef {
     fn from(node: Enum) -> AdtDef { AdtDef::Enum(node) }
 }
@@ -3379,12 +3421,22 @@ impl From<Item> for Stmt {
 impl From<LetStmt> for Stmt {
     fn from(node: LetStmt) -> Stmt { Stmt::LetStmt(node) }
 }
-impl std::fmt::Display for Item {
+impl std::fmt::Display for GenericArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
 impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3395,11 +3447,6 @@ impl std::fmt::Display for Pat {
     }
 }
 impl std::fmt::Display for FieldList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3425,6 +3472,66 @@ impl std::fmt::Display for GenericParam {
     }
 }
 impl std::fmt::Display for Stmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Path {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PathSegment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for NameRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for GenericArgList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ParamList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for RetType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PathType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for AssocTypeArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for LifetimeArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ConstArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeBoundList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3524,22 +3631,12 @@ impl std::fmt::Display for ItemList {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for NameRef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for Rename {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
 impl std::fmt::Display for UseTree {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3555,16 +3652,6 @@ impl std::fmt::Display for Abi {
     }
 }
 impl std::fmt::Display for GenericParamList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ParamList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for RetType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3585,11 +3672,6 @@ impl std::fmt::Display for SelfParam {
     }
 }
 impl std::fmt::Display for Param {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TypeBoundList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3829,11 +3911,6 @@ impl std::fmt::Display for ArgList {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for TypeArgList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for Condition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -3890,11 +3967,6 @@ impl std::fmt::Display for NeverType {
     }
 }
 impl std::fmt::Display for ParenType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for PathType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -4020,31 +4092,6 @@ impl std::fmt::Display for MacroItems {
     }
 }
 impl std::fmt::Display for MacroStmts {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for PathSegment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for TypeArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for LifetimeArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for AssocTypeArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for ConstArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

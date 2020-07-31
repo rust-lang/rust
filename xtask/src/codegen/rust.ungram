@@ -1,3 +1,34 @@
+Path =
+  (qualifier:Path '::')? segment:PathSegment
+
+PathSegment =
+  'crate' | 'self' | 'super'
+| '::' NameRef
+| NameRef GenericArgList?
+| NameRef ParamList RetType?
+| '<' PathType ('as' PathType)? '>'
+
+GenericArgList =
+  '::'? '<' (GenericArg (',' GenericArg)* ','?)? '>'
+
+GenericArg =
+  TypeArg
+| AssocTypeArg
+| LifetimeArg
+| ConstArg
+
+TypeArg =
+  Type
+
+AssocTypeArg =
+  NameRef (':' TypeBoundList | '=' Type)
+
+LifetimeArg =
+  'lifetime'
+
+ConstArg =
+  Expr
+
 SourceFile =
   'shebang'?
   Attr*
@@ -318,7 +349,7 @@ ArgList =
   '(' args:(Expr (',' Expr)* ','?)? ')'
 
 MethodCallExpr =
-  Attr* Expr '.' NameRef TypeArgList? ArgList
+  Attr* Expr '.' NameRef GenericArgList? ArgList
 
 FieldExpr =
   Attr* Expr '.' NameRef
@@ -520,33 +551,6 @@ MacroItems =
 MacroStmts =
   statements:Stmt*
   Expr?
-
-Path =
-  (qualifier:Path '::')? segment:PathSegment
-
-PathSegment =
-  '::' | 'crate' | 'self' | 'super'
-| '<' NameRef TypeArgList ParamList RetType PathType '>'
-
-TypeArgList =
-  '::'? '<'
-    TypeArg*
-    LifetimeArg*
-    AssocTypeArg*
-    ConstArg*
-  '>'
-
-TypeArg =
-  Type
-
-AssocTypeArg =
-  NameRef (':' TypeBoundList | '=' Type)
-
-LifetimeArg =
-  'lifetime'
-
-ConstArg =
-  Literal | BlockExpr BlockExpr
 
 Pat =
   OrPat

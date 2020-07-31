@@ -22,7 +22,7 @@ pub(super) fn opt_type_arg_list(p: &mut Parser, colon_colon_required: bool) {
         }
     }
     p.expect(T![>]);
-    m.complete(p, TYPE_ARG_LIST);
+    m.complete(p, GENERIC_ARG_LIST);
 }
 
 // test type_arg
@@ -52,7 +52,7 @@ fn type_arg(p: &mut Parser) {
             m.complete(p, CONST_ARG);
         }
         k if k.is_literal() => {
-            p.bump(k);
+            expressions::literal(p);
             m.complete(p, CONST_ARG);
         }
         _ => {

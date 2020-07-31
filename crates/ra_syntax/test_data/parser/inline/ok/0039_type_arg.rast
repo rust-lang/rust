@@ -12,7 +12,7 @@ SOURCE_FILE@0..46
         PATH_SEGMENT@9..44
           NAME_REF@9..10
             IDENT@9..10 "B"
-          TYPE_ARG_LIST@10..44
+          GENERIC_ARG_LIST@10..44
             L_ANGLE@10..11 "<"
             LIFETIME_ARG@11..18
               LIFETIME@11..18 "\'static"
@@ -27,7 +27,8 @@ SOURCE_FILE@0..46
             COMMA@23..24 ","
             WHITESPACE@24..25 " "
             CONST_ARG@25..26
-              INT_NUMBER@25..26 "1"
+              LITERAL@25..26
+                INT_NUMBER@25..26 "1"
             COMMA@26..27 ","
             WHITESPACE@27..28 " "
             CONST_ARG@28..33

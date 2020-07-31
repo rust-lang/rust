@@ -62,7 +62,7 @@ SOURCE_FILE@0..83
           DOT@66..67 "."
           NAME_REF@67..70
             IDENT@67..70 "max"
-          TYPE_ARG_LIST@70..77
+          GENERIC_ARG_LIST@70..77
             COLON2@70..72 "::"
             L_ANGLE@72..73 "<"
             TYPE_ARG@73..76

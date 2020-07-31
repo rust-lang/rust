@@ -12,7 +12,7 @@ SOURCE_FILE@0..39
         PATH_SEGMENT@9..37
           NAME_REF@9..12
             IDENT@9..12 "Box"
-          TYPE_ARG_LIST@12..37
+          GENERIC_ARG_LIST@12..37
             L_ANGLE@12..13 "<"
             TYPE_ARG@13..36
               PATH_TYPE@13..36

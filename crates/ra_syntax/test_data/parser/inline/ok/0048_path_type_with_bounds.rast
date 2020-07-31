@@ -16,7 +16,7 @@ SOURCE_FILE@0..58
           PATH_SEGMENT@12..23
             NAME_REF@12..15
               IDENT@12..15 "Box"
-            TYPE_ARG_LIST@15..23
+            GENERIC_ARG_LIST@15..23
               L_ANGLE@15..16 "<"
               TYPE_ARG@16..22
                 DYN_TRAIT_TYPE@16..22
@@ -55,7 +55,7 @@ SOURCE_FILE@0..58
           PATH_SEGMENT@39..54
             NAME_REF@39..42
               IDENT@39..42 "Box"
-            TYPE_ARG_LIST@42..54
+            GENERIC_ARG_LIST@42..54
               L_ANGLE@42..43 "<"
               TYPE_ARG@43..53
                 DYN_TRAIT_TYPE@43..53

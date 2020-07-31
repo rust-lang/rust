@@ -337,7 +337,7 @@ impl ExprCollector<'_> {
                 };
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let generic_args =
-                    e.type_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx(), it));
+                    e.generic_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx(), it));
                 self.alloc_expr(
                     Expr::MethodCall { receiver, method_name, args, generic_args },
                     syntax_ptr,

@@ -41,7 +41,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                 match hygiene.name_ref_to_name(name_ref) {
                     Either::Left(name) => {
                         let args = segment
-                            .type_arg_list()
+                            .generic_arg_list()
                             .and_then(|it| lower_generic_args(&ctx, it))
                             .or_else(|| {
                                 lower_generic_args_from_fn_path(
@@ -148,33 +148,37 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
 
 pub(super) fn lower_generic_args(
     lower_ctx: &LowerCtx,
-    node: ast::TypeArgList,
+    node: ast::GenericArgList,
 ) -> Option<GenericArgs> {
     let mut args = Vec::new();
-    for type_arg in node.type_args() {
-        let type_ref = TypeRef::from_ast_opt(lower_ctx, type_arg.ty());
-        args.push(GenericArg::Type(type_ref));
-    }
-    // lifetimes ignored for now
     let mut bindings = Vec::new();
-    for assoc_type_arg in node.assoc_type_args() {
-        let assoc_type_arg: ast::AssocTypeArg = assoc_type_arg;
-        if let Some(name_ref) = assoc_type_arg.name_ref() {
-            let name = name_ref.as_name();
-            let type_ref = assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
-            let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
-                l.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
-            } else {
-                Vec::new()
-            };
-            bindings.push(AssociatedTypeBinding { name, type_ref, bounds });
+    for generic_arg in node.generic_args() {
+        match generic_arg {
+            ast::GenericArg::TypeArg(type_arg) => {
+                let type_ref = TypeRef::from_ast_opt(lower_ctx, type_arg.ty());
+                args.push(GenericArg::Type(type_ref));
+            }
+            ast::GenericArg::AssocTypeArg(assoc_type_arg) => {
+                if let Some(name_ref) = assoc_type_arg.name_ref() {
+                    let name = name_ref.as_name();
+                    let type_ref = assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
+                    let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
+                        l.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
+                    } else {
+                        Vec::new()
+                    };
+                    bindings.push(AssociatedTypeBinding { name, type_ref, bounds });
+                }
+            }
+            // Lifetimes and constants are ignored for now.
+            ast::GenericArg::LifetimeArg(_) | ast::GenericArg::ConstArg(_) => (),
         }
     }
+
     if args.is_empty() && bindings.is_empty() {
-        None
-    } else {
-        Some(GenericArgs { args, has_self_type: false, bindings })
+        return None;
     }
+    Some(GenericArgs { args, has_self_type: false, bindings })
 }
 
 /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)

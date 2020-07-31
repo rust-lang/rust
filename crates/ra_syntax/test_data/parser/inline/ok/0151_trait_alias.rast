@@ -20,7 +20,7 @@ SOURCE_FILE@0..83
             PATH_SEGMENT@13..17
               NAME_REF@13..14
                 IDENT@13..14 "T"
-              TYPE_ARG_LIST@14..17
+              GENERIC_ARG_LIST@14..17
                 L_ANGLE@14..15 "<"
                 TYPE_ARG@15..16
                   PATH_TYPE@15..16
@@ -52,7 +52,7 @@ SOURCE_FILE@0..83
             PATH_SEGMENT@32..36
               NAME_REF@32..33
                 IDENT@32..33 "T"
-              TYPE_ARG_LIST@33..36
+              GENERIC_ARG_LIST@33..36
                 L_ANGLE@33..34 "<"
                 TYPE_ARG@34..35
                   PATH_TYPE@34..35
@@ -115,7 +115,7 @@ SOURCE_FILE@0..83
                 PATH_SEGMENT@77..81
                   NAME_REF@77..78
                     IDENT@77..78 "T"
-                  TYPE_ARG_LIST@78..81
+                  GENERIC_ARG_LIST@78..81
                     L_ANGLE@78..79 "<"
                     TYPE_ARG@79..80
                       PATH_TYPE@79..80

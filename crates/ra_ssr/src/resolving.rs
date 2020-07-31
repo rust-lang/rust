@@ -217,7 +217,7 @@ fn pick_node_for_resolution(node: SyntaxNode) -> SyntaxNode {
 fn path_contains_type_arguments(path: Option<ast::Path>) -> bool {
     if let Some(path) = path {
         if let Some(segment) = path.segment() {
-            if segment.type_arg_list().is_some() {
+            if segment.generic_arg_list().is_some() {
                 mark::hit!(type_arguments_within_path);
                 return true;
             }
