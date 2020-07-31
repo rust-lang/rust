@@ -577,7 +577,7 @@ fn highlight_element(
             _ if element.parent().and_then(ast::RangePat::cast).is_some() => {
                 HighlightTag::Operator.into()
             }
-            _ if element.parent().and_then(ast::DotDotPat::cast).is_some() => {
+            _ if element.parent().and_then(ast::RestPat::cast).is_some() => {
                 HighlightTag::Operator.into()
             }
             _ if element.parent().and_then(ast::Attr::cast).is_some() => {

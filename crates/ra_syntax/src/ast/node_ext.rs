@@ -293,15 +293,15 @@ impl ast::SlicePat {
         let mut args = self.args().peekable();
         let prefix = args
             .peeking_take_while(|p| match p {
-                ast::Pat::DotDotPat(_) => false,
+                ast::Pat::RestPat(_) => false,
                 ast::Pat::IdentPat(bp) => match bp.pat() {
-                    Some(ast::Pat::DotDotPat(_)) => false,
+                    Some(ast::Pat::RestPat(_)) => false,
                     _ => true,
                 },
                 ast::Pat::RefPat(rp) => match rp.pat() {
-                    Some(ast::Pat::DotDotPat(_)) => false,
+                    Some(ast::Pat::RestPat(_)) => false,
                     Some(ast::Pat::IdentPat(bp)) => match bp.pat() {
-                        Some(ast::Pat::DotDotPat(_)) => false,
+                        Some(ast::Pat::RestPat(_)) => false,
                         _ => true,
                     },
                     _ => true,

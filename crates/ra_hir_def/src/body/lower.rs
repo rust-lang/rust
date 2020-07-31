@@ -826,7 +826,7 @@ impl ExprCollector<'_> {
                     Pat::Missing
                 }
             }
-            ast::Pat::DotDotPat(_) => {
+            ast::Pat::RestPat(_) => {
                 // `DotDotPat` requires special handling and should not be mapped
                 // to a Pat. Here we are using `Pat::Missing` as a fallback for
                 // when `DotDotPat` is mapped to `Pat`, which can easily happen
@@ -853,10 +853,10 @@ impl ExprCollector<'_> {
     fn collect_tuple_pat(&mut self, args: AstChildren<ast::Pat>) -> (Vec<PatId>, Option<usize>) {
         // Find the location of the `..`, if there is one. Note that we do not
         // consider the possiblity of there being multiple `..` here.
-        let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::DotDotPat(_)));
+        let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::RestPat(_)));
         // We want to skip the `..` pattern here, since we account for it above.
         let args = args
-            .filter(|p| !matches!(p, ast::Pat::DotDotPat(_)))
+            .filter(|p| !matches!(p, ast::Pat::RestPat(_)))
             .map(|p| self.collect_pat(p))
             .collect();
 

@@ -26,7 +26,7 @@ SOURCE_FILE@0..94
               IDENT@24..25 "b"
           COMMA@25..26 ","
           WHITESPACE@26..27 " "
-          DOT_DOT_PAT@27..29
+          REST_PAT@27..29
             DOT2@27..29 ".."
           R_PAREN@29..30 ")"
         WHITESPACE@30..31 " "
@@ -60,7 +60,7 @@ SOURCE_FILE@0..94
         WHITESPACE@63..64 " "
         TUPLE_PAT@64..68
           L_PAREN@64..65 "("
-          DOT_DOT_PAT@65..67
+          REST_PAT@65..67
             DOT2@65..67 ".."
           R_PAREN@67..68 ")"
         WHITESPACE@68..69 " "

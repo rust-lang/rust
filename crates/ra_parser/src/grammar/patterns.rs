@@ -192,7 +192,7 @@ fn record_field_pat_list(p: &mut Parser) {
     p.bump(T!['{']);
     while !p.at(EOF) && !p.at(T!['}']) {
         match p.current() {
-            // A trailing `..` is *not* treated as a DOT_DOT_PAT.
+            // A trailing `..` is *not* treated as a REST_PAT.
             T![.] if p.at(T![..]) => p.bump(T![..]),
             T!['{'] => error_block(p, "expected ident"),
 
@@ -267,7 +267,7 @@ fn dot_dot_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![..]));
     let m = p.start();
     p.bump(T![..]);
-    m.complete(p, DOT_DOT_PAT)
+    m.complete(p, REST_PAT)
 }
 
 // test ref_pat
