@@ -22,9 +22,8 @@ pub unsafe fn handle_deadlock() {
     thread::spawn(move || {
         tls::enter_context(icx, |_| {
             rustc_ast::attr::SESSION_GLOBALS.set(ast_session_globals, || {
-                rustc_span::SESSION_GLOBALS.set(span_session_globals, || {
-                    tls::with_context(|icx| deadlock(icx.tcx, &registry))
-                })
+                rustc_span::SESSION_GLOBALS
+                    .set(span_session_globals, || tls::with(|tcx| deadlock(tcx, &registry)))
             });
         })
     });

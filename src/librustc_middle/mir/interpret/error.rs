@@ -242,9 +242,9 @@ impl From<ErrorHandled> for InterpErrorInfo<'_> {
 
 impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     fn from(kind: InterpError<'tcx>) -> Self {
-        let capture_backtrace = tls::with_context_opt(|ctxt| {
-            if let Some(ctxt) = ctxt {
-                *Lock::borrow(&ctxt.tcx.sess.ctfe_backtrace)
+        let capture_backtrace = tls::with_opt(|tcx| {
+            if let Some(tcx) = tcx {
+                *Lock::borrow(&tcx.sess.ctfe_backtrace)
             } else {
                 CtfeBacktrace::Disabled
             }
