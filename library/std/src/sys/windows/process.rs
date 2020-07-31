@@ -98,10 +98,12 @@ struct DropGuard<'a> {
     lock: &'a Mutex,
 }
 
-enum Problem {
+pub enum Problem {
     SawNul,
     Oversized,
 }
+
+pub struct RawArg<'a>(&'a OsStr);
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
@@ -136,7 +138,7 @@ impl Command {
 
         self.args.push(arg.to_os_string());
         self.cmdline.push(' ' as u16);
-        let result = append_arg(&mut self.cmdline, arg, false);
+        let result = arg.append_to(&mut self.cmdline, false);
         match result {
             Err(err) => {
                 self.cmdline.truncate(self.cmdline.len() - 1);
@@ -203,7 +205,7 @@ impl Command {
         // Prepare and terminate the application name and the cmdline
         // XXX: this won't work for 16-bit, might be preferable to do a extend_from_slice
         let mut program_str: Vec<u16> = Vec::new();
-        append_arg(&mut program_str, program, true)?;
+        program.as_os_str().append_to(&mut program_str, true)?;
         program_str.push(0);
         self.cmdline.push(0);
 
@@ -385,6 +387,31 @@ impl From<Problem> for Error {
     }
 }
 
+pub trait Arg {
+    fn append_to(&self, cmd: &mut Vec<u16>, force_quotes: bool) -> Result<usize, Problem>;
+    fn arg_len(&self, force_quotes: bool) -> Result<usize, Problem>;
+}
+
+impl Arg for &OsStr {
+    fn append_to(&self, cmd: &mut Vec<u16>, force_quotes: bool) -> Result<usize, Problem> {
+        append_arg(&mut Some(cmd), &self, force_quotes)
+    }
+    fn arg_len(&self, force_quotes: bool) -> Result<usize, Problem> {
+        append_arg(&mut None, &self, force_quotes)
+    }
+}
+
+#[allow(dead_code)]
+impl Arg for RawArg<'_> {
+    fn append_to(&self, cmd: &mut Vec<u16>, _fq: bool) -> Result<usize, Problem> {
+        cmd.extend(self.0.encode_wide());
+        self.arg_len(_fq)
+    }
+    fn arg_len(&self, _: bool) -> Result<usize, Problem> {
+        Ok(self.0.encode_wide().count())
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Processes
 ////////////////////////////////////////////////////////////////////////////////
@@ -523,7 +550,23 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
     }
 }
 
-fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> Result<usize, Problem> {
+macro_rules! if_some {
+    ($e: expr, $id:ident, $b:block) => {
+        if let &mut Some(ref mut $id) = $e
+            $b
+    };
+    ($e: expr, $id:ident, $s:stmt) => {
+        if_some!($e, $id, { $s })
+    };
+}
+
+// This is effed up. Yeah, how the heck do I pass an optional, mutable reference around?
+// @see https://users.rust-lang.org/t/idiomatic-way-for-passing-an-optional-mutable-reference-around/7947
+fn append_arg(
+    maybe_cmd: &mut Option<&mut Vec<u16>>,
+    arg: &OsStr,
+    force_quotes: bool,
+) -> Result<usize, Problem> {
     let mut addsize: usize = 0;
     // If an argument has 0 characters then we need to quote it to ensure
     // that it actually gets passed through on the command line or otherwise
@@ -533,7 +576,7 @@ fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> Result<usi
     let quote =
         force_quotes || arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t') || arg_bytes.is_empty();
     if quote {
-        cmd.push('"' as u16);
+        if_some!(maybe_cmd, cmd, cmd.push('"' as u16));
         addsize += 1;
     }
 
@@ -544,18 +587,20 @@ fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr, force_quotes: bool) -> Result<usi
         } else {
             if x == '"' as u16 {
                 // Add n+1 backslashes to total 2n+1 before internal '"'.
-                cmd.extend((0..=backslashes).map(|_| '\\' as u16));
+                if_some!(maybe_cmd, cmd, cmd.extend((0..=backslashes).map(|_| '\\' as u16)));
                 addsize += backslashes + 1;
             }
             backslashes = 0;
         }
-        cmd.push(x);
+        if_some!(maybe_cmd, cmd, cmd.push(x));
     }
 
     if quote {
         // Add n backslashes to total 2n before ending '"'.
-        cmd.extend((0..backslashes).map(|_| '\\' as u16));
-        cmd.push('"' as u16);
+        if_some!(maybe_cmd, cmd, {
+            cmd.extend((0..backslashes).map(|_| '\\' as u16));
+            cmd.push('"' as u16);
+        });
         addsize += backslashes + 1;
     }
     Ok(addsize)
@@ -570,10 +615,10 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
     let mut cmd: Vec<u16> = Vec::new();
     // Always quote the program name so CreateProcess doesn't interpret args as
     // part of the name if the binary wasn't found first time.
-    append_arg(&mut cmd, prog, true)?;
+    prog.append_to(&mut cmd, true)?;
     for arg in args {
         cmd.push(' ' as u16);
-        append_arg(&mut cmd, arg, false)?;
+        arg.as_os_str().append_to(&mut cmd, false)?;
     }
     return Ok(cmd);
 }
