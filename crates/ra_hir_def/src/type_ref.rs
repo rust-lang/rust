@@ -111,7 +111,7 @@ impl TypeRef {
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::Reference(Box::new(inner_ty), mutability)
             }
-            ast::Type::PlaceholderType(_inner) => TypeRef::Placeholder,
+            ast::Type::InferType(_inner) => TypeRef::Placeholder,
             ast::Type::FnPointerType(inner) => {
                 let ret_ty = inner
                     .ret_type()

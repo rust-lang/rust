@@ -19,7 +19,7 @@ SOURCE_FILE@0..33
             PATH@16..19
               PATH_SEGMENT@16..19
                 L_ANGLE@16..17 "<"
-                PLACEHOLDER_TYPE@17..18
+                INFER_TYPE@17..18
                   UNDERSCORE@17..18 "_"
                 R_ANGLE@18..19 ">"
             COLON2@19..21 "::"

@@ -46,7 +46,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     // and it has no placeholders
     let ascribed_ty = let_stmt.ty();
     if let Some(ty) = &ascribed_ty {
-        if ty.syntax().descendants().find_map(ast::PlaceholderType::cast).is_none() {
+        if ty.syntax().descendants().find_map(ast::InferType::cast).is_none() {
             return None;
         }
     }

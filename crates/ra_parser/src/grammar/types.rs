@@ -172,7 +172,7 @@ fn placeholder_type(p: &mut Parser) {
     assert!(p.at(T![_]));
     let m = p.start();
     p.bump(T![_]);
-    m.complete(p, PLACEHOLDER_TYPE);
+    m.complete(p, INFER_TYPE);
 }
 
 // test fn_pointer_type
