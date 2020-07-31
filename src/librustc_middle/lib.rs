@@ -55,8 +55,6 @@
 #[macro_use]
 extern crate bitflags;
 #[macro_use]
-extern crate scoped_tls;
-#[macro_use]
 extern crate rustc_macros;
 #[macro_use]
 extern crate rustc_data_structures;

@@ -3677,7 +3677,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "scoped-tls",
  "smallvec 1.4.0",
  "tracing",
 ]
