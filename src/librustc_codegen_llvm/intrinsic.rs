@@ -90,64 +90,69 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         args: &Vec<Operand<'tcx>>,
         caller_instance: ty::Instance<'tcx>,
     ) -> bool {
+        let mut is_codegen_intrinsic = true;
+        // Set `is_codegen_intrinsic` to `false` to bypass `codegen_intrinsic_call()`.
+
         if self.tcx.sess.opts.debugging_opts.instrument_coverage {
-            // Add the coverage information from the MIR to the Codegen context. Some coverage
-            // intrinsics are used only to pass along the coverage information (returns `false`
-            // for `is_codegen_intrinsic()`), but `count_code_region` is also converted into an
-            // LLVM intrinsic to increment a coverage counter.
+            // If the intrinsic is from the local MIR, add the coverage information to the Codegen
+            // context, to be encoded into the local crate's coverage map.
+            if caller_instance.def_id().is_local() {
+                // FIXME(richkadel): Make sure to add coverage analysis tests on a crate with
+                // external crate dependencies, where:
+                //   1. Both binary and dependent crates are compiled with `-Zinstrument-coverage`
+                //   2. Only binary is compiled with `-Zinstrument-coverage`
+                //   3. Only dependent crates are compiled with `-Zinstrument-coverage`
+                match intrinsic {
+                    sym::count_code_region => {
+                        use coverage::count_code_region_args::*;
+                        self.add_counter_region(
+                            caller_instance,
+                            op_to_u64(&args[FUNCTION_SOURCE_HASH]),
+                            op_to_u32(&args[COUNTER_ID]),
+                            op_to_u32(&args[START_BYTE_POS]),
+                            op_to_u32(&args[END_BYTE_POS]),
+                        );
+                    }
+                    sym::coverage_counter_add | sym::coverage_counter_subtract => {
+                        use coverage::coverage_counter_expression_args::*;
+                        self.add_counter_expression_region(
+                            caller_instance,
+                            op_to_u32(&args[EXPRESSION_ID]),
+                            op_to_u32(&args[LEFT_ID]),
+                            if intrinsic == sym::coverage_counter_add {
+                                ExprKind::Add
+                            } else {
+                                ExprKind::Subtract
+                            },
+                            op_to_u32(&args[RIGHT_ID]),
+                            op_to_u32(&args[START_BYTE_POS]),
+                            op_to_u32(&args[END_BYTE_POS]),
+                        );
+                    }
+                    sym::coverage_unreachable => {
+                        use coverage::coverage_unreachable_args::*;
+                        self.add_unreachable_region(
+                            caller_instance,
+                            op_to_u32(&args[START_BYTE_POS]),
+                            op_to_u32(&args[END_BYTE_POS]),
+                        );
+                    }
+                    _ => {}
+                }
+            }
+
+            // Only the `count_code_region` coverage intrinsic is translated into an actual LLVM
+            // intrinsic call (local or not); otherwise, set `is_codegen_intrinsic` to `false`.
             match intrinsic {
-                sym::count_code_region => {
-                    use coverage::count_code_region_args::*;
-                    self.add_counter_region(
-                        caller_instance,
-                        op_to_u64(&args[FUNCTION_SOURCE_HASH]),
-                        op_to_u32(&args[COUNTER_ID]),
-                        op_to_u32(&args[START_BYTE_POS]),
-                        op_to_u32(&args[END_BYTE_POS]),
-                    );
-                    return true; // Also inject the counter increment in the backend
-                }
-                sym::coverage_counter_add | sym::coverage_counter_subtract => {
-                    use coverage::coverage_counter_expression_args::*;
-                    self.add_counter_expression_region(
-                        caller_instance,
-                        op_to_u32(&args[EXPRESSION_ID]),
-                        op_to_u32(&args[LEFT_ID]),
-                        if intrinsic == sym::coverage_counter_add {
-                            ExprKind::Add
-                        } else {
-                            ExprKind::Subtract
-                        },
-                        op_to_u32(&args[RIGHT_ID]),
-                        op_to_u32(&args[START_BYTE_POS]),
-                        op_to_u32(&args[END_BYTE_POS]),
-                    );
-                    return false; // Does not inject backend code
-                }
-                sym::coverage_unreachable => {
-                    use coverage::coverage_unreachable_args::*;
-                    self.add_unreachable_region(
-                        caller_instance,
-                        op_to_u32(&args[START_BYTE_POS]),
-                        op_to_u32(&args[END_BYTE_POS]),
-                    );
-                    return false; // Does not inject backend code
+                sym::coverage_counter_add
+                | sym::coverage_counter_subtract
+                | sym::coverage_unreachable => {
+                    is_codegen_intrinsic = false;
                 }
                 _ => {}
             }
-        } else {
-            // NOT self.tcx.sess.opts.debugging_opts.instrument_coverage
-            if intrinsic == sym::count_code_region {
-                // An external crate may have been pre-compiled with coverage instrumentation, and
-                // some references from the current crate to the external crate might carry along
-                // the call terminators to coverage intrinsics, like `count_code_region` (for
-                // example, when instantiating a generic function). If the current crate has
-                // `instrument_coverage` disabled, the `count_code_region` call terminators should
-                // be ignored.
-                return false; // Do not inject coverage counters inlined from external crates
-            }
         }
-        true // Unhandled intrinsics should be passed to `codegen_intrinsic_call()`
+        is_codegen_intrinsic
     }
 
     fn codegen_intrinsic_call(
