@@ -149,6 +149,7 @@ impl Command {
             args: vec![program.clone()],
             program,
             env: Default::default(),
+            env_size: None,
             arg_max: Default::default(),
             arg_size: 2 * mem::size_of::<*const u8>() + program_size,
             cwd: None,
@@ -231,18 +232,22 @@ impl Command {
 
     pub fn get_size(&mut self) -> io::Result<usize> {
         // Envp size calculation is approximate.
-        let env = self.env.capture();
-        let env_size: usize = env
-            .iter()
-            .map(|(k, v)| {
-                os2c(k.as_ref(), &mut self.problem).to_bytes().len()
-                    + os2c(v.as_ref(), &mut self.problem).to_bytes().len()
-                    + 2
-            })
-            .sum::<usize>()
-            + (env.len() + 1) * mem::size_of::<*const u8>();
+        let env = &self.env;
+        let problem = &mut self.problem;
+        let env_size = self.env_size.get_or_insert_with(|| {
+            let env_map = env.capture();
+            env_map
+                .iter()
+                .map(|(k, v)| {
+                    os2c(k.as_ref(), problem).to_bytes().len()
+                        + os2c(v.as_ref(), problem).to_bytes().len()
+                        + 2
+                })
+                .sum::<usize>()
+                + (env_map.len() + 1) * mem::size_of::<*const u8>()
+        });
 
-        Ok(self.arg_size + env_size)
+        Ok(self.arg_size + *env_size)
     }
 
     pub fn check_size(&mut self, refresh: bool) -> io::Result<bool> {
@@ -288,6 +293,7 @@ impl Command {
     }
 
     pub fn env_mut(&mut self) -> &mut CommandEnv {
+        self.env_size = None;
         &mut self.env
     }
 
