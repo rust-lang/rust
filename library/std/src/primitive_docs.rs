@@ -594,6 +594,7 @@ mod prim_array {}
 /// [dynamically sized types](../reference/dynamically-sized-types.html).
 ///
 /// ```
+/// # use std::rc::Rc;
 /// let pointer_size = std::mem::size_of::<&u8>();
 /// assert_eq!(2 * pointer_size, std::mem::size_of::<&[u8]>());
 /// assert_eq!(2 * pointer_size, std::mem::size_of::<*const [u8]>());
