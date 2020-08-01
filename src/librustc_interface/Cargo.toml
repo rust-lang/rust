@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 libc = "0.2"
-log = "0.4"
+log = { package = "tracing", version = "0.1" }
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../librustc_ast" }

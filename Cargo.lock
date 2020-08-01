@@ -61,7 +61,7 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7021ce4924a3f25f802b2cccd1af585e39ea1a363a1aa2e72afe54b67a3a7a7"
 dependencies = [
- "ansi_term",
+ "ansi_term 0.11.0",
 ]
 
 [[package]]
@@ -75,6 +75,15 @@ name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
+dependencies = [
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "ansi_term"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
 dependencies = [
  "winapi 0.3.8",
 ]
@@ -496,7 +505,7 @@ version = "2.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5067f5bb2d80ef5d68b4c87db81601f0b75bca627bc2ef76b141d7b846a3c6d9"
 dependencies = [
- "ansi_term",
+ "ansi_term 0.11.0",
  "atty",
  "bitflags",
  "strsim",
@@ -616,12 +625,12 @@ dependencies = [
  "glob",
  "lazy_static",
  "libc",
- "log",
  "miow 0.3.3",
  "regex",
  "rustfix",
  "serde",
  "serde_json",
+ "tracing",
  "walkdir",
  "winapi 0.3.8",
 ]
@@ -1742,6 +1751,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "matchers"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f099785f7595cc4b4553a174ce30dd7589ef93391ff414dbb67f62392b9e0ce1"
+dependencies = [
+ "regex-automata",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2314,7 +2332,7 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f81e1644e1b54f5a68959a29aa86cde704219254669da328ecfdf6a1f09d427"
 dependencies = [
- "ansi_term",
+ "ansi_term 0.11.0",
  "ctor",
  "difference",
  "output_vt100",
@@ -2676,6 +2694,16 @@ dependencies = [
  "memchr",
  "regex-syntax",
  "thread_local",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae1ded71d66a4a97f5e961fd0cb25a5f366a42a41570d16a763a69c092c26ae4"
+dependencies = [
+ "byteorder",
+ "regex-syntax",
 ]
 
 [[package]]
@@ -3228,7 +3256,6 @@ name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "log",
  "rustc_data_structures",
  "rustc_index",
  "rustc_lexer",
@@ -3237,13 +3264,13 @@ dependencies = [
  "rustc_span",
  "scoped-tls",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
 name = "rustc_ast_lowering"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3255,6 +3282,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -3262,7 +3290,6 @@ name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
  "itertools 0.8.0",
- "log",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3272,16 +3299,17 @@ dependencies = [
  "rustc_parse",
  "rustc_session",
  "rustc_span",
+ "tracing",
 ]
 
 [[package]]
 name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_ast",
  "rustc_span",
  "rustc_target",
+ "tracing",
 ]
 
 [[package]]
@@ -3304,7 +3332,6 @@ dependencies = [
 name = "rustc_builtin_macros"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3318,6 +3345,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -3327,7 +3355,6 @@ dependencies = [
  "bitflags",
  "flate2",
  "libc",
- "log",
  "measureme",
  "rustc-demangle",
  "rustc_ast",
@@ -3347,6 +3374,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -3357,7 +3385,6 @@ dependencies = [
  "cc",
  "jobserver",
  "libc",
- "log",
  "memmap",
  "num_cpus",
  "pathdiff",
@@ -3377,6 +3404,7 @@ dependencies = [
  "rustc_symbol_mangling",
  "rustc_target",
  "tempfile",
+ "tracing",
 ]
 
 [[package]]
@@ -3391,7 +3419,6 @@ dependencies = [
  "jobserver",
  "lazy_static",
  "libc",
- "log",
  "measureme",
  "once_cell",
  "parking_lot 0.10.2",
@@ -3404,6 +3431,7 @@ dependencies = [
  "smallvec 1.4.0",
  "stable_deref_trait",
  "stacker",
+ "tracing",
  "winapi 0.3.8",
 ]
 
@@ -3411,10 +3439,8 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
- "env_logger 0.7.1",
  "lazy_static",
  "libc",
- "log",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_codegen_ssa",
@@ -3436,6 +3462,8 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "tracing",
+ "tracing-subscriber",
  "winapi 0.3.8",
 ]
 
@@ -3449,12 +3477,12 @@ version = "0.0.0"
 dependencies = [
  "annotate-snippets 0.8.0",
  "atty",
- "log",
  "rustc_data_structures",
  "rustc_serialize",
  "rustc_span",
  "termcolor",
  "termize",
+ "tracing",
  "unicode-width",
  "winapi 0.3.8",
 ]
@@ -3463,7 +3491,6 @@ dependencies = [
 name = "rustc_expand"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_ast",
  "rustc_ast_passes",
  "rustc_ast_pretty",
@@ -3477,6 +3504,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -3501,7 +3529,6 @@ name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
  "lazy_static",
- "log",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_index",
@@ -3510,6 +3537,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -3527,7 +3555,6 @@ dependencies = [
 name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
- "log",
  "rand 0.7.3",
  "rustc_ast",
  "rustc_data_structures",
@@ -3538,6 +3565,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "tracing",
 ]
 
 [[package]]
@@ -3552,7 +3580,6 @@ dependencies = [
 name = "rustc_infer"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
@@ -3566,6 +3593,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -3573,7 +3601,6 @@ name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
  "libc",
- "log",
  "once_cell",
  "rustc-rayon",
  "rustc_ast",
@@ -3609,6 +3636,7 @@ dependencies = [
  "rustc_typeck",
  "smallvec 1.4.0",
  "tempfile",
+ "tracing",
  "winapi 0.3.8",
 ]
 
@@ -3623,7 +3651,6 @@ dependencies = [
 name = "rustc_lint"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3637,6 +3664,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "tracing",
  "unicode-security",
 ]
 
@@ -3665,7 +3693,6 @@ version = "0.0.0"
 dependencies = [
  "flate2",
  "libc",
- "log",
  "memmap",
  "rustc_ast",
  "rustc_attr",
@@ -3682,6 +3709,7 @@ dependencies = [
  "rustc_target",
  "smallvec 1.4.0",
  "stable_deref_trait",
+ "tracing",
  "winapi 0.3.8",
 ]
 
@@ -3692,7 +3720,6 @@ dependencies = [
  "bitflags",
  "byteorder",
  "chalk-ir",
- "log",
  "measureme",
  "polonius-engine",
  "rustc-rayon-core",
@@ -3713,6 +3740,7 @@ dependencies = [
  "rustc_target",
  "scoped-tls",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -3721,7 +3749,6 @@ version = "0.0.0"
 dependencies = [
  "either",
  "itertools 0.8.0",
- "log",
  "log_settings",
  "polonius-engine",
  "rustc_apfloat",
@@ -3742,13 +3769,13 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
 name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -3765,6 +3792,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -3772,7 +3800,6 @@ name = "rustc_parse"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "log",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -3781,6 +3808,7 @@ dependencies = [
  "rustc_lexer",
  "rustc_session",
  "rustc_span",
+ "tracing",
  "unicode-normalization",
 ]
 
@@ -3796,7 +3824,6 @@ dependencies = [
 name = "rustc_passes"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -3808,6 +3835,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "tracing",
 ]
 
 [[package]]
@@ -3828,7 +3856,6 @@ dependencies = [
 name = "rustc_privacy"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
@@ -3837,13 +3864,13 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_typeck",
+ "tracing",
 ]
 
 [[package]]
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
- "log",
  "parking_lot 0.10.2",
  "rustc-rayon-core",
  "rustc_arena",
@@ -3853,6 +3880,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -3860,7 +3888,6 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "log",
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_lowering",
@@ -3877,13 +3904,13 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
 name = "rustc_save_analysis"
 version = "0.0.0"
 dependencies = [
- "log",
  "rls-data",
  "rls-span",
  "rustc_ast",
@@ -3896,6 +3923,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]
@@ -3912,7 +3940,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "getopts",
- "log",
  "num_cpus",
  "rustc_ast",
  "rustc_data_structures",
@@ -3922,6 +3949,7 @@ dependencies = [
  "rustc_serialize",
  "rustc_span",
  "rustc_target",
+ "tracing",
 ]
 
 [[package]]
@@ -3929,7 +3957,6 @@ name = "rustc_span"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
- "log",
  "md-5",
  "rustc_arena",
  "rustc_data_structures",
@@ -3938,6 +3965,7 @@ dependencies = [
  "rustc_serialize",
  "scoped-tls",
  "sha-1",
+ "tracing",
  "unicode-width",
 ]
 
@@ -3945,7 +3973,6 @@ dependencies = [
 name = "rustc_symbol_mangling"
 version = "0.0.0"
 dependencies = [
- "log",
  "punycode",
  "rustc-demangle",
  "rustc_ast",
@@ -3955,6 +3982,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "tracing",
 ]
 
 [[package]]
@@ -3962,12 +3990,12 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "log",
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "tracing",
 ]
 
 [[package]]
@@ -3984,7 +4012,6 @@ checksum = "b725dadae9fabc488df69a287f5a99c5eaf5d10853842a8a3dfac52476f544ee"
 name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -3999,6 +4026,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -4007,7 +4035,6 @@ version = "0.0.0"
 dependencies = [
  "chalk-ir",
  "chalk-solve",
- "log",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
@@ -4017,13 +4044,13 @@ dependencies = [
  "rustc_span",
  "rustc_trait_selection",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
 name = "rustc_ty"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4033,13 +4060,13 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
+ "tracing",
 ]
 
 [[package]]
 name = "rustc_typeck"
 version = "0.0.0"
 dependencies = [
- "log",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -4055,6 +4082,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "smallvec 1.4.0",
+ "tracing",
 ]
 
 [[package]]
@@ -4282,6 +4310,15 @@ dependencies = [
  "digest",
  "fake-simd",
  "opaque-debug",
+]
+
+[[package]]
+name = "sharded-slab"
+version = "0.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06d5a3f5166fb5b42a5439f2eee8b9de149e235961e3eb21c5808fc3ea17ff3e"
+dependencies = [
+ "lazy_static",
 ]
 
 [[package]]
@@ -4931,9 +4968,9 @@ dependencies = [
 
 [[package]]
 name = "tracing"
-version = "0.1.15"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a41f40ed0e162c911ac6fcb53ecdc8134c46905fdbbae8c50add462a538b495f"
+checksum = "f0aae59226cf195d8e74d4b34beae1859257efb4e5fed3f147d2dc2c7d372178"
 dependencies = [
  "cfg-if",
  "tracing-attributes",
@@ -4942,9 +4979,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99bbad0de3fd923c9c3232ead88510b783e5a4d16a6154adffa3d53308de984c"
+checksum = "f0693bf8d6f2bf22c690fc61a9d21ac69efdbb894a17ed596b9af0f01e64b84b"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
@@ -4953,11 +4990,27 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.10"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aa83a9a47081cd522c09c81b31aec2c9273424976f922ad61c053b58350b715"
+checksum = "b2734b5a028fa697686f16c6d18c2c6a3c7e41513f9a213abb6754c4acb3c8d7"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "tracing-subscriber"
+version = "0.2.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7b33f8b2ef2ab0c3778c12646d9c42a24f7772bee4cdafc72199644a9f58fdc"
+dependencies = [
+ "ansi_term 0.12.1",
+ "lazy_static",
+ "matchers",
+ "parking_lot 0.9.0",
+ "regex",
+ "sharded-slab",
+ "smallvec 1.4.0",
+ "tracing-core",
 ]
 
 [[package]]

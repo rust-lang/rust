@@ -822,11 +822,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx> {
         // FIXME: should we tell the user that there was a local which was never written to?
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
-            trace!("deallocating local");
             // All locals have a backing allocation, even if the allocation is empty
             // due to the local having ZST type.
             let ptr = ptr.assert_ptr();
-            trace!("{:?}", self.memory.dump_alloc(ptr.alloc_id));
+            trace!("deallocating local: {:?}", self.memory.dump_alloc(ptr.alloc_id));
             self.memory.deallocate_local(ptr)?;
         };
         Ok(())

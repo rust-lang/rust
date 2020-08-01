@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 rustc_serialize = { path = "../librustc_serialize" }
-log = "0.4"
+log = { package = "tracing", version = "0.1" }
 scoped-tls = "1.0"
 rustc_span = { path = "../librustc_span" }
 rustc_data_structures = { path = "../librustc_data_structures" }
