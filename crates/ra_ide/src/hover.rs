@@ -423,6 +423,12 @@ static MACROS: ([&str; 1], [&str; 1]) = (["macro"], ["!"]);
 
 impl Namespace {
     /// Extract the specified namespace from an intra-doc-link if one exists.
+    ///
+    /// # Examples
+    ///
+    /// * `struct MyStruct` -> `Namespace::Types`
+    /// * `panic!` -> `Namespace::Macros`
+    /// * `fn@from_intra_spec` -> `Namespace::Values`
     fn from_intra_spec(s: &str) -> Option<Self> {
         [
             (Namespace::Types, (TYPES.0.iter(), TYPES.1.iter())),
@@ -532,7 +538,7 @@ fn try_resolve_intra(
         get_doc_url(db, &krate)?
             .join(&format!("{}/", krate.display_name(db)?))
             .ok()?
-            .join(&path.segments.iter().map(|name| format!("{}", name)).join("/"))
+            .join(&path.segments.iter().map(|name| name.to_string()).join("/"))
             .ok()?
             .join(&get_symbol_filename(db, &Definition::ModuleDef(def))?)
             .ok()?
