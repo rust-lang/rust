@@ -21,7 +21,7 @@ SOURCE_FILE@0..57
                 IDENT@23..29 "format"
             COLON@29..30 ":"
             WHITESPACE@30..31 " "
-            POINTER_TYPE@31..40
+            PTR_TYPE@31..40
               STAR@31..32 "*"
               CONST_KW@32..37 "const"
               WHITESPACE@37..38 " "

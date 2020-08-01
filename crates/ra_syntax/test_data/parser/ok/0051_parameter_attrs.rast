@@ -96,7 +96,7 @@ SOURCE_FILE@0..519
                 IDENT@87..93 "format"
             COLON@93..94 ":"
             WHITESPACE@94..95 " "
-            POINTER_TYPE@95..104
+            PTR_TYPE@95..104
               STAR@95..96 "*"
               CONST_KW@96..101 "const"
               WHITESPACE@101..102 " "
@@ -163,7 +163,7 @@ SOURCE_FILE@0..519
                       R_BRACK@152..153 "]"
                     WHITESPACE@153..154 " "
                     PARAM@154..166
-                      REFERENCE_TYPE@154..166
+                      REF_TYPE@154..166
                         AMP@154..155 "&"
                         MUT_KW@155..158 "mut"
                         WHITESPACE@158..159 " "

@@ -7,7 +7,7 @@ SOURCE_FILE@0..113
     WHITESPACE@6..7 " "
     EQ@7..8 "="
     WHITESPACE@8..9 " "
-    FN_POINTER_TYPE@9..13
+    FN_PTR_TYPE@9..13
       FN_KW@9..11 "fn"
       PARAM_LIST@11..13
         L_PAREN@11..12 "("
@@ -22,7 +22,7 @@ SOURCE_FILE@0..113
     WHITESPACE@21..22 " "
     EQ@22..23 "="
     WHITESPACE@23..24 " "
-    FN_POINTER_TYPE@24..35
+    FN_PTR_TYPE@24..35
       UNSAFE_KW@24..30 "unsafe"
       WHITESPACE@30..31 " "
       FN_KW@31..33 "fn"
@@ -39,7 +39,7 @@ SOURCE_FILE@0..113
     WHITESPACE@43..44 " "
     EQ@44..45 "="
     WHITESPACE@45..46 " "
-    FN_POINTER_TYPE@46..68
+    FN_PTR_TYPE@46..68
       UNSAFE_KW@46..52 "unsafe"
       WHITESPACE@52..53 " "
       ABI@53..63
@@ -61,7 +61,7 @@ SOURCE_FILE@0..113
     WHITESPACE@76..77 " "
     EQ@77..78 "="
     WHITESPACE@78..79 " "
-    FN_POINTER_TYPE@79..111
+    FN_PTR_TYPE@79..111
       ABI@79..89
         EXTERN_KW@79..85 "extern"
         WHITESPACE@85..86 " "

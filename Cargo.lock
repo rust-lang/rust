@@ -279,9 +279,9 @@ checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 
 [[package]]
 name = "drop_bomb"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69b26e475fd29098530e709294e94e661974c851aed42512793f120fed4e199f"
+checksum = "9bda8e21c04aca2ae33ffc2fd8c23134f3cac46db123ba97bd9d3f3b8a4a85e1"
 
 [[package]]
 name = "either"
@@ -1622,9 +1622,9 @@ checksum = "53953d2d3a5ad81d9f844a32f14ebb121f50b650cd59d0ee2a07cf13c617efed"
 
 [[package]]
 name = "tracing"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbdf4ccd1652592b01286a5dbe1e2a77d78afaa34beadd9872a5f7396f92aaa9"
+checksum = "f0aae59226cf195d8e74d4b34beae1859257efb4e5fed3f147d2dc2c7d372178"
 dependencies = [
  "cfg-if",
  "tracing-attributes",
@@ -1644,9 +1644,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94ae75f0d28ae10786f3b1895c55fe72e79928fd5ccdebb5438c75e93fec178f"
+checksum = "b2734b5a028fa697686f16c6d18c2c6a3c7e41513f9a213abb6754c4acb3c8d7"
 dependencies = [
  "lazy_static",
 ]
@@ -1674,9 +1674,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4f5dd7095c2481b7b3cbed71c8de53085fb3542bc3c2b4c73cba43e8f11c7ba"
+checksum = "f7b33f8b2ef2ab0c3778c12646d9c42a24f7772bee4cdafc72199644a9f58fdc"
 dependencies = [
  "ansi_term",
  "chrono",
@@ -1708,9 +1708,9 @@ dependencies = [
 
 [[package]]
 name = "ungrammar"
-version = "0.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ee12e4891ab3acc2d95d5023022ace22020247bb8a8d1ece875a443f7dab37d"
+checksum = "c4e20e58a08ee1bcf8a4695cf74550cf054d6c489105f594beacb2c684210aad"
 
 [[package]]
 name = "unicode-bidi"
@@ -1833,9 +1833,9 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "write-json"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b3f9a784c809a99e38d2e825907617cb03bd880d5421153bc4548e9317f59d0"
+checksum = "06069a848f95fceae3e5e03c0ddc8cb78452b56654ee0c8e68f938cf790fb9e3"
 
 [[package]]
 name = "ws2_32-sys"

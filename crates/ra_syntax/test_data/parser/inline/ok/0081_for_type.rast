@@ -15,7 +15,7 @@ SOURCE_FILE@0..121
           LIFETIME@13..15 "\'a"
         R_ANGLE@15..16 ">"
       WHITESPACE@16..17 " "
-      FN_POINTER_TYPE@17..27
+      FN_PTR_TYPE@17..27
         FN_KW@17..19 "fn"
         PARAM_LIST@19..21
           L_PAREN@19..20 "("
@@ -45,7 +45,7 @@ SOURCE_FILE@0..121
           LIFETIME@42..44 "\'a"
         R_ANGLE@44..45 ">"
       WHITESPACE@45..46 " "
-      FN_POINTER_TYPE@46..80
+      FN_PTR_TYPE@46..80
         UNSAFE_KW@46..52 "unsafe"
         WHITESPACE@52..53 " "
         ABI@53..63
@@ -57,7 +57,7 @@ SOURCE_FILE@0..121
         PARAM_LIST@66..74
           L_PAREN@66..67 "("
           PARAM@67..73
-            REFERENCE_TYPE@67..73
+            REF_TYPE@67..73
               AMP@67..68 "&"
               LIFETIME@68..70 "\'a"
               WHITESPACE@70..71 " "
@@ -98,7 +98,7 @@ SOURCE_FILE@0..121
             GENERIC_ARG_LIST@110..119
               L_ANGLE@110..111 "<"
               TYPE_ARG@111..118
-                REFERENCE_TYPE@111..118
+                REF_TYPE@111..118
                   AMP@111..112 "&"
                   LIFETIME@112..114 "\'a"
                   WHITESPACE@114..115 " "

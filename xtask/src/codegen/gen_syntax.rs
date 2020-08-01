@@ -10,7 +10,7 @@ use std::{
 
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
-use ungrammar::{Grammar, Rule};
+use ungrammar::{rust_grammar, Grammar, Rule};
 
 use crate::{
     ast_src::{AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC},
@@ -19,9 +19,7 @@ use crate::{
 };
 
 pub fn generate_syntax(mode: Mode) -> Result<()> {
-    let grammar = include_str!("rust.ungram")
-        .parse::<Grammar>()
-        .unwrap_or_else(|err| panic!("\n    \x1b[91merror\x1b[0m: {}\n", err));
+    let grammar = rust_grammar();
     let ast = lower(&grammar);
 
     let syntax_kinds_file = project_root().join(codegen::SYNTAX_KINDS);
@@ -538,6 +536,7 @@ fn lower_enum(grammar: &Grammar, rule: &Rule) -> Option<Vec<String>> {
     for alternative in alternatives {
         match alternative {
             Rule::Node(it) => variants.push(grammar[*it].name.clone()),
+            Rule::Token(it) if grammar[*it].name == ";" => (),
             _ => return None,
         }
     }
@@ -591,8 +590,8 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
                     | "index"
                     | "base"
                     | "value"
-                    | "target_type"
-                    | "target_trait"
+                    | "trait"
+                    | "self_ty"
             );
             if manually_implemented {
                 return;

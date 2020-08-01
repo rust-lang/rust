@@ -102,7 +102,7 @@ SOURCE_FILE@0..88
                     PARAM_LIST@76..83
                       L_PAREN@76..77 "("
                       PARAM@77..82
-                        REFERENCE_TYPE@77..82
+                        REF_TYPE@77..82
                           AMP@77..78 "&"
                           PATH_TYPE@78..82
                             PATH@78..82

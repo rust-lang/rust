@@ -94,7 +94,7 @@ impl TypeRef {
                     .map(TypeRef::Path)
                     .unwrap_or(TypeRef::Error)
             }
-            ast::Type::PointerType(inner) => {
+            ast::Type::PtrType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
@@ -105,13 +105,13 @@ impl TypeRef {
             ast::Type::SliceType(inner) => {
                 TypeRef::Slice(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())))
             }
-            ast::Type::ReferenceType(inner) => {
+            ast::Type::RefType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(&ctx, inner.ty());
                 let mutability = Mutability::from_mutable(inner.mut_token().is_some());
                 TypeRef::Reference(Box::new(inner_ty), mutability)
             }
             ast::Type::InferType(_inner) => TypeRef::Placeholder,
-            ast::Type::FnPointerType(inner) => {
+            ast::Type::FnPtrType(inner) => {
                 let ret_ty = inner
                     .ret_type()
                     .and_then(|rt| rt.ty())

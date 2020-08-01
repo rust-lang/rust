@@ -117,7 +117,7 @@ fn pointer_type(p: &mut Parser) {
     };
 
     type_no_bounds(p);
-    m.complete(p, POINTER_TYPE);
+    m.complete(p, PTR_TYPE);
 }
 
 fn array_or_slice_type(p: &mut Parser) {
@@ -163,7 +163,7 @@ fn reference_type(p: &mut Parser) {
     p.eat(LIFETIME);
     p.eat(T![mut]);
     type_no_bounds(p);
-    m.complete(p, REFERENCE_TYPE);
+    m.complete(p, REF_TYPE);
 }
 
 // test placeholder_type
@@ -201,7 +201,7 @@ fn fn_pointer_type(p: &mut Parser) {
     // test fn_pointer_type_with_ret
     // type F = fn() -> ();
     opt_fn_ret_type(p);
-    m.complete(p, FN_POINTER_TYPE);
+    m.complete(p, FN_PTR_TYPE);
 }
 
 pub(super) fn for_binder(p: &mut Parser) {

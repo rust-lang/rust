@@ -15,7 +15,7 @@ SOURCE_FILE@0..239
           LIFETIME@18..20 "\'a"
         R_ANGLE@20..21 ">"
       WHITESPACE@21..22 " "
-      REFERENCE_TYPE@22..29
+      REF_TYPE@22..29
         AMP@22..23 "&"
         LIFETIME@23..25 "\'a"
         WHITESPACE@25..26 " "
@@ -44,7 +44,7 @@ SOURCE_FILE@0..239
       WHITESPACE@52..53 " "
       TUPLE_TYPE@53..63
         L_PAREN@53..54 "("
-        REFERENCE_TYPE@54..61
+        REF_TYPE@54..61
           AMP@54..55 "&"
           LIFETIME@55..57 "\'a"
           WHITESPACE@57..58 " "
@@ -107,12 +107,12 @@ SOURCE_FILE@0..239
             LIFETIME@124..126 "\'b"
           R_ANGLE@126..127 ">"
         WHITESPACE@127..128 " "
-        FN_POINTER_TYPE@128..148
+        FN_PTR_TYPE@128..148
           FN_KW@128..130 "fn"
           PARAM_LIST@130..148
             L_PAREN@130..131 "("
             PARAM@131..138
-              REFERENCE_TYPE@131..138
+              REF_TYPE@131..138
                 AMP@131..132 "&"
                 LIFETIME@132..134 "\'a"
                 WHITESPACE@134..135 " "
@@ -124,7 +124,7 @@ SOURCE_FILE@0..239
             COMMA@138..139 ","
             WHITESPACE@139..140 " "
             PARAM@140..147
-              REFERENCE_TYPE@140..147
+              REF_TYPE@140..147
                 AMP@140..141 "&"
                 LIFETIME@141..143 "\'b"
                 WHITESPACE@143..144 " "
@@ -178,12 +178,12 @@ SOURCE_FILE@0..239
                 LIFETIME@200..202 "\'c"
               R_ANGLE@202..203 ">"
             WHITESPACE@203..204 " "
-            FN_POINTER_TYPE@204..227
+            FN_PTR_TYPE@204..227
               FN_KW@204..206 "fn"
               PARAM_LIST@206..227
                 L_PAREN@206..207 "("
                 PARAM@207..212
-                  REFERENCE_TYPE@207..212
+                  REF_TYPE@207..212
                     AMP@207..208 "&"
                     LIFETIME@208..210 "\'a"
                     WHITESPACE@210..211 " "
@@ -195,7 +195,7 @@ SOURCE_FILE@0..239
                 COMMA@212..213 ","
                 WHITESPACE@213..214 " "
                 PARAM@214..219
-                  REFERENCE_TYPE@214..219
+                  REF_TYPE@214..219
                     AMP@214..215 "&"
                     LIFETIME@215..217 "\'b"
                     WHITESPACE@217..218 " "
@@ -207,7 +207,7 @@ SOURCE_FILE@0..239
                 COMMA@219..220 ","
                 WHITESPACE@220..221 " "
                 PARAM@221..226
-                  REFERENCE_TYPE@221..226
+                  REF_TYPE@221..226
                     AMP@221..222 "&"
                     LIFETIME@222..224 "\'c"
                     WHITESPACE@224..225 " "

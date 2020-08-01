@@ -546,7 +546,7 @@ fn highlight_element(
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
                 HighlightTag::Macro.into()
             }
-            T![*] if element.parent().and_then(ast::PointerType::cast).is_some() => {
+            T![*] if element.parent().and_then(ast::PtrType::cast).is_some() => {
                 HighlightTag::Keyword.into()
             }
             T![*] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {

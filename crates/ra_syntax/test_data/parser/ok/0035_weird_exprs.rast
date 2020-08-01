@@ -242,7 +242,7 @@ SOURCE_FILE@0..3813
                 IDENT@649..650 "x"
             COLON@650..651 ":"
             WHITESPACE@651..652 " "
-            REFERENCE_TYPE@652..663
+            REF_TYPE@652..663
               AMP@652..653 "&"
               PATH_TYPE@653..663
                 PATH@653..663
@@ -1579,7 +1579,7 @@ SOURCE_FILE@0..3813
               IDENT@2873..2878 "union"
             COLON@2878..2879 ":"
             WHITESPACE@2879..2880 " "
-            REFERENCE_TYPE@2880..2901
+            REF_TYPE@2880..2901
               AMP@2880..2881 "&"
               LIFETIME@2881..2887 "\'union"
               WHITESPACE@2887..2888 " "

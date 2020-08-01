@@ -7,7 +7,7 @@ SOURCE_FILE@0..55
     WHITESPACE@8..9 " "
     EQ@9..10 "="
     WHITESPACE@10..11 " "
-    FN_POINTER_TYPE@11..23
+    FN_PTR_TYPE@11..23
       FN_KW@11..13 "fn"
       PARAM_LIST@13..23
         L_PAREN@13..14 "("
@@ -33,7 +33,7 @@ SOURCE_FILE@0..55
     WHITESPACE@33..34 " "
     EQ@34..35 "="
     WHITESPACE@35..36 " "
-    FN_POINTER_TYPE@36..53
+    FN_PTR_TYPE@36..53
       FN_KW@36..38 "fn"
       PARAM_LIST@38..53
         L_PAREN@38..39 "("
