@@ -44,6 +44,7 @@ mod status;
 mod syntax_highlighting;
 mod syntax_tree;
 mod typing;
+mod link_rewrite;
 
 use std::sync::Arc;
 

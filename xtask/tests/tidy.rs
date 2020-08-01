@@ -53,6 +53,7 @@ fn rust_files_are_tidy() {
 fn check_licenses() {
     let expected = "
 0BSD OR MIT OR Apache-2.0
+Apache-2.0
 Apache-2.0 OR BSL-1.0
 Apache-2.0 OR MIT
 Apache-2.0/MIT
