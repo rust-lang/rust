@@ -487,14 +487,14 @@ BoxExpr =
 Type =
   ArrayType
 | DynTraitType
-| FnPointerType
+| FnPtrType
 | ForType
 | ImplTraitType
 | InferType
 | NeverType
 | ParenType
 | PathType
-| PointerType
+| PtrType
 | ReferenceType
 | SliceType
 | TupleType
@@ -511,7 +511,7 @@ PathType =
 TupleType =
   '(' fields:(Type (',' Type)* ','?)? ')'
 
-PointerType =
+PtrType =
   '*' ('const' | 'mut') Type
 
 ReferenceType =
@@ -526,7 +526,7 @@ SliceType =
 InferType =
   '_'
 
-FnPointerType =
+FnPtrType =
   'const'? 'async'? 'unsafe'? Abi? 'fn' ParamList RetType?
 
 ForType =
