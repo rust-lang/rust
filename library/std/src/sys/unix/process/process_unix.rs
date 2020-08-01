@@ -22,7 +22,7 @@ impl Command {
 
         let envp = self.capture_env();
 
-        self.problem().as_result()?;
+        self.problem()?;
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
@@ -108,8 +108,8 @@ impl Command {
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         let envp = self.capture_env();
 
-        if let Err(err) = self.problem().as_result() {
-            return err;
+        if let Err(err) = self.problem() {
+            return err.into();
         }
 
         match self.setup_io(default, true) {

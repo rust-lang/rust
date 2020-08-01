@@ -83,7 +83,7 @@ pub struct Command {
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
-    problem: Problem,
+    problem: Result<(), Problem>,
     closures: Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>>,
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
@@ -133,15 +133,21 @@ pub enum Stdio {
 }
 
 #[derive(Copy, Clone)]
+#[unstable(feature = "command_sized", issue = "74549")]
 pub enum Problem {
-    Ok,
     SawNul,
     Oversized,
 }
 
+/// A terrible interface for expressing how much size an arg takes up.
+#[unstable(feature = "command_sized", issue = "74549")]
+pub trait Arg {
+    fn arg_size(&self, force_quotes: bool) -> Result<usize, Problem>;
+}
+
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        let mut problem = Problem::Ok;
+        let mut problem = Ok(());
         let program = os2c(program, &mut problem);
         let program_size = program.to_bytes_with_nul().len();
         Command {
@@ -176,11 +182,14 @@ impl Command {
     #[allow(dead_code)]
     pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
         self.arg(arg);
-        self.problem.as_result()?;
+        self.problem?;
         if self.check_size(false)? == false {
-            self.problem = Problem::Oversized;
+            self.problem = Err(Problem::Oversized);
         }
-        self.problem.as_result()
+        match &self.problem {
+            Err(err) => Err(err.into()),
+            Ok(()) => Ok(()),
+        }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
@@ -206,7 +215,7 @@ impl Command {
         self.gid = Some(id);
     }
 
-    pub fn problem(&self) -> Problem {
+    pub fn problem(&self) -> Result<(), Problem> {
         self.problem
     }
     pub fn get_argv(&self) -> &Vec<*const c_char> {
@@ -325,9 +334,9 @@ impl Command {
     }
 }
 
-fn os2c(s: &OsStr, problem: &mut Problem) -> CString {
+fn os2c(s: &OsStr, problem: &mut Result<(), Problem>) -> CString {
     CString::new(s.as_bytes()).unwrap_or_else(|_e| {
-        *problem = Problem::SawNul;
+        *problem = Err(Problem::SawNul);
         CString::new("<string-with-nul>").unwrap()
     })
 }
@@ -358,7 +367,7 @@ impl CStringArray {
     }
 }
 
-fn construct_envp(env: BTreeMap<OsString, OsString>, problem: &mut Problem) -> CStringArray {
+fn construct_envp(env: BTreeMap<OsString, OsString>, problem: &mut Result<(), Problem>) -> CStringArray {
     let mut result = CStringArray::with_capacity(env.len());
     for (mut k, v) in env {
         // Reserve additional space for '=' and null terminator
@@ -370,7 +379,7 @@ fn construct_envp(env: BTreeMap<OsString, OsString>, problem: &mut Problem) -> C
         if let Ok(item) = CString::new(k.into_vec()) {
             result.push(item);
         } else {
-            *problem = Problem::SawNul;
+            *problem = Err(Problem::SawNul);
         }
     }
 
@@ -444,17 +453,33 @@ impl ChildStdio {
     }
 }
 
-impl Problem {
-    pub fn as_result(&self) -> io::Result<()> {
-        match *self {
-            Problem::Ok => Ok(()),
+#[unstable(feature = "command_sized", issue = "74549")]
+impl From<&Problem> for io::Error {
+    fn from(problem: &Problem) -> io::Error {
+        match *problem {
             Problem::SawNul => {
-                Err(io::Error::new(io::ErrorKind::InvalidInput, "nul byte found in provided data"))
+                io::Error::new(io::ErrorKind::InvalidInput, "nul byte found in provided data")
             }
             Problem::Oversized => {
-                Err(io::Error::new(io::ErrorKind::InvalidInput, "command exceeds maximum size"))
+                io::Error::new(io::ErrorKind::InvalidInput, "command exceeds maximum size")
             }
         }
+    }
+}
+
+#[unstable(feature = "command_sized", issue = "74549")]
+impl From<Problem> for io::Error {
+    fn from(problem: Problem) -> io::Error {
+        (&problem).into()
+    }
+}
+
+impl Arg for &OsStr {
+    fn arg_size(&self, _: bool) -> Result<usize, Problem> {
+        let mut nul_problem: Result<(), Problem> = Ok(());
+        let cstr = os2c(self, &mut nul_problem);
+        nul_problem?;
+        Ok(cstr.to_bytes_with_nul().len() + mem::size_of::<*const u8>())
     }
 }
 
