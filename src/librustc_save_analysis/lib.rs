@@ -702,7 +702,7 @@ impl<'tcx> SaveContext<'tcx> {
             Res::Def(HirDefKind::ConstParam, def_id) => {
                 Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(def_id) })
             }
-            Res::Def(HirDefKind::Ctor(_, ..), def_id) => {
+            Res::Def(HirDefKind::Ctor(..), def_id) => {
                 // This is a reference to a tuple struct or an enum variant where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct or enum variant itself.
