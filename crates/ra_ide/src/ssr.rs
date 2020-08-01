@@ -21,8 +21,8 @@ use ra_ssr::{MatchFinder, SsrError, SsrRule};
 // replacement occurs. For example if our replacement template is `foo::Bar` and we match some
 // code in the `foo` module, we'll insert just `Bar`.
 //
-// Method calls should generally be written in UFCS form. e.g. `foo::Bar::baz($s, $a)` will match
-// `$s.baz($a)`, provided the method call `baz` resolves to the method `foo::Bar::baz`.
+// Inherent method calls should generally be written in UFCS form. e.g. `foo::Bar::baz($s, $a)` will
+// match `$s.baz($a)`, provided the method call `baz` resolves to the method `foo::Bar::baz`.
 //
 // The scope of the search / replace will be restricted to the current selection if any, otherwise
 // it will apply to the whole workspace.
