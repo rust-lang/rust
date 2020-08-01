@@ -495,7 +495,7 @@ Type =
 | ParenType
 | PathType
 | PtrType
-| ReferenceType
+| RefType
 | SliceType
 | TupleType
 
@@ -514,7 +514,7 @@ TupleType =
 PtrType =
   '*' ('const' | 'mut') Type
 
-ReferenceType =
+RefType =
   '&' 'lifetime'? 'mut'? Type
 
 ArrayType =
