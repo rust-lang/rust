@@ -32,7 +32,7 @@ jobs:
         override: true
 
     - name: Compile
-      run: cargo test --no-run
+      run: cargo test --workspace --no-run
 
     - name: Test
-      run: cargo test
+      run: cargo test --workspace

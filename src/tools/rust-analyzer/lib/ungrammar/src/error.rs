@@ -11,21 +11,23 @@ pub struct Error {
     pub(crate) location: Option<Location>,
 }
 
-impl Error {
-    pub(crate) fn with_location(self, location: Location) -> Error {
-        Error {
-            location: Some(location),
-            ..self
-        }
-    }
-}
-
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(loc) = self.location {
             write!(f, "{}:{}: ", loc.line, loc.column)?
         }
         write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl Error {
+    pub(crate) fn with_location(self, location: Location) -> Error {
+        Error {
+            location: Some(location),
+            ..self
+        }
     }
 }
 
