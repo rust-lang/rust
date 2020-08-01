@@ -246,7 +246,9 @@ ExternItemList =
   '{' Attr* ExternItem* '}'
 
 ExternItem =
-  Fn | Static | MacroCall
+  Fn
+| MacroCall
+| Static
 
 GenericParamList =
   '<' (GenericParam (',' GenericParam)* ','?)? '>'
@@ -399,7 +401,7 @@ RecordExpr =
 RecordExprFieldList =
   '{'
     Attr*
-    fields:(RecordExprField (',' RecordExprField)* ','?)
+    fields:(RecordExprField (',' RecordExprField)* ','?)?
     ('..' spread:Expr)?
   '}'
 
@@ -485,15 +487,15 @@ BoxExpr =
 Type =
   ArrayType
 | DynTraitType
-| FnPointerType
+| FnPtrType
 | ForType
 | ImplTraitType
 | InferType
 | NeverType
 | ParenType
 | PathType
-| PointerType
-| ReferenceType
+| PtrType
+| RefType
 | SliceType
 | TupleType
 
@@ -509,10 +511,10 @@ PathType =
 TupleType =
   '(' fields:(Type (',' Type)* ','?)? ')'
 
-PointerType =
+PtrType =
   '*' ('const' | 'mut') Type
 
-ReferenceType =
+RefType =
   '&' 'lifetime'? 'mut'? Type
 
 ArrayType =
@@ -524,7 +526,7 @@ SliceType =
 InferType =
   '_'
 
-FnPointerType =
+FnPtrType =
   'const'? 'async'? 'unsafe'? Abi? 'fn' ParamList RetType?
 
 ForType =
@@ -584,7 +586,7 @@ RecordPat =
 
 RecordPatFieldList =
   '{'
-    fields:(RecordPatField (',' RecordPatField)* ','?)
+    fields:(RecordPatField (',' RecordPatField)* ','?)?
     '..'?
   '}'
 
