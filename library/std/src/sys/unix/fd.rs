@@ -27,33 +27,19 @@ const READ_LIMIT: usize = c_int::MAX as usize - 1;
 #[cfg(not(target_os = "macos"))]
 const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn max_iov() -> usize {
     static LIM: AtomicUsize = AtomicUsize::new(0);
 
     let mut lim = LIM.load(Ordering::Relaxed);
     if lim == 0 {
-        let ret = unsafe {
-            libc::sysconf(
-                #[cfg(target_os = "linux")]
-                libc::_SC_IOV_MAX,
-                #[cfg(target_os = "macos")]
-                libc::_SC_UIO_MAXIOV,
-            )
-        };
+        let ret = unsafe { libc::sysconf(libc::_SC_IOV_MAX) };
 
-        // 1024 is the default value on modern Linux systems
-        // and hopefully more useful than `c_int::MAX`.
-        lim = if ret > 0 { ret as usize } else { 1024 };
+        // 16 is the minimum value required by POSIX.
+        lim = if ret > 0 { ret as usize } else { 16 };
         LIM.store(lim, Ordering::Relaxed);
     }
 
     lim
-}
-
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
-fn max_iov() -> usize {
-    c_int::MAX as usize
 }
 
 impl FileDesc {
