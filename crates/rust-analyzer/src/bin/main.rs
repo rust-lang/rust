@@ -3,7 +3,7 @@
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
 mod args;
 
-use std::convert::TryFrom;
+use std::{convert::TryFrom, process};
 
 use lsp_server::Connection;
 use ra_project_model::ProjectManifest;
@@ -14,18 +14,20 @@ use rust_analyzer::{
 };
 use vfs::AbsPathBuf;
 
-use crate::args::HelpPrinted;
-
 #[cfg(all(feature = "mimalloc"))]
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-fn main() -> Result<()> {
+fn main() {
+    if let Err(err) = try_main() {
+        eprintln!("{}", err);
+        process::exit(101);
+    }
+}
+
+fn try_main() -> Result<()> {
     setup_logging()?;
-    let args = match args::Args::parse()? {
-        Ok(it) => it,
-        Err(HelpPrinted) => return Ok(()),
-    };
+    let args = args::Args::parse()?;
     match args.command {
         args::Command::RunServer => run_server()?,
         args::Command::ProcMacro => ra_proc_macro_srv::cli::run()?,
@@ -45,6 +47,7 @@ fn main() -> Result<()> {
             cli::search_for_patterns(patterns, debug_snippet)?;
         }
         args::Command::Version => println!("rust-analyzer {}", env!("REV")),
+        args::Command::Help => {}
     }
     Ok(())
 }
