@@ -1,8 +1,4 @@
-use std::collections::{HashMap, HashSet};
-use std::{
-    iter::{once, FromIterator},
-    sync::Mutex,
-};
+use std::iter::once;
 
 use hir::{
     db::DefDatabase, Adt, AsAssocItem, AsName, AssocItemContainer, AttrDef, Crate, Documentation,
@@ -10,7 +6,6 @@ use hir::{
     ModuleSource, Semantics,
 };
 use itertools::Itertools;
-use once_cell::sync::Lazy;
 use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::cmark;
 use ra_db::SourceDatabase;
@@ -402,10 +397,9 @@ fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> 
                 try_resolve_path(db, definition, &target).map(|target| (target, title.to_string()))
             });
 
-            if let Some((target, title)) = resolved {
-                (target, title)
-            } else {
-                (target.to_string(), title.to_string())
+            match resolved {
+                Some((target, title)) => (target, title),
+                None => (target.to_string(), title.to_string()),
             }
         }
     });
@@ -421,65 +415,61 @@ enum Namespace {
     Macros,
 }
 
-static NS_MAP: Lazy<
-    HashMap<Namespace, (HashSet<&'static &'static str>, HashSet<&'static &'static str>)>,
-> = Lazy::new(|| {
-    let mut map = HashMap::new();
-    map.insert(Namespace::Types, (HashSet::new(), HashSet::new()));
-    map.insert(
-        Namespace::Values,
-        (
-            HashSet::from_iter(
-                ["value", "function", "fn", "method", "const", "static", "mod", "module"].iter(),
-            ),
-            HashSet::from_iter(["()"].iter()),
-        ),
-    );
-    map.insert(
-        Namespace::Macros,
-        (HashSet::from_iter(["macro"].iter()), HashSet::from_iter(["!"].iter())),
-    );
-    map
-});
+static TYPES: ([&str; 7], [&str; 0]) =
+    (["type", "struct", "enum", "mod", "trait", "union", "module"], []);
+static VALUES: ([&str; 8], [&str; 1]) =
+    (["value", "function", "fn", "method", "const", "static", "mod", "module"], ["()"]);
+static MACROS: ([&str; 1], [&str; 1]) = (["macro"], ["!"]);
 
 impl Namespace {
     /// Extract the specified namespace from an intra-doc-link if one exists.
     fn from_intra_spec(s: &str) -> Option<Self> {
-        NS_MAP
-            .iter()
-            .filter(|(_ns, (prefixes, suffixes))| {
-                prefixes
-                    .iter()
-                    .map(|prefix| {
-                        s.starts_with(*prefix)
+        [
+            (Namespace::Types, (TYPES.0.iter(), TYPES.1.iter())),
+            (Namespace::Values, (VALUES.0.iter(), VALUES.1.iter())),
+            (Namespace::Macros, (MACROS.0.iter(), MACROS.1.iter())),
+        ]
+        .iter()
+        .filter(|(_ns, (prefixes, suffixes))| {
+            prefixes
+                .clone()
+                .map(|prefix| {
+                    s.starts_with(*prefix)
+                        && s.chars()
+                            .nth(prefix.len() + 1)
+                            .map(|c| c == '@' || c == ' ')
+                            .unwrap_or(false)
+                })
+                .any(|cond| cond)
+                || suffixes
+                    .clone()
+                    .map(|suffix| {
+                        s.starts_with(*suffix)
                             && s.chars()
-                                .nth(prefix.len() + 1)
+                                .nth(suffix.len() + 1)
                                 .map(|c| c == '@' || c == ' ')
                                 .unwrap_or(false)
                     })
                     .any(|cond| cond)
-                    || suffixes
-                        .iter()
-                        .map(|suffix| {
-                            s.starts_with(*suffix)
-                                && s.chars()
-                                    .nth(suffix.len() + 1)
-                                    .map(|c| c == '@' || c == ' ')
-                                    .unwrap_or(false)
-                        })
-                        .any(|cond| cond)
-            })
-            .map(|(ns, (_, _))| *ns)
-            .next()
+        })
+        .map(|(ns, (_, _))| *ns)
+        .next()
     }
 }
 
 // Strip prefixes, suffixes, and inline code marks from the given string.
 fn strip_prefixes_suffixes(mut s: &str) -> &str {
     s = s.trim_matches('`');
-    NS_MAP.iter().for_each(|(_, (prefixes, suffixes))| {
-        prefixes.iter().for_each(|prefix| s = s.trim_start_matches(*prefix));
-        suffixes.iter().for_each(|suffix| s = s.trim_end_matches(*suffix));
+
+    [
+        (TYPES.0.iter(), TYPES.1.iter()),
+        (VALUES.0.iter(), VALUES.1.iter()),
+        (MACROS.0.iter(), MACROS.1.iter()),
+    ]
+    .iter()
+    .for_each(|(prefixes, suffixes)| {
+        prefixes.clone().for_each(|prefix| s = s.trim_start_matches(*prefix));
+        suffixes.clone().for_each(|suffix| s = s.trim_end_matches(*suffix));
     });
     s.trim_start_matches("@").trim()
 }
@@ -493,6 +483,8 @@ fn try_resolve_intra(
     link_text: &str,
     link_target: &str,
 ) -> Option<(String, String)> {
+    eprintln!("resolving intra");
+
     // Set link_target for implied shortlinks
     let link_target =
         if link_target.is_empty() { link_text.trim_matches('`') } else { link_target };
@@ -551,6 +543,8 @@ fn try_resolve_intra(
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
 fn try_resolve_path(db: &RootDatabase, definition: &Definition, link: &str) -> Option<String> {
+    eprintln!("resolving path");
+
     if !link.contains("#") && !link.contains(".html") {
         return None;
     }

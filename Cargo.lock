@@ -1083,7 +1083,6 @@ dependencies = [
  "indexmap",
  "itertools",
  "log",
- "once_cell",
  "oorandom",
  "pulldown-cmark",
  "pulldown-cmark-to-cmark",
@@ -1103,6 +1102,7 @@ dependencies = [
  "rustc-hash",
  "stdx",
  "test_utils",
+ "url",
 ]
 
 [[package]]
