@@ -226,7 +226,7 @@ pub unsafe trait AllocRef {
     /// Behaves like `grow`, but also ensures that the new contents are set to zero before being
     /// returned.
     ///
-    /// The memory block will contain the following contents after a successful call to 
+    /// The memory block will contain the following contents after a successful call to
     /// `grow_zeroed`:
     ///   * Bytes `0..layout.size()` are preserved from the original allocation.
     ///   * Bytes `layout.size()..old_size` will either be preserved or zeroed,
