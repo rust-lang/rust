@@ -19,7 +19,7 @@ log = "0.4.8"
 rustc-hash = "1.1.0"
 url = "*"
 pulldown-cmark-to-cmark = "4.0.2"
-pulldown-cmark = "0.7.0"
+pulldown-cmark = {version = "0.7.2", default-features = false}
 oorandom = "11.1.2"
 
 stdx = { path = "../stdx" }
