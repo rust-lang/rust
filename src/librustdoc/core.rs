@@ -470,6 +470,10 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 sess.time("missing_docs", || {
                     rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);
                 });
+                for &module in tcx.hir().krate().modules.keys() {
+                    let local_def_id = tcx.hir().local_def_id(module);
+                    tcx.ensure().check_mod_attrs(local_def_id);
+                }
 
                 let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
                 // Convert from a HirId set to a DefId set since we don't always have easy access
