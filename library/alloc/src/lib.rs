@@ -75,6 +75,7 @@
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
 #![feature(allocator_api)]
+#![feature(array_chunks)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(box_patterns)]

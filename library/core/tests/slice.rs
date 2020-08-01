@@ -474,6 +474,97 @@ fn test_chunks_exact_mut_zip() {
 }
 
 #[test]
+fn test_array_chunks_infer() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, -4];
+    let c = v.array_chunks();
+    for &[a, b, c] in c {
+        assert_eq!(a + b + c, 3);
+    }
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let total = v2.array_chunks().map(|&[a, b]| a * b).sum::<i32>();
+    assert_eq!(total, 2 * 3 + 4 * 5);
+}
+
+#[test]
+fn test_array_chunks_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks::<3>();
+    assert_eq!(c.count(), 2);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks::<2>();
+    assert_eq!(c2.count(), 2);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.array_chunks::<2>();
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_array_chunks_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks::<2>();
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[4, 5]);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let mut c2 = v2.array_chunks::<3>();
+    assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_array_chunks_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.array_chunks::<2>();
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.array_chunks::<3>();
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c3 = v3.array_chunks::<10>();
+    assert_eq!(c3.nth_back(0), None);
+}
+
+#[test]
+fn test_array_chunks_last() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.array_chunks::<2>();
+    assert_eq!(c.last().unwrap(), &[4, 5]);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.array_chunks::<2>();
+    assert_eq!(c2.last().unwrap(), &[2, 3]);
+}
+
+#[test]
+fn test_array_chunks_remainder() {
+    let v: &[i32] = &[0, 1, 2, 3, 4];
+    let c = v.array_chunks::<2>();
+    assert_eq!(c.remainder(), &[4]);
+}
+
+#[test]
+fn test_array_chunks_zip() {
+    let v1: &[i32] = &[0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let res = v1
+        .array_chunks::<2>()
+        .zip(v2.array_chunks::<2>())
+        .map(|(a, b)| a.iter().sum::<i32>() + b.iter().sum::<i32>())
+        .collect::<Vec<_>>();
+    assert_eq!(res, vec![14, 22]);
+}
+
+#[test]
 fn test_rchunks_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.rchunks(3);
