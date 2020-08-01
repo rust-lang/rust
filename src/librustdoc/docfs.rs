@@ -74,9 +74,9 @@ impl DocFS {
                     })
                 });
             });
-            Ok(())
         } else {
-            Ok(try_err!(fs::write(&path, contents), path))
+            try_err!(fs::write(&path, contents), path);
         }
+        Ok(())
     }
 }
