@@ -5,6 +5,8 @@
 use crate::os::windows::io::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use crate::process;
 use crate::sys;
+#[unstable(feature = "windows_raw_cmdline", issue = "74549")]
+pub use crate::sys::process::{Arg, RawArg};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
@@ -102,12 +104,21 @@ pub trait CommandExt {
     /// [1]: https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
     #[stable(feature = "windows_process_extensions", since = "1.16.0")]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
+
+    /// Pass an argument with custom escape rules.
+    #[unstable(feature = "windows_raw_cmdline", issue = "74549")]
+    fn arg_ext(&mut self, arg: impl Arg) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
 impl CommandExt for process::Command {
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command {
         self.as_inner_mut().creation_flags(flags);
+        self
+    }
+
+    fn arg_ext(&mut self, arg: impl Arg) -> &mut process::Command {
+        self.as_inner_mut().arg_ext(arg);
         self
     }
 }

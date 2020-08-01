@@ -103,6 +103,8 @@ pub enum Problem {
     Oversized,
 }
 
+/// Argument type with no escaping.
+#[unstable(feature = "windows_raw_cmdline", issue = "74549")]
 pub struct RawArg<'a>(&'a OsStr);
 
 impl Command {
@@ -123,15 +125,15 @@ impl Command {
     }
 
     #[allow(dead_code)]
-    pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
-        self.arg(arg);
+    pub fn maybe_arg_ext(&mut self, arg: impl Arg) -> io::Result<()> {
+        self.arg_ext(arg);
 
         match &self.problem {
             Some(err) => Err(err.into()),
             None => Ok(()),
         }
     }
-    pub fn arg(&mut self, arg: &OsStr) {
+    pub fn arg_ext(&mut self, arg: impl Arg) {
         if self.problem.is_some() {
             return;
         }
@@ -152,6 +154,13 @@ impl Command {
                 }
             }
         };
+    }
+    #[allow(dead_code)]
+    pub fn maybe_arg(&mut self, arg: &OsStr) -> io::Result<()> {
+        self.maybe_arg_ext(arg)
+    }
+    pub fn arg(&mut self, arg: &OsStr) {
+        self.arg_ext(arg)
     }
     pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
@@ -203,7 +212,8 @@ impl Command {
         let program = rprogram.as_ref().unwrap_or(&self.program);
 
         // Prepare and terminate the application name and the cmdline
-        // XXX: this won't work for 16-bit, might be preferable to do a extend_from_slice
+        // FIXME: this won't work for 16-bit, which requires the program
+        // to be put on the cmdline. Do an extend_from_slice?
         let mut program_str: Vec<u16> = Vec::new();
         program.as_os_str().append_to(&mut program_str, true)?;
         program_str.push(0);
@@ -387,9 +397,13 @@ impl From<Problem> for Error {
     }
 }
 
+/// Types that can be appended to a Windows command-line. Used for custom escaping.
+#[unstable(feature = "windows_raw_cmdline", issue = "74549")]
 pub trait Arg {
+    ///
     fn append_to(&self, cmd: &mut Vec<u16>, force_quotes: bool) -> Result<usize, Problem>;
     fn arg_len(&self, force_quotes: bool) -> Result<usize, Problem>;
+    fn to_os_string(&self) -> OsString;
 }
 
 impl Arg for &OsStr {
@@ -398,6 +412,9 @@ impl Arg for &OsStr {
     }
     fn arg_len(&self, force_quotes: bool) -> Result<usize, Problem> {
         append_arg(&mut None, &self, force_quotes)
+    }
+    fn to_os_string(&self) -> OsString {
+        OsStr::to_os_string(&self)
     }
 }
 
@@ -409,6 +426,9 @@ impl Arg for RawArg<'_> {
     }
     fn arg_len(&self, _: bool) -> Result<usize, Problem> {
         Ok(self.0.encode_wide().count())
+    }
+    fn to_os_string(&self) -> OsString {
+        OsStr::to_os_string(&(self.0))
     }
 }
 
