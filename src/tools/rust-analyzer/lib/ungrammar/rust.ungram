@@ -401,7 +401,7 @@ RecordExpr =
 RecordExprFieldList =
   '{'
     Attr*
-    fields:(RecordExprField (',' RecordExprField)* ','?)
+    fields:(RecordExprField (',' RecordExprField)* ','?)?
     ('..' spread:Expr)?
   '}'
 
@@ -586,7 +586,7 @@ RecordPat =
 
 RecordPatFieldList =
   '{'
-    fields:(RecordPatField (',' RecordPatField)* ','?)
+    fields:(RecordPatField (',' RecordPatField)* ','?)?
     '..'?
   '}'
 
