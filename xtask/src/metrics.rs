@@ -1,7 +1,6 @@
 use std::{
     collections::BTreeMap,
     env,
-    fmt::{self, Write as _},
     io::Write as _,
     path::Path,
     time::{Instant, SystemTime, UNIX_EPOCH},
@@ -127,40 +126,21 @@ impl Metrics {
         self.metrics.insert(name.into(), (value, unit));
     }
 
-    fn json(&self) -> Json {
-        let mut json = Json::default();
-        self.to_json(&mut json);
-        json
+    fn json(&self) -> String {
+        let mut buf = String::new();
+        self.to_json(write_json::object(&mut buf));
+        buf
     }
-    fn to_json(&self, json: &mut Json) {
-        json.begin_object();
-        {
-            json.field("host");
-            self.host.to_json(json);
 
-            json.field("timestamp");
-            let timestamp = self.timestamp.duration_since(UNIX_EPOCH).unwrap();
-            json.number(timestamp.as_secs() as f64);
-
-            json.field("revision");
-            json.string(&self.revision);
-
-            json.field("metrics");
-            json.begin_object();
-            {
-                for (k, (value, unit)) in &self.metrics {
-                    json.field(k);
-                    json.begin_array();
-                    {
-                        json.number(*value as f64);
-                        json.string(unit);
-                    }
-                    json.end_array();
-                }
-            }
-            json.end_object()
+    fn to_json(&self, mut obj: write_json::Object<'_>) {
+        self.host.to_json(obj.object("host"));
+        let timestamp = self.timestamp.duration_since(UNIX_EPOCH).unwrap();
+        obj.number("timestamp", timestamp.as_secs() as f64);
+        obj.string("revision", &self.revision);
+        let mut metrics = obj.object("metrics");
+        for (k, (value, unit)) in &self.metrics {
+            metrics.array(k).number(*value as f64).string(unit);
         }
-        json.end_object();
     }
 }
 
@@ -189,91 +169,7 @@ impl Host {
             Ok(line[field.len()..].trim().to_string())
         }
     }
-    fn to_json(&self, json: &mut Json) {
-        json.begin_object();
-        {
-            json.field("os");
-            json.string(&self.os);
-
-            json.field("cpu");
-            json.string(&self.cpu);
-
-            json.field("mem");
-            json.string(&self.mem);
-        }
-        json.end_object();
-    }
-}
-
-struct State {
-    obj: bool,
-    first: bool,
-}
-
-#[derive(Default)]
-struct Json {
-    stack: Vec<State>,
-    buf: String,
-}
-
-impl Json {
-    fn begin_object(&mut self) {
-        self.stack.push(State { obj: true, first: true });
-        self.buf.push('{');
-    }
-    fn end_object(&mut self) {
-        self.stack.pop();
-        self.buf.push('}')
-    }
-    fn begin_array(&mut self) {
-        self.stack.push(State { obj: false, first: true });
-        self.buf.push('[');
-    }
-    fn end_array(&mut self) {
-        self.stack.pop();
-        self.buf.push(']')
-    }
-    fn field(&mut self, name: &str) {
-        self.object_comma();
-        self.string_token(name);
-        self.buf.push(':');
-    }
-    fn string(&mut self, value: &str) {
-        self.array_comma();
-        self.string_token(value);
-    }
-    fn string_token(&mut self, value: &str) {
-        self.buf.push('"');
-        self.buf.extend(value.escape_default());
-        self.buf.push('"');
-    }
-    fn number(&mut self, value: f64) {
-        self.array_comma();
-        write!(self.buf, "{}", value).unwrap();
-    }
-
-    fn array_comma(&mut self) {
-        let state = self.stack.last_mut().unwrap();
-        if state.obj {
-            return;
-        }
-        if !state.first {
-            self.buf.push(',');
-        }
-        state.first = false;
-    }
-
-    fn object_comma(&mut self) {
-        let state = self.stack.last_mut().unwrap();
-        if !state.first {
-            self.buf.push(',');
-        }
-        state.first = false;
-    }
-}
-
-impl fmt::Display for Json {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.buf)
+    fn to_json(&self, mut obj: write_json::Object<'_>) {
+        obj.string("os", &self.os).string("cpu", &self.cpu).string("mem", &self.mem);
     }
 }
