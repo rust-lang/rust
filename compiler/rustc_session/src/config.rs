@@ -485,6 +485,10 @@ impl Externs {
     pub fn iter(&self) -> BTreeMapIter<'_, String, ExternEntry> {
         self.0.iter()
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 impl ExternEntry {
