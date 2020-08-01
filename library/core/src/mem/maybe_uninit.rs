@@ -336,9 +336,8 @@ impl<T> MaybeUninit<T> {
     /// assert_eq!(x, (0, false));
     /// ```
     ///
-    /// *Incorrect* usage of this function: assuming zero filled memory is initialized,
-    /// where some fields cannot hold 0 as a valid value, without overwriting with a
-    /// valid bit-pattern.
+    /// *Incorrect* usage of this function: calling `x.zeroed().assume_init()`
+    /// when `0` is not a valid bit-pattern for the type:
     ///
     /// ```rust,no_run
     /// use std::mem::MaybeUninit;
