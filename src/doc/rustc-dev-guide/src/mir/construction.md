@@ -1,4 +1,4 @@
-# HAIR and MIR construction
+# THIR and MIR construction
 
 The lowering of [HIR] to [MIR] occurs for the following (probably incomplete)
 list of items:
@@ -13,19 +13,19 @@ list of items:
 
 The lowering is triggered by calling the [`mir_built`] query.
 There is an intermediate representation
-between [HIR] and [MIR] called the [HAIR] that is only used during the lowering.
-The [HAIR]'s most important feature is that the various adjustments (which happen
+between [HIR] and [MIR] called the [THIR] that is only used during the lowering.
+The [THIR]'s most important feature is that the various adjustments (which happen
 without explicit syntax) like coercions, autoderef, autoref and overloaded method
 calls have become explicit casts, deref operations, reference expressions or
 concrete function calls.
 
-The [HAIR] has datatypes that mirror the [HIR] datatypes, but instead of e.g. `-x`
-being a `hair::ExprKind::Neg(hair::Expr)` it is a `hair::ExprKind::Neg(hir::Expr)`.
-This shallowness enables the `HAIR` to represent all datatypes that [HIR] has, but
+The [THIR] has datatypes that mirror the [HIR] datatypes, but instead of e.g. `-x`
+being a `thir::ExprKind::Neg(thir::Expr)` it is a `thir::ExprKind::Neg(hir::Expr)`.
+This shallowness enables the `THIR` to represent all datatypes that [HIR] has, but
 without having to create an in-memory copy of the entire [HIR].
 [MIR] lowering will first convert the topmost expression from
-[HIR] to [HAIR] (in [`rustc_mir_build::hair::cx::expr`]) and then process
-the [HAIR] expressions recursively.
+[HIR] to [THIR] (in [`rustc_mir_build::thir::cx::expr`]) and then process
+the [THIR] expressions recursively.
 
 The lowering creates local variables for every argument as specified in the signature.
 Next it creates local variables for every binding specified (e.g. `(a, b): (i32, String)`)
@@ -152,7 +152,7 @@ case of `enum`s.
 
 [MIR]: ./index.html
 [HIR]: ../hir.html
-[HAIR]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/hair/index.html
+[THIR]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/index.html
 
-[`rustc_mir_build::hair::cx::expr`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/hair/cx/expr/index.html
+[`rustc_mir_build::thir::cx::expr`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/cx/expr/index.html
 [`mir_built`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/build/fn.mir_built.html

@@ -80,7 +80,7 @@
     - [Lowering AST to HIR](./lowering.md)
     - [Debugging](./hir-debugging.md)
 - [The MIR (Mid-level IR)](./mir/index.md)
-    - [HAIR and MIR construction](./mir/construction.md)
+    - [THIR and MIR construction](./mir/construction.md)
     - [MIR visitor and traversal](./mir/visitor.md)
     - [MIR passes: getting the MIR for a function](./mir/passes.md)
 - [Closure expansion](./closure.md)

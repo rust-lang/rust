@@ -55,7 +55,7 @@ we'll talk about that later.
     - `stmt.rs`
 - This naming scheme is used across many compiler stages. You will find
   either a file or directory with the same name across the parsing, lowering,
-  type checking, HAIR lowering, and MIR building sources.
+  type checking, THIR lowering, and MIR building sources.
 - Macro expansion, AST validation, name resolution, and early linting takes place
   during this stage of the compile process.
 - The parser uses the standard `DiagnosticBuilder` API for error handling, but we
@@ -69,8 +69,8 @@ we'll talk about that later.
 - **TODO: Maybe some other things are done here? I think initial type checking
   happens here? And trait solving?**
 - The HIR is then [lowered to Mid-Level Intermediate Representation (MIR)][mir].
-  - Along the way, we construct the HAIR, which is an even more desugared HIR.
-    HAIR is used for pattern and exhaustiveness checking. It is also more
+  - Along the way, we construct the THIR, which is an even more desugared HIR.
+    THIR is used for pattern and exhaustiveness checking. It is also more
     convenient to convert into MIR than HIR is.
 - The MIR is used for [borrow checking].
 - We (want to) do [many optimizations on the MIR][mir-opt] because it is still
@@ -187,10 +187,10 @@ for different purposes:
 - High-level IR (HIR): This is a sort of desugared AST. It's still close
   to what the user wrote syntactically, but it includes some implicit things
   such as some elided lifetimes, etc. This IR is amenable to type checking.
-- HAIR: This is an intermediate between HIR and MIR. It is like the HIR but it
-  is fully typed and a bit more desugared (e.g. method calls and implicit
+- Typed HIR (THIR): This is an intermediate between HIR and MIR. It is like the HIR
+  but it is fully typed and a bit more desugared (e.g. method calls and implicit
   dereferences are made fully explicit). Moreover, it is easier to lower to MIR
-  from HAIR than from HIR.
+  from THIR than from HIR.
 - Middle-level IR (MIR): This IR is basically a Control-Flow Graph (CFG). A CFG
   is a type of diagram that shows the basic blocks of a program and how control
   flow can go between them. Likewise, MIR also has a bunch of basic blocks with
