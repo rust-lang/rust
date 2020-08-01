@@ -2,6 +2,7 @@
 
 use crate::cmp;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
+use crate::lazy::SyncOnceCell;
 use crate::mem;
 use crate::sys::cvt;
 use crate::sys_common::AsInner;
@@ -28,18 +29,22 @@ const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 fn max_iov() -> c_int {
-    let ret = unsafe {
-        libc::sysconf(
-            #[cfg(target_os = "linux")]
-            libc::_SC_IOV_MAX,
-            #[cfg(target_os = "macos")]
-            libc::_SC_UIO_MAXIOV,
-        )
-    };
+    static LIM: SyncOnceCell<c_int> = SyncOnceCell::new();
 
-    // 1024 is the default value on modern Linux systems
-    // and hopefully more useful than `c_int::MAX`.
-    if ret > 0 { ret as c_int } else { 1024 }
+    *LIM.get_or_init(|| {
+        let ret = unsafe {
+            libc::sysconf(
+                #[cfg(target_os = "linux")]
+                libc::_SC_IOV_MAX,
+                #[cfg(target_os = "macos")]
+                libc::_SC_UIO_MAXIOV,
+            )
+        };
+
+        // 1024 is the default value on modern Linux systems
+        // and hopefully more useful than `c_int::MAX`.
+        if ret > 0 { ret as c_int } else { 1024 }
+    })
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
