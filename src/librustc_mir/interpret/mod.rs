@@ -12,6 +12,7 @@ mod place;
 mod step;
 mod terminator;
 mod traits;
+mod util;
 mod validity;
 mod visitor;
 

@@ -8,11 +8,14 @@ use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
 use rustc_target::abi::{Integer, LayoutOf, Variants};
 
-use super::{truncate, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy};
+use super::{
+    truncate, util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy,
+    PlaceTy,
+};
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
@@ -47,9 +50,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 match src.layout.ty.kind {
                     ty::FnDef(def_id, substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
-                        if src.layout.ty.needs_subst() {
-                            throw_inval!(TooGeneric);
-                        }
+                        ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
 
                         if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
                             span_bug!(
@@ -89,9 +90,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 match src.layout.ty.kind {
                     ty::Closure(def_id, substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
-                        if src.layout.ty.needs_subst() {
-                            throw_inval!(TooGeneric);
-                        }
+                        ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
 
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
