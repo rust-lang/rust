@@ -2,8 +2,8 @@
 
 use crate::cmp;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
-use crate::lazy::SyncOnceCell;
 use crate::mem;
+use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::cvt;
 use crate::sys_common::AsInner;
 
@@ -28,10 +28,11 @@ const READ_LIMIT: usize = c_int::MAX as usize - 1;
 const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
-fn max_iov() -> c_int {
-    static LIM: SyncOnceCell<c_int> = SyncOnceCell::new();
+fn max_iov() -> usize {
+    static LIM: AtomicUsize = AtomicUsize::new(0);
 
-    *LIM.get_or_init(|| {
+    let mut lim = LIM.load(Ordering::Relaxed);
+    if lim == 0 {
         let ret = unsafe {
             libc::sysconf(
                 #[cfg(target_os = "linux")]
@@ -43,13 +44,16 @@ fn max_iov() -> c_int {
 
         // 1024 is the default value on modern Linux systems
         // and hopefully more useful than `c_int::MAX`.
-        if ret > 0 { ret as c_int } else { 1024 }
-    })
+        lim = if ret > 0 { ret as usize } else { 1024 };
+        LIM.store(lim, Ordering::Relaxed);
+    }
+
+    lim
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-fn max_iov() -> c_int {
-    c_int::MAX
+fn max_iov() -> usize {
+    c_int::MAX as usize
 }
 
 impl FileDesc {
@@ -80,7 +84,7 @@ impl FileDesc {
             libc::readv(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov() as usize) as c_int,
+                cmp::min(bufs.len(), max_iov()) as c_int,
             )
         })?;
         Ok(ret as usize)
@@ -137,7 +141,7 @@ impl FileDesc {
             libc::writev(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov() as usize) as c_int,
+                cmp::min(bufs.len(), max_iov()) as c_int,
             )
         })?;
         Ok(ret as usize)
