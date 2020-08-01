@@ -69,9 +69,9 @@ impl DocFS {
             let sender = self.errors.clone().expect("can't write after closing");
             rayon::spawn(move || {
                 fs::write(&path, contents).unwrap_or_else(|e| {
-                    sender
-                        .send(format!("\"{}\": {}", path.display(), e))
-                        .expect(&format!("failed to send error on \"{}\"", path.display()));
+                    sender.send(format!("\"{}\": {}", path.display(), e)).unwrap_or_else(|_| {
+                        panic!("failed to send error on \"{}\"", path.display())
+                    })
                 });
             });
             Ok(())
