@@ -565,8 +565,8 @@ mod prim_array {}
 ///
 /// *[See also the `std::slice` module](slice/index.html).*
 ///
-/// Slices are a view into a block of memory represented as a pointer and a
-/// length.
+/// A slice is any pointer/reference to a block of memory. They are represented
+/// as a regular pointer and a length.
 ///
 /// ```
 /// // slicing a Vec
@@ -586,6 +586,19 @@ mod prim_array {}
 /// let x = &mut x[..]; // Take a full slice of `x`.
 /// x[1] = 7;
 /// assert_eq!(x, &[1, 7, 3]);
+/// ```
+///
+/// As slices store the length of the sequence they refer to, they have twice
+/// the size of pointers to [`Sized`](marker/trait.Sized.html) types.
+/// Also see the reference on
+/// [dynamically sized types](../reference/dynamically-sized-types.html)
+///
+/// ```
+/// let pointer_size = std::mem::size_of::<&u8>();
+/// assert_eq!(2 * pointer_size, std::mem::size_of::<&[u8]>());
+/// assert_eq!(2 * pointer_size, std::mem::size_of::<*const [u8]>());
+/// assert_eq!(2 * pointer_size, std::mem::size_of::<Box<[u8]>>());
+/// assert_eq!(2 * pointer_size, std::mem::size_of::<Rc<[u8]>>());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice {}
