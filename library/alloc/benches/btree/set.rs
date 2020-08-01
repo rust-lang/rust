@@ -50,27 +50,31 @@ macro_rules! set_bench {
     };
 }
 
+fn slim_set(n: usize) -> BTreeSet<usize> {
+    (0..n).collect::<BTreeSet<_>>()
+}
+
 #[bench]
 pub fn clone_100(b: &mut Bencher) {
-    let src = pos(100);
+    let src = slim_set(100);
     b.iter(|| src.clone())
 }
 
 #[bench]
 pub fn clone_100_and_clear(b: &mut Bencher) {
-    let src = pos(100);
+    let src = slim_set(100);
     b.iter(|| src.clone().clear())
 }
 
 #[bench]
 pub fn clone_100_and_drain_all(b: &mut Bencher) {
-    let src = pos(100);
+    let src = slim_set(100);
     b.iter(|| src.clone().drain_filter(|_| true).count())
 }
 
 #[bench]
 pub fn clone_100_and_drain_half(b: &mut Bencher) {
-    let src = pos(100);
+    let src = slim_set(100);
     b.iter(|| {
         let mut set = src.clone();
         assert_eq!(set.drain_filter(|i| i % 2 == 0).count(), 100 / 2);
@@ -80,13 +84,13 @@ pub fn clone_100_and_drain_half(b: &mut Bencher) {
 
 #[bench]
 pub fn clone_100_and_into_iter(b: &mut Bencher) {
-    let src = pos(100);
+    let src = slim_set(100);
     b.iter(|| src.clone().into_iter().count())
 }
 
 #[bench]
 pub fn clone_100_and_pop_all(b: &mut Bencher) {
-    let src = pos(100);
+    let src = slim_set(100);
     b.iter(|| {
         let mut set = src.clone();
         while set.pop_first().is_some() {}
@@ -96,11 +100,12 @@ pub fn clone_100_and_pop_all(b: &mut Bencher) {
 
 #[bench]
 pub fn clone_100_and_remove_all(b: &mut Bencher) {
-    let src = pos(100);
+    let src = slim_set(100);
     b.iter(|| {
         let mut set = src.clone();
         while let Some(elt) = set.iter().copied().next() {
-            set.remove(&elt);
+            let ok = set.remove(&elt);
+            debug_assert!(ok);
         }
         set
     });
@@ -108,11 +113,12 @@ pub fn clone_100_and_remove_all(b: &mut Bencher) {
 
 #[bench]
 pub fn clone_100_and_remove_half(b: &mut Bencher) {
-    let src = pos(100);
+    let src = slim_set(100);
     b.iter(|| {
         let mut set = src.clone();
-        for i in (2..=100 as i32).step_by(2) {
-            set.remove(&i);
+        for i in (0..100).step_by(2) {
+            let ok = set.remove(&i);
+            debug_assert!(ok);
         }
         assert_eq!(set.len(), 100 / 2);
         set
@@ -121,25 +127,25 @@ pub fn clone_100_and_remove_half(b: &mut Bencher) {
 
 #[bench]
 pub fn clone_10k(b: &mut Bencher) {
-    let src = pos(10_000);
+    let src = slim_set(10_000);
     b.iter(|| src.clone())
 }
 
 #[bench]
 pub fn clone_10k_and_clear(b: &mut Bencher) {
-    let src = pos(10_000);
+    let src = slim_set(10_000);
     b.iter(|| src.clone().clear())
 }
 
 #[bench]
 pub fn clone_10k_and_drain_all(b: &mut Bencher) {
-    let src = pos(10_000);
+    let src = slim_set(10_000);
     b.iter(|| src.clone().drain_filter(|_| true).count())
 }
 
 #[bench]
 pub fn clone_10k_and_drain_half(b: &mut Bencher) {
-    let src = pos(10_000);
+    let src = slim_set(10_000);
     b.iter(|| {
         let mut set = src.clone();
         assert_eq!(set.drain_filter(|i| i % 2 == 0).count(), 10_000 / 2);
@@ -149,13 +155,13 @@ pub fn clone_10k_and_drain_half(b: &mut Bencher) {
 
 #[bench]
 pub fn clone_10k_and_into_iter(b: &mut Bencher) {
-    let src = pos(10_000);
+    let src = slim_set(10_000);
     b.iter(|| src.clone().into_iter().count())
 }
 
 #[bench]
 pub fn clone_10k_and_pop_all(b: &mut Bencher) {
-    let src = pos(10_000);
+    let src = slim_set(10_000);
     b.iter(|| {
         let mut set = src.clone();
         while set.pop_first().is_some() {}
@@ -165,11 +171,12 @@ pub fn clone_10k_and_pop_all(b: &mut Bencher) {
 
 #[bench]
 pub fn clone_10k_and_remove_all(b: &mut Bencher) {
-    let src = pos(10_000);
+    let src = slim_set(10_000);
     b.iter(|| {
         let mut set = src.clone();
         while let Some(elt) = set.iter().copied().next() {
-            set.remove(&elt);
+            let ok = set.remove(&elt);
+            debug_assert!(ok);
         }
         set
     });
@@ -177,11 +184,12 @@ pub fn clone_10k_and_remove_all(b: &mut Bencher) {
 
 #[bench]
 pub fn clone_10k_and_remove_half(b: &mut Bencher) {
-    let src = pos(10_000);
+    let src = slim_set(10_000);
     b.iter(|| {
         let mut set = src.clone();
-        for i in (2..=10_000 as i32).step_by(2) {
-            set.remove(&i);
+        for i in (0..10_000).step_by(2) {
+            let ok = set.remove(&i);
+            debug_assert!(ok);
         }
         assert_eq!(set.len(), 10_000 / 2);
         set
