@@ -103,6 +103,15 @@ pub enum Problem {
     Oversized,
 }
 
+/// Types that can be appended to a Windows command-line. Used for custom escaping.
+#[unstable(feature = "windows_raw_cmdline", issue = "74549")]
+pub trait Arg {
+    fn append_to(&self, cmd: &mut Vec<u16>, force_quotes: bool) -> Result<usize, Problem>;
+    #[unstable(feature = "command_sized", issue = "74549")]
+    fn arg_size(&self, force_quotes: bool) -> Result<usize, Problem>;
+    fn to_os_string(&self) -> OsString;
+}
+
 /// Argument type with no escaping.
 #[unstable(feature = "windows_raw_cmdline", issue = "74549")]
 pub struct RawArg<'a>(&'a OsStr);
@@ -397,20 +406,11 @@ impl From<Problem> for Error {
     }
 }
 
-/// Types that can be appended to a Windows command-line. Used for custom escaping.
-#[unstable(feature = "windows_raw_cmdline", issue = "74549")]
-pub trait Arg {
-    ///
-    fn append_to(&self, cmd: &mut Vec<u16>, force_quotes: bool) -> Result<usize, Problem>;
-    fn arg_len(&self, force_quotes: bool) -> Result<usize, Problem>;
-    fn to_os_string(&self) -> OsString;
-}
-
 impl Arg for &OsStr {
     fn append_to(&self, cmd: &mut Vec<u16>, force_quotes: bool) -> Result<usize, Problem> {
         append_arg(&mut Some(cmd), &self, force_quotes)
     }
-    fn arg_len(&self, force_quotes: bool) -> Result<usize, Problem> {
+    fn arg_size(&self, force_quotes: bool) -> Result<usize, Problem> {
         append_arg(&mut None, &self, force_quotes)
     }
     fn to_os_string(&self) -> OsString {
@@ -422,9 +422,9 @@ impl Arg for &OsStr {
 impl Arg for RawArg<'_> {
     fn append_to(&self, cmd: &mut Vec<u16>, _fq: bool) -> Result<usize, Problem> {
         cmd.extend(self.0.encode_wide());
-        self.arg_len(_fq)
+        self.arg_size(_fq)
     }
-    fn arg_len(&self, _: bool) -> Result<usize, Problem> {
+    fn arg_size(&self, _: bool) -> Result<usize, Problem> {
         Ok(self.0.encode_wide().count())
     }
     fn to_os_string(&self) -> OsString {
