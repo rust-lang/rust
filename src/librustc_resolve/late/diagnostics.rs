@@ -1212,7 +1212,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 let mut introduce_suggestion = vec![];
                 let msg;
                 let should_break;
-                introduce_suggestion.push(match missing {
+                let missing_lifetime = match missing {
                     MissingLifetimeSpot::Generics(generics) => {
                         msg = "consider introducing a named lifetime parameter".to_string();
                         should_break = true;
@@ -1223,9 +1223,14 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                             } => false,
                             _ => true,
                         }) {
-                            (param.span.shrink_to_lo(), "'a, ".to_string())
+                            if param.name.ident().as_str().contains("'a") {
+                                // Do not add duplicate lifetime.
+                                None
+                            } else {
+                                Some((param.span.shrink_to_lo(), "'a, ".to_string()))
+                            }
                         } else {
-                            (generics.span, "<'a>".to_string())
+                            Some((generics.span, "<'a>".to_string()))
                         }
                     }
                     MissingLifetimeSpot::HigherRanked { span, span_type } => {
@@ -1238,9 +1243,12 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                             "for more information on higher-ranked polymorphism, visit \
                             https://doc.rust-lang.org/nomicon/hrtb.html",
                         );
-                        (*span, span_type.suggestion("'a"))
+                        Some((*span, span_type.suggestion("'a")))
                     }
-                });
+                };
+                if let Some((span, snip)) = missing_lifetime {
+                    introduce_suggestion.push((span, snip));
+                }
                 for param in params {
                     if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
                         if snippet.starts_with('&') && !snippet.starts_with("&'") {
