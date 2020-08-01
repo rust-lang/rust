@@ -233,7 +233,7 @@ crate struct CrateDep {
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct TraitImpls {
     trait_id: (u32, DefIndex),
-    impls: Lazy<[DefIndex]>,
+    impls: Lazy<[(DefIndex, Option<ty::fast_reject::SimplifiedType>)]>,
 }
 
 /// Define `LazyTables` and `TableBuilders` at the same time.

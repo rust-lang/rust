@@ -1607,7 +1607,7 @@ impl EncodeContext<'a, 'tcx> {
             .into_iter()
             .map(|(trait_def_id, mut impls)| {
                 // Bring everything into deterministic order for hashing
-                impls.sort_by_cached_key(|&index| {
+                impls.sort_by_cached_key(|&(index, _)| {
                     tcx.hir().definitions().def_path_hash(LocalDefId { local_def_index: index })
                 });
 
@@ -1849,7 +1849,7 @@ impl EncodeContext<'a, 'tcx> {
 
 struct ImplVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    impls: FxHashMap<DefId, Vec<DefIndex>>,
+    impls: FxHashMap<DefId, Vec<(DefIndex, Option<ty::fast_reject::SimplifiedType>)>>,
 }
 
 impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
@@ -1857,7 +1857,13 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
         if let hir::ItemKind::Impl { .. } = item.kind {
             let impl_id = self.tcx.hir().local_def_id(item.hir_id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id.to_def_id()) {
-                self.impls.entry(trait_ref.def_id).or_default().push(impl_id.local_def_index);
+                let simplified_self_ty =
+                    ty::fast_reject::simplify_type(self.tcx, trait_ref.self_ty(), false);
+
+                self.impls
+                    .entry(trait_ref.def_id)
+                    .or_default()
+                    .push((impl_id.local_def_index, simplified_self_ty));
             }
         }
     }
