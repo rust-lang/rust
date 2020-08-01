@@ -26,6 +26,27 @@ const READ_LIMIT: usize = c_int::MAX as usize - 1;
 #[cfg(not(target_os = "macos"))]
 const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn max_iov() -> c_int {
+    let ret = unsafe {
+        libc::sysconf(
+            #[cfg(target_os = "linux")]
+            libc::_SC_IOV_MAX,
+            #[cfg(target_os = "macos")]
+            libc::_SC_UIO_MAXIOV,
+        )
+    };
+
+    // 1024 is the default value on modern Linux systems
+    // and hopefully more useful than `c_int::MAX`.
+    if ret > 0 { ret as c_int } else { 1024 }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
+fn max_iov() -> c_int {
+    c_int::MAX
+}
+
 impl FileDesc {
     pub fn new(fd: c_int) -> FileDesc {
         FileDesc { fd }
@@ -54,7 +75,7 @@ impl FileDesc {
             libc::readv(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
+                cmp::min(bufs.len(), max_iov() as usize) as c_int,
             )
         })?;
         Ok(ret as usize)
@@ -111,7 +132,7 @@ impl FileDesc {
             libc::writev(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
+                cmp::min(bufs.len(), max_iov() as usize) as c_int,
             )
         })?;
         Ok(ret as usize)
@@ -254,5 +275,18 @@ impl Drop for FileDesc {
         // something like EINTR), we might close another valid file descriptor
         // opened after we closed ours.
         let _ = unsafe { libc::close(self.fd) };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FileDesc, IoSlice};
+
+    #[test]
+    fn limit_vector_count() {
+        let stdout = FileDesc { fd: 1 };
+        let bufs = (0..1500).map(|_| IoSlice::new(&[])).collect::<Vec<_>>();
+
+        assert!(stdout.write_vectored(&bufs).is_ok());
     }
 }
