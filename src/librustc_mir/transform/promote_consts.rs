@@ -502,9 +502,47 @@ impl<'tcx> Validator<'_, 'tcx> {
     fn validate_place(&self, place: PlaceRef<'tcx>) -> Result<(), Unpromotable> {
         match place {
             PlaceRef { local, projection: [] } => self.validate_local(local),
-            PlaceRef { local: _, projection: [proj_base @ .., elem] } => {
+            PlaceRef { local, projection: [proj_base @ .., elem] } => {
                 match *elem {
-                    ProjectionElem::Deref | ProjectionElem::Downcast(..) => {
+                    ProjectionElem::Deref => {
+                        let mut not_promotable = true;
+                        // This is a special treatment for cases like *&STATIC where STATIC is a
+                        // global static variable.
+                        // This pattern is generated only when global static variables are directly
+                        // accessed and is qualified for promotion safely.
+                        if let TempState::Defined { location, .. } = self.temps[local] {
+                            let def_stmt =
+                                self.body[location.block].statements.get(location.statement_index);
+                            if let Some(Statement {
+                                kind:
+                                    StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(c)))),
+                                ..
+                            }) = def_stmt
+                            {
+                                if let Some(did) = c.check_static_ptr(self.tcx) {
+                                    if let Some(hir::ConstContext::Static(..)) = self.const_kind {
+                                        // The `is_empty` predicate is introduced to exclude the case
+                                        // where the projection operations are [ .field, * ].
+                                        // The reason is because promotion will be illegal if field
+                                        // accesses preceed the dereferencing.
+                                        // Discussion can be found at
+                                        // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247
+                                        // There may be opportunity for generalization, but this needs to be
+                                        // accounted for.
+                                        if proj_base.is_empty()
+                                            && !self.tcx.is_thread_local_static(did)
+                                        {
+                                            not_promotable = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if not_promotable {
+                            return Err(Unpromotable);
+                        }
+                    }
+                    ProjectionElem::Downcast(..) => {
                         return Err(Unpromotable);
                     }
 
