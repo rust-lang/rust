@@ -591,7 +591,7 @@ mod prim_array {}
 /// As slices store the length of the sequence they refer to, they have twice
 /// the size of pointers to [`Sized`](marker/trait.Sized.html) types.
 /// Also see the reference on
-/// [dynamically sized types](../reference/dynamically-sized-types.html)
+/// [dynamically sized types](../reference/dynamically-sized-types.html).
 ///
 /// ```
 /// let pointer_size = std::mem::size_of::<&u8>();
