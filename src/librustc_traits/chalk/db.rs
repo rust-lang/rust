@@ -379,7 +379,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                         ty::AdtKind::Struct | ty::AdtKind::Union => None,
                         ty::AdtKind::Enum => {
                             let constraint = self.tcx.adt_sized_constraint(adt_def.did);
-                            if constraint.0.len() > 0 { unimplemented!() } else { Some(true) }
+                            if !constraint.0.is_empty() { unimplemented!() } else { Some(true) }
                         }
                     },
                     _ => None,
@@ -398,7 +398,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                         ty::AdtKind::Struct | ty::AdtKind::Union => None,
                         ty::AdtKind::Enum => {
                             let constraint = self.tcx.adt_sized_constraint(adt_def.did);
-                            if constraint.0.len() > 0 { unimplemented!() } else { Some(true) }
+                            if !constraint.0.is_empty() { unimplemented!() } else { Some(true) }
                         }
                     },
                     _ => None,
