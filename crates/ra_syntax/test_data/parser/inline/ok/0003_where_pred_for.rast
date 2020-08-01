@@ -42,7 +42,7 @@ SOURCE_FILE@0..54
                   PARAM_LIST@40..49
                     L_PAREN@40..41 "("
                     PARAM@41..48
-                      REFERENCE_TYPE@41..48
+                      REF_TYPE@41..48
                         AMP@41..42 "&"
                         LIFETIME@42..44 "\'a"
                         WHITESPACE@44..45 " "

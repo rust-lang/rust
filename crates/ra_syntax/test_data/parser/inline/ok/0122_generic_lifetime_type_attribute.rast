@@ -47,7 +47,7 @@ SOURCE_FILE@0..64
           UNDERSCORE@50..51 "_"
         COLON@51..52 ":"
         WHITESPACE@52..53 " "
-        REFERENCE_TYPE@53..58
+        REF_TYPE@53..58
           AMP@53..54 "&"
           LIFETIME@54..56 "\'a"
           WHITESPACE@56..57 " "

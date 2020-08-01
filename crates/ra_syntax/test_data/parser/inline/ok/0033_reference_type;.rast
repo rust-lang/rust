@@ -7,7 +7,7 @@ SOURCE_FILE@0..54
     WHITESPACE@6..7 " "
     EQ@7..8 "="
     WHITESPACE@8..9 " "
-    REFERENCE_TYPE@9..12
+    REF_TYPE@9..12
       AMP@9..10 "&"
       TUPLE_TYPE@10..12
         L_PAREN@10..11 "("
@@ -22,7 +22,7 @@ SOURCE_FILE@0..54
     WHITESPACE@20..21 " "
     EQ@21..22 "="
     WHITESPACE@22..23 " "
-    REFERENCE_TYPE@23..34
+    REF_TYPE@23..34
       AMP@23..24 "&"
       LIFETIME@24..31 "\'static"
       WHITESPACE@31..32 " "
@@ -39,7 +39,7 @@ SOURCE_FILE@0..54
     WHITESPACE@42..43 " "
     EQ@43..44 "="
     WHITESPACE@44..45 " "
-    REFERENCE_TYPE@45..52
+    REF_TYPE@45..52
       AMP@45..46 "&"
       MUT_KW@46..49 "mut"
       WHITESPACE@49..50 " "

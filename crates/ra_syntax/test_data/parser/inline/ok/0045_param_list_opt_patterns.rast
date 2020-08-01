@@ -21,7 +21,7 @@ SOURCE_FILE@0..35
                   PARAM_LIST@15..29
                     L_PAREN@15..16 "("
                     PARAM@16..28
-                      REFERENCE_TYPE@16..28
+                      REF_TYPE@16..28
                         AMP@16..17 "&"
                         MUT_KW@17..20 "mut"
                         WHITESPACE@20..21 " "

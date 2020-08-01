@@ -22,7 +22,7 @@ SOURCE_FILE@0..69
             SELF_KW@18..22 "self"
             COLON@22..23 ":"
             WHITESPACE@23..24 " "
-            REFERENCE_TYPE@24..29
+            REF_TYPE@24..29
               AMP@24..25 "&"
               PATH_TYPE@25..29
                 PATH@25..29

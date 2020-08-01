@@ -99,7 +99,7 @@ SOURCE_FILE@0..1598
                 IDENT@117..121 "addr"
             COLON@121..122 ":"
             WHITESPACE@122..123 " "
-            POINTER_TYPE@123..138
+            PTR_TYPE@123..138
               STAR@123..124 "*"
               CONST_KW@124..129 "const"
               WHITESPACE@129..130 " "
@@ -164,7 +164,7 @@ SOURCE_FILE@0..1598
                 IDENT@204..211 "address"
             COLON@211..212 ":"
             WHITESPACE@212..213 " "
-            POINTER_TYPE@213..228
+            PTR_TYPE@213..228
               STAR@213..214 "*"
               CONST_KW@214..219 "const"
               WHITESPACE@219..220 " "
@@ -278,7 +278,7 @@ SOURCE_FILE@0..1598
                 IDENT@382..389 "address"
             COLON@389..390 ":"
             WHITESPACE@390..391 " "
-            POINTER_TYPE@391..404
+            PTR_TYPE@391..404
               STAR@391..392 "*"
               MUT_KW@392..395 "mut"
               WHITESPACE@395..396 " "
@@ -295,7 +295,7 @@ SOURCE_FILE@0..1598
                 IDENT@429..440 "address_len"
             COLON@440..441 ":"
             WHITESPACE@441..442 " "
-            POINTER_TYPE@442..456
+            PTR_TYPE@442..456
               STAR@442..443 "*"
               MUT_KW@443..446 "mut"
               WHITESPACE@446..447 " "
@@ -375,7 +375,7 @@ SOURCE_FILE@0..1598
                 IDENT@609..615 "optval"
             COLON@615..616 ":"
             WHITESPACE@616..617 " "
-            POINTER_TYPE@617..630
+            PTR_TYPE@617..630
               STAR@617..618 "*"
               MUT_KW@618..621 "mut"
               WHITESPACE@621..622 " "
@@ -393,7 +393,7 @@ SOURCE_FILE@0..1598
                 IDENT@654..660 "optlen"
             COLON@660..661 ":"
             WHITESPACE@661..662 " "
-            POINTER_TYPE@662..678
+            PTR_TYPE@662..678
               STAR@662..663 "*"
               MUT_KW@663..666 "mut"
               WHITESPACE@666..667 " "
@@ -474,7 +474,7 @@ SOURCE_FILE@0..1598
                 IDENT@784..789 "value"
             COLON@789..790 ":"
             WHITESPACE@790..791 " "
-            POINTER_TYPE@791..806
+            PTR_TYPE@791..806
               STAR@791..792 "*"
               CONST_KW@792..797 "const"
               WHITESPACE@797..798 " "
@@ -540,7 +540,7 @@ SOURCE_FILE@0..1598
                 IDENT@905..912 "address"
             COLON@912..913 ":"
             WHITESPACE@913..914 " "
-            POINTER_TYPE@914..927
+            PTR_TYPE@914..927
               STAR@914..915 "*"
               MUT_KW@915..918 "mut"
               WHITESPACE@918..919 " "
@@ -557,7 +557,7 @@ SOURCE_FILE@0..1598
                 IDENT@952..963 "address_len"
             COLON@963..964 ":"
             WHITESPACE@964..965 " "
-            POINTER_TYPE@965..979
+            PTR_TYPE@965..979
               STAR@965..966 "*"
               MUT_KW@966..969 "mut"
               WHITESPACE@969..970 " "
@@ -609,7 +609,7 @@ SOURCE_FILE@0..1598
                 IDENT@1028..1031 "buf"
             COLON@1031..1032 ":"
             WHITESPACE@1032..1033 " "
-            POINTER_TYPE@1033..1048
+            PTR_TYPE@1033..1048
               STAR@1033..1034 "*"
               CONST_KW@1034..1039 "const"
               WHITESPACE@1039..1040 " "
@@ -655,7 +655,7 @@ SOURCE_FILE@0..1598
                 IDENT@1099..1103 "addr"
             COLON@1103..1104 ":"
             WHITESPACE@1104..1105 " "
-            POINTER_TYPE@1105..1120
+            PTR_TYPE@1105..1120
               STAR@1105..1106 "*"
               CONST_KW@1106..1111 "const"
               WHITESPACE@1111..1112 " "
@@ -720,7 +720,7 @@ SOURCE_FILE@0..1598
                 IDENT@1207..1210 "buf"
             COLON@1210..1211 ":"
             WHITESPACE@1211..1212 " "
-            POINTER_TYPE@1212..1227
+            PTR_TYPE@1212..1227
               STAR@1212..1213 "*"
               CONST_KW@1213..1218 "const"
               WHITESPACE@1218..1219 " "
@@ -801,7 +801,7 @@ SOURCE_FILE@0..1598
                 IDENT@1327..1330 "buf"
             COLON@1330..1331 ":"
             WHITESPACE@1331..1332 " "
-            POINTER_TYPE@1332..1345
+            PTR_TYPE@1332..1345
               STAR@1332..1333 "*"
               MUT_KW@1333..1336 "mut"
               WHITESPACE@1336..1337 " "
@@ -847,7 +847,7 @@ SOURCE_FILE@0..1598
                 IDENT@1398..1402 "addr"
             COLON@1402..1403 ":"
             WHITESPACE@1403..1404 " "
-            POINTER_TYPE@1404..1419
+            PTR_TYPE@1404..1419
               STAR@1404..1405 "*"
               MUT_KW@1405..1408 "mut"
               WHITESPACE@1408..1409 " "
@@ -865,7 +865,7 @@ SOURCE_FILE@0..1598
                 IDENT@1441..1448 "addrlen"
             COLON@1448..1449 ":"
             WHITESPACE@1449..1450 " "
-            POINTER_TYPE@1450..1466
+            PTR_TYPE@1450..1466
               STAR@1450..1451 "*"
               MUT_KW@1451..1454 "mut"
               WHITESPACE@1454..1455 " "
@@ -918,7 +918,7 @@ SOURCE_FILE@0..1598
                 IDENT@1515..1518 "buf"
             COLON@1518..1519 ":"
             WHITESPACE@1519..1520 " "
-            POINTER_TYPE@1520..1533
+            PTR_TYPE@1520..1533
               STAR@1520..1521 "*"
               MUT_KW@1521..1524 "mut"
               WHITESPACE@1524..1525 " "

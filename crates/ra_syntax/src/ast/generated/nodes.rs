@@ -1006,10 +1006,10 @@ impl DynTraitType {
     pub fn type_bound_list(&self) -> Option<TypeBoundList> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FnPointerType {
+pub struct FnPtrType {
     pub(crate) syntax: SyntaxNode,
 }
-impl FnPointerType {
+impl FnPtrType {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
@@ -1059,20 +1059,20 @@ impl ParenType {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PointerType {
+pub struct PtrType {
     pub(crate) syntax: SyntaxNode,
 }
-impl PointerType {
+impl PtrType {
     pub fn star_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![*]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ReferenceType {
+pub struct RefType {
     pub(crate) syntax: SyntaxNode,
 }
-impl ReferenceType {
+impl RefType {
     pub fn amp_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![&]) }
     pub fn lifetime_token(&self) -> Option<SyntaxToken> {
         support::token(&self.syntax, T![lifetime])
@@ -1263,15 +1263,15 @@ pub enum GenericArg {
 pub enum Type {
     ArrayType(ArrayType),
     DynTraitType(DynTraitType),
-    FnPointerType(FnPointerType),
+    FnPtrType(FnPtrType),
     ForType(ForType),
     ImplTraitType(ImplTraitType),
     InferType(InferType),
     NeverType(NeverType),
     ParenType(ParenType),
     PathType(PathType),
-    PointerType(PointerType),
-    ReferenceType(ReferenceType),
+    PtrType(PtrType),
+    RefType(RefType),
     SliceType(SliceType),
     TupleType(TupleType),
 }
@@ -1377,8 +1377,8 @@ impl ast::NameOwner for AssocItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternItem {
     Fn(Fn),
-    Static(Static),
     MacroCall(MacroCall),
+    Static(Static),
 }
 impl ast::AttrsOwner for ExternItem {}
 impl ast::NameOwner for ExternItem {}
@@ -2434,8 +2434,8 @@ impl AstNode for DynTraitType {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for FnPointerType {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == FN_POINTER_TYPE }
+impl AstNode for FnPtrType {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FN_PTR_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2500,8 +2500,8 @@ impl AstNode for ParenType {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for PointerType {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == POINTER_TYPE }
+impl AstNode for PtrType {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PTR_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2511,8 +2511,8 @@ impl AstNode for PointerType {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl AstNode for ReferenceType {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == REFERENCE_TYPE }
+impl AstNode for RefType {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == REF_TYPE }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -2786,8 +2786,8 @@ impl From<ArrayType> for Type {
 impl From<DynTraitType> for Type {
     fn from(node: DynTraitType) -> Type { Type::DynTraitType(node) }
 }
-impl From<FnPointerType> for Type {
-    fn from(node: FnPointerType) -> Type { Type::FnPointerType(node) }
+impl From<FnPtrType> for Type {
+    fn from(node: FnPtrType) -> Type { Type::FnPtrType(node) }
 }
 impl From<ForType> for Type {
     fn from(node: ForType) -> Type { Type::ForType(node) }
@@ -2807,11 +2807,11 @@ impl From<ParenType> for Type {
 impl From<PathType> for Type {
     fn from(node: PathType) -> Type { Type::PathType(node) }
 }
-impl From<PointerType> for Type {
-    fn from(node: PointerType) -> Type { Type::PointerType(node) }
+impl From<PtrType> for Type {
+    fn from(node: PtrType) -> Type { Type::PtrType(node) }
 }
-impl From<ReferenceType> for Type {
-    fn from(node: ReferenceType) -> Type { Type::ReferenceType(node) }
+impl From<RefType> for Type {
+    fn from(node: RefType) -> Type { Type::RefType(node) }
 }
 impl From<SliceType> for Type {
     fn from(node: SliceType) -> Type { Type::SliceType(node) }
@@ -2822,9 +2822,9 @@ impl From<TupleType> for Type {
 impl AstNode for Type {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            ARRAY_TYPE | DYN_TRAIT_TYPE | FN_POINTER_TYPE | FOR_TYPE | IMPL_TRAIT_TYPE
-            | INFER_TYPE | NEVER_TYPE | PAREN_TYPE | PATH_TYPE | POINTER_TYPE | REFERENCE_TYPE
-            | SLICE_TYPE | TUPLE_TYPE => true,
+            ARRAY_TYPE | DYN_TRAIT_TYPE | FN_PTR_TYPE | FOR_TYPE | IMPL_TRAIT_TYPE | INFER_TYPE
+            | NEVER_TYPE | PAREN_TYPE | PATH_TYPE | PTR_TYPE | REF_TYPE | SLICE_TYPE
+            | TUPLE_TYPE => true,
             _ => false,
         }
     }
@@ -2832,15 +2832,15 @@ impl AstNode for Type {
         let res = match syntax.kind() {
             ARRAY_TYPE => Type::ArrayType(ArrayType { syntax }),
             DYN_TRAIT_TYPE => Type::DynTraitType(DynTraitType { syntax }),
-            FN_POINTER_TYPE => Type::FnPointerType(FnPointerType { syntax }),
+            FN_PTR_TYPE => Type::FnPtrType(FnPtrType { syntax }),
             FOR_TYPE => Type::ForType(ForType { syntax }),
             IMPL_TRAIT_TYPE => Type::ImplTraitType(ImplTraitType { syntax }),
             INFER_TYPE => Type::InferType(InferType { syntax }),
             NEVER_TYPE => Type::NeverType(NeverType { syntax }),
             PAREN_TYPE => Type::ParenType(ParenType { syntax }),
             PATH_TYPE => Type::PathType(PathType { syntax }),
-            POINTER_TYPE => Type::PointerType(PointerType { syntax }),
-            REFERENCE_TYPE => Type::ReferenceType(ReferenceType { syntax }),
+            PTR_TYPE => Type::PtrType(PtrType { syntax }),
+            REF_TYPE => Type::RefType(RefType { syntax }),
             SLICE_TYPE => Type::SliceType(SliceType { syntax }),
             TUPLE_TYPE => Type::TupleType(TupleType { syntax }),
             _ => return None,
@@ -2851,15 +2851,15 @@ impl AstNode for Type {
         match self {
             Type::ArrayType(it) => &it.syntax,
             Type::DynTraitType(it) => &it.syntax,
-            Type::FnPointerType(it) => &it.syntax,
+            Type::FnPtrType(it) => &it.syntax,
             Type::ForType(it) => &it.syntax,
             Type::ImplTraitType(it) => &it.syntax,
             Type::InferType(it) => &it.syntax,
             Type::NeverType(it) => &it.syntax,
             Type::ParenType(it) => &it.syntax,
             Type::PathType(it) => &it.syntax,
-            Type::PointerType(it) => &it.syntax,
-            Type::ReferenceType(it) => &it.syntax,
+            Type::PtrType(it) => &it.syntax,
+            Type::RefType(it) => &it.syntax,
             Type::SliceType(it) => &it.syntax,
             Type::TupleType(it) => &it.syntax,
         }
@@ -3332,24 +3332,24 @@ impl AstNode for AssocItem {
 impl From<Fn> for ExternItem {
     fn from(node: Fn) -> ExternItem { ExternItem::Fn(node) }
 }
-impl From<Static> for ExternItem {
-    fn from(node: Static) -> ExternItem { ExternItem::Static(node) }
-}
 impl From<MacroCall> for ExternItem {
     fn from(node: MacroCall) -> ExternItem { ExternItem::MacroCall(node) }
+}
+impl From<Static> for ExternItem {
+    fn from(node: Static) -> ExternItem { ExternItem::Static(node) }
 }
 impl AstNode for ExternItem {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            FN | STATIC | MACRO_CALL => true,
+            FN | MACRO_CALL | STATIC => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             FN => ExternItem::Fn(Fn { syntax }),
-            STATIC => ExternItem::Static(Static { syntax }),
             MACRO_CALL => ExternItem::MacroCall(MacroCall { syntax }),
+            STATIC => ExternItem::Static(Static { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3357,8 +3357,8 @@ impl AstNode for ExternItem {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             ExternItem::Fn(it) => &it.syntax,
-            ExternItem::Static(it) => &it.syntax,
             ExternItem::MacroCall(it) => &it.syntax,
+            ExternItem::Static(it) => &it.syntax,
         }
     }
 }
@@ -3925,7 +3925,7 @@ impl std::fmt::Display for DynTraitType {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for FnPointerType {
+impl std::fmt::Display for FnPtrType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -3955,12 +3955,12 @@ impl std::fmt::Display for ParenType {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for PointerType {
+impl std::fmt::Display for PtrType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ReferenceType {
+impl std::fmt::Display for RefType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

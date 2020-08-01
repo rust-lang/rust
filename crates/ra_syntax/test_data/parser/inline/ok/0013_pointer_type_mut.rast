@@ -7,7 +7,7 @@ SOURCE_FILE@0..36
     WHITESPACE@6..7 " "
     EQ@7..8 "="
     WHITESPACE@8..9 " "
-    POINTER_TYPE@9..16
+    PTR_TYPE@9..16
       STAR@9..10 "*"
       MUT_KW@10..13 "mut"
       WHITESPACE@13..14 " "
@@ -24,7 +24,7 @@ SOURCE_FILE@0..36
     WHITESPACE@24..25 " "
     EQ@25..26 "="
     WHITESPACE@26..27 " "
-    POINTER_TYPE@27..34
+    PTR_TYPE@27..34
       STAR@27..28 "*"
       MUT_KW@28..31 "mut"
       WHITESPACE@31..32 " "

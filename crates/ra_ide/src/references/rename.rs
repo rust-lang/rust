@@ -157,7 +157,7 @@ fn rename_to_self(
     }
     let first_param = params.params().next()?;
     let mutable = match first_param.ty() {
-        Some(ast::Type::ReferenceType(rt)) => rt.mut_token().is_some(),
+        Some(ast::Type::RefType(rt)) => rt.mut_token().is_some(),
         _ => return None, // not renaming other types
     };
 

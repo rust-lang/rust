@@ -39,7 +39,7 @@ SOURCE_FILE@0..389
             IDENT@39..46 "builder"
         COLON@46..47
         WHITESPACE@47..48
-        REFERENCE_TYPE@48..54
+        REF_TYPE@48..54
           AMP@48..49
           MUT_KW@49..52
           WHITESPACE@52..53
@@ -56,7 +56,7 @@ SOURCE_FILE@0..389
             IDENT@56..62 "tokens"
         COLON@62..63
         WHITESPACE@63..64
-        REFERENCE_TYPE@64..72
+        REF_TYPE@64..72
           AMP@64..65
           SLICE_TYPE@65..72
             L_BRACK@65..66
@@ -126,7 +126,7 @@ SOURCE_FILE@0..389
                   IDENT@144..147 "idx"
               COLON@147..148
               WHITESPACE@148..149
-              REFERENCE_TYPE@149..159
+              REF_TYPE@149..159
                 AMP@149..150
                 MUT_KW@150..153
                 WHITESPACE@153..154

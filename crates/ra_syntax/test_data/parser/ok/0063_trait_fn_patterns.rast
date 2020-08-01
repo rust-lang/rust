@@ -140,9 +140,9 @@ SOURCE_FILE@0..170
                     IDENT@121..122 "a"
             COLON@122..123 ":"
             WHITESPACE@123..124 " "
-            REFERENCE_TYPE@124..131
+            REF_TYPE@124..131
               AMP@124..125 "&"
-              REFERENCE_TYPE@125..131
+              REF_TYPE@125..131
                 AMP@125..126 "&"
                 PATH_TYPE@126..131
                   PATH@126..131

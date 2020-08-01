@@ -27,7 +27,7 @@ SOURCE_FILE@0..43
           WHITESPACE@25..26 " "
           AS_KW@26..28 "as"
           WHITESPACE@28..29 " "
-          POINTER_TYPE@29..39
+          PTR_TYPE@29..39
             STAR@29..30 "*"
             CONST_KW@30..35 "const"
             WHITESPACE@35..36 " "
