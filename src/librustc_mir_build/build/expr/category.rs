@@ -1,4 +1,4 @@
-use crate::hair::*;
+use crate::thir::*;
 
 #[derive(Debug, PartialEq)]
 crate enum Category {
