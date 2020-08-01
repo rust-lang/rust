@@ -33,6 +33,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use smallvec::SmallVec;
 use std::borrow::Cow;
 
 pub struct SimplifyCfg {
@@ -172,9 +173,12 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         }
     }
 
-    // Collapse a goto chain starting from `start`
-    fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
-        let mut terminator = match self.basic_blocks[*start] {
+    /// This function will return `None` if
+    /// * the block has statements
+    /// * the block has a terminator other than `goto`
+    /// * the block has no terminator (meaning some other part of the current optimization stole it)
+    fn take_terminator_if_simple_goto(&mut self, bb: BasicBlock) -> Option<Terminator<'tcx>> {
+        match self.basic_blocks[bb] {
             BasicBlockData {
                 ref statements,
                 terminator:
@@ -183,32 +187,45 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             } if statements.is_empty() => terminator.take(),
             // if `terminator` is None, this means we are in a loop. In that
             // case, let all the loop collapse to its entry.
-            _ => return,
-        };
-
-        let target = match terminator {
-            Some(Terminator { kind: TerminatorKind::Goto { ref mut target }, .. }) => {
-                self.collapse_goto_chain(target, changed);
-                *target
-            }
-            _ => unreachable!(),
-        };
-        self.basic_blocks[*start].terminator = terminator;
-
-        debug!("collapsing goto chain from {:?} to {:?}", *start, target);
-
-        *changed |= *start != target;
-
-        if self.pred_count[*start] == 1 {
-            // This is the last reference to *start, so the pred-count to
-            // to target is moved into the current block.
-            self.pred_count[*start] = 0;
-        } else {
-            self.pred_count[target] += 1;
-            self.pred_count[*start] -= 1;
+            _ => None,
         }
+    }
 
-        *start = target;
+    /// Collapse a goto chain starting from `start`
+    fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
+        // Using `SmallVec` here, because in some logs on libcore oli-obk saw many single-element
+        // goto chains. We should probably benchmark different sizes.
+        let mut terminators: SmallVec<[_; 1]> = Default::default();
+        let mut current = *start;
+        while let Some(terminator) = self.take_terminator_if_simple_goto(current) {
+            let target = match terminator {
+                Terminator { kind: TerminatorKind::Goto { target }, .. } => target,
+                _ => unreachable!(),
+            };
+            terminators.push((current, terminator));
+            current = target;
+        }
+        let last = current;
+        *start = last;
+        while let Some((current, mut terminator)) = terminators.pop() {
+            let target = match terminator {
+                Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } => target,
+                _ => unreachable!(),
+            };
+            *target = last;
+            debug!("collapsing goto chain from {:?} to {:?}", current, target);
+
+            if self.pred_count[current] == 1 {
+                // This is the last reference to current, so the pred-count to
+                // to target is moved into the current block.
+                self.pred_count[current] = 0;
+            } else {
+                self.pred_count[*target] += 1;
+                self.pred_count[current] -= 1;
+            }
+            *changed = true;
+            self.basic_blocks[current].terminator = Some(terminator);
+        }
     }
 
     // merge a block with 1 `goto` predecessor to its parent
