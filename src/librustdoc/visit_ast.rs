@@ -31,27 +31,6 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
-fn check_doc_alias_attrs(
-    attrs: &[ast::Attribute],
-    item_kind: &str,
-    diagnostic: &::rustc_errors::Handler,
-) {
-    for attr in attrs {
-        if let Some(attr) = attr.meta() {
-            if let Some(list) = attr.meta_item_list() {
-                for meta in list {
-                    if meta.check_name(sym::alias) {
-                        diagnostic.span_err(
-                            meta.span(),
-                            &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", item_kind),
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
-
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.
 
@@ -408,7 +387,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         match item.kind {
             hir::ItemKind::ForeignMod(ref fm) => {
-                check_doc_alias_attrs(&item.attrs, "extern block", self.cx.sess().diagnostic());
                 for item in fm.items {
                     self.visit_foreign_item(item, None, om);
                 }
@@ -583,22 +561,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 self_ty,
                 ref items,
             } => {
-                check_doc_alias_attrs(
-                    &item.attrs,
-                    "implementation block",
-                    self.cx.sess().diagnostic(),
-                );
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
                 if !self.inlining && of_trait.is_none() {
-                    let items = items
-                        .iter()
-                        .map(|item| {
-                            let item = self.cx.tcx.hir().impl_item(item.id);
-                            self.check_impl_doc_alias_attr(item);
-                            item
-                        })
-                        .collect();
+                    let items =
+                        items.iter().map(|item| self.cx.tcx.hir().impl_item(item.id)).collect();
                     let i = Impl {
                         unsafety,
                         polarity,
@@ -614,28 +581,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         vis: &item.vis,
                     };
                     om.impls.push(i);
-                } else if of_trait.is_some() {
-                    for item in items.iter() {
-                        self.check_impl_doc_alias_attr(self.cx.tcx.hir().impl_item(item.id));
-                    }
                 }
             }
-        }
-    }
-
-    fn check_impl_doc_alias_attr(&self, item: &hir::ImplItem<'_>) {
-        match item.kind {
-            hir::ImplItemKind::Const(_, _) => check_doc_alias_attrs(
-                &item.attrs,
-                "const in implementation block",
-                self.cx.sess().diagnostic(),
-            ),
-            hir::ImplItemKind::TyAlias(_) => check_doc_alias_attrs(
-                &item.attrs,
-                "type alias in implementation block",
-                self.cx.sess().diagnostic(),
-            ),
-            hir::ImplItemKind::Fn(_, _) => {}
         }
     }
 
