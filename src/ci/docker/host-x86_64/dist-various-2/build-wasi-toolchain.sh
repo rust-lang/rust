@@ -4,10 +4,10 @@
 
 set -ex
 
-# Originally from https://releases.llvm.org/9.0.0/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-curl https://ci-mirrors.rust-lang.org/rustc/clang%2Bllvm-9.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz | \
+# Originally from https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz
+curl https://ci-mirrors.rust-lang.org/rustc/clang%2Bllvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | \
   tar xJf -
-export PATH=`pwd`/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-14.04/bin:$PATH
+export PATH=`pwd`/clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04/bin:$PATH
 
 git clone https://github.com/WebAssembly/wasi-libc
 
