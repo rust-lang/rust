@@ -12,6 +12,7 @@ LL | #![deny(warnings)]
    = note: `#[deny(improper_ctypes)]` implied by `#[deny(warnings)]`
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
+   = note: if intentionally using the unstable Rust ABI, specify it with `extern "Rust"`
 note: the type is defined here
   --> $DIR/issue-16250.rs:3:1
    |

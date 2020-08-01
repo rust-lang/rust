@@ -11,6 +11,7 @@ LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
+   = note: if intentionally using the unstable Rust ABI, specify it with `extern "Rust"`
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |
@@ -27,6 +28,7 @@ LL |     fn bar(x: B);
    |
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
+   = note: if intentionally using the unstable Rust ABI, specify it with `extern "Rust"`
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |
@@ -43,6 +45,7 @@ LL |     fn qux(x: A2);
    |
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
+   = note: if intentionally using the unstable Rust ABI, specify it with `extern "Rust"`
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |
@@ -59,6 +62,7 @@ LL |     fn quux(x: B2);
    |
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
+   = note: if intentionally using the unstable Rust ABI, specify it with `extern "Rust"`
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |
@@ -75,6 +79,7 @@ LL |     fn fred(x: D);
    |
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
+   = note: if intentionally using the unstable Rust ABI, specify it with `extern "Rust"`
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |

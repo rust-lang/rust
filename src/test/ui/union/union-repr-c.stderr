@@ -11,6 +11,7 @@ LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union
    = note: this union has unspecified layout
+   = note: if intentionally using the unstable Rust ABI, specify it with `extern "Rust"`
 note: the type is defined here
   --> $DIR/union-repr-c.rs:9:1
    |
