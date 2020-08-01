@@ -760,7 +760,7 @@ pub enum Nonterminal {
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(Nonterminal, 40);
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum NonterminalKind {
     Item,
     Block,
@@ -795,6 +795,29 @@ impl NonterminalKind {
             sym::tt => NonterminalKind::TT,
             _ => return None,
         })
+    }
+    fn symbol(self) -> Symbol {
+        match self {
+            NonterminalKind::Item => sym::item,
+            NonterminalKind::Block => sym::block,
+            NonterminalKind::Stmt => sym::stmt,
+            NonterminalKind::Pat => sym::pat,
+            NonterminalKind::Expr => sym::expr,
+            NonterminalKind::Ty => sym::ty,
+            NonterminalKind::Ident => sym::ident,
+            NonterminalKind::Lifetime => sym::lifetime,
+            NonterminalKind::Literal => sym::literal,
+            NonterminalKind::Meta => sym::meta,
+            NonterminalKind::Path => sym::path,
+            NonterminalKind::Vis => sym::vis,
+            NonterminalKind::TT => sym::tt,
+        }
+    }
+}
+
+impl fmt::Display for NonterminalKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.symbol())
     }
 }
 

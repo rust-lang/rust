@@ -76,10 +76,10 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
-use rustc_ast::token::{self, DocComment, Nonterminal, NonterminalKind, Token};
+use rustc_ast::token::{self, DocComment, Nonterminal, Token};
 use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{kw, MacroRulesNormalizedIdent};
+use rustc_span::symbol::MacroRulesNormalizedIdent;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -378,7 +378,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                     n_rec(sess, next_m, res.by_ref(), ret_val)?;
                 }
             }
-            TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
+            TokenTree::MetaVarDecl(span, _, None) => {
                 if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                     return Err((span, "missing fragment specifier".to_string()));
                 }
@@ -561,7 +561,7 @@ fn inner_parse_loop<'root, 'tt>(
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
-                TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
+                TokenTree::MetaVarDecl(span, _, None) => {
                     if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                         return Error(span, "missing fragment specifier".to_string());
                     }
@@ -569,10 +569,9 @@ fn inner_parse_loop<'root, 'tt>(
 
                 // We need to match a metavar with a valid ident... call out to the black-box
                 // parser by adding an item to `bb_items`.
-                TokenTree::MetaVarDecl(_, _, id) => {
+                TokenTree::MetaVarDecl(_, _, Some(kind)) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
-                    let kind = NonterminalKind::from_symbol(id.name).unwrap();
                     if Parser::nonterminal_may_begin_with(kind, token) {
                         bb_items.push(item);
                     }
@@ -703,7 +702,7 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
-                    TokenTree::MetaVarDecl(_, bind, name) => format!("{} ('{}')", name, bind),
+                    TokenTree::MetaVarDecl(_, bind, Some(kind)) => format!("{} ('{}')", kind, bind),
                     _ => panic!(),
                 })
                 .collect::<Vec<String>>()
@@ -733,17 +732,13 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
             assert_eq!(bb_items.len(), 1);
 
             let mut item = bb_items.pop().unwrap();
-            if let TokenTree::MetaVarDecl(span, _, ident) = item.top_elts.get_tt(item.idx) {
+            if let TokenTree::MetaVarDecl(span, _, Some(kind)) = item.top_elts.get_tt(item.idx) {
                 let match_cur = item.match_cur;
-                let kind = NonterminalKind::from_symbol(ident.name).unwrap();
                 let nt = match parser.to_mut().parse_nonterminal(kind) {
                     Err(mut err) => {
                         err.span_label(
                             span,
-                            format!(
-                                "while parsing argument for this `{}` macro fragment",
-                                ident.name
-                            ),
+                            format!("while parsing argument for this `{}` macro fragment", kind),
                         )
                         .emit();
                         return ErrorReported;
