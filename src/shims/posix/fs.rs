@@ -48,9 +48,75 @@ impl<'tcx> FileDescriptor<'tcx> for FileHandle {
     }
 }
 
-#[derive(Debug, Default)]
+impl<'tcx> FileDescriptor<'tcx> for io::Stdin {
+    fn as_file_handle(&self) -> InterpResult<'tcx, &FileHandle> {
+        throw_unsup_format!("stdin cannot be used as FileHandle");
+    }
+
+    fn read(&mut self, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+        Ok(Read::read(self, bytes))
+    }
+
+    fn write(&mut self, _bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+        throw_unsup_format!("cannot write to stdin");
+    }
+
+    fn seek(&mut self, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+        throw_unsup_format!("cannot seek on stdin");
+    }
+}
+
+impl<'tcx> FileDescriptor<'tcx> for io::Stdout {
+    fn as_file_handle(&self) -> InterpResult<'tcx, &FileHandle> {
+        throw_unsup_format!("stdout cannot be used as FileHandle");
+    }
+
+    fn read(&mut self, _bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+        throw_unsup_format!("cannot read from stdout");
+    }
+
+    fn write(&mut self, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+        Ok(Write::write(self, bytes))
+    }
+
+    fn seek(&mut self, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+        throw_unsup_format!("cannot seek on stdout");
+    }
+}
+
+impl<'tcx> FileDescriptor<'tcx> for io::Stderr {
+    fn as_file_handle(&self) -> InterpResult<'tcx, &FileHandle> {
+        throw_unsup_format!("stdout cannot be used as FileHandle");
+    }
+
+    fn read(&mut self, _bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+        throw_unsup_format!("cannot read from stderr");
+    }
+
+    fn write(&mut self, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+        Ok(Write::write(self, bytes))
+    }
+
+    fn seek(&mut self, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+        throw_unsup_format!("cannot seek on stderr");
+    }
+}
+
+#[derive(Debug)]
 pub struct FileHandler<'tcx> {
     handles: BTreeMap<i32, Box<dyn FileDescriptor<'tcx>>>,
+}
+
+impl<'tcx> Default for FileHandler<'tcx> {
+    fn default() -> Self {
+        let mut handles = BTreeMap::new();
+        handles.insert(0i32, Box::new(io::stdin()) as Box<dyn FileDescriptor<'_>>);
+        handles.insert(1i32, Box::new(io::stdout()) as Box<dyn FileDescriptor<'_>>);
+        handles.insert(2i32, Box::new(io::stderr()) as Box<dyn FileDescriptor<'_>>);
+        FileHandler {
+            handles
+        }
+    }
 }
 
 
@@ -485,7 +551,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.check_no_isolation("read")?;
-        assert!(fd >= 3);
 
         trace!("Reading from FD {}, size {}", fd, count);
 
@@ -537,8 +602,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
-        this.check_no_isolation("write")?;
-        assert!(fd >= 3);
+        if fd >= 3 {
+            this.check_no_isolation("write")?;
+        }
 
         // Check that the *entire* buffer is actually valid memory.
         this.memory.check_ptr_access(
