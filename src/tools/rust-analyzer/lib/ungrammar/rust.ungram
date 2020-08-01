@@ -246,7 +246,9 @@ ExternItemList =
   '{' Attr* ExternItem* '}'
 
 ExternItem =
-  Fn | Static | MacroCall
+  Fn
+| MacroCall
+| Static
 
 GenericParamList =
   '<' (GenericParam (',' GenericParam)* ','?)? '>'
