@@ -44,15 +44,16 @@ pub(crate) enum Command {
     ProcMacro,
     RunServer,
     Version,
+    Help,
 }
 
 impl Args {
-    pub(crate) fn parse() -> Result<Result<Args, HelpPrinted>> {
+    pub(crate) fn parse() -> Result<Args> {
         let mut matches = Arguments::from_env();
 
         if matches.contains("--version") {
             matches.finish().or_else(handle_extra_flags)?;
-            return Ok(Ok(Args { verbosity: Verbosity::Normal, command: Command::Version }));
+            return Ok(Args { verbosity: Verbosity::Normal, command: Command::Version });
         }
 
         let verbosity = match (
@@ -68,15 +69,16 @@ impl Args {
             (false, true, true) => bail!("Invalid flags: -q conflicts with -v"),
         };
 
+        let help = Ok(Args { verbosity, command: Command::Help });
         let subcommand = match matches.subcommand()? {
             Some(it) => it,
             None => {
                 if matches.contains(["-h", "--help"]) {
                     print_subcommands();
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
                 matches.finish().or_else(handle_extra_flags)?;
-                return Ok(Ok(Args { verbosity, command: Command::RunServer }));
+                return Ok(Args { verbosity, command: Command::RunServer });
             }
         };
         let command = match subcommand.as_str() {
@@ -93,7 +95,7 @@ FLAGS:
     -h, --help       Prints help information
         --no-dump"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let no_dump = matches.contains("--no-dump");
@@ -112,7 +114,7 @@ USAGE:
 FLAGS:
     -h, --help    Prints help inforamtion"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 matches.finish().or_else(handle_extra_flags)?;
@@ -132,7 +134,7 @@ FLAGS:
     -h, --help       Prints help information
     -r, --rainbow"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let rainbow = matches.contains(["-r", "--rainbow"]);
@@ -166,7 +168,7 @@ OPTIONS:
 ARGS:
     <PATH>"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let randomize = matches.contains("--randomize");
@@ -220,7 +222,7 @@ OPTIONS:
 ARGS:
     <PATH>    Project to analyse"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let path: PathBuf = matches.opt_value_from_str("--project")?.unwrap_or_default();
@@ -266,7 +268,7 @@ FLAGS:
 ARGS:
     <PATH>"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
 
                 let load_output_dirs = matches.contains("--load-output-dirs");
@@ -302,7 +304,7 @@ FLAGS:
 ARGS:
     <RULE>              A structured search replace rule"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
                 let mut rules = Vec::new();
                 while let Some(rule) = matches.free_from_str()? {
@@ -329,7 +331,7 @@ FLAGS:
 ARGS:
     <PATTERN>           A structured search pattern"
                     );
-                    return Ok(Err(HelpPrinted));
+                    return help;
                 }
                 let debug_snippet = matches.opt_value_from_str("--debug")?;
                 let mut patterns = Vec::new();
@@ -340,10 +342,10 @@ ARGS:
             }
             _ => {
                 print_subcommands();
-                return Ok(Err(HelpPrinted));
+                return help;
             }
         };
-        Ok(Ok(Args { verbosity, command }))
+        Ok(Args { verbosity, command })
     }
 }
 
@@ -370,8 +372,6 @@ SUBCOMMANDS:
     symbols"
     )
 }
-
-pub(crate) struct HelpPrinted;
 
 fn handle_extra_flags(e: pico_args::Error) -> Result<()> {
     if let pico_args::Error::UnusedArgsLeft(flags) = e {
