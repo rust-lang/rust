@@ -425,6 +425,7 @@ trait UnusedDelimLint {
                     ExprKind::Ret(_) | ExprKind::Break(..) => true,
                     _ => parser::contains_exterior_struct_lit(&inner),
                 })
+            || if let ExprKind::Yield(..) = inner.kind { true } else { false }
     }
 
     fn emit_unused_delims_expr(
