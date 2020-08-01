@@ -1604,6 +1604,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         trace: TypeTrace<'tcx>,
         terr: &TypeError<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
+        use crate::traits::ObligationCauseCode::MatchExpressionArm;
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
         let span = trace.cause.span(self.tcx);
@@ -1620,7 +1621,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0580, "{}", failure_str)
             }
             FailureCode::Error0308(failure_str) => {
-                struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str)
+                let mut diag = struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str);
+                if let MatchExpressionArm(box MatchExpressionArmCause { source, .. }) =
+                    trace.cause.code
+                {
+                    if let hir::MatchSource::TryDesugar = source {
+                        if let Some((expected_ty, found_ty)) = self.values_str(&trace.values) {
+                            diag.note(&format!(
+                                "`?` operator cannot convert from `{}` to `{}`",
+                                found_ty.content(),
+                                expected_ty.content()
+                            ));
+                            diag.help(
+                                "`?` operator unwraps `Result` or `Option` \
+                                and propagates its `Err` or `None`",
+                            );
+                        }
+                    }
+                }
+                diag
             }
             FailureCode::Error0644(failure_str) => {
                 struct_span_err!(self.tcx.sess, span, E0644, "{}", failure_str)
@@ -2088,9 +2107,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
                     hir::MatchSource::IfLetDesugar { .. } => {
                         "`if let` arms have incompatible types"
                     }
-                    hir::MatchSource::TryDesugar => {
-                        "try expression alternatives have incompatible types"
-                    }
+                    hir::MatchSource::TryDesugar => "`?` operator has incompatible types",
                     _ => "`match` arms have incompatible types",
                 })
             }

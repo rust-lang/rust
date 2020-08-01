@@ -15,7 +15,7 @@ fn foo() -> Result<A, B> {
 
 fn bar() -> Result<A, B> {
     foo()?
-    //~^ ERROR try expression alternatives have incompatible types [E0308]
+    //~^ ERROR `?` operator has incompatible types [E0308]
 }
 
 fn main() {}
