@@ -159,8 +159,6 @@ fn try_resolve_intra(
     link_text: &str,
     link_target: &str,
 ) -> Option<(String, String)> {
-    eprintln!("resolving intra");
-
     // Set link_target for implied shortlinks
     let link_target =
         if link_target.is_empty() { link_text.trim_matches('`') } else { link_target };
@@ -175,7 +173,7 @@ fn try_resolve_intra(
     let path = Path::parse(link_target).ok()?;
     let modpath = ModPath::from_src(path, &Hygiene::new_unhygienic()).unwrap();
 
-    // Resolve it relative to symbol's location (according to the RFC this should consider small scopes
+    // Resolve it relative to symbol's location (according to the RFC this should consider small scopes)
     let resolver = definition.resolver(db)?;
 
     let resolved = resolver.resolve_module_path_in_items(db, &modpath);
@@ -219,8 +217,6 @@ fn try_resolve_intra(
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
 fn try_resolve_path(db: &RootDatabase, definition: &Definition, link: &str) -> Option<String> {
-    eprintln!("resolving path");
-
     if !link.contains("#") && !link.contains(".html") {
         return None;
     }
