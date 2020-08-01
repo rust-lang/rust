@@ -868,7 +868,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [`chunks_exact`]: #method.chunks_exact
-    #[unstable(feature = "array_chunks", issue = "none")]
+    #[unstable(feature = "array_chunks", issue = "74985")]
     #[inline]
     pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
         assert_ne!(N, 0);
@@ -5484,7 +5484,7 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
 /// [`remainder`]: ../../std/slice/struct.ArrayChunks.html#method.remainder
 /// [slices]: ../../std/primitive.slice.html
 #[derive(Debug)]
-#[unstable(feature = "array_chunks", issue = "none")]
+#[unstable(feature = "array_chunks", issue = "74985")]
 pub struct ArrayChunks<'a, T: 'a, const N: usize> {
     iter: Iter<'a, [T; N]>,
     rem: &'a [T],
@@ -5494,21 +5494,21 @@ impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
     /// Returns the remainder of the original slice that is not going to be
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
-    #[unstable(feature = "array_chunks", issue = "none")]
+    #[unstable(feature = "array_chunks", issue = "74985")]
     pub fn remainder(&self) -> &'a [T] {
         self.rem
     }
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "array_chunks", issue = "none")]
+#[unstable(feature = "array_chunks", issue = "74985")]
 impl<T, const N: usize> Clone for ArrayChunks<'_, T, N> {
     fn clone(&self) -> Self {
         ArrayChunks { iter: self.iter.clone(), rem: self.rem }
     }
 }
 
-#[unstable(feature = "array_chunks", issue = "none")]
+#[unstable(feature = "array_chunks", issue = "74985")]
 impl<'a, T, const N: usize> Iterator for ArrayChunks<'a, T, N> {
     type Item = &'a [T; N];
 
@@ -5538,7 +5538,7 @@ impl<'a, T, const N: usize> Iterator for ArrayChunks<'a, T, N> {
     }
 }
 
-#[unstable(feature = "array_chunks", issue = "none")]
+#[unstable(feature = "array_chunks", issue = "74985")]
 impl<'a, T, const N: usize> DoubleEndedIterator for ArrayChunks<'a, T, N> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T; N]> {
@@ -5551,7 +5551,7 @@ impl<'a, T, const N: usize> DoubleEndedIterator for ArrayChunks<'a, T, N> {
     }
 }
 
-#[unstable(feature = "array_chunks", issue = "none")]
+#[unstable(feature = "array_chunks", issue = "74985")]
 impl<T, const N: usize> ExactSizeIterator for ArrayChunks<'_, T, N> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
@@ -5561,11 +5561,11 @@ impl<T, const N: usize> ExactSizeIterator for ArrayChunks<'_, T, N> {
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T, const N: usize> TrustedLen for ArrayChunks<'_, T, N> {}
 
-#[unstable(feature = "array_chunks", issue = "none")]
+#[unstable(feature = "array_chunks", issue = "74985")]
 impl<T, const N: usize> FusedIterator for ArrayChunks<'_, T, N> {}
 
 #[doc(hidden)]
-#[unstable(feature = "array_chunks", issue = "none")]
+#[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T; N] {
         unsafe { self.iter.get_unchecked(i) }
