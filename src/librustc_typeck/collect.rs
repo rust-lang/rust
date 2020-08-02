@@ -20,7 +20,7 @@ use crate::constrained_generic_params as cgp;
 use crate::middle::resolve_lifetime as rl;
 use rustc_ast::ast;
 use rustc_ast::ast::MetaItemKind;
-use rustc_attr::{list_contains_name, mark_used, InlineAttr, OptimizeAttr};
+use rustc_attr::{list_contains_name, InlineAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability};
@@ -1025,7 +1025,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
-    let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
+    let paren_sugar = tcx.has_attr2(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
         tcx.sess
             .struct_span_err(
@@ -1037,10 +1037,10 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
             .emit();
     }
 
-    let is_marker = tcx.has_attr(def_id, sym::marker);
-    let spec_kind = if tcx.has_attr(def_id, sym::rustc_unsafe_specialization_marker) {
+    let is_marker = tcx.has_attr2(def_id, sym::marker);
+    let spec_kind = if tcx.has_attr2(def_id, sym::rustc_unsafe_specialization_marker) {
         ty::trait_def::TraitSpecializationKind::Marker
-    } else if tcx.has_attr(def_id, sym::rustc_specialization_trait) {
+    } else if tcx.has_attr2(def_id, sym::rustc_specialization_trait) {
         ty::trait_def::TraitSpecializationKind::AlwaysApplicable
     } else {
         ty::trait_def::TraitSpecializationKind::None
@@ -1606,7 +1606,7 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
 
 fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
     let hir_id = tcx.hir().as_local_hir_id(def_id.expect_local());
-    let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
+    let is_rustc_reservation = tcx.has_attr2(def_id, sym::rustc_reservation_impl);
     let item = tcx.hir().expect_item(hir_id);
     match &item.kind {
         hir::ItemKind::Impl { polarity: hir::ImplPolarity::Negative(span), of_trait, .. } => {
@@ -2505,12 +2505,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             return ia;
         }
         match attr.meta().map(|i| i.kind) {
-            Some(MetaItemKind::Word) => {
-                mark_used(attr);
-                InlineAttr::Hint
-            }
+            Some(MetaItemKind::Word) => InlineAttr::Hint,
             Some(MetaItemKind::List(ref items)) => {
-                mark_used(attr);
                 inline_span = Some(attr.span);
                 if items.len() != 1 {
                     struct_span_err!(
@@ -2553,7 +2549,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 ia
             }
             Some(MetaItemKind::List(ref items)) => {
-                mark_used(attr);
                 inline_span = Some(attr.span);
                 if items.len() != 1 {
                     err(attr.span, "expected one argument");

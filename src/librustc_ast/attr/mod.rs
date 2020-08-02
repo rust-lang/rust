@@ -177,6 +177,10 @@ impl Attribute {
     /// If it matches, then the attribute is marked as used.
     /// Should only be used by rustc, other tools can use `has_name` instead.
     pub fn check_name(&self, name: Symbol) -> bool {
+        self.has_name(name)
+    }
+
+    pub fn check_name2(&self, name: Symbol) -> bool {
         let matches = self.has_name(name);
         if matches {
             mark_used(self);
@@ -413,16 +417,32 @@ pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
     attrs.iter().any(|item| item.check_name(name))
 }
 
+pub fn contains_name2(attrs: &[Attribute], name: Symbol) -> bool {
+    attrs.iter().any(|item| item.check_name2(name))
+}
+
 pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
     attrs.iter().find(|attr| attr.check_name(name))
+}
+
+pub fn find_by_name2(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
+    attrs.iter().find(|attr| attr.check_name2(name))
 }
 
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
     attrs.iter().filter(move |attr| attr.check_name(name))
 }
 
+pub fn filter_by_name2(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
+    attrs.iter().filter(move |attr| attr.check_name2(name))
+}
+
 pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: Symbol) -> Option<Symbol> {
     attrs.iter().find(|at| at.check_name(name)).and_then(|at| at.value_str())
+}
+
+pub fn first_attr_value_str_by_name2(attrs: &[Attribute], name: Symbol) -> Option<Symbol> {
+    attrs.iter().find(|at| at.check_name2(name)).and_then(|at| at.value_str())
 }
 
 impl MetaItem {

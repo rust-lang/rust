@@ -88,7 +88,7 @@ fn collect_item(
 /// Extract the first `rustc_diagnostic_item = "$name"` out of a list of attributes.
 fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
     attrs.iter().find_map(|attr| {
-        if attr.check_name(sym::rustc_diagnostic_item) { attr.value_str() } else { None }
+        if attr.check_name2(sym::rustc_diagnostic_item) { attr.value_str() } else { None }
     })
 }
 

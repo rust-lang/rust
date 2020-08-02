@@ -70,7 +70,7 @@ fn get_features(
     // Process the edition umbrella feature-gates first, to ensure
     // `edition_enabled_features` is completed before it's queried.
     for attr in krate_attrs {
-        if !attr.check_name(sym::feature) {
+        if !attr.check_name2(sym::feature) {
             continue;
         }
 
@@ -279,9 +279,6 @@ impl<'a> StripUnconfigured<'a> {
         if expanded_attrs.is_empty() {
             return vec![attr];
         }
-
-        // At this point we know the attribute is considered used.
-        attr::mark_used(&attr);
 
         if !attr::cfg_matches(&cfg_predicate, self.sess, self.features) {
             return vec![];
@@ -528,5 +525,5 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 }
 
 fn is_cfg(attr: &Attribute) -> bool {
-    attr.check_name(sym::cfg)
+    attr.check_name2(sym::cfg)
 }

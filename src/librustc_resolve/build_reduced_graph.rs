@@ -712,7 +712,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let module_kind = ModuleKind::Def(DefKind::Mod, def_id.to_def_id(), ident.name);
                 let module = self.r.arenas.alloc_module(ModuleData {
                     no_implicit_prelude: parent.no_implicit_prelude || {
-                        attr::contains_name(&item.attrs, sym::no_implicit_prelude)
+                        attr::contains_name2(&item.attrs, sym::no_implicit_prelude)
                     },
                     ..ModuleData::new(
                         Some(parent),
@@ -991,7 +991,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let mut import_all = None;
         let mut single_imports = Vec::new();
         for attr in &item.attrs {
-            if attr.check_name(sym::macro_use) {
+            if attr.check_name2(sym::macro_use) {
                 if self.parent_scope.module.parent.is_some() {
                     struct_span_err!(
                         self.r.session,
@@ -1097,7 +1097,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     /// Returns `true` if this attribute list contains `macro_use`.
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
-            if attr.check_name(sym::macro_escape) {
+            if attr.check_name2(sym::macro_escape) {
                 let msg = "`#[macro_escape]` is a deprecated synonym for `#[macro_use]`";
                 let mut err = self.r.session.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
@@ -1105,7 +1105,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 } else {
                     err.emit();
                 }
-            } else if !attr.check_name(sym::macro_use) {
+            } else if !attr.check_name2(sym::macro_use) {
                 continue;
             }
 
@@ -1185,7 +1185,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         if macro_rules {
             let ident = ident.normalize_to_macros_2_0();
             self.r.macro_names.insert(ident);
-            let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
+            let is_macro_export = attr::contains_name2(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {

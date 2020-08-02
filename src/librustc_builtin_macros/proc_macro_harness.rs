@@ -264,6 +264,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
+                attr::mark_used(attr);
                 if let Some(prev_attr) = found_attr {
                     let prev_item = prev_attr.get_normal_item();
                     let item = attr.get_normal_item();

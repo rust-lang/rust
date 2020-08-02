@@ -17,9 +17,9 @@ pub fn inject(
     let rust_2018 = sess.edition >= Edition::Edition2018;
 
     // the first name in this list is the crate name of the crate with the prelude
-    let names: &[Symbol] = if attr::contains_name(&krate.attrs, sym::no_core) {
+    let names: &[Symbol] = if attr::contains_name2(&krate.attrs, sym::no_core) {
         return (krate, None);
-    } else if attr::contains_name(&krate.attrs, sym::no_std) {
+    } else if attr::contains_name2(&krate.attrs, sym::no_std) {
         if attr::contains_name(&krate.attrs, sym::compiler_builtins) {
             &[sym::core]
         } else {

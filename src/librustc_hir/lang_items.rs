@@ -144,9 +144,9 @@ impl<CTX> HashStable<CTX> for LangItem {
 pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| {
         Some(match attr {
-            _ if attr.check_name(sym::lang) => (attr.value_str()?, attr.span),
-            _ if attr.check_name(sym::panic_handler) => (sym::panic_impl, attr.span),
-            _ if attr.check_name(sym::alloc_error_handler) => (sym::oom, attr.span),
+            _ if attr.check_name2(sym::lang) => (attr.value_str()?, attr.span),
+            _ if attr.check_name2(sym::panic_handler) => (sym::panic_impl, attr.span),
+            _ if attr.check_name2(sym::alloc_error_handler) => (sym::oom, attr.span),
             _ => return None,
         })
     })

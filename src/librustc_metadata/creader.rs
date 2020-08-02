@@ -900,7 +900,7 @@ impl<'a> CrateLoader<'a> {
                     }
                     None => item.ident.name,
                 };
-                let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
+                let dep_kind = if attr::contains_name2(&item.attrs, sym::no_link) {
                     DepKind::MacrosOnly
                 } else {
                     DepKind::Explicit

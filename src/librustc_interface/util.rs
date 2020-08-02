@@ -469,7 +469,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     let attr_types: Vec<CrateType> = attrs
         .iter()
         .filter_map(|a| {
-            if a.check_name(sym::crate_type) {
+            if a.check_name2(sym::crate_type) {
                 match a.value_str() {
                     Some(s) => categorize_crate_type(s),
                     _ => None,

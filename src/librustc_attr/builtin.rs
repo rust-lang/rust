@@ -1,6 +1,6 @@
 //! Parsing and validation of builtin attributes
 
-use super::{find_by_name, mark_used};
+use super::find_by_name;
 
 use rustc_ast::ast::{self, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
@@ -213,8 +213,6 @@ where
         {
             continue; // not a stability level
         }
-
-        mark_used(attr);
 
         let meta = attr.meta();
 
@@ -650,7 +648,7 @@ where
     let diagnostic = &sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
-        if !(attr.check_name(sym::deprecated) || attr.check_name(sym::rustc_deprecated)) {
+        if !(attr.check_name2(sym::deprecated) || attr.check_name(sym::rustc_deprecated)) {
             continue;
         }
 
@@ -773,8 +771,6 @@ where
             }
         }
 
-        mark_used(&attr);
-
         let is_since_rustc_version = attr.check_name(sym::rustc_deprecated);
         depr = Some(Deprecation { since, note, suggestion, is_since_rustc_version });
     }
@@ -823,9 +819,8 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
 
     let mut acc = Vec::new();
     let diagnostic = &sess.span_diagnostic;
-    if attr.has_name(sym::repr) {
+    if attr.check_name2(sym::repr) {
         if let Some(items) = attr.meta_item_list() {
-            mark_used(attr);
             for item in items {
                 if !item.is_meta_item() {
                     handle_errors(

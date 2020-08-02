@@ -252,7 +252,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         for attr in attrs {
             let name = attr.name_or_empty();
             if unstable_attrs.contains(&name) {
-                attr::mark_used(attr);
                 struct_span_err!(
                     self.tcx.sess,
                     attr.span,

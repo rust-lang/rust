@@ -737,7 +737,7 @@ impl EarlyLintPass for DeprecatedAttr {
                 return;
             }
         }
-        if attr.check_name(sym::no_start) || attr.check_name(sym::crate_id) {
+        if attr.check_name2(sym::no_start) || attr.check_name2(sym::crate_id) {
             let path_str = pprust::path_to_string(&attr.get_normal_item().path);
             let msg = format!("use of deprecated attribute `{}`: no longer used.", path_str);
             lint_deprecated_attr(cx, attr, &msg, None);

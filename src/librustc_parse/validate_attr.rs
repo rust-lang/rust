@@ -3,6 +3,7 @@
 use crate::parse_in;
 
 use rustc_ast::ast::{self, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
+use rustc_ast::attr;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
@@ -154,6 +155,8 @@ pub fn check_builtin_attribute(
                         )
                         .emit();
                 }
+                // Avoid additional noise from the unused lint.
+                attr::mark_used(attr);
             }
         }
         Err(mut err) => {

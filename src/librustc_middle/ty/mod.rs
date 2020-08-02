@@ -3020,6 +3020,10 @@ impl<'tcx> TyCtxt<'tcx> {
         attr::contains_name(&self.get_attrs(did), attr)
     }
 
+    pub fn has_attr2(self, did: DefId, attr: Symbol) -> bool {
+        attr::contains_name2(&self.get_attrs(did), attr)
+    }
+
     /// Returns `true` if this is an `auto trait`.
     pub fn trait_is_auto(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).has_auto_impl

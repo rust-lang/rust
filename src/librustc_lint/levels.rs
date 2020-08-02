@@ -121,12 +121,13 @@ impl<'s> LintLevelsBuilder<'s> {
         for attr in attrs {
             let level = match Level::from_symbol(attr.name_or_empty()) {
                 None => continue,
-                Some(lvl) => lvl,
+                Some(lvl) => {
+                    attr::mark_used(attr);
+                    lvl
+                }
             };
 
             let meta = unwrap_or!(attr.meta(), continue);
-            attr::mark_used(attr);
-
             let mut metas = unwrap_or!(meta.meta_item_list(), continue);
 
             if metas.is_empty() {

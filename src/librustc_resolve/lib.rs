@@ -1194,7 +1194,7 @@ impl<'a> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Invalid);
         let graph_root = arenas.alloc_module(ModuleData {
-            no_implicit_prelude: attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
+            no_implicit_prelude: attr::contains_name2(&krate.attrs, sym::no_implicit_prelude),
             ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
         let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Invalid);

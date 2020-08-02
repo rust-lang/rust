@@ -81,9 +81,9 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
 fn entry_point_type(item: &Item<'_>, at_root: bool) -> EntryPointType {
     match item.kind {
         ItemKind::Fn(..) => {
-            if attr::contains_name(&item.attrs, sym::start) {
+            if attr::contains_name2(&item.attrs, sym::start) {
                 EntryPointType::Start
-            } else if attr::contains_name(&item.attrs, sym::main) {
+            } else if attr::contains_name2(&item.attrs, sym::main) {
                 EntryPointType::MainAttr
             } else if item.ident.name == sym::main {
                 if at_root {

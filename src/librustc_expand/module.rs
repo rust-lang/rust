@@ -102,7 +102,7 @@ crate fn push_directory(
     attrs: &[Attribute],
     Directory { mut ownership, mut path }: Directory,
 ) -> Directory {
-    if let Some(filename) = attr::first_attr_value_str_by_name(attrs, sym::path) {
+    if let Some(filename) = attr::first_attr_value_str_by_name2(attrs, sym::path) {
         path.push(&*filename.as_str());
         ownership = DirectoryOwnership::Owned { relative: None };
     } else {
@@ -220,7 +220,7 @@ fn error_cannot_declare_mod_here<'a, T>(
 // Public for rustfmt usage.
 pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
     // Extract path string from first `#[path = "path_string"]` attribute.
-    let path_string = attr::first_attr_value_str_by_name(attrs, sym::path)?;
+    let path_string = attr::first_attr_value_str_by_name2(attrs, sym::path)?;
     let path_string = path_string.as_str();
 
     // On windows, the base path might have the form

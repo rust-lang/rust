@@ -56,7 +56,7 @@ pub fn find_crate_name(sess: Option<&Session>, attrs: &[ast::Attribute], input: 
     // the command line over one found in the #[crate_name] attribute. If we
     // find both we ensure that they're the same later on as well.
     let attr_crate_name =
-        attr::find_by_name(attrs, sym::crate_name).and_then(|at| at.value_str().map(|s| (at, s)));
+        attr::find_by_name2(attrs, sym::crate_name).and_then(|at| at.value_str().map(|s| (at, s)));
 
     if let Some(sess) = sess {
         if let Some(ref s) = sess.opts.crate_name {

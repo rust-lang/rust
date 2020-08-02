@@ -51,7 +51,7 @@ pub fn inject(
     // unconditional, so that the attribute is still marked as used in
     // non-test builds.
     let reexport_test_harness_main =
-        attr::first_attr_value_str_by_name(&krate.attrs, sym::reexport_test_harness_main);
+        attr::first_attr_value_str_by_name2(&krate.attrs, sym::reexport_test_harness_main);
 
     // Do this here so that the test_runner crate attribute gets marked as used
     // even in non-test builds
@@ -344,7 +344,7 @@ fn is_test_case(i: &ast::Item) -> bool {
 }
 
 fn get_test_runner(sd: &rustc_errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
-    let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
+    let test_attr = attr::find_by_name2(&krate.attrs, sym::test_runner)?;
     let meta_list = test_attr.meta_item_list()?;
     let span = test_attr.span;
     match &*meta_list {

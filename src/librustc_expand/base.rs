@@ -818,7 +818,7 @@ impl SyntaxExtension {
             kind,
             span,
             allow_internal_unstable,
-            allow_internal_unsafe: attr::contains_name(attrs, sym::allow_internal_unsafe),
+            allow_internal_unsafe: attr::contains_name2(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
             stability,
             deprecation: attr::find_deprecation(&sess, attrs, span),

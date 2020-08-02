@@ -319,15 +319,15 @@ enum ShouldPanic {
 }
 
 fn should_ignore(i: &ast::Item) -> bool {
-    attr::contains_name(&i.attrs, sym::ignore)
+    attr::contains_name2(&i.attrs, sym::ignore)
 }
 
 fn should_fail(i: &ast::Item) -> bool {
-    attr::contains_name(&i.attrs, sym::allow_fail)
+    attr::contains_name2(&i.attrs, sym::allow_fail)
 }
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
-    match attr::find_by_name(&i.attrs, sym::should_panic) {
+    match attr::find_by_name2(&i.attrs, sym::should_panic) {
         Some(attr) => {
             let sd = &cx.parse_sess.span_diagnostic;
 
