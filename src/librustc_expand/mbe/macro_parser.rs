@@ -76,15 +76,11 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DocComment, Nonterminal, Token};
-use rustc_ast_pretty::pprust;
-use rustc_parse::parser::{FollowedByType, Parser, PathStyle};
+use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent, Symbol};
+use rustc_span::symbol::MacroRulesNormalizedIdent;
 
-use rustc_errors::PResult;
-use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -382,7 +378,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                     n_rec(sess, next_m, res.by_ref(), ret_val)?;
                 }
             }
-            TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
+            TokenTree::MetaVarDecl(span, _, None) => {
                 if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                     return Err((span, "missing fragment specifier".to_string()));
                 }
@@ -565,7 +561,7 @@ fn inner_parse_loop<'root, 'tt>(
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
-                TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
+                TokenTree::MetaVarDecl(span, _, None) => {
                     if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                         return Error(span, "missing fragment specifier".to_string());
                     }
@@ -573,10 +569,10 @@ fn inner_parse_loop<'root, 'tt>(
 
                 // We need to match a metavar with a valid ident... call out to the black-box
                 // parser by adding an item to `bb_items`.
-                TokenTree::MetaVarDecl(_, _, id) => {
+                TokenTree::MetaVarDecl(_, _, Some(kind)) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
-                    if may_begin_with(token, id.name) {
+                    if Parser::nonterminal_may_begin_with(kind, token) {
                         bb_items.push(item);
                     }
                 }
@@ -706,7 +702,7 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
-                    TokenTree::MetaVarDecl(_, bind, name) => format!("{} ('{}')", name, bind),
+                    TokenTree::MetaVarDecl(_, bind, Some(kind)) => format!("{} ('{}')", kind, bind),
                     _ => panic!(),
                 })
                 .collect::<Vec<String>>()
@@ -736,10 +732,17 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
             assert_eq!(bb_items.len(), 1);
 
             let mut item = bb_items.pop().unwrap();
-            if let TokenTree::MetaVarDecl(span, _, ident) = item.top_elts.get_tt(item.idx) {
+            if let TokenTree::MetaVarDecl(span, _, Some(kind)) = item.top_elts.get_tt(item.idx) {
                 let match_cur = item.match_cur;
-                let nt = match parse_nt(parser.to_mut(), span, ident.name) {
-                    Err(()) => return ErrorReported,
+                let nt = match parser.to_mut().parse_nonterminal(kind) {
+                    Err(mut err) => {
+                        err.span_label(
+                            span,
+                            format!("while parsing argument for this `{}` macro fragment", kind),
+                        )
+                        .emit();
+                        return ErrorReported;
+                    }
                     Ok(nt) => nt,
                 };
                 item.push_match(match_cur, MatchedNonterminal(Lrc::new(nt)));
@@ -753,179 +756,4 @@ pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> Na
 
         assert!(!cur_items.is_empty());
     }
-}
-
-/// The token is an identifier, but not `_`.
-/// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
-    token.ident().filter(|(ident, _)| ident.name != kw::Underscore)
-}
-
-/// Checks whether a non-terminal may begin with a particular token.
-///
-/// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
-/// token. Be conservative (return true) if not sure.
-fn may_begin_with(token: &Token, name: Symbol) -> bool {
-    /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
-    fn may_be_ident(nt: &token::Nonterminal) -> bool {
-        match *nt {
-            token::NtItem(_) | token::NtBlock(_) | token::NtVis(_) | token::NtLifetime(_) => false,
-            _ => true,
-        }
-    }
-
-    match name {
-        sym::expr => {
-            token.can_begin_expr()
-            // This exception is here for backwards compatibility.
-            && !token.is_keyword(kw::Let)
-        }
-        sym::ty => token.can_begin_type(),
-        sym::ident => get_macro_ident(token).is_some(),
-        sym::literal => token.can_begin_literal_maybe_minus(),
-        sym::vis => match token.kind {
-            // The follow-set of :vis + "priv" keyword + interpolated
-            token::Comma | token::Ident(..) | token::Interpolated(..) => true,
-            _ => token.can_begin_type(),
-        },
-        sym::block => match token.kind {
-            token::OpenDelim(token::Brace) => true,
-            token::Interpolated(ref nt) => match **nt {
-                token::NtItem(_)
-                | token::NtPat(_)
-                | token::NtTy(_)
-                | token::NtIdent(..)
-                | token::NtMeta(_)
-                | token::NtPath(_)
-                | token::NtVis(_) => false, // none of these may start with '{'.
-                _ => true,
-            },
-            _ => false,
-        },
-        sym::path | sym::meta => match token.kind {
-            token::ModSep | token::Ident(..) => true,
-            token::Interpolated(ref nt) => match **nt {
-                token::NtPath(_) | token::NtMeta(_) => true,
-                _ => may_be_ident(&nt),
-            },
-            _ => false,
-        },
-        sym::pat => match token.kind {
-            token::Ident(..) |               // box, ref, mut, and other identifiers (can stricten)
-            token::OpenDelim(token::Paren) |    // tuple pattern
-            token::OpenDelim(token::Bracket) |  // slice pattern
-            token::BinOp(token::And) |          // reference
-            token::BinOp(token::Minus) |        // negative literal
-            token::AndAnd |                     // double reference
-            token::Literal(..) |                // literal
-            token::DotDot |                     // range pattern (future compat)
-            token::DotDotDot |                  // range pattern (future compat)
-            token::ModSep |                     // path
-            token::Lt |                         // path (UFCS constant)
-            token::BinOp(token::Shl) => true,   // path (double UFCS)
-            token::Interpolated(ref nt) => may_be_ident(nt),
-            _ => false,
-        },
-        sym::lifetime => match token.kind {
-            token::Lifetime(_) => true,
-            token::Interpolated(ref nt) => match **nt {
-                token::NtLifetime(_) | token::NtTT(_) => true,
-                _ => false,
-            },
-            _ => false,
-        },
-        _ => match token.kind {
-            token::CloseDelim(_) => false,
-            _ => true,
-        },
-    }
-}
-
-/// A call to the "black-box" parser to parse some Rust non-terminal.
-///
-/// # Parameters
-///
-/// - `p`: the "black-box" parser to use
-/// - `sp`: the `Span` we want to parse
-/// - `name`: the name of the metavar _matcher_ we want to match (e.g., `tt`, `ident`, `block`,
-///   etc...)
-///
-/// # Returns
-///
-/// The parsed non-terminal.
-fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Result<Nonterminal, ()> {
-    // FIXME(Centril): Consider moving this to `parser.rs` to make
-    // the visibilities of the methods used below `pub(super)` at most.
-    if name == sym::tt {
-        return Ok(token::NtTT(p.parse_token_tree()));
-    }
-    parse_nt_inner(p, sp, name).map_err(|mut err| {
-        err.span_label(sp, format!("while parsing argument for this `{}` macro fragment", name))
-            .emit()
-    })
-}
-
-fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a, Nonterminal> {
-    // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)
-    // needs to have them force-captured here.
-    // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
-    // which requires having captured tokens available. Since we cannot determine
-    // in advance whether or not a proc-macro will be (transitively) invoked,
-    // we always capture tokens for any `Nonterminal` which needs them.
-    Ok(match name {
-        sym::item => match p.collect_tokens(|this| this.parse_item())? {
-            (Some(mut item), tokens) => {
-                // If we captured tokens during parsing (due to outer attributes),
-                // use those.
-                if item.tokens.is_none() {
-                    item.tokens = Some(tokens);
-                }
-                token::NtItem(item)
-            }
-            (None, _) => return Err(p.struct_span_err(p.token.span, "expected an item keyword")),
-        },
-        sym::block => token::NtBlock(p.parse_block()?),
-        sym::stmt => match p.parse_stmt()? {
-            Some(s) => token::NtStmt(s),
-            None => return Err(p.struct_span_err(p.token.span, "expected a statement")),
-        },
-        sym::pat => token::NtPat(p.parse_pat(None)?),
-        sym::expr => {
-            let (mut expr, tokens) = p.collect_tokens(|this| this.parse_expr())?;
-            // If we captured tokens during parsing (due to outer attributes),
-            // use those.
-            if expr.tokens.is_none() {
-                expr.tokens = Some(tokens);
-            }
-            token::NtExpr(expr)
-        }
-        sym::literal => token::NtLiteral(p.parse_literal_maybe_minus()?),
-        sym::ty => token::NtTy(p.parse_ty()?),
-        // this could be handled like a token, since it is one
-        sym::ident => {
-            if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
-                p.bump();
-                token::NtIdent(ident, is_raw)
-            } else {
-                let token_str = pprust::token_to_string(&p.token);
-                let msg = &format!("expected ident, found {}", &token_str);
-                return Err(p.struct_span_err(p.token.span, msg));
-            }
-        }
-        sym::path => token::NtPath(p.parse_path(PathStyle::Type)?),
-        sym::meta => token::NtMeta(P(p.parse_attr_item()?)),
-        sym::vis => token::NtVis(p.parse_visibility(FollowedByType::Yes)?),
-        sym::lifetime => {
-            if p.check_lifetime() {
-                token::NtLifetime(p.expect_lifetime().ident)
-            } else {
-                let token_str = pprust::token_to_string(&p.token);
-                let msg = &format!("expected a lifetime, found `{}`", &token_str);
-                return Err(p.struct_span_err(p.token.span, msg));
-            }
-        }
-        // this is not supposed to happen, since it has been checked
-        // when compiling the macro.
-        _ => p.span_bug(sp, "invalid fragment specifier"),
-    })
 }

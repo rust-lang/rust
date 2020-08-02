@@ -704,6 +704,67 @@ pub enum Nonterminal {
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(Nonterminal, 40);
 
+#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum NonterminalKind {
+    Item,
+    Block,
+    Stmt,
+    Pat,
+    Expr,
+    Ty,
+    Ident,
+    Lifetime,
+    Literal,
+    Meta,
+    Path,
+    Vis,
+    TT,
+}
+
+impl NonterminalKind {
+    pub fn from_symbol(symbol: Symbol) -> Option<NonterminalKind> {
+        Some(match symbol {
+            sym::item => NonterminalKind::Item,
+            sym::block => NonterminalKind::Block,
+            sym::stmt => NonterminalKind::Stmt,
+            sym::pat => NonterminalKind::Pat,
+            sym::expr => NonterminalKind::Expr,
+            sym::ty => NonterminalKind::Ty,
+            sym::ident => NonterminalKind::Ident,
+            sym::lifetime => NonterminalKind::Lifetime,
+            sym::literal => NonterminalKind::Literal,
+            sym::meta => NonterminalKind::Meta,
+            sym::path => NonterminalKind::Path,
+            sym::vis => NonterminalKind::Vis,
+            sym::tt => NonterminalKind::TT,
+            _ => return None,
+        })
+    }
+    fn symbol(self) -> Symbol {
+        match self {
+            NonterminalKind::Item => sym::item,
+            NonterminalKind::Block => sym::block,
+            NonterminalKind::Stmt => sym::stmt,
+            NonterminalKind::Pat => sym::pat,
+            NonterminalKind::Expr => sym::expr,
+            NonterminalKind::Ty => sym::ty,
+            NonterminalKind::Ident => sym::ident,
+            NonterminalKind::Lifetime => sym::lifetime,
+            NonterminalKind::Literal => sym::literal,
+            NonterminalKind::Meta => sym::meta,
+            NonterminalKind::Path => sym::path,
+            NonterminalKind::Vis => sym::vis,
+            NonterminalKind::TT => sym::tt,
+        }
+    }
+}
+
+impl fmt::Display for NonterminalKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.symbol())
+    }
+}
+
 impl Nonterminal {
     fn span(&self) -> Span {
         match self {
