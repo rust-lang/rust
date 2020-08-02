@@ -84,6 +84,9 @@ x--expand-yaml-anchors--remove:
     os: windows-latest-xl
     <<: *base-job
 
+  - &job-aarch64-linux
+    os: [self-hosted, ARM64, linux]
+
   - &step
     if: success() && !env.SKIP_JOB
 
@@ -586,6 +589,13 @@ jobs:
     strategy:
       matrix:
         include:
+          #############################
+          #   Linux/Docker builders   #
+          #############################
+
+          - name: aarch64-gnu
+            <<: *job-aarch64-linux
+
           ####################
           #  macOS Builders  #
           ####################

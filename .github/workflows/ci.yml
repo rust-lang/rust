@@ -577,6 +577,11 @@ jobs:
     strategy:
       matrix:
         include:
+          - name: aarch64-gnu
+            os:
+              - self-hosted
+              - ARM64
+              - linux
           - name: dist-x86_64-apple
             env:
               SCRIPT: "./x.py dist"
