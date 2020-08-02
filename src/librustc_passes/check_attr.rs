@@ -222,7 +222,7 @@ impl CheckAttrVisitor<'tcx> {
         if let Some(mi) = attr.meta() {
             if let Some(list) = mi.meta_item_list() {
                 for meta in list {
-                    if meta.check_name(sym::alias) {
+                    if meta.has_name(sym::alias) {
                         if !meta.is_value_str()
                             || meta
                                 .value_str()

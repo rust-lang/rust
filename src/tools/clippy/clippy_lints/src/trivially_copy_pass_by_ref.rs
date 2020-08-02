@@ -155,7 +155,7 @@ impl<'tcx> LateLintPass<'tcx> for TriviallyCopyPassByRef {
                     return;
                 }
                 for a in attrs {
-                    if a.meta_item_list().is_some() && a.check_name(sym!(proc_macro_derive)) {
+                    if a.meta_item_list().is_some() && a.has_name(sym!(proc_macro_derive)) {
                         return;
                     }
                 }

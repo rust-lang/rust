@@ -92,9 +92,9 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
             if let Some(meta) = attr.meta() {
                 if let MetaItemKind::List(items) = meta.kind {
                     if items.len() == 1 {
-                        if items[0].check_name(sym::allowed) {
+                        if items[0].has_name(sym::allowed) {
                             return Some(UnwindAttr::Allowed);
-                        } else if items[0].check_name(sym::aborts) {
+                        } else if items[0].has_name(sym::aborts) {
                             return Some(UnwindAttr::Aborts);
                         }
                     }
@@ -168,7 +168,7 @@ pub fn contains_feature_attr(attrs: &[Attribute], feature_name: Symbol) -> bool 
         item.check_name(sym::feature)
             && item
                 .meta_item_list()
-                .map(|list| list.iter().any(|mi| mi.is_word() && mi.check_name(feature_name)))
+                .map(|list| list.iter().any(|mi| mi.is_word() && mi.has_name(feature_name)))
                 .unwrap_or(false)
     })
 }
@@ -505,7 +505,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
 }
 
 fn try_gate_cfg(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) {
-    let gate = find_gated_cfg(|sym| cfg.check_name(sym));
+    let gate = find_gated_cfg(|sym| cfg.has_name(sym));
     if let (Some(feats), Some(gated_cfg)) = (features, gate) {
         gate_cfg(&gated_cfg, cfg.span, sess, feats);
     }
@@ -898,7 +898,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                     }
                 } else {
                     if let Some(meta_item) = item.meta_item() {
-                        if meta_item.check_name(sym::align) {
+                        if meta_item.has_name(sym::align) {
                             if let MetaItemKind::NameValue(ref value) = meta_item.kind {
                                 recognised = true;
                                 let mut err = struct_span_err!(

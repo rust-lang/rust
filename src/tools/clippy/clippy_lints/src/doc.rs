@@ -323,7 +323,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
             let (comment, current_spans) = strip_doc_comment_decoration(&comment, attr.span);
             spans.extend_from_slice(&current_spans);
             doc.push_str(&comment);
-        } else if attr.check_name(sym!(doc)) {
+        } else if attr.has_name(sym!(doc)) {
             // ignore mix of sugared and non-sugared doc
             // don't trigger the safety or errors check
             return DocHeaders {
