@@ -178,27 +178,30 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     results
 }
 
-fn print_diff(expected: &str, actual: &str, context_size: usize) {
+fn write_diff(expected: &str, actual: &str, context_size: usize) -> String {
+    use std::fmt::Write;
+    let mut output = String::new();
     let diff_results = make_diff(expected, actual, context_size);
     for result in diff_results {
         let mut line_number = result.line_number;
         for line in result.lines {
             match line {
                 DiffLine::Expected(e) => {
-                    println!("-\t{}", e);
+                    writeln!(output, "-\t{}", e).unwrap();
                     line_number += 1;
                 }
                 DiffLine::Context(c) => {
-                    println!("{}\t{}", line_number, c);
+                    writeln!(output, "{}\t{}", line_number, c).unwrap();
                     line_number += 1;
                 }
                 DiffLine::Resulting(r) => {
-                    println!("+\t{}", r);
+                    writeln!(output, "+\t{}", r).unwrap();
                 }
             }
         }
-        println!();
+        writeln!(output, "").unwrap();
     }
+    output
 }
 
 pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
@@ -655,8 +658,12 @@ impl<'test> TestCx<'test> {
                  ------------------------------------------\n\
                  {}\n\
                  ------------------------------------------\n\
-                 \n",
-                expected, actual
+                 diff:\n\
+                 ------------------------------------------\n\
+                 {}\n",
+                expected,
+                actual,
+                write_diff(expected, actual, 3),
             ));
         }
     }
@@ -3227,7 +3234,7 @@ impl<'test> TestCx<'test> {
                     }
                     let expected_string = fs::read_to_string(&expected_file).unwrap();
                     if dumped_string != expected_string {
-                        print_diff(&expected_string, &dumped_string, 3);
+                        print!("{}", write_diff(&expected_string, &dumped_string, 3));
                         panic!(
                             "Actual MIR output differs from expected MIR output {}",
                             expected_file.display()
@@ -3452,7 +3459,7 @@ impl<'test> TestCx<'test> {
                 println!("normalized {}:\n{}\n", kind, actual);
             } else {
                 println!("diff of {}:\n", kind);
-                print_diff(expected, actual, 3);
+                print!("{}", write_diff(expected, actual, 3));
             }
         }
 
