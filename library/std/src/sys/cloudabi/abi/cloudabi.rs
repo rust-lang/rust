@@ -1910,7 +1910,7 @@ extern "C" {
 /// The resolution of the clock.
 #[inline]
 pub unsafe fn clock_res_get(clock_id_: clockid, resolution_: &mut timestamp) -> errno {
-    cloudabi_sys_clock_res_get(clock_id_, resolution_)
+    unsafe { cloudabi_sys_clock_res_get(clock_id_, resolution_) }
 }
 
 /// Obtains the time value of a clock.
@@ -1934,7 +1934,7 @@ pub unsafe fn clock_time_get(
     precision_: timestamp,
     time_: *mut timestamp,
 ) -> errno {
-    cloudabi_sys_clock_time_get(clock_id_, precision_, time_)
+    unsafe { cloudabi_sys_clock_time_get(clock_id_, precision_, time_) }
 }
 
 /// Wakes up threads waiting on a userspace condition variable.
@@ -1961,7 +1961,7 @@ pub unsafe fn clock_time_get(
 /// threads, all threads are woken up.
 #[inline]
 pub unsafe fn condvar_signal(condvar_: *mut condvar, scope_: scope, nwaiters_: nthreads) -> errno {
-    cloudabi_sys_condvar_signal(condvar_, scope_, nwaiters_)
+    unsafe { cloudabi_sys_condvar_signal(condvar_, scope_, nwaiters_) }
 }
 
 /// Closes a file descriptor.
@@ -1972,7 +1972,7 @@ pub unsafe fn condvar_signal(condvar_: *mut condvar, scope_: scope, nwaiters_: n
 /// The file descriptor that needs to be closed.
 #[inline]
 pub unsafe fn fd_close(fd_: fd) -> errno {
-    cloudabi_sys_fd_close(fd_)
+    unsafe { cloudabi_sys_fd_close(fd_) }
 }
 
 /// Creates a file descriptor.
@@ -1990,7 +1990,7 @@ pub unsafe fn fd_close(fd_: fd) -> errno {
 /// The file descriptor that has been created.
 #[inline]
 pub unsafe fn fd_create1(type_: filetype, fd_: &mut fd) -> errno {
-    cloudabi_sys_fd_create1(type_, fd_)
+    unsafe { cloudabi_sys_fd_create1(type_, fd_) }
 }
 
 /// Creates a pair of file descriptors.
@@ -2013,7 +2013,8 @@ pub unsafe fn fd_create1(type_: filetype, fd_: &mut fd) -> errno {
 /// The second file descriptor of the pair.
 #[inline]
 pub unsafe fn fd_create2(type_: filetype, fd1_: &mut fd, fd2_: &mut fd) -> errno {
-    cloudabi_sys_fd_create2(type_, fd1_, fd2_)
+    // SAFETY: the caller must uphold the safety contract for `cloudabi_sys_fd_create2`.
+    unsafe { cloudabi_sys_fd_create2(type_, fd1_, fd2_) }
 }
 
 /// Synchronizes the data of a file to disk.
@@ -2025,7 +2026,9 @@ pub unsafe fn fd_create2(type_: filetype, fd1_: &mut fd, fd2_: &mut fd) -> errno
 /// needs to be synchronized to disk.
 #[inline]
 pub unsafe fn fd_datasync(fd_: fd) -> errno {
-    cloudabi_sys_fd_datasync(fd_)
+    // SAFETY: the caller must guarantee that `fd` is valid
+    // for synchronization.
+    unsafe { cloudabi_sys_fd_datasync(fd_) }
 }
 
 /// Duplicates a file descriptor.
@@ -2040,7 +2043,7 @@ pub unsafe fn fd_datasync(fd_: fd) -> errno {
 /// The new file descriptor.
 #[inline]
 pub unsafe fn fd_dup(from_: fd, fd_: &mut fd) -> errno {
-    cloudabi_sys_fd_dup(from_, fd_)
+    unsafe { cloudabi_sys_fd_dup(from_, fd_) }
 }
 
 /// Reads from a file descriptor, without using and updating the
@@ -2064,7 +2067,7 @@ pub unsafe fn fd_dup(from_: fd, fd_: &mut fd) -> errno {
 /// The number of bytes read.
 #[inline]
 pub unsafe fn fd_pread(fd_: fd, iovs_: &[iovec], offset_: filesize, nread_: &mut usize) -> errno {
-    cloudabi_sys_fd_pread(fd_, iovs_.as_ptr(), iovs_.len(), offset_, nread_)
+    unsafe { cloudabi_sys_fd_pread(fd_, iovs_.as_ptr(), iovs_.len(), offset_, nread_) }
 }
 
 /// Writes to a file descriptor, without using and updating the
@@ -2093,7 +2096,7 @@ pub unsafe fn fd_pwrite(
     offset_: filesize,
     nwritten_: &mut usize,
 ) -> errno {
-    cloudabi_sys_fd_pwrite(fd_, iovs_.as_ptr(), iovs_.len(), offset_, nwritten_)
+    unsafe { cloudabi_sys_fd_pwrite(fd_, iovs_.as_ptr(), iovs_.len(), offset_, nwritten_) }
 }
 
 /// Reads from a file descriptor.
@@ -2112,7 +2115,7 @@ pub unsafe fn fd_pwrite(
 /// The number of bytes read.
 #[inline]
 pub unsafe fn fd_read(fd_: fd, iovs_: &[iovec], nread_: &mut usize) -> errno {
-    cloudabi_sys_fd_read(fd_, iovs_.as_ptr(), iovs_.len(), nread_)
+    unsafe { cloudabi_sys_fd_read(fd_, iovs_.as_ptr(), iovs_.len(), nread_) }
 }
 
 /// Atomically replaces a file descriptor by a copy of another
@@ -2138,7 +2141,7 @@ pub unsafe fn fd_read(fd_: fd, iovs_: &[iovec], nread_: &mut usize) -> errno {
 /// overwritten.
 #[inline]
 pub unsafe fn fd_replace(from_: fd, to_: fd) -> errno {
-    cloudabi_sys_fd_replace(from_, to_)
+    unsafe { cloudabi_sys_fd_replace(from_, to_) }
 }
 
 /// Moves the offset of the file descriptor.
@@ -2166,7 +2169,7 @@ pub unsafe fn fd_seek(
     whence_: whence,
     newoffset_: &mut filesize,
 ) -> errno {
-    cloudabi_sys_fd_seek(fd_, offset_, whence_, newoffset_)
+    unsafe { cloudabi_sys_fd_seek(fd_, offset_, whence_, newoffset_) }
 }
 
 /// Gets attributes of a file descriptor.
@@ -2182,7 +2185,7 @@ pub unsafe fn fd_seek(
 /// attributes are stored.
 #[inline]
 pub unsafe fn fd_stat_get(fd_: fd, buf_: *mut fdstat) -> errno {
-    cloudabi_sys_fd_stat_get(fd_, buf_)
+    unsafe { cloudabi_sys_fd_stat_get(fd_, buf_) }
 }
 
 /// Adjusts attributes of a file descriptor.
@@ -2202,7 +2205,7 @@ pub unsafe fn fd_stat_get(fd_: fd, buf_: *mut fdstat) -> errno {
 /// be adjusted.
 #[inline]
 pub unsafe fn fd_stat_put(fd_: fd, buf_: *const fdstat, flags_: fdsflags) -> errno {
-    cloudabi_sys_fd_stat_put(fd_, buf_, flags_)
+    unsafe { cloudabi_sys_fd_stat_put(fd_, buf_, flags_) }
 }
 
 /// Synchronizes the data and metadata of a file to disk.
@@ -2214,7 +2217,7 @@ pub unsafe fn fd_stat_put(fd_: fd, buf_: *const fdstat, flags_: fdsflags) -> err
 /// and metadata needs to be synchronized to disk.
 #[inline]
 pub unsafe fn fd_sync(fd_: fd) -> errno {
-    cloudabi_sys_fd_sync(fd_)
+    unsafe { cloudabi_sys_fd_sync(fd_) }
 }
 
 /// Writes to a file descriptor.
@@ -2233,7 +2236,7 @@ pub unsafe fn fd_sync(fd_: fd) -> errno {
 /// The number of bytes written.
 #[inline]
 pub unsafe fn fd_write(fd_: fd, iovs_: &[ciovec], nwritten_: &mut usize) -> errno {
-    cloudabi_sys_fd_write(fd_, iovs_.as_ptr(), iovs_.len(), nwritten_)
+    unsafe { cloudabi_sys_fd_write(fd_, iovs_.as_ptr(), iovs_.len(), nwritten_) }
 }
 
 /// Provides file advisory information on a file descriptor.
@@ -2256,7 +2259,7 @@ pub unsafe fn fd_write(fd_: fd, iovs_: &[ciovec], nwritten_: &mut usize) -> errn
 /// The advice.
 #[inline]
 pub unsafe fn file_advise(fd_: fd, offset_: filesize, len_: filesize, advice_: advice) -> errno {
-    cloudabi_sys_file_advise(fd_, offset_, len_, advice_)
+    unsafe { cloudabi_sys_file_advise(fd_, offset_, len_, advice_) }
 }
 
 /// Forces the allocation of space in a file.
@@ -2275,7 +2278,7 @@ pub unsafe fn file_advise(fd_: fd, offset_: filesize, len_: filesize, advice_: a
 /// The length of the area that is allocated.
 #[inline]
 pub unsafe fn file_allocate(fd_: fd, offset_: filesize, len_: filesize) -> errno {
-    cloudabi_sys_file_allocate(fd_, offset_, len_)
+    unsafe { cloudabi_sys_file_allocate(fd_, offset_, len_) }
 }
 
 /// Creates a file of a specified type.
@@ -2296,7 +2299,7 @@ pub unsafe fn file_allocate(fd_: fd, offset_: filesize, len_: filesize) -> errno
 ///     Creates a directory.
 #[inline]
 pub unsafe fn file_create(fd_: fd, path_: &[u8], type_: filetype) -> errno {
-    cloudabi_sys_file_create(fd_, path_.as_ptr(), path_.len(), type_)
+    unsafe { cloudabi_sys_file_create(fd_, path_.as_ptr(), path_.len(), type_)}
 }
 
 /// Creates a hard link.
@@ -2320,7 +2323,7 @@ pub unsafe fn file_create(fd_: fd, path_: &[u8], type_: filetype) -> errno {
 /// should be created.
 #[inline]
 pub unsafe fn file_link(fd1_: lookup, path1_: &[u8], fd2_: fd, path2_: &[u8]) -> errno {
-    cloudabi_sys_file_link(fd1_, path1_.as_ptr(), path1_.len(), fd2_, path2_.as_ptr(), path2_.len())
+    unsafe { cloudabi_sys_file_link(fd1_, path1_.as_ptr(), path1_.len(), fd2_, path2_.as_ptr(), path2_.len()) }
 }
 
 /// Opens a file.
@@ -2362,7 +2365,7 @@ pub unsafe fn file_open(
     fds_: *const fdstat,
     fd_: &mut fd,
 ) -> errno {
-    cloudabi_sys_file_open(dirfd_, path_.as_ptr(), path_.len(), oflags_, fds_, fd_)
+    unsafe { cloudabi_sys_file_open(dirfd_, path_.as_ptr(), path_.len(), oflags_, fds_, fd_) }
 }
 
 /// Reads directory entries from a directory.
@@ -2402,7 +2405,7 @@ pub unsafe fn file_readdir(
     cookie_: dircookie,
     bufused_: &mut usize,
 ) -> errno {
-    cloudabi_sys_file_readdir(fd_, buf_.as_mut_ptr() as *mut (), buf_.len(), cookie_, bufused_)
+    unsafe { cloudabi_sys_file_readdir(fd_, buf_.as_mut_ptr() as *mut (), buf_.len(), cookie_, bufused_) }
 }
 
 /// Reads the contents of a symbolic link.
@@ -2425,14 +2428,16 @@ pub unsafe fn file_readdir(
 /// The number of bytes placed in the buffer.
 #[inline]
 pub unsafe fn file_readlink(fd_: fd, path_: &[u8], buf_: &mut [u8], bufused_: &mut usize) -> errno {
-    cloudabi_sys_file_readlink(
-        fd_,
-        path_.as_ptr(),
-        path_.len(),
-        buf_.as_mut_ptr(),
-        buf_.len(),
-        bufused_,
-    )
+    unsafe {
+        cloudabi_sys_file_readlink(
+            fd_,
+            path_.as_ptr(),
+            path_.len(),
+            buf_.as_mut_ptr(),
+            buf_.len(),
+            bufused_,
+        )
+    }
 }
 
 /// Renames a file.
@@ -2456,14 +2461,16 @@ pub unsafe fn file_readlink(fd_: fd, path_: &[u8], buf_: &mut [u8], bufused_: &m
 /// be renamed.
 #[inline]
 pub unsafe fn file_rename(fd1_: fd, path1_: &[u8], fd2_: fd, path2_: &[u8]) -> errno {
-    cloudabi_sys_file_rename(
-        fd1_,
-        path1_.as_ptr(),
-        path1_.len(),
-        fd2_,
-        path2_.as_ptr(),
-        path2_.len(),
-    )
+    unsafe {
+        cloudabi_sys_file_rename(
+            fd1_,
+            path1_.as_ptr(),
+            path1_.len(),
+            fd2_,
+            path2_.as_ptr(),
+            path2_.len(),
+        )
+    }
 }
 
 /// Gets attributes of a file by file descriptor.
@@ -2479,7 +2486,7 @@ pub unsafe fn file_rename(fd1_: fd, path1_: &[u8], fd2_: fd, path2_: &[u8]) -> e
 /// stored.
 #[inline]
 pub unsafe fn file_stat_fget(fd_: fd, buf_: *mut filestat) -> errno {
-    cloudabi_sys_file_stat_fget(fd_, buf_)
+    unsafe { cloudabi_sys_file_stat_fget(fd_, buf_) }
 }
 
 /// Adjusts attributes of a file by file descriptor.
@@ -2499,7 +2506,7 @@ pub unsafe fn file_stat_fget(fd_: fd, buf_: *mut filestat) -> errno {
 /// be adjusted.
 #[inline]
 pub unsafe fn file_stat_fput(fd_: fd, buf_: *const filestat, flags_: fsflags) -> errno {
-    cloudabi_sys_file_stat_fput(fd_, buf_, flags_)
+    unsafe { cloudabi_sys_file_stat_fput(fd_, buf_, flags_) }
 }
 
 /// Gets attributes of a file by path.
@@ -2520,7 +2527,7 @@ pub unsafe fn file_stat_fput(fd_: fd, buf_: *const filestat, flags_: fsflags) ->
 /// stored.
 #[inline]
 pub unsafe fn file_stat_get(fd_: lookup, path_: &[u8], buf_: *mut filestat) -> errno {
-    cloudabi_sys_file_stat_get(fd_, path_.as_ptr(), path_.len(), buf_)
+    unsafe { cloudabi_sys_file_stat_get(fd_, path_.as_ptr(), path_.len(), buf_) }
 }
 
 /// Adjusts attributes of a file by path.
@@ -2550,7 +2557,7 @@ pub unsafe fn file_stat_put(
     buf_: *const filestat,
     flags_: fsflags,
 ) -> errno {
-    cloudabi_sys_file_stat_put(fd_, path_.as_ptr(), path_.len(), buf_, flags_)
+    unsafe { cloudabi_sys_file_stat_put(fd_, path_.as_ptr(), path_.len(), buf_, flags_) }
 }
 
 /// Creates a symbolic link.
@@ -2569,7 +2576,7 @@ pub unsafe fn file_stat_put(
 /// link should be created.
 #[inline]
 pub unsafe fn file_symlink(path1_: &[u8], fd_: fd, path2_: &[u8]) -> errno {
-    cloudabi_sys_file_symlink(path1_.as_ptr(), path1_.len(), fd_, path2_.as_ptr(), path2_.len())
+    unsafe { cloudabi_sys_file_symlink(path1_.as_ptr(), path1_.len(), fd_, path2_.as_ptr(), path2_.len()) }
 }
 
 /// Unlinks a file, or removes a directory.
@@ -2591,7 +2598,7 @@ pub unsafe fn file_symlink(path1_: &[u8], fd_: fd, path2_: &[u8]) -> errno {
 ///     Otherwise, unlink a file.
 #[inline]
 pub unsafe fn file_unlink(fd_: fd, path_: &[u8], flags_: ulflags) -> errno {
-    cloudabi_sys_file_unlink(fd_, path_.as_ptr(), path_.len(), flags_)
+    unsafe { cloudabi_sys_file_unlink(fd_, path_.as_ptr(), path_.len(), flags_) }
 }
 
 /// Unlocks a write-locked userspace lock.
@@ -2618,7 +2625,7 @@ pub unsafe fn file_unlink(fd_: fd, path_: &[u8], flags_: ulflags) -> errno {
 /// shared memory.
 #[inline]
 pub unsafe fn lock_unlock(lock_: *mut lock, scope_: scope) -> errno {
-    cloudabi_sys_lock_unlock(lock_, scope_)
+    unsafe { cloudabi_sys_lock_unlock(lock_, scope_) }
 }
 
 /// Provides memory advisory information on a region of memory.
@@ -2633,7 +2640,7 @@ pub unsafe fn lock_unlock(lock_: *mut lock, scope_: scope) -> errno {
 /// The advice.
 #[inline]
 pub unsafe fn mem_advise(mapping_: &mut [u8], advice_: advice) -> errno {
-    cloudabi_sys_mem_advise(mapping_.as_mut_ptr() as *mut (), mapping_.len(), advice_)
+    unsafe { cloudabi_sys_mem_advise(mapping_.as_mut_ptr() as *mut (), mapping_.len(), advice_) }
 }
 
 /// Creates a memory mapping, making the contents of a file
@@ -2682,7 +2689,7 @@ pub unsafe fn mem_map(
     off_: filesize,
     mem_: &mut *mut (),
 ) -> errno {
-    cloudabi_sys_mem_map(addr_, len_, prot_, flags_, fd_, off_, mem_)
+    unsafe { cloudabi_sys_mem_map(addr_, len_, prot_, flags_, fd_, off_, mem_) }
 }
 
 /// Changes the protection of a memory mapping.
@@ -2696,7 +2703,7 @@ pub unsafe fn mem_map(
 /// New protection options.
 #[inline]
 pub unsafe fn mem_protect(mapping_: &mut [u8], prot_: mprot) -> errno {
-    cloudabi_sys_mem_protect(mapping_.as_mut_ptr() as *mut (), mapping_.len(), prot_)
+    unsafe { cloudabi_sys_mem_protect(mapping_.as_mut_ptr() as *mut (), mapping_.len(), prot_) }
 }
 
 /// Synchronizes a region of memory with its physical storage.
@@ -2710,7 +2717,7 @@ pub unsafe fn mem_protect(mapping_: &mut [u8], prot_: mprot) -> errno {
 /// The method of synchronization.
 #[inline]
 pub unsafe fn mem_sync(mapping_: &mut [u8], flags_: msflags) -> errno {
-    cloudabi_sys_mem_sync(mapping_.as_mut_ptr() as *mut (), mapping_.len(), flags_)
+    unsafe { cloudabi_sys_mem_sync(mapping_.as_mut_ptr() as *mut (), mapping_.len(), flags_) }
 }
 
 /// Unmaps a region of memory.
@@ -2721,7 +2728,7 @@ pub unsafe fn mem_sync(mapping_: &mut [u8], flags_: msflags) -> errno {
 /// The pages that needs to be unmapped.
 #[inline]
 pub unsafe fn mem_unmap(mapping_: &mut [u8]) -> errno {
-    cloudabi_sys_mem_unmap(mapping_.as_mut_ptr() as *mut (), mapping_.len())
+    unsafe { cloudabi_sys_mem_unmap(mapping_.as_mut_ptr() as *mut (), mapping_.len()) }
 }
 
 /// Concurrently polls for the occurrence of a set of events.
@@ -2746,7 +2753,7 @@ pub unsafe fn poll(
     nsubscriptions_: usize,
     nevents_: *mut usize,
 ) -> errno {
-    cloudabi_sys_poll(in_, out_, nsubscriptions_, nevents_)
+    unsafe { cloudabi_sys_poll(in_, out_, nsubscriptions_, nevents_) }
 }
 
 /// Replaces the process by a new executable.
@@ -2784,7 +2791,7 @@ pub unsafe fn poll(
 /// execution.
 #[inline]
 pub unsafe fn proc_exec(fd_: fd, data_: &[u8], fds_: &[fd]) -> errno {
-    cloudabi_sys_proc_exec(fd_, data_.as_ptr() as *const (), data_.len(), fds_.as_ptr(), fds_.len())
+    unsafe { cloudabi_sys_proc_exec(fd_, data_.as_ptr() as *const (), data_.len(), fds_.as_ptr(), fds_.len()) }
 }
 
 /// Terminates the process normally.
@@ -2797,7 +2804,7 @@ pub unsafe fn proc_exec(fd_: fd, data_: &[u8], fds_: &[fd]) -> errno {
 /// through [`event.union.proc_terminate.exitcode`](struct.event_proc_terminate.html#structfield.exitcode).
 #[inline]
 pub unsafe fn proc_exit(rval_: exitcode) -> ! {
-    cloudabi_sys_proc_exit(rval_)
+    unsafe { cloudabi_sys_proc_exit(rval_) }
 }
 
 /// Forks the process of the calling thread.
@@ -2822,7 +2829,7 @@ pub unsafe fn proc_exit(rval_: exitcode) -> ! {
 /// initial thread of the child process.
 #[inline]
 pub unsafe fn proc_fork(fd_: &mut fd, tid_: &mut tid) -> errno {
-    cloudabi_sys_proc_fork(fd_, tid_)
+    unsafe { cloudabi_sys_proc_fork(fd_, tid_) }
 }
 
 /// Sends a signal to the process of the calling thread.
@@ -2837,7 +2844,7 @@ pub unsafe fn proc_fork(fd_: &mut fd, tid_: &mut tid) -> errno {
 /// [`event.union.proc_terminate.signal`](struct.event_proc_terminate.html#structfield.signal).
 #[inline]
 pub unsafe fn proc_raise(sig_: signal) -> errno {
-    cloudabi_sys_proc_raise(sig_)
+    unsafe { cloudabi_sys_proc_raise(sig_) }
 }
 
 /// Obtains random data from the kernel random number generator.
@@ -2853,7 +2860,7 @@ pub unsafe fn proc_raise(sig_: signal) -> errno {
 /// data.
 #[inline]
 pub unsafe fn random_get(buf_: &mut [u8]) -> errno {
-    cloudabi_sys_random_get(buf_.as_mut_ptr() as *mut (), buf_.len())
+    unsafe { cloudabi_sys_random_get(buf_.as_mut_ptr() as *mut (), buf_.len()) }
 }
 
 /// Receives a message on a socket.
@@ -2871,7 +2878,7 @@ pub unsafe fn random_get(buf_: &mut [u8]) -> errno {
 /// Output parameters.
 #[inline]
 pub unsafe fn sock_recv(sock_: fd, in_: *const recv_in, out_: *mut recv_out) -> errno {
-    cloudabi_sys_sock_recv(sock_, in_, out_)
+    unsafe { cloudabi_sys_sock_recv(sock_, in_, out_) }
 }
 
 /// Sends a message on a socket.
@@ -2888,7 +2895,7 @@ pub unsafe fn sock_recv(sock_: fd, in_: *const recv_in, out_: *mut recv_out) -> 
 /// Output parameters.
 #[inline]
 pub unsafe fn sock_send(sock_: fd, in_: *const send_in, out_: *mut send_out) -> errno {
-    cloudabi_sys_sock_send(sock_, in_, out_)
+    unsafe { cloudabi_sys_sock_send(sock_, in_, out_) }
 }
 
 /// Shuts down socket send and receive channels.
@@ -2903,7 +2910,7 @@ pub unsafe fn sock_send(sock_: fd, in_: *const send_in, out_: *mut send_out) -> 
 /// down.
 #[inline]
 pub unsafe fn sock_shutdown(sock_: fd, how_: sdflags) -> errno {
-    cloudabi_sys_sock_shutdown(sock_, how_)
+    unsafe { cloudabi_sys_sock_shutdown(sock_, how_) }
 }
 
 /// Creates a new thread within the current process.
@@ -2917,7 +2924,7 @@ pub unsafe fn sock_shutdown(sock_: fd, how_: sdflags) -> errno {
 /// The thread ID of the new thread.
 #[inline]
 pub unsafe fn thread_create(attr_: *mut threadattr, tid_: &mut tid) -> errno {
-    cloudabi_sys_thread_create(attr_, tid_)
+    unsafe { cloudabi_sys_thread_create(attr_, tid_) }
 }
 
 /// Terminates the calling thread.
@@ -2937,11 +2944,11 @@ pub unsafe fn thread_create(attr_: *mut threadattr, tid_: &mut tid) -> errno {
 /// shared memory.
 #[inline]
 pub unsafe fn thread_exit(lock_: *mut lock, scope_: scope) -> ! {
-    cloudabi_sys_thread_exit(lock_, scope_)
+    unsafe { cloudabi_sys_thread_exit(lock_, scope_) }
 }
 
 /// Temporarily yields execution of the calling thread.
 #[inline]
 pub unsafe fn thread_yield() -> errno {
-    cloudabi_sys_thread_yield()
+    unsafe { cloudabi_sys_thread_yield() }
 }
