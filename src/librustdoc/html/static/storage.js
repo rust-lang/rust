@@ -1,8 +1,6 @@
 // From rust:
 /* global resourcesSuffix */
-
-var currentTheme = document.getElementById("themeStyle");
-var mainTheme = document.getElementById("mainThemeStyle");
+/* global allThemeNames */
 
 var savedHref = [];
 
@@ -87,14 +85,9 @@ function getCurrentValue(name) {
     return null;
 }
 
-function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
-    var fullBasicCss = "rustdoc" + resourcesSuffix + ".css";
-    var fullNewTheme = newTheme + resourcesSuffix + ".css";
-    var newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
-
-    if (styleElem.href === newHref) {
-        return;
-    }
+function switchTheme(newTheme, saveTheme) {
+    // The theme file we are switching to
+    var newThemeFile = newTheme + resourcesSuffix + ".css";
 
     var found = false;
     if (savedHref.length === 0) {
@@ -102,14 +95,24 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
             savedHref.push(el.href);
         });
     }
-    onEach(savedHref, function(el) {
-        if (el === newHref) {
+    onEach(savedHref, function(href) {
+        if (href.endsWith(newThemeFile)) {
             found = true;
             return true;
         }
     });
     if (found === true) {
-        styleElem.href = newHref;
+        onEach(allThemeNames, function(themeName) {
+            // The theme file for this theme name
+            var themeFile = themeName + resourcesSuffix + ".css";
+            var themeSheet = document.querySelector("[href$='" + themeFile + "']");
+    
+            if (themeName === newTheme) {
+                themeSheet.disabled = false;
+            } else {
+                themeSheet.disabled = true;
+            }
+        });
         // If this new value comes from a system setting or from the previously saved theme, no
         // need to save it.
         if (saveTheme === true) {
@@ -123,6 +126,4 @@ function getSystemValue() {
     return property.replace(/[\"\']/g, "");
 }
 
-switchTheme(currentTheme, mainTheme,
-            getCurrentValue("rustdoc-theme") || getSystemValue() || "light",
-            false);
+switchTheme(getCurrentValue("rustdoc-theme") || getSystemValue() || "light", false);

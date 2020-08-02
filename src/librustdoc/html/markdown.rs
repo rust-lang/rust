@@ -1148,8 +1148,6 @@ pub struct IdMap {
 fn init_id_map() -> FxHashMap<String, usize> {
     let mut map = FxHashMap::default();
     // This is the list of IDs used by rustdoc templates.
-    map.insert("mainThemeStyle".to_owned(), 1);
-    map.insert("themeStyle".to_owned(), 1);
     map.insert("theme-picker".to_owned(), 1);
     map.insert("theme-choices".to_owned(), 1);
     map.insert("settings-menu".to_owned(), 1);

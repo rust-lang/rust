@@ -50,8 +50,7 @@ pub fn render<T: Print, S: Print>(
     <meta name=\"keywords\" content=\"{keywords}\">\
     <title>{title}</title>\
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}normalize{suffix}.css\">\
-    <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}rustdoc{suffix}.css\" \
-          id=\"mainThemeStyle\">\
+    <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}rustdoc{suffix}.css\">\
     {style_files}\
     <script src=\"{static_root_path}storage{suffix}.js\"></script>\
     <noscript><link rel=\"stylesheet\" href=\"{static_root_path}noscript{suffix}.css\"></noscript>\
@@ -171,17 +170,11 @@ pub fn render<T: Print, S: Print>(
         krate = layout.krate,
         style_files = style_files
             .iter()
-            .filter_map(|t| {
-                if let Some(stem) = t.path.file_stem() { Some((stem, t.disabled)) } else { None }
-            })
-            .filter_map(|t| {
-                if let Some(path) = t.0.to_str() { Some((path, t.1)) } else { None }
-            })
+            .filter_map(|t| t.path.file_stem())
+            .filter_map(|t| t.to_str())
             .map(|t| format!(
-                r#"<link rel="stylesheet" type="text/css" href="{}.css" {} {}>"#,
-                Escape(&format!("{}{}{}", static_root_path, t.0, page.resource_suffix)),
-                if t.1 { "disabled" } else { "" },
-                if t.0 == "light" { "id=\"themeStyle\"" } else { "" }
+                r#"<link rel="stylesheet" type="text/css" href="{}.css">"#,
+                Escape(&format!("{}{}{}", static_root_path, t, page.resource_suffix)),
             ))
             .collect::<String>(),
         suffix = page.resource_suffix,

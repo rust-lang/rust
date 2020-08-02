@@ -344,8 +344,6 @@ impl Serialize for TypeWithKind {
 pub struct StylePath {
     /// The path to the theme
     pub path: PathBuf,
-    /// What the `disabled` attribute should be set to in the HTML tag
-    pub disabled: bool,
 }
 
 thread_local!(pub static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
@@ -472,14 +470,9 @@ impl FormatRenderer for Context {
         //
         // Note that these must be added before `sources::render` is called
         // so that the resulting source pages are styled
-        //
-        // `light.css` is not disabled because it is the stylesheet that stays loaded
-        // by the browser as the theme stylesheet. The theme system (hackily) works by
-        // changing the href to this stylesheet. All other themes are disabled to
-        // prevent rule conflicts
-        scx.style_files.push(StylePath { path: PathBuf::from("light.css"), disabled: false });
-        scx.style_files.push(StylePath { path: PathBuf::from("dark.css"), disabled: true });
-        scx.style_files.push(StylePath { path: PathBuf::from("ayu.css"), disabled: true });
+        scx.style_files.push(StylePath { path: PathBuf::from("light.css") });
+        scx.style_files.push(StylePath { path: PathBuf::from("dark.css") });
+        scx.style_files.push(StylePath { path: PathBuf::from("ayu.css") });
 
         let dst = output;
         scx.ensure_dir(&dst)?;
@@ -568,7 +561,7 @@ impl FormatRenderer for Context {
 
         let mut style_files = self.shared.style_files.clone();
         let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
-        style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
+        style_files.push(StylePath { path: PathBuf::from("settings.css") });
         let v = layout::render(
             &self.shared.layout,
             &page,
@@ -808,7 +801,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     var but = document.createElement('button');
     but.textContent = item;
     but.onclick = function(el) {{
-        switchTheme(currentTheme, mainTheme, item, true);
+        switchTheme(item, true);
     }};
     but.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);
@@ -843,8 +836,11 @@ themePicker.onblur = handleThemeButtonsBlur;
             &cx.shared.fs,
             cx.path("storage.js"),
             &format!(
-                "var resourcesSuffix = \"{}\";{}",
+                r#"var resourcesSuffix = "{}";
+var allThemeNames = {};
+{}"#,
                 cx.shared.resource_suffix,
+                serde_json::to_string(&themes).unwrap(),
                 static_files::STORAGE_JS
             ),
             options.enable_minification,
