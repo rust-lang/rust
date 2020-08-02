@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 rustc_arena = { path = "../librustc_arena" }
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 rustc_ast_pretty = { path = "../librustc_ast_pretty" }
 rustc_hir = { path = "../librustc_hir" }
 rustc_target = { path = "../librustc_target" }

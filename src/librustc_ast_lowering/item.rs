@@ -17,9 +17,9 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 
-use log::debug;
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
+use tracing::debug;
 
 pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
     pub(super) lctx: &'a mut LoweringContext<'lowering, 'hir>,
