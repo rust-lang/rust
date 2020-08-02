@@ -138,6 +138,8 @@ pub struct ParseSess {
     pub reached_eof: Lock<bool>,
     /// Environment variables accessed during the build and their values when they exist.
     pub env_depinfo: Lock<FxHashSet<(Symbol, Option<Symbol>)>>,
+    /// All the type ascriptions expressions that have had a suggestion for likely path typo.
+    pub type_ascription_path_suggestions: Lock<FxHashSet<Span>>,
 }
 
 impl ParseSess {
@@ -164,6 +166,7 @@ impl ParseSess {
             symbol_gallery: SymbolGallery::default(),
             reached_eof: Lock::new(false),
             env_depinfo: Default::default(),
+            type_ascription_path_suggestions: Default::default(),
         }
     }
 
