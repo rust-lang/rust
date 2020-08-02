@@ -1510,30 +1510,18 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         pat_src: PatternSource,
         bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) {
-        let is_tuple_struct_pat = matches!(pat.kind, PatKind::TupleStruct(_, _));
-
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
             debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
             match pat.kind {
                 PatKind::Ident(bmode, ident, ref sub) => {
-                    if is_tuple_struct_pat && sub.as_ref().filter(|p| p.is_rest()).is_some() {
-                        // In tuple struct patterns ignore the invalid `ident @ ...`.
-                        // It will be handled as an error by the AST lowering.
-                        self.r
-                            .session
-                            .delay_span_bug(ident.span, "ident in tuple pattern is invalid");
-                    } else {
-                        // First try to resolve the identifier as some existing entity,
-                        // then fall back to a fresh binding.
-                        let has_sub = sub.is_some();
-                        let res = self
-                            .try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
-                            .unwrap_or_else(|| {
-                                self.fresh_binding(ident, pat.id, pat_src, bindings)
-                            });
-                        self.r.record_partial_res(pat.id, PartialRes::new(res));
-                    }
+                    // First try to resolve the identifier as some existing entity,
+                    // then fall back to a fresh binding.
+                    let has_sub = sub.is_some();
+                    let res = self
+                        .try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
+                        .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
+                    self.r.record_partial_res(pat.id, PartialRes::new(res));
                 }
                 PatKind::TupleStruct(ref path, ..) => {
                     self.smart_resolve_path(pat.id, None, path, PathSource::TupleStruct(pat.span));
