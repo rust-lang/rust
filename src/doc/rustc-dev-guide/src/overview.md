@@ -187,10 +187,10 @@ for different purposes:
 - High-level IR (HIR): This is a sort of desugared AST. It's still close
   to what the user wrote syntactically, but it includes some implicit things
   such as some elided lifetimes, etc. This IR is amenable to type checking.
-- Typed HIR (THIR): This is an intermediate between HIR and MIR. It is like the HIR
-  but it is fully typed and a bit more desugared (e.g. method calls and implicit
-  dereferences are made fully explicit). Moreover, it is easier to lower to MIR
-  from THIR than from HIR.
+- Typed HIR (THIR): This is an intermediate between HIR and MIR, and used to be called
+  High-level Abstract IR (HAIR). It is like the HIR but it is fully typed and a bit
+  more desugared (e.g. method calls and implicit dereferences are made fully explicit).
+  Moreover, it is easier to lower to MIR from THIR than from HIR.
 - Middle-level IR (MIR): This IR is basically a Control-Flow Graph (CFG). A CFG
   is a type of diagram that shows the basic blocks of a program and how control
   flow can go between them. Likewise, MIR also has a bunch of basic blocks with

@@ -14,6 +14,7 @@ list of items:
 The lowering is triggered by calling the [`mir_built`] query.
 There is an intermediate representation
 between [HIR] and [MIR] called the [THIR] that is only used during the lowering.
+[THIR] means "Typed HIR" and used to be called "HAIR (High-level Abstract IR)".
 The [THIR]'s most important feature is that the various adjustments (which happen
 without explicit syntax) like coercions, autoderef, autoref and overloaded method
 calls have become explicit casts, deref operations, reference expressions or
