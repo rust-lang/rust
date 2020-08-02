@@ -11,5 +11,6 @@ extern crate log;
 #[macro_use]
 extern crate rustc_data_structures;
 
+pub mod cache;
 pub mod dep_graph;
 pub mod query;
