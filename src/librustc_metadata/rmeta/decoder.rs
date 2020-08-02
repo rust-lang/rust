@@ -100,7 +100,7 @@ crate struct CrateMetadata {
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
     dependencies: Lock<Vec<CrateNum>>,
     /// How to link (or not link) this crate to the currently compiled crate.
-    dep_kind: Lock<DepKind>,
+    dep_kind: Lock<CrateDepKind>,
     /// Filesystem location of this crate.
     source: CrateSource,
     /// Whether or not this crate should be consider a private dependency
@@ -1669,7 +1669,7 @@ impl CrateMetadata {
         raw_proc_macros: Option<&'static [ProcMacro]>,
         cnum: CrateNum,
         cnum_map: CrateNumMap,
-        dep_kind: DepKind,
+        dep_kind: CrateDepKind,
         source: CrateSource,
         private_dep: bool,
         host_hash: Option<Svh>,
@@ -1727,11 +1727,11 @@ impl CrateMetadata {
         &self.source
     }
 
-    crate fn dep_kind(&self) -> DepKind {
+    crate fn dep_kind(&self) -> CrateDepKind {
         *self.dep_kind.lock()
     }
 
-    crate fn update_dep_kind(&self, f: impl FnOnce(DepKind) -> DepKind) {
+    crate fn update_dep_kind(&self, f: impl FnOnce(CrateDepKind) -> CrateDepKind) {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
     }
 

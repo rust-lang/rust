@@ -2,6 +2,7 @@ use super::super::*;
 use core::num::flt2dec::strategy::grisu::*;
 
 #[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_cached_power() {
     assert_eq!(CACHED_POW10.first().unwrap().1, CACHED_POW10_FIRST_E);
     assert_eq!(CACHED_POW10.last().unwrap().1, CACHED_POW10_LAST_E);

@@ -132,10 +132,10 @@
 //! methods called `Printer::scan_*`, and the 'PRINT' process is the
 //! method called `Printer::print`.
 
-use log::debug;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt;
+use tracing::debug;
 
 /// How to break. Described in more detail in the module docs.
 #[derive(Clone, Copy, PartialEq)]
