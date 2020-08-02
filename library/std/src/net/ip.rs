@@ -758,6 +758,9 @@ impl Ipv4Addr {
     ///
     /// a.b.c.d becomes ::a.b.c.d
     ///
+    /// Note: The IPv4 address used in the IPv4-compatible IPv6 address must be a
+    /// globally-unique IPv4 unicast address. This implementation does *not* check for it.
+    ///
     /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
     ///
     /// # Examples
@@ -1493,6 +1496,9 @@ impl Ipv6Addr {
     ///
     /// ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d
     ///
+    /// Note: The IPv4 address used in the IPv4-compatible IPv6 address must be a
+    /// globally-unique IPv4 unicast address.
+    ///
     /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
@@ -1504,14 +1510,19 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4(), None);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4(),
     ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(),
-    ///            Some(Ipv4Addr::new(0, 0, 0, 1)));
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(), None);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4(),
+    ///            Some(Ipv4Addr::new(18, 52, 86, 120)));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv4(&self) -> Option<Ipv4Addr> {
-        match self.segments() {
-            [0, 0, 0, 0, 0, f, g, h] if f == 0 || f == 0xffff => {
-                Some(Ipv4Addr::new((g >> 8) as u8, g as u8, (h >> 8) as u8, h as u8))
+        match self.octets() {
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, a, b, c, d] => {
+                Some(Ipv4Addr::new(a, b, c, d))
+            }
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, a, b, c, d] => {
+                let ipv4 = Ipv4Addr::new(a, b, c, d);
+                if ipv4.is_global() { Some(ipv4) } else { None }
             }
             _ => None,
         }
@@ -1542,13 +1553,7 @@ impl fmt::Display for Ipv6Addr {
         if f.precision().is_none() && f.width().is_none() {
             let segments = self.segments();
 
-            // Special case for :: and ::1; otherwise they get written with the
-            // IPv4 formatter
-            if self.is_unspecified() {
-                f.write_str("::")
-            } else if self.is_loopback() {
-                f.write_str("::1")
-            } else if let Some(ipv4) = self.to_ipv4() {
+            if let Some(ipv4) = self.to_ipv4() {
                 match segments[5] {
                     // IPv4 Compatible address
                     0 => write!(f, "::{}", ipv4),
@@ -2025,8 +2030,8 @@ mod tests {
         assert_eq!(a1.to_string(), "::ffff:192.0.2.128");
 
         // ipv4-compatible address
-        let a1 = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x280);
-        assert_eq!(a1.to_string(), "::192.0.2.128");
+        let a1 = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x102, 0x304);
+        assert_eq!(a1.to_string(), "::1.2.3.4");
 
         // v6 address with no zero segments
         assert_eq!(Ipv6Addr::new(8, 9, 10, 11, 12, 13, 14, 15).to_string(), "8:9:a:b:c:d:e:f");
@@ -2495,11 +2500,7 @@ mod tests {
 
         check!("::1", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], loopback);
 
-        check!(
-            "::0.0.0.2",
-            &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-            global | unicast_global
-        );
+        check!("::2", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2], global | unicast_global);
 
         check!("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
 
