@@ -149,7 +149,7 @@ fn main() {
         1 + 2, 3 
                 - 4, 5
     ];
-    // lint if it doesnt
+    // lint if it doesn't
     let _ = &[
         -1
         -4,
