@@ -6,7 +6,7 @@ use crate::common::CodegenCx;
 use libc::c_uint;
 use llvm::coverageinfo::CounterMappingRegion;
 use log::debug;
-use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, ExprKind, FunctionCoverage};
+use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, ExprKind, FunctionCoverage, Region};
 use rustc_codegen_ssa::traits::{
     BaseTypeMethods, CoverageInfoBuilderMethods, CoverageInfoMethods, StaticMethods,
 };
@@ -49,19 +49,18 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         instance: Instance<'tcx>,
         function_source_hash: u64,
         id: u32,
-        start_byte_pos: u32,
-        end_byte_pos: u32,
+        region: Region<'tcx>,
     ) {
         debug!(
             "adding counter to coverage_regions: instance={:?}, function_source_hash={}, id={}, \
-             byte range {}..{}",
-            instance, function_source_hash, id, start_byte_pos, end_byte_pos,
+             at {:?}",
+            instance, function_source_hash, id, region,
         );
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
             .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
-            .add_counter(function_source_hash, id, start_byte_pos, end_byte_pos);
+            .add_counter(function_source_hash, id, region);
     }
 
     fn add_counter_expression_region(
@@ -71,43 +70,30 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         lhs: u32,
         op: ExprKind,
         rhs: u32,
-        start_byte_pos: u32,
-        end_byte_pos: u32,
+        region: Region<'tcx>,
     ) {
         debug!(
             "adding counter expression to coverage_regions: instance={:?}, id={}, {} {:?} {}, \
-             byte range {}..{}",
-            instance, id_descending_from_max, lhs, op, rhs, start_byte_pos, end_byte_pos,
+             at {:?}",
+            instance, id_descending_from_max, lhs, op, rhs, region,
         );
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
             .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
-            .add_counter_expression(
-                id_descending_from_max,
-                lhs,
-                op,
-                rhs,
-                start_byte_pos,
-                end_byte_pos,
-            );
+            .add_counter_expression(id_descending_from_max, lhs, op, rhs, region);
     }
 
-    fn add_unreachable_region(
-        &mut self,
-        instance: Instance<'tcx>,
-        start_byte_pos: u32,
-        end_byte_pos: u32,
-    ) {
+    fn add_unreachable_region(&mut self, instance: Instance<'tcx>, region: Region<'tcx>) {
         debug!(
-            "adding unreachable code to coverage_regions: instance={:?}, byte range {}..{}",
-            instance, start_byte_pos, end_byte_pos,
+            "adding unreachable code to coverage_regions: instance={:?}, at {:?}",
+            instance, region,
         );
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
             .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
-            .add_unreachable_region(start_byte_pos, end_byte_pos);
+            .add_unreachable_region(region);
     }
 }
 
