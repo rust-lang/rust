@@ -896,7 +896,7 @@ pub(crate) fn handle_code_lens(
             }
 
             let action = runnable.action();
-            let range = to_proto::range(&line_index, runnable.nav.focus_or_full_range());
+            let range = to_proto::range(&line_index, runnable.nav.full_range);
             let r = to_proto::runnable(&snap, file_id, runnable)?;
             if snap.config.lens.run {
                 let lens = CodeLens {
