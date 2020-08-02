@@ -106,7 +106,7 @@ function switchTheme(newTheme, saveTheme) {
             // The theme file for this theme name
             var themeFile = themeName + resourcesSuffix + ".css";
             var themeSheet = document.querySelector("[href$='" + themeFile + "']");
-    
+
             if (themeName === newTheme) {
                 themeSheet.disabled = false;
             } else {
