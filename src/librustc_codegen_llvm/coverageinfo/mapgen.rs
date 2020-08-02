@@ -92,7 +92,7 @@ impl CoverageMapGenerator {
     fn write_coverage_mappings(
         &mut self,
         expressions: Vec<CounterExpression>,
-        counter_regions: impl Iterator<Item = (Counter, &'a Region)>,
+        counter_regions: impl Iterator<Item = (Counter, &'tcx Region<'tcx>)>,
         coverage_mappings_buffer: &RustString,
     ) {
         let mut counter_regions = counter_regions.collect::<Vec<_>>();
@@ -102,7 +102,7 @@ impl CoverageMapGenerator {
 
         let mut virtual_file_mapping = Vec::new();
         let mut mapping_regions = Vec::new();
-        let mut current_file_path = None;
+        let mut current_file_name = None;
         let mut current_file_id = 0;
 
         // Convert the list of (Counter, Region) pairs to an array of `CounterMappingRegion`, sorted
@@ -112,22 +112,22 @@ impl CoverageMapGenerator {
         // `filenames` array.
         counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
         for (counter, region) in counter_regions {
-            let (file_path, start_line, start_col, end_line, end_col) = region.file_start_and_end();
-            let same_file = current_file_path.as_ref().map_or(false, |p| p == file_path);
+            let Region { file_name, start_line, start_col, end_line, end_col } = *region;
+            let same_file = current_file_name.as_ref().map_or(false, |p| p == file_name);
             if !same_file {
-                if current_file_path.is_some() {
+                if current_file_name.is_some() {
                     current_file_id += 1;
                 }
-                current_file_path = Some(file_path.clone());
-                let filename = CString::new(file_path.to_string_lossy().to_string())
-                    .expect("null error converting filename to C string");
-                debug!("  file_id: {} = '{:?}'", current_file_id, filename);
-                let filenames_index = match self.filename_to_index.get(&filename) {
+                current_file_name = Some(file_name.to_string());
+                let c_filename =
+                    CString::new(file_name).expect("null error converting filename to C string");
+                debug!("  file_id: {} = '{:?}'", current_file_id, c_filename);
+                let filenames_index = match self.filename_to_index.get(&c_filename) {
                     Some(index) => *index,
                     None => {
                         let index = self.filenames.len() as u32;
-                        self.filenames.push(filename.clone());
-                        self.filename_to_index.insert(filename.clone(), index);
+                        self.filenames.push(c_filename.clone());
+                        self.filename_to_index.insert(c_filename.clone(), index);
                         index
                     }
                 };
