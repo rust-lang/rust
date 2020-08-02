@@ -4,6 +4,9 @@
 > transitions. In particular, we want to get to a point eventually where the
 > top-level directory has separate directories for the compiler, build-system,
 > std libs, etc, rather than one huge `src/` directory.
+>
+> As of this writing, the std libs have been moved to `library/` and there is
+> an ongoing MCP to move the compiler to `compiler/`.
 
 Now that we have [seen what the compiler does](./overview.md), let's take a
 look at the structure of the contents of the rust-lang/rust repo.
@@ -11,27 +14,25 @@ look at the structure of the contents of the rust-lang/rust repo.
 ## Workspace structure
 
 The `rust-lang/rust` repository consists of a single large cargo workspace
-containing the compiler, the standard library (core, alloc, std, etc), and
-`rustdoc`, along with the build system and bunch of tools and submodules for
-building a full Rust distribution.
+containing the compiler, the standard libraries (`core`, `alloc`, `std`,
+`proc_macro`, etc), and `rustdoc`, along with the build system and bunch of
+tools and submodules for building a full Rust distribution.
 
 As of this writing, this structure is gradually undergoing some transformation
 to make it a bit less monolithic and more approachable, especially to
 newcommers.
 
-> Eventually, the hope is for the standard library to live in a `stdlib/`
-> directory, while the compiler lives in `compiler/`. However, as of this
-> writing, both live in `src/`.
-
 The repository consists of a `src` directory, under which there live many
-crates, which are the source for the compiler, standard library, etc, as
-mentioned above.
+crates, which are the source for the compiler, build system, tools, etc. This
+directory is currently being broken up to be less monolithic. There is also a
+`library/` directory, where the standard libraries (`core`, `alloc`, `std`,
+`proc_macro`, etc) live.
 
 ## Standard library
 
-The standard library crates are obviously named `libstd`, `libcore`,
-`liballoc`, etc. There is also `libproc_macro`, `libtest`, and other runtime
-libraries.
+The standard library crates are all in `library/`. They have intuitive names
+like `std`, `core`, `alloc`, etc.  There is also `proc_macro`, `test`, and
+other runtime libraries.
 
 This code is fairly similar to most other Rust crates except that it must be
 built in a special way because it can use unstable features.
@@ -41,11 +42,16 @@ built in a special way because it can use unstable features.
 > You may find it helpful to read [The Overview Chapter](./overview.md) first,
 > which gives an overview of how the compiler works. The crates mentioned in
 > this section implement the compiler.
+>
+> NOTE: As of this writing, the crates all live in `src/`, but there is an MCP
+> to move them to a new `compiler/` directory.
 
-The compiler crates all have names starting with `librustc_*`. These are a large
-collection of interdependent crates. There is also the `rustc` crate which is
-the actual binary. It doesn't actually do anything besides calling the compiler
-main function elsewhere.
+The compiler crates all have names starting with `librustc_*`. These are a
+collection of around 50 interdependent crates ranging in size from tiny to
+huge. There is also the `rustc` crate which is the actual binary (i.e. the
+`main` function); it doesn't actually do anything besides calling the
+`rustc_driver` crate, which drives the various parts of compilation in other
+crates.
 
 The dependency structure of these crates is complex, but roughly it is
 something like this:
@@ -55,7 +61,7 @@ something like this:
       [`rustc_interface`].
         - [`rustc_interface`] depends on most of the other compiler crates. It
           is a fairly generic interface for driving the whole compilation.
-            - The most of the other `rustc_*` crates depend on [`rustc_middle`],
+            - Most of the other `rustc_*` crates depend on [`rustc_middle`],
               which defines a lot of central data structures in the compiler.
                 - [`rustc_middle`] and most of the other crates depend on a
                   handful of crates representing the early parts of the
@@ -75,12 +81,17 @@ something like this:
 You can see the exact dependencies by reading the `Cargo.toml` for the various
 crates, just like a normal Rust crate.
 
-One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM.
+One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM
+During bootstrapping, LLVM is built and the [`src/librustc_llvm`] and
+[`src/rustllvm`] crates contain rust wrappers around LLVM (which is written in
+C++), so that the compiler can interface with it.
 
 Most of this book is about the compiler, so we won't have any further
 explanation of these crates here.
 
 [`src/llvm-project`]: https://github.com/rust-lang/rust/tree/master/src
+[`src/librustc_llvm`]: https://github.com/rust-lang/rust/tree/master/src
+[`src/rustllvm`]: https://github.com/rust-lang/rust/tree/master/src
 
 ### Big picture
 
