@@ -1,18 +1,17 @@
 pub mod attr;
+mod diagnostics;
 mod expr;
+mod generics;
 mod item;
 mod nonterminal;
 mod pat;
 mod path;
-mod ty;
-pub use path::PathStyle;
-mod diagnostics;
-mod generics;
 mod stmt;
-use diagnostics::Error;
-
+mod ty;
 
 use crate::lexer::UnmatchedBrace;
+use diagnostics::Error;
+pub use path::PathStyle;
 
 use log::debug;
 use rustc_ast::ast::DUMMY_NODE_ID;
