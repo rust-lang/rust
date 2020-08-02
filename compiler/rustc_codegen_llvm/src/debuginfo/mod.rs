@@ -361,9 +361,9 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 // already inaccurate due to ABI adjustments (see #42800).
                 signature.extend(fn_abi.args.iter().map(|arg| {
                     let t = arg.layout.ty;
-                    let t = match t.kind {
+                    let t = match t.kind() {
                         ty::Array(ct, _)
-                            if (ct == cx.tcx.types.u8) || cx.layout_of(ct).is_zst() =>
+                            if (*ct == cx.tcx.types.u8) || cx.layout_of(ct).is_zst() =>
                         {
                             cx.tcx.mk_imm_ptr(ct)
                         }
@@ -467,7 +467,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
                     // Only "class" methods are generally understood by LLVM,
                     // so avoid methods on other types (e.g., `<*mut T>::null`).
-                    match impl_self_ty.kind {
+                    match impl_self_ty.kind() {
                         ty::Adt(def, ..) if !def.is_box() => {
                             // Again, only create type information if full debuginfo is enabled
                             if cx.sess().opts.debuginfo == DebugInfo::Full

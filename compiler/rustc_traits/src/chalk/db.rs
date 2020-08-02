@@ -291,7 +291,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         for impl_def_id in all_impls {
             let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
             let self_ty = trait_ref.self_ty();
-            match self_ty.kind {
+            match *self_ty.kind() {
                 ty::Adt(impl_adt_def, _) => {
                     if impl_adt_def == adt_def {
                         return true;

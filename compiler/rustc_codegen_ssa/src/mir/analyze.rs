@@ -236,7 +236,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         let check = match terminator.kind {
             mir::TerminatorKind::Call { func: mir::Operand::Constant(ref c), ref args, .. } => {
-                match c.literal.ty.kind {
+                match *c.literal.ty.kind() {
                     ty::FnDef(did, _) => Some((did, args)),
                     _ => None,
                 }

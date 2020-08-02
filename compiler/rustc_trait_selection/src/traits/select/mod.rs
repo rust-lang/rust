@@ -1307,7 +1307,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         let tcx = self.infcx.tcx;
-        let predicates = match placeholder_trait_predicate.trait_ref.self_ty().kind {
+        let predicates = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
             ty::Projection(ref data) => {
                 tcx.projection_predicates(data.item_def_id).subst(tcx, data.substs)
             }
@@ -1566,7 +1566,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // NOTE: binder moved to (*)
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
 
-        match self_ty.kind {
+        match self_ty.kind() {
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Uint(_)
             | ty::Int(_)
@@ -1621,7 +1621,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
-        match self_ty.kind {
+        match self_ty.kind() {
             ty::Infer(ty::IntVar(_))
             | ty::Infer(ty::FloatVar(_))
             | ty::FnDef(..)
@@ -1695,7 +1695,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
     fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
-        match t.kind {
+        match *t.kind() {
             ty::Uint(_)
             | ty::Int(_)
             | ty::Bool

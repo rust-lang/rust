@@ -53,7 +53,7 @@ fn inner_resolve_instance<'tcx>(
         let ty = tcx.type_of(def.def_id_for_type_of());
         let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, &ty);
 
-        let def = match item_type.kind {
+        let def = match *item_type.kind() {
             ty::FnDef(..)
                 if {
                     let f = item_type.fn_sig(tcx);
@@ -68,7 +68,7 @@ fn inner_resolve_instance<'tcx>(
 
                 if ty.needs_drop(tcx, param_env) {
                     debug!(" => nontrivial drop glue");
-                    match ty.kind {
+                    match *ty.kind() {
                         ty::Closure(..)
                         | ty::Generator(..)
                         | ty::Tuple(..)
@@ -231,7 +231,7 @@ fn resolve_associated_item<'tcx>(
                 trait_closure_kind,
             ))
         }
-        traits::ImplSourceFnPointer(ref data) => match data.fn_ty.kind {
+        traits::ImplSourceFnPointer(ref data) => match data.fn_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
                 def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
                 substs: rcvr_substs,
@@ -250,7 +250,7 @@ fn resolve_associated_item<'tcx>(
                     let self_ty = trait_ref.self_ty();
 
                     let is_copy = self_ty.is_copy_modulo_regions(tcx.at(DUMMY_SP), param_env);
-                    match self_ty.kind {
+                    match self_ty.kind() {
                         _ if is_copy => (),
                         ty::Array(..) | ty::Closure(..) | ty::Tuple(..) => {}
                         _ => return Ok(None),

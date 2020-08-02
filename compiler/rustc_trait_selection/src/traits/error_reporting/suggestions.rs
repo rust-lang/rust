@@ -207,7 +207,7 @@ fn suggest_restriction(
     }
     // Given `fn foo(t: impl Trait)` where `Trait` requires assoc type `A`...
     if let Some((bound_str, fn_sig)) =
-        fn_sig.zip(projection).and_then(|(sig, p)| match p.self_ty().kind {
+        fn_sig.zip(projection).and_then(|(sig, p)| match p.self_ty().kind() {
             // Shenanigans to get the `Trait` from the `impl Trait`.
             ty::Param(param) => {
                 // `fn foo(t: impl Trait)`
@@ -323,7 +323,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         body_id: hir::HirId,
     ) {
         let self_ty = trait_ref.skip_binder().self_ty();
-        let (param_ty, projection) = match &self_ty.kind {
+        let (param_ty, projection) = match self_ty.kind() {
             ty::Param(_) => (true, None),
             ty::Projection(projection) => (false, Some(projection)),
             _ => return,
@@ -482,7 +482,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             None => return,
         };
 
-        if let ty::Ref(region, base_ty, mutbl) = real_ty.kind {
+        if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
             let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty);
             if let Some(steps) = autoderef.find_map(|(ty, steps)| {
                 // Re-add the `&`
@@ -563,7 +563,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             Some(ty) => ty,
         };
 
-        let (def_id, output_ty, callable) = match self_ty.kind {
+        let (def_id, output_ty, callable) = match *self_ty.kind() {
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
             ty::FnDef(def_id, _) => (def_id, self_ty.fn_sig(self.tcx).output(), "function"),
             _ => return,
@@ -751,7 +751,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             };
 
             for refs_remaining in 0..refs_number {
-                if let ty::Ref(_, inner_ty, _) = suggested_ty.kind {
+                if let ty::Ref(_, inner_ty, _) = suggested_ty.kind() {
                     suggested_ty = inner_ty;
 
                     let new_obligation = self.mk_trait_obligation_with_new_self_ty(
@@ -814,7 +814,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return;
             }
 
-            if let ty::Ref(region, t_type, mutability) = trait_ref.skip_binder().self_ty().kind {
+            if let ty::Ref(region, t_type, mutability) = *trait_ref.skip_binder().self_ty().kind() {
                 if region.is_late_bound() || t_type.has_escaping_bound_vars() {
                     // Avoid debug assertion in `mk_obligation_for_def_id`.
                     //
@@ -871,7 +871,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
     ) {
         let is_empty_tuple =
-            |ty: ty::Binder<Ty<'_>>| ty.skip_binder().kind == ty::Tuple(ty::List::empty());
+            |ty: ty::Binder<Ty<'_>>| *ty.skip_binder().kind() == ty::Tuple(ty::List::empty());
 
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
@@ -941,7 +941,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let body = hir.body(*body_id);
         let trait_ref = self.resolve_vars_if_possible(trait_ref);
         let ty = trait_ref.skip_binder().self_ty();
-        let is_object_safe = match ty.kind {
+        let is_object_safe = match ty.kind() {
             ty::Dynamic(predicates, _) => {
                 // If the `dyn Trait` is not object safe, do not suggest `Box<dyn Trait>`.
                 predicates
@@ -982,11 +982,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
              ty| {
                 let ty = self.resolve_vars_if_possible(&ty);
                 same &=
-                    !matches!(ty.kind, ty::Error(_))
+                    !matches!(ty.kind(), ty::Error(_))
                         && last_ty.map_or(true, |last_ty| {
                             // FIXME: ideally we would use `can_coerce` here instead, but `typeck` comes
                             // *after* in the dependency graph.
-                            match (&ty.kind, &last_ty.kind) {
+                            match (ty.kind(), last_ty.kind()) {
                                 (Infer(InferTy::IntVar(_)), Infer(InferTy::IntVar(_)))
                                 | (Infer(InferTy::FloatVar(_)), Infer(InferTy::FloatVar(_)))
                                 | (Infer(InferTy::FreshIntTy(_)), Infer(InferTy::FreshIntTy(_)))
@@ -997,12 +997,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 _ => ty == last_ty,
                             }
                         });
-                (Some(ty), same, only_never_return && matches!(ty.kind, ty::Never))
+                (Some(ty), same, only_never_return && matches!(ty.kind(), ty::Never))
             },
         );
         let all_returns_conform_to_trait =
             if let Some(ty_ret_ty) = typeck_results.node_type_opt(ret_ty.hir_id) {
-                match ty_ret_ty.kind {
+                match ty_ret_ty.kind() {
                     ty::Dynamic(predicates, _) => {
                         let cause = ObligationCause::misc(ret_ty.span, ret_ty.hir_id);
                         let param_env = ty::ParamEnv::empty();
@@ -1151,7 +1151,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             trait_ref: ty::TraitRef<'tcx>,
         ) -> String {
             let inputs = trait_ref.substs.type_at(1);
-            let sig = if let ty::Tuple(inputs) = inputs.kind {
+            let sig = if let ty::Tuple(inputs) = inputs.kind() {
                 tcx.mk_fn_sig(
                     inputs.iter().map(|k| k.expect_ty()),
                     tcx.mk_ty_infer(ty::TyVar(ty::TyVid { index: 0 })),
@@ -1317,10 +1317,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     debug!(
                         "maybe_note_obligation_cause_for_async_await: \
                             parent_trait_ref={:?} self_ty.kind={:?}",
-                        derived_obligation.parent_trait_ref, ty.kind
+                        derived_obligation.parent_trait_ref,
+                        ty.kind()
                     );
 
-                    match ty.kind {
+                    match *ty.kind() {
                         ty::Generator(did, ..) => {
                             generator = generator.or(Some(did));
                             outer_generator = Some(did);

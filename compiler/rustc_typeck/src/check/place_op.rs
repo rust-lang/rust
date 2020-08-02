@@ -25,7 +25,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ok = self.try_overloaded_deref(expr.span, oprnd_ty)?;
         let method = self.register_infer_ok_obligations(ok);
-        if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind {
+        if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
             self.apply_adjustments(
                 oprnd_expr,
                 vec![Adjustment {
@@ -86,7 +86,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut self_ty = adjusted_ty;
             if unsize {
                 // We only unsize arrays here.
-                if let ty::Array(element_ty, _) = adjusted_ty.kind {
+                if let ty::Array(element_ty, _) = adjusted_ty.kind() {
                     self_ty = self.tcx.mk_slice(element_ty);
                 } else {
                     continue;
@@ -108,7 +108,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let method = self.register_infer_ok_obligations(ok);
 
                 let mut adjustments = self.adjust_steps(autoderef);
-                if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind {
+                if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(region, AutoBorrowMutability::Not)),
                         target: self.tcx.mk_ref(
@@ -233,7 +233,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             PlaceOp::Deref,
                         ) {
                             let method = self.register_infer_ok_obligations(ok);
-                            if let ty::Ref(region, _, mutbl) = method.sig.output().kind {
+                            if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
                                 *deref = OverloadedDeref { region, mutbl };
                             }
                         }
@@ -305,7 +305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("convert_place_op_to_mutable: method={:?}", method);
         self.write_method_call(expr.hir_id, method);
 
-        let region = if let ty::Ref(r, _, hir::Mutability::Mut) = method.sig.inputs()[0].kind {
+        let region = if let ty::Ref(r, _, hir::Mutability::Mut) = method.sig.inputs()[0].kind() {
             r
         } else {
             span_bug!(expr.span, "input to mutable place op is not a mut ref?");

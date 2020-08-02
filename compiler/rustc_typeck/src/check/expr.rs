@@ -296,7 +296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn check_expr_box(&self, expr: &'tcx hir::Expr<'tcx>, expected: Expectation<'tcx>) -> Ty<'tcx> {
-        let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| match ty.kind {
+        let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| match ty.kind() {
             ty::Adt(def, _) if def.is_box() => Expectation::rvalue_hint(self, ty.boxed_ty()),
             _ => NoExpectation,
         });
@@ -346,7 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::UnOp::UnNot => {
                     let result = self.check_user_unop(expr, oprnd_t, unop);
                     // If it's builtin, we can reuse the type, this helps inference.
-                    if !(oprnd_t.is_integral() || oprnd_t.kind == ty::Bool) {
+                    if !(oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool) {
                         oprnd_t = result;
                     }
                 }
@@ -371,7 +371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
-            match ty.kind {
+            match ty.kind() {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
                     if oprnd.is_syntactic_place_expr() {
                         // Places may legitimately have unsized types.
@@ -473,7 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, expr.hir_id).0,
         };
 
-        if let ty::FnDef(..) = ty.kind {
+        if let ty::FnDef(..) = ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
             if !tcx.features().unsized_locals {
                 // We want to remove some Sized bounds from std functions,
@@ -951,7 +951,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             error,
             Some(args),
         ) {
-            if let ty::Adt(..) = rcvr_t.kind {
+            if let ty::Adt(..) = rcvr_t.kind() {
                 // Try alternative arbitrary self types that could fulfill this call.
                 // FIXME: probe for all types that *could* be arbitrary self-types, not
                 // just this list.
@@ -1002,7 +1002,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let element_ty = if !args.is_empty() {
             let coerce_to = expected
                 .to_option(self)
-                .and_then(|uty| match uty.kind {
+                .and_then(|uty| match *uty.kind() {
                     ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                     _ => None,
                 })
@@ -1040,7 +1040,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let count = self.to_const(count);
 
         let uty = match expected {
-            ExpectHasType(uty) => match uty.kind {
+            ExpectHasType(uty) => match *uty.kind() {
                 ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                 _ => None,
             },
@@ -1077,7 +1077,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let flds = expected.only_has_type(self).and_then(|ty| {
             let ty = self.resolve_vars_with_obligations(ty);
-            match ty.kind {
+            match ty.kind() {
                 ty::Tuple(ref flds) => Some(&flds[..]),
                 _ => None,
             }
@@ -1145,7 +1145,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // when certain fields are assumed to exist that in fact do not.
             if !error_happened {
                 self.check_expr_has_type_or_error(base_expr, adt_ty, |_| {});
-                match adt_ty.kind {
+                match adt_ty.kind() {
                     ty::Adt(adt, substs) if adt.is_struct() => {
                         let fru_field_types = adt
                             .non_enum_variant()
@@ -1200,7 +1200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // re-link the regions that EIfEO can erase.
         self.demand_eqtype(span, adt_ty_hint, adt_ty);
 
-        let (substs, adt_kind, kind_name) = match &adt_ty.kind {
+        let (substs, adt_kind, kind_name) = match &adt_ty.kind() {
             &ty::Adt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields"),
         };
@@ -1331,7 +1331,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let mut err = self.type_error_struct_with_diag(
             field.ident.span,
-            |actual| match ty.kind {
+            |actual| match ty.kind() {
                 ty::Adt(adt, ..) if adt.is_enum() => struct_span_err!(
                     self.tcx.sess,
                     field.ident.span,
@@ -1381,7 +1381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     );
                 } else {
-                    match ty.kind {
+                    match ty.kind() {
                         ty::Adt(adt, ..) => {
                             if adt.is_enum() {
                                 err.span_label(
@@ -1468,7 +1468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, expr_t);
         while let Some((base_t, _)) = autoderef.next() {
-            match base_t.kind {
+            match base_t.kind() {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}", base_t);
                     let (ident, def_scope) =
@@ -1571,9 +1571,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!(
                 "suggest_await_on_field_access: normalized_ty={:?}, ty_kind={:?}",
                 self.resolve_vars_if_possible(&normalized_ty),
-                normalized_ty.kind,
+                normalized_ty.kind(),
             );
-            if let ty::Adt(def, _) = normalized_ty.kind {
+            if let ty::Adt(def, _) = normalized_ty.kind() {
                 // no field access on enum type
                 if !def.is_enum() {
                     if def.non_enum_variant().fields.iter().any(|field| field.ident == field_ident)
@@ -1603,7 +1603,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let mut err = self.no_such_field_err(field.span, field, expr_t);
 
-        match expr_t.peel_refs().kind {
+        match *expr_t.peel_refs().kind() {
             ty::Array(_, len) => {
                 self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
             }
@@ -1823,7 +1823,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         base_t
                     );
                     // Try to give some advice about indexing tuples.
-                    if let ty::Tuple(..) = base_t.kind {
+                    if let ty::Tuple(..) = base_t.kind() {
                         let mut needs_note = true;
                         // If the index is an integer, we can show the actual
                         // fixed expression:
@@ -1908,7 +1908,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // function.
         if is_input {
             let ty = self.structurally_resolved_type(expr.span, &ty);
-            match ty.kind {
+            match *ty.kind() {
                 ty::FnDef(..) => {
                     let fnptr_ty = self.tcx.mk_fn_ptr(ty.fn_sig(self.tcx));
                     self.demand_coerce(expr, ty, fnptr_ty, None, AllowTwoPhase::No);
@@ -1956,7 +1956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 pub(super) fn ty_kind_suggestion(ty: Ty<'_>) -> Option<&'static str> {
-    Some(match ty.kind {
+    Some(match ty.kind() {
         ty::Bool => "true",
         ty::Char => "'a'",
         ty::Int(_) | ty::Uint(_) => "42",

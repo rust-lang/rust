@@ -214,7 +214,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         match layout.variants {
             Variants::Multiple { tag_field, .. } => {
                 if tag_field == field {
-                    return match layout.ty.kind {
+                    return match layout.ty.kind() {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
                         ty::Generator(..) => PathElem::GeneratorTag,
                         _ => bug!("non-variant type {:?}", layout.ty),
@@ -225,7 +225,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         }
 
         // Now we know we are projecting to a field, so figure out which one.
-        match layout.ty.kind {
+        match layout.ty.kind() {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 let mut name = None;
@@ -303,7 +303,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         pointee: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx> {
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
-        match tail.kind {
+        match tail.kind() {
             ty::Dynamic(..) => {
                 let vtable = meta.unwrap_meta();
                 // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
@@ -477,7 +477,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
     ) -> InterpResult<'tcx, bool> {
         // Go over all the primitive types
         let ty = value.layout.ty;
-        match ty.kind {
+        match ty.kind() {
             ty::Bool => {
                 let value = self.ecx.read_scalar(value)?;
                 try_validation!(
@@ -692,7 +692,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         variant_id: VariantIdx,
         new_op: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let name = match old_op.layout.ty.kind {
+        let name = match old_op.layout.ty.kind() {
             ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].ident.name),
             // Generators also have variants
             ty::Generator(..) => PathElem::GeneratorState(variant_id),
@@ -762,7 +762,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         op: OpTy<'tcx, M::PointerTag>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
-        match op.layout.ty.kind {
+        match op.layout.ty.kind() {
             ty::Str => {
                 let mplace = op.assert_mem_place(self.ecx); // strings are never immediate
                 let len = mplace.len(self.ecx)?;
@@ -779,7 +779,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // FIXME(wesleywiser) This logic could be extended further to arbitrary structs
                     // or tuples made up of integer/floating point types or inhabited ZSTs with no
                     // padding.
-                    match tys.kind {
+                    match tys.kind() {
                         ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
                         _ => false,
                     }

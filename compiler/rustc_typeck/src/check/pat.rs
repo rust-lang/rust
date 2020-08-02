@@ -281,7 +281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // String and byte-string literals result in types `&str` and `&[u8]` respectively.
             // All other literals result in non-reference types.
             // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo {}`.
-            PatKind::Lit(lt) => match self.check_expr(lt).kind {
+            PatKind::Lit(lt) => match self.check_expr(lt).kind() {
                 ty::Ref(..) => AdjustMode::Pass,
                 _ => AdjustMode::Peel,
             },
@@ -341,7 +341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // See the examples in `ui/match-defbm*.rs`.
         let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = expected.kind {
+        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
             debug!("inspecting {:?}", expected);
 
             debug!("current discriminant is Ref, inserting implicit deref");
@@ -389,9 +389,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut pat_ty = ty;
         if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(_), .. }) = lt.kind {
             let expected = self.structurally_resolved_type(span, expected);
-            if let ty::Ref(_, ty::TyS { kind: ty::Slice(_), .. }, _) = expected.kind {
-                let tcx = self.tcx;
-                pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
+            if let ty::Ref(_, inner_ty, _) = expected.kind() {
+                if matches!(inner_ty.kind(), ty::Slice(_)) {
+                    let tcx = self.tcx;
+                    pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_slice(tcx.types.u8));
+                }
             }
         }
 
@@ -639,7 +641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_dereferenceable(&self, span: Span, expected: Ty<'tcx>, inner: &Pat<'_>) -> bool {
         if let PatKind::Binding(..) = inner.kind {
             if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true) {
-                if let ty::Dynamic(..) = mt.ty.kind {
+                if let ty::Dynamic(..) = mt.ty.kind() {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
                     let type_str = self.ty_to_string(expected);
@@ -871,7 +873,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if subpats.len() == variant.fields.len()
             || subpats.len() < variant.fields.len() && ddpos.is_some()
         {
-            let substs = match pat_ty.kind {
+            let substs = match pat_ty.kind() {
                 ty::Adt(_, substs) => substs,
                 _ => bug!("unexpected pattern type {:?}", pat_ty),
             };
@@ -924,13 +926,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // More generally, the expected type wants a tuple variant with one field of an
         // N-arity-tuple, e.g., `V_i((p_0, .., p_N))`. Meanwhile, the user supplied a pattern
         // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
-        let missing_parenthesis = match (&expected.kind, fields, had_err) {
+        let missing_parenthesis = match (&expected.kind(), fields, had_err) {
             // #67037: only do this if we could successfully type-check the expected type against
             // the tuple struct pattern. Otherwise the substs could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct P<T>(T);`.
             (ty::Adt(_, substs), [field], false) => {
                 let field_ty = self.field_ty(pat_span, field, substs);
-                match field_ty.kind {
+                match field_ty.kind() {
                     ty::Tuple(_) => field_ty.tuple_fields().count() == subpats.len(),
                     _ => false,
                 }
@@ -981,7 +983,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut expected_len = elements.len();
         if ddpos.is_some() {
             // Require known type only when `..` is present.
-            if let ty::Tuple(ref tys) = self.structurally_resolved_type(span, expected).kind {
+            if let ty::Tuple(ref tys) = self.structurally_resolved_type(span, expected).kind() {
                 expected_len = tys.len();
             }
         }
@@ -1025,7 +1027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let tcx = self.tcx;
 
-        let (substs, adt) = match adt_ty.kind {
+        let (substs, adt) = match adt_ty.kind() {
             ty::Adt(adt, substs) => (substs, adt),
             _ => span_bug!(pat.span, "struct pattern is not an ADT"),
         };
@@ -1378,7 +1380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // to avoid creating needless variables. This also helps with
             // the bad  interactions of the given hack detailed in (note_1).
             debug!("check_pat_ref: expected={:?}", expected);
-            match expected.kind {
+            match *expected.kind() {
                 ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
                 _ => {
                     let inner_ty = self.next_ty_var(TypeVariableOrigin {
@@ -1434,7 +1436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ti: TopInfo<'tcx>,
     ) -> Ty<'tcx> {
         let expected = self.structurally_resolved_type(span, expected);
-        let (element_ty, opt_slice_ty, inferred) = match expected.kind {
+        let (element_ty, opt_slice_ty, inferred) = match *expected.kind() {
             // An array, so we might have something like `let [a, b, c] = [0, 1, 2];`.
             ty::Array(element_ty, len) => {
                 let min = before.len() as u64 + after.len() as u64;
@@ -1570,8 +1572,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "expected an array or slice, found `{}`",
             expected_ty
         );
-        if let ty::Ref(_, ty, _) = expected_ty.kind {
-            if let ty::Array(..) | ty::Slice(..) = ty.kind {
+        if let ty::Ref(_, ty, _) = expected_ty.kind() {
+            if let ty::Array(..) | ty::Slice(..) = ty.kind() {
                 err.help("the semantics of slice patterns changed recently; see issue #62254");
             }
         }

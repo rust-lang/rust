@@ -83,7 +83,7 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
         let infcx = self.fields.infcx;
         let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
         let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
-        match (&a.kind, &b.kind) {
+        match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_vid)), &ty::Infer(TyVar(b_vid))) => {
                 // Shouldn't have any LBR here, so we can safely put
                 // this under a binder below without fear of accidental

@@ -732,7 +732,7 @@ fn contains_illegal_self_type_reference<'tcx>(
 
     impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
         fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-            match t.kind {
+            match t.kind() {
                 ty::Param(_) => t == self.self_ty,
                 ty::Projection(ref data) => {
                     // This is a projected type `<Foo as SomeTrait>::X`.

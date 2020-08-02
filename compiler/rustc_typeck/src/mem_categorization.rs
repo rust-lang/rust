@@ -482,7 +482,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
 
-        let (region, mutbl) = match base_ty.kind {
+        let (region, mutbl) = match *base_ty.kind() {
             ty::Ref(region, _, mutbl) => (region, mutbl),
             _ => span_bug!(expr.span, "cat_overloaded_place: base is not a reference"),
         };
@@ -542,7 +542,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<VariantIdx> {
         let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
         let ty = self.typeck_results.node_type(pat_hir_id);
-        let adt_def = match ty.kind {
+        let adt_def = match ty.kind() {
             ty::Adt(adt_def, _) => adt_def,
             _ => {
                 self.tcx()
@@ -577,7 +577,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         span: Span,
     ) -> McResult<usize> {
         let ty = self.typeck_results.node_type(pat_hir_id);
-        match ty.kind {
+        match ty.kind() {
             ty::Adt(adt_def, _) => Ok(adt_def.variants[variant_index].fields.len()),
             _ => {
                 self.tcx()
@@ -592,7 +592,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     fn total_fields_in_tuple(&self, pat_hir_id: hir::HirId, span: Span) -> McResult<usize> {
         let ty = self.typeck_results.node_type(pat_hir_id);
-        match ty.kind {
+        match ty.kind() {
             ty::Tuple(substs) => Ok(substs.len()),
             _ => {
                 self.tcx().sess.delay_span_bug(span, "tuple pattern not applied to a tuple");

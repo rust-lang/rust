@@ -264,7 +264,7 @@ pub trait Printer<'tcx>: Sized {
 /// type. It's just a heuristic so it makes some questionable
 /// decisions and we may want to adjust it later.
 pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
-    match ty.kind {
+    match *ty.kind() {
         ty::Adt(adt_def, _) => Some(adt_def.did),
 
         ty::Dynamic(data, ..) => data.principal_def_id(),

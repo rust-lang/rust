@@ -180,7 +180,7 @@ enum PeekCallKind {
 
 impl PeekCallKind {
     fn from_arg_ty(arg: Ty<'_>) -> Self {
-        match arg.kind {
+        match arg.kind() {
             ty::Ref(_, _, _) => PeekCallKind::ByRef,
             _ => PeekCallKind::ByVal,
         }
@@ -205,7 +205,7 @@ impl PeekCall {
         if let mir::TerminatorKind::Call { func: Operand::Constant(func), args, .. } =
             &terminator.kind
         {
-            if let ty::FnDef(def_id, substs) = func.literal.ty.kind {
+            if let ty::FnDef(def_id, substs) = *func.literal.ty.kind() {
                 let sig = tcx.fn_sig(def_id);
                 let name = tcx.item_name(def_id);
                 if sig.abi() != Abi::RustIntrinsic || name != sym::rustc_peek {

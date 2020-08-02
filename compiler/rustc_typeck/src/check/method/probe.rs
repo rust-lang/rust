@@ -401,7 +401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .probe_instantiate_query_response(span, &orig_values, ty)
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.structurally_resolved_type(span, ty.value);
-                assert!(matches!(ty.kind, ty::Error(_)));
+                assert!(matches!(ty.kind(), ty::Error(_)));
                 return Err(MethodError::NoMatch(NoMatchData::new(
                     Vec::new(),
                     Vec::new(),
@@ -469,7 +469,7 @@ fn method_autoderef_steps<'tcx>(
                     from_unsafe_deref: reached_raw_pointer,
                     unsize: false,
                 };
-                if let ty::RawPtr(_) = ty.kind {
+                if let ty::RawPtr(_) = ty.kind() {
                     // all the subsequent steps will be from_unsafe_deref
                     reached_raw_pointer = true;
                 }
@@ -478,7 +478,7 @@ fn method_autoderef_steps<'tcx>(
             .collect();
 
         let final_ty = autoderef.final_ty(true);
-        let opt_bad_ty = match final_ty.kind {
+        let opt_bad_ty = match final_ty.kind() {
             ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
                 reached_raw_pointer,
                 ty: infcx
@@ -587,7 +587,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug!("assemble_probe: self_ty={:?}", self_ty);
         let lang_items = self.tcx.lang_items();
 
-        match self_ty.value.value.kind {
+        match *self_ty.value.value.kind() {
             ty::Dynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
                     // Subtle: we can't use `instantiate_query_response` here: using it will
@@ -759,7 +759,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn assemble_inherent_candidates_from_object(&mut self, self_ty: Ty<'tcx>) {
         debug!("assemble_inherent_candidates_from_object(self_ty={:?})", self_ty);
 
-        let principal = match self_ty.kind {
+        let principal = match self_ty.kind() {
             ty::Dynamic(ref data, ..) => Some(data),
             _ => None,
         }
@@ -806,7 +806,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             self.param_env.caller_bounds().iter().map(ty::Predicate::skip_binders).filter_map(
                 |predicate| match predicate {
                     ty::PredicateAtom::Trait(trait_predicate, _) => {
-                        match trait_predicate.trait_ref.self_ty().kind {
+                        match trait_predicate.trait_ref.self_ty().kind() {
                             ty::Param(ref p) if *p == param_ty => {
                                 Some(ty::Binder::bind(trait_predicate.trait_ref))
                             }
@@ -1125,7 +1125,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 pick.autoderefs = step.autoderefs;
 
                 // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::Ref(_, _, mutbl) = step.self_ty.value.value.kind {
+                if let ty::Ref(_, _, mutbl) = *step.self_ty.value.value.kind() {
                     pick.autoderefs += 1;
                     pick.autoref = Some(mutbl);
                 }

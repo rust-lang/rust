@@ -575,7 +575,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             ) => {
                 let source_ty = operand.ty(self.body, self.tcx);
                 let source_ty = self.monomorphize(source_ty);
-                match source_ty.kind {
+                match *source_ty.kind() {
                     ty::Closure(def_id, substs) => {
                         let instance = Instance::resolve_closure(
                             self.tcx,
@@ -716,7 +716,7 @@ fn visit_fn_use<'tcx>(
     source: Span,
     output: &mut Vec<Spanned<MonoItem<'tcx>>>,
 ) {
-    if let ty::FnDef(def_id, substs) = ty.kind {
+    if let ty::FnDef(def_id, substs) = *ty.kind() {
         let instance = if is_direct_call {
             ty::Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
         } else {
@@ -853,7 +853,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
                 return false;
             }
             let tail = tcx.struct_tail_erasing_lifetimes(ty, param_env);
-            match tail.kind {
+            match tail.kind() {
                 ty::Foreign(..) => false,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
                 _ => bug!("unexpected unsized tail: {:?}", tail),
@@ -866,7 +866,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
         }
     };
 
-    match (&source_ty.kind, &target_ty.kind) {
+    match (&source_ty.kind(), &target_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             ptr_vtable(a, b)
@@ -922,7 +922,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
 ) {
     assert!(!trait_ty.has_escaping_bound_vars() && !impl_ty.has_escaping_bound_vars());
 
-    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.kind {
+    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.kind() {
         if let Some(principal) = trait_ty.principal() {
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_bound_vars());

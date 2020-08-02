@@ -327,7 +327,7 @@ impl<'tcx> LiteralExpander<'tcx> {
         crty: Ty<'tcx>,
     ) -> ConstValue<'tcx> {
         debug!("fold_const_value_deref {:?} {:?} {:?}", val, rty, crty);
-        match (val, &crty.kind, &rty.kind) {
+        match (val, &crty.kind(), &rty.kind()) {
             // the easy case, deref a reference
             (ConstValue::Scalar(p), x, y) if x == y => {
                 match p {
@@ -368,41 +368,35 @@ impl<'tcx> LiteralExpander<'tcx> {
 
 impl<'tcx> PatternFolder<'tcx> for LiteralExpander<'tcx> {
     fn fold_pattern(&mut self, pat: &Pat<'tcx>) -> Pat<'tcx> {
-        debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.kind, pat.kind);
-        match (&pat.ty.kind, &*pat.kind) {
-            (
-                &ty::Ref(_, rty, _),
-                &PatKind::Constant {
-                    value:
-                        Const {
-                            val: ty::ConstKind::Value(val),
-                            ty: ty::TyS { kind: ty::Ref(_, crty, _), .. },
-                        },
-                },
-            ) => Pat {
-                ty: pat.ty,
-                span: pat.span,
-                kind: box PatKind::Deref {
-                    subpattern: Pat {
-                        ty: rty,
+        debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.kind(), pat.kind);
+        match (pat.ty.kind(), &*pat.kind) {
+            (&ty::Ref(_, rty, _), &PatKind::Constant { value: Const { val, ty: const_ty } })
+                if const_ty.is_ref() =>
+            {
+                let crty =
+                    if let ty::Ref(_, crty, _) = const_ty.kind() { crty } else { unreachable!() };
+                if let ty::ConstKind::Value(val) = val {
+                    Pat {
+                        ty: pat.ty,
                         span: pat.span,
-                        kind: box PatKind::Constant {
-                            value: Const::from_value(
-                                self.tcx,
-                                self.fold_const_value_deref(*val, rty, crty),
-                                rty,
-                            ),
+                        kind: box PatKind::Deref {
+                            subpattern: Pat {
+                                ty: rty,
+                                span: pat.span,
+                                kind: box PatKind::Constant {
+                                    value: Const::from_value(
+                                        self.tcx,
+                                        self.fold_const_value_deref(*val, rty, crty),
+                                        rty,
+                                    ),
+                                },
+                            },
                         },
-                    },
-                },
-            },
-
-            (
-                &ty::Ref(_, rty, _),
-                &PatKind::Constant {
-                    value: Const { val, ty: ty::TyS { kind: ty::Ref(_, crty, _), .. } },
-                },
-            ) => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
+                    }
+                } else {
+                    bug!("cannot deref {:#?}, {} -> {}", val, crty, rty)
+                }
+            }
 
             (_, &PatKind::Binding { subpattern: Some(ref s), .. }) => s.fold_with(self),
             (_, &PatKind::AscribeUserType { subpattern: ref s, .. }) => s.fold_with(self),
@@ -639,7 +633,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
     crate fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
-        match ty.kind {
+        match ty.kind() {
             ty::Adt(def, ..) => {
                 def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
             }
@@ -920,14 +914,14 @@ impl<'tcx> Constructor<'tcx> {
         let mut subpatterns = fields.all_patterns();
 
         let pat = match self {
-            Single | Variant(_) => match ty.kind {
+            Single | Variant(_) => match ty.kind() {
                 ty::Adt(..) | ty::Tuple(..) => {
                     let subpatterns = subpatterns
                         .enumerate()
                         .map(|(i, p)| FieldPat { field: Field::new(i), pattern: p })
                         .collect();
 
-                    if let ty::Adt(adt, substs) = ty.kind {
+                    if let ty::Adt(adt, substs) = ty.kind() {
                         if adt.is_enum() {
                             PatKind::Variant {
                                 adt_def: adt,
@@ -1074,7 +1068,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         let wildcard_from_ty = |ty| &*cx.pattern_arena.alloc(Pat::wildcard_from_ty(ty));
 
         let ret = match constructor {
-            Single | Variant(_) => match ty.kind {
+            Single | Variant(_) => match ty.kind() {
                 ty::Tuple(ref fs) => {
                     Fields::wildcards_from_tys(cx, fs.into_iter().map(|ty| ty.expect_ty()))
                 }
@@ -1125,7 +1119,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => Fields::empty(),
             },
-            Slice(slice) => match ty.kind {
+            Slice(slice) => match *ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
                     Fields::wildcards_from_tys(cx, (0..arity).map(|_| ty))
@@ -1443,7 +1437,7 @@ fn all_constructors<'a, 'tcx>(
                 .unwrap(),
         )
     };
-    match pcx.ty.kind {
+    match *pcx.ty.kind() {
         ty::Bool => {
             [true, false].iter().map(|&b| ConstantValue(ty::Const::from_bool(cx.tcx, b))).collect()
         }
@@ -1558,7 +1552,7 @@ struct IntRange<'tcx> {
 impl<'tcx> IntRange<'tcx> {
     #[inline]
     fn is_integral(ty: Ty<'_>) -> bool {
-        match ty.kind {
+        match ty.kind() {
             ty::Char | ty::Int(_) | ty::Uint(_) => true,
             _ => false,
         }
@@ -1580,7 +1574,7 @@ impl<'tcx> IntRange<'tcx> {
 
     #[inline]
     fn integral_size_and_signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'_>) -> Option<(Size, u128)> {
-        match ty.kind {
+        match *ty.kind() {
             ty::Char => Some((Size::from_bytes(4), 0)),
             ty::Int(ity) => {
                 let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
@@ -1658,7 +1652,7 @@ impl<'tcx> IntRange<'tcx> {
 
     // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
     fn signed_bias(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u128 {
-        match ty.kind {
+        match *ty.kind() {
             ty::Int(ity) => {
                 let bits = Integer::from_attr(&tcx, SignedInt(ity)).size().bits() as u128;
                 1u128 << (bits - 1)
@@ -2070,7 +2064,7 @@ fn pat_constructor<'tcx>(
             if let Some(int_range) = IntRange::from_const(tcx, param_env, value, pat.span) {
                 Some(IntRange(int_range))
             } else {
-                match (value.val, &value.ty.kind) {
+                match (value.val, &value.ty.kind()) {
                     (_, ty::Array(_, n)) => {
                         let len = n.eval_usize(tcx, param_env);
                         Some(Slice(Slice { array_len: Some(len), kind: FixedLen(len) }))
@@ -2102,7 +2096,7 @@ fn pat_constructor<'tcx>(
         }
         PatKind::Array { ref prefix, ref slice, ref suffix }
         | PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-            let array_len = match pat.ty.kind {
+            let array_len = match pat.ty.kind() {
                 ty::Array(_, length) => Some(length.eval_usize(tcx, param_env)),
                 ty::Slice(_) => None,
                 _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", pat.ty),
@@ -2141,7 +2135,7 @@ fn slice_pat_covered_by_const<'tcx>(
         )
     };
 
-    let data: &[u8] = match (const_val_val, &const_val.ty.kind) {
+    let data: &[u8] = match (const_val_val, &const_val.ty.kind()) {
         (ConstValue::ByRef { offset, alloc, .. }, ty::Array(t, n)) => {
             assert_eq!(*t, tcx.types.u8);
             let n = n.eval_usize(tcx, param_env);
@@ -2561,7 +2555,7 @@ fn specialize_one_pattern<'p, 'tcx>(
             // elements don't necessarily point to memory, they are usually
             // just integers. The only time they should be pointing to memory
             // is when they are subslices of nonzero slices.
-            let (alloc, offset, n, ty) = match value.ty.kind {
+            let (alloc, offset, n, ty) = match value.ty.kind() {
                 ty::Array(t, n) => {
                     let n = n.eval_usize(cx.tcx, cx.param_env);
                     // Shortcut for `n == 0` where no matter what `alloc` and `offset` we produce,

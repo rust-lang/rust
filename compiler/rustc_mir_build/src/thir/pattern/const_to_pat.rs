@@ -217,7 +217,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 .collect()
         };
 
-        let kind = match cv.ty.kind {
+        let kind = match cv.ty.kind() {
             ty::Float(_) => {
                 tcx.struct_span_lint_hir(
                     lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
@@ -247,11 +247,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 PatKind::Wild
             }
             // keep old code until future-compat upgraded to errors.
-            ty::Ref(_, adt_ty @ ty::TyS { kind: ty::Adt(_, _), .. }, _)
-                if !self.type_marked_structural(adt_ty) =>
-            {
+            ty::Ref(_, adt_ty, _) if adt_ty.is_adt() && !self.type_marked_structural(adt_ty) => {
                 let adt_def =
-                    if let ty::Adt(adt_def, _) = adt_ty.kind { adt_def } else { unreachable!() };
+                    if let ty::Adt(adt_def, _) = adt_ty.kind() { adt_def } else { unreachable!() };
 
                 debug!(
                     "adt_def {:?} has !type_marked_structural for adt_ty: {:?}",

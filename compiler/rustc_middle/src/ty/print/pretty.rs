@@ -457,7 +457,7 @@ pub trait PrettyPrinter<'tcx>:
             // Inherent impls. Try to print `Foo::bar` for an inherent
             // impl on `Foo`, but fallback to `<Foo>::bar` if self-type is
             // anything other than a simple path.
-            match self_ty.kind {
+            match self_ty.kind() {
                 ty::Adt(..)
                 | ty::Foreign(_)
                 | ty::Bool
@@ -508,7 +508,7 @@ pub trait PrettyPrinter<'tcx>:
     fn pretty_print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         define_scoped_cx!(self);
 
-        match ty.kind {
+        match *ty.kind() {
             ty::Bool => p!(write("bool")),
             ty::Char => p!(write("char")),
             ty::Int(t) => p!(write("{}", t.name_str())),
@@ -797,7 +797,7 @@ pub trait PrettyPrinter<'tcx>:
             // Special-case `Fn(...) -> ...` and resugar it.
             let fn_trait_kind = self.tcx().fn_trait_kind_from_lang_item(principal.def_id);
             if !self.tcx().sess.verbose() && fn_trait_kind.is_some() {
-                if let ty::Tuple(ref args) = principal.substs.type_at(0).kind {
+                if let ty::Tuple(ref args) = principal.substs.type_at(0).kind() {
                     let mut projections = predicates.projection_bounds();
                     if let (Some(proj), None) = (projections.next(), projections.next()) {
                         let tys: Vec<_> = args.iter().map(|k| k.expect_ty()).collect();
@@ -976,7 +976,7 @@ pub trait PrettyPrinter<'tcx>:
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        match (scalar, &ty.kind) {
+        match (scalar, &ty.kind()) {
             // Byte strings (&[u8; N])
             (
                 Scalar::Ptr(ptr),
@@ -1136,7 +1136,7 @@ pub trait PrettyPrinter<'tcx>:
 
         let u8_type = self.tcx().types.u8;
 
-        match (ct, &ty.kind) {
+        match (ct, ty.kind()) {
             // Byte/string slices, printed as (byte) string literals.
             (
                 ConstValue::Slice { data, start, end },
@@ -1189,7 +1189,7 @@ pub trait PrettyPrinter<'tcx>:
                 );
                 let fields = contents.fields.iter().copied();
 
-                match ty.kind {
+                match *ty.kind() {
                     ty::Array(..) => {
                         p!(write("["), comma_sep(fields), write("]"));
                     }

@@ -97,7 +97,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ok(Some(PointerKind::Thin));
         }
 
-        Ok(match t.kind {
+        Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
             ty::Dynamic(ref tty, ..) => Some(PointerKind::Vtable(tty.principal_def_id())),
             ty::Adt(def, substs) if def.is_struct() => match def.non_enum_variant().fields.last() {
@@ -203,7 +203,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once
         // inference is more completely known.
-        match cast_ty.kind {
+        match cast_ty.kind() {
             ty::Dynamic(..) | ty::Slice(..) => {
                 check.report_cast_to_unsized_type(fcx);
                 Err(ErrorReported)
@@ -348,7 +348,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx.ty_to_string(self.cast_ty)
                 );
                 let mut sugg = None;
-                if let ty::Ref(reg, _, mutbl) = self.cast_ty.kind {
+                if let ty::Ref(reg, _, mutbl) = *self.cast_ty.kind() {
                     if fcx
                         .try_coerce(
                             self.expr,
@@ -370,7 +370,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else if !matches!(
-                    self.cast_ty.kind,
+                    self.cast_ty.kind(),
                     ty::FnDef(..) | ty::FnPtr(..) | ty::Closure(..)
                 ) {
                     let mut label = true;
@@ -474,7 +474,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             fcx.resolve_vars_if_possible(&self.expr_ty),
             tstr
         );
-        match self.expr_ty.kind {
+        match self.expr_ty.kind() {
             ty::Ref(_, _, mt) => {
                 let mtstr = mt.prefix_str();
                 if self.cast_ty.is_trait() {
@@ -602,7 +602,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
             // Function item types may need to be reified before casts.
             (None, Some(t_cast)) => {
-                match self.expr_ty.kind {
+                match *self.expr_ty.kind() {
                     ty::FnDef(..) => {
                         // Attempt a coercion to a fn pointer type.
                         let f = fcx.normalize_associated_types_in(
@@ -629,7 +629,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // a cast.
                     ty::Ref(_, inner_ty, mutbl) => {
                         return match t_cast {
-                            Int(_) | Float => match inner_ty.kind {
+                            Int(_) | Float => match *inner_ty.kind() {
                                 ty::Int(_)
                                 | ty::Uint(_)
                                 | ty::Float(_)
@@ -768,7 +768,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // array-ptr-cast.
 
         if m_expr.mutbl == hir::Mutability::Not && m_cast.mutbl == hir::Mutability::Not {
-            if let ty::Array(ety, _) = m_expr.ty.kind {
+            if let ty::Array(ety, _) = m_expr.ty.kind() {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
                 // vector elements instead of the original values.
@@ -817,7 +817,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn cenum_impl_drop_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        if let ty::Adt(d, _) = self.expr_ty.kind {
+        if let ty::Adt(d, _) = self.expr_ty.kind() {
             if d.has_dtor(fcx.tcx) {
                 fcx.tcx.struct_span_lint_hir(
                     lint::builtin::CENUM_IMPL_DROP_CAST,

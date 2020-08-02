@@ -524,12 +524,12 @@ impl<'tcx> SaveContext<'tcx> {
 
     pub fn get_expr_data(&self, expr: &hir::Expr<'_>) -> Option<Data> {
         let ty = self.typeck_results().expr_ty_adjusted_opt(expr)?;
-        if matches!(ty.kind, ty::Error(_)) {
+        if matches!(ty.kind(), ty::Error(_)) {
             return None;
         }
         match expr.kind {
             hir::ExprKind::Field(ref sub_ex, ident) => {
-                match self.typeck_results().expr_ty_adjusted(&sub_ex).kind {
+                match self.typeck_results().expr_ty_adjusted(&sub_ex).kind() {
                     ty::Adt(def, _) if !def.is_enum() => {
                         let variant = &def.non_enum_variant();
                         filter!(self.span_utils, ident.span);
@@ -551,7 +551,7 @@ impl<'tcx> SaveContext<'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Struct(qpath, ..) => match ty.kind {
+            hir::ExprKind::Struct(qpath, ..) => match ty.kind() {
                 ty::Adt(def, _) => {
                     let sub_span = qpath.last_segment_span();
                     filter!(self.span_utils, sub_span);

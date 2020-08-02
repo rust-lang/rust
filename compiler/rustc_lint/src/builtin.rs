@@ -893,7 +893,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
         use rustc_target::spec::abi::Abi::RustIntrinsic;
         if let Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) =
-            get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind))
+            get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
             if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
                 let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
@@ -1940,13 +1940,13 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             init: InitKind,
         ) -> Option<InitError> {
             use rustc_middle::ty::TyKind::*;
-            match ty.kind {
+            match ty.kind() {
                 // Primitive types that don't like 0 as a value.
                 Ref(..) => Some(("references must be non-null".to_string(), None)),
                 Adt(..) if ty.is_box() => Some(("`Box` must be non-null".to_string(), None)),
                 FnPtr(..) => Some(("function pointers must be non-null".to_string(), None)),
                 Never => Some(("the `!` type has no valid value".to_string(), None)),
-                RawPtr(tm) if matches!(tm.ty.kind, Dynamic(..)) =>
+                RawPtr(tm) if matches!(tm.ty.kind(), Dynamic(..)) =>
                 // raw ptr to dyn Trait
                 {
                     Some(("the vtable of a wide raw pointer must be non-null".to_string(), None))
@@ -2173,7 +2173,7 @@ impl ClashingExternDeclarations {
             let non_transparent_ty = |ty: Ty<'tcx>| -> Ty<'tcx> {
                 let mut ty = ty;
                 loop {
-                    if let ty::Adt(def, substs) = ty.kind {
+                    if let ty::Adt(def, substs) = *ty.kind() {
                         let is_transparent = def.subst(tcx, substs).repr.transparent();
                         let is_non_null = crate::types::nonnull_optimization_guaranteed(tcx, &def);
                         debug!(
@@ -2212,8 +2212,8 @@ impl ClashingExternDeclarations {
             } else {
                 // Do a full, depth-first comparison between the two.
                 use rustc_middle::ty::TyKind::*;
-                let a_kind = &a.kind;
-                let b_kind = &b.kind;
+                let a_kind = a.kind();
+                let b_kind = b.kind();
 
                 let compare_layouts = |a, b| -> Result<bool, LayoutError<'tcx>> {
                     debug!("compare_layouts({:?}, {:?})", a, b);
@@ -2335,7 +2335,7 @@ impl ClashingExternDeclarations {
                             if is_primitive_or_pointer(other_kind) =>
                         {
                             let (primitive, adt) =
-                                if is_primitive_or_pointer(&a.kind) { (a, b) } else { (b, a) };
+                                if is_primitive_or_pointer(a.kind()) { (a, b) } else { (b, a) };
                             if let Some(ty) = crate::types::repr_nullable_ptr(cx, adt, ckind) {
                                 ty == primitive
                             } else {

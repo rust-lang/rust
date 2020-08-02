@@ -398,7 +398,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Constant { span, user_ty, literal } = constant;
-        match literal.ty.kind {
+        match literal.ty.kind() {
             ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
             // Unit type
             ty::Tuple(tys) if tys.is_empty() => {}
@@ -416,7 +416,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
         let ty::Const { ty, val, .. } = constant;
-        match ty.kind {
+        match ty.kind() {
             ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => {}
             // Unit type
             ty::Tuple(tys) if tys.is_empty() => {}

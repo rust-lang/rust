@@ -624,7 +624,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         );
 
         let rptr_ty = self.resolve_node_type(id);
-        if let ty::Ref(r, _, _) = rptr_ty.kind {
+        if let ty::Ref(r, _, _) = rptr_ty.kind() {
             debug!("rptr_ty={}", rptr_ty);
             self.link_region(span, r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
         }
@@ -649,7 +649,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
                 "link_region(borrow_region={:?}, borrow_kind={:?}, pointer_ty={:?})",
                 borrow_region, borrow_kind, borrow_place
             );
-            match pointer_ty.kind {
+            match *pointer_ty.kind() {
                 ty::RawPtr(_) => return,
                 ty::Ref(ref_region, _, ref_mutability) => {
                     if self.link_reborrowed_region(span, borrow_region, ref_region, ref_mutability)
@@ -794,7 +794,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
         // A closure capture can't be borrowed for longer than the
         // reference to the closure.
-        if let ty::Closure(_, substs) = ty.kind {
+        if let ty::Closure(_, substs) = ty.kind() {
             match self.infcx.closure_kind(substs) {
                 Some(ty::ClosureKind::Fn | ty::ClosureKind::FnMut) => {
                     // Region of environment pointer

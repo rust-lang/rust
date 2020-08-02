@@ -559,7 +559,7 @@ fn switch_on_enum_discriminant(
         Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
             if *lhs == switch_on =>
         {
-            match &discriminated.ty(body, tcx).ty.kind {
+            match &discriminated.ty(body, tcx).ty.kind() {
                 ty::Adt(def, _) => Some((*discriminated, def)),
 
                 // `Rvalue::Discriminant` is also used to get the active yield point for a

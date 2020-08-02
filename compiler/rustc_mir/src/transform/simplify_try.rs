@@ -682,7 +682,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                       variant_index: &VariantIdx,
                       side_to_choose| {
             let place_type = place.ty(self.body, self.tcx).ty;
-            let adt = match place_type.kind {
+            let adt = match *place_type.kind() {
                 ty::Adt(adt, _) if adt.is_enum() => adt,
                 _ => return StatementEquality::NotEqual,
             };

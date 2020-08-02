@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Extract the type of the closure.
         let ty = self.node_ty(closure_hir_id);
-        let (closure_def_id, substs) = match ty.kind {
+        let (closure_def_id, substs) = match *ty.kind() {
             ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
             ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
             ty::Error(_) => {
@@ -349,7 +349,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
             let mut borrow_kind = ty::MutBorrow;
             for pointer_ty in place_with_id.place.deref_tys() {
-                match pointer_ty.kind {
+                match pointer_ty.kind() {
                     // Raw pointers don't inherit mutability.
                     ty::RawPtr(_) => return,
                     // assignment to deref of an `&mut`

@@ -44,7 +44,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
                     if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                         continue;
                     }
-                    match pred.self_ty().kind {
+                    match pred.self_ty().kind() {
                         ty::Param(ref p) => {
                             // Allow `T: ?const Trait`
                             if constness == hir::Constness::NotConst
@@ -106,7 +106,7 @@ fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> Mc
             GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
         };
 
-        match ty.kind {
+        match ty.kind() {
             ty::Ref(_, _, hir::Mutability::Mut) => {
                 if !feature_allowed(tcx, fn_def_id, sym::const_mut_refs) {
                     return Err((span, "mutable references in const fn are unstable".into()));
@@ -203,7 +203,7 @@ fn check_rvalue(
                 ));
             };
             let unsized_ty = tcx.struct_tail_erasing_lifetimes(pointee_ty, tcx.param_env(def_id));
-            if let ty::Slice(_) | ty::Str = unsized_ty.kind {
+            if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
                 check_operand(tcx, op, span, def_id, body)?;
                 // Casting/coercing things to slices is fine.
                 Ok(())
@@ -406,7 +406,7 @@ fn check_terminator(
             fn_span: _,
         } => {
             let fn_ty = func.ty(body, tcx);
-            if let ty::FnDef(fn_def_id, _) = fn_ty.kind {
+            if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
                 // Allow unstable const if we opt in by using #[allow_internal_unstable]
                 // on function or macro declaration.
                 if !crate::const_eval::is_min_const_fn(tcx, fn_def_id)

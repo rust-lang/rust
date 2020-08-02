@@ -441,7 +441,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> = &mut vec![(ty, hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
-            match (&ty.kind, &hir_ty.kind) {
+            match (&ty.kind(), &hir_ty.kind) {
                 // Check if the `ty` is `&'X ..` where `'X`
                 // is the region we are looking for -- if so, and we have a `&T`
                 // on the RHS, then we want to highlight the `&` like so:
