@@ -1358,15 +1358,15 @@ fn sort_unstable() {
     use core::slice::heapsort;
     use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 
-    // Miri is too slow
-    let large_range = if cfg!(miri) { 0..0 } else { 500..510 };
+    // Miri is too slow (but still need to `chain` to make the types match)
+    let lens = if cfg!(miri) { (2..20).chain(0..0) } else { (2..25).chain(500..510) };
     let rounds = if cfg!(miri) { 1 } else { 100 };
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
     let mut rng = StdRng::from_entropy();
 
-    for len in (2..25).chain(large_range) {
+    for len in lens {
         let v = &mut v[0..len];
         let tmp = &mut tmp[0..len];
 
