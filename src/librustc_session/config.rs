@@ -1717,7 +1717,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
 
         // `-Z instrument-coverage` implies:
-        //   * `-Z symbol-mangling-version=v0` - to ensure consistent and reversable name mangling.
+        //   * `-Z symbol-mangling-version=v0` - to ensure consistent and reversible name mangling.
         //     Note, LLVM coverage tools can analyze coverage over multiple runs, including some
         //     changes to source code; so mangled names must be consistent across compilations.
         //   * `-C link-dead-code` - so unexecuted code is still counted as zero, rather than be

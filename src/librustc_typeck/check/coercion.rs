@@ -456,7 +456,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         //
         // Both of these trigger a special `CoerceUnsized`-related error (E0376)
         //
-        // We can take advantage of this fact to avoid performing unecessary work.
+        // We can take advantage of this fact to avoid performing unnecessary work.
         // If either `source` or `target` is a type variable, then any applicable impl
         // would need to be generic over the self-type (`impl<T> CoerceUnsized<SomeType> for T`)
         // or generic over the `CoerceUnsized` type parameter (`impl<T> CoerceUnsized<T> for

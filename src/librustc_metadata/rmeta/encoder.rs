@@ -267,7 +267,7 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         // real code should never need to care about this.
         //
         // 2. Using `Span::def_site` or `Span::mixed_site` will not
-        // include any hygiene information associated with the defintion
+        // include any hygiene information associated with the definition
         // site. This means that a proc-macro cannot emit a `$crate`
         // identifier which resolves to one of its dependencies,
         // which also should never come up in practice.

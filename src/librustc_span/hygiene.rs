@@ -891,7 +891,7 @@ impl UseSpecializedDecodable for ExpnId {}
 
 #[derive(Default)]
 pub struct HygieneEncodeContext {
-    /// All `SyntaxContexts` for which we have writen `SyntaxContextData` into crate metadata.
+    /// All `SyntaxContexts` for which we have written `SyntaxContextData` into crate metadata.
     /// This is `None` after we finish encoding `SyntaxContexts`, to ensure
     /// that we don't accidentally try to encode any more `SyntaxContexts`
     serialized_ctxts: Lock<FxHashSet<SyntaxContext>>,
@@ -961,7 +961,7 @@ pub struct HygieneDecodeContext {
     // Maps serialized `SyntaxContext` ids to a `SyntaxContext` in the current
     // global `HygieneData`. When we deserialize a `SyntaxContext`, we need to create
     // a new id in the global `HygieneData`. This map tracks the ID we end up picking,
-    // so that multiple occurences of the same serialized id are decoded to the same
+    // so that multiple occurrences of the same serialized id are decoded to the same
     // `SyntaxContext`
     remapped_ctxts: Lock<Vec<Option<SyntaxContext>>>,
     // The same as `remapepd_ctxts`, but for `ExpnId`s
