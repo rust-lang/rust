@@ -347,9 +347,8 @@ pub trait StructuralEq {
 /// * Tuple types, if each component also implements `Copy` (e.g., `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Copy` themselves.
-///   Note that variables captured by shared reference always implement `Copy`
-///   (even if the referent doesn't),
-///   while variables captured by mutable reference never implement `Copy`.
+/// * Variables captured by shared reference (e.g. `&T`) implement `Copy`, even if the referent (`T`) doesn't,
+///   while variables captured by mutable reference (e.g. `&mut T`) never implement `Copy`.
 ///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
