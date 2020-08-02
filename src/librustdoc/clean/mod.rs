@@ -716,11 +716,11 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
         // Bounds in the type_params and lifetimes fields are repeated in the
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
-        let stripped_typarams = gens
+        let stripped_params = gens
             .params
             .iter()
             .filter_map(|param| match param.kind {
-                ty::GenericParamDefKind::Lifetime => None,
+                ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
                 ty::GenericParamDefKind::Type { synthetic, .. } => {
                     if param.name == kw::SelfUpper {
                         assert_eq!(param.index, 0);
@@ -732,7 +732,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                     }
                     Some(param.clean(cx))
                 }
-                ty::GenericParamDefKind::Const { .. } => None,
+                ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
             })
             .collect::<Vec<GenericParamDef>>();
 
@@ -844,8 +844,10 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
 
         // Run through the type parameters again and insert a ?Sized
         // unbound for any we didn't find to be Sized.
-        for tp in &stripped_typarams {
-            if !sized_params.contains(&tp.name) {
+        for tp in &stripped_params {
+            if matches!(tp.kind, types::GenericParamDefKind::Type { .. })
+                && !sized_params.contains(&tp.name)
+            {
                 where_predicates.push(WP::BoundPredicate {
                     ty: Type::Generic(tp.name.clone()),
                     bounds: vec![GenericBound::maybe_sized(cx)],
@@ -858,16 +860,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
         // and instead see `where T: Foo + Bar + Sized + 'a`
 
         Generics {
-            params: gens
-                .params
-                .iter()
-                .flat_map(|param| match param.kind {
-                    ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
-                    ty::GenericParamDefKind::Type { .. } => None,
-                    ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
-                })
-                .chain(simplify::ty_params(stripped_typarams).into_iter())
-                .collect(),
+            params: stripped_params,
             where_predicates: simplify::where_clauses(cx, where_predicates),
         }
     }

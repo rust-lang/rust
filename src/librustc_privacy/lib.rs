@@ -637,7 +637,7 @@ impl EmbargoVisitor<'tcx> {
         &mut self,
         segments: &[hir::PathSegment<'_>],
     ) {
-        if let Some([module, segment]) = segments.rchunks_exact(2).next() {
+        if let [.., module, segment] = segments {
             if let Some(item) = module
                 .res
                 .and_then(|res| res.mod_def_id())
