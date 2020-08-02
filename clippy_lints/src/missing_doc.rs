@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [ast::Attribute]) {
         let doc_hidden = self.doc_hidden()
             || attrs.iter().any(|attr| {
-                attr.check_name(sym!(doc))
+                attr.has_name(sym!(doc))
                     && match attr.meta_item_list() {
                         None => false,
                         Some(l) => attr::list_contains_name(&l[..], sym!(hidden)),
