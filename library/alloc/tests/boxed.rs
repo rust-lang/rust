@@ -37,7 +37,7 @@ fn box_clone_and_clone_from_equivalence() {
 /// This test might give a false positive in case the box realocates, but the alocator keeps the
 /// original pointer.
 ///
-/// On the other hand it won't give a false negative, if it fails than the memory was definitly not
+/// On the other hand it won't give a false negative, if it fails than the memory was definitely not
 /// reused
 #[test]
 fn box_clone_from_ptr_stability() {

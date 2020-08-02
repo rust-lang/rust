@@ -1363,7 +1363,7 @@ mod self_upper_keyword {}
 ///
 /// let r1 = &FOO as *const _;
 /// let r2 = &FOO as *const _;
-/// // With a strictly read-only static, references will have the same adress
+/// // With a strictly read-only static, references will have the same address
 /// assert_eq!(r1, r2);
 /// // A static item can be used just like a variable in many cases
 /// println!("{:?}", FOO);

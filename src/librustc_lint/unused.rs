@@ -422,7 +422,7 @@ trait UnusedDelimLint {
         lhs_needs_parens
             || (followed_by_block
                 && match inner.kind {
-                    ExprKind::Ret(_) | ExprKind::Break(..) => true,
+                    ExprKind::Ret(_) | ExprKind::Break(..) | ExprKind::Yield(..) => true,
                     _ => parser::contains_exterior_struct_lit(&inner),
                 })
     }

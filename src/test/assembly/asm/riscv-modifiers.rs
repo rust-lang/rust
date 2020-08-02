@@ -3,6 +3,7 @@
 // compile-flags: -O
 // compile-flags: --target riscv64gc-unknown-linux-gnu
 // compile-flags: -C target-feature=+f
+// needs-llvm-components: riscv
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]

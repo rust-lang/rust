@@ -189,7 +189,7 @@ unsafe impl AllocRef for System {
             ReallocPlacement::MayMove if layout.size() == 0 => {
                 let new_layout =
                     // SAFETY: The new size and layout alignement guarantees
-                    // are transfered to the caller (they come from parameters).
+                    // are transferred to the caller (they come from parameters).
                     //
                     // See the preconditions for `Layout::from_size_align` to
                     // see what must be checked.
@@ -254,7 +254,7 @@ unsafe impl AllocRef for System {
                 //
                 // See `GlobalAlloc::realloc` for more informations about the
                 // guarantees expected by this method. `ptr`, `layout` and
-                // `new_size` are parameters and the responsability for their
+                // `new_size` are parameters and the responsibility for their
                 // correctness is left to the caller.
                 //
                 // `realloc` probably checks for `new_size < size` or something

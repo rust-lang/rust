@@ -524,7 +524,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                         // The `is_empty` predicate is introduced to exclude the case
                                         // where the projection operations are [ .field, * ].
                                         // The reason is because promotion will be illegal if field
-                                        // accesses preceed the dereferencing.
+                                        // accesses precede the dereferencing.
                                         // Discussion can be found at
                                         // https://github.com/rust-lang/rust/pull/74945#discussion_r463063247
                                         // There may be opportunity for generalization, but this needs to be
