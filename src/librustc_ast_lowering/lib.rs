@@ -64,7 +64,7 @@ use rustc_span::source_map::{respan, DesugaringKind, ExpnData, ExpnKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 
-use log::{debug, trace};
+use tracing::{debug, trace};
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeMap;
 use std::mem;

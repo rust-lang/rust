@@ -17,7 +17,7 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 
-use log::debug;
+use tracing::debug;
 use smallvec::{smallvec, SmallVec};
 use std::collections::BTreeSet;
 

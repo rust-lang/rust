@@ -12,7 +12,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use log::debug;
+use tracing::debug;
 use smallvec::smallvec;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
