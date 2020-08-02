@@ -947,7 +947,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
-            if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
+            if let ExpnKind::Macro { kind: MacroKind::Bang, name: mac_name, proc_macro: _ } = data.kind {
                 if mac_name.as_str() == name {
                     return Some(new_span);
                 }
@@ -975,7 +975,7 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 
-        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
+        if let ExpnKind::Macro { kind: MacroKind::Bang, name: mac_name, proc_macro: _ } = data.kind {
             if mac_name.as_str() == name {
                 return Some(new_span);
             }
