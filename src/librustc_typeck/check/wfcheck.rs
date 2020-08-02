@@ -6,9 +6,11 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::itemlikevisit::ParItemLikeVisitor;
+use rustc_hir::intravisit as hir_visit;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items;
 use rustc_hir::ItemKind;
+use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
@@ -273,6 +275,95 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     };
 
     check_associated_item(tcx, impl_item.hir_id, impl_item.span, method_sig);
+}
+
+fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
+    match param.kind {
+        // We currently only check wf of const params here.
+        hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. } => (),
+
+        // Const parameters are well formed if their
+        // type is structural match.
+        hir::GenericParamKind::Const { ty: hir_ty } => {
+            let ty = tcx.type_of(tcx.hir().local_def_id(param.hir_id));
+
+            let err_ty_str;
+            let err = if tcx.features().min_const_generics {
+                match ty.kind {
+                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
+                    ty::FnPtr(_) => Some("function pointers"),
+                    ty::RawPtr(_) => Some("raw pointers"),
+                    _ => {
+                        err_ty_str = format!("`{}`", ty);
+                        Some(err_ty_str.as_str())
+                    }
+                }
+            } else {
+                match ty.peel_refs().kind {
+                    ty::FnPtr(_) => Some("function pointers"),
+                    ty::RawPtr(_) => Some("raw pointers"),
+                    _ => None,
+                }
+            };
+            if let Some(unsupported_type) = err {
+                let mut err = tcx.sess.struct_span_err(
+                    hir_ty.span,
+                    &format!("using {} as const generic parameters is forbidden", unsupported_type),
+                );
+
+                if tcx.features().min_const_generics {
+                    err.note("the only supported types are integers, `bool` and `char`")
+                        .note("more complex types are supported with `#[feature(const_generics)]`")
+                        .emit()
+                } else {
+                    err.emit();
+                }
+            };
+            if traits::search_for_structural_match_violation(param.hir_id, param.span, tcx, ty)
+                .is_some()
+            {
+                // We use the same error code in both branches, because this is really the same
+                // issue: we just special-case the message for type parameters to make it
+                // clearer.
+                if let ty::Param(_) = ty.peel_refs().kind {
+                    // Const parameters may not have type parameters as their types,
+                    // because we cannot be sure that the type parameter derives `PartialEq`
+                    // and `Eq` (just implementing them is not enough for `structural_match`).
+                    struct_span_err!(
+                        tcx.sess,
+                        hir_ty.span,
+                        E0741,
+                        "`{}` is not guaranteed to `#[derive(PartialEq, Eq)]`, so may not be \
+                            used as the type of a const parameter",
+                        ty,
+                    )
+                    .span_label(
+                        hir_ty.span,
+                        format!("`{}` may not derive both `PartialEq` and `Eq`", ty),
+                    )
+                    .note(
+                        "it is not currently possible to use a type parameter as the type of a \
+                            const parameter",
+                    )
+                    .emit();
+                } else {
+                    struct_span_err!(
+                        tcx.sess,
+                        hir_ty.span,
+                        E0741,
+                        "`{}` must be annotated with `#[derive(PartialEq, Eq)]` to be used as \
+                            the type of a const parameter",
+                        ty,
+                    )
+                    .span_label(
+                        hir_ty.span,
+                        format!("`{}` doesn't derive both `PartialEq` and `Eq`", ty),
+                    )
+                    .emit();
+                }
+            }
+        }
+    }
 }
 
 fn check_associated_item(
@@ -1292,23 +1383,38 @@ impl CheckTypeWellFormedVisitor<'tcx> {
     }
 }
 
-impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
-    fn visit_item(&self, i: &'tcx hir::Item<'tcx>) {
+impl Visitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
+    type Map = hir_map::Map<'tcx>;
+
+    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
+        hir_visit::NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    }
+
+    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
         debug!("visit_item: {:?}", i);
         let def_id = self.tcx.hir().local_def_id(i.hir_id);
         self.tcx.ensure().check_item_well_formed(def_id);
+        hir_visit::walk_item(self, i);
     }
 
-    fn visit_trait_item(&self, trait_item: &'tcx hir::TraitItem<'tcx>) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         debug!("visit_trait_item: {:?}", trait_item);
         let def_id = self.tcx.hir().local_def_id(trait_item.hir_id);
         self.tcx.ensure().check_trait_item_well_formed(def_id);
+        hir_visit::walk_trait_item(self, trait_item);
     }
 
-    fn visit_impl_item(&self, impl_item: &'tcx hir::ImplItem<'tcx>) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         debug!("visit_impl_item: {:?}", impl_item);
         let def_id = self.tcx.hir().local_def_id(impl_item.hir_id);
         self.tcx.ensure().check_impl_item_well_formed(def_id);
+        hir_visit::walk_impl_item(self, impl_item);
+    }
+
+    fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
+        check_param_wf(self.tcx, p);
+        // No need to walk further here, there is nothing interesting
+        // inside of generic params we don't already check in `check_param_wf`.
     }
 }
 
