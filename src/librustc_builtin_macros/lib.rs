@@ -5,7 +5,6 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
-#![feature(inner_deref)]
 #![feature(nll)]
 #![feature(or_patterns)]
 #![feature(proc_macro_internals)]

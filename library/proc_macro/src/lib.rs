@@ -24,7 +24,6 @@
 #![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
-#![feature(inner_deref)]
 #![feature(negative_impls)]
 #![feature(optin_builtin_traits)]
 #![feature(restricted_std)]
