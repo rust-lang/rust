@@ -282,6 +282,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::DefId,
     ::rustc_hir::def_id::LocalDefId,
+    ::rustc_hir::HirId,
     ::rustc_hir::LlvmInlineAsmInner,
     ::rustc_hir::MatchSource,
     ::rustc_hir::Mutability,
@@ -298,6 +299,7 @@ CloneTypeFoldableAndLiftImpls! {
     // really meant to be folded. In general, we can only fold a fully
     // general `Region`.
     crate::ty::BoundRegion,
+    crate::ty::AssocItem,
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::ClosureKind,
     crate::ty::FreeRegion,
