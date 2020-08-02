@@ -162,6 +162,8 @@ macro_rules! with_api {
                 fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
                 fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
                 fn source_text($self: $S::Span) -> Option<String>;
+                fn save_span($self: $S::Span) -> usize;
+                fn recover_proc_macro_span(id: usize) -> $S::Span;
             },
         }
     };
@@ -338,6 +340,7 @@ mark_noop! {
     &'a [u8],
     &'a str,
     String,
+    usize,
     Delimiter,
     Level,
     LineColumn,

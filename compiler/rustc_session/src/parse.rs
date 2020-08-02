@@ -137,6 +137,9 @@ pub struct ParseSess {
     pub type_ascription_path_suggestions: Lock<FxHashSet<Span>>,
     /// Whether cfg(version) should treat the current release as incomplete
     pub assume_incomplete_release: bool,
+    /// Spans passed to `proc_macro::quote_span`. Each span has a numerical
+    /// identifier represented by its position in the vector.
+    pub proc_macro_quoted_spans: Lock<Vec<Span>>,
 }
 
 impl ParseSess {
@@ -164,6 +167,7 @@ impl ParseSess {
             env_depinfo: Default::default(),
             type_ascription_path_suggestions: Default::default(),
             assume_incomplete_release: false,
+            proc_macro_quoted_spans: Default::default(),
         }
     }
 
@@ -235,5 +239,15 @@ impl ParseSess {
                 Applicability::MachineApplicable,
             );
         }
+    }
+
+    pub fn save_proc_macro_span(&self, span: Span) -> usize {
+        let mut spans = self.proc_macro_quoted_spans.lock();
+        spans.push(span);
+        return spans.len() - 1;
+    }
+
+    pub fn proc_macro_quoted_spans(&self) -> Vec<Span> {
+        self.proc_macro_quoted_spans.lock().clone()
     }
 }

@@ -265,7 +265,7 @@ pub mod token_stream {
 /// Unquoting is done with `$`, and works by taking the single next ident as the unquoted term.
 /// To quote `$` itself, use `$$`.
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
-#[allow_internal_unstable(proc_macro_def_site)]
+#[allow_internal_unstable(proc_macro_def_site, proc_macro_internals)]
 #[rustc_builtin_macro]
 pub macro quote($($t:tt)*) {
     /* compiler built-in */
@@ -392,6 +392,20 @@ impl Span {
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn source_text(&self) -> Option<String> {
         self.0.source_text()
+    }
+
+    // Used by the implementation of `Span::quote`
+    #[doc(hidden)]
+    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    pub fn save_span(&self) -> usize {
+        self.0.save_span()
+    }
+
+    // Used by the implementation of `Span::quote`
+    #[doc(hidden)]
+    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    pub fn recover_proc_macro_span(id: usize) -> Span {
+        Span(bridge::client::Span::recover_proc_macro_span(id))
     }
 
     diagnostic_method!(error, Level::Error);

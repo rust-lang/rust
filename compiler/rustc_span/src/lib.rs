@@ -394,7 +394,10 @@ impl Span {
 
     /// Returns `true` if `span` originates in a derive-macro's expansion.
     pub fn in_derive_expansion(self) -> bool {
-        matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
+        matches!(
+            self.ctxt().outer_expn_data().kind,
+            ExpnKind::Macro { kind: MacroKind::Derive, name: _, proc_macro: _ }
+        )
     }
 
     #[inline]

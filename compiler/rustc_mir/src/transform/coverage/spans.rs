@@ -184,8 +184,11 @@ impl CoverageSpan {
         self.current_macro_or_none
             .borrow_mut()
             .get_or_insert_with(|| {
-                if let ExpnKind::Macro(MacroKind::Bang, current_macro) =
-                    self.expn_span.ctxt().outer_expn_data().kind
+                if let ExpnKind::Macro {
+                    kind: MacroKind::Bang,
+                    name: current_macro,
+                    proc_macro: _,
+                } = self.expn_span.ctxt().outer_expn_data().kind
                 {
                     return Some(current_macro);
                 }

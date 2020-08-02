@@ -128,7 +128,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 if expn_data.is_root() {
                     break;
                 }
-                if let ExpnKind::Macro(..) = expn_data.kind {
+                if let ExpnKind::Macro { .. } = expn_data.kind {
                     body_span = expn_data.call_site;
                 } else {
                     break;

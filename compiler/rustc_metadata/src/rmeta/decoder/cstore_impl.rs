@@ -411,7 +411,7 @@ impl CStore {
 
         let data = self.get_crate_data(id.krate);
         if data.root.is_proc_macro_crate() {
-            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
+            return LoadedMacro::ProcMacro(data.load_proc_macro(id, sess));
         }
 
         let span = data.get_span(id.index, sess);
@@ -460,6 +460,15 @@ impl CStore {
 
     pub fn item_attrs(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
         self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess).collect()
+    }
+
+    pub fn get_proc_macro_quoted_span_untracked(
+        &self,
+        cnum: CrateNum,
+        id: usize,
+        sess: &Session,
+    ) -> Span {
+        self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
     }
 }
 

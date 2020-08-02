@@ -258,15 +258,15 @@ crate struct TraitImpls {
 
 /// Define `LazyTables` and `TableBuilders` at the same time.
 macro_rules! define_tables {
-    ($($name:ident: Table<DefIndex, $T:ty>),+ $(,)?) => {
+    ($($name:ident: Table<$IDX:ty, $T:ty>),+ $(,)?) => {
         #[derive(MetadataEncodable, MetadataDecodable)]
         crate struct LazyTables<'tcx> {
-            $($name: Lazy!(Table<DefIndex, $T>)),+
+            $($name: Lazy!(Table<$IDX, $T>)),+
         }
 
         #[derive(Default)]
         struct TableBuilders<'tcx> {
-            $($name: TableBuilder<DefIndex, $T>),+
+            $($name: TableBuilder<$IDX, $T>),+
         }
 
         impl TableBuilders<'tcx> {
@@ -315,6 +315,7 @@ define_tables! {
     // definitions from any given crate.
     def_keys: Table<DefIndex, Lazy<DefKey>>,
     def_path_hashes: Table<DefIndex, Lazy<DefPathHash>>,
+    proc_macro_quoted_spans: Table<usize, Lazy<Span>>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
