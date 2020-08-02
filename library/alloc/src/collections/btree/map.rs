@@ -174,7 +174,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
 
                     {
                         let out_root = BTreeMap::ensure_is_owned(&mut out_tree.root);
-                        let mut out_node = out_root.push_level();
+                        let mut out_node = out_root.push_internal_level();
                         let mut in_edge = internal.first_edge();
                         while let Ok(kv) = in_edge.right_kv() {
                             let (k, v) = kv.into_kv();
@@ -1080,9 +1080,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
                                 test_node = parent.forget_type();
                             }
                         }
-                        Err(node) => {
+                        Err(_) => {
                             // We are at the top, create a new root node and push there.
-                            open_node = node.into_root_mut().push_level();
+                            open_node = root.push_internal_level();
                             break;
                         }
                     }
@@ -1092,7 +1092,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 let tree_height = open_node.height() - 1;
                 let mut right_tree = node::Root::new_leaf();
                 for _ in 0..tree_height {
-                    right_tree.push_level();
+                    right_tree.push_internal_level();
                 }
                 open_node.push(key, value, right_tree);
 
@@ -1171,7 +1171,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut right = Self::new();
         let right_root = Self::ensure_is_owned(&mut right.root);
         for _ in 0..left_root.height() {
-            right_root.push_level();
+            right_root.push_internal_level();
         }
 
         {
@@ -1255,7 +1255,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
     pub(super) fn drain_filter_inner(&mut self) -> DrainFilterInner<'_, K, V> {
         let front = self.root.as_mut().map(|r| r.as_mut().first_leaf_edge());
-        DrainFilterInner { length: &mut self.length, cur_leaf_edge: front }
+        DrainFilterInner {
+            length: &mut self.length,
+            cur_leaf_edge: front,
+            emptied_internal_root: false,
+        }
     }
 
     /// Calculates the number of elements if it is incorrect.
@@ -1625,6 +1629,7 @@ where
 pub(super) struct DrainFilterInner<'a, K: 'a, V: 'a> {
     length: &'a mut usize,
     cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+    emptied_internal_root: bool,
 }
 
 #[unstable(feature = "btree_drain_filter", issue = "70530")]
@@ -1665,6 +1670,17 @@ where
     }
 }
 
+impl<K, V> Drop for DrainFilterInner<'_, K, V> {
+    fn drop(&mut self) {
+        if self.emptied_internal_root {
+            if let Some(handle) = self.cur_leaf_edge.take() {
+                let root = handle.into_node().into_root_mut();
+                root.pop_internal_level();
+            }
+        }
+    }
+}
+
 impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
     /// Allow Debug implementations to predict the next element.
     pub(super) fn peek(&self) -> Option<(&K, &V)> {
@@ -1681,9 +1697,10 @@ impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
             let (k, v) = kv.kv_mut();
             if pred(k, v) {
                 *self.length -= 1;
-                let (k, v, leaf_edge_location) = kv.remove_kv_tracking();
-                self.cur_leaf_edge = Some(leaf_edge_location);
-                return Some((k, v));
+                let RemoveResult { old_kv, pos, emptied_internal_root } = kv.remove_kv_tracking();
+                self.cur_leaf_edge = Some(pos);
+                self.emptied_internal_root |= emptied_internal_root;
+                return Some(old_kv);
             }
             self.cur_leaf_edge = Some(kv.next_leaf_edge());
         }
@@ -2477,7 +2494,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
                     }
                 },
                 Err(root) => {
-                    root.push_level().push(ins_k, ins_v, ins_edge);
+                    root.push_internal_level().push(ins_k, ins_v, ins_edge);
                     return unsafe { &mut *out_ptr };
                 }
             }
@@ -2647,20 +2664,35 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
         self.remove_kv().1
     }
 
+    // Body of `remove_entry`, separate to keep the above implementations short.
     fn remove_kv(self) -> (K, V) {
         *self.length -= 1;
 
-        let (old_key, old_val, _) = self.handle.remove_kv_tracking();
-        (old_key, old_val)
+        let RemoveResult { old_kv, pos, emptied_internal_root } = self.handle.remove_kv_tracking();
+        let root = pos.into_node().into_root_mut();
+        if emptied_internal_root {
+            root.pop_internal_level();
+        }
+        old_kv
     }
 }
 
+struct RemoveResult<'a, K, V> {
+    // Key and value removed.
+    old_kv: (K, V),
+    // Unique location at the leaf level that the removed KV lopgically collapsed into.
+    pos: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
+    // Whether the remove left behind and empty internal root node, that should be removed
+    // using `pop_internal_level`.
+    emptied_internal_root: bool,
+}
+
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
-    /// Removes a key/value-pair from the map, and returns that pair, as well as
-    /// the leaf edge corresponding to that former pair.
-    fn remove_kv_tracking(
-        self,
-    ) -> (K, V, Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>) {
+    /// Removes a key/value-pair from the tree, and returns that pair, as well as
+    /// the leaf edge corresponding to that former pair. It's possible this leaves
+    /// an empty internal root node, which the caller should subsequently pop from
+    /// the map holding the tree. The caller should also decrement the map's length.
+    fn remove_kv_tracking(self) -> RemoveResult<'a, K, V> {
         let (mut pos, old_key, old_val, was_internal) = match self.force() {
             Leaf(leaf) => {
                 let (hole, old_key, old_val) = leaf.remove();
@@ -2689,6 +2721,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
         };
 
         // Handle underflow
+        let mut emptied_internal_root = false;
         let mut cur_node = unsafe { ptr::read(&pos).into_node().forget_type() };
         let mut at_leaf = true;
         while cur_node.len() < node::MIN_LEN {
@@ -2709,8 +2742,8 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
 
                     let parent = edge.into_node();
                     if parent.len() == 0 {
-                        // We must be at the root
-                        parent.into_root_mut().pop_level();
+                        // This empty parent must be the root, and should be popped off the tree.
+                        emptied_internal_root = true;
                         break;
                     } else {
                         cur_node = parent.forget_type();
@@ -2737,7 +2770,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
             pos = unsafe { unwrap_unchecked(pos.next_kv().ok()).next_leaf_edge() };
         }
 
-        (old_key, old_val, pos)
+        RemoveResult { old_kv: (old_key, old_val), pos, emptied_internal_root }
     }
 }
 
@@ -2745,7 +2778,7 @@ impl<K, V> node::Root<K, V> {
     /// Removes empty levels on the top, but keep an empty leaf if the entire tree is empty.
     fn fix_top(&mut self) {
         while self.height() > 0 && self.as_ref().len() == 0 {
-            self.pop_level();
+            self.pop_internal_level();
         }
     }
 
@@ -2817,8 +2850,16 @@ fn handle_underfull_node<K, V>(
     let (is_left, mut handle) = match parent.left_kv() {
         Ok(left) => (true, left),
         Err(parent) => {
-            let right = unsafe { unwrap_unchecked(parent.right_kv().ok()) };
-            (false, right)
+            match parent.right_kv() {
+                Ok(right) => (false, right),
+                Err(_) => {
+                    // The underfull node has an empty parent, so it is the only child
+                    // of an empty root. It is destined to become the new root, thus
+                    // allowed to be underfull. The empty parent should be removed later
+                    // by `pop_internal_level`.
+                    return AtRoot;
+                }
+            }
         }
     };
 
