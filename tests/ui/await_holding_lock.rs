@@ -47,6 +47,7 @@ async fn not_good(x: &Mutex<u32>) -> u32 {
     first + second + third
 }
 
+#[allow(clippy::manual_async_fn)]
 fn block_bad(x: &Mutex<u32>) -> impl std::future::Future<Output = u32> + '_ {
     async move {
         let guard = x.lock().unwrap();
