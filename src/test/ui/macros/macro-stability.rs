@@ -22,7 +22,7 @@ fn main() {
     // unstable_macro_modern!(); // ERROR use of unstable library feature 'unstable_macros'
 
     deprecated_macro!();
-    //~^ WARN use of deprecated item 'deprecated_macro': deprecation reason
+    //~^ WARN use of deprecated macro `deprecated_macro`: deprecation reason
     local_deprecated!();
-    //~^ WARN use of deprecated item 'local_deprecated': local deprecation reason
+    //~^ WARN use of deprecated macro `local_deprecated`: local deprecation reason
 }

@@ -1,4 +1,4 @@
-warning: use of deprecated item 'local_deprecated': local deprecation note
+warning: use of deprecated macro `local_deprecated`: local deprecation note
   --> $DIR/macro-deprecation.rs:11:5
    |
 LL |     local_deprecated!();
@@ -6,7 +6,7 @@ LL |     local_deprecated!();
    |
    = note: `#[warn(deprecated)]` on by default
 
-warning: use of deprecated item 'deprecated_macro': deprecation note
+warning: use of deprecated macro `deprecated_macro`: deprecation note
   --> $DIR/macro-deprecation.rs:12:5
    |
 LL |     deprecated_macro!();
