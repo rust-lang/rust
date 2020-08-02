@@ -450,7 +450,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_comment(&mut self, cmnt: &comments::Comment) {
         match cmnt.style {
             comments::Mixed => {
-                self.zerobreak();
+                if !self.is_beginning_of_line() {
+                    self.zerobreak();
+                }
                 if let Some((last, lines)) = cmnt.lines.split_last() {
                     self.ibox(0);
 
