@@ -18,7 +18,7 @@ fn 编程() {}
 fn Ц() {}
 //~^ ERROR function `Ц` should have a snake case name
 
-// besides this, you cannot use continous underscores in the middle
+// besides this, you cannot use continuous underscores in the middle
 
 fn 分__隔() {}
 //~^ ERROR function `分__隔` should have a snake case name

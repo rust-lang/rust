@@ -2255,7 +2255,7 @@ impl<T: ?Sized> Unpin for Arc<T> {}
 ///
 /// - This function is safe for any argument if `T` is sized, and
 /// - if `T` is unsized, the pointer must have appropriate pointer metadata
-///   aquired from the real instance that you are getting this offset for.
+///   acquired from the real instance that you are getting this offset for.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Align the unsized value to the end of the `ArcInner`.
     // Because it is `?Sized`, it will always be the last field in memory.
