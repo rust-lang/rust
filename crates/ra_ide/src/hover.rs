@@ -425,9 +425,9 @@ fn main() {
             expect![[r#"
                 *iter*
 
-                ````rust
+                ```rust
                 Iter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> Option<u32>, u32>>
-                ````
+                ```
             "#]],
         );
     }
@@ -444,13 +444,13 @@ fn main() { let foo_test = fo<|>o(); }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub fn foo() -> u32
-                ````
+                ```
             "#]],
         );
 
@@ -493,13 +493,13 @@ fn main() { let foo_test = fo<|>o(); }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str
-                ````
+                ```
             "#]],
         );
     }
@@ -515,13 +515,13 @@ fn main() { }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub fn foo(a: u32, b: u32) -> u32
-                ````
+                ```
             "#]],
         );
     }
@@ -540,13 +540,13 @@ fn main() {
             expect![[r#"
                 *field_a*
 
-                ````rust
+                ```rust
                 test::Foo
-                ````
+                ```
 
-                ````rust
+                ```rust
                 field_a: u32
-                ````
+                ```
             "#]],
         );
 
@@ -562,13 +562,13 @@ fn main() {
             expect![[r#"
                 *field_a*
 
-                ````rust
+                ```rust
                 test::Foo
-                ````
+                ```
 
-                ````rust
+                ```rust
                 field_a: u32
-                ````
+                ```
             "#]],
         );
     }
@@ -580,13 +580,13 @@ fn main() {
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 const foo: u32
-                ````
+                ```
             "#]],
         );
         check(
@@ -594,13 +594,13 @@ fn main() {
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 static foo: u32
-                ````
+                ```
             "#]],
         );
     }
@@ -617,9 +617,9 @@ fn main() {
             expect![[r#"
                 *zz*
 
-                ````rust
+                ```rust
                 Test<i32, u8>
-                ````
+                ```
             "#]],
         );
     }
@@ -636,13 +636,13 @@ fn main() { So<|>me(12); }
             expect![[r#"
                 *Some*
 
-                ````rust
+                ```rust
                 test::Option
-                ````
+                ```
 
-                ````rust
+                ```rust
                 Some
-                ````
+                ```
             "#]],
         );
 
@@ -656,9 +656,9 @@ fn main() { let b<|>ar = Some(12); }
             expect![[r#"
                 *bar*
 
-                ````rust
+                ```rust
                 Option<i32>
-                ````
+                ```
             "#]],
         );
     }
@@ -675,13 +675,13 @@ enum Option<T> {
             expect![[r#"
                 *None*
 
-                ````rust
+                ```rust
                 test::Option
-                ````
+                ```
 
-                ````rust
+                ```rust
                 None
-                ````
+                ```
 
                 ---
 
@@ -702,13 +702,13 @@ fn main() {
             expect![[r#"
                 *Some*
 
-                ````rust
+                ```rust
                 test::Option
-                ````
+                ```
 
-                ````rust
+                ```rust
                 Some
-                ````
+                ```
 
                 ---
 
@@ -724,9 +724,9 @@ fn main() {
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 i32
-                ````
+                ```
             "#]],
         )
     }
@@ -738,9 +738,9 @@ fn main() {
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 i32
-                ````
+                ```
             "#]],
         )
     }
@@ -752,9 +752,9 @@ fn main() {
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 i32
-                ````
+                ```
             "#]],
         )
     }
@@ -766,9 +766,9 @@ fn main() {
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 i32
-                ````
+                ```
             "#]],
         )
     }
@@ -788,9 +788,9 @@ fn main() { let foo_<|>test = Thing::new(); }
             expect![[r#"
                 *foo_test*
 
-                ````rust
+                ```rust
                 Thing
-                ````
+                ```
             "#]],
         )
     }
@@ -812,13 +812,13 @@ fn main() { let foo_test = wrapper::Thing::new<|>(); }
             expect![[r#"
                 *new*
 
-                ````rust
+                ```rust
                 test::wrapper::Thing
-                ````
+                ```
 
-                ````rust
+                ```rust
                 fn new() -> Thing
-                ````
+                ```
             "#]],
         )
     }
@@ -843,13 +843,13 @@ fn main() {
             expect![[r#"
                 *C*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 const C: u32
-                ````
+                ```
             "#]],
         )
     }
@@ -925,9 +925,9 @@ fn y() {
             expect![[r#"
                 *x*
 
-                ````rust
+                ```rust
                 i32
-                ````
+                ```
             "#]],
         )
     }
@@ -943,13 +943,13 @@ fn f() { fo<|>o!(); }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 macro_rules! foo
-                ````
+                ```
             "#]],
         )
     }
@@ -978,13 +978,13 @@ id! {
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 fn foo()
-                ````
+                ```
             "#]],
         );
     }
@@ -999,9 +999,9 @@ fn foo(bar:u32) { let a = id!(ba<|>r); }
             expect![[r#"
                 *bar*
 
-                ````rust
+                ```rust
                 u32
-                ````
+                ```
             "#]],
         );
     }
@@ -1017,9 +1017,9 @@ fn foo(bar:u32) { let a = id!(ba<|>r); }
             expect![[r#"
                 *bar*
 
-                ````rust
+                ```rust
                 u32
-                ````
+                ```
             "#]],
         );
     }
@@ -1076,13 +1076,13 @@ fn foo() {
             expect![[r#"
                 *bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 fn bar() -> bool
-                ````
+                ```
             "#]],
         );
     }
@@ -1113,13 +1113,13 @@ fn bar() { fo<|>o(); }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 fn foo()
-                ````
+                ```
 
                 ---
 
@@ -1135,13 +1135,13 @@ fn bar() { fo<|>o(); }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 async fn foo()
-                ````
+                ```
             "#]],
         );
         check(
@@ -1149,13 +1149,13 @@ fn bar() { fo<|>o(); }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub const unsafe fn foo()
-                ````
+                ```
             "#]],
         );
         check(
@@ -1163,13 +1163,13 @@ fn bar() { fo<|>o(); }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub(crate) async unsafe extern "C" fn foo()
-                ````
+                ```
             "#]],
         );
     }
@@ -1205,13 +1205,13 @@ fn my() {}
             expect![[r#"
                 *my*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 mod my
-                ````
+                ```
             "#]],
         );
     }
@@ -1228,13 +1228,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1255,13 +1255,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1284,13 +1284,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1315,13 +1315,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1342,13 +1342,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1371,13 +1371,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1398,13 +1398,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1425,13 +1425,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1453,13 +1453,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1480,13 +1480,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1507,13 +1507,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1536,13 +1536,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1563,13 +1563,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1591,13 +1591,13 @@ fn foo() { let bar = Ba<|>r; }
             expect![[r#"
                 *Bar*
 
-                ````rust
+                ```rust
                 test
-                ````
+                ```
 
-                ````rust
+                ```rust
                 pub struct Bar
-                ````
+                ```
 
                 ---
 
@@ -1629,13 +1629,13 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test::Bar
-                ````
+                ```
 
-                ````rust
+                ```rust
                 fn foo(&self)
-                ````
+                ```
 
                 ---
 
@@ -1667,13 +1667,13 @@ fn foo() { let bar = Bar; bar.fo<|>o(); }
             expect![[r#"
                 *foo*
 
-                ````rust
+                ```rust
                 test::Bar
-                ````
+                ```
 
-                ````rust
+                ```rust
                 fn foo(&self)
-                ````
+                ```
 
                 ---
 

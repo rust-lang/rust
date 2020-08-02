@@ -4,7 +4,7 @@ use std::iter::once;
 
 use itertools::Itertools;
 use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
-use pulldown_cmark_to_cmark::cmark;
+use pulldown_cmark_to_cmark::{cmark_with_options, Options as CmarkOptions};
 use url::Url;
 
 use hir::{Adt, AsName, AttrDef, Crate, Hygiene, ItemInNs, ModPath, ModuleDef};
@@ -42,7 +42,9 @@ pub fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition)
         }
     });
     let mut out = String::new();
-    cmark(doc, &mut out, None).ok();
+    let mut options = CmarkOptions::default();
+    options.code_block_backticks = 3;
+    cmark_with_options(doc, &mut out, None, options).ok();
     out
 }
 

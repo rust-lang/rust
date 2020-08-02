@@ -17,8 +17,8 @@ indexmap = "1.3.2"
 itertools = "0.9.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
-url = "*"
-pulldown-cmark-to-cmark = "4.0.2"
+url = "2.1.1"
+pulldown-cmark-to-cmark = "5.0.0"
 pulldown-cmark = {version = "0.7.2", default-features = false}
 oorandom = "11.1.2"
 
