@@ -3,6 +3,7 @@
 // compile-flags: -O
 // compile-flags: --target armv7-unknown-linux-gnueabihf
 // compile-flags: -C target-feature=+neon
+// needs-llvm-components: arm
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd)]
 #![crate_type = "rlib"]

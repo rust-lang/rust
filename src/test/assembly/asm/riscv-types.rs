@@ -4,6 +4,7 @@
 //[riscv64] compile-flags: --target riscv64imac-unknown-none-elf
 //[riscv32] compile-flags: --target riscv32imac-unknown-none-elf
 // compile-flags: -C target-feature=+d
+// needs-llvm-components: riscv
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]
