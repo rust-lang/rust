@@ -165,11 +165,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     ) {
         debug!("visiting fn");
         let macro_kind = item.attrs.iter().find_map(|a| {
-            if a.check_name(sym::proc_macro) {
+            if a.has_name(sym::proc_macro) {
                 Some(MacroKind::Bang)
-            } else if a.check_name(sym::proc_macro_derive) {
+            } else if a.has_name(sym::proc_macro_derive) {
                 Some(MacroKind::Derive)
-            } else if a.check_name(sym::proc_macro_attribute) {
+            } else if a.has_name(sym::proc_macro_attribute) {
                 Some(MacroKind::Attr)
             } else {
                 None
@@ -189,7 +189,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                 let mut helpers = Vec::new();
                 for mi in item.attrs.lists(sym::proc_macro_derive) {
-                    if !mi.check_name(sym::attributes) {
+                    if !mi.has_name(sym::attributes) {
                         continue;
                     }
 
@@ -419,8 +419,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 // anything as it will probably be stripped anyway.
                 if item.vis.node.is_pub() && self.inside_public_path {
                     let please_inline = item.attrs.iter().any(|item| match item.meta_item_list() {
-                        Some(ref list) if item.check_name(sym::doc) => {
-                            list.iter().any(|i| i.check_name(sym::inline))
+                        Some(ref list) if item.has_name(sym::doc) => {
+                            list.iter().any(|i| i.has_name(sym::inline))
                         }
                         _ => false,
                     });

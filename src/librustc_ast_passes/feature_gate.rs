@@ -243,7 +243,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         if attr.check_name(sym::doc) {
             for nested_meta in attr.meta_item_list().unwrap_or_default() {
                 macro_rules! gate_doc { ($($name:ident => $feature:ident)*) => {
-                    $(if nested_meta.check_name(sym::$name) {
+                    $(if nested_meta.has_name(sym::$name) {
                         let msg = concat!("`#[doc(", stringify!($name), ")]` is experimental");
                         gate_feature_post!(self, $feature, attr.span, msg);
                     })*
@@ -314,7 +314,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::Struct(..) => {
                 for attr in attr::filter_by_name(&i.attrs[..], sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-                        if item.check_name(sym::simd) {
+                        if item.has_name(sym::simd) {
                             gate_feature_post!(
                                 &self,
                                 repr_simd,

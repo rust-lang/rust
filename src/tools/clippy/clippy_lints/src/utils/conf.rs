@@ -13,7 +13,7 @@ use std::{env, fmt, fs, io};
 /// Gets the configuration file from arguments.
 pub fn file_from_args(args: &[NestedMetaItem]) -> Result<Option<PathBuf>, (&'static str, Span)> {
     for arg in args.iter().filter_map(NestedMetaItem::meta_item) {
-        if arg.check_name(sym!(conf_file)) {
+        if arg.has_name(sym!(conf_file)) {
             return match arg.kind {
                 MetaItemKind::Word | MetaItemKind::List(_) => Err(("`conf_file` must be a named value", arg.span)),
                 MetaItemKind::NameValue(ref value) => {
