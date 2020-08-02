@@ -31,7 +31,7 @@ use crate::{
 //     pub struct Baz;
 // }
 //
-// use foo::{Bar, Baz};
+// use foo::{Baz, Bar};
 //
 // fn qux(bar: Bar, baz: Baz) {}
 // ```
