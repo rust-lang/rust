@@ -2,58 +2,76 @@
 + // MIR for `bar` after InstrumentCoverage
   
   fn bar() -> bool {
-      let mut _0: bool;                    // return place in scope 0 at $DIR/instrument_coverage.rs:18:13: 18:17
-+     let mut _1: ();                      // in scope 0 at $DIR/instrument_coverage.rs:18:18: 18:18
+      let mut _0: bool;                    // return place in scope 0 at /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:13: 18:17
++     let mut _1: ();                      // in scope 0 at /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
   
       bb0: {
-+         StorageLive(_1);                 // scope 0 at $DIR/instrument_coverage.rs:18:18: 18:18
-+         _1 = const std::intrinsics::count_code_region(const 10208505205182607101_u64, const 0_u32, const 529_u32, const 541_u32) -> bb2; // scope 0 at $DIR/instrument_coverage.rs:18:18: 18:18
++         StorageLive(_1);                 // scope 0 at /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
++         _1 = const std::intrinsics::count_code_region(const 10208505205182607101_u64, const 0_u32, const "/the/cwd/src/test/mir-opt/instrument_coverage.rs", const 18_u32, const 18_u32, const 20_u32, const 2_u32) -> bb2; // scope 0 at /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
 +                                          // ty::Const
-+                                          // + ty: unsafe extern "rust-intrinsic" fn(u64, u32, u32, u32) {std::intrinsics::count_code_region}
++                                          // + ty: unsafe extern "rust-intrinsic" fn(u64, u32, &'static str, u32, u32, u32, u32) {std::intrinsics::count_code_region}
 +                                          // + val: Value(Scalar(<ZST>))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
-+                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u64, u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
++                                          // + span: /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
++                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(u64, u32, &'static str, u32, u32, u32, u32) {std::intrinsics::count_code_region}, val: Value(Scalar(<ZST>)) }
 +                                          // ty::Const
 +                                          // + ty: u64
 +                                          // + val: Value(Scalar(0x8dabe565aaa2aefd))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
++                                          // + span: /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
 +                                          // + literal: Const { ty: u64, val: Value(Scalar(0x8dabe565aaa2aefd)) }
 +                                          // ty::Const
 +                                          // + ty: u32
 +                                          // + val: Value(Scalar(0x00000000))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
++                                          // + span: /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
 +                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000000)) }
 +                                          // ty::Const
-+                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x00000211))
++                                          // + ty: &str
++                                          // + val: Value(Slice { data: Allocation { bytes: [47, 116, 104, 101, 47, 99, 119, 100, 47, 115, 114, 99, 47, 116, 101, 115, 116, 47, 109, 105, 114, 45, 111, 112, 116, 47, 105, 110, 115, 116, 114, 117, 109, 101, 110, 116, 95, 99, 111, 118, 101, 114, 97, 103, 101, 46, 114, 115], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [281474976710655], len: Size { raw: 48 } }, size: Size { raw: 48 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 48 })
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000211)) }
++                                          // + span: /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
++                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [47, 116, 104, 101, 47, 99, 119, 100, 47, 115, 114, 99, 47, 116, 101, 115, 116, 47, 109, 105, 114, 45, 111, 112, 116, 47, 105, 110, 115, 116, 114, 117, 109, 101, 110, 116, 95, 99, 111, 118, 101, 114, 97, 103, 101, 46, 114, 115], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [281474976710655], len: Size { raw: 48 } }, size: Size { raw: 48 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 48 }) }
 +                                          // ty::Const
 +                                          // + ty: u32
-+                                          // + val: Value(Scalar(0x0000021d))
++                                          // + val: Value(Scalar(0x00000012))
 +                                          // mir::Constant
-+                                          // + span: $DIR/instrument_coverage.rs:18:18: 18:18
-+                                          // + literal: Const { ty: u32, val: Value(Scalar(0x0000021d)) }
++                                          // + span: /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000012)) }
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x00000012))
++                                          // mir::Constant
++                                          // + span: /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000012)) }
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x00000014))
++                                          // mir::Constant
++                                          // + span: /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000014)) }
++                                          // ty::Const
++                                          // + ty: u32
++                                          // + val: Value(Scalar(0x00000002))
++                                          // mir::Constant
++                                          // + span: /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:18: 18:18
++                                          // + literal: Const { ty: u32, val: Value(Scalar(0x00000002)) }
 +     }
 + 
 +     bb1 (cleanup): {
-+         resume;                          // scope 0 at $DIR/instrument_coverage.rs:18:1: 20:2
++         resume;                          // scope 0 at /the/cwd/src/test/mir-opt/instrument_coverage.rs:18:1: 20:2
 +     }
 + 
 +     bb2: {
-+         StorageDead(_1);                 // scope 0 at $DIR/instrument_coverage.rs:19:5: 19:9
-          _0 = const true;                 // scope 0 at $DIR/instrument_coverage.rs:19:5: 19:9
++         StorageDead(_1);                 // scope 0 at /the/cwd/src/test/mir-opt/instrument_coverage.rs:19:5: 19:9
+          _0 = const true;                 // scope 0 at /the/cwd/src/test/mir-opt/instrument_coverage.rs:19:5: 19:9
                                            // ty::Const
                                            // + ty: bool
                                            // + val: Value(Scalar(0x01))
                                            // mir::Constant
-                                           // + span: $DIR/instrument_coverage.rs:19:5: 19:9
+                                           // + span: /the/cwd/src/test/mir-opt/instrument_coverage.rs:19:5: 19:9
                                            // + literal: Const { ty: bool, val: Value(Scalar(0x01)) }
-          return;                          // scope 0 at $DIR/instrument_coverage.rs:20:2: 20:2
+          return;                          // scope 0 at /the/cwd/src/test/mir-opt/instrument_coverage.rs:20:2: 20:2
       }
   }
   
