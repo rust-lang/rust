@@ -997,7 +997,7 @@ impl fmt::Debug for Duration {
             f.write_str("ms")
         } else if self.nanos >= 1_000 {
             fmt_decimal(f, self.nanos as u64 / 1_000, self.nanos % 1_000, 100)?;
-            f.write_str("µs")
+            f.write_str("us")
         } else {
             fmt_decimal(f, self.nanos as u64, 0, 1)?;
             f.write_str("ns")
