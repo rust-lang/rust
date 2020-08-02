@@ -52,7 +52,6 @@ use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
-use crate::reexport::Name;
 
 /// Returns `true` if the two spans come from differing expansions (i.e., one is
 /// from a macro and one isn't).
@@ -150,7 +149,7 @@ pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) 
 }
 
 /// Checks if an expression references a variable of the given name.
-pub fn match_var(expr: &Expr<'_>, var: Name) -> bool {
+pub fn match_var(expr: &Expr<'_>, var: Symbol) -> bool {
     if let ExprKind::Path(QPath::Resolved(None, ref path)) = expr.kind {
         if let [p] = path.segments {
             return p.ident.name == var;
@@ -422,7 +421,7 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
 }
 
 /// Gets the name of the item the expression is in, if available.
-pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Name> {
+pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
     match cx.tcx.hir().find(parent_id) {
         Some(
@@ -435,7 +434,7 @@ pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Name> {
 }
 
 /// Gets the name of a `Pat`, if any.
-pub fn get_pat_name(pat: &Pat<'_>) -> Option<Name> {
+pub fn get_pat_name(pat: &Pat<'_>) -> Option<Symbol> {
     match pat.kind {
         PatKind::Binding(.., ref spname, _) => Some(spname.name),
         PatKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.ident.name),
@@ -445,14 +444,14 @@ pub fn get_pat_name(pat: &Pat<'_>) -> Option<Name> {
 }
 
 struct ContainsName {
-    name: Name,
+    name: Symbol,
     result: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for ContainsName {
     type Map = Map<'tcx>;
 
-    fn visit_name(&mut self, _: Span, name: Name) {
+    fn visit_name(&mut self, _: Span, name: Symbol) {
         if self.name == name {
             self.result = true;
         }
@@ -463,7 +462,7 @@ impl<'tcx> Visitor<'tcx> for ContainsName {
 }
 
 /// Checks if an `Expr` contains a certain name.
-pub fn contains_name(name: Name, expr: &Expr<'_>) -> bool {
+pub fn contains_name(name: Symbol, expr: &Expr<'_>) -> bool {
     let mut cn = ContainsName { name, result: false };
     cn.visit_expr(expr);
     cn.result
@@ -1029,7 +1028,7 @@ pub fn is_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool 
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
-pub fn get_arg_name(pat: &Pat<'_>) -> Option<Name> {
+pub fn get_arg_name(pat: &Pat<'_>) -> Option<Symbol> {
     match pat.kind {
         PatKind::Binding(.., ident, None) => Some(ident.name),
         PatKind::Ref(ref subpat, _) => get_arg_name(subpat),

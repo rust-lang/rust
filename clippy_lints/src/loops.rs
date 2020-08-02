@@ -1,5 +1,4 @@
 use crate::consts::constant;
-use crate::reexport::Name;
 use crate::utils::paths;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
@@ -1184,7 +1183,7 @@ fn check_for_loop_range<'tcx>(
     }
 }
 
-fn is_len_call(expr: &Expr<'_>, var: Name) -> bool {
+fn is_len_call(expr: &Expr<'_>, var: Symbol) -> bool {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref len_args, _) = expr.kind;
         if len_args.len() == 1;
@@ -1632,15 +1631,15 @@ struct VarVisitor<'a, 'tcx> {
     /// var name to look for as index
     var: HirId,
     /// indexed variables that are used mutably
-    indexed_mut: FxHashSet<Name>,
+    indexed_mut: FxHashSet<Symbol>,
     /// indirectly indexed variables (`v[(i + 4) % N]`), the extend is `None` for global
-    indexed_indirectly: FxHashMap<Name, Option<region::Scope>>,
+    indexed_indirectly: FxHashMap<Symbol, Option<region::Scope>>,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
-    indexed_directly: FxHashMap<Name, (Option<region::Scope>, Ty<'tcx>)>,
+    indexed_directly: FxHashMap<Symbol, (Option<region::Scope>, Ty<'tcx>)>,
     /// Any names that are used outside an index operation.
     /// Used to detect things like `&mut vec` used together with `vec[i]`
-    referenced: FxHashSet<Name>,
+    referenced: FxHashSet<Symbol>,
     /// has the loop variable been used in expressions other than the index of
     /// an index op?
     nonindex: bool,
@@ -1996,7 +1995,7 @@ struct InitializeVisitor<'a, 'tcx> {
     end_expr: &'tcx Expr<'tcx>, // the for loop. Stop scanning here.
     var_id: HirId,
     state: VarState,
-    name: Option<Name>,
+    name: Option<Symbol>,
     depth: u32, // depth of conditional expressions
     past_loop: bool,
 }
@@ -2159,7 +2158,7 @@ use self::Nesting::{LookFurther, RuledOut, Unknown};
 
 struct LoopNestVisitor {
     hir_id: HirId,
-    iterator: Name,
+    iterator: Symbol,
     nesting: Nesting,
 }
 
@@ -2210,7 +2209,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
     }
 }
 
-fn path_name(e: &Expr<'_>) -> Option<Name> {
+fn path_name(e: &Expr<'_>) -> Option<Symbol> {
     if let ExprKind::Path(QPath::Resolved(_, ref path)) = e.kind {
         let segments = &path.segments;
         if segments.len() == 1 {
