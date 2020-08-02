@@ -149,7 +149,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// This is the reverse version of [`try_fold()`]: it takes elements
     /// starting from the back of the iterator.
     ///
-    /// [`try_fold()`]: trait.Iterator.html#method.try_fold
+    /// [`try_fold()`]: Iterator::try_fold
     ///
     /// # Examples
     ///
@@ -214,7 +214,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// Folding is useful whenever you have a collection of something, and want
     /// to produce a single value from it.
     ///
-    /// [`fold()`]: trait.Iterator.html#method.fold
+    /// [`fold()`]: Iterator::fold
     ///
     /// # Examples
     ///

@@ -2713,7 +2713,7 @@ pub trait Iterator {
     /// This is useful when you have an iterator over `&T`, but you need an
     /// iterator over `T`.
     ///
-    /// [`clone`]: crate::clone::Clone::clone
+    /// [`clone`]: Clone::clone
     ///
     /// # Examples
     ///
