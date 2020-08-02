@@ -164,7 +164,7 @@ fn replace_ast(
             ast::UseTreeList(use_tree_list) => {
                 builder.replace_ast(use_tree_list, new_use_tree_list);
             },
-            ast::UseItem(use_item) => {
+            ast::Use(use_item) => {
                 builder.replace_ast(use_item, ast::make::use_item(make_use_tree(path, new_use_tree_list)));
             },
             _ => {},
