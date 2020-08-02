@@ -1,10 +1,10 @@
-use crate::dep_graph::{self, DepNode, DepNodeParams};
+use crate::dep_graph::{self, DepKind, DepNode, DepNodeParams};
 use crate::hir::exports::Export;
 use crate::hir::map;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
-use crate::middle::cstore::{CrateSource, DepKind};
+use crate::middle::cstore::{CrateDepKind, CrateSource};
 use crate::middle::cstore::{ExternCrate, ForeignModule, LinkagePreference, NativeLib};
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use crate::middle::lib_features::LibFeatures;
@@ -161,7 +161,7 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
     // hit the cache instead of having to go through `force_from_dep_node`.
     // This assertion makes sure, we actually keep applying the solution above.
     debug_assert!(
-        dep_node.kind != crate::dep_graph::DepKind::codegen_unit,
+        dep_node.kind != DepKind::codegen_unit,
         "calling force_from_dep_node() on DepKind::codegen_unit"
     );
 
@@ -172,14 +172,14 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
     rustc_dep_node_force!([dep_node, tcx]
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already.
-        crate::dep_graph::DepKind::CrateMetadata |
+        DepKind::CrateMetadata |
 
         // These are anonymous nodes.
-        crate::dep_graph::DepKind::TraitSelect |
+        DepKind::TraitSelect |
 
         // We don't have enough information to reconstruct the query key of
         // these.
-        crate::dep_graph::DepKind::CompileCodegenUnit => {
+        DepKind::CompileCodegenUnit => {
             bug!("force_from_dep_node: encountered {:?}", dep_node)
         }
     );

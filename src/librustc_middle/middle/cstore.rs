@@ -40,7 +40,7 @@ impl CrateSource {
 
 #[derive(RustcEncodable, RustcDecodable, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 #[derive(HashStable)]
-pub enum DepKind {
+pub enum CrateDepKind {
     /// A dependency that is only used for its macros.
     MacrosOnly,
     /// A dependency that is always injected into the dependency list and so
@@ -51,11 +51,11 @@ pub enum DepKind {
     Explicit,
 }
 
-impl DepKind {
+impl CrateDepKind {
     pub fn macros_only(self) -> bool {
         match self {
-            DepKind::MacrosOnly => true,
-            DepKind::Implicit | DepKind::Explicit => false,
+            CrateDepKind::MacrosOnly => true,
+            CrateDepKind::Implicit | CrateDepKind::Explicit => false,
         }
     }
 }
