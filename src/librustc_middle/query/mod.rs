@@ -1180,7 +1180,7 @@ rustc_queries! {
     }
 
     Other {
-        query dep_kind(_: CrateNum) -> DepKind {
+        query dep_kind(_: CrateNum) -> CrateDepKind {
             eval_always
             desc { "fetching what a dependency looks like" }
         }

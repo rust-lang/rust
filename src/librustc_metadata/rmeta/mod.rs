@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefId, DefIndex};
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::{DepKind, ForeignModule, LinkagePreference, NativeLib};
+use rustc_middle::middle::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, ReprOptions, Ty};
@@ -226,7 +226,7 @@ crate struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
     pub host_hash: Option<Svh>,
-    pub kind: DepKind,
+    pub kind: CrateDepKind,
     pub extra_filename: String,
 }
 
