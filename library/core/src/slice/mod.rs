@@ -1067,14 +1067,11 @@ impl<T> [T] {
     pub fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
         assert_ne!(N, 0);
         let len = self.len() / N;
-        let (fst_ptr, snd) = {
-            // Scope the first slice into a pointer to avoid aliasing the new slice below.
-            let (fst, snd) = self.split_at_mut(len * N);
-            (fst.as_mut_ptr(), snd)
-        };
+        let (fst, snd) = self.split_at_mut(len * N);
         // SAFETY: We cast a slice of `len * N` elements into
         // a slice of `len` many `N` elements chunks.
-        let array_slice: &mut [[T; N]] = unsafe { from_raw_parts_mut(fst_ptr.cast(), len) };
+        let array_slice: &mut [[T; N]] =
+            unsafe { from_raw_parts_mut(fst.as_mut_ptr().cast(), len) };
         ArrayChunksMut { iter: array_slice.iter_mut(), rem: snd }
     }
 
