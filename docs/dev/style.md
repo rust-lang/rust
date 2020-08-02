@@ -67,7 +67,8 @@ as long as they are still readable.
 
 ## Order of Imports
 
-We separate import groups with blank lines
+Separate import groups with blank lines.
+Use one `use` per crate.
 
 ```rust
 mod x;
@@ -92,7 +93,7 @@ Order them in "suggested reading order" for a person new to the code base.
 
 ## Import Style
 
-Items from `hir` and `ast` should be used qualified:
+Qualify items from `hir` and `ast`.
 
 ```rust
 // Good
@@ -144,7 +145,7 @@ struct Foo {
 
 ## Variable Naming
 
-We generally use boring and long names for local variables ([yay code completion](https://github.com/rust-analyzer/rust-analyzer/pull/4162#discussion_r417130973)).
+Use boring and long names for local variables ([yay code completion](https://github.com/rust-analyzer/rust-analyzer/pull/4162#discussion_r417130973)).
 The default name is a lowercased name of the type: `global_state: GlobalState`.
 Avoid ad-hoc acronyms and contractions, but use the ones that exist consistently (`db`, `ctx`, `acc`).
 The default name for "result of the function" local variable is `res`.
@@ -152,12 +153,12 @@ The default name for "I don't really care about the name" variable is `it`.
 
 ## Collection types
 
-We prefer `rustc_hash::FxHashMap` and `rustc_hash::FxHashSet` instead of the ones in `std::collections`.
+Prefer `rustc_hash::FxHashMap` and `rustc_hash::FxHashSet` instead of the ones in `std::collections`.
 They use a hasher that's slightly faster and using them consistently will reduce code size by some small amount.
 
 ## Preconditions
 
-Function preconditions should generally be expressed in types and provided by the caller (rather than checked by callee):
+Express function preconditions in types and force the caller to provide them (rather than checking in callee):
 
 ```rust
 // Good
@@ -205,7 +206,7 @@ If the line is too long, you want to split the sentence in two :-)
 
 We don't have specific rules around git history hygiene.
 Maintaining clean git history is encouraged, but not enforced.
-We use rebase workflow, it's OK to rewrite history during PR review process.
+Use rebase workflow, it's OK to rewrite history during PR review process.
 
 Avoid @mentioning people in commit messages and pull request descriptions(they are added to commit message by bors).
 Such messages create a lot of duplicate notification traffic during rebases.
