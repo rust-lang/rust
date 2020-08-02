@@ -171,7 +171,9 @@ fn main() {
         // note: everything below here is unreachable. do not put code that
         // should run on success, after this block.
     }
-    println!("\nDid not run successfully: {}\n{:?}\n-------------", status, cmd);
+    if verbose > 0 {
+        println!("\nDid not run successfully: {}\n{:?}\n-------------", status, cmd);
+    }
 
     if let Some(mut on_fail) = on_fail {
         on_fail.status().expect("Could not run the on_fail command");
