@@ -38,11 +38,11 @@ we'll talk about that later.
   data which are emitted in `librustc_parse::lexer::mod` as real diagnostics.
 - The lexer preserves full fidelity information for both IDEs and proc macros.
 - The parser [translates the token stream from the lexer into an Abstract Syntax
-  Tree (AST)][parser].  It uses a recursive descent (top-down) approach to syntax
-  analysis. The crate entry points for the parser are the `Parser.parse_crate_mod()` and
-  `Parser.parse_mod()` methods found in `librustc_parse::parser::item`. The external
+  Tree (AST)][parser]. It uses a recursive descent (top-down) approach to syntax
+  analysis. The crate entry points for the parser are the `Parser::parse_crate_mod()` and
+  `Parser::parse_mod()` methods found in `librustc_parse::parser::item`. The external
   module parsing entry point is `librustc_expand::module::parse_external_mod`. And
-  the macro parser entry point is [`Parser.parse_nonterminal()`][parse_nonterminal].
+  the macro parser entry point is [`Parser::parse_nonterminal()`][parse_nonterminal].
 - Parsing is performed with a set of `Parser` utility methods including `fn bump`,
   `fn check`, `fn eat`, `fn expect`, `fn look_ahead`.
 - Parsing is organized by the semantic construct that is being parsed. Separate
