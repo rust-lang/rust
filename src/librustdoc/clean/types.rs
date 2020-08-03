@@ -629,9 +629,11 @@ impl Attributes {
                             Some((
                                 s.clone(),
                                 format!(
-                                    "{}{}std/primitive.{}.html{}",
+                                    "{}{}std/{}{}.html{}",
                                     url,
                                     if !url.ends_with('/') { "/" } else { "" },
+                                    // This is needed in case we are generating for keywords.
+                                    if fragment[..tail].contains(".") { "" } else { "primitive." },
                                     &fragment[..tail],
                                     &fragment[tail..]
                                 ),

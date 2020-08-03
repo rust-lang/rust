@@ -747,30 +747,39 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         };
 
                         if candidates.is_empty() {
-                            resolution_failure(cx, &item, path_str, &dox, link_range);
-                            // this could just be a normal link
-                            continue;
-                        }
-
-                        let len = candidates.clone().present_items().count();
-
-                        if len == 1 {
-                            candidates.present_items().next().unwrap()
-                        } else if len == 2 && is_derive_trait_collision(&candidates) {
-                            candidates.type_ns.unwrap()
-                        } else {
-                            if is_derive_trait_collision(&candidates) {
-                                candidates.macro_ns = None;
+                            if path_str == "true" || path_str == "false" {
+                                item.attrs.links.push((
+                                    ori_link,
+                                    None,
+                                    Some(format!("keyword.{}", path_str,)),
+                                ));
+                                continue;
+                            } else {
+                                resolution_failure(cx, &item, path_str, &dox, link_range);
+                                // this could just be a normal link
+                                continue;
                             }
-                            ambiguity_error(
-                                cx,
-                                &item,
-                                path_str,
-                                &dox,
-                                link_range,
-                                candidates.map(|candidate| candidate.map(|(res, _)| res)),
-                            );
-                            continue;
+                        } else {
+                            let len = candidates.clone().present_items().count();
+
+                            if len == 1 {
+                                candidates.present_items().next().unwrap()
+                            } else if len == 2 && is_derive_trait_collision(&candidates) {
+                                candidates.type_ns.unwrap()
+                            } else {
+                                if is_derive_trait_collision(&candidates) {
+                                    candidates.macro_ns = None;
+                                }
+                                ambiguity_error(
+                                    cx,
+                                    &item,
+                                    path_str,
+                                    &dox,
+                                    link_range,
+                                    candidates.map(|candidate| candidate.map(|(res, _)| res)),
+                                );
+                                continue;
+                            }
                         }
                     }
                     Some(MacroNS) => {
