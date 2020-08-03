@@ -1,5 +1,5 @@
 #![warn(clippy::transmute_ptr_to_ptr)]
-
+#![allow(clippy::transmutes_expressible_as_ptr_casts)]
 // Make sure we can modify lifetimes, which is one of the recommended uses
 // of transmute
 
