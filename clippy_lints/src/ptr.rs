@@ -180,7 +180,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
             }
         }
 
-        if let ty::Ref(_, ty, Mutability::Not) = ty.kind {
+        if let ty::Ref(_, ty, Mutability::Not) = ty.kind() {
             if is_type_diagnostic_item(cx, ty, sym!(vec_type)) {
                 let mut ty_snippet = None;
                 if_chain! {

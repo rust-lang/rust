@@ -91,7 +91,7 @@ fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &
         if pats.len() == 1;
         then {
             let ty = walk_ptrs_ty(cx.typeck_results().pat_ty(&pats[0]));
-            if ty.kind != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym!(string_type)) {
+            if *ty.kind() != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym!(string_type)) {
                 return None;
             }
             if let ExprKind::Lit(ref lit) = format_args.kind {

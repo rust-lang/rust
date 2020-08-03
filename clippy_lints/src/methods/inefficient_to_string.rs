@@ -46,7 +46,7 @@ pub fn lint<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<
 /// Returns whether `ty` specializes `ToString`.
 /// Currently, these are `str`, `String`, and `Cow<'_, str>`.
 fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    if let ty::Str = ty.kind {
+    if let ty::Str = ty.kind() {
         return true;
     }
 
@@ -54,7 +54,7 @@ fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         return true;
     }
 
-    if let ty::Adt(adt, substs) = ty.kind {
+    if let ty::Adt(adt, substs) = ty.kind() {
         match_def_path(cx, adt.did, &paths::COW) && substs.type_at(1).is_str()
     } else {
         false

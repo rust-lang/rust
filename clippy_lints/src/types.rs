@@ -907,7 +907,7 @@ fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
 }
 
 fn is_unit(ty: Ty<'_>) -> bool {
-    matches!(ty.kind, ty::Tuple(slice) if slice.is_empty())
+    matches!(ty.kind(), ty::Tuple(slice) if slice.is_empty())
 }
 
 fn is_unit_literal(expr: &Expr<'_>) -> bool {
@@ -1134,7 +1134,7 @@ declare_clippy_lint! {
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_>) -> u64 {
-    match typ.kind {
+    match typ.kind() {
         ty::Int(i) => match i {
             IntTy::Isize => tcx.data_layout.pointer_size.bits(),
             IntTy::I8 => 8,
@@ -1156,7 +1156,7 @@ fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_>) -> u64 {
 }
 
 fn is_isize_or_usize(typ: Ty<'_>) -> bool {
-    matches!(typ.kind, ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
+    matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
 }
 
 fn span_precision_loss_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to_f64: bool) {
@@ -1248,7 +1248,7 @@ fn check_loss_of_sign(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast
     if_chain! {
         if let Some((const_val, _)) = const_val;
         if let Constant::Int(n) = const_val;
-        if let ty::Int(ity) = cast_from.kind;
+        if let ty::Int(ity) = *cast_from.kind();
         if sext(cx.tcx, n, ity) >= 0;
         then {
             return
@@ -1381,7 +1381,7 @@ declare_lint_pass!(Casts => [
 // Check if the given type is either `core::ffi::c_void` or
 // one of the platform specific `libc::<platform>::c_void` of libc.
 fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    if let ty::Adt(adt, _) = ty.kind {
+    if let ty::Adt(adt, _) = ty.kind() {
         let names = cx.get_def_path(adt.did);
 
         if names.is_empty() {
@@ -1397,7 +1397,7 @@ fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
 /// Returns the mantissa bits wide of a fp type.
 /// Will return 0 if the type is not a fp
 fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
-    match typ.kind {
+    match typ.kind() {
         ty::Float(FloatTy::F32) => 23,
         ty::Float(FloatTy::F64) | ty::Infer(InferTy::FloatVar(_)) => 52,
         _ => 0,
@@ -1437,7 +1437,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 match lit.node {
                     LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
                     _ => {
-                        if cast_from.kind == cast_to.kind && !in_external_macro(cx.sess(), expr.span) {
+                        if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
                             span_lint(
                                 cx,
                                 UNNECESSARY_CAST,
@@ -1470,7 +1470,7 @@ fn lint_numeric_casts<'tcx>(
     match (cast_from.is_integral(), cast_to.is_integral()) {
         (true, false) => {
             let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
-            let to_nbits = if let ty::Float(FloatTy::F32) = cast_to.kind {
+            let to_nbits = if let ty::Float(FloatTy::F32) = cast_to.kind() {
                 32
             } else {
                 64
@@ -1507,7 +1507,7 @@ fn lint_numeric_casts<'tcx>(
             check_lossless(cx, expr, cast_expr, cast_from, cast_to);
         },
         (false, false) => {
-            if let (&ty::Float(FloatTy::F64), &ty::Float(FloatTy::F32)) = (&cast_from.kind, &cast_to.kind) {
+            if let (&ty::Float(FloatTy::F64), &ty::Float(FloatTy::F32)) = (&cast_from.kind(), &cast_to.kind()) {
                 span_lint(
                     cx,
                     CAST_POSSIBLE_TRUNCATION,
@@ -1515,7 +1515,7 @@ fn lint_numeric_casts<'tcx>(
                     "casting `f64` to `f32` may truncate the value",
                 );
             }
-            if let (&ty::Float(FloatTy::F32), &ty::Float(FloatTy::F64)) = (&cast_from.kind, &cast_to.kind) {
+            if let (&ty::Float(FloatTy::F32), &ty::Float(FloatTy::F64)) = (&cast_from.kind(), &cast_to.kind()) {
                 span_lossless_lint(cx, expr, cast_expr, cast_from, cast_to);
             }
         },
@@ -1524,8 +1524,8 @@ fn lint_numeric_casts<'tcx>(
 
 fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
     if_chain! {
-        if let ty::RawPtr(from_ptr_ty) = &cast_from.kind;
-        if let ty::RawPtr(to_ptr_ty) = &cast_to.kind;
+        if let ty::RawPtr(from_ptr_ty) = &cast_from.kind();
+        if let ty::RawPtr(to_ptr_ty) = &cast_to.kind();
         if let Ok(from_layout) = cx.layout_of(from_ptr_ty.ty);
         if let Ok(to_layout) = cx.layout_of(to_ptr_ty.ty);
         if from_layout.align.abi < to_layout.align.abi;
@@ -1558,11 +1558,11 @@ fn lint_fn_to_numeric_cast(
     cast_to: Ty<'_>,
 ) {
     // We only want to check casts to `ty::Uint` or `ty::Int`
-    match cast_to.kind {
+    match cast_to.kind() {
         ty::Uint(_) | ty::Int(..) => { /* continue on */ },
         _ => return,
     }
-    match cast_from.kind {
+    match cast_from.kind() {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let mut applicability = Applicability::MaybeIncorrect;
             let from_snippet = snippet_with_applicability(cx, cast_expr.span, "x", &mut applicability);
@@ -1581,7 +1581,7 @@ fn lint_fn_to_numeric_cast(
                     format!("{} as usize", from_snippet),
                     applicability,
                 );
-            } else if cast_to.kind != ty::Uint(UintTy::Usize) {
+            } else if *cast_to.kind() != ty::Uint(UintTy::Usize) {
                 span_lint_and_sugg(
                     cx,
                     FN_TO_NUMERIC_CAST,
@@ -1798,7 +1798,7 @@ impl<'tcx> LateLintPass<'tcx> for CharLitAsU8 {
             if let ExprKind::Cast(e, _) = &expr.kind;
             if let ExprKind::Lit(l) = &e.kind;
             if let LitKind::Char(c) = l.node;
-            if ty::Uint(UintTy::U8) == cx.typeck_results().expr_ty(expr).kind;
+            if ty::Uint(UintTy::U8) == *cx.typeck_results().expr_ty(expr).kind();
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let snippet = snippet_with_applicability(cx, e.span, "'x'", &mut applicability);
@@ -1937,7 +1937,7 @@ fn detect_extreme_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Op
 
     let cv = constant(cx, cx.typeck_results(), expr)?.0;
 
-    let which = match (&ty.kind, cv) {
+    let which = match (ty.kind(), cv) {
         (&ty::Bool, Constant::Bool(false)) | (&ty::Uint(_), Constant::Int(0)) => Minimum,
         (&ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MIN >> (128 - int_bits(cx.tcx, ity)), ity) => {
             Minimum
@@ -2071,7 +2071,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> 
         if cx.layout_of(pre_cast_ty).ok().map(|l| l.size) == cx.layout_of(cast_ty).ok().map(|l| l.size) {
             return None;
         }
-        match pre_cast_ty.kind {
+        match pre_cast_ty.kind() {
             ty::Int(int_ty) => Some(match int_ty {
                 IntTy::I8 => (FullInt::S(i128::from(i8::MIN)), FullInt::S(i128::from(i8::MAX))),
                 IntTy::I16 => (FullInt::S(i128::from(i16::MIN)), FullInt::S(i128::from(i16::MAX))),
@@ -2098,7 +2098,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> 
 fn node_as_const_fullint<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<FullInt> {
     let val = constant(cx, cx.typeck_results(), expr)?.0;
     if let Constant::Int(const_int) = val {
-        match cx.typeck_results().expr_ty(expr).kind {
+        match *cx.typeck_results().expr_ty(expr).kind() {
             ty::Int(ity) => Some(FullInt::S(sext(cx.tcx, const_int, ity))),
             ty::Uint(_) => Some(FullInt::U(const_int)),
             _ => None,
@@ -2601,7 +2601,7 @@ impl<'tcx> LateLintPass<'tcx> for RefToMut {
             if let TyKind::Ptr(MutTy { mutbl: Mutability::Mut, .. }) = t.kind;
             if let ExprKind::Cast(e, t) = &e.kind;
             if let TyKind::Ptr(MutTy { mutbl: Mutability::Not, .. }) = t.kind;
-            if let ty::Ref(..) = cx.typeck_results().node_type(e.hir_id).kind;
+            if let ty::Ref(..) = cx.typeck_results().node_type(e.hir_id).kind();
             then {
                 span_lint(
                     cx,
