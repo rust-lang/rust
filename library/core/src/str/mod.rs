@@ -1923,7 +1923,10 @@ mod traits {
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
             let (start, end) = (self.start, self.end);
-            self.get(slice).unwrap_or_else(|| super::slice_error_fail(slice, start, end))
+            match self.get(slice) {
+                Some(s) => s,
+                None => super::slice_error_fail(slice, start, end),
+            }
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
@@ -1995,7 +1998,10 @@ mod traits {
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
             let end = self.end;
-            self.get(slice).unwrap_or_else(|| super::slice_error_fail(slice, 0, end))
+            match self.get(slice) {
+                Some(s) => s,
+                None => super::slice_error_fail(slice, 0, end),
+            }
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
@@ -2068,7 +2074,10 @@ mod traits {
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
             let (start, end) = (self.start, slice.len());
-            self.get(slice).unwrap_or_else(|| super::slice_error_fail(slice, start, end))
+            match self.get(slice) {
+                Some(s) => s,
+                None => super::slice_error_fail(slice, start, end),
+            }
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
