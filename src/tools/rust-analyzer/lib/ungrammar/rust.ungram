@@ -7,7 +7,7 @@
 // Legend:
 //
 //   //          -- comment
-//   Name =      -- non-termial defition
+//   Name =      -- non-terminal definition
 //   'ident'     -- token (terminal)
 //   A B         -- sequence
 //   A | B       -- alternation
