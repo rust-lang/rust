@@ -107,11 +107,7 @@ function switchTheme(newTheme, saveTheme) {
             var themeFile = themeName + resourcesSuffix + ".css";
             var themeSheet = document.querySelector("[href$='" + themeFile + "']");
 
-            if (themeName === newTheme) {
-                themeSheet.disabled = false;
-            } else {
-                themeSheet.disabled = true;
-            }
+            themeSheet.disabled = themeName !== newTheme;
         });
         // If this new value comes from a system setting or from the previously saved theme, no
         // need to save it.
