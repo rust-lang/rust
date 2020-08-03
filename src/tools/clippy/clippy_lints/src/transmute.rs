@@ -7,8 +7,10 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, cast::CastKind, Ty};
+use rustc_span::DUMMY_SP;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_typeck::check::{cast::CastCheck, FnCtxt, Inherited};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -624,7 +626,21 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             );
                         }
                     },
-                    _ => return,
+                    (_, _) if can_be_expressed_as_pointer_cast(cx, e, from_ty, to_ty) => {
+                        span_lint(
+                            cx,
+                            TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
+                            e.span,
+                            &format!(
+                                "transmute from `{}` to `{}` which could be expressed as a pointer cast instead",
+                                from_ty,
+                                to_ty
+                            )
+                        );
+                    },
+                    _ => {
+                        return
+                    },
                 }
             }
         }
@@ -670,4 +686,58 @@ fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx>, to: Ty<'
         // no idea about layout, so don't lint
         false
     }
+}
+
+/// Check if the the type conversion can be expressed as a pointer cast, instead of a transmute.
+fn can_be_expressed_as_pointer_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> bool {
+    use CastKind::*;
+    matches!(
+        check_cast(cx, e, from_ty, to_ty),
+        Some(
+            PtrPtrCast
+            | PtrAddrCast
+            | AddrPtrCast
+            | ArrayPtrCast
+            | FnPtrPtrCast
+            | FnPtrAddrCast
+        )
+    )
+}
+
+/// If a cast from from_ty to to_ty is valid, returns an Ok containing the kind of the cast.
+fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> Option<CastKind> {
+    let hir_id = e.hir_id;
+    let local_def_id = hir_id.owner;
+
+    Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
+        let fn_ctxt = FnCtxt::new(
+            &inherited,
+            // TODO should we try to get the correct ParamEnv?
+            ty::ParamEnv::empty(),
+            hir_id
+        );
+
+        // If we already have errors, we can't be sure we can pointer cast.
+        if fn_ctxt.errors_reported_since_creation() {
+            return None;
+        }
+
+        if let Ok(check) = CastCheck::new(
+            &fn_ctxt,
+            e,
+            from_ty,
+            to_ty,
+            // We won't show any error to the user, so we don't care what the span is here.
+            DUMMY_SP,
+            DUMMY_SP,
+        ) {
+            check.do_check(&fn_ctxt)
+                .ok()
+                // do_check's documentation says that it might return Ok and create
+                // errors in the fcx instead of returing Err in some cases.
+                .filter(|_| !fn_ctxt.errors_reported_since_creation())
+        } else {
+            None
+        }
+    })
 }
