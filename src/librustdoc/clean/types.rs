@@ -337,6 +337,42 @@ crate enum ItemKind {
 }
 
 impl ItemKind {
+    /// Some items contain others such as structs (for their fields) and Enums
+    /// (for their variants). This method returns those contained items.
+    crate fn inner_items(&self) -> impl Iterator<Item = &Item> {
+        match self {
+            StructItem(s) => s.fields.iter(),
+            UnionItem(u) => u.fields.iter(),
+            VariantItem(Variant { kind: VariantKind::Struct(v) }) => v.fields.iter(),
+            EnumItem(e) => e.variants.iter(),
+            TraitItem(t) => t.items.iter(),
+            ImplItem(i) => i.items.iter(),
+            ModuleItem(m) => m.items.iter(),
+            ExternCrateItem(_, _)
+            | ImportItem(_)
+            | FunctionItem(_)
+            | TypedefItem(_, _)
+            | OpaqueTyItem(_)
+            | StaticItem(_)
+            | ConstantItem(_)
+            | TraitAliasItem(_)
+            | TyMethodItem(_)
+            | MethodItem(_, _)
+            | StructFieldItem(_)
+            | VariantItem(_)
+            | ForeignFunctionItem(_)
+            | ForeignStaticItem(_)
+            | ForeignTypeItem
+            | MacroItem(_)
+            | ProcMacroItem(_)
+            | PrimitiveItem(_)
+            | AssocConstItem(_, _)
+            | AssocTypeItem(_, _)
+            | StrippedItem(_)
+            | KeywordItem(_) => [].iter(),
+        }
+    }
+
     crate fn is_type_alias(&self) -> bool {
         match *self {
             ItemKind::TypedefItem(_, _) | ItemKind::AssocTypeItem(_, _) => true,
@@ -1612,6 +1648,11 @@ crate struct Path {
 impl Path {
     crate fn last_name(&self) -> &str {
         self.segments.last().expect("segments were empty").name.as_str()
+    }
+
+    crate fn whole_name(&self) -> String {
+        String::from(if self.global { "::" } else { "" })
+            + &self.segments.iter().map(|s| s.name.clone()).collect::<Vec<_>>().join("::")
     }
 }
 
