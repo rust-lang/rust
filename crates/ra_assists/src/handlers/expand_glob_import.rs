@@ -59,26 +59,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
 }
 
 fn find_mod_path(star: &SyntaxToken) -> Option<ast::Path> {
-    let mut node = star.parent();
-
-    loop {
-        match_ast! {
-            match node {
-                ast::UseTree(use_tree) => {
-                    if let Some(path) = use_tree.path() {
-                        return Some(path);
-                    }
-                },
-                ast::UseTreeList(_use_tree_list) => {},
-                _ => return None,
-            }
-        }
-
-        node = match node.parent() {
-            Some(node) => node,
-            None => return None,
-        }
-    }
+    star.ancestors().find_map(|n| ast::UseTree::cast(n).and_then(|u| u.path()))
 }
 
 #[derive(PartialEq)]
