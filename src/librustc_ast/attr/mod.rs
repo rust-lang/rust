@@ -175,7 +175,11 @@ impl Attribute {
 
     /// Returns `true` if the attribute's path matches the argument.
     /// If it matches, then the attribute is marked as used.
-    /// Should only be used by rustc, other tools can use `has_name` instead.
+    /// Should only be used by rustc, other tools can use `has_name` instead,
+    /// because only rustc is supposed to report the `unused_attributes` lint.
+    /// `MetaItem` and `NestedMetaItem` are produced by "lowering" an `Attribute`
+    /// and don't have identity, so they only has the `has_name` method,
+    /// and you need to mark the original `Attribute` as used when necessary.
     pub fn check_name(&self, name: Symbol) -> bool {
         let matches = self.has_name(name);
         if matches {
