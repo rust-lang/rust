@@ -17,7 +17,6 @@ use rustc_session::early_error;
 use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
 use rustc_session::{DiagnosticOutput, Session};
-use rustc_span::edition;
 use rustc_span::source_map::{FileLoader, FileName};
 use std::path::PathBuf;
 use std::result;
@@ -207,14 +206,4 @@ pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R 
         &stderr,
         || create_compiler_and_run(config, f),
     )
-}
-
-pub fn setup_callbacks_and_run_in_default_thread_pool_with_globals<R: Send>(
-    edition: edition::Edition,
-    f: impl FnOnce() -> R + Send,
-) -> R {
-    // the 1 here is duplicating code in config.opts.debugging_opts.threads
-    // which also defaults to 1; it ultimately doesn't matter as the default
-    // isn't threaded, and just ignores this parameter
-    util::setup_callbacks_and_run_in_thread_pool_with_globals(edition, 1, &None, f)
 }

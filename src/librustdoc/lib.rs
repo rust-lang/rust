@@ -431,8 +431,10 @@ fn main_args(args: &[String]) -> MainResult {
         Ok(opts) => opts,
         Err(code) => return if code == 0 { Ok(()) } else { Err(ErrorReported) },
     };
-    rustc_interface::interface::setup_callbacks_and_run_in_default_thread_pool_with_globals(
+    rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals(
         options.edition,
+        1, // this runs single-threaded, even in a parallel compiler
+        &None,
         move || main_options(options),
     )
 }
