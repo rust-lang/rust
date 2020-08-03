@@ -819,7 +819,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                             // The resolved item did not match the disambiguator; give a better error than 'not found'
                             let msg = format!("unresolved link to `{}`", path_str);
                             report_diagnostic(cx, &msg, &item, &dox, link_range, |diag, sp| {
-                                let msg = format!("this item resolved to {} {}, which did not match the disambiguator '{}'", kind.article(), kind.descr(id), disambiguator);
+                                let msg = format!("this link resolved to {} {}, which did not match the disambiguator '{}'", kind.article(), kind.descr(id), disambiguator);
                                 if let Some(sp) = sp {
                                     diag.span_note(sp, &msg);
                                 } else {

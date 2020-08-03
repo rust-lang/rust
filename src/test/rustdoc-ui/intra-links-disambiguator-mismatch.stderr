@@ -1,5 +1,5 @@
 error: unresolved link to `S`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:16:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:14:14
    |
 LL | /// Link to [struct@S]
    |              ^^^^^^^^
@@ -9,116 +9,116 @@ note: the lint level is defined here
    |
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
-note: this item resolved to an enum, which did not match the disambiguator 'struct'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:16:14
+note: this link resolved to an enum, which did not match the disambiguator 'struct'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:14:14
    |
 LL | /// Link to [struct@S]
    |              ^^^^^^^^
 
 error: unresolved link to `S`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:20:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:18:14
    |
 LL | /// Link to [mod@S]
    |              ^^^^^
    |
-note: this item resolved to an enum, which did not match the disambiguator 'mod'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:20:14
+note: this link resolved to an enum, which did not match the disambiguator 'mod'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:18:14
    |
 LL | /// Link to [mod@S]
    |              ^^^^^
 
 error: unresolved link to `S`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:24:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:22:14
    |
 LL | /// Link to [union@S]
    |              ^^^^^^^
    |
-note: this item resolved to an enum, which did not match the disambiguator 'union'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:24:14
+note: this link resolved to an enum, which did not match the disambiguator 'union'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:22:14
    |
 LL | /// Link to [union@S]
    |              ^^^^^^^
 
 error: unresolved link to `S`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:28:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:26:14
    |
 LL | /// Link to [trait@S]
    |              ^^^^^^^
    |
-note: this item resolved to an enum, which did not match the disambiguator 'trait'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:28:14
+note: this link resolved to an enum, which did not match the disambiguator 'trait'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:26:14
    |
 LL | /// Link to [trait@S]
    |              ^^^^^^^
 
 error: unresolved link to `T`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:32:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:30:14
    |
 LL | /// Link to [struct@T]
    |              ^^^^^^^^
    |
-note: this item resolved to a trait, which did not match the disambiguator 'struct'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:32:14
+note: this link resolved to a trait, which did not match the disambiguator 'struct'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:30:14
    |
 LL | /// Link to [struct@T]
    |              ^^^^^^^^
 
 error: unresolved link to `m`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:36:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:34:14
    |
 LL | /// Link to [derive@m]
    |              ^^^^^^^^
    |
-note: this item resolved to a macro, which did not match the disambiguator 'derive'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:36:14
+note: this link resolved to a macro, which did not match the disambiguator 'derive'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:34:14
    |
 LL | /// Link to [derive@m]
    |              ^^^^^^^^
 
 error: unresolved link to `s`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:40:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:38:14
    |
 LL | /// Link to [const@s]
    |              ^^^^^^^
    |
-note: this item resolved to a static, which did not match the disambiguator 'const'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:40:14
+note: this link resolved to a static, which did not match the disambiguator 'const'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:38:14
    |
 LL | /// Link to [const@s]
    |              ^^^^^^^
 
 error: unresolved link to `c`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:44:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:42:14
    |
 LL | /// Link to [static@c]
    |              ^^^^^^^^
    |
-note: this item resolved to a constant, which did not match the disambiguator 'static'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:44:14
+note: this link resolved to a constant, which did not match the disambiguator 'static'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:42:14
    |
 LL | /// Link to [static@c]
    |              ^^^^^^^^
 
 error: unresolved link to `c`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:48:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:46:14
    |
 LL | /// Link to [fn@c]
    |              ^^^^
    |
-note: this item resolved to a constant, which did not match the disambiguator 'fn'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:48:14
+note: this link resolved to a constant, which did not match the disambiguator 'fn'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:46:14
    |
 LL | /// Link to [fn@c]
    |              ^^^^
 
 error: unresolved link to `c`
-  --> $DIR/intra-links-disambiguator-mismatch.rs:52:14
+  --> $DIR/intra-links-disambiguator-mismatch.rs:50:14
    |
 LL | /// Link to [c()]
    |              ^^^
    |
-note: this item resolved to a constant, which did not match the disambiguator 'fn'
-  --> $DIR/intra-links-disambiguator-mismatch.rs:52:14
+note: this link resolved to a constant, which did not match the disambiguator 'fn'
+  --> $DIR/intra-links-disambiguator-mismatch.rs:50:14
    |
 LL | /// Link to [c()]
    |              ^^^
