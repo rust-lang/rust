@@ -13,6 +13,7 @@ use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::traits;
+use crate::ty::layout::TyAndLayout;
 use crate::ty::steal::Steal;
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
@@ -32,7 +33,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{
     hash_stable_hashmap, HashStable, StableHasher, StableVec,
 };
-use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
+use rustc_data_structures::sync::{self, Lock, Lrc, OnceCell, WorkerLocal};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -169,6 +170,7 @@ pub struct CommonTypes<'tcx> {
     /// a trait object, and which gets removed in `ExistentialTraitRef`.
     /// This type must not appear anywhere in other converted types.
     pub trait_object_dummy_self: Ty<'tcx>,
+    pub caller_location: OnceCell<TyAndLayout<'tcx>>,
 }
 
 pub struct CommonLifetimes<'tcx> {
@@ -824,6 +826,7 @@ impl<'tcx> CommonTypes<'tcx> {
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
             trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
+            caller_location: OnceCell::new(),
         }
     }
 }

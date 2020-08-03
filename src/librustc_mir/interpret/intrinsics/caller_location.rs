@@ -1,10 +1,7 @@
 use std::convert::TryFrom;
 
-use rustc_hir::lang_items::PanicLocationLangItem;
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::subst::Subst;
 use rustc_span::{Span, Symbol};
-use rustc_target::abi::LayoutOf;
 
 use crate::interpret::{
     intrinsics::{InterpCx, Machine},
@@ -61,13 +58,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let line = Scalar::from_u32(line);
         let col = Scalar::from_u32(col);
 
-        // Allocate memory for `CallerLocation` struct.
-        let loc_ty = self
-            .tcx
-            .type_of(self.tcx.require_lang_item(PanicLocationLangItem, None))
-            .subst(*self.tcx, self.tcx.mk_substs([self.tcx.lifetimes.re_erased.into()].iter()));
-        let loc_layout = self.layout_of(loc_ty).unwrap();
-        let location = self.allocate(loc_layout, MemoryKind::CallerLocation);
+        let location = self
+            .allocate(*self.tcx.types.caller_location.get().unwrap(), MemoryKind::CallerLocation);
 
         // Initialize fields.
         self.write_immediate(file.to_ref(), self.mplace_field(location, 0).unwrap().into())

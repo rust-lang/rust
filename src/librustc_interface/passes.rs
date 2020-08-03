@@ -14,6 +14,7 @@ use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
+use rustc_hir::lang_items::PanicLocationLangItem;
 use rustc_hir::Crate;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
@@ -22,7 +23,8 @@ use rustc_middle::middle;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoader, MetadataLoaderDyn};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::steal::Steal;
-use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::{self, GlobalCtxt, ParamEnv, ResolverOutputs, TyCtxt};
 use rustc_mir as mir;
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
@@ -815,6 +817,13 @@ pub fn create_global_ctxt<'tcx>(
     let icx = ty::tls::ImplicitCtxt::new(&gcx);
     ty::tls::enter_context(&icx, |_| {
         icx.tcx.sess.time("dep_graph_tcx_init", || rustc_incremental::dep_graph_tcx_init(icx.tcx));
+
+        let tcx = icx.tcx;
+        let loc_ty = tcx
+            .type_of(tcx.require_lang_item(PanicLocationLangItem, None))
+            .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_erased.into()].iter()));
+        let caller_loc_layout = tcx.layout_of(ParamEnv::reveal_all().and(loc_ty)).unwrap();
+        tcx.types.caller_location.set(caller_loc_layout).expect("Already initialized!");
     });
 
     QueryContext(gcx)
