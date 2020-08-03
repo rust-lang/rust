@@ -50,6 +50,29 @@ declare_clippy_lint! {
     "transmutes that have the same to and from types or could be a cast/coercion"
 }
 
+// FIXME: Merge this lint with USELESS_TRANSMUTE once that is out of the nursery.
+declare_clippy_lint! {
+    /// **What it does:**Checks for transmutes that could be a pointer cast.
+    ///
+    /// **Why is this bad?** Readability. The code tricks people into thinking that
+    /// something complex is going on.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust,ignore
+    /// core::intrinsics::transmute::<*const [i32], *const [u16]>(p)
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// p as *const [u16]
+    /// ```
+    pub TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
+    complexity,
+    "transmutes that could be a pointer cast"
+}
+
 declare_clippy_lint! {
     /// **What it does:** Checks for transmutes between a type `T` and `*T`.
     ///
@@ -272,27 +295,6 @@ declare_clippy_lint! {
     "transmute between collections of layout-incompatible types"
 }
 
-declare_clippy_lint! {
-    /// **What it does:**
-    ///
-    /// **Why is this bad?**
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
-    /// ```rust
-    /// // example code where clippy issues a warning
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// // example code which does not raise clippy warning
-    /// ```
-    pub TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
-    complexity,
-    "default lint description"
-}
-
 declare_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
     TRANSMUTE_PTR_TO_REF,
@@ -329,26 +331,6 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             then {
                 let from_ty = cx.typeck_results().expr_ty(&args[0]);
                 let to_ty = cx.typeck_results().expr_ty(e);
-
-                if can_be_expressed_as_pointer_cast(cx, e, from_ty, to_ty) {
-                    span_lint_and_then(
-                        cx,
-                        TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
-                        e.span,
-                        &format!(
-                            "transmute from `{}` to `{}` which could be expressed as a pointer cast instead",
-                            from_ty,
-                            to_ty
-                        ),
-                        |diag| {
-                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                let sugg = format!("{} as {}", arg, to_ty);
-                                diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
-                            }
-                        }
-                    );
-                    return
-                }
 
                 match (&from_ty.kind, &to_ty.kind) {
                     _ if from_ty == to_ty => span_lint(
@@ -646,6 +628,22 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             );
                         }
                     },
+                    (_, _) if can_be_expressed_as_pointer_cast(cx, e, from_ty, to_ty) => span_lint_and_then(
+                        cx,
+                        TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
+                        e.span,
+                        &format!(
+                            "transmute from `{}` to `{}` which could be expressed as a pointer cast instead",
+                            from_ty,
+                            to_ty
+                        ),
+                        |diag| {
+                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                let sugg = arg.as_ty(&to_ty.to_string()).to_string();
+                                diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
+                            }
+                        }
+                    ),
                     _ => {
                         return;
                     },
