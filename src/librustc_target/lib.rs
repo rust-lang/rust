@@ -21,7 +21,7 @@
 extern crate rustc_macros;
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 pub mod abi;
 pub mod asm;

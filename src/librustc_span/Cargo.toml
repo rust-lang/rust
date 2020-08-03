@@ -18,6 +18,6 @@ rustc_arena = { path = "../librustc_arena" }
 scoped-tls = "1.0"
 unicode-width = "0.1.4"
 cfg-if = "0.1.2"
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 sha-1 = "0.8"
 md-5 = "0.8"

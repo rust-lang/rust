@@ -8,8 +8,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::search_paths::{PathKind, SearchPath, SearchPathFile};
-use log::debug;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
+use tracing::debug;
 
 #[derive(Copy, Clone)]
 pub enum FileMatch {
@@ -52,7 +52,11 @@ impl<'a> FileSearch<'a> {
         for search_path in self.search_paths() {
             debug!("searching {}", search_path.dir.display());
             fn is_rlib(spf: &SearchPathFile) -> bool {
-                if let Some(f) = &spf.file_name_str { f.ends_with(".rlib") } else { false }
+                if let Some(f) = &spf.file_name_str {
+                    f.ends_with(".rlib")
+                } else {
+                    false
+                }
             }
             // Reading metadata out of rlibs is faster, and if we find both
             // an rlib and a dylib we only read one of the files of
@@ -98,7 +102,11 @@ impl<'a> FileSearch<'a> {
         p.push(RUST_LIB_DIR);
         p.push(&self.triple);
         p.push("bin");
-        if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p.clone()] }
+        if self_contained {
+            vec![p.clone(), p.join("self-contained")]
+        } else {
+            vec![p.clone()]
+        }
     }
 }
 

@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 rustc_parse_format = { path = "../librustc_parse_format" }
-log = { package = "tracing", version = "0.1" }
+tracing = "0.1"
 rustc_attr = { path = "../librustc_attr" }
 rustc_middle = { path = "../librustc_middle" }
 rustc_ast = { path = "../librustc_ast" }

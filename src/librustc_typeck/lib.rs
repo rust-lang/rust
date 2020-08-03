@@ -69,7 +69,7 @@ This API is completely unstable and subject to change.
 #![recursion_limit = "256"]
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 #[macro_use]
 extern crate rustc_middle;
@@ -367,7 +367,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
-    if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorReported) }
+    if tcx.sess.err_count() == 0 {
+        Ok(())
+    } else {
+        Err(ErrorReported)
+    }
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

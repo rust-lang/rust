@@ -8,8 +8,8 @@ use std::path::Path;
 use std::str::FromStr;
 
 use lazy_static::lazy_static;
-use log::*;
 use regex::Regex;
+use tracing::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ErrorKind {

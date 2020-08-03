@@ -19,9 +19,9 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 
-use log::debug;
 use std::fs;
 use std::io;
+use tracing::debug;
 
 #[cfg(test)]
 mod tests;
@@ -902,7 +902,11 @@ impl SourceMap {
         }
         debug!("find_width_of_character_at_span: final target=`{:?}`", target);
 
-        if forwards { (target - end_index) as u32 } else { (end_index - target) as u32 }
+        if forwards {
+            (target - end_index) as u32
+        } else {
+            (end_index - target) as u32
+        }
     }
 
     pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {

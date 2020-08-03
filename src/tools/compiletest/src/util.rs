@@ -3,7 +3,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
-use log::*;
+use tracing::*;
 
 #[cfg(test)]
 mod tests;
@@ -126,7 +126,11 @@ pub fn get_arch(triple: &str) -> &'static str {
 }
 
 pub fn matches_env(triple: &str, name: &str) -> bool {
-    if let Some(env) = triple.split('-').nth(3) { env.starts_with(name) } else { false }
+    if let Some(env) = triple.split('-').nth(3) {
+        env.starts_with(name)
+    } else {
+        false
+    }
 }
 
 pub fn get_pointer_width(triple: &str) -> &'static str {

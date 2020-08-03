@@ -9,7 +9,6 @@ use crate::common::{expected_output_path, output_base_dir, output_relative_path,
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, Pretty, TestPaths};
 use crate::util::logv;
 use getopts::Options;
-use log::*;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -18,6 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 use test::ColorConfig;
+use tracing::*;
 use walkdir::WalkDir;
 
 use self::header::EarlyProps;
@@ -158,7 +158,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
     }
 
     fn make_absolute(path: PathBuf) -> PathBuf {
-        if path.is_relative() { env::current_dir().unwrap().join(path) } else { path }
+        if path.is_relative() {
+            env::current_dir().unwrap().join(path)
+        } else {
+            path
+        }
     }
 
     let target = opt_str2(matches.opt_str("target"));
