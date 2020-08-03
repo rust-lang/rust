@@ -173,7 +173,7 @@ fn test_required_hashes() {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use test_utils::mark;
 
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
