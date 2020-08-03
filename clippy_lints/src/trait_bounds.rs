@@ -148,7 +148,7 @@ impl TraitBounds {
 }
 
 fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
-    if in_macro(gen.span) {
+    if in_macro(gen.span) || gen.params.is_empty() || gen.where_clause.predicates.is_empty() {
         return;
     }
 
