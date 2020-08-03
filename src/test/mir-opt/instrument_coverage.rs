@@ -3,7 +3,7 @@
 // intrinsics, during codegen.
 
 // needs-profiler-support
-// compile-flags: -Zinstrument-coverage
+// compile-flags: -Zinstrument-coverage --remap-path-prefix={{cwd}}=/the/cwd
 // EMIT_MIR instrument_coverage.main.InstrumentCoverage.diff
 // EMIT_MIR instrument_coverage.bar.InstrumentCoverage.diff
 fn main() {

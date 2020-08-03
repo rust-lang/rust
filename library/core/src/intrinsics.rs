@@ -1950,15 +1950,20 @@ extern "rust-intrinsic" {
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
     /// Internal placeholder for injecting code coverage counters when the "instrument-coverage"
-    /// option is enabled. The placeholder is replaced with `llvm.instrprof.increment` during code
-    /// generation.
+    /// option is enabled. The source code region information is extracted prior to code generation,
+    /// and added to the "coverage map", which is injected into the generated code as additional
+    /// data. This intrinsic then triggers the generation of LLVM intrinsic call
+    /// `instrprof.increment`, using the remaining args (`function_source_hash` and `index`).
     #[cfg(not(bootstrap))]
     #[lang = "count_code_region"]
     pub fn count_code_region(
         function_source_hash: u64,
         index: u32,
-        start_byte_pos: u32,
-        end_byte_pos: u32,
+        file_name: &'static str,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
     );
 
     /// Internal marker for code coverage expressions, injected into the MIR when the
@@ -1973,8 +1978,11 @@ extern "rust-intrinsic" {
         index: u32,
         left_index: u32,
         right_index: u32,
-        start_byte_pos: u32,
-        end_byte_pos: u32,
+        file_name: &'static str,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
     );
 
     /// This marker identifies a code region and two other counters or counter expressions
@@ -1986,14 +1994,24 @@ extern "rust-intrinsic" {
         index: u32,
         left_index: u32,
         right_index: u32,
-        start_byte_pos: u32,
-        end_byte_pos: u32,
+        file_name: &'static str,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
     );
 
     /// This marker identifies a code region to be added to the "coverage map" to indicate source
     /// code that can never be reached.
     /// (See `coverage_counter_add` for more information.)
-    pub fn coverage_unreachable(start_byte_pos: u32, end_byte_pos: u32);
+    #[cfg(not(bootstrap))]
+    pub fn coverage_unreachable(
+        file_name: &'static str,
+        start_line: u32,
+        start_col: u32,
+        end_line: u32,
+        end_col: u32,
+    );
 
     /// See documentation of `<*const T>::guaranteed_eq` for details.
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
