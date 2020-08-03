@@ -4,7 +4,7 @@
 
 use hir::{self, ModPath};
 use ra_syntax::{
-    ast::{self, NameOwner},
+    ast::{self, NameOwner, VisibilityOwner},
     AstNode, Direction, SmolStr,
     SyntaxKind::{PATH, PATH_SEGMENT},
     SyntaxNode, T,
@@ -378,6 +378,7 @@ fn best_action_for_target(
     let best_action = container
         .children()
         .filter_map(ast::Use::cast)
+        .filter(|u| u.visibility().is_none())
         .filter_map(|it| it.use_tree())
         .map(|u| walk_use_tree_for_best_action(&mut storage, None, u, target))
         .fold(None, |best, a| match best {
