@@ -1,13 +1,13 @@
 // Rust Un-Grammar.
 //
-// This grammar specifies the structure of Rust's concrete sytnax tree.
+// This grammar specifies the structure of Rust's concrete syntax tree.
 // It does not specify parsing rules (ambiguities, precedence, etc are out of scope).
-// Tokens are processed -- contextual keywords are recogniesed, compound operators glued.
+// Tokens are processed -- contextual keywords are recognised, compound operators glued.
 //
 // Legend:
 //
 //   //          -- comment
-//   Name =      -- non-termial defition
+//   Name =      -- non-terminal definition
 //   'ident'     -- token (terminal)
 //   A B         -- sequence
 //   A | B       -- alternation
