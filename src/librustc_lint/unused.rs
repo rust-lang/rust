@@ -520,7 +520,10 @@ trait UnusedDelimLint {
                 (cond, UnusedDelimsCtx::IfCond, true, Some(left), Some(right))
             }
 
-            While(ref cond, ref block, ..) => {
+            // Do not lint `unused_braces` in `while let` expressions.
+            While(ref cond, ref block, ..)
+                if !matches!(cond.kind, Let(_, _)) || Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX =>
+            {
                 let left = e.span.lo() + rustc_span::BytePos(5);
                 let right = block.span.lo();
                 (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right))

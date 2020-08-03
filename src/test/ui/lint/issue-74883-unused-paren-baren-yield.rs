@@ -15,15 +15,8 @@ fn main() {
         while let Some(_) = ((yield)) {} //~ ERROR: unnecessary parentheses
         {{yield}}; //~ ERROR: unnecessary braces
         {( yield )}; //~ ERROR: unnecessary parentheses
-
-        // FIXME: Reduce duplicate warnings.
-        // Perhaps we should tweak checks in `BlockRetValue`?
-        while let Some(_) = {(yield)} {}
-        //~^ ERROR: unnecessary braces
-        //~| ERROR: unnecessary parentheses
-        while let Some(_) = {{yield}} {}
-        //~^ ERROR: unnecessary braces
-        //~| ERROR: unnecessary braces
+        while let Some(_) = {(yield)} {} //~ ERROR: unnecessary parentheses
+        while let Some(_) = {{yield}} {} //~ ERROR: unnecessary braces
 
         // FIXME: It'd be great if we could also warn them.
         ((yield));
