@@ -861,17 +861,14 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
             let kv = unsafe { Handle::new_kv(self.node, self.idx) };
             (InsertResult::Fit(kv), ptr)
         } else {
-            let middle = unsafe { Handle::new_kv(self.node, B) };
+            let middle = unsafe { Handle::new_kv(self.node, B - 1) };
             let (mut left, k, v, mut right) = middle.split();
-            let ptr = if self.idx <= B {
+            let ptr = if self.idx < B {
                 unsafe { Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val) }
             } else {
                 unsafe {
-                    Handle::new_edge(
-                        right.as_mut().cast_unchecked::<marker::Leaf>(),
-                        self.idx - (B + 1),
-                    )
-                    .insert_fit(key, val)
+                    Handle::new_edge(right.as_mut().cast_unchecked::<marker::Leaf>(), self.idx - B)
+                        .insert_fit(key, val)
                 }
             };
             (InsertResult::Split(SplitResult { left: left.forget_type(), k, v, right }), ptr)
@@ -934,9 +931,9 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             let kv = unsafe { Handle::new_kv(self.node, self.idx) };
             InsertResult::Fit(kv)
         } else {
-            let middle = unsafe { Handle::new_kv(self.node, B) };
+            let middle = unsafe { Handle::new_kv(self.node, B - 1) };
             let (mut left, k, v, mut right) = middle.split();
-            if self.idx <= B {
+            if self.idx < B {
                 unsafe {
                     Handle::new_edge(left.reborrow_mut(), self.idx).insert_fit(key, val, edge);
                 }
@@ -944,7 +941,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 unsafe {
                     Handle::new_edge(
                         right.as_mut().cast_unchecked::<marker::Internal>(),
-                        self.idx - (B + 1),
+                        self.idx - B,
                     )
                     .insert_fit(key, val, edge);
                 }
