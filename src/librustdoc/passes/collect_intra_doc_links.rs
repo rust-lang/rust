@@ -415,7 +415,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                 AnchorFailure::Method
                             }))
                         } else {
-                            Ok((ty_res, Some(format!("{}.{}", kind, item_name))))
+                            let res = Res::Def(item.kind.as_def_kind(), item.def_id);
+                            Ok((res, Some(format!("{}.{}", kind, item_name))))
                         }
                     } else {
                         self.variant_field(path_str, current_item, module_id)
