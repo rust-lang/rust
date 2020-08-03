@@ -67,7 +67,7 @@ type parameter).
 pub mod _match;
 mod autoderef;
 mod callee;
-mod cast;
+pub mod cast;
 mod closure;
 pub mod coercion;
 mod compare_method;
