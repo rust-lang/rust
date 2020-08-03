@@ -85,7 +85,8 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
         COMMENT => Some(FoldKind::Comment),
         USE => Some(FoldKind::Imports),
         ARG_LIST | PARAM_LIST => Some(FoldKind::ArgList),
-        RECORD_FIELD_LIST
+        ASSOC_ITEM_LIST
+        | RECORD_FIELD_LIST
         | RECORD_PAT_FIELD_LIST
         | RECORD_EXPR_FIELD_LIST
         | ITEM_LIST
@@ -333,6 +334,26 @@ use std::f64;</fold>
 
 fn main() <fold block>{
 }</fold>"#,
+        );
+    }
+
+    #[test]
+    fn test_folds_structs() {
+        check(
+            r#"
+struct Foo <fold block>{
+}</fold>
+"#,
+        );
+    }
+
+    #[test]
+    fn test_folds_traits() {
+        check(
+            r#"
+trait Foo <fold block>{
+}</fold>
+"#,
         );
     }
 
