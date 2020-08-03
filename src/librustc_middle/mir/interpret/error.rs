@@ -27,7 +27,7 @@ pub enum ErrorHandled {
     TooGeneric,
 }
 
-CloneTypeFoldableImpls! {
+CloneTypeFoldableAndLiftImpls! {
     ErrorHandled,
 }
 
