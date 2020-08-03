@@ -2,6 +2,7 @@
 // pretty-expanded FIXME #23616
 
 #![deny(unused_mut)]
+#![allow(unused_must_use)]
 
 // Test that mutating a mutable upvar in a capture-by-value unboxed
 // closure does not ice (issue #18238) and marks the upvar as used

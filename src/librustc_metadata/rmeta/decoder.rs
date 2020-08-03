@@ -100,7 +100,7 @@ crate struct CrateMetadata {
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
     dependencies: Lock<Vec<CrateNum>>,
     /// How to link (or not link) this crate to the currently compiled crate.
-    dep_kind: Lock<DepKind>,
+    dep_kind: Lock<CrateDepKind>,
     /// Filesystem location of this crate.
     source: CrateSource,
     /// Whether or not this crate should be consider a private dependency
@@ -780,7 +780,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_variant(
         &self,
-        tcx: TyCtxt<'tcx>,
         kind: &EntryKind,
         index: DefIndex,
         parent_did: DefId,
@@ -805,7 +804,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let ctor_did = data.ctor.map(|index| self.local_def_id(index));
 
         ty::VariantDef::new(
-            tcx,
             self.item_ident(index, sess),
             variant_did,
             ctor_did,
@@ -826,6 +824,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             adt_kind,
             parent_did,
             false,
+            data.is_non_exhaustive,
         )
     }
 
@@ -847,10 +846,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .get(self, item_id)
                 .unwrap_or(Lazy::empty())
                 .decode(self)
-                .map(|index| self.get_variant(tcx, &self.kind(index), index, did, tcx.sess))
+                .map(|index| self.get_variant(&self.kind(index), index, did, tcx.sess))
                 .collect()
         } else {
-            std::iter::once(self.get_variant(tcx, &kind, item_id, did, tcx.sess)).collect()
+            std::iter::once(self.get_variant(&kind, item_id, did, tcx.sess)).collect()
         };
 
         tcx.alloc_adt_def(did, adt_kind, variants, repr)
@@ -1670,7 +1669,7 @@ impl CrateMetadata {
         raw_proc_macros: Option<&'static [ProcMacro]>,
         cnum: CrateNum,
         cnum_map: CrateNumMap,
-        dep_kind: DepKind,
+        dep_kind: CrateDepKind,
         source: CrateSource,
         private_dep: bool,
         host_hash: Option<Svh>,
@@ -1728,11 +1727,11 @@ impl CrateMetadata {
         &self.source
     }
 
-    crate fn dep_kind(&self) -> DepKind {
+    crate fn dep_kind(&self) -> CrateDepKind {
         *self.dep_kind.lock()
     }
 
-    crate fn update_dep_kind(&self, f: impl FnOnce(DepKind) -> DepKind) {
+    crate fn update_dep_kind(&self, f: impl FnOnce(CrateDepKind) -> CrateDepKind) {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
     }
 

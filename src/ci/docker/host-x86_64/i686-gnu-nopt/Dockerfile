@@ -20,7 +20,7 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu --disable-optimize-tests
-ENV SCRIPT python3 ../x.py test
+ENV SCRIPT python3 ../x.py --stage 2 test
 
 # FIXME(#59637) takes too long on CI right now
 ENV NO_LLVM_ASSERTIONS=1 NO_DEBUG_ASSERTIONS=1

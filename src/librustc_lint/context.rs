@@ -573,7 +573,7 @@ pub trait LintContext: Sized {
                     }
                 }
                 BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) => {
-                    stability::deprecation_suggestion(&mut db, suggestion, span)
+                    stability::deprecation_suggestion(&mut db, "macro", suggestion, span)
                 }
                 BuiltinLintDiagnostics::UnusedDocComment(span) => {
                     db.span_label(span, "rustdoc does not generate documentation for macro invocations");

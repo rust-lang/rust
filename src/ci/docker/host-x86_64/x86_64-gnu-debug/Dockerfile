@@ -40,5 +40,5 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.cxx=clang++
 
 ENV SCRIPT \
-  python3 ../x.py build && \
-  python3 ../x.py test src/test/run-make-fulldeps --test-args clang
+  python3 ../x.py --stage 2 build && \
+  python3 ../x.py --stage 2 test src/test/run-make-fulldeps --test-args clang

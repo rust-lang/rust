@@ -36,7 +36,7 @@ jobs:
       # Note that the compiler is compiled to target 10.8 here because the Xcode
       # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
       x86_64-apple:
-        SCRIPT: ./x.py test
+        SCRIPT: ./x.py --stage 2 test
         INITIAL_RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.8

@@ -331,6 +331,7 @@ impl OpenOptions {
         // FIXME: some of these should probably be read-only or write-only...
         base |= wasi::RIGHTS_FD_ADVISE;
         base |= wasi::RIGHTS_FD_FDSTAT_SET_FLAGS;
+        base |= wasi::RIGHTS_FD_FILESTAT_GET;
         base |= wasi::RIGHTS_FD_FILESTAT_SET_TIMES;
         base |= wasi::RIGHTS_FD_SEEK;
         base |= wasi::RIGHTS_FD_SYNC;

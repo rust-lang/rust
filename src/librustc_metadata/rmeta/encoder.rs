@@ -267,7 +267,7 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
         // real code should never need to care about this.
         //
         // 2. Using `Span::def_site` or `Span::mixed_site` will not
-        // include any hygiene information associated with the defintion
+        // include any hygiene information associated with the definition
         // site. This means that a proc-macro cannot emit a `$crate`
         // identifier which resolves to one of its dependencies,
         // which also should never come up in practice.
@@ -738,6 +738,7 @@ impl EncodeContext<'a, 'tcx> {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
             ctor: variant.ctor_def_id.map(|did| did.index),
+            is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
         let enum_id = tcx.hir().as_local_hir_id(def.did.expect_local());
@@ -782,6 +783,7 @@ impl EncodeContext<'a, 'tcx> {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
             ctor: Some(def_id.index),
+            is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
         // Variant constructors have the same visibility as the parent enums, unless marked as
@@ -886,6 +888,7 @@ impl EncodeContext<'a, 'tcx> {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
             ctor: Some(def_id.index),
+            is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
         let struct_id = tcx.hir().as_local_hir_id(adt_def.did.expect_local());
@@ -1235,6 +1238,7 @@ impl EncodeContext<'a, 'tcx> {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     ctor,
+                    is_non_exhaustive: variant.is_field_list_non_exhaustive(),
                 }), adt_def.repr)
             }
             hir::ItemKind::Union(..) => {
@@ -1245,6 +1249,7 @@ impl EncodeContext<'a, 'tcx> {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
                     ctor: None,
+                    is_non_exhaustive: variant.is_field_list_non_exhaustive(),
                 }), adt_def.repr)
             }
             hir::ItemKind::Impl { defaultness, .. } => {

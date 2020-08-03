@@ -5,7 +5,7 @@
 //! latter `EvalInto` trait.
 
 use crate::build::{BlockAnd, Builder};
-use crate::hair::*;
+use crate::thir::*;
 use rustc_middle::mir::*;
 
 pub(in crate::build) trait EvalInto<'tcx> {

@@ -426,20 +426,17 @@ impl<'a> CrateLocator<'a> {
             info!("lib candidate: {}", spf.path.display());
 
             let (rlibs, rmetas, dylibs) = candidates.entry(hash.to_string()).or_default();
-            fs::canonicalize(&spf.path)
-                .map(|p| {
-                    if seen_paths.contains(&p) {
-                        return FileDoesntMatch;
-                    };
-                    seen_paths.insert(p.clone());
-                    match found_kind {
-                        CrateFlavor::Rlib => rlibs.insert(p, kind),
-                        CrateFlavor::Rmeta => rmetas.insert(p, kind),
-                        CrateFlavor::Dylib => dylibs.insert(p, kind),
-                    };
-                    FileMatches
-                })
-                .unwrap_or(FileDoesntMatch)
+            let path = fs::canonicalize(&spf.path).unwrap_or_else(|_| spf.path.clone());
+            if seen_paths.contains(&path) {
+                return FileDoesntMatch;
+            };
+            seen_paths.insert(path.clone());
+            match found_kind {
+                CrateFlavor::Rlib => rlibs.insert(path, kind),
+                CrateFlavor::Rmeta => rmetas.insert(path, kind),
+                CrateFlavor::Dylib => dylibs.insert(path, kind),
+            };
+            FileMatches
         });
         self.rejected_via_kind.extend(staticlibs);
 
@@ -688,12 +685,13 @@ impl<'a> CrateLocator<'a> {
                     && file.ends_with(&self.target.options.dll_suffix)
             {
                 // Make sure there's at most one rlib and at most one dylib.
+                let loc = fs::canonicalize(&loc).unwrap_or_else(|_| loc.clone());
                 if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
-                    rlibs.insert(fs::canonicalize(&loc).unwrap(), PathKind::ExternFlag);
+                    rlibs.insert(loc, PathKind::ExternFlag);
                 } else if loc.file_name().unwrap().to_str().unwrap().ends_with(".rmeta") {
-                    rmetas.insert(fs::canonicalize(&loc).unwrap(), PathKind::ExternFlag);
+                    rmetas.insert(loc, PathKind::ExternFlag);
                 } else {
-                    dylibs.insert(fs::canonicalize(&loc).unwrap(), PathKind::ExternFlag);
+                    dylibs.insert(loc, PathKind::ExternFlag);
                 }
             } else {
                 self.rejected_via_filename

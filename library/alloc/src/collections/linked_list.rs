@@ -1110,31 +1110,16 @@ impl<T> IterMut<'_, T> {
     /// Inserts the given element just after the element most recently returned by `.next()`.
     /// The inserted element does not appear in the iteration.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(linked_list_extras)]
-    ///
-    /// use std::collections::LinkedList;
-    ///
-    /// let mut list: LinkedList<_> = vec![1, 3, 4].into_iter().collect();
-    ///
-    /// {
-    ///     let mut it = list.iter_mut();
-    ///     assert_eq!(it.next().unwrap(), &1);
-    ///     // insert `2` after `1`
-    ///     it.insert_next(2);
-    /// }
-    /// {
-    ///     let vec: Vec<_> = list.into_iter().collect();
-    ///     assert_eq!(vec, [1, 2, 3, 4]);
-    /// }
-    /// ```
+    /// This method will be removed soon.
     #[inline]
     #[unstable(
         feature = "linked_list_extras",
         reason = "this is probably better handled by a cursor type -- we'll see",
         issue = "27794"
+    )]
+    #[rustc_deprecated(
+        reason = "Deprecated in favor of CursorMut methods. This method will be removed soon.",
+        since = "1.47.0"
     )]
     pub fn insert_next(&mut self, element: T) {
         match self.head {
@@ -1163,26 +1148,16 @@ impl<T> IterMut<'_, T> {
 
     /// Provides a reference to the next element, without changing the iterator.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(linked_list_extras)]
-    ///
-    /// use std::collections::LinkedList;
-    ///
-    /// let mut list: LinkedList<_> = vec![1, 2, 3].into_iter().collect();
-    ///
-    /// let mut it = list.iter_mut();
-    /// assert_eq!(it.next().unwrap(), &1);
-    /// assert_eq!(it.peek_next().unwrap(), &2);
-    /// // We just peeked at 2, so it was not consumed from the iterator.
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// ```
+    /// This method will be removed soon.
     #[inline]
     #[unstable(
         feature = "linked_list_extras",
         reason = "this is probably better handled by a cursor type -- we'll see",
         issue = "27794"
+    )]
+    #[rustc_deprecated(
+        reason = "Deprecated in favor of CursorMut methods. This method will be removed soon.",
+        since = "1.47.0"
     )]
     pub fn peek_next(&mut self) -> Option<&mut T> {
         if self.len == 0 {

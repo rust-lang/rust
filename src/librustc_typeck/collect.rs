@@ -858,7 +858,6 @@ fn convert_variant(
         _ => false,
     };
     ty::VariantDef::new(
-        tcx,
         ident,
         variant_did.map(LocalDefId::to_def_id),
         ctor_did.map(LocalDefId::to_def_id),
@@ -868,6 +867,10 @@ fn convert_variant(
         adt_kind,
         parent_did.to_def_id(),
         recovered,
+        adt_kind == AdtKind::Struct && tcx.has_attr(parent_did.to_def_id(), sym::non_exhaustive)
+            || variant_did.map_or(false, |variant_did| {
+                tcx.has_attr(variant_did.to_def_id(), sym::non_exhaustive)
+            }),
     )
 }
 

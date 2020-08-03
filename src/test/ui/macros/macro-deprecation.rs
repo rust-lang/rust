@@ -8,6 +8,6 @@
 macro_rules! local_deprecated{ () => () }
 
 fn main() {
-    local_deprecated!(); //~ WARN use of deprecated item 'local_deprecated': local deprecation note
-    deprecated_macro!(); //~ WARN use of deprecated item 'deprecated_macro': deprecation note
+    local_deprecated!(); //~ WARN use of deprecated macro `local_deprecated`: local deprecation note
+    deprecated_macro!(); //~ WARN use of deprecated macro `deprecated_macro`: deprecation note
 }

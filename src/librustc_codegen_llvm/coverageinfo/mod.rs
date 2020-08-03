@@ -4,8 +4,9 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 
 use libc::c_uint;
+use llvm::coverageinfo::CounterMappingRegion;
 use log::debug;
-use rustc_codegen_ssa::coverageinfo::map::*;
+use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, ExprKind, FunctionCoverage};
 use rustc_codegen_ssa::traits::{
     BaseTypeMethods, CoverageInfoBuilderMethods, CoverageInfoMethods, StaticMethods,
 };
@@ -23,7 +24,7 @@ const COVMAP_VAR_ALIGN_BYTES: usize = 8;
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'tcx> {
     // Coverage region data for each instrumented function identified by DefId.
-    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage>>,
+    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
 }
 
 impl<'tcx> CrateCoverageContext<'tcx> {
@@ -31,7 +32,7 @@ impl<'tcx> CrateCoverageContext<'tcx> {
         Self { function_coverage_map: Default::default() }
     }
 
-    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage> {
+    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
         self.function_coverage_map.replace(FxHashMap::default())
     }
 }
@@ -47,44 +48,49 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         instance: Instance<'tcx>,
         function_source_hash: u64,
-        index: u32,
+        id: u32,
         start_byte_pos: u32,
         end_byte_pos: u32,
     ) {
         debug!(
-            "adding counter to coverage_regions: instance={:?}, function_source_hash={}, index={}, byte range {}..{}",
-            instance, function_source_hash, index, start_byte_pos, end_byte_pos,
+            "adding counter to coverage_regions: instance={:?}, function_source_hash={}, id={}, \
+             byte range {}..{}",
+            instance, function_source_hash, id, start_byte_pos, end_byte_pos,
         );
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
-            .or_insert_with(|| {
-                FunctionCoverage::with_coverageinfo(self.tcx.coverageinfo(instance.def_id()))
-            })
-            .add_counter(function_source_hash, index, start_byte_pos, end_byte_pos);
+            .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
+            .add_counter(function_source_hash, id, start_byte_pos, end_byte_pos);
     }
 
     fn add_counter_expression_region(
         &mut self,
         instance: Instance<'tcx>,
-        index: u32,
+        id_descending_from_max: u32,
         lhs: u32,
-        op: CounterOp,
+        op: ExprKind,
         rhs: u32,
         start_byte_pos: u32,
         end_byte_pos: u32,
     ) {
         debug!(
-            "adding counter expression to coverage_regions: instance={:?}, index={}, {} {:?} {}, byte range {}..{}",
-            instance, index, lhs, op, rhs, start_byte_pos, end_byte_pos,
+            "adding counter expression to coverage_regions: instance={:?}, id={}, {} {:?} {}, \
+             byte range {}..{}",
+            instance, id_descending_from_max, lhs, op, rhs, start_byte_pos, end_byte_pos,
         );
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
-            .or_insert_with(|| {
-                FunctionCoverage::with_coverageinfo(self.tcx.coverageinfo(instance.def_id()))
-            })
-            .add_counter_expression(index, lhs, op, rhs, start_byte_pos, end_byte_pos);
+            .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
+            .add_counter_expression(
+                id_descending_from_max,
+                lhs,
+                op,
+                rhs,
+                start_byte_pos,
+                end_byte_pos,
+            );
     }
 
     fn add_unreachable_region(
@@ -100,108 +106,8 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let mut coverage_regions = self.coverage_context().function_coverage_map.borrow_mut();
         coverage_regions
             .entry(instance)
-            .or_insert_with(|| {
-                FunctionCoverage::with_coverageinfo(self.tcx.coverageinfo(instance.def_id()))
-            })
-            .add_unreachable(start_byte_pos, end_byte_pos);
-    }
-}
-
-/// This struct wraps an opaque reference to the C++ template instantiation of
-/// `llvm::SmallVector<coverage::CounterExpression>`. Each `coverage::CounterExpression` object is
-/// constructed from primative-typed arguments, and pushed to the `SmallVector`, in the C++
-/// implementation of `LLVMRustCoverageSmallVectorCounterExpressionAdd()` (see
-/// `src/rustllvm/CoverageMappingWrapper.cpp`).
-pub struct SmallVectorCounterExpression<'a> {
-    pub raw: &'a mut llvm::coverageinfo::SmallVectorCounterExpression<'a>,
-}
-
-impl SmallVectorCounterExpression<'a> {
-    pub fn new() -> Self {
-        SmallVectorCounterExpression {
-            raw: unsafe { llvm::LLVMRustCoverageSmallVectorCounterExpressionCreate() },
-        }
-    }
-
-    pub fn as_ptr(&self) -> *const llvm::coverageinfo::SmallVectorCounterExpression<'a> {
-        self.raw
-    }
-
-    pub fn push_from(
-        &mut self,
-        kind: rustc_codegen_ssa::coverageinfo::CounterOp,
-        left_index: u32,
-        right_index: u32,
-    ) {
-        unsafe {
-            llvm::LLVMRustCoverageSmallVectorCounterExpressionAdd(
-                &mut *(self.raw as *mut _),
-                kind,
-                left_index,
-                right_index,
-            )
-        }
-    }
-}
-
-impl Drop for SmallVectorCounterExpression<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustCoverageSmallVectorCounterExpressionDispose(&mut *(self.raw as *mut _));
-        }
-    }
-}
-
-/// This struct wraps an opaque reference to the C++ template instantiation of
-/// `llvm::SmallVector<coverage::CounterMappingRegion>`. Each `coverage::CounterMappingRegion`
-/// object is constructed from primative-typed arguments, and pushed to the `SmallVector`, in the
-/// C++ implementation of `LLVMRustCoverageSmallVectorCounterMappingRegionAdd()` (see
-/// `src/rustllvm/CoverageMappingWrapper.cpp`).
-pub struct SmallVectorCounterMappingRegion<'a> {
-    pub raw: &'a mut llvm::coverageinfo::SmallVectorCounterMappingRegion<'a>,
-}
-
-impl SmallVectorCounterMappingRegion<'a> {
-    pub fn new() -> Self {
-        SmallVectorCounterMappingRegion {
-            raw: unsafe { llvm::LLVMRustCoverageSmallVectorCounterMappingRegionCreate() },
-        }
-    }
-
-    pub fn as_ptr(&self) -> *const llvm::coverageinfo::SmallVectorCounterMappingRegion<'a> {
-        self.raw
-    }
-
-    pub fn push_from(
-        &mut self,
-        index: u32,
-        file_id: u32,
-        line_start: u32,
-        column_start: u32,
-        line_end: u32,
-        column_end: u32,
-    ) {
-        unsafe {
-            llvm::LLVMRustCoverageSmallVectorCounterMappingRegionAdd(
-                &mut *(self.raw as *mut _),
-                index,
-                file_id,
-                line_start,
-                column_start,
-                line_end,
-                column_end,
-            )
-        }
-    }
-}
-
-impl Drop for SmallVectorCounterMappingRegion<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustCoverageSmallVectorCounterMappingRegionDispose(
-                &mut *(self.raw as *mut _),
-            );
-        }
+            .or_insert_with(|| FunctionCoverage::new(self.tcx, instance))
+            .add_unreachable_region(start_byte_pos, end_byte_pos);
     }
 }
 
@@ -218,8 +124,8 @@ pub(crate) fn write_filenames_section_to_buffer(filenames: &Vec<CString>, buffer
 
 pub(crate) fn write_mapping_to_buffer(
     virtual_file_mapping: Vec<u32>,
-    expressions: SmallVectorCounterExpression<'_>,
-    mapping_regions: SmallVectorCounterMappingRegion<'_>,
+    expressions: Vec<CounterExpression>,
+    mut mapping_regions: Vec<CounterMappingRegion>,
     buffer: &RustString,
 ) {
     unsafe {
@@ -227,7 +133,9 @@ pub(crate) fn write_mapping_to_buffer(
             virtual_file_mapping.as_ptr(),
             virtual_file_mapping.len() as c_uint,
             expressions.as_ptr(),
-            mapping_regions.as_ptr(),
+            expressions.len() as c_uint,
+            mapping_regions.as_mut_ptr(),
+            mapping_regions.len() as c_uint,
             buffer,
         );
     }

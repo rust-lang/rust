@@ -28,6 +28,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
+use glob::glob;
 use lazy_static::lazy_static;
 use log::*;
 
@@ -177,27 +178,30 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     results
 }
 
-fn print_diff(expected: &str, actual: &str, context_size: usize) {
+fn write_diff(expected: &str, actual: &str, context_size: usize) -> String {
+    use std::fmt::Write;
+    let mut output = String::new();
     let diff_results = make_diff(expected, actual, context_size);
     for result in diff_results {
         let mut line_number = result.line_number;
         for line in result.lines {
             match line {
                 DiffLine::Expected(e) => {
-                    println!("-\t{}", e);
+                    writeln!(output, "-\t{}", e).unwrap();
                     line_number += 1;
                 }
                 DiffLine::Context(c) => {
-                    println!("{}\t{}", line_number, c);
+                    writeln!(output, "{}\t{}", line_number, c).unwrap();
                     line_number += 1;
                 }
                 DiffLine::Resulting(r) => {
-                    println!("+\t{}", r);
+                    writeln!(output, "+\t{}", r).unwrap();
                 }
             }
         }
-        println!();
+        writeln!(output, "").unwrap();
     }
+    output
 }
 
 pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
@@ -654,8 +658,12 @@ impl<'test> TestCx<'test> {
                  ------------------------------------------\n\
                  {}\n\
                  ------------------------------------------\n\
-                 \n",
-                expected, actual
+                 diff:\n\
+                 ------------------------------------------\n\
+                 {}\n",
+                expected,
+                actual,
+                write_diff(expected, actual, 3),
             ));
         }
     }
@@ -3124,22 +3132,35 @@ impl<'test> TestCx<'test> {
     fn check_mir_dump(&self) {
         let test_file_contents = fs::read_to_string(&self.testpaths.file).unwrap();
 
-        let mut test_dir = self.testpaths.file.with_extension("");
+        let test_dir = self.testpaths.file.parent().unwrap();
+        let test_crate =
+            self.testpaths.file.file_stem().unwrap().to_str().unwrap().replace("-", "_");
 
+        let mut bit_width = String::new();
         if test_file_contents.lines().any(|l| l == "// EMIT_MIR_FOR_EACH_BIT_WIDTH") {
-            test_dir.push(get_pointer_width(&self.config.target))
+            bit_width = format!(".{}", get_pointer_width(&self.config.target));
         }
 
         if self.config.bless {
-            let _ = std::fs::remove_dir_all(&test_dir);
+            for e in
+                glob(&format!("{}/{}.*.mir{}", test_dir.display(), test_crate, bit_width)).unwrap()
+            {
+                std::fs::remove_file(e.unwrap()).unwrap();
+            }
+            for e in
+                glob(&format!("{}/{}.*.diff{}", test_dir.display(), test_crate, bit_width)).unwrap()
+            {
+                std::fs::remove_file(e.unwrap()).unwrap();
+            }
         }
+
         for l in test_file_contents.lines() {
             if l.starts_with("// EMIT_MIR ") {
                 let test_name = l.trim_start_matches("// EMIT_MIR ").trim();
                 let mut test_names = test_name.split(' ');
                 // sometimes we specify two files so that we get a diff between the two files
                 let test_name = test_names.next().unwrap();
-                let expected_file;
+                let mut expected_file;
                 let from_file;
                 let to_file;
 
@@ -3147,7 +3168,7 @@ impl<'test> TestCx<'test> {
                     let trimmed = test_name.trim_end_matches(".diff");
                     let test_against = format!("{}.after.mir", trimmed);
                     from_file = format!("{}.before.mir", trimmed);
-                    expected_file = test_name.to_string();
+                    expected_file = format!("{}{}", test_name, bit_width);
                     assert!(
                         test_names.next().is_none(),
                         "two mir pass names specified for MIR diff"
@@ -3159,12 +3180,13 @@ impl<'test> TestCx<'test> {
                         test_names.next().is_none(),
                         "three mir pass names specified for MIR diff"
                     );
-                    expected_file = format!("{}.{}-{}.diff", test_name, first_pass, second_pass);
+                    expected_file =
+                        format!("{}{}.{}-{}.diff", test_name, bit_width, first_pass, second_pass);
                     let second_file = format!("{}.{}.mir", test_name, second_pass);
                     from_file = format!("{}.{}.mir", test_name, first_pass);
                     to_file = Some(second_file);
                 } else {
-                    expected_file = test_name.to_string();
+                    expected_file = format!("{}{}", test_name, bit_width);
                     from_file = test_name.to_string();
                     assert!(
                         test_names.next().is_none(),
@@ -3172,30 +3194,13 @@ impl<'test> TestCx<'test> {
                     );
                     to_file = None;
                 };
+                if !expected_file.starts_with(&test_crate) {
+                    expected_file = format!("{}.{}", test_crate, expected_file);
+                }
                 let expected_file = test_dir.join(expected_file);
 
                 let dumped_string = if let Some(after) = to_file {
-                    let before = self.get_mir_dump_dir().join(from_file);
-                    let after = self.get_mir_dump_dir().join(after);
-                    debug!(
-                        "comparing the contents of: {} with {}",
-                        before.display(),
-                        after.display()
-                    );
-                    let before = fs::read_to_string(before).unwrap();
-                    let after = fs::read_to_string(after).unwrap();
-                    let before = self.normalize_output(&before, &[]);
-                    let after = self.normalize_output(&after, &[]);
-                    let mut dumped_string = String::new();
-                    for result in diff::lines(&before, &after) {
-                        use std::fmt::Write;
-                        match result {
-                            diff::Result::Left(s) => writeln!(dumped_string, "- {}", s).unwrap(),
-                            diff::Result::Right(s) => writeln!(dumped_string, "+ {}", s).unwrap(),
-                            diff::Result::Both(s, _) => writeln!(dumped_string, "  {}", s).unwrap(),
-                        }
-                    }
-                    dumped_string
+                    self.diff_mir_files(from_file.into(), after.into())
                 } else {
                     let mut output_file = PathBuf::new();
                     output_file.push(self.get_mir_dump_dir());
@@ -3216,8 +3221,8 @@ impl<'test> TestCx<'test> {
                     let dumped_string = fs::read_to_string(&output_file).unwrap();
                     self.normalize_output(&dumped_string, &[])
                 };
+
                 if self.config.bless {
-                    let _ = std::fs::create_dir_all(&test_dir);
                     let _ = std::fs::remove_file(&expected_file);
                     std::fs::write(expected_file, dumped_string.as_bytes()).unwrap();
                 } else {
@@ -3229,7 +3234,7 @@ impl<'test> TestCx<'test> {
                     }
                     let expected_string = fs::read_to_string(&expected_file).unwrap();
                     if dumped_string != expected_string {
-                        print_diff(&expected_string, &dumped_string, 3);
+                        print!("{}", write_diff(&expected_string, &dumped_string, 3));
                         panic!(
                             "Actual MIR output differs from expected MIR output {}",
                             expected_file.display()
@@ -3238,6 +3243,26 @@ impl<'test> TestCx<'test> {
                 }
             }
         }
+    }
+
+    fn diff_mir_files(&self, before: PathBuf, after: PathBuf) -> String {
+        let before = self.get_mir_dump_dir().join(before);
+        let after = self.get_mir_dump_dir().join(after);
+        debug!("comparing the contents of: {} with {}", before.display(), after.display());
+        let before = fs::read_to_string(before).unwrap();
+        let after = fs::read_to_string(after).unwrap();
+        let before = self.normalize_output(&before, &[]);
+        let after = self.normalize_output(&after, &[]);
+        let mut dumped_string = String::new();
+        for result in diff::lines(&before, &after) {
+            use std::fmt::Write;
+            match result {
+                diff::Result::Left(s) => writeln!(dumped_string, "- {}", s).unwrap(),
+                diff::Result::Right(s) => writeln!(dumped_string, "+ {}", s).unwrap(),
+                diff::Result::Both(s, _) => writeln!(dumped_string, "  {}", s).unwrap(),
+            }
+        }
+        dumped_string
     }
 
     fn check_mir_test_timestamp(&self, test_name: &str, output_file: &Path) {
@@ -3434,7 +3459,7 @@ impl<'test> TestCx<'test> {
                 println!("normalized {}:\n{}\n", kind, actual);
             } else {
                 println!("diff of {}:\n", kind);
-                print_diff(expected, actual, 3);
+                print!("{}", write_diff(expected, actual, 3));
             }
         }
 

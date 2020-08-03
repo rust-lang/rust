@@ -9,7 +9,7 @@ crate mod macro_rules;
 crate mod quoted;
 crate mod transcribe;
 
-use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::token::{self, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::DelimSpan;
 
 use rustc_span::symbol::Ident;
@@ -84,7 +84,7 @@ enum TokenTree {
     /// e.g., `$var`
     MetaVar(Span, Ident),
     /// e.g., `$var:expr`. This is only used in the left hand side of MBE macros.
-    MetaVarDecl(Span, Ident /* name to bind */, Ident /* kind of nonterminal */),
+    MetaVarDecl(Span, Ident /* name to bind */, Option<NonterminalKind>),
 }
 
 impl TokenTree {

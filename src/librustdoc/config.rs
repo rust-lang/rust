@@ -4,6 +4,9 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::def_id::DefId;
+use rustc_middle::middle::privacy::AccessLevels;
 use rustc_session::config::{self, parse_crate_types_from_list, parse_externs, CrateType};
 use rustc_session::config::{
     build_codegen_options, build_debugging_options, get_cmd_lint_options, host_triple,
@@ -249,6 +252,20 @@ pub struct RenderOptions {
     pub document_hidden: bool,
 }
 
+/// Temporary storage for data obtained during `RustdocVisitor::clean()`.
+/// Later on moved into `CACHE_KEY`.
+#[derive(Default, Clone)]
+pub struct RenderInfo {
+    pub inlined: FxHashSet<DefId>,
+    pub external_paths: crate::core::ExternalPaths,
+    pub exact_paths: FxHashMap<DefId, Vec<String>>,
+    pub access_levels: AccessLevels<DefId>,
+    pub deref_trait_did: Option<DefId>,
+    pub deref_mut_trait_did: Option<DefId>,
+    pub owned_box_did: Option<DefId>,
+    pub output_format: Option<OutputFormat>,
+}
+
 impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
@@ -491,7 +508,7 @@ impl Options {
         let output_format = match matches.opt_str("output-format") {
             Some(s) => match OutputFormat::try_from(s.as_str()) {
                 Ok(o) => {
-                    if o.is_json() && !show_coverage {
+                    if o.is_json() && !(show_coverage || nightly_options::is_nightly_build()) {
                         diag.struct_err("json output format isn't supported for doc generation")
                             .emit();
                         return Err(1);
@@ -609,7 +626,9 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 
     for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            if *flag == "output-format" && matches.opt_present("show-coverage") {
+            if *flag == "output-format"
+                && (matches.opt_present("show-coverage") || nightly_options::is_nightly_build())
+            {
                 continue;
             }
             let mut err =

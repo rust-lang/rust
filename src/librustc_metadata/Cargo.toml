@@ -12,7 +12,7 @@ doctest = false
 [dependencies]
 flate2 = "1.0"
 libc = "0.2"
-log = "0.4"
+log = { package = "tracing", version = "0.1" }
 memmap = "0.7"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_middle = { path = "../librustc_middle" }

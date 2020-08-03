@@ -7,8 +7,8 @@ LL | /// Or maybe [Foo::f#hola].
 note: the lint level is defined here
   --> $DIR/intra-links-anchors.rs:1:9
    |
-LL | #![deny(intra_doc_link_resolution_failure)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: `hello#people#!` contains multiple anchors
   --> $DIR/intra-links-anchors.rs:31:28

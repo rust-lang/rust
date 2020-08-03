@@ -332,21 +332,25 @@ fn mir_validated(
     body.required_consts = required_consts;
 
     let promote_pass = promote_consts::PromoteTemps::default();
+    let promote: &[&dyn MirPass<'tcx>] = &[
+        // What we need to run borrowck etc.
+        &promote_pass,
+        &simplify::SimplifyCfg::new("qualify-consts"),
+    ];
+
+    let opt_coverage: &[&dyn MirPass<'tcx>] = if tcx.sess.opts.debugging_opts.instrument_coverage {
+        &[&instrument_coverage::InstrumentCoverage]
+    } else {
+        &[]
+    };
+
     run_passes(
         tcx,
         &mut body,
         InstanceDef::Item(def.to_global()),
         None,
         MirPhase::Validated,
-        &[&[
-            // What we need to run borrowck etc.
-            &promote_pass,
-            &simplify::SimplifyCfg::new("qualify-consts"),
-            // If the `instrument-coverage` option is enabled, analyze the CFG, identify each
-            // conditional branch, construct a coverage map to be passed to LLVM, and inject counters
-            // where needed.
-            &instrument_coverage::InstrumentCoverage,
-        ]],
+        &[promote, opt_coverage],
     );
 
     let promoted = promote_pass.promoted_fragments.into_inner();

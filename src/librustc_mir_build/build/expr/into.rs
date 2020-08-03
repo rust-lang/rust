@@ -2,7 +2,7 @@
 
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use crate::hair::*;
+use crate::thir::*;
 use rustc_ast::ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -320,23 +320,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::InlineAsm { template, operands, options, line_spans } => {
-                use crate::hair;
+                use crate::thir;
                 use rustc_middle::mir;
                 let operands = operands
                     .into_iter()
                     .map(|op| match op {
-                        hair::InlineAsmOperand::In { reg, expr } => mir::InlineAsmOperand::In {
+                        thir::InlineAsmOperand::In { reg, expr } => mir::InlineAsmOperand::In {
                             reg,
                             value: unpack!(block = this.as_local_operand(block, expr)),
                         },
-                        hair::InlineAsmOperand::Out { reg, late, expr } => {
+                        thir::InlineAsmOperand::Out { reg, late, expr } => {
                             mir::InlineAsmOperand::Out {
                                 reg,
                                 late,
                                 place: expr.map(|expr| unpack!(block = this.as_place(block, expr))),
                             }
                         }
-                        hair::InlineAsmOperand::InOut { reg, late, expr } => {
+                        thir::InlineAsmOperand::InOut { reg, late, expr } => {
                             let place = unpack!(block = this.as_place(block, expr));
                             mir::InlineAsmOperand::InOut {
                                 reg,
@@ -346,7 +346,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 out_place: Some(place),
                             }
                         }
-                        hair::InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
+                        thir::InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
                             mir::InlineAsmOperand::InOut {
                                 reg,
                                 late,
@@ -356,13 +356,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 }),
                             }
                         }
-                        hair::InlineAsmOperand::Const { expr } => mir::InlineAsmOperand::Const {
+                        thir::InlineAsmOperand::Const { expr } => mir::InlineAsmOperand::Const {
                             value: unpack!(block = this.as_local_operand(block, expr)),
                         },
-                        hair::InlineAsmOperand::SymFn { expr } => {
+                        thir::InlineAsmOperand::SymFn { expr } => {
                             mir::InlineAsmOperand::SymFn { value: box this.as_constant(expr) }
                         }
-                        hair::InlineAsmOperand::SymStatic { def_id } => {
+                        thir::InlineAsmOperand::SymStatic { def_id } => {
                             mir::InlineAsmOperand::SymStatic { def_id }
                         }
                     })

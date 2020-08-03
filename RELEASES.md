@@ -1,3 +1,25 @@
+Version 1.45.2 (2020-08-03)
+==========================
+
+* [Fix bindings in tuple struct patterns][74954]
+* [Fix track_caller integration with trait objects][74784]
+
+[74954]: https://github.com/rust-lang/rust/issues/74954
+[74784]: https://github.com/rust-lang/rust/issues/74784
+
+Version 1.45.1 (2020-07-30)
+==========================
+
+* [Fix const propagation with references.][73613]
+* [rustfmt accepts rustfmt_skip in cfg_attr again.][73078]
+* [Avoid spurious implicit region bound.][74509]
+* [Install clippy on x.py install][74457]
+
+[73613]: https://github.com/rust-lang/rust/pull/73613
+[73078]: https://github.com/rust-lang/rust/issues/73078
+[74509]: https://github.com/rust-lang/rust/pull/74509
+[74457]: https://github.com/rust-lang/rust/pull/74457
+
 Version 1.45.0 (2020-07-16)
 ==========================
 

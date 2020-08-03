@@ -271,7 +271,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         let key = self.tcx.def_key(impl_def_id);
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
 
-        let mut param_env = self.tcx.param_env(impl_def_id).with_reveal_all();
+        let mut param_env = self.tcx.param_env_reveal_all_normalized(impl_def_id);
         if !substs.is_empty() {
             param_env = param_env.subst(self.tcx, substs);
         }
@@ -636,9 +636,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                 }
                 GenericArgKind::Const(c) => {
                     self.push("K");
-                    // FIXME(const_generics) implement `ty::print::Print` on `ty::Const`.
-                    // self = c.print(self)?;
-                    self = self.print_const(c)?;
+                    self = c.print(self)?;
                 }
             }
         }

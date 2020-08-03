@@ -1,0 +1,17 @@
+warning: unused generator that must be used
+  --> $DIR/yield-in-initializer.rs:6:5
+   |
+LL | /     static || {
+LL | |         loop {
+LL | |             // Test that `opt` is not live across the yield, even when borrowed in a loop
+LL | |             // See https://github.com/rust-lang/rust/issues/52792
+...  |
+LL | |         }
+LL | |     };
+   | |______^
+   |
+   = note: `#[warn(unused_must_use)]` on by default
+   = note: generators are lazy and do nothing unless resumed
+
+warning: 1 warning emitted
+

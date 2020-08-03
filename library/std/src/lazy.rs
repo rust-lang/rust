@@ -451,7 +451,9 @@ unsafe impl<T, F: Send> Sync for SyncLazy<T, F> where SyncOnceCell<T>: Sync {}
 // auto-derived `Send` impl is OK.
 
 #[unstable(feature = "once_cell", issue = "74465")]
-impl<T, F: RefUnwindSafe> RefUnwindSafe for SyncLazy<T, F> where SyncOnceCell<T>: RefUnwindSafe {}
+impl<T, F: UnwindSafe> RefUnwindSafe for SyncLazy<T, F> where SyncOnceCell<T>: RefUnwindSafe {}
+#[unstable(feature = "once_cell", issue = "74465")]
+impl<T, F: UnwindSafe> UnwindSafe for SyncLazy<T, F> where SyncOnceCell<T>: UnwindSafe {}
 
 impl<T, F> SyncLazy<T, F> {
     /// Creates a new lazy value with the given initializing

@@ -14,7 +14,6 @@
 #![feature(never_type)]
 #![recursion_limit = "256"]
 
-extern crate env_logger;
 #[macro_use]
 extern crate lazy_static;
 extern crate rustc_ast;
@@ -63,19 +62,12 @@ mod config;
 mod core;
 mod docfs;
 mod doctree;
+#[macro_use]
+mod error;
 mod fold;
-pub mod html {
-    crate mod escape;
-    crate mod format;
-    crate mod highlight;
-    crate mod item_type;
-    crate mod layout;
-    pub mod markdown;
-    crate mod render;
-    crate mod sources;
-    crate mod static_files;
-    crate mod toc;
-}
+crate mod formats;
+pub mod html;
+mod json;
 mod markdown;
 mod passes;
 mod test;
@@ -85,7 +77,7 @@ mod visit_lib;
 
 struct Output {
     krate: clean::Crate,
-    renderinfo: html::render::RenderInfo,
+    renderinfo: config::RenderInfo,
     renderopts: config::RenderOptions,
 }
 
@@ -97,7 +89,8 @@ pub fn main() {
     };
     rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
-    env_logger::init_from_env("RUSTDOC_LOG");
+    rustc_driver::init_env_logger("RUSTDOC_LOG");
+
     let res = std::thread::Builder::new()
         .stack_size(thread_stack_size)
         .spawn(move || get_args().map(|args| main_args(&args)).unwrap_or(1))
@@ -458,6 +451,28 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> i32 {
     }
 }
 
+fn run_renderer<T: formats::FormatRenderer>(
+    krate: clean::Crate,
+    renderopts: config::RenderOptions,
+    render_info: config::RenderInfo,
+    diag: &rustc_errors::Handler,
+    edition: rustc_span::edition::Edition,
+) -> i32 {
+    match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition) {
+        Ok(_) => rustc_driver::EXIT_SUCCESS,
+        Err(e) => {
+            let mut msg = diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
+            let file = e.file.display().to_string();
+            if file.is_empty() {
+                msg.emit()
+            } else {
+                msg.note(&format!("failed to create or modify \"{}\"", file)).emit()
+            }
+            rustc_driver::EXIT_FAILURE
+        }
+    }
+}
+
 fn main_options(options: config::Options) -> i32 {
     let diag = core::new_handler(options.error_format, None, &options.debugging_options);
 
@@ -488,6 +503,7 @@ fn main_options(options: config::Options) -> i32 {
     let result = rustc_driver::catch_fatal_errors(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
+        let output_format = options.output_format;
         let (mut krate, renderinfo, renderopts) = core::run_core(options);
 
         info!("finished with rustc");
@@ -510,13 +526,12 @@ fn main_options(options: config::Options) -> i32 {
         info!("going to format");
         let (error_format, edition, debugging_options) = diag_opts;
         let diag = core::new_handler(error_format, None, &debugging_options);
-        match html::render::run(krate, renderopts, renderinfo, &diag, edition) {
-            Ok(_) => rustc_driver::EXIT_SUCCESS,
-            Err(e) => {
-                diag.struct_err(&format!("couldn't generate documentation: {}", e.error))
-                    .note(&format!("failed to create or modify \"{}\"", e.file.display()))
-                    .emit();
-                rustc_driver::EXIT_FAILURE
+        match output_format {
+            None | Some(config::OutputFormat::Html) => {
+                run_renderer::<html::render::Context>(krate, renderopts, renderinfo, &diag, edition)
+            }
+            Some(config::OutputFormat::Json) => {
+                run_renderer::<json::JsonRenderer>(krate, renderopts, renderinfo, &diag, edition)
             }
         }
     });

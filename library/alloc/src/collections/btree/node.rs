@@ -191,8 +191,9 @@ impl<K, V> Root<K, V> {
     }
 
     /// Adds a new internal node with a single edge, pointing to the previous root, and make that
-    /// new node the root. This increases the height by 1 and is the opposite of `pop_level`.
-    pub fn push_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
+    /// new node the root. This increases the height by 1 and is the opposite of
+    /// `pop_internal_level`.
+    pub fn push_internal_level(&mut self) -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         let mut new_node = Box::new(unsafe { InternalNode::new() });
         new_node.edges[0].write(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
 
@@ -213,11 +214,12 @@ impl<K, V> Root<K, V> {
         ret
     }
 
-    /// Removes the root node, using its first child as the new root. This cannot be called when
-    /// the tree consists only of a leaf node. As it is intended only to be called when the root
-    /// has only one edge, no cleanup is done on any of the other children of the root.
-    /// This decreases the height by 1 and is the opposite of `push_level`.
-    pub fn pop_level(&mut self) {
+    /// Removes the internal root node, using its first child as the new root.
+    /// As it is intended only to be called when the root has only one child,
+    /// no cleanup is done on any of the other children of the root.
+    /// This decreases the height by 1 and is the opposite of `push_internal_level`.
+    /// Panics if there is no internal level, i.e. if the root is a leaf.
+    pub fn pop_internal_level(&mut self) {
         assert!(self.height > 0);
 
         let top = self.node.ptr;
@@ -303,12 +305,6 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// leaf level.
     pub fn height(&self) -> usize {
         self.height
-    }
-
-    /// Removes any static information about whether this node is a `Leaf` or an
-    /// `Internal` node.
-    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
-        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
     }
 
     /// Temporarily takes out another, immutable reference to the same node.
@@ -465,12 +461,6 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
 
     fn into_val_slice(self) -> &'a [V] {
         unsafe { slice::from_raw_parts(MaybeUninit::first_ptr(&self.as_leaf().vals), self.len()) }
-    }
-
-    fn into_slices(self) -> (&'a [K], &'a [V]) {
-        // SAFETY: equivalent to reborrow() except not requiring Type: 'a
-        let k = unsafe { ptr::read(&self) };
-        (k.into_key_slice(), self.into_val_slice())
     }
 }
 
@@ -980,10 +970,9 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeType>, marker::KV> {
     pub fn into_kv(self) -> (&'a K, &'a V) {
-        unsafe {
-            let (keys, vals) = self.node.into_slices();
-            (keys.get_unchecked(self.idx), vals.get_unchecked(self.idx))
-        }
+        let keys = self.node.into_key_slice();
+        let vals = self.node.into_val_slice();
+        unsafe { (keys.get_unchecked(self.idx), vals.get_unchecked(self.idx)) }
     }
 }
 
@@ -1359,6 +1348,20 @@ unsafe fn move_edges<K, V>(
     unsafe {
         ptr::copy_nonoverlapping(source_ptr.add(source_offset), dest_ptr.add(dest_offset), count);
         dest.correct_childrens_parent_links(dest_offset, dest_offset + count);
+    }
+}
+
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Leaf> {
+    /// Removes any static information asserting that this node is a `Leaf` node.
+    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
+    }
+}
+
+impl<BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Internal> {
+    /// Removes any static information asserting that this node is an `Internal` node.
+    pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+        NodeRef { height: self.height, node: self.node, root: self.root, _marker: PhantomData }
     }
 }
 

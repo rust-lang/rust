@@ -341,7 +341,10 @@
 # Debuginfo for tests run with compiletest is not controlled by this option
 # and needs to be enabled separately with `debuginfo-level-tests`.
 #
-# Defaults to 2 if debug is true
+# Note that debuginfo-level = 2 generates several gigabytes of debuginfo
+# and will slow down the linking process significantly.
+#
+# Defaults to 1 if debug is true
 #debuginfo-level = 0
 
 # Debuginfo level for the compiler.
@@ -453,8 +456,7 @@
 # instead of LLVM's default of 100.
 #thin-lto-import-instr-limit = 100
 
-# Map all debuginfo paths for libstd and crates to `/rust/$sha/$crate/...`,
-# generally only set for releases
+# Map debuginfo paths to `/rust/$sha/...`, generally only set for releases
 #remap-debuginfo = false
 
 # Link the compiler against `jemalloc`, where on Linux and OSX it should

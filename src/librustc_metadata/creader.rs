@@ -13,7 +13,7 @@ use rustc_expand::base::SyntaxExtension;
 use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
-use rustc_middle::middle::cstore::{CrateSource, DepKind, ExternCrate};
+use rustc_middle::middle::cstore::{CrateDepKind, CrateSource, ExternCrate};
 use rustc_middle::middle::cstore::{ExternCrateSource, MetadataLoaderDyn};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ExternLocation};
@@ -26,7 +26,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
-use log::{debug, info, log_enabled};
+use log::{debug, info};
 use proc_macro::bridge::client::ProcMacro;
 use std::path::Path;
 use std::{cmp, env, fs};
@@ -82,24 +82,36 @@ impl std::ops::Deref for CrateMetadataRef<'_> {
     }
 }
 
-fn dump_crates(cstore: &CStore) {
-    info!("resolved crates:");
-    cstore.iter_crate_data(|cnum, data| {
-        info!("  name: {}", data.name());
-        info!("  cnum: {}", cnum);
-        info!("  hash: {}", data.hash());
-        info!("  reqd: {:?}", data.dep_kind());
-        let CrateSource { dylib, rlib, rmeta } = data.source();
-        if let Some(dylib) = dylib {
-            info!("  dylib: {}", dylib.0.display());
-        }
-        if let Some(rlib) = rlib {
-            info!("   rlib: {}", rlib.0.display());
-        }
-        if let Some(rmeta) = rmeta {
-            info!("   rmeta: {}", rmeta.0.display());
-        }
-    });
+struct CrateDump<'a>(&'a CStore);
+
+impl<'a> std::fmt::Debug for CrateDump<'a> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(fmt, "resolved crates:")?;
+        // `iter_crate_data` does not allow returning values. Thus we use a mutable variable here
+        // that aggregates the value (and any errors that could happen).
+        let mut res = Ok(());
+        self.0.iter_crate_data(|cnum, data| {
+            res = res.and(
+                try {
+                    writeln!(fmt, "  name: {}", data.name())?;
+                    writeln!(fmt, "  cnum: {}", cnum)?;
+                    writeln!(fmt, "  hash: {}", data.hash())?;
+                    writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
+                    let CrateSource { dylib, rlib, rmeta } = data.source();
+                    if let Some(dylib) = dylib {
+                        writeln!(fmt, "  dylib: {}", dylib.0.display())?;
+                    }
+                    if let Some(rlib) = rlib {
+                        writeln!(fmt, "   rlib: {}", rlib.0.display())?;
+                    }
+                    if let Some(rmeta) = rmeta {
+                        writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
+                    }
+                },
+            );
+        });
+        res
+    }
 }
 
 impl CStore {
@@ -236,9 +248,9 @@ impl<'a> CrateLoader<'a> {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 if let Some(mut files) = entry.files() {
                     if files.any(|l| {
-                        let l = fs::canonicalize(l).ok();
-                        source.dylib.as_ref().map(|p| &p.0) == l.as_ref()
-                            || source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
+                        let l = fs::canonicalize(l).unwrap_or(l.clone().into());
+                        source.dylib.as_ref().map(|p| &p.0) == Some(&l)
+                            || source.rlib.as_ref().map(|p| &p.0) == Some(&l)
                     }) {
                         ret = Some(cnum);
                     }
@@ -294,7 +306,7 @@ impl<'a> CrateLoader<'a> {
         host_lib: Option<Library>,
         root: Option<&CratePaths>,
         lib: Library,
-        dep_kind: DepKind,
+        dep_kind: CrateDepKind,
         name: Symbol,
     ) -> Result<CrateNum, CrateError> {
         let _prof_timer = self.sess.prof.generic_activity("metadata_register_crate");
@@ -425,7 +437,7 @@ impl<'a> CrateLoader<'a> {
         &'b mut self,
         name: Symbol,
         span: Span,
-        dep_kind: DepKind,
+        dep_kind: CrateDepKind,
         dep: Option<(&'b CratePaths, &'b CrateDep)>,
     ) -> CrateNum {
         if dep.is_none() {
@@ -438,7 +450,7 @@ impl<'a> CrateLoader<'a> {
     fn maybe_resolve_crate<'b>(
         &'b mut self,
         name: Symbol,
-        mut dep_kind: DepKind,
+        mut dep_kind: CrateDepKind,
         dep: Option<(&'b CratePaths, &'b CrateDep)>,
     ) -> Result<CrateNum, CrateError> {
         info!("resolving crate `{}`", name);
@@ -475,7 +487,7 @@ impl<'a> CrateLoader<'a> {
             match self.load(&mut locator)? {
                 Some(res) => (res, None),
                 None => {
-                    dep_kind = DepKind::MacrosOnly;
+                    dep_kind = CrateDepKind::MacrosOnly;
                     match self.load_proc_macro(&mut locator, path_kind)? {
                         Some(res) => res,
                         None => return Err(locator.into_error()),
@@ -488,7 +500,7 @@ impl<'a> CrateLoader<'a> {
             (LoadResult::Previous(cnum), None) => {
                 let data = self.cstore.get_crate_data(cnum);
                 if data.is_proc_macro_crate() {
-                    dep_kind = DepKind::MacrosOnly;
+                    dep_kind = CrateDepKind::MacrosOnly;
                 }
                 data.update_dep_kind(|data_dep_kind| cmp::max(data_dep_kind, dep_kind));
                 Ok(cnum)
@@ -548,7 +560,7 @@ impl<'a> CrateLoader<'a> {
         crate_root: &CrateRoot<'_>,
         metadata: &MetadataBlob,
         krate: CrateNum,
-        dep_kind: DepKind,
+        dep_kind: CrateDepKind,
     ) -> Result<CrateNumMap, CrateError> {
         debug!("resolving deps of external crate");
         if crate_root.is_proc_macro_crate() {
@@ -567,7 +579,7 @@ impl<'a> CrateLoader<'a> {
                 dep.name, dep.hash, dep.extra_filename
             );
             let dep_kind = match dep_kind {
-                DepKind::MacrosOnly => DepKind::MacrosOnly,
+                CrateDepKind::MacrosOnly => CrateDepKind::MacrosOnly,
                 _ => dep.kind,
             };
             let cnum = self.maybe_resolve_crate(dep.name, dep_kind, Some((root, &dep)))?;
@@ -634,7 +646,7 @@ impl<'a> CrateLoader<'a> {
                 self.inject_dependency_if(cnum, "a panic runtime", &|data| {
                     data.needs_panic_runtime()
                 });
-                runtime_found = runtime_found || data.dep_kind() == DepKind::Explicit;
+                runtime_found = runtime_found || data.dep_kind() == CrateDepKind::Explicit;
             }
         });
 
@@ -663,7 +675,7 @@ impl<'a> CrateLoader<'a> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let cnum = self.resolve_crate(name, DUMMY_SP, DepKind::Implicit, None);
+        let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, None);
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
@@ -693,7 +705,7 @@ impl<'a> CrateLoader<'a> {
             info!("loading profiler");
 
             let name = sym::profiler_builtins;
-            let cnum = self.resolve_crate(name, DUMMY_SP, DepKind::Implicit, None);
+            let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, None);
             let data = self.cstore.get_crate_data(cnum);
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
@@ -864,9 +876,7 @@ impl<'a> CrateLoader<'a> {
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 
-        if log_enabled!(log::Level::Info) {
-            dump_crates(&self.cstore);
-        }
+        info!("{:?}", CrateDump(&self.cstore));
 
         self.report_unused_deps(krate);
     }
@@ -891,9 +901,9 @@ impl<'a> CrateLoader<'a> {
                     None => item.ident.name,
                 };
                 let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
-                    DepKind::MacrosOnly
+                    CrateDepKind::MacrosOnly
                 } else {
-                    DepKind::Explicit
+                    CrateDepKind::Explicit
                 };
 
                 let cnum = self.resolve_crate(name, item.span, dep_kind, None);
@@ -915,7 +925,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> CrateNum {
-        let cnum = self.resolve_crate(name, span, DepKind::Explicit, None);
+        let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit, None);
 
         self.update_extern_crate(
             cnum,
@@ -932,6 +942,6 @@ impl<'a> CrateLoader<'a> {
     }
 
     pub fn maybe_process_path_extern(&mut self, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(name, DepKind::Explicit, None).ok()
+        self.maybe_resolve_crate(name, CrateDepKind::Explicit, None).ok()
     }
 }

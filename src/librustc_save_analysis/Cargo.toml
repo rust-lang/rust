@@ -9,7 +9,7 @@ name = "rustc_save_analysis"
 path = "lib.rs"
 
 [dependencies]
-log = "0.4"
+log = { package = "tracing", version = "0.1" }
 rustc_middle = { path = "../librustc_middle" }
 rustc_ast = { path = "../librustc_ast" }
 rustc_ast_pretty = { path = "../librustc_ast_pretty" }

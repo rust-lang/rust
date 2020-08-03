@@ -212,7 +212,6 @@
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
-#![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 // Tell the compiler to link to either panic_abort or panic_unwind
@@ -510,6 +509,10 @@ mod panicking;
 // The runtime entry point and a few unstable public functions used by the
 // compiler
 pub mod rt;
+
+#[path = "../../backtrace/src/lib.rs"]
+#[allow(dead_code, unused_attributes)]
+mod backtrace_rs;
 
 // Pull in the `std_detect` crate directly into libstd. The contents of
 // `std_detect` are in a different repository: rust-lang/stdarch.

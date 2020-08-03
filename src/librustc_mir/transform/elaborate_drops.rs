@@ -25,7 +25,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
         debug!("elaborate_drops({:?} @ {:?})", src, body.span);
 
         let def_id = src.def_id();
-        let param_env = tcx.param_env(src.def_id()).with_reveal_all();
+        let param_env = tcx.param_env_reveal_all_normalized(src.def_id());
         let move_data = match MoveData::gather_moves(body, tcx, param_env) {
             Ok(move_data) => move_data,
             Err((move_data, _)) => {

@@ -1,7 +1,7 @@
 use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use crate::hair::*;
+use crate::thir::*;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_session::lint::builtin::UNSAFE_OP_IN_UNSAFE_FN;
@@ -176,7 +176,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let tail_result_is_ignored =
                 destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
             let span = match expr {
-                ExprRef::Hair(expr) => expr.span,
+                ExprRef::Thir(expr) => expr.span,
                 ExprRef::Mirror(ref expr) => expr.span,
             };
             this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored, span });
@@ -235,11 +235,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .push_unsafe_count
                     .checked_sub(1)
                     .unwrap_or_else(|| span_bug!(span, "unsafe count underflow"));
-                if self.push_unsafe_count == 0 {
-                    Some(self.unpushed_unsafe)
-                } else {
-                    None
-                }
+                if self.push_unsafe_count == 0 { Some(self.unpushed_unsafe) } else { None }
             }
         };
 

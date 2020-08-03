@@ -12,11 +12,13 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{Abi, LayoutOf as _, Primitive, Size};
 
-use super::{CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy};
+use super::{
+    util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
+};
 
 mod caller_location;
 mod type_name;
@@ -54,9 +56,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
     let name = tcx.item_name(def_id);
     Ok(match name {
         sym::type_name => {
-            if tp_ty.needs_subst() {
-                throw_inval!(TooGeneric);
-            }
+            ensure_monomorphic_enough(tcx, tp_ty)?;
             let alloc = type_name::alloc_type_name(tcx, tp_ty);
             ConstValue::Slice { data: alloc, start: 0, end: alloc.len() }
         }
@@ -72,9 +72,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
             ConstValue::from_machine_usize(n, &tcx)
         }
         sym::type_id => {
-            if tp_ty.needs_subst() {
-                throw_inval!(TooGeneric);
-            }
+            ensure_monomorphic_enough(tcx, tp_ty)?;
             ConstValue::from_u64(tcx.type_id_hash(tp_ty))
         }
         sym::variant_count => {
@@ -118,6 +116,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let span = self.find_closest_untracked_caller_location();
                 let location = self.alloc_caller_location_for_span(span);
                 self.write_scalar(location.ptr, dest)?;
+            }
+
+            sym::min_align_of_val | sym::size_of_val => {
+                let place = self.deref_operand(args[0])?;
+                let (size, align) = self
+                    .size_and_align_of(place.meta, place.layout)?
+                    .ok_or_else(|| err_unsup_format!("`extern type` does not have known layout"))?;
+
+                let result = match intrinsic_name {
+                    sym::min_align_of_val => align.bytes(),
+                    sym::size_of_val => size.bytes(),
+                    _ => bug!(),
+                };
+
+                self.write_scalar(Scalar::from_machine_usize(result, self), dest)?;
             }
 
             sym::min_align_of
@@ -430,7 +443,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => return Ok(false),
         }
 
-        self.dump_place(*dest);
+        trace!("{:?}", self.dump_place(*dest));
         self.go_to_block(ret);
         Ok(true)
     }

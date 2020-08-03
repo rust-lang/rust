@@ -2,7 +2,7 @@
 
 use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::hair::*;
+use crate::thir::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_middle::middle::region;
@@ -67,12 +67,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ExprKind::StaticRef { def_id, .. } => {
                     assert!(!this.hir.tcx().is_thread_local_static(def_id));
                     local_decl.internal = true;
-                    local_decl.local_info = Some(box LocalInfo::StaticRef { def_id, is_thread_local: false });
+                    local_decl.local_info =
+                        Some(box LocalInfo::StaticRef { def_id, is_thread_local: false });
                 }
                 ExprKind::ThreadLocalRef(def_id) => {
                     assert!(this.hir.tcx().is_thread_local_static(def_id));
                     local_decl.internal = true;
-                    local_decl.local_info = Some(box LocalInfo::StaticRef { def_id, is_thread_local: true });
+                    local_decl.local_info =
+                        Some(box LocalInfo::StaticRef { def_id, is_thread_local: true });
                 }
                 _ => {}
             }

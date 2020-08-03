@@ -9,7 +9,7 @@ use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast::ast;
-use rustc_ast::token::{self, NtTT, Token, TokenKind::*};
+use rustc_ast::token::{self, NonterminalKind, NtTT, Token, TokenKind::*};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
@@ -21,17 +21,13 @@ use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent, Symbol};
+use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
 
 use log::debug;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
-
-const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
-                                        `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
-                                        `literal`, `path`, `meta`, `tt`, `item` and `vis`";
 
 crate struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -403,7 +399,7 @@ pub fn compile_declarative_macro(
     let diag = &sess.span_diagnostic;
     let lhs_nm = Ident::new(sym::lhs, def.span);
     let rhs_nm = Ident::new(sym::rhs, def.span);
-    let tt_spec = Ident::new(sym::tt, def.span);
+    let tt_spec = Some(NonterminalKind::TT);
 
     // Parse the macro_rules! invocation
     let (macro_rules, body) = match &def.kind {
@@ -571,7 +567,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             TokenTree::Sequence(span, ref seq) => {
                 if seq.separator.is_none()
                     && seq.tts.iter().all(|seq_tt| match *seq_tt {
-                        TokenTree::MetaVarDecl(_, _, id) => id.name == sym::vis,
+                        TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Vis)) => true,
                         TokenTree::Sequence(_, ref sub_seq) => {
                             sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
                                 || sub_seq.kleene.op == mbe::KleeneOp::ZeroOrOne
@@ -890,21 +886,7 @@ fn check_matcher_core(
         // of NT tokens that might end the sequence `... token`.
         match *token {
             TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
-                let can_be_followed_by_any;
-                if let Err(bad_frag) = has_legal_fragment_specifier(sess, features, attrs, token) {
-                    let msg = format!("invalid fragment specifier `{}`", bad_frag);
-                    sess.span_diagnostic
-                        .struct_span_err(token.span(), &msg)
-                        .help(VALID_FRAGMENT_NAMES_MSG)
-                        .emit();
-                    // (This eliminates false positives and duplicates
-                    // from error messages.)
-                    can_be_followed_by_any = true;
-                } else {
-                    can_be_followed_by_any = token_can_be_followed_by_any(token);
-                }
-
-                if can_be_followed_by_any {
+                if token_can_be_followed_by_any(token) {
                     // don't need to track tokens that work with any,
                     last.replace_with_irrelevant();
                     // ... and don't need to check tokens that can be
@@ -967,19 +949,10 @@ fn check_matcher_core(
 
         // Now `last` holds the complete set of NT tokens that could
         // end the sequence before SUFFIX. Check that every one works with `suffix`.
-        'each_last: for token in &last.tokens {
-            if let TokenTree::MetaVarDecl(_, name, frag_spec) = *token {
+        for token in &last.tokens {
+            if let TokenTree::MetaVarDecl(_, name, Some(kind)) = *token {
                 for next_token in &suffix_first.tokens {
-                    match is_in_follow(next_token, frag_spec.name) {
-                        IsInFollow::Invalid(msg, help) => {
-                            sess.span_diagnostic
-                                .struct_span_err(next_token.span(), &msg)
-                                .help(help)
-                                .emit();
-                            // don't bother reporting every source of
-                            // conflict for a particular element of `last`.
-                            continue 'each_last;
-                        }
+                    match is_in_follow(next_token, kind) {
                         IsInFollow::Yes => {}
                         IsInFollow::No(possible) => {
                             let may_be = if last.tokens.len() == 1 && suffix_first.tokens.len() == 1
@@ -996,22 +969,19 @@ fn check_matcher_core(
                                     "`${name}:{frag}` {may_be} followed by `{next}`, which \
                                      is not allowed for `{frag}` fragments",
                                     name = name,
-                                    frag = frag_spec,
+                                    frag = kind,
                                     next = quoted_tt_to_string(next_token),
                                     may_be = may_be
                                 ),
                             );
-                            err.span_label(
-                                sp,
-                                format!("not allowed after `{}` fragments", frag_spec),
-                            );
+                            err.span_label(sp, format!("not allowed after `{}` fragments", kind));
                             let msg = "allowed there are: ";
                             match possible {
                                 &[] => {}
                                 &[t] => {
                                     err.note(&format!(
                                         "only {} is allowed after `{}` fragments",
-                                        t, frag_spec,
+                                        t, kind,
                                     ));
                                 }
                                 ts => {
@@ -1038,8 +1008,8 @@ fn check_matcher_core(
 }
 
 fn token_can_be_followed_by_any(tok: &mbe::TokenTree) -> bool {
-    if let mbe::TokenTree::MetaVarDecl(_, _, frag_spec) = *tok {
-        frag_can_be_followed_by_any(frag_spec.name)
+    if let mbe::TokenTree::MetaVarDecl(_, _, Some(kind)) = *tok {
+        frag_can_be_followed_by_any(kind)
     } else {
         // (Non NT's can always be followed by anything in matchers.)
         true
@@ -1054,26 +1024,23 @@ fn token_can_be_followed_by_any(tok: &mbe::TokenTree) -> bool {
 /// specifier which consumes at most one token tree can be followed by
 /// a fragment specifier (indeed, these fragments can be followed by
 /// ANYTHING without fear of future compatibility hazards).
-fn frag_can_be_followed_by_any(frag: Symbol) -> bool {
-    match frag {
-        sym::item     | // always terminated by `}` or `;`
-        sym::block    | // exactly one token tree
-        sym::ident    | // exactly one token tree
-        sym::literal  | // exactly one token tree
-        sym::meta     | // exactly one token tree
-        sym::lifetime | // exactly one token tree
-        sym::tt =>   // exactly one token tree
-            true,
+fn frag_can_be_followed_by_any(kind: NonterminalKind) -> bool {
+    match kind {
+        NonterminalKind::Item           // always terminated by `}` or `;`
+        | NonterminalKind::Block        // exactly one token tree
+        | NonterminalKind::Ident        // exactly one token tree
+        | NonterminalKind::Literal      // exactly one token tree
+        | NonterminalKind::Meta         // exactly one token tree
+        | NonterminalKind::Lifetime     // exactly one token tree
+        | NonterminalKind::TT => true,  // exactly one token tree
 
-        _ =>
-            false,
+        _ => false,
     }
 }
 
 enum IsInFollow {
     Yes,
     No(&'static [&'static str]),
-    Invalid(String, &'static str),
 }
 
 /// Returns `true` if `frag` can legally be followed by the token `tok`. For
@@ -1084,7 +1051,7 @@ enum IsInFollow {
 /// break macros that were relying on that binary operator as a
 /// separator.
 // when changing this do not forget to update doc/book/macros.md!
-fn is_in_follow(tok: &mbe::TokenTree, frag: Symbol) -> IsInFollow {
+fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
     use mbe::TokenTree;
 
     if let TokenTree::Token(Token { kind: token::CloseDelim(_), .. }) = *tok {
@@ -1092,18 +1059,18 @@ fn is_in_follow(tok: &mbe::TokenTree, frag: Symbol) -> IsInFollow {
         // iow, we always require that `(` and `)` match, etc.
         IsInFollow::Yes
     } else {
-        match frag {
-            sym::item => {
+        match kind {
+            NonterminalKind::Item => {
                 // since items *must* be followed by either a `;` or a `}`, we can
                 // accept anything after them
                 IsInFollow::Yes
             }
-            sym::block => {
+            NonterminalKind::Block => {
                 // anything can follow block, the braces provide an easy boundary to
                 // maintain
                 IsInFollow::Yes
             }
-            sym::stmt | sym::expr => {
+            NonterminalKind::Stmt | NonterminalKind::Expr => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`;`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1113,7 +1080,7 @@ fn is_in_follow(tok: &mbe::TokenTree, frag: Symbol) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            sym::pat => {
+            NonterminalKind::Pat => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1124,7 +1091,7 @@ fn is_in_follow(tok: &mbe::TokenTree, frag: Symbol) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            sym::path | sym::ty => {
+            NonterminalKind::Path | NonterminalKind::Ty => {
                 const TOKENS: &[&str] = &[
                     "`{`", "`[`", "`=>`", "`,`", "`>`", "`=`", "`:`", "`;`", "`|`", "`as`",
                     "`where`",
@@ -1146,26 +1113,24 @@ fn is_in_follow(tok: &mbe::TokenTree, frag: Symbol) -> IsInFollow {
                         }
                         _ => IsInFollow::No(TOKENS),
                     },
-                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::block => {
-                        IsInFollow::Yes
-                    }
+                    TokenTree::MetaVarDecl(_, _, Some(NonterminalKind::Block)) => IsInFollow::Yes,
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            sym::ident | sym::lifetime => {
+            NonterminalKind::Ident | NonterminalKind::Lifetime => {
                 // being a single token, idents and lifetimes are harmless
                 IsInFollow::Yes
             }
-            sym::literal => {
+            NonterminalKind::Literal => {
                 // literals may be of a single token, or two tokens (negative numbers)
                 IsInFollow::Yes
             }
-            sym::meta | sym::tt => {
+            NonterminalKind::Meta | NonterminalKind::TT => {
                 // being either a single token or a delimited sequence, tt is
                 // harmless
                 IsInFollow::Yes
             }
-            sym::vis => {
+            NonterminalKind::Vis => {
                 // Explicitly disallow `priv`, on the off chance it comes back.
                 const TOKENS: &[&str] = &["`,`", "an ident", "a type"];
                 match tok {
@@ -1180,70 +1145,15 @@ fn is_in_follow(tok: &mbe::TokenTree, frag: Symbol) -> IsInFollow {
                             }
                         }
                     },
-                    TokenTree::MetaVarDecl(_, _, frag)
-                        if frag.name == sym::ident
-                            || frag.name == sym::ty
-                            || frag.name == sym::path =>
-                    {
-                        IsInFollow::Yes
-                    }
+                    TokenTree::MetaVarDecl(
+                        _,
+                        _,
+                        Some(NonterminalKind::Ident | NonterminalKind::Ty | NonterminalKind::Path),
+                    ) => IsInFollow::Yes,
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            kw::Invalid => IsInFollow::Yes,
-            _ => IsInFollow::Invalid(
-                format!("invalid fragment specifier `{}`", frag),
-                VALID_FRAGMENT_NAMES_MSG,
-            ),
         }
-    }
-}
-
-fn has_legal_fragment_specifier(
-    sess: &ParseSess,
-    features: &Features,
-    attrs: &[ast::Attribute],
-    tok: &mbe::TokenTree,
-) -> Result<(), String> {
-    debug!("has_legal_fragment_specifier({:?})", tok);
-    if let mbe::TokenTree::MetaVarDecl(_, _, ref frag_spec) = *tok {
-        let frag_span = tok.span();
-        if !is_legal_fragment_specifier(sess, features, attrs, frag_spec.name, frag_span) {
-            return Err(frag_spec.to_string());
-        }
-    }
-    Ok(())
-}
-
-fn is_legal_fragment_specifier(
-    _sess: &ParseSess,
-    _features: &Features,
-    _attrs: &[ast::Attribute],
-    frag_name: Symbol,
-    _frag_span: Span,
-) -> bool {
-    /*
-     * If new fragment specifiers are invented in nightly, `_sess`,
-     * `_features`, `_attrs`, and `_frag_span` will be useful here
-     * for checking against feature gates. See past versions of
-     * this function.
-     */
-    match frag_name {
-        sym::item
-        | sym::block
-        | sym::stmt
-        | sym::expr
-        | sym::pat
-        | sym::lifetime
-        | sym::path
-        | sym::ty
-        | sym::ident
-        | sym::meta
-        | sym::tt
-        | sym::vis
-        | sym::literal
-        | kw::Invalid => true,
-        _ => false,
     }
 }
 
@@ -1251,7 +1161,8 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     match *tt {
         mbe::TokenTree::Token(ref token) => pprust::token_to_string(&token),
         mbe::TokenTree::MetaVar(_, name) => format!("${}", name),
-        mbe::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
+        mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${}:{}", name, kind),
+        mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${}:", name),
         _ => panic!(
             "unexpected mbe::TokenTree::{{Sequence or Delimited}} \
              in follow set checker"

@@ -17,7 +17,7 @@ struct Bar(i32);
 
 fn take<T>(_x: T) {}
 
-// EMIT_MIR rustc.main-{{closure}}.StateTransform.before.mir
+// EMIT_MIR generator_storage_dead_unwind.main-{{closure}}.StateTransform.before.mir
 fn main() {
     let _gen = || {
         let a = Foo(5);

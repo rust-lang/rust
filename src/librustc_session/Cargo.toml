@@ -11,7 +11,7 @@ path = "lib.rs"
 [dependencies]
 bitflags = "1.2.1"
 getopts = "0.2"
-log = "0.4"
+log = { package = "tracing", version = "0.1" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_target = { path = "../librustc_target" }

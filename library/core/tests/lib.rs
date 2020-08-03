@@ -1,4 +1,5 @@
 #![feature(alloc_layout_extra)]
+#![feature(array_chunks)]
 #![feature(bool_to_option)]
 #![feature(bound_cloned)]
 #![feature(box_syntax)]

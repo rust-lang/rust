@@ -10,7 +10,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
-use log::debug;
+use tracing::debug;
 
 macro_rules! gate_feature_fn {
     ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{

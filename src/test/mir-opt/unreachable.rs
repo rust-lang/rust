@@ -4,7 +4,7 @@ fn empty() -> Option<Empty> {
     None
 }
 
-// EMIT_MIR rustc.main.UnreachablePropagation.diff
+// EMIT_MIR unreachable.main.UnreachablePropagation.diff
 fn main() {
     if let Some(_x) = empty() {
         let mut _y;

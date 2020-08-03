@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-pub use self::fold::{TypeFoldable, TypeVisitor};
+pub use self::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
@@ -1874,9 +1874,15 @@ impl<'tcx> ParamEnv<'tcx> {
     /// the desired behavior during codegen and certain other special
     /// contexts; normally though we want to use `Reveal::UserFacing`,
     /// which is the default.
-    pub fn with_reveal_all(mut self) -> Self {
-        self.packed_data |= 1;
-        self
+    /// All opaque types in the caller_bounds of the `ParamEnv`
+    /// will be normalized to their underlying types.
+    /// See PR #65989 and issue #65918 for more details
+    pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> Self {
+        if self.packed_data & 1 == 1 {
+            return self;
+        }
+
+        ParamEnv::new(tcx.normalize_opaque_types(self.caller_bounds()), Reveal::All, self.def_id)
     }
 
     /// Returns this same environment but with no caller bounds.
@@ -2046,7 +2052,6 @@ impl<'tcx> VariantDef {
     /// If someone speeds up attribute loading to not be a performance concern, they can
     /// remove this hack and use the constructor `DefId` everywhere.
     pub fn new(
-        tcx: TyCtxt<'tcx>,
         ident: Ident,
         variant_did: Option<DefId>,
         ctor_def_id: Option<DefId>,
@@ -2056,6 +2061,7 @@ impl<'tcx> VariantDef {
         adt_kind: AdtKind,
         parent_did: DefId,
         recovered: bool,
+        is_field_list_non_exhaustive: bool,
     ) -> Self {
         debug!(
             "VariantDef::new(ident = {:?}, variant_did = {:?}, ctor_def_id = {:?}, discr = {:?},
@@ -2064,14 +2070,8 @@ impl<'tcx> VariantDef {
         );
 
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
-        if adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive) {
-            debug!("found non-exhaustive field list for {:?}", parent_did);
-            flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
-        } else if let Some(variant_did) = variant_did {
-            if tcx.has_attr(variant_did, sym::non_exhaustive) {
-                debug!("found non-exhaustive field list for {:?}", variant_did);
-                flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
-            }
+        if is_field_list_non_exhaustive {
+            flags |= VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
         }
 
         VariantDef {
@@ -3122,6 +3122,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     context::provide(providers);
     erase_regions::provide(providers);
     layout::provide(providers);
+    util::provide(providers);
     super::util::bug::provide(providers);
     *providers = ty::query::Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,

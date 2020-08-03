@@ -82,8 +82,10 @@ impl LayoutTest<'tcx> {
                         }
 
                         sym::debug => {
-                            let normalized_ty =
-                                self.tcx.normalize_erasing_regions(param_env.with_reveal_all(), ty);
+                            let normalized_ty = self.tcx.normalize_erasing_regions(
+                                param_env.with_reveal_all_normalized(self.tcx),
+                                ty,
+                            );
                             self.tcx.sess.span_err(
                                 item.span,
                                 &format!("layout_of({:?}) = {:#?}", normalized_ty, *ty_layout),

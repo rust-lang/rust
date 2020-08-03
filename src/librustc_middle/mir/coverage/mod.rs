@@ -3,7 +3,7 @@
 /// Positional arguments to `libcore::count_code_region()`
 pub mod count_code_region_args {
     pub const FUNCTION_SOURCE_HASH: usize = 0;
-    pub const COUNTER_INDEX: usize = 1;
+    pub const COUNTER_ID: usize = 1;
     pub const START_BYTE_POS: usize = 2;
     pub const END_BYTE_POS: usize = 3;
 }
@@ -11,9 +11,9 @@ pub mod count_code_region_args {
 /// Positional arguments to `libcore::coverage_counter_add()` and
 /// `libcore::coverage_counter_subtract()`
 pub mod coverage_counter_expression_args {
-    pub const COUNTER_EXPRESSION_INDEX: usize = 0;
-    pub const LEFT_INDEX: usize = 1;
-    pub const RIGHT_INDEX: usize = 2;
+    pub const EXPRESSION_ID: usize = 0;
+    pub const LEFT_ID: usize = 1;
+    pub const RIGHT_ID: usize = 2;
     pub const START_BYTE_POS: usize = 3;
     pub const END_BYTE_POS: usize = 4;
 }

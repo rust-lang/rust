@@ -2196,6 +2196,9 @@ pub trait ToString {
 /// since `fmt::Write for String` never returns an error itself.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
+    // A common guideline is to not inline generic functions. However,
+    // remove `#[inline]` from this method causes non-negligible regression.
+    // See <https://github.com/rust-lang/rust/pull/74852> as last attempt try to remove it.
     #[inline]
     default fn to_string(&self) -> String {
         use fmt::Write;

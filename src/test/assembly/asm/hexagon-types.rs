@@ -1,6 +1,7 @@
 // no-system-llvm
 // assembly-output: emit-asm
 // compile-flags: --target hexagon-unknown-linux-musl
+// needs-llvm-components: hexagon
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd)]
 #![crate_type = "rlib"]

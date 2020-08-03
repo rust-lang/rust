@@ -1,10 +1,10 @@
 // compile-flags: -Z mir-opt-level=1
-// EMIT_MIR rustc.id.SimplifyArmIdentity.diff
-// EMIT_MIR rustc.id.SimplifyBranchSame.diff
-// EMIT_MIR rustc.id_result.SimplifyArmIdentity.diff
-// EMIT_MIR rustc.id_result.SimplifyBranchSame.diff
-// EMIT_MIR rustc.id_try.SimplifyArmIdentity.diff
-// EMIT_MIR rustc.id_try.SimplifyBranchSame.diff
+// EMIT_MIR simplify_arm.id.SimplifyArmIdentity.diff
+// EMIT_MIR simplify_arm.id.SimplifyBranchSame.diff
+// EMIT_MIR simplify_arm.id_result.SimplifyArmIdentity.diff
+// EMIT_MIR simplify_arm.id_result.SimplifyBranchSame.diff
+// EMIT_MIR simplify_arm.id_try.SimplifyArmIdentity.diff
+// EMIT_MIR simplify_arm.id_try.SimplifyBranchSame.diff
 
 fn id(o: Option<u8>) -> Option<u8> {
     match o {

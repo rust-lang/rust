@@ -1319,6 +1319,30 @@ fn test_rsplitn() {
 }
 
 #[test]
+fn test_split_once() {
+    assert_eq!("".split_once("->"), None);
+    assert_eq!("-".split_once("->"), None);
+    assert_eq!("->".split_once("->"), Some(("", "")));
+    assert_eq!("a->".split_once("->"), Some(("a", "")));
+    assert_eq!("->b".split_once("->"), Some(("", "b")));
+    assert_eq!("a->b".split_once("->"), Some(("a", "b")));
+    assert_eq!("a->b->c".split_once("->"), Some(("a", "b->c")));
+    assert_eq!("---".split_once("--"), Some(("", "-")));
+}
+
+#[test]
+fn test_rsplit_once() {
+    assert_eq!("".rsplit_once("->"), None);
+    assert_eq!("-".rsplit_once("->"), None);
+    assert_eq!("->".rsplit_once("->"), Some(("", "")));
+    assert_eq!("a->".rsplit_once("->"), Some(("a", "")));
+    assert_eq!("->b".rsplit_once("->"), Some(("", "b")));
+    assert_eq!("a->b".rsplit_once("->"), Some(("a", "b")));
+    assert_eq!("a->b->c".rsplit_once("->"), Some(("a->b", "c")));
+    assert_eq!("---".rsplit_once("--"), Some(("-", "")));
+}
+
+#[test]
 fn test_split_whitespace() {
     let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
     let words: Vec<&str> = data.split_whitespace().collect();

@@ -161,6 +161,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_sig(current_item, tcx.fn_sig(def_id), self.covariant);
             }
 
+            ty::Error(_) => {}
             _ => {
                 span_bug!(
                     tcx.def_span(def_id),

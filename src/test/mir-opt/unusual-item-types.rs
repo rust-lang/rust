@@ -5,25 +5,25 @@
 
 struct A;
 
-// EMIT_MIR rustc.{{impl}}-ASSOCIATED_CONSTANT.mir_map.0.mir
+// EMIT_MIR unusual_item_types.{{impl}}-ASSOCIATED_CONSTANT.mir_map.0.mir
 impl A {
     const ASSOCIATED_CONSTANT: i32 = 2;
 }
 
 // See #59021
-// EMIT_MIR rustc.Test-X-{{constructor}}.mir_map.0.mir
+// EMIT_MIR unusual_item_types.Test-X-{{constructor}}.mir_map.0.mir
 enum Test {
     X(usize),
     Y { a: usize },
 }
 
-// EMIT_MIR rustc.E-V-{{constant}}.mir_map.0.mir
+// EMIT_MIR unusual_item_types.E-V-{{constant}}.mir_map.0.mir
 enum E {
     V = 5,
 }
 
 fn main() {
     let f = Test::X as fn(usize) -> Test;
-// EMIT_MIR rustc.ptr-drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
+// EMIT_MIR core.ptr-drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
     let v = Vec::<i32>::new();
 }

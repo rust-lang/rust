@@ -271,7 +271,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        self.dump_place(*dest);
+        trace!("{:?}", self.dump_place(*dest));
 
         Ok(())
     }

@@ -1004,11 +1004,13 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::size_of_val`](../../std/mem/fn.size_of_val.html).
+    #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
     pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
     /// The required alignment of the referenced value.
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::align_of_val`](../../std/mem/fn.align_of_val.html).
+    #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
     pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
@@ -1024,7 +1026,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::any::TypeId::of`](../../std/any/struct.TypeId.html#method.of)
-    #[rustc_const_unstable(feature = "const_type_id", issue = "41875")]
+    #[rustc_const_stable(feature = "const_type_id", since = "1.46.0")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
     /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:

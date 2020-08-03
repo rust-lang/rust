@@ -645,29 +645,6 @@ impl<T: ?Sized> Rc<T> {
         unsafe { Self::from_ptr(rc_ptr) }
     }
 
-    /// Consumes the `Rc`, returning the wrapped pointer as `NonNull<T>`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(rc_into_raw_non_null)]
-    /// #![allow(deprecated)]
-    ///
-    /// use std::rc::Rc;
-    ///
-    /// let x = Rc::new("hello".to_owned());
-    /// let ptr = Rc::into_raw_non_null(x);
-    /// let deref = unsafe { ptr.as_ref() };
-    /// assert_eq!(deref, "hello");
-    /// ```
-    #[unstable(feature = "rc_into_raw_non_null", issue = "47336")]
-    #[rustc_deprecated(since = "1.44.0", reason = "use `Rc::into_raw` instead")]
-    #[inline]
-    pub fn into_raw_non_null(this: Self) -> NonNull<T> {
-        // safe because Rc guarantees its pointer is non-null
-        unsafe { NonNull::new_unchecked(Rc::into_raw(this) as *mut _) }
-    }
-
     /// Creates a new [`Weak`][weak] pointer to this allocation.
     ///
     /// [weak]: struct.Weak.html
@@ -1713,8 +1690,9 @@ impl<T> Weak<T> {
 
     /// Consumes the `Weak<T>` and turns it into a raw pointer.
     ///
-    /// This converts the weak pointer into a raw pointer, preserving the original weak count. It
-    /// can be turned back into the `Weak<T>` with [`from_raw`].
+    /// This converts the weak pointer into a raw pointer, while still preserving the ownership of
+    /// one weak reference (the weak count is not modified by this operation). It can be turned
+    /// back into the `Weak<T>` with [`from_raw`].
     ///
     /// The same restrictions of accessing the target of the pointer as with
     /// [`as_ptr`] apply.
@@ -1749,17 +1727,18 @@ impl<T> Weak<T> {
     /// This can be used to safely get a strong reference (by calling [`upgrade`]
     /// later) or to deallocate the weak count by dropping the `Weak<T>`.
     ///
-    /// It takes ownership of one weak count (with the exception of pointers created by [`new`],
-    /// as these don't have any corresponding weak count).
+    /// It takes ownership of one weak reference (with the exception of pointers created by [`new`],
+    /// as these don't own anything; the method still works on them).
     ///
     /// # Safety
     ///
-    /// The pointer must have originated from the [`into_raw`]  and must still own its potential
-    /// weak reference count.
+    /// The pointer must have originated from the [`into_raw`] and must still own its potential
+    /// weak reference.
     ///
-    /// It is allowed for the strong count to be 0 at the time of calling this, but the weak count
-    /// must be non-zero or the pointer must have originated from a dangling `Weak<T>` (one created
-    /// by [`new`]).
+    /// It is allowed for the strong count to be 0 at the time of calling this. Nevertheless, this
+    /// takes ownership of one weak reference currently represented as a raw pointer (the weak
+    /// count is not modified by this operation) and therefore it must be paired with a previous
+    /// call to [`into_raw`].
     ///
     /// # Examples
     ///
@@ -2120,7 +2099,7 @@ impl<T: ?Sized> Unpin for Rc<T> {}
 ///
 /// - This function is safe for any argument if `T` is sized, and
 /// - if `T` is unsized, the pointer must have appropriate pointer metadata
-///   aquired from the real instance that you are getting this offset for.
+///   acquired from the real instance that you are getting this offset for.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Align the unsized value to the end of the `RcBox`.
     // Because it is ?Sized, it will always be the last field in memory.

@@ -2,7 +2,7 @@
 
 static mut STATIC: u32 = 42;
 
-// EMIT_MIR rustc.main.ConstProp.diff
+// EMIT_MIR mutable_variable_no_prop.main.ConstProp.diff
 fn main() {
     let mut x = 42;
     unsafe {

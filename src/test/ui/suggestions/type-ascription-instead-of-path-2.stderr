@@ -1,10 +1,10 @@
 error: expected `::`, found `(`
-  --> $DIR/type-ascription-instead-of-path-2.rs:2:55
+  --> $DIR/type-ascription-instead-of-path-2.rs:3:63
    |
-LL |     vec![Ok(2)].into_iter().collect:<Result<Vec<_>,_>>()?;
-   |                                    -                  ^ expected `::`
-   |                                    |
-   |                                    help: maybe write a path separator here: `::`
+LL |     let _ = vec![Ok(2)].into_iter().collect:<Result<Vec<_>,_>>()?;
+   |                                            -                  ^ expected `::`
+   |                                            |
+   |                                            help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
 

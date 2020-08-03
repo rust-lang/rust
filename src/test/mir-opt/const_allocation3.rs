@@ -1,6 +1,6 @@
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
-// EMIT_MIR rustc.main.ConstProp.after.mir
+// EMIT_MIR const_allocation3.main.ConstProp.after.mir
 fn main() {
     FOO;
 }

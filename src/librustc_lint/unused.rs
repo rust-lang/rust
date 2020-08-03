@@ -203,6 +203,28 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     // Otherwise, we don't lint, to avoid false positives.
                     _ => false,
                 },
+                ty::Closure(..) => {
+                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                        let mut err = lint.build(&format!(
+                            "unused {}closure{}{} that must be used",
+                            descr_pre, plural_suffix, descr_post,
+                        ));
+                        err.note("closures are lazy and do nothing unless called");
+                        err.emit();
+                    });
+                    true
+                }
+                ty::Generator(..) => {
+                    cx.struct_span_lint(UNUSED_MUST_USE, span, |lint| {
+                        let mut err = lint.build(&format!(
+                            "unused {}generator{}{} that must be used",
+                            descr_pre, plural_suffix, descr_post,
+                        ));
+                        err.note("generators are lazy and do nothing unless resumed");
+                        err.emit();
+                    });
+                    true
+                }
                 _ => false,
             }
         }
@@ -400,7 +422,7 @@ trait UnusedDelimLint {
         lhs_needs_parens
             || (followed_by_block
                 && match inner.kind {
-                    ExprKind::Ret(_) | ExprKind::Break(..) => true,
+                    ExprKind::Ret(_) | ExprKind::Break(..) | ExprKind::Yield(..) => true,
                     _ => parser::contains_exterior_struct_lit(&inner),
                 })
     }

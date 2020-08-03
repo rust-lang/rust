@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -185,6 +186,17 @@ impl EarlyProps {
         fn ignore_llvm(config: &Config, line: &str) -> bool {
             if config.system_llvm && line.starts_with("no-system-llvm") {
                 return true;
+            }
+            if let Some(needed_components) =
+                config.parse_name_value_directive(line, "needs-llvm-components")
+            {
+                let components: HashSet<_> = config.llvm_components.split_whitespace().collect();
+                if !needed_components
+                    .split_whitespace()
+                    .all(|needed_component| components.contains(needed_component))
+                {
+                    return true;
+                }
             }
             if let Some(actual_version) = config.llvm_version {
                 if let Some(rest) = line.strip_prefix("min-llvm-version:").map(str::trim) {

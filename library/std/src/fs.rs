@@ -1574,6 +1574,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// limited to just these cases:
 ///
 /// * `path` points to a directory.
+/// * The file doesn't exist.
 /// * The user lacks permissions to remove the file.
 ///
 /// # Examples

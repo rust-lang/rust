@@ -425,7 +425,7 @@ Arguments:
     This subcommand accepts a number of paths to tools to build and run. For
     example:
 
-        ./x.py run src/tool/expand-yaml-anchors
+        ./x.py run src/tools/expand-yaml-anchors
 
     At least a tool needs to be called.",
                 );

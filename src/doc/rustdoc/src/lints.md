@@ -11,7 +11,7 @@ can use them like any other lints by doing this:
 
 Here is the list of the lints provided by `rustdoc`:
 
-## intra_doc_link_resolution_failure
+## broken_intra_doc_links
 
 This lint **warns by default** and is **nightly-only**. This lint detects when
 an intra-doc link fails to get resolved. For example:

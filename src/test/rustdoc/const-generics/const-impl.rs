@@ -11,8 +11,8 @@ pub enum Order {
 }
 
 // @has foo/struct.VSet.html '//pre[@class="rust struct"]' 'pub struct VSet<T, const ORDER: Order>'
-// @has foo/struct.VSet.html '//h3[@id="impl-Send"]/code' 'impl<const ORDER: Order, T> Send for VSet<T, ORDER>'
-// @has foo/struct.VSet.html '//h3[@id="impl-Sync"]/code' 'impl<const ORDER: Order, T> Sync for VSet<T, ORDER>'
+// @has foo/struct.VSet.html '//h3[@id="impl-Send"]/code' 'impl<T, const ORDER: Order> Send for VSet<T, ORDER>'
+// @has foo/struct.VSet.html '//h3[@id="impl-Sync"]/code' 'impl<T, const ORDER: Order> Sync for VSet<T, ORDER>'
 pub struct VSet<T, const ORDER: Order> {
     inner: Vec<T>,
 }

@@ -1846,11 +1846,11 @@ fn msvc_imps_needed(tcx: TyCtxt<'_>) -> bool {
     // something is wrong with commandline arg validation.
     assert!(
         !(tcx.sess.opts.cg.linker_plugin_lto.enabled()
-            && tcx.sess.target.target.options.is_like_msvc
+            && tcx.sess.target.target.options.is_like_windows
             && tcx.sess.opts.cg.prefer_dynamic)
     );
 
-    tcx.sess.target.target.options.is_like_msvc &&
+    tcx.sess.target.target.options.is_like_windows &&
         tcx.sess.crate_types().iter().any(|ct| *ct == CrateType::Rlib) &&
     // ThinLTO can't handle this workaround in all cases, so we don't
     // emit the `__imp_` symbols. Instead we make them unnecessary by disallowing
