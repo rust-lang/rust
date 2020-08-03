@@ -648,7 +648,7 @@ impl Inherited<'_, 'tcx> {
 }
 
 impl<'tcx> InheritedBuilder<'tcx> {
-    fn enter<F, R>(&mut self, f: F) -> R
+    pub fn enter<F, R>(&mut self, f: F) -> R
     where
         F: for<'a> FnOnce(Inherited<'a, 'tcx>) -> R,
     {
