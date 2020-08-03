@@ -3,7 +3,6 @@
 // NOTE: For the example to compile, you will need to first run the following:
 //   rustup component add rustc-dev
 
-extern crate rustc;
 extern crate rustc_error_codes;
 extern crate rustc_errors;
 extern crate rustc_hash;

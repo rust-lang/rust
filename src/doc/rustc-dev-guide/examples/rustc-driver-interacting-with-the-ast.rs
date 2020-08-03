@@ -3,7 +3,6 @@
 // NOTE: For the example to compile, you will need to first run the following:
 //   rustup component add rustc-dev
 
-extern crate rustc;
 extern crate rustc_error_codes;
 extern crate rustc_errors;
 extern crate rustc_hash;
@@ -65,7 +64,7 @@ fn main() {
                                 if let Some(expr) = local.init {
                                     let hir_id = expr.hir_id; // hir_id identifies the string "Hello, world!"
                                     let def_id = tcx.hir().local_def_id(item.hir_id); // def_id identifies the main function
-                                    let ty = tcx.typeck_tables_of(def_id).node_type(hir_id);
+                                    let ty = tcx.typeck(def_id).node_type(hir_id);
                                     println!("{:?}: {:?}", expr, ty); // prints expr(HirId { owner: DefIndex(3), local_id: 4 }: "Hello, world!"): &'static str
                                 }
                             }
