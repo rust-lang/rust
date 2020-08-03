@@ -143,7 +143,7 @@ impl<'a> CollectProcMacros<'a> {
 
         let attributes_attr = list.get(1);
         let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
-            if !attr.check_name(sym::attributes) {
+            if !attr.has_name(sym::attributes) {
                 self.handler.span_err(attr.span(), "second argument must be `attributes`")
             }
             attr.meta_item_list()

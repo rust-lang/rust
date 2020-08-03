@@ -312,7 +312,7 @@ fn requires_exact_signature(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| {
         [sym!(proc_macro), sym!(proc_macro_attribute), sym!(proc_macro_derive)]
             .iter()
-            .any(|&allow| attr.check_name(allow))
+            .any(|&allow| attr.has_name(allow))
     })
 }
 

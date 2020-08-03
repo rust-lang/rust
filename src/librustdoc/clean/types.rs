@@ -210,7 +210,7 @@ impl Item {
     }
 
     pub fn is_non_exhaustive(&self) -> bool {
-        self.attrs.other_attrs.iter().any(|a| a.check_name(sym::non_exhaustive))
+        self.attrs.other_attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
     }
 
     /// Returns a documentation-level item type from the item.
@@ -309,7 +309,7 @@ impl<'a> Iterator for ListAttributesIter<'a> {
 
         for attr in &mut self.attrs {
             if let Some(list) = attr.meta_item_list() {
-                if attr.check_name(self.name) {
+                if attr.has_name(self.name) {
                     self.current_list = list.into_iter();
                     if let Some(nested) = self.current_list.next() {
                         return Some(nested);
@@ -345,7 +345,7 @@ pub trait NestedAttributesExt {
 
 impl<I: IntoIterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
     fn has_word(self, word: Symbol) -> bool {
-        self.into_iter().any(|attr| attr.is_word() && attr.check_name(word))
+        self.into_iter().any(|attr| attr.is_word() && attr.has_name(word))
     }
 }
 
@@ -425,7 +425,7 @@ impl Attributes {
         if let ast::MetaItemKind::List(ref nmis) = mi.kind {
             if nmis.len() == 1 {
                 if let MetaItem(ref cfg_mi) = nmis[0] {
-                    if cfg_mi.check_name(sym::cfg) {
+                    if cfg_mi.has_name(sym::cfg) {
                         if let ast::MetaItemKind::List(ref cfg_nmis) = cfg_mi.kind {
                             if cfg_nmis.len() == 1 {
                                 if let MetaItem(ref content_mi) = cfg_nmis[0] {
@@ -447,7 +447,7 @@ impl Attributes {
     pub fn extract_include(mi: &ast::MetaItem) -> Option<(String, String)> {
         mi.meta_item_list().and_then(|list| {
             for meta in list {
-                if meta.check_name(sym::include) {
+                if meta.has_name(sym::include) {
                     // the actual compiled `#[doc(include="filename")]` gets expanded to
                     // `#[doc(include(file="filename", contents="file contents")]` so we need to
                     // look for that instead
@@ -456,11 +456,11 @@ impl Attributes {
                         let mut contents: Option<String> = None;
 
                         for it in list {
-                            if it.check_name(sym::file) {
+                            if it.has_name(sym::file) {
                                 if let Some(name) = it.value_str() {
                                     filename = Some(name.to_string());
                                 }
-                            } else if it.check_name(sym::contents) {
+                            } else if it.has_name(sym::contents) {
                                 if let Some(docs) = it.value_str() {
                                     contents = Some(docs.to_string());
                                 }
@@ -482,12 +482,12 @@ impl Attributes {
 
     pub fn has_doc_flag(&self, flag: Symbol) -> bool {
         for attr in &self.other_attrs {
-            if !attr.check_name(sym::doc) {
+            if !attr.has_name(sym::doc) {
                 continue;
             }
 
             if let Some(items) = attr.meta_item_list() {
-                if items.iter().filter_map(|i| i.meta_item()).any(|it| it.check_name(flag)) {
+                if items.iter().filter_map(|i| i.meta_item()).any(|it| it.has_name(flag)) {
                     return true;
                 }
             }
@@ -521,7 +521,7 @@ impl Attributes {
                     }
                     None
                 } else {
-                    if attr.check_name(sym::doc) {
+                    if attr.has_name(sym::doc) {
                         if let Some(mi) = attr.meta() {
                             if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
                                 // Extracted #[doc(cfg(...))]
@@ -548,7 +548,7 @@ impl Attributes {
         // treat #[target_feature(enable = "feat")] attributes as if they were
         // #[doc(cfg(target_feature = "feat"))] attributes as well
         for attr in attrs.lists(sym::target_feature) {
-            if attr.check_name(sym::enable) {
+            if attr.has_name(sym::enable) {
                 if let Some(feat) = attr.value_str() {
                     let meta = attr::mk_name_value_item_str(
                         Ident::with_dummy_span(sym::target_feature),
@@ -648,7 +648,7 @@ impl Attributes {
     pub fn get_doc_aliases(&self) -> FxHashSet<String> {
         self.other_attrs
             .lists(sym::doc)
-            .filter(|a| a.check_name(sym::alias))
+            .filter(|a| a.has_name(sym::alias))
             .filter_map(|a| a.value_str().map(|s| s.to_string().replace("\"", "")))
             .filter(|v| !v.is_empty())
             .collect::<FxHashSet<_>>()

@@ -113,7 +113,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 let mut prim = None;
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
-                        if attr.check_name(sym::primitive) {
+                        if attr.has_name(sym::primitive) {
                             prim = PrimitiveType::from_symbol(v);
                             if prim.is_some() {
                                 break;
@@ -168,7 +168,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 let mut keyword = None;
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
-                        if attr.check_name(sym::keyword) {
+                        if attr.has_name(sym::keyword) {
                             if v.is_doc_keyword() {
                                 keyword = Some(v.to_string());
                                 break;
@@ -2157,7 +2157,7 @@ impl Clean<Vec<Item>> for doctree::ExternCrate<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
         let please_inline = self.vis.node.is_pub()
             && self.attrs.iter().any(|a| {
-                a.check_name(sym::doc)
+                a.has_name(sym::doc)
                     && match a.meta_item_list() {
                         Some(l) => attr::list_contains_name(&l, sym::inline),
                         None => false,
@@ -2197,7 +2197,7 @@ impl Clean<Vec<Item>> for doctree::Import<'_> {
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let mut denied = !self.vis.node.is_pub()
             || self.attrs.iter().any(|a| {
-                a.check_name(sym::doc)
+                a.has_name(sym::doc)
                     && match a.meta_item_list() {
                         Some(l) => {
                             attr::list_contains_name(&l, sym::no_inline)
