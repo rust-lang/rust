@@ -1576,6 +1576,11 @@ impl Path {
     pub fn last_name(&self) -> &str {
         self.segments.last().expect("segments were empty").name.as_str()
     }
+
+    pub fn whole_name(&self) -> String {
+        String::from(if self.global { "::" } else { "" })
+            + &self.segments.iter().map(|s| s.name.clone()).collect::<Vec<_>>().join("::")
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
