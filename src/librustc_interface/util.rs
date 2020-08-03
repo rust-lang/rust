@@ -10,10 +10,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::jobserver;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
-use rustc_middle::ty;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;
 use rustc_session::config::{self, CrateType};
@@ -144,12 +143,10 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
 
     let main_handler = move || {
         rustc_ast::with_session_globals(edition, || {
-            ty::tls::GCX_PTR.set(&Lock::new(0), || {
-                if let Some(stderr) = stderr {
-                    io::set_panic(Some(box Sink(stderr.clone())));
-                }
-                f()
-            })
+            if let Some(stderr) = stderr {
+                io::set_panic(Some(box Sink(stderr.clone())));
+            }
+            f()
         })
     };
 
@@ -163,6 +160,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
+    use rustc_middle::ty;
     crate::callbacks::setup_callbacks();
 
     let mut config = rayon::ThreadPoolBuilder::new()
@@ -189,12 +187,10 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
                 let main_handler = move |thread: rayon::ThreadBuilder| {
                     rustc_ast::SESSION_GLOBALS.set(ast_session_globals, || {
                         rustc_span::SESSION_GLOBALS.set(span_session_globals, || {
-                            ty::tls::GCX_PTR.set(&Lock::new(0), || {
-                                if let Some(stderr) = stderr {
-                                    io::set_panic(Some(box Sink(stderr.clone())));
-                                }
-                                thread.run()
-                            })
+                            if let Some(stderr) = stderr {
+                                io::set_panic(Some(box Sink(stderr.clone())));
+                            }
+                            thread.run()
                         })
                     })
                 };

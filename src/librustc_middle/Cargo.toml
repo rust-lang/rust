@@ -12,7 +12,6 @@ doctest = false
 [dependencies]
 rustc_arena = { path = "../librustc_arena" }
 bitflags = "1.2.1"
-scoped-tls = "1.0"
 log = { package = "tracing", version = "0.1" }
 rustc-rayon-core = "0.3.0"
 polonius-engine = "0.12.0"
