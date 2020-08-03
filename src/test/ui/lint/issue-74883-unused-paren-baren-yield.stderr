@@ -34,29 +34,17 @@ error: unnecessary parentheses around block return value
 LL |         {( yield )};
    |          ^^^^^^^^^ help: remove these parentheses
 
-error: unnecessary braces around `let` scrutinee expression
-  --> $DIR/issue-74883-unused-paren-baren-yield.rs:21:29
-   |
-LL |         while let Some(_) = {(yield)} {}
-   |                             ^^^^^^^^^ help: remove these braces
-
 error: unnecessary parentheses around block return value
-  --> $DIR/issue-74883-unused-paren-baren-yield.rs:21:30
+  --> $DIR/issue-74883-unused-paren-baren-yield.rs:18:30
    |
 LL |         while let Some(_) = {(yield)} {}
    |                              ^^^^^^^ help: remove these parentheses
 
-error: unnecessary braces around `let` scrutinee expression
-  --> $DIR/issue-74883-unused-paren-baren-yield.rs:24:29
-   |
-LL |         while let Some(_) = {{yield}} {}
-   |                             ^^^^^^^^^ help: remove these braces
-
 error: unnecessary braces around block return value
-  --> $DIR/issue-74883-unused-paren-baren-yield.rs:24:30
+  --> $DIR/issue-74883-unused-paren-baren-yield.rs:19:30
    |
 LL |         while let Some(_) = {{yield}} {}
    |                              ^^^^^^^ help: remove these braces
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 
