@@ -411,13 +411,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let fh = &mut this.machine.file_handler;
             let (file_result, writable) = match fh.handles.get(&fd) {
                 Some(file_descriptor) => match file_descriptor.as_file_handle() {
-                    Ok(FileHandle { file, writable }) => (file.try_clone(), writable.clone()),
+                    Ok(FileHandle { file, writable }) => (file.try_clone(), *writable),
                     Err(_) => return this.handle_not_found(),
                 },
                 None => return this.handle_not_found(),
             };
             let fd_result = file_result.map(|duplicated| {
-                fh.insert_fd_with_min_fd(FileHandle { file: duplicated, writable: writable }, start)
+                fh.insert_fd_with_min_fd(FileHandle { file: duplicated, writable }, start)
             });
             this.try_unwrap_io_result(fd_result)
         } else if this.tcx.sess.target.target.target_os == "macos"
