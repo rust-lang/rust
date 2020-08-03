@@ -142,8 +142,6 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 }
 
                 self.basic_blocks[bb].terminator = Some(terminator);
-
-                changed |= inner_changed;
             }
 
             if !changed {
