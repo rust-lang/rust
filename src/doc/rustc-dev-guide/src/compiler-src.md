@@ -103,7 +103,7 @@ The dependency structure is influenced strongly by two main factors:
 2. Compile time. By breaking the compiler into multiple crates, we can take
    better advantage of incremental/parallel compilation using cargo. In
    particular, we try to have as few dependencies between crates as possible so
-   that we dont' have to rebuild as many crates if you change one.
+   that we don't have to rebuild as many crates if you change one.
 
 At the very bottom of the dependency tree are a handful of crates that are used
 by the whole compiler (e.g. [`rustc_span`]). The very early parts of the
