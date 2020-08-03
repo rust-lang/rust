@@ -25,9 +25,9 @@ struct FileHandle {
 trait FileDescriptor<'tcx> : std::fmt::Debug {
     fn as_file_handle(&self) -> InterpResult<'tcx, &FileHandle>;
 
-    fn read(&mut self, bytes: &mut [u8]) -> Result<usize, io::Error>;
-    fn write(&mut self, bytes: &[u8]) -> Result<usize, io::Error>;
-    fn seek(&mut self, offset: SeekFrom) -> Result<u64, io::Error>;
+    fn read(&mut self, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>>;
+    fn write(&mut self, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>>;
+    fn seek(&mut self, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>>;
 }
 
 impl<'tcx> FileDescriptor<'tcx> for FileHandle {
@@ -35,16 +35,16 @@ impl<'tcx> FileDescriptor<'tcx> for FileHandle {
         Ok(&self)
     }
 
-    fn read(&mut self, bytes: &mut [u8]) -> Result<usize, io::Error> {
-        self.file.read(bytes)
+    fn read(&mut self, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+        Ok(self.file.read(bytes))
     }
 
-    fn write(&mut self, bytes: &[u8]) -> Result<usize, io::Error> {
-        self.file.write(bytes)
+    fn write(&mut self, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+        Ok(self.file.write(bytes))
     }
 
-    fn seek(&mut self, offset: SeekFrom) -> Result<u64, io::Error> {
-        self.file.seek(offset)
+    fn seek(&mut self, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+        Ok(self.file.seek(offset))
     }
 }
 
@@ -509,7 +509,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // `File::read` never returns a value larger than `count`,
             // so this cannot fail.
             let result = file_descriptor
-                .read(&mut bytes)
+                .read(&mut bytes)?
                 .map(|c| i64::try_from(c).unwrap());
 
             match result {
@@ -554,7 +554,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
             let result = file_descriptor
-                .write(&bytes)
+                .write(&bytes)?
                 .map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)
         } else {
@@ -590,7 +590,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
             let result = file_descriptor
-                .seek(seek_from)
+                .seek(seek_from)?
                 .map(|offset| i64::try_from(offset).unwrap());
             this.try_unwrap_io_result(result)
         } else {
