@@ -313,8 +313,9 @@
 # compiler.
 #codegen-units = 1
 
-# Sets the number of codegen units to build the standard library with,
-# regardless of what the codegen-unit setting for the rest of the compiler is.
+# Sets the number of codegen units to build the standard library (all libraries
+# in the `library/` directory) with, regardless of what the codegen-unit setting
+# for the rest of the compiler is.
 #codegen-units-std = 1
 
 # Whether or not debug assertions are enabled for the compiler and standard
@@ -535,12 +536,14 @@
 # The full path to the musl libdir.
 #musl-libdir = musl-root/lib
 
-# The root location of the `wasm32-wasi` sysroot.
-#wasi-root = "..."
-
 # Used in testing for configuring where the QEMU images are located, you
 # probably don't want to use this.
 #qemu-rootfs = "..."
+
+[target.wasm32-wasi]
+
+# The root location of the `wasm32-wasi` sysroot.
+#wasi-root = "..."
 
 # =============================================================================
 # Distribution options
