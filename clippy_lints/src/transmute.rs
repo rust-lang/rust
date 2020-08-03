@@ -330,6 +330,26 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 let from_ty = cx.typeck_results().expr_ty(&args[0]);
                 let to_ty = cx.typeck_results().expr_ty(e);
 
+                if can_be_expressed_as_pointer_cast(cx, e, from_ty, to_ty) {
+                    span_lint_and_then(
+                        cx,
+                        TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
+                        e.span,
+                        &format!(
+                            "transmute from `{}` to `{}` which could be expressed as a pointer cast instead",
+                            from_ty,
+                            to_ty
+                        ),
+                        |diag| {
+                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                let sugg = format!("{} as {}", arg, to_ty);
+                                diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
+                            }
+                        }
+                    );
+                    return
+                }
+
                 match (&from_ty.kind, &to_ty.kind) {
                     _ if from_ty == to_ty => span_lint(
                         cx,
@@ -626,25 +646,9 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                             );
                         }
                     },
-                    _ => {},
-                }
-                if can_be_expressed_as_pointer_cast(cx, e, from_ty, to_ty) {
-                    span_lint_and_then(
-                        cx,
-                        TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
-                        e.span,
-                        &format!(
-                            "transmute from `{}` to `{}` which could be expressed as a pointer cast instead",
-                            from_ty,
-                            to_ty
-                        ),
-                        |diag| {
-                            if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                let sugg = format!("{} as {}", arg, to_ty);
-                                diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
-                            }
-                        }
-                    )
+                    _ => {
+                        return;
+                    },
                 }
             }
         }
