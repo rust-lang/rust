@@ -1695,9 +1695,9 @@ impl<T> [T] {
         while size > 1 {
             let half = size / 2;
             let mid = base + half;
-            // SAFETY:
-            // mid >= 0: by definition
-            // mid < size: mid = size / 2 + size / 4 + size / 8 ...
+            // SAFETY: the call is made safe by the following inconstants:
+            // - `mid >= 0`: by definition
+            // - `mid < size`: `mid = size / 2 + size / 4 + size / 8 ...`
             let cmp = f(unsafe { s.get_unchecked(mid) });
             base = if cmp == Greater { base } else { mid };
             size -= half;
@@ -2690,6 +2690,7 @@ impl<T> [T] {
         // First, find at what point do we split between the first and 2nd slice. Easy with
         // ptr.align_offset.
         let ptr = self.as_ptr();
+        // SAFETY: See the `align_to_mut` method for the detailed safety comment.
         let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
         if offset > self.len() {
             (self, &[], &[])
@@ -2749,6 +2750,13 @@ impl<T> [T] {
         // First, find at what point do we split between the first and 2nd slice. Easy with
         // ptr.align_offset.
         let ptr = self.as_ptr();
+        // SAFETY: Here we are ensuring we will use aligned pointers for U for the
+        // rest of the method. This is done by passing a pointer to &[T] with an
+        // alignment targeted for U.
+        // `crate::ptr::align_offset` is called with a correctly aligned and
+        // valid pointer `ptr` (it comes from a reference to `self`) and with
+        // a size that is a power of two (since it comes from the alignement for U),
+        // satisfying its safety constraints.
         let offset = unsafe { crate::ptr::align_offset(ptr, mem::align_of::<U>()) };
         if offset > self.len() {
             (self, &mut [], &mut [])
@@ -2874,15 +2882,13 @@ impl<T> [T] {
 
         while left != right {
             let mid = left + (right - left) / 2;
-            // SAFETY:
-            // When left < right, left <= mid < right.
-            // Therefore left always increases and right always decreases,
-            // and eigher of them is selected.
-            // In both cases left <= right is satisfied.
-            // Therefore if left < right in a step,
-            // left <= right is satisfied in the next step.
-            // Therefore as long as left != right, 0 <= left < right <= len is satisfied
-            // and if this case 0 <= mid < len is satisfied too.
+            // SAFETY: When `left < right`, `left <= mid < right`.
+            // Therefore `left` always increases and `right` always decreases,
+            // and either of them is selected. In both cases `left <= right` is
+            // satisfied. Therefore if `left < right` in a step, `left <= right`
+            // is satisfied in the next step. Therefore as long as `left != right`,
+            // `0 <= left < right <= len` is satisfied and if this case
+            // `0 <= mid < len` is satisfied too.
             let value = unsafe { self.get_unchecked(mid) };
             if pred(value) {
                 left = mid + 1;
@@ -3002,7 +3008,8 @@ fn is_ascii(s: &[u8]) -> bool {
     // above.
     debug_assert!(offset_to_aligned <= len);
 
-    // word_ptr is the (properly aligned) usize ptr we use to read the middle chunk of the slice.
+    // SAFETY: word_ptr is the (properly aligned) usize ptr we use to read the
+    // middle chunk of the slice.
     let mut word_ptr = unsafe { start.add(offset_to_aligned) as *const usize };
 
     // `byte_pos` is the byte index of `word_ptr`, used for loop end checks.
@@ -5660,6 +5667,8 @@ impl<T, const N: usize> FusedIterator for ArrayChunks<'_, T, N> {}
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N> {
     unsafe fn get_unchecked(&mut self, i: usize) -> &'a [T; N] {
+        // SAFETY: The safety guarantees of `get_unchecked` are transferred to
+        // the caller.
         unsafe { self.iter.get_unchecked(i) }
     }
     fn may_have_side_effect() -> bool {
