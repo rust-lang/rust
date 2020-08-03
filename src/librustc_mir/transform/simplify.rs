@@ -142,8 +142,6 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 }
 
                 self.basic_blocks[bb].terminator = Some(terminator);
-
-                changed |= inner_changed;
             }
 
             if !changed {
@@ -212,6 +210,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } => target,
                 _ => unreachable!(),
             };
+            *changed |= *target != last;
             *target = last;
             debug!("collapsing goto chain from {:?} to {:?}", current, target);
 
@@ -223,7 +222,6 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 self.pred_count[*target] += 1;
                 self.pred_count[current] -= 1;
             }
-            *changed = true;
             self.basic_blocks[current].terminator = Some(terminator);
         }
     }
