@@ -4,6 +4,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::cmp::Ordering;
 use crate::convert::Infallible;
 use crate::fmt;
 use crate::intrinsics;
@@ -167,6 +168,34 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 #[inline]
                 fn bitor_assign(&mut self, rhs: $Int) {
                     *self = *self | rhs;
+                }
+            }
+
+            #[stable(feature = "nonzero_cmp_to_int", since = "1.47.0")]
+            impl PartialEq<$Int> for $Ty {
+                fn eq(&self, rhs: &$Int) -> bool {
+                    self.0 == *rhs
+                }
+            }
+
+            #[stable(feature = "nonzero_cmp_to_int", since = "1.47.0")]
+            impl PartialOrd<$Int> for $Ty {
+                fn partial_cmp(&self, rhs: &$Int) -> Option<Ordering> {
+                    Some(self.0.cmp(rhs))
+                }
+            }
+
+            #[stable(feature = "nonzero_cmp_to_int", since = "1.47.0")]
+            impl PartialEq<$Ty> for $Int {
+                fn eq(&self, rhs: &$Ty) -> bool {
+                    *self == rhs.0
+                }
+            }
+
+            #[stable(feature = "nonzero_cmp_to_int", since = "1.47.0")]
+            impl PartialOrd<$Ty> for $Int {
+                fn partial_cmp(&self, rhs: &$Ty) -> Option<Ordering> {
+                    Some(self.cmp(&rhs.0))
                 }
             }
 

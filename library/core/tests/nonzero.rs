@@ -195,3 +195,49 @@ fn test_nonzero_from_int_on_err() {
     assert!(NonZeroI8::try_from(0).is_err());
     assert!(NonZeroI32::try_from(0).is_err());
 }
+
+#[test]
+fn test_compare_regular_int() {
+    let nonzero = NonZeroI32::new(125).unwrap();
+
+    assert_eq!(nonzero, 125);
+    assert_ne!(nonzero, 0);
+    assert_ne!(nonzero, -125);
+
+    assert!(nonzero == 125);
+    assert!(nonzero != 0);
+    assert!(nonzero != -125);
+
+    assert!(nonzero < 200);
+    assert!(nonzero <= 125);
+    assert!(nonzero <= 200);
+
+    assert!(nonzero > 0);
+    assert!(nonzero > -200);
+    assert!(nonzero >= 125);
+    assert!(nonzero >= 0);
+    assert!(nonzero >= -100);
+}
+
+#[test]
+fn test_compare_regular_int_reversed() {
+    let nonzero = NonZeroI32::new(125).unwrap();
+
+    assert_eq!(125, nonzero);
+    assert_ne!(0, nonzero);
+    assert_ne!(-125, nonzero);
+
+    assert!(125 == nonzero);
+    assert!(0 != nonzero);
+    assert!(-125 != nonzero);
+
+    assert!(200 > nonzero);
+    assert!(125 >= nonzero);
+    assert!(200 >= nonzero);
+
+    assert!(0 < nonzero);
+    assert!(-200 < nonzero);
+    assert!(125 <= nonzero);
+    assert!(0 <= nonzero);
+    assert!(-100 <= nonzero);
+}
