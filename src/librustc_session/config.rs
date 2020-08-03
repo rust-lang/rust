@@ -716,7 +716,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
 
     let mut ret = FxHashSet::default();
     ret.reserve(6); // the minimum number of insertions
-    // Target bindings.
+                    // Target bindings.
     ret.insert((sym::target_os, Some(Symbol::intern(os))));
     if let Some(ref fam) = sess.target.target.options.target_family {
         ret.insert((sym::target_family, Some(Symbol::intern(fam))));
@@ -875,7 +875,11 @@ mod opt {
     }
 
     fn longer(a: S, b: S) -> S {
-        if a.len() > b.len() { a } else { b }
+        if a.len() > b.len() {
+            a
+        } else {
+            b
+        }
     }
 
     pub fn opt_s(a: S, b: S, c: S, d: S) -> R {
@@ -1410,7 +1414,11 @@ fn parse_opt_level(
         .into_iter()
         .flat_map(
             |(i, s)| {
-                if let Some("opt-level") = s.splitn(2, '=').next() { Some(i) } else { None }
+                if let Some("opt-level") = s.splitn(2, '=').next() {
+                    Some(i)
+                } else {
+                    None
+                }
             },
         )
         .max();
@@ -1449,7 +1457,11 @@ fn select_debuginfo(
         .into_iter()
         .flat_map(
             |(i, s)| {
-                if let Some("debuginfo") = s.splitn(2, '=').next() { Some(i) } else { None }
+                if let Some("debuginfo") = s.splitn(2, '=').next() {
+                    Some(i)
+                } else {
+                    None
+                }
             },
         )
         .max();
@@ -1876,7 +1888,7 @@ fn parse_pretty(
                 }
             }
         };
-        log::debug!("got unpretty option: {:?}", first);
+        tracing::debug!("got unpretty option: {:?}", first);
         first
     }
 }
