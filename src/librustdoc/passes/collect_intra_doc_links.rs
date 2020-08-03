@@ -574,9 +574,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             };
             let resolved_self;
             let mut path_str;
+            let mut disambiguator = None;
             let (res, fragment) = {
                 let mut kind = None;
-                let mut disambiguator = None;
                 path_str = if let Some(prefix) =
                     ["struct@", "enum@", "type@", "trait@", "union@", "module@", "mod@"]
                         .iter()
@@ -595,6 +595,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     link.trim_start_matches(prefix)
                 } else if link.ends_with("!()") {
                     kind = Some(MacroNS);
+                    disambiguator = Some("bang");
                     link.trim_end_matches("!()")
                 } else if link.ends_with("()") {
                     kind = Some(ValueNS);
@@ -610,7 +611,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     link.trim_start_matches("derive@")
                 } else if link.ends_with('!') {
                     kind = Some(MacroNS);
-                    disambiguator = Some("macro");
+                    disambiguator = Some("bang");
                     link.trim_end_matches('!')
                 } else {
                     &link[..]
@@ -788,6 +789,46 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 item.attrs.links.push((ori_link, None, fragment));
             } else {
                 debug!("intra-doc link to {} resolved to {:?}", path_str, res);
+
+                // Disallow e.g. linking to enums with `struct@`
+                if let Res::Def(kind, id) = res {
+                    debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
+                    // NOTE: this relies on the fact that `''` is never parsed as a disambiguator
+                    // NOTE: this needs to be kept in sync with the disambiguator parsing
+                    match (kind, disambiguator.unwrap_or_default().trim_end_matches("@")) {
+                        | (DefKind::Struct, "struct")
+                        | (DefKind::Enum, "enum")
+                        | (DefKind::Trait, "trait")
+                        | (DefKind::Union, "union")
+                        | (DefKind::Mod, "mod" | "module")
+                        | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, "const")
+                        | (DefKind::Static, "static")
+                        // NOTE: this allows 'method' to mean both normal functions and associated functions
+                        // This can't cause ambiguity because both are in the same namespace.
+                        | (DefKind::Fn | DefKind::AssocFn, "fn" | "function" | "method")
+                        | (DefKind::Macro(MacroKind::Bang), "bang")
+                        | (DefKind::Macro(MacroKind::Derive), "derive")
+                        // These are namespaces; allow anything in the namespace to match
+                        | (_, "type" | "macro" | "value")
+                        // If no disambiguator given, allow anything
+                        | (_, "")
+                        // All of these are valid, so do nothing
+                        => {}
+                        (_, disambiguator) => {
+                            // The resolved item did not match the disambiguator; give a better error than 'not found'
+                            let msg = format!("unresolved link to `{}`", path_str);
+                            report_diagnostic(cx, &msg, &item, &dox, link_range, |diag, sp| {
+                                let msg = format!("this item resolved to {} {}, which did not match the disambiguator '{}'", kind.article(), kind.descr(id), disambiguator);
+                                if let Some(sp) = sp {
+                                    diag.span_note(sp, &msg);
+                                } else {
+                                    diag.note(&msg);
+                                }
+                            });
+                            continue;
+                        }
+                    }
+                }
 
                 // item can be non-local e.g. when using #[doc(primitive = "pointer")]
                 if let Some((src_id, dst_id)) = res
