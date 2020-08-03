@@ -14,7 +14,7 @@ reasons:
 
 TODO: what is the vetting process?
 
-## Pemitted dependencies
+## Permitted dependencies
 
 The `tidy` tool has [a list of crates that are allowed]. To add a
 dependency that is not already in the compiler, you will need to add it to these
