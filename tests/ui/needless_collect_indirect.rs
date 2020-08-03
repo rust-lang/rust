@@ -1,6 +1,3 @@
-// run-rustfix
-
-#[allow(unused)]
 use std::collections::{HashMap, VecDeque};
 
 fn main() {

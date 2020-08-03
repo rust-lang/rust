@@ -1,5 +1,5 @@
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:8:5
+  --> $DIR/needless_collect_indirect.rs:5:5
    |
 LL | /     let indirect_iter = sample.iter().collect::<Vec<_>>();
 LL | |     indirect_iter.into_iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
@@ -13,7 +13,7 @@ LL |     sample.iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:10:5
+  --> $DIR/needless_collect_indirect.rs:7:5
    |
 LL | /     let indirect_len = sample.iter().collect::<VecDeque<_>>();
 LL | |     indirect_len.len();
@@ -26,7 +26,7 @@ LL |     sample.iter().count();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:12:5
+  --> $DIR/needless_collect_indirect.rs:9:5
    |
 LL | /     let indirect_empty = sample.iter().collect::<VecDeque<_>>();
 LL | |     indirect_empty.is_empty();
@@ -39,7 +39,7 @@ LL |     sample.iter().next().is_none();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:14:5
+  --> $DIR/needless_collect_indirect.rs:11:5
    |
 LL | /     let indirect_contains = sample.iter().collect::<VecDeque<_>>();
 LL | |     indirect_contains.contains(&&5);

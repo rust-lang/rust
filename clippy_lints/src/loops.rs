@@ -27,7 +27,7 @@ use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::iter::{once, Iterator};
 use std::mem;
@@ -2442,7 +2442,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                 if let Some(ref generic_args) = method_name.args;
                 if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
                 if let ty = cx.typeck_results().node_type(ty.hir_id);
-                if is_type_diagnostic_item(cx, ty, sym!(vec_type)) ||
+                if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                     is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
                     match_type(cx, ty, &paths::LINKED_LIST);
                 if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
@@ -2524,12 +2524,11 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
             if let &[name] = &path.segments;
             if name.ident == self.target;
             then {
-                let into_iter = sym!(into_iter);
                 let len = sym!(len);
                 let is_empty = sym!(is_empty);
                 let contains = sym!(contains);
                 match method_name.ident.name {
-                    name if name == into_iter => self.uses.push(
+                    sym::into_iter => self.uses.push(
                         IterFunction { func: IterFunctionKind::IntoIter, span: expr.span }
                     ),
                     name if name == len => self.uses.push(
