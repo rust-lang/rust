@@ -1,7 +1,7 @@
 #![allow(dead_code)]
-#![allow(clippy::transmutes_expressible_as_ptr_casts)]
 
 extern crate core;
+
 use std::mem::transmute as my_transmute;
 use std::vec::Vec as MyVec;
 

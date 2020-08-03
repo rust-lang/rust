@@ -1,10 +1,18 @@
 #![warn(clippy::transmutes_expressible_as_ptr_casts)]
+// These two warnings currrently cover the cases transmutes_expressible_as_ptr_casts
+// would otherwise be responsible for
+#![warn(clippy::useless_transmute)]
+#![warn(clippy::transmute_ptr_to_ptr)]
+
+use std::mem::transmute;
 
 // rustc_typeck::check::cast contains documentation about when a cast `e as U` is 
 // valid, which we quote from below.
-use std::mem::transmute;
 
 fn main() {
+    // We should see an error message for each transmute, and no error messages for
+    // the casts, since the casts are the recommended fixes.
+
     // e is an integer and U is *U_0, while U_0: Sized; addr-ptr-cast
     let ptr_i32_transmute = unsafe {
         transmute::<isize, *const i32>(-1)
