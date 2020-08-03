@@ -1,5 +1,3 @@
-#![feature(inner_deref)]
-
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
