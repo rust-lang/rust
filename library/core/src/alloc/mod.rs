@@ -117,7 +117,7 @@ pub unsafe trait AllocRef {
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn alloc(&mut self, layout: Layout) -> Result<MemoryBlock, AllocErr>;
 
-    /// Behaves like `alloc`, but also ensures that the contents are set to zero before being returned.
+    /// Behaves like `alloc`, but also ensures that the returned memory is zero-initialized.
     ///
     /// # Errors
     ///
@@ -156,7 +156,7 @@ pub unsafe trait AllocRef {
     /// memory. The pointer is suitable for holding data described by a new layout with `layout`’s
     /// alignment and a size given by `new_size`. To accomplish this, the allocator may extend the
     /// allocation referenced by `ptr` to fit the new layout.
-    ///~
+    ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.
     ///
@@ -164,12 +164,11 @@ pub unsafe trait AllocRef {
     ///
     /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator,
     /// * `layout` must [*fit*] that block of memory (The `new_size` argument need not fit it.),
-    // We can't require that `new_size` is strictly greater than `memory.size` because of ZSTs.
-    // An alternative would be
-    // * `new_size must be strictly greater than `memory.size` or both are zero
     /// * `new_size` must be greater than or equal to `layout.size()`, and
     /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`, must not overflow
     ///   (i.e., the rounded value must be less than or equal to `usize::MAX`).
+    // Note: We can't require that `new_size` is strictly greater than `layout.size()` because of ZSTs.
+    // alternative: `new_size must be strictly greater than `layout.size()` or both are zero
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -283,7 +282,7 @@ pub unsafe trait AllocRef {
             // SAFETY: the caller must ensure that the `new_size` does not overflow.
             // `layout.align()` comes from a `Layout` and is thus guaranteed to be valid for a Layout.
             // The caller must ensure that `new_size` is greater than or equal to zero. If it's equal
-            // to zero, it's catched beforehand.
+            // to zero, it's caught beforehand.
             unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
         let new_memory = self.alloc_zeroed(new_layout)?;
 
