@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 continue;
             }
 
-            if let ty::Adt(ref def, _) = arg_ty.kind {
+            if let ty::Adt(ref def, _) = arg_ty.kind() {
                 if match_def_path(cx, def.did, &paths::MEM_MANUALLY_DROP) {
                     continue;
                 }
@@ -287,7 +287,7 @@ fn is_call_with_ref_arg<'tcx>(
         if let mir::TerminatorKind::Call { func, args, destination, .. } = kind;
         if args.len() == 1;
         if let mir::Operand::Move(mir::Place { local, .. }) = &args[0];
-        if let ty::FnDef(def_id, _) = func.ty(&*mir, cx.tcx).kind;
+        if let ty::FnDef(def_id, _) = *func.ty(&*mir, cx.tcx).kind();
         if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
         if !is_copy(cx, inner_ty);
         then {

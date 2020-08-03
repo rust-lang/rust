@@ -826,7 +826,7 @@ struct FixedOffsetVar<'hir> {
 }
 
 fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
-    let is_slice = match ty.kind {
+    let is_slice = match ty.kind() {
         ty::Ref(_, subty, _) => is_slice_like(cx, subty),
         ty::Slice(..) | ty::Array(..) => true,
         _ => false,
@@ -1375,7 +1375,7 @@ fn is_end_eq_array_len<'tcx>(
     if_chain! {
         if let ExprKind::Lit(ref lit) = end.kind;
         if let ast::LitKind::Int(end_int, _) = lit.node;
-        if let ty::Array(_, arr_len_const) = indexed_ty.kind;
+        if let ty::Array(_, arr_len_const) = indexed_ty.kind();
         if let Some(arr_len) = arr_len_const.try_eval_usize(cx.tcx, cx.param_env);
         then {
             return match limits {
@@ -1612,7 +1612,7 @@ fn check_for_loop_over_map_kv<'tcx>(
     if let PatKind::Tuple(ref pat, _) = pat.kind {
         if pat.len() == 2 {
             let arg_span = arg.span;
-            let (new_pat_span, kind, ty, mutbl) = match cx.typeck_results().expr_ty(arg).kind {
+            let (new_pat_span, kind, ty, mutbl) = match *cx.typeck_results().expr_ty(arg).kind() {
                 ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
                     (key, _) if pat_is_wild(key, body) => (pat[1].span, "value", ty, mutbl),
                     (_, value) if pat_is_wild(value, body) => (pat[0].span, "key", ty, Mutability::Not),
@@ -1940,7 +1940,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 for expr in args {
                     let ty = self.cx.typeck_results().expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = ty.kind {
+                    if let ty::Ref(_, _, mutbl) = *ty.kind() {
                         if mutbl == Mutability::Mut {
                             self.prefer_mutable = true;
                         }
@@ -1952,7 +1952,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = ty.kind {
+                    if let ty::Ref(_, _, mutbl) = *ty.kind() {
                         if mutbl == Mutability::Mut {
                             self.prefer_mutable = true;
                         }
@@ -2050,7 +2050,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 
 fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
-    match ty.kind {
+    match ty.kind() {
         ty::Array(_, n) => n
             .try_eval_usize(cx.tcx, cx.param_env)
             .map_or(false, |val| (0..=32).contains(&val)),

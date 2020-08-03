@@ -573,7 +573,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             if let QPath::Resolved(_, ref path) = qpath;
             if let Some(def_id) = path.res.opt_def_id();
             let ty = cx.tcx.type_of(def_id);
-            if let ty::Adt(def, _) = ty.kind;
+            if let ty::Adt(def, _) = ty.kind();
             if def.is_struct() || def.is_union();
             if fields.len() == def.non_enum_variant().fields.len();
 
@@ -621,7 +621,7 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
         };
 
         let ty = cx.typeck_results().expr_ty(ex);
-        if ty.kind != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
+        if *ty.kind() != ty::Bool || is_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
         }
@@ -712,7 +712,7 @@ fn check_single_match_opt_like(
 
 fn check_match_bool(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     // Type of expression is `bool`.
-    if cx.typeck_results().expr_ty(ex).kind == ty::Bool {
+    if *cx.typeck_results().expr_ty(ex).kind() == ty::Bool {
         span_lint_and_then(
             cx,
             MATCH_BOOL,
@@ -860,7 +860,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
         // already covered.
 
         let mut missing_variants = vec![];
-        if let ty::Adt(def, _) = ty.kind {
+        if let ty::Adt(def, _) = ty.kind() {
             for variant in &def.variants {
                 missing_variants.push(variant);
             }
@@ -914,7 +914,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
 
         let mut message = "wildcard match will miss any future added variants";
 
-        if let ty::Adt(def, _) = ty.kind {
+        if let ty::Adt(def, _) = ty.kind() {
             if def.is_variant_list_non_exhaustive() {
                 message = "match on non-exhaustive enum doesn't explicitly match all known variants";
                 suggestion.push(String::from("_"));
@@ -1014,11 +1014,11 @@ fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
             let input_ty = cx.typeck_results().expr_ty(ex);
 
             let cast = if_chain! {
-                if let ty::Adt(_, substs) = input_ty.kind;
+                if let ty::Adt(_, substs) = input_ty.kind();
                 let input_ty = substs.type_at(0);
-                if let ty::Adt(_, substs) = output_ty.kind;
+                if let ty::Adt(_, substs) = output_ty.kind();
                 let output_ty = substs.type_at(0);
-                if let ty::Ref(_, output_ty, _) = output_ty.kind;
+                if let ty::Ref(_, output_ty, _) = *output_ty.kind();
                 if input_ty != output_ty;
                 then {
                     ".map(|x| x as _)"
