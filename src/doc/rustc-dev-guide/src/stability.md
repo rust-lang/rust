@@ -76,11 +76,11 @@ Furthermore this attribute is needed to mark an intrinsic as callable from
 Macros, compiler desugarings and `const fn`s expose their bodies to the call
 site. To work around not being able to use unstable things in the standard
 library's macros, there's the `#[allow_internal_unstable(feature1, feature2)]`
-attribute that whitelists the given features for usage in stable macros or
+attribute that allows the given features for usage in stable macros or
 `const fn`s.
 
 Note that `const fn`s are even more special in this regard. You can't just
-whitelist any feature, the features need an implementation in
+allow any feature, the features need an implementation in
 `qualify_min_const_fn.rs`. For example the `const_fn_union` feature gate allows
 accessing fields of unions inside stable `const fn`s. The rules for when it's
 ok to use such a feature gate are that behavior matches the runtime behavior of
