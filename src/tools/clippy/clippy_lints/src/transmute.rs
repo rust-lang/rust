@@ -269,6 +269,28 @@ declare_clippy_lint! {
     correctness,
     "transmute between collections of layout-incompatible types"
 }
+
+declare_clippy_lint! {
+    /// **What it does:**
+    ///
+    /// **Why is this bad?**
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // example code where clippy issues a warning
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// // example code which does not raise clippy warning
+    /// ```
+    pub TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
+    complexity,
+    "default lint description"
+}
+
 declare_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
     TRANSMUTE_PTR_TO_REF,
@@ -281,6 +303,7 @@ declare_lint_pass!(Transmute => [
     TRANSMUTE_INT_TO_FLOAT,
     TRANSMUTE_FLOAT_TO_INT,
     UNSOUND_COLLECTION_TRANSMUTE,
+    TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
 ]);
 
 // used to check for UNSOUND_COLLECTION_TRANSMUTE
