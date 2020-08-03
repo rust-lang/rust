@@ -42,7 +42,7 @@ we'll talk about that later.
   analysis. The crate entry points for the parser are the `Parser.parse_crate_mod()` and
   `Parser.parse_mod()` methods found in `librustc_parse::parser::item`. The external
   module parsing entry point is `librustc_expand::module::parse_external_mod`. And
-  the macro parser entry point is `rustc_expand::mbe::macro_parser::parse_nt`.
+  the macro parser entry point is [`Parser.parse_nonterminal()`][parse_nonterminal].
 - Parsing is performed with a set of `Parser` utility methods including `fn bump`,
   `fn check`, `fn eat`, `fn expect`, `fn look_ahead`.
 - Parsing is organized by the semantic construct that is being parsed. Separate
@@ -111,6 +111,7 @@ we'll talk about that later.
 [mir-opt]: https://rustc-dev-guide.rust-lang.org/mir/optimizations.html
 [`simplify_try`]: https://github.com/rust-lang/rust/pull/66282
 [codegen]: https://rustc-dev-guide.rust-lang.org/backend/codegen.html
+[parse_nonterminal]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_nonterminal
 
 ## How it does it
 
@@ -347,7 +348,7 @@ For more details on bootstrapping, see
   - Main entry points:
     - [Entry point for first file in crate](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/passes/fn.parse.html)
     - [Entry point for outline module parsing](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/module/fn.parse_external_mod.html)
-    - [Entry point for macro fragments](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_expand/mbe/macro_parser/fn.parse_nt.html)
+    - [Entry point for macro fragments][parse_nonterminal]
   - AST definition: [`librustc_ast`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/index.html)
   - Expansion: **TODO**
   - Name Resolution: **TODO**
