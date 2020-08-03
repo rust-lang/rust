@@ -1423,7 +1423,7 @@ pub unsafe fn _mm256_permute2f128_pd(a: __m256d, b: __m256d, imm8: i32) -> __m25
     constify_imm8!(imm8, call)
 }
 
-/// Shuffles 258-bits (composed of integer data) selected by `imm8`
+/// Shuffles 128-bits (composed of integer data) selected by `imm8`
 /// from `a` and `b`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute2f128_si256)
