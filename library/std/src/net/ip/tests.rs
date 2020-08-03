@@ -30,10 +30,7 @@ fn test_from_str_ipv6() {
     assert_eq!(Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)), "::1".parse());
     assert_eq!(Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)), "::".parse());
 
-    assert_eq!(
-        Ok(Ipv6Addr::new(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11)),
-        "2a02:6b8::11:11".parse()
-    );
+    assert_eq!(Ok(Ipv6Addr::new(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11)), "2a02:6b8::11:11".parse());
 
     // too long group
     let none: Option<Ipv6Addr> = "::00000".parse().ok();
@@ -58,10 +55,7 @@ fn test_from_str_ipv6() {
 #[test]
 fn test_from_str_ipv4_in_ipv6() {
     assert_eq!(Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 49152, 545)), "::192.0.2.33".parse());
-    assert_eq!(
-        Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0xFFFF, 49152, 545)),
-        "::FFFF:192.0.2.33".parse()
-    );
+    assert_eq!(Ok(Ipv6Addr::new(0, 0, 0, 0, 0, 0xFFFF, 49152, 545)), "::FFFF:192.0.2.33".parse());
     assert_eq!(
         Ok(Ipv6Addr::new(0x64, 0xff9b, 0, 0, 0, 0, 49152, 545)),
         "64:ff9b::192.0.2.33".parse()
@@ -85,10 +79,7 @@ fn test_from_str_ipv4_in_ipv6() {
 #[test]
 fn test_from_str_socket_addr() {
     assert_eq!(Ok(sa4(Ipv4Addr::new(77, 88, 21, 11), 80)), "77.88.21.11:80".parse());
-    assert_eq!(
-        Ok(SocketAddrV4::new(Ipv4Addr::new(77, 88, 21, 11), 80)),
-        "77.88.21.11:80".parse()
-    );
+    assert_eq!(Ok(SocketAddrV4::new(Ipv4Addr::new(77, 88, 21, 11), 80)), "77.88.21.11:80".parse());
     assert_eq!(
         Ok(sa6(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 53)),
         "[2a02:6b8:0:1::1]:53".parse()
@@ -97,10 +88,7 @@ fn test_from_str_socket_addr() {
         Ok(SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 53, 0, 0)),
         "[2a02:6b8:0:1::1]:53".parse()
     );
-    assert_eq!(
-        Ok(sa6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x7F00, 1), 22)),
-        "[::127.0.0.1]:22".parse()
-    );
+    assert_eq!(Ok(sa6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x7F00, 1), 22)), "[::127.0.0.1]:22".parse());
     assert_eq!(
         Ok(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x7F00, 1), 22, 0, 0)),
         "[::127.0.0.1]:22".parse()
@@ -147,19 +135,12 @@ fn ipv6_addr_to_string() {
 
     // longest possible IPv6 length
     assert_eq!(
-        Ipv6Addr::new(0x1111, 0x2222, 0x3333, 0x4444, 0x5555, 0x6666, 0x7777, 0x8888)
-            .to_string(),
+        Ipv6Addr::new(0x1111, 0x2222, 0x3333, 0x4444, 0x5555, 0x6666, 0x7777, 0x8888).to_string(),
         "1111:2222:3333:4444:5555:6666:7777:8888"
     );
     // padding
-    assert_eq!(
-        &format!("{:20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)),
-        "1:2:3:4:5:6:7:8     "
-    );
-    assert_eq!(
-        &format!("{:>20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)),
-        "     1:2:3:4:5:6:7:8"
-    );
+    assert_eq!(&format!("{:20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)), "1:2:3:4:5:6:7:8     ");
+    assert_eq!(&format!("{:>20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)), "     1:2:3:4:5:6:7:8");
 
     // reduce a single run of zeros
     assert_eq!(
@@ -609,11 +590,7 @@ fn ipv6_properties() {
 
     check!("::1", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], loopback);
 
-    check!(
-        "::0.0.0.2",
-        &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        global | unicast_global
-    );
+    check!("::0.0.0.2", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2], global | unicast_global);
 
     check!("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
 
@@ -643,11 +620,7 @@ fn ipv6_properties() {
         unicast_link_local
     );
 
-    check!(
-        "febf::",
-        &[0xfe, 0xbf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        unicast_link_local
-    );
+    check!("febf::", &[0xfe, 0xbf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_link_local);
 
     check!(
         "febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
@@ -685,29 +658,13 @@ fn ipv6_properties() {
         multicast_interface_local
     );
 
-    check!(
-        "ff02::",
-        &[0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        multicast_link_local
-    );
+    check!("ff02::", &[0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_link_local);
 
-    check!(
-        "ff03::",
-        &[0xff, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        multicast_realm_local
-    );
+    check!("ff03::", &[0xff, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_realm_local);
 
-    check!(
-        "ff04::",
-        &[0xff, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        multicast_admin_local
-    );
+    check!("ff04::", &[0xff, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_admin_local);
 
-    check!(
-        "ff05::",
-        &[0xff, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        multicast_site_local
-    );
+    check!("ff05::", &[0xff, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_site_local);
 
     check!(
         "ff08::",
@@ -800,8 +757,8 @@ fn ipv6_from_octets() {
     let from_u16s =
         Ipv6Addr::from([0x0011, 0x2233, 0x4455, 0x6677, 0x8899, 0xaabb, 0xccdd, 0xeeff]);
     let from_u8s = Ipv6Addr::from([
-        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd,
-        0xee, 0xff,
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+        0xff,
     ]);
     assert_eq!(from_u16s, from_u8s);
 }

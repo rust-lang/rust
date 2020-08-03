@@ -180,8 +180,7 @@ fn debug() {
 
     let udpsock = t!(UdpSocket::bind(&socket_addr));
     let udpsock_inner = udpsock.0.socket().as_inner();
-    let compare =
-        format!("UdpSocket {{ addr: {:?}, {}: {:?} }}", socket_addr, name, udpsock_inner);
+    let compare = format!("UdpSocket {{ addr: {:?}, {}: {:?} }}", socket_addr, name, udpsock_inner);
     assert_eq!(format!("{:?}", udpsock), compare);
 }
 
