@@ -43,7 +43,7 @@ extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 extern crate test as testing;
 #[macro_use]
-extern crate log;
+extern crate tracing as log;
 
 use std::default::Default;
 use std::env;
