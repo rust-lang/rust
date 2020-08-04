@@ -10,7 +10,7 @@
 pub use self::LangItem::*;
 
 use crate::def_id::DefId;
-use crate::Target;
+use crate::{MethodKind, Target};
 
 use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -307,4 +307,38 @@ language_item_table! {
     CountCodeRegionFnLangItem,         sym::count_code_region,         count_code_region_fn,         Target::Fn;
     CoverageCounterAddFnLangItem,      sym::coverage_counter_add,      coverage_counter_add_fn,      Target::Fn;
     CoverageCounterSubtractFnLangItem, sym::coverage_counter_subtract, coverage_counter_subtract_fn, Target::Fn;
+
+    // Language items from AST lowering
+    TryFromError,                  sym::from_error,         from_error_fn,           Target::Method(MethodKind::Trait { body: false });
+    TryFromOk,                     sym::from_ok,            from_ok_fn,              Target::Method(MethodKind::Trait { body: false });
+    TryIntoResult,                 sym::into_result,        into_result_fn,          Target::Method(MethodKind::Trait { body: false });
+
+    PollReady,                     sym::Ready,              poll_ready_variant,      Target::Variant;
+    PollPending,                   sym::Pending,            poll_pending_variant,    Target::Variant;
+
+    FromGenerator,                 sym::from_generator,     from_generator_fn,       Target::Fn;
+    GetContext,                    sym::get_context,        get_context_fn,          Target::Fn;
+
+    FuturePoll,                    sym::poll,               future_poll_fn,          Target::Method(MethodKind::Trait { body: false });
+
+    FromFrom,                      sym::from,               from_fn,                 Target::Method(MethodKind::Trait { body: false });
+
+    OptionSome,                    sym::Some,               option_some_variant,     Target::Variant;
+    OptionNone,                    sym::None,               option_none_variant,     Target::Variant;
+
+    ResultOk,                      sym::Ok,                 result_ok_variant,       Target::Variant;
+    ResultErr,                     sym::Err,                result_err_variant,      Target::Variant;
+
+    IntoIterIntoIter,              sym::into_iter,          into_iter_fn,            Target::Method(MethodKind::Trait { body: false });
+    IteratorNext,                  sym::next,               next_fn,                 Target::Method(MethodKind::Trait { body: false});
+
+    PinNewUnchecked,               sym::new_unchecked,      new_unchecked_fn,        Target::Method(MethodKind::Inherent);
+
+    RangeFrom,                     sym::RangeFrom,           range_from_struct,          Target::Struct;
+    RangeFull,                     sym::RangeFull,           range_full_struct,          Target::Struct;
+    RangeInclusiveStruct,          sym::RangeInclusive,      range_inclusive_struct,     Target::Struct;
+    RangeInclusiveNew,             sym::range_inclusive_new, range_inclusive_new_method, Target::Method(MethodKind::Inherent);
+    Range,                         sym::Range,               range_struct,               Target::Struct;
+    RangeToInclusive,              sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct;
+    RangeTo,                       sym::RangeTo,             range_to_struct,            Target::Struct;
 }

@@ -96,6 +96,7 @@ pub trait Future {
     /// [`Context`]: ../task/struct.Context.html
     /// [`Waker`]: ../task/struct.Waker.html
     /// [`Waker::wake`]: ../task/struct.Waker.html#method.wake
+    #[cfg_attr(not(bootstrap), lang = "poll")]
     #[stable(feature = "futures_api", since = "1.36.0")]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
 }
