@@ -361,6 +361,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "derive",
     },
     Lint {
+        name: "derive_ord_xor_partial_ord",
+        group: "correctness",
+        desc: "deriving `Ord` but implementing `PartialOrd` explicitly",
+        deprecation: None,
+        module: "derive",
+    },
+    Lint {
         name: "diverging_sub_expression",
         group: "complexity",
         desc: "whether an expression contains a diverging sub expression",
