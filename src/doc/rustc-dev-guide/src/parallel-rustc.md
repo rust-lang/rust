@@ -18,7 +18,7 @@ There are a few basic ideas in this effort:
   thread-safe. A key strategy here has been converting interior-mutable
   data-structures (e.g. `Cell`) into their thread-safe siblings (e.g. `Mutex`).
 
-[`rayon`]: https://crates.io/rayon
+[`rayon`]: https://crates.io/crates/rayon
 
 As of this writing, much of this effort is on hold due to lack of manpower. We
 have a working prototype with promising performance gains in many cases.
