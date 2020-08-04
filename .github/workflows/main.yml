@@ -16,11 +16,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    # https://github.com/actions/cache/issues/133
-    - name: Fixup owner of ~/.cargo/
-      # Don't remove the trailing /. It is necessary to follow the symlink.
-      run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
-
     - name: Cache cargo installed crates
       uses: actions/cache@v1.1.2
       with:
