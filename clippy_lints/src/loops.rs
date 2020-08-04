@@ -1,14 +1,13 @@
 use crate::consts::constant;
-use crate::reexport::Name;
 use crate::utils::paths;
+use crate::utils::sugg::Sugg;
 use crate::utils::usage::{is_unused, mutated_variables};
 use crate::utils::{
     get_enclosing_block, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    is_integer_const, is_no_std_crate, is_refutable, last_path_segment, match_trait_method, match_type, match_var,
-    multispan_sugg, snippet, snippet_opt, snippet_with_applicability, span_lint, span_lint_and_help,
-    span_lint_and_sugg, span_lint_and_then, SpanlessEq,
+    is_integer_const, is_no_std_crate, is_refutable, is_type_diagnostic_item, last_path_segment, match_trait_method,
+    match_type, match_var, multispan_sugg, qpath_res, snippet, snippet_opt, snippet_with_applicability, span_lint,
+    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg, SpanlessEq,
 };
-use crate::utils::{is_type_diagnostic_item, qpath_res, sugg};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -17,7 +16,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc_hir::{
     def_id, BinOpKind, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, GenericArg, HirId, InlineAsmOperand,
-    LoopSource, MatchSource, Mutability, Node, Pat, PatKind, QPath, Stmt, StmtKind,
+    Local, LoopSource, MatchSource, Mutability, Node, Pat, PatKind, QPath, Stmt, StmtKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -27,7 +26,7 @@ use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::iter::{once, Iterator};
 use std::mem;
@@ -1184,7 +1183,7 @@ fn check_for_loop_range<'tcx>(
     }
 }
 
-fn is_len_call(expr: &Expr<'_>, var: Name) -> bool {
+fn is_len_call(expr: &Expr<'_>, var: Symbol) -> bool {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref len_args, _) = expr.kind;
         if len_args.len() == 1;
@@ -1640,15 +1639,15 @@ struct VarVisitor<'a, 'tcx> {
     /// var name to look for as index
     var: HirId,
     /// indexed variables that are used mutably
-    indexed_mut: FxHashSet<Name>,
+    indexed_mut: FxHashSet<Symbol>,
     /// indirectly indexed variables (`v[(i + 4) % N]`), the extend is `None` for global
-    indexed_indirectly: FxHashMap<Name, Option<region::Scope>>,
+    indexed_indirectly: FxHashMap<Symbol, Option<region::Scope>>,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
-    indexed_directly: FxHashMap<Name, (Option<region::Scope>, Ty<'tcx>)>,
+    indexed_directly: FxHashMap<Symbol, (Option<region::Scope>, Ty<'tcx>)>,
     /// Any names that are used outside an index operation.
     /// Used to detect things like `&mut vec` used together with `vec[i]`
-    referenced: FxHashSet<Name>,
+    referenced: FxHashSet<Symbol>,
     /// has the loop variable been used in expressions other than the index of
     /// an index op?
     nonindex: bool,
@@ -2004,7 +2003,7 @@ struct InitializeVisitor<'a, 'tcx> {
     end_expr: &'tcx Expr<'tcx>, // the for loop. Stop scanning here.
     var_id: HirId,
     state: VarState,
-    name: Option<Name>,
+    name: Option<Symbol>,
     depth: u32, // depth of conditional expressions
     past_loop: bool,
 }
@@ -2167,7 +2166,7 @@ use self::Nesting::{LookFurther, RuledOut, Unknown};
 
 struct LoopNestVisitor {
     hir_id: HirId,
-    iterator: Name,
+    iterator: Symbol,
     nesting: Nesting,
 }
 
@@ -2218,7 +2217,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
     }
 }
 
-fn path_name(e: &Expr<'_>) -> Option<Name> {
+fn path_name(e: &Expr<'_>) -> Option<Symbol> {
     if let ExprKind::Path(QPath::Resolved(_, ref path)) = e.kind {
         let segments = &path.segments;
         if segments.len() == 1 {
@@ -2358,6 +2357,10 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
 fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
+    check_needless_collect_direct_usage(expr, cx);
+    check_needless_collect_indirect_usage(expr, cx);
+}
+fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
         if let ExprKind::MethodCall(ref chain_method, _, _, _) = args[0].kind;
@@ -2422,6 +2425,157 @@ fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
                 }
             }
         }
+    }
+}
+
+fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
+    if let ExprKind::Block(ref block, _) = expr.kind {
+        for ref stmt in block.stmts {
+            if_chain! {
+                if let StmtKind::Local(
+                    Local { pat: Pat { kind: PatKind::Binding(_, _, ident, .. ), .. },
+                    init: Some(ref init_expr), .. }
+                ) = stmt.kind;
+                if let ExprKind::MethodCall(ref method_name, _, &[ref iter_source], ..) = init_expr.kind;
+                if method_name.ident.name == sym!(collect) && match_trait_method(cx, &init_expr, &paths::ITERATOR);
+                if let Some(ref generic_args) = method_name.args;
+                if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
+                if let ty = cx.typeck_results().node_type(ty.hir_id);
+                if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
+                    is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
+                    match_type(cx, ty, &paths::LINKED_LIST);
+                if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
+                if iter_calls.len() == 1;
+                then {
+                    // Suggest replacing iter_call with iter_replacement, and removing stmt
+                    let iter_call = &iter_calls[0];
+                    span_lint_and_then(
+                        cx,
+                        NEEDLESS_COLLECT,
+                        stmt.span.until(iter_call.span),
+                        NEEDLESS_COLLECT_MSG,
+                        |diag| {
+                            let iter_replacement = format!("{}{}", Sugg::hir(cx, iter_source, ".."), iter_call.get_iter_method(cx));
+                            diag.multipart_suggestion(
+                                iter_call.get_suggestion_text(),
+                                vec![
+                                    (stmt.span, String::new()),
+                                    (iter_call.span, iter_replacement)
+                                ],
+                                Applicability::MachineApplicable,// MaybeIncorrect,
+                            ).emit();
+                        },
+                    );
+                }
+            }
+        }
+    }
+}
+
+struct IterFunction {
+    func: IterFunctionKind,
+    span: Span,
+}
+impl IterFunction {
+    fn get_iter_method(&self, cx: &LateContext<'_>) -> String {
+        match &self.func {
+            IterFunctionKind::IntoIter => String::new(),
+            IterFunctionKind::Len => String::from(".count()"),
+            IterFunctionKind::IsEmpty => String::from(".next().is_none()"),
+            IterFunctionKind::Contains(span) => format!(".any(|x| x == {})", snippet(cx, *span, "..")),
+        }
+    }
+    fn get_suggestion_text(&self) -> &'static str {
+        match &self.func {
+            IterFunctionKind::IntoIter => {
+                "Use the original Iterator instead of collecting it and then producing a new one"
+            },
+            IterFunctionKind::Len => {
+                "Take the original Iterator's count instead of collecting it and finding the length"
+            },
+            IterFunctionKind::IsEmpty => {
+                "Check if the original Iterator has anything instead of collecting it and seeing if it's empty"
+            },
+            IterFunctionKind::Contains(_) => {
+                "Check if the original Iterator contains an element instead of collecting then checking"
+            },
+        }
+    }
+}
+enum IterFunctionKind {
+    IntoIter,
+    Len,
+    IsEmpty,
+    Contains(Span),
+}
+
+struct IterFunctionVisitor {
+    uses: Vec<IterFunction>,
+    seen_other: bool,
+    target: Ident,
+}
+impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+        // Check function calls on our collection
+        if_chain! {
+            if let ExprKind::MethodCall(method_name, _, ref args, _) = &expr.kind;
+            if let Some(Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. }) = args.get(0);
+            if let &[name] = &path.segments;
+            if name.ident == self.target;
+            then {
+                let len = sym!(len);
+                let is_empty = sym!(is_empty);
+                let contains = sym!(contains);
+                match method_name.ident.name {
+                    sym::into_iter => self.uses.push(
+                        IterFunction { func: IterFunctionKind::IntoIter, span: expr.span }
+                    ),
+                    name if name == len => self.uses.push(
+                        IterFunction { func: IterFunctionKind::Len, span: expr.span }
+                    ),
+                    name if name == is_empty => self.uses.push(
+                        IterFunction { func: IterFunctionKind::IsEmpty, span: expr.span }
+                    ),
+                    name if name == contains => self.uses.push(
+                        IterFunction { func: IterFunctionKind::Contains(args[1].span), span: expr.span }
+                    ),
+                    _ => self.seen_other = true,
+                }
+                return
+            }
+        }
+        // Check if the collection is used for anything else
+        if_chain! {
+            if let Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. } = expr;
+            if let &[name] = &path.segments;
+            if name.ident == self.target;
+            then {
+                self.seen_other = true;
+            } else {
+                walk_expr(self, expr);
+            }
+        }
+    }
+
+    type Map = Map<'tcx>;
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
+/// Detect the occurences of calls to `iter` or `into_iter` for the
+/// given identifier
+fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident) -> Option<Vec<IterFunction>> {
+    let mut visitor = IterFunctionVisitor {
+        uses: Vec::new(),
+        target: identifier,
+        seen_other: false,
+    };
+    visitor.visit_block(block);
+    if visitor.seen_other {
+        None
+    } else {
+        Some(visitor.uses)
     }
 }
 

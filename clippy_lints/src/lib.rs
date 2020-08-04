@@ -322,10 +322,6 @@ mod zero_div_zero;
 
 pub use crate::utils::conf::Conf;
 
-mod reexport {
-    pub use rustc_span::Symbol as Name;
-}
-
 /// Register all pre expansion lints
 ///
 /// Pre-expansion lints run before any macro expansion has happened.
@@ -513,6 +509,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &default_trait_access::DEFAULT_TRAIT_ACCESS,
         &dereference::EXPLICIT_DEREF_METHODS,
         &derive::DERIVE_HASH_XOR_EQ,
+        &derive::DERIVE_ORD_XOR_PARTIAL_ORD,
         &derive::EXPL_IMPL_CLONE_ON_COPY,
         &derive::UNSAFE_DERIVE_DESERIALIZE,
         &doc::DOC_MARKDOWN,
@@ -786,6 +783,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &tabs_in_doc_comments::TABS_IN_DOC_COMMENTS,
         &temporary_assignment::TEMPORARY_ASSIGNMENT,
         &to_digit_is_some::TO_DIGIT_IS_SOME,
+        &trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS,
         &trait_bounds::TYPE_REPETITION_IN_BOUNDS,
         &transmute::CROSSPOINTER_TRANSMUTE,
         &transmute::TRANSMUTE_BYTES_TO_STR,
@@ -1174,6 +1172,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&ranges::RANGE_PLUS_ONE),
         LintId::of(&shadow::SHADOW_UNRELATED),
         LintId::of(&strings::STRING_ADD_ASSIGN),
+        LintId::of(&trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
         LintId::of(&trait_bounds::TYPE_REPETITION_IN_BOUNDS),
         LintId::of(&trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF),
         LintId::of(&types::CAST_LOSSLESS),
@@ -1230,6 +1229,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
+        LintId::of(&derive::DERIVE_ORD_XOR_PARTIAL_ORD),
         LintId::of(&doc::MISSING_SAFETY_DOC),
         LintId::of(&doc::NEEDLESS_DOCTEST_MAIN),
         LintId::of(&double_comparison::DOUBLE_COMPARISONS),
@@ -1648,6 +1648,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&copies::IFS_SAME_COND),
         LintId::of(&copies::IF_SAME_THEN_ELSE),
         LintId::of(&derive::DERIVE_HASH_XOR_EQ),
+        LintId::of(&derive::DERIVE_ORD_XOR_PARTIAL_ORD),
         LintId::of(&drop_bounds::DROP_BOUNDS),
         LintId::of(&drop_forget_ref::DROP_COPY),
         LintId::of(&drop_forget_ref::DROP_REF),

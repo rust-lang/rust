@@ -1,6 +1,5 @@
 //! checks for attributes
 
-use crate::reexport::Name;
 use crate::utils::{
     first_line_of_span, is_present_in_source, match_def_path, paths, snippet_opt, span_lint, span_lint_and_help,
     span_lint_and_sugg, span_lint_and_then, without_block_comments,
@@ -517,7 +516,7 @@ fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>
     }
 }
 
-fn check_attrs(cx: &LateContext<'_>, span: Span, name: Name, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribute]) {
     if span.from_expansion() {
         return;
     }
