@@ -285,9 +285,9 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
                             tcx.sess,
                             span,
                             E0752,
-                            "start is not allowed to be `async`"
+                            "`start` is not allowed to be `async`"
                         )
-                        .span_label(span, "start is not allowed to be `async`")
+                        .span_label(span, "`start` is not allowed to be `async`")
                         .emit();
                         error = true;
                     }
@@ -297,11 +297,11 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
                             tcx.sess
                                 .struct_span_err(
                                     attr.span,
-                                    "start is not allowed to be `#[track_caller]`",
+                                    "`start` is not allowed to be `#[track_caller]`",
                                 )
                                 .span_label(
                                     start_span,
-                                    "start is not allowed to be `#[track_caller]`",
+                                    "`start` is not allowed to be `#[track_caller]`",
                                 )
                                 .emit();
                             error = true;
