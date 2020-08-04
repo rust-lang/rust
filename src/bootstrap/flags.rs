@@ -216,7 +216,27 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         };
 
         // Some subcommands get extra options
-        match subcommand.as_str() {
+        let run_stage = |opts: &mut Options| {
+            opts.optopt(
+                    "",
+                    "run-stage",
+                    "stage to run, in terms of which libraries it runs with (e.g. `--run-stage 1` means use `build/stage1/bin`). \
+                        This is an alias for `--stage`.",
+                    "N",
+                );
+            Some("run-stage")
+        };
+        let link_stage = |opts: &mut Options| {
+            opts.optopt(
+                    "",
+                    "link-stage",
+                    "stage to use, in terms of what libraries it is linked to (e.g. `--link-stage 1` means use `build/stage1-<component>`). \
+                        This is an alias for `--stage`.",
+                    "N",
+                );
+            Some("link-stage")
+        };
+        let extra_stage_arg = match subcommand.as_str() {
             "test" | "t" => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
@@ -247,20 +267,26 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                     "enable this to generate a Rustfix coverage file, which is saved in \
                         `/<build_base>/rustfix_missing_coverage.txt`",
                 );
+                run_stage(&mut opts)
             }
             "bench" => {
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
+                link_stage(&mut opts)
             }
+            "build" | "b" => link_stage(&mut opts),
             "doc" => {
                 opts.optflag("", "open", "open the docs in a browser");
+                run_stage(&mut opts)
             }
             "clean" => {
                 opts.optflag("", "all", "clean all build artifacts");
+                None
             }
             "fmt" => {
                 opts.optflag("", "check", "check formatting instead of applying.");
+                None
             }
-            _ => {}
+            _ => None,
         };
 
         // Done specifying what options are possible, so do the getopts parsing
@@ -517,9 +543,21 @@ Arguments:
             }
         }
 
+        let parse_stage =
+            |name| -> Option<u32> { matches.opt_get(name).expect("`stage` should be a number") };
+        // We ensure above that `run-stage` and `link-stage` are mutually exclusive
+        let stage = match (parse_stage("stage"), extra_stage_arg.and_then(parse_stage)) {
+            (None, None) => None,
+            (Some(x), None) | (None, Some(x)) => Some(x),
+            (Some(_), Some(_)) => {
+                println!("--stage, --run-stage, and --link-stage are mutually exclusive");
+                process::exit(1);
+            }
+        };
+
         Flags {
             verbose: matches.opt_count("verbose"),
-            stage: matches.opt_str("stage").map(|j| j.parse().expect("`stage` should be a number")),
+            stage,
             dry_run: matches.opt_present("dry-run"),
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
