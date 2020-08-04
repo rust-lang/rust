@@ -322,10 +322,6 @@ mod zero_div_zero;
 
 pub use crate::utils::conf::Conf;
 
-mod reexport {
-    pub use rustc_span::Symbol as Name;
-}
-
 /// Register all pre expansion lints
 ///
 /// Pre-expansion lints run before any macro expansion has happened.
