@@ -1034,6 +1034,30 @@ pub trait FiniteBitSetTy:
     fn checked_shr(self, rhs: u32) -> Option<Self>;
 }
 
+impl FiniteBitSetTy for u32 {
+    const DOMAIN_SIZE: u32 = 32;
+
+    const FILLED: Self = Self::MAX;
+    const EMPTY: Self = Self::MIN;
+
+    const ONE: Self = 1u32;
+    const ZERO: Self = 0u32;
+
+    fn checked_shl(self, rhs: u32) -> Option<Self> {
+        self.checked_shl(rhs)
+    }
+
+    fn checked_shr(self, rhs: u32) -> Option<Self> {
+        self.checked_shr(rhs)
+    }
+}
+
+impl std::fmt::Debug for FiniteBitSet<u32> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:032b}", self.0)
+    }
+}
+
 impl FiniteBitSetTy for u64 {
     const DOMAIN_SIZE: u32 = 64;
 
