@@ -1,6 +1,3 @@
-use std::convert::TryFrom;
-use std::io::{self, Read, Write};
-
 use log::trace;
 
 use rustc_middle::mir;
@@ -67,43 +64,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let fd = this.read_scalar(fd)?.to_i32()?;
                 let buf = this.read_scalar(buf)?.check_init()?;
                 let count = this.read_scalar(count)?.to_machine_usize(this)?;
-                let result = if fd == 0 {
-
-                    this.check_no_isolation("read")?;
-
-                    // We cap the number of read bytes to the largest
-                    // value that we are able to fit in both the
-                    // host's and target's `isize`. This saves us from
-                    // having to handle overflows later.
-                    let count = count.min(this.machine_isize_max() as u64).min(isize::MAX as u64);
-
-                    // We want to read at most `count` bytes. We are
-                    // sure that `count` is not negative because it
-                    // was a target's `usize`. Also we are sure that
-                    // its smaller than `usize::MAX` because it is a
-                    // host's `isize`.
-                    let mut buffer = vec![0; count as usize];
-                    let res = io::stdin()
-                        .read(&mut buffer)
-                        // `Stdin::read` never returns a value larger
-                        // than `count`, so this cannot fail.
-                        .map(|c| i64::try_from(c).unwrap());
-
-                    match res {
-                        Ok(bytes) => {
-                            this.memory.write_bytes(buf, buffer)?;
-                            i64::try_from(bytes).unwrap()
-                        },
-                        Err(e) => {
-                            this.set_last_error_from_io_error(e)?;
-                            -1
-                        },
-                    }
-                } else if fd == 1 || fd == 2 {
-                    throw_unsup_format!("cannot read from stdout/stderr")
-                } else {
-                    this.read(fd, buf, count)?
-                };
+                let result = this.read(fd, buf, count)?;
                 this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
             }
             "write" => {
@@ -112,35 +73,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let buf = this.read_scalar(buf)?.check_init()?;
                 let count = this.read_scalar(n)?.to_machine_usize(this)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
-                let result = if fd == 0 {
-                    throw_unsup_format!("cannot write to stdin")
-                } else if fd == 1 || fd == 2 {
-                    // stdout/stderr
-
-                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(count))?;
-                    // We need to flush to make sure this actually appears on the screen
-                    let res = if fd == 1 {
-                        // Stdout is buffered, flush to make sure it appears on the screen.
-                        // This is the write() syscall of the interpreted program, we want it
-                        // to correspond to a write() syscall on the host -- there is no good
-                        // in adding extra buffering here.
-                        let res = io::stdout().write(buf_cont);
-                        io::stdout().flush().unwrap();
-                        res
-                    } else {
-                        // No need to flush, stderr is not buffered.
-                        io::stderr().write(buf_cont)
-                    };
-                    match res {
-                        Ok(n) => i64::try_from(n).unwrap(),
-                        Err(e) => {
-                            this.set_last_error_from_io_error(e)?;
-                            -1
-                        }
-                    }
-                } else {
-                    this.write(fd, buf, count)?
-                };
+                let result = this.write(fd, buf, count)?;
                 // Now, `result` is the value we return back to the program.
                 this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
             }
