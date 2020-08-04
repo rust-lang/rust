@@ -10,6 +10,10 @@ use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxHashMap;
 
+use std::cmp::{Eq, PartialEq};
+use std::hash::{Hash, Hasher};
+use std::mem;
+
 /// A compressed span.
 ///
 /// `SpanData` is 12 bytes, which is a bit too big to stick everywhere. `Span`
@@ -57,11 +61,36 @@ use rustc_data_structures::fx::FxHashMap;
 ///   the code. No crates in `rustc-perf` need more than 15 bits for `ctxt`,
 ///   but larger crates might need more than 16 bits.
 ///
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy)]
+#[repr(C)] // So we can transmute to a `u64`.
 pub struct Span {
     base_or_index: u32,
     len_or_tag: u16,
     ctxt_or_zero: u16,
+}
+
+// SAFETY: It is safe to transmute `Span` to `u64` as
+// `Span` is `repr(C)` and does not contan padding bytes.
+
+impl PartialEq for Span {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        unsafe { mem::transmute::<Span, u64>(*self) == mem::transmute::<Span, u64>(*other) }
+    }
+
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        unsafe { mem::transmute::<Span, u64>(*self) != mem::transmute::<Span, u64>(*other) }
+    }
+}
+
+impl Eq for Span {}
+
+impl Hash for Span {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        unsafe { mem::transmute::<Span, u64>(*self).hash(state) }
+    }
 }
 
 const LEN_TAG: u16 = 0b1000_0000_0000_0000;
