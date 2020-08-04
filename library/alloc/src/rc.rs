@@ -250,7 +250,7 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
-use crate::alloc::{box_free, handle_alloc_error, AllocInit, AllocRef, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocRef, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::string::String;
 use crate::vec::Vec;
@@ -928,9 +928,7 @@ impl<T: ?Sized> Rc<T> {
         let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
         // Allocate for the layout.
-        let mem = Global
-            .alloc(layout, AllocInit::Uninitialized)
-            .unwrap_or_else(|_| handle_alloc_error(layout));
+        let mem = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the RcBox
         let inner = mem_to_rcbox(mem.ptr.as_ptr());

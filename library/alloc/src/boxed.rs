@@ -146,7 +146,7 @@ use core::pin::Pin;
 use core::ptr::{self, Unique};
 use core::task::{Context, Poll};
 
-use crate::alloc::{self, AllocInit, AllocRef, Global};
+use crate::alloc::{self, AllocRef, Global};
 use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
@@ -197,11 +197,8 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        let ptr = Global
-            .alloc(layout, AllocInit::Uninitialized)
-            .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .ptr
-            .cast();
+        let ptr =
+            Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).ptr.cast();
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 
@@ -227,7 +224,7 @@ impl<T> Box<T> {
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
         let ptr = Global
-            .alloc(layout, AllocInit::Zeroed)
+            .alloc_zeroed(layout)
             .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
             .ptr
             .cast();

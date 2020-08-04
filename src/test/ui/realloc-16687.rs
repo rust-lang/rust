@@ -6,7 +6,7 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{handle_alloc_error, AllocInit, AllocRef, Global, Layout, ReallocPlacement};
+use std::alloc::{handle_alloc_error, AllocRef, Global, Layout};
 use std::ptr::{self, NonNull};
 
 fn main() {
@@ -41,9 +41,7 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?})", layout);
         }
 
-        let memory = Global
-            .alloc(layout, AllocInit::Uninitialized)
-            .unwrap_or_else(|_| handle_alloc_error(layout));
+        let memory = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         if PRINT {
             println!("allocate({:?}) = {:?}", layout, memory.ptr);
@@ -70,11 +68,9 @@ unsafe fn test_triangle() -> bool {
                 NonNull::new_unchecked(ptr),
                 old,
                 new.size(),
-                ReallocPlacement::MayMove,
-                AllocInit::Uninitialized,
             )
         } else {
-            Global.shrink(NonNull::new_unchecked(ptr), old, new.size(), ReallocPlacement::MayMove)
+            Global.shrink(NonNull::new_unchecked(ptr), old, new.size())
         };
 
         let memory = memory.unwrap_or_else(|_| {
