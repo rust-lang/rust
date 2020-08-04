@@ -13,6 +13,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// enum ValType {
+    ///     I32,
+    ///     I64,
+    ///     F32,
+    ///     F64,
+    /// }
+    ///
     /// impl ValType {
     ///     pub fn bytes(self: Self) -> usize {
     ///         match self {
@@ -26,6 +33,13 @@ declare_clippy_lint! {
     /// Could be rewritten as
     ///
     /// ```rust
+    /// enum ValType {
+    ///     I32,
+    ///     I64,
+    ///     F32,
+    ///     F64,
+    /// }
+    ///
     /// impl ValType {
     ///     pub fn bytes(self) -> usize {
     ///         match self {
