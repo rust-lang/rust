@@ -427,9 +427,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-derive"
-version = "0.14.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d463e01905d607e181de72e8608721d3269f29176c9a14ce037011316ae7131d"
+checksum = "c1df0dbb57d74b4acd20f20fa66ab2acd09776b79eaeb9d8f947b2f3e01c40bf"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -439,21 +439,22 @@ dependencies = [
 
 [[package]]
 name = "chalk-engine"
-version = "0.14.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efaf428f5398d36284f79690cf988762b7c091249f50a6c11db613a46c057000"
+checksum = "fb7c65a13f32f02aba8f1d9a37f206af615f77ac564624b81a4c593c6c1735b9"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
+ "chalk-solve",
  "rustc-hash",
  "tracing",
 ]
 
 [[package]]
 name = "chalk-ir"
-version = "0.14.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd3fdc1e9f68498ffe80f4a23b0b95f1ca6fb21d5a4c9b0c085fab3ca712bdbe"
+checksum = "44361a25dbdb1dc428f56ad7a3c21ba9ca12f3225c26a47919ff6fcb10a583d4"
 dependencies = [
  "chalk-derive",
  "lazy_static",
@@ -461,18 +462,19 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.14.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b9fd4102807b7ebe8fb034fa0f488c5656e1966d3261b558b81a08d519cdb29"
+checksum = "a886da37a0dc457057d86f78f026f7a09c6d8088aa13f4f4127fdb8dc80119a3"
 dependencies = [
  "chalk-derive",
- "chalk-engine",
  "chalk-ir",
  "ena",
  "itertools 0.9.0",
  "petgraph",
  "rustc-hash",
  "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
@@ -4038,6 +4040,7 @@ dependencies = [
 name = "rustc_traits"
 version = "0.0.0"
 dependencies = [
+ "chalk-engine",
  "chalk-ir",
  "chalk-solve",
  "rustc_ast",
@@ -4997,20 +5000,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-log"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e0f8c7178e13481ff6765bd169b33e8d554c5d2bbede5e32c356194be02b9b9"
+dependencies = [
+ "lazy_static",
+ "log",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-serde"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6ccba2f8f16e0ed268fc765d9b7ff22e965e7185d32f8f1ec8294fe17d86e79"
+dependencies = [
+ "serde",
+ "tracing-core",
+]
+
+[[package]]
 name = "tracing-subscriber"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abd165311cc4d7a555ad11cc77a37756df836182db0d81aac908c8184c584f40"
 dependencies = [
  "ansi_term 0.12.1",
+ "chrono",
  "lazy_static",
  "matchers",
  "parking_lot 0.11.0",
  "regex",
+ "serde",
+ "serde_json",
  "sharded-slab",
  "smallvec 1.4.2",
  "thread_local",
  "tracing-core",
+ "tracing-log",
+ "tracing-serde",
+]
+
+[[package]]
+name = "tracing-tree"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1a3dc4774db3a6b2d66a4f8d8de670e874ec3ed55615860c994927419b32c5f"
+dependencies = [
+ "ansi_term 0.12.1",
+ "atty",
+ "chrono",
+ "termcolor",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

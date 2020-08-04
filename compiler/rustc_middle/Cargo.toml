@@ -27,7 +27,7 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 byteorder = { version = "1.3" }
-chalk-ir = "0.14.0"
+chalk-ir = "0.21.0"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 measureme = "0.7.1"
 rustc_session = { path = "../rustc_session" }

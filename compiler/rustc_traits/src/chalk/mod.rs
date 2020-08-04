@@ -49,7 +49,7 @@ crate fn evaluate_goal<'tcx>(
         chalk_ir::InEnvironment<chalk_ir::Goal<ChalkRustInterner<'tcx>>>,
     > = chalk_ir::UCanonical {
         canonical: chalk_ir::Canonical {
-            binders: chalk_ir::CanonicalVarKinds::from(
+            binders: chalk_ir::CanonicalVarKinds::from_iter(
                 &interner,
                 obligation.variables.iter().map(|v| match v.kind {
                     CanonicalVarKind::PlaceholderTy(_ty) => unimplemented!(),
@@ -81,11 +81,10 @@ crate fn evaluate_goal<'tcx>(
         universes: max_universe + 1,
     };
 
-    let solver_choice = chalk_solve::SolverChoice::SLG { max_size: 32, expected_answers: None };
-    let mut solver = solver_choice.into_solver::<ChalkRustInterner<'tcx>>();
-
+    use chalk_solve::Solver;
+    let mut solver = chalk_engine::solve::SLGSolver::new(32, None);
     let db = ChalkRustIrDatabase { tcx, interner };
-    let solution = solver.solve(&db, &_lowered_goal);
+    let solution = chalk_solve::logging::with_tracing_logs(|| solver.solve(&db, &_lowered_goal));
 
     // Ideally, the code to convert *back* to rustc types would live close to
     // the code to convert *from* rustc types. Right now though, we don't
@@ -94,7 +93,7 @@ crate fn evaluate_goal<'tcx>(
     // `Ambig(Definite)`. This really isn't right.
     let make_solution = |_subst: chalk_ir::Substitution<_>| {
         let mut var_values: IndexVec<BoundVar, GenericArg<'tcx>> = IndexVec::new();
-        _subst.parameters(&interner).iter().for_each(|p| {
+        _subst.as_slice(&interner).iter().for_each(|p| {
             // FIXME(chalk): we should move this elsewhere, since this is
             // essentially inverse of lowering a `GenericArg`.
             let _data = p.data(&interner);

@@ -24,5 +24,5 @@ fn main() {
 
     // Here we have two solutions so we get back the behavior of the old-style
     // trait solver.
-    only_bar(x); //~ ERROR the trait bound `f64: Bar` is not satisfied
+    only_bar(x); //~ ERROR the trait bound `{float}: Bar` is not satisfied
 }
