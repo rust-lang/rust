@@ -37,6 +37,9 @@ pub mod process;
 pub mod raw;
 pub mod thread;
 
+#[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
+pub mod ucred;
+
 /// A prelude for conveniently writing platform-specific code.
 ///
 /// Includes all extension traits, and some important type definitions.
