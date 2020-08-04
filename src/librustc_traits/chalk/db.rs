@@ -560,12 +560,14 @@ fn bound_vars_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
             ))
             .into(),
 
-        ty::GenericParamDefKind::Const => tcx
-            .mk_const(ty::Const {
+        ty::GenericParamDefKind::Const => {
+            assert!(!tcx.sess.has_errors());
+            tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
                 ty: tcx.type_of(param.def_id),
             })
-            .into(),
+            .into()
+        }
     })
 }
 
