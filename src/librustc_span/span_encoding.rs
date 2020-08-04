@@ -73,6 +73,7 @@ pub struct Span {
 }
 
 rustc_index::newtype_index! {
+    #[repr(transparent)]
     pub struct SpanBaseOrIndex {
         const DUMMY_SPAN_INDEX = 0,
     }
