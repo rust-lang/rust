@@ -883,7 +883,7 @@ pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_
 }
 
 /// Returns `true` if a pattern is refutable.
-// TODO: should be implemented using rustc/mir_build/hair machinery
+// TODO: should be implemented using rustc/mir_build/thir machinery
 pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     fn is_enum_variant(cx: &LateContext<'_>, qpath: &QPath<'_>, id: HirId) -> bool {
         matches!(
