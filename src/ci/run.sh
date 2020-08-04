@@ -165,7 +165,13 @@ fi
 export CARGO_HOME=/checkout/obj/chome
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y --profile=minimal
 source /checkout/obj/chome/env
-CARGO_TARGET_DIR=/checkout/obj/target cargo +nightly test --manifest-path=/checkout/src/tools/cargo/Cargo.toml --test testsuite -- close_output
+export CARGO_TARGET_DIR=/checkout/obj/target
+export RUST_BACKTRACE=1
+attempts=0
+while (( attempts++ < 10 )) && cargo +nightly test --manifest-path=/checkout/src/tools/cargo/Cargo.toml --test testsuite -- close_output
+do
+  echo $attempts
+done
 
 
 sccache --show-stats || true
