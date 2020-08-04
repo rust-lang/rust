@@ -23,3 +23,5 @@ where (): IsZero<N, Answer = True> {}
 
 impl<const N: u8> Foobar<N> for ()
 where (): IsZero<N, Answer = False> {}
+
+fn main() {}

@@ -556,6 +556,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // identity for bound types and consts
         let fld_t = |bound_ty| self.mk_ty(ty::Bound(ty::INNERMOST, bound_ty));
         let fld_c = |bound_ct, ty| {
+            assert!(!self.sess.has_errors());
             self.mk_const(ty::Const { val: ty::ConstKind::Bound(ty::INNERMOST, bound_ct), ty })
         };
         self.replace_escaping_bound_vars(value.as_ref().skip_binder(), fld_r, fld_t, fld_c)
@@ -803,6 +804,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
                         debruijn.shifted_out(self.amount)
                     }
                 };
+                assert!(!self.tcx.sess.has_errors());
                 self.tcx.mk_const(ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty })
             }
         } else {

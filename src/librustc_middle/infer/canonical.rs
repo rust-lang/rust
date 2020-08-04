@@ -327,12 +327,14 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                     GenericArgKind::Lifetime(..) => tcx
                         .mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(i)))
                         .into(),
-                    GenericArgKind::Const(ct) => tcx
-                        .mk_const(ty::Const {
+                    GenericArgKind::Const(ct) => {
+                        assert!(!tcx.sess.has_errors());
+                        tcx.mk_const(ty::Const {
                             ty: ct.ty,
                             val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
                         })
-                        .into(),
+                        .into()
+                    }
                 })
                 .collect(),
         }
