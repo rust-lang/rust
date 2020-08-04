@@ -832,10 +832,10 @@ impl<'tcx> SaveContext<'tcx> {
                 if let Some(meta_list) = attr.meta_item_list() {
                     meta_list
                         .into_iter()
-                        .filter(|it| it.check_name(sym::include))
+                        .filter(|it| it.has_name(sym::include))
                         .filter_map(|it| it.meta_item_list().map(|l| l.to_owned()))
                         .flat_map(|it| it)
-                        .filter(|meta| meta.check_name(sym::contents))
+                        .filter(|meta| meta.has_name(sym::contents))
                         .filter_map(|meta| meta.value_str())
                         .for_each(|val| {
                             result.push_str(&val.as_str());

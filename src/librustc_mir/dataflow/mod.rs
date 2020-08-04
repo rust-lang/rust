@@ -34,7 +34,7 @@ pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: Symbol) -> Opti
             let items = attr.meta_item_list();
             for item in items.iter().flat_map(|l| l.iter()) {
                 match item.meta_item() {
-                    Some(mi) if mi.check_name(name) => return Some(mi.clone()),
+                    Some(mi) if mi.has_name(name) => return Some(mi.clone()),
                     _ => continue,
                 }
             }

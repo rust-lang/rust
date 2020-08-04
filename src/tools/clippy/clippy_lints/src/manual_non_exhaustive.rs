@@ -83,7 +83,7 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
     }
 
     fn is_doc_hidden(attr: &Attribute) -> bool {
-        attr.check_name(sym!(doc))
+        attr.has_name(sym!(doc))
             && match attr.meta_item_list() {
                 Some(l) => attr::list_contains_name(&l, sym!(hidden)),
                 None => false,

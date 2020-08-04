@@ -1644,14 +1644,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         if let Some(list) = at.meta_item_list() {
-            if !list.iter().any(|it| it.check_name(sym::include)) {
+            if !list.iter().any(|it| it.has_name(sym::include)) {
                 return noop_visit_attribute(at, self);
             }
 
             let mut items = vec![];
 
             for mut it in list {
-                if !it.check_name(sym::include) {
+                if !it.has_name(sym::include) {
                     items.push({
                         noop_visit_meta_list_item(&mut it, self);
                         it
