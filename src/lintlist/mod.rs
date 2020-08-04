@@ -1502,6 +1502,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "doc",
     },
     Lint {
+        name: "needless_fn_self_type",
+        group: "style",
+        desc: "type of `self` parameter is already by default `Self`",
+        deprecation: None,
+        module: "needless_fn_self_type",
+    },
+    Lint {
         name: "needless_lifetimes",
         group: "complexity",
         desc: "using explicit lifetimes for references in function arguments when elision rules would allow omitting them",
