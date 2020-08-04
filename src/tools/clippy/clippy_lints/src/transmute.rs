@@ -718,15 +718,12 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
     Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
         let fn_ctxt = FnCtxt::new(
             &inherited,
-            // TODO should we try to get the correct ParamEnv?
-            ty::ParamEnv::empty(),
+            cx.param_env,
             hir_id
         );
 
         // If we already have errors, we can't be sure we can pointer cast.
-        if fn_ctxt.errors_reported_since_creation() {
-            return None;
-        }
+        assert!(!fn_ctxt.errors_reported_since_creation());
 
         if let Ok(check) = CastCheck::new(
             &fn_ctxt,
