@@ -601,6 +601,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             QPath::TypeRelative(_, ref path) => {
                 self.hash_name(path.ident.name);
             },
+            QPath::LangItem(lang_item, ..) => {
+                lang_item.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+            }
         }
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
     }
@@ -710,6 +713,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                     segment.ident.name.hash(&mut self.s);
                 },
+                QPath::LangItem(lang_item, ..) => {
+                    lang_item.hash(&mut self.s);
+                }
             },
             TyKind::OpaqueDef(_, arg_list) => {
                 self.hash_generic_args(arg_list);

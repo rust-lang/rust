@@ -163,6 +163,7 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     match *path {
         QPath::Resolved(_, ref path) => path.segments.last().expect("A path must have at least one segment"),
         QPath::TypeRelative(_, ref seg) => seg,
+        QPath::LangItem(..) => panic!("last_path_segment: lang item has no path segments"),
     }
 }
 
@@ -170,6 +171,7 @@ pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment
     match *path {
         QPath::Resolved(_, ref path) => path.segments.get(0),
         QPath::TypeRelative(_, ref seg) => Some(seg),
+        QPath::LangItem(..) => panic!("single_segment_path: lang item has no path segments"),
     }
 }
 
@@ -196,6 +198,7 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
             },
             _ => false,
         },
+        QPath::LangItem(..) => panic!("match_qpath: lang item has no path segments"),
     }
 }
 
@@ -277,7 +280,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Option<def::Res> {
 pub fn qpath_res(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
     match qpath {
         hir::QPath::Resolved(_, path) => path.res,
-        hir::QPath::TypeRelative(..) => {
+        hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
             if cx.tcx.has_typeck_results(id.owner.to_def_id()) {
                 cx.tcx.typeck(id.owner.to_def_id().expect_local()).qpath_res(qpath, id)
             } else {
