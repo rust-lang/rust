@@ -584,12 +584,12 @@ impl server::Literal for Rustc<'_> {
 
         let start = match start {
             Bound::Included(lo) => lo,
-            Bound::Excluded(lo) => lo + 1,
+            Bound::Excluded(lo) => lo.checked_add(1)?,
             Bound::Unbounded => 0,
         };
 
         let end = match end {
-            Bound::Included(hi) => hi + 1,
+            Bound::Included(hi) => hi.checked_add(1)?,
             Bound::Excluded(hi) => hi,
             Bound::Unbounded => length,
         };
