@@ -723,7 +723,10 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
         );
 
         // If we already have errors, we can't be sure we can pointer cast.
-        assert!(!fn_ctxt.errors_reported_since_creation());
+        assert!(
+            !fn_ctxt.errors_reported_since_creation(), 
+            "Newly created FnCtxt contained errors"
+        );
 
         if let Ok(check) = CastCheck::new(
             &fn_ctxt,
