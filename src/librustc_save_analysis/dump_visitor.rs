@@ -705,6 +705,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             let trait_ref = match *super_bound {
                 hir::GenericBound::Trait(ref trait_ref, _) => trait_ref,
                 hir::GenericBound::Outlives(..) => continue,
+                hir::GenericBound::LangItemTrait(..) => unimplemented!(),
             };
 
             let trait_ref = &trait_ref.trait_ref;
@@ -765,6 +766,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         let span = match path {
             hir::QPath::Resolved(_, path) => path.span,
             hir::QPath::TypeRelative(_, segment) => segment.ident.span,
+            hir::QPath::LangItem(..) => unimplemented!(),
         };
         if self.span.filter_generated(span) {
             return;
@@ -783,6 +785,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 self.visit_ty(ty);
                 std::slice::from_ref(*segment)
             }
+            hir::QPath::LangItem(..) => unimplemented!(),
         };
         for seg in segments {
             if let Some(ref generic_args) = seg.args {
@@ -1358,6 +1361,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     let sub_span = match path {
                         hir::QPath::Resolved(_, path) => path.segments.last().unwrap().ident.span,
                         hir::QPath::TypeRelative(_, segment) => segment.ident.span,
+                        hir::QPath::LangItem(..) => unimplemented!(),
                     };
                     let span = self.span_from_span(sub_span);
                     self.dumper.dump_ref(Ref {

@@ -555,6 +555,7 @@ impl<'tcx> SaveContext<'tcx> {
                 let segment = match qpath {
                     hir::QPath::Resolved(_, path) => path.segments.last().unwrap(),
                     hir::QPath::TypeRelative(_, segment) => segment,
+                    hir::QPath::LangItem(..) => unimplemented!(),
                 };
                 match ty.kind {
                     ty::Adt(def, _) => {
@@ -639,6 +640,7 @@ impl<'tcx> SaveContext<'tcx> {
                 hir::QPath::TypeRelative(..) => self
                     .maybe_typeck_results
                     .map_or(Res::Err, |typeck_results| typeck_results.qpath_res(qpath, hir_id)),
+                hir::QPath::LangItem(..) => unimplemented!(),
             },
 
             Node::Binding(&hir::Pat {
@@ -653,6 +655,7 @@ impl<'tcx> SaveContext<'tcx> {
         let segment = match path {
             hir::QPath::Resolved(_, path) => path.segments.last(),
             hir::QPath::TypeRelative(_, segment) => Some(*segment),
+            hir::QPath::LangItem(..) => unimplemented!(),
         };
         segment.and_then(|seg| {
             self.get_path_segment_data(seg).or_else(|| self.get_path_segment_data_with_id(seg, id))

@@ -1202,6 +1202,36 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         )
     }
 
+    pub fn instantiate_lang_item_trait_ref(
+        &self,
+        lang_item: hir::LangItem,
+        span: Span,
+        hir_id: hir::HirId,
+        args: &GenericArgs<'_>,
+        self_ty: Ty<'tcx>,
+        bounds: &mut Bounds<'tcx>,
+    ) {
+        let trait_def_id = self.tcx().require_lang_item(lang_item, Some(span));
+
+        let (substs, assoc_bindings, _) =
+            self.create_substs_for_ast_path(span, trait_def_id, &[], args, false, Some(self_ty));
+        let poly_trait_ref = ty::Binder::bind(ty::TraitRef::new(trait_def_id, substs));
+        bounds.trait_bounds.push((poly_trait_ref, span, Constness::NotConst));
+
+        let mut dup_bindings = FxHashMap::default();
+        for binding in assoc_bindings {
+            let _: Result<_, ErrorReported> = self.add_predicates_for_ast_type_binding(
+                hir_id,
+                poly_trait_ref,
+                &binding,
+                bounds,
+                false,
+                &mut dup_bindings,
+                span,
+            );
+        }
+    }
+
     fn ast_path_to_mono_trait_ref(
         &self,
         span: Span,
@@ -1392,6 +1422,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     trait_bounds.push((b, Constness::NotConst))
                 }
                 hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
+                hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => self
+                    .instantiate_lang_item_trait_ref(
+                        lang_item, span, hir_id, args, param_ty, bounds,
+                    ),
                 hir::GenericBound::Outlives(ref l) => region_bounds.push(l),
             }
         }
@@ -2959,6 +2993,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.associated_path_to_ty(ast_ty.hir_id, ast_ty.span, ty, res, segment, false)
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|_| tcx.ty_error())
+            }
+            hir::TyKind::Path(hir::QPath::LangItem(lang_item, span)) => {
+                let def_id = tcx.require_lang_item(lang_item, Some(span));
+                let (substs, _, _) = self.create_substs_for_ast_path(
+                    span,
+                    def_id,
+                    &[],
+                    &GenericArgs::none(),
+                    true,
+                    None,
+                );
+                self.normalize_ty(span, tcx.at(span).type_of(def_id).subst(tcx, substs))
             }
             hir::TyKind::Array(ref ty, ref length) => {
                 let length_def_id = tcx.hir().local_def_id(length.hir_id);

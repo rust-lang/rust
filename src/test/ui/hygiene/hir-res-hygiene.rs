@@ -1,27 +1,4 @@
-//~ ERROR failed to resolve: could not find `future` in `std` [E0433]
-//~^ ERROR failed to resolve: could not find `pin` in `std` [E0433]
-//~^^ ERROR failed to resolve: could not find `future` in `std` [E0433]
-//~^^^ ERROR failed to resolve: could not find `future` in `std` [E0433]
-//~^^^^ ERROR failed to resolve: could not find `task` in `std` [E0433]
-//~^^^^^ ERROR failed to resolve: could not find `task` in `std` [E0433]
-//~^^^^^^ ERROR failed to resolve: could not find `future` in `std` [E0433]
-//~^^^^^^^ ERROR failed to resolve: could not find `future` in `std` [E0433]
-//~^^^^^^^^ ERROR failed to resolve: could not find `ops` in `std` [E0433]
-//~^^^^^^^^^ ERROR failed to resolve: could not find `option` in `std` [E0433]
-//~^^^^^^^^^^ ERROR failed to resolve: could not find `option` in `std` [E0433]
-//~^^^^^^^^^^^ ERROR failed to resolve: could not find `iter` in `std` [E0433]
-//~^^^^^^^^^^^^ ERROR failed to resolve: could not find `iter` in `std` [E0433]
-//~^^^^^^^^^^^^^ ERROR failed to resolve: could not find `ops` in `std` [E0433]
-//~^^^^^^^^^^^^^^ ERROR failed to resolve: could not find `option` in `std` [E0433]
-//~^^^^^^^^^^^^^^^ ERROR failed to resolve: could not find `option` in `std` [E0433]
-//~^^^^^^^^^^^^^^^^ ERROR failed to resolve: could not find `iter` in `std` [E0433]
-//~^^^^^^^^^^^^^^^^^ ERROR failed to resolve: could not find `iter` in `std` [E0433]
-//~^^^^^^^^^^^^^^^^^^ ERROR failed to resolve: could not find `ops` in `std` [E0433]
-//~^^^^^^^^^^^^^^^^^^^ ERROR failed to resolve: could not find `result` in `std` [E0433]
-//~^^^^^^^^^^^^^^^^^^^^ ERROR failed to resolve: could not find `convert` in `std` [E0433]
-//~^^^^^^^^^^^^^^^^^^^^^ ERROR failed to resolve: could not find `ops` in `std` [E0433]
-//~^^^^^^^^^^^^^^^^^^^^^^ ERROR failed to resolve: could not find `result` in `std` [E0433]
-
+// check-pass
 // edition:2018
 // aux-build:not-libstd.rs
 

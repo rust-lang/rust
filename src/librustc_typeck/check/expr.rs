@@ -236,6 +236,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::AddrOf(kind, mutbl, ref oprnd) => {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
             }
+            ExprKind::Path(QPath::LangItem(lang_item, _)) => {
+                self.check_lang_item_path(lang_item, expr)
+            }
             ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr),
             ExprKind::InlineAsm(asm) => self.check_expr_asm(asm),
             ExprKind::LlvmInlineAsm(ref asm) => {
@@ -445,6 +448,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .span_label(oprnd.span, "temporary value")
             .emit();
         }
+    }
+
+    fn check_lang_item_path(
+        &self,
+        lang_item: hir::LangItem,
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> Ty<'tcx> {
+        self.resolve_lang_item_path(lang_item, expr.span, expr.hir_id).1
     }
 
     fn check_expr_path(&self, qpath: &hir::QPath<'_>, expr: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
@@ -1077,11 +1088,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.ty_error();
         };
 
-        let path_span = match *qpath {
-            QPath::Resolved(_, ref path) => path.span,
-            QPath::TypeRelative(ref qself, _) => qself.span,
-        };
-
         // Prohibit struct expressions when non-exhaustive flag is set.
         let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");
         if !adt.did.is_local() && variant.is_field_list_non_exhaustive() {
@@ -1099,7 +1105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             adt_ty,
             expected,
             expr.hir_id,
-            path_span,
+            qpath.span(),
             variant,
             fields,
             base_expr.is_none(),

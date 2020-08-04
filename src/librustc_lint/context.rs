@@ -703,7 +703,7 @@ impl<'tcx> LateContext<'tcx> {
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
             hir::QPath::Resolved(_, ref path) => path.res,
-            hir::QPath::TypeRelative(..) => self
+            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                 .maybe_typeck_results()
                 .and_then(|typeck_results| typeck_results.type_dependent_def(id))
                 .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),

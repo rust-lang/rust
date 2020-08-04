@@ -1076,37 +1076,6 @@ impl ResolverAstLowering for Resolver<'_> {
         self.cstore().item_generics_num_lifetimes(def_id, sess)
     }
 
-    fn resolve_str_path(
-        &mut self,
-        span: Span,
-        crate_root: Option<Symbol>,
-        components: &[Symbol],
-        ns: Namespace,
-    ) -> (ast::Path, Res) {
-        let root = if crate_root.is_some() { kw::PathRoot } else { kw::Crate };
-        let segments = iter::once(Ident::with_dummy_span(root))
-            .chain(
-                crate_root
-                    .into_iter()
-                    .chain(components.iter().cloned())
-                    .map(Ident::with_dummy_span),
-            )
-            .map(|i| self.new_ast_path_segment(i))
-            .collect::<Vec<_>>();
-
-        let path = ast::Path { span, segments };
-
-        let parent_scope = &ParentScope::module(self.graph_root);
-        let res = match self.resolve_ast_path(&path, ns, parent_scope) {
-            Ok(res) => res,
-            Err((span, error)) => {
-                self.report_error(span, error);
-                Res::Err
-            }
-        };
-        (path, res)
-    }
-
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
         self.partial_res_map.get(&id).cloned()
     }
