@@ -449,13 +449,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
             global_ctxt.enter(|tcx| {
-                // Certain queries assume that some checks were run elsewhere
-                // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
-                // so type-check everything other than function bodies in this crate before running lints.
-                // NOTE: this does not call `tcx.analysis()` so that we won't
-                // typeck function bodies or run the default rustc lints.
-                // (see `override_queries` in the `config`)
-                let _ = rustc_typeck::check_crate(tcx);
                 tcx.sess.abort_if_errors();
                 sess.time("missing_docs", || {
                     rustc_lint::check_crate(tcx, rustc_lint::builtin::MissingDoc::new);

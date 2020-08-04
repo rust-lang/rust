@@ -1,17 +1,26 @@
-error[E0072]: recursive type `E` has infinite size
+error: internal compiler error[E0391]: cycle detected when computing `Sized` constraints for `E`
   --> $DIR/infinite-recursive-type.rs:1:1
    |
 LL | enum E {
-   | ^^^^^^ recursive type has infinite size
-LL |
-LL |     V(E),
-   |       - recursive without indirection
+   | ^^^^^^
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `E` representable
+   = note: ...which again requires computing `Sized` constraints for `E`, completing the cycle
+   = note: cycle used when evaluating trait selection obligation `E: std::convert::From<E>`
+
+error: internal compiler error: TyKind::Error constructed but no error reported
    |
-LL |     V(Box<E>),
-   |       ^^^^ ^
+   = note: delayed at /home/joshua/rustc/src/librustc_session/session.rs:436:27
 
-error: aborting due to previous error
+thread 'rustc' panicked at 'no errors encountered even though `delay_span_bug` issued', src/librustc_errors/lib.rs:366:17
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
-For more information about this error, try `rustc --explain E0072`.
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
+
+note: rustc 1.47.0-dev running on x86_64-unknown-linux-gnu
+
+note: compiler flags: -Z threads=1 -Z ui-testing -Z deduplicate-diagnostics=no -Z unstable-options -C debuginfo=0
+
