@@ -12,8 +12,8 @@ use rustc_data_structures::fx::FxHashMap;
 
 use std::cmp::{Eq, PartialEq};
 use std::hash::{Hash, Hasher};
-use std::mem;
 use std::marker::{StructuralEq, StructuralPartialEq};
+use std::mem;
 
 /// A compressed span.
 ///
@@ -65,13 +65,24 @@ use std::marker::{StructuralEq, StructuralPartialEq};
 #[derive(Clone, Copy)]
 #[repr(C)] // So we can transmute to a `u64`.
 pub struct Span {
-    base_or_index: u32,
+    // We can transmute `SpanBaseOrIndex` to an `u32` as it is internally
+    // represented as a scalar value.
+    base_or_index: SpanBaseOrIndex,
     len_or_tag: u16,
     ctxt_or_zero: u16,
 }
 
+rustc_index::newtype_index! {
+    pub struct SpanBaseOrIndex {
+        const DUMMY_SPAN_INDEX = 0,
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Option<Span>, 8);
+
 // SAFETY: It is safe to transmute `Span` to `u64` as
-// `Span` is `repr(C)` and does not contan padding bytes.
+// `Span` is `repr(C)` and does not contain padding bytes.
 
 impl PartialEq for Span {
     #[inline]
@@ -103,7 +114,7 @@ const MAX_LEN: u32 = 0b0111_1111_1111_1111;
 const MAX_CTXT: u32 = 0b1111_1111_1111_1111;
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
-pub const DUMMY_SP: Span = Span { base_or_index: 0, len_or_tag: 0, ctxt_or_zero: 0 };
+pub const DUMMY_SP: Span = Span { base_or_index: DUMMY_SPAN_INDEX, len_or_tag: 0, ctxt_or_zero: 0 };
 
 impl Span {
     #[inline]
@@ -116,11 +127,19 @@ impl Span {
 
         if len <= MAX_LEN && ctxt2 <= MAX_CTXT {
             // Inline format.
-            Span { base_or_index: base, len_or_tag: len as u16, ctxt_or_zero: ctxt2 as u16 }
+            Span {
+                base_or_index: SpanBaseOrIndex::from_u32(base),
+                len_or_tag: len as u16,
+                ctxt_or_zero: ctxt2 as u16,
+            }
         } else {
             // Interned format.
             let index = with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt }));
-            Span { base_or_index: index, len_or_tag: LEN_TAG, ctxt_or_zero: 0 }
+            Span {
+                base_or_index: SpanBaseOrIndex::from_u32(index),
+                len_or_tag: LEN_TAG,
+                ctxt_or_zero: 0,
+            }
         }
     }
 
@@ -130,14 +149,14 @@ impl Span {
             // Inline format.
             debug_assert!(self.len_or_tag as u32 <= MAX_LEN);
             SpanData {
-                lo: BytePos(self.base_or_index),
-                hi: BytePos(self.base_or_index + self.len_or_tag as u32),
+                lo: BytePos(self.base_or_index.as_u32()),
+                hi: BytePos(self.base_or_index.as_u32() + self.len_or_tag as u32),
                 ctxt: SyntaxContext::from_u32(self.ctxt_or_zero as u32),
             }
         } else {
             // Interned format.
             debug_assert!(self.ctxt_or_zero == 0);
-            let index = self.base_or_index;
+            let index = self.base_or_index.as_u32();
             with_span_interner(|interner| *interner.get(index))
         }
     }
