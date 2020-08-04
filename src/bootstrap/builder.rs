@@ -1037,7 +1037,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        // FIXME: Don't use LLD if we're compiling libtest, since it fails to link it.
+        // FIXME: Don't use LLD with MSVC if we're compiling libtest, since it fails to link it.
         // See https://github.com/rust-lang/rust/issues/68647.
         let can_use_lld = mode != Mode::Std;
 
@@ -1049,6 +1049,11 @@ impl<'a> Builder<'a> {
             let target = crate::envify(&target.triple);
             cargo.env(&format!("CARGO_TARGET_{}_LINKER", target), target_linker);
         }
+
+        if self.config.use_lld && !target.contains("msvc") {
+            rustflags.arg("-Clink-args=-fuse-ld=lld");
+        }
+
         if !(["build", "check", "clippy", "fix", "rustc"].contains(&cmd)) && want_rustdoc {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
         }
