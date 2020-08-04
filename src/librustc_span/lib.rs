@@ -14,6 +14,7 @@
 #![feature(min_specialization)]
 #![feature(option_expect_none)]
 #![feature(refcell_take)]
+#![feature(structural_match)]
 
 // FIXME(#56935): Work around ICEs during cross-compilation.
 #[allow(unused)]

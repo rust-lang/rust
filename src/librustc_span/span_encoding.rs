@@ -13,6 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use std::cmp::{Eq, PartialEq};
 use std::hash::{Hash, Hasher};
 use std::mem;
+use std::marker::{StructuralEq, StructuralPartialEq};
 
 /// A compressed span.
 ///
@@ -84,7 +85,11 @@ impl PartialEq for Span {
     }
 }
 
+impl StructuralPartialEq for Span {}
+
 impl Eq for Span {}
+
+impl StructuralEq for Span {}
 
 impl Hash for Span {
     #[inline]
