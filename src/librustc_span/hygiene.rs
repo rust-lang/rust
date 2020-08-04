@@ -80,8 +80,6 @@ pub enum Transparency {
     Opaque,
 }
 
-pub(crate) const NUM_TRANSPARENCIES: usize = 3;
-
 impl ExpnId {
     pub fn fresh(expn_data: Option<ExpnData>) -> Self {
         HygieneData::with(|data| data.fresh_expn(expn_data))
@@ -619,6 +617,11 @@ impl SyntaxContext {
     }
 
     #[inline]
+    pub fn outer_mark(self) -> (ExpnId, Transparency) {
+        HygieneData::with(|data| data.outer_mark(self))
+    }
+
+    #[inline]
     pub fn outer_mark_with_data(self) -> (ExpnId, Transparency, ExpnData) {
         HygieneData::with(|data| {
             let (expn_id, transparency) = data.outer_mark(self);
@@ -667,7 +670,6 @@ pub struct ExpnData {
     /// The kind of this expansion - macro or compiler desugaring.
     pub kind: ExpnKind,
     /// The expansion that produced this expansion.
-    #[stable_hasher(ignore)]
     pub parent: ExpnId,
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
