@@ -883,10 +883,10 @@ impl<T: ?Sized> Arc<T> {
         // reference (see #54908).
         let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
-        let mem = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let ptr = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the ArcInner
-        let inner = mem_to_arcinner(mem.ptr.as_ptr());
+        let inner = mem_to_arcinner(ptr.as_non_null_ptr().as_ptr());
         debug_assert_eq!(unsafe { Layout::for_value(&*inner) }, layout);
 
         unsafe {
@@ -986,7 +986,7 @@ impl<T> Arc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.dealloc(self.mem.cast(), self.layout);
+                    Global.dealloc(self.mem, self.layout);
                 }
             }
         }
