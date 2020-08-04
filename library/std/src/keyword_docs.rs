@@ -943,8 +943,12 @@ mod mod_keyword {}
 /// Capture a [closure]'s environment by value.
 ///
 /// `move` converts any variables captured by reference or mutable reference
-/// to owned by value variables. The three [`Fn` trait]'s mirror the ways to capture
-/// variables, when `move` is used, the closures is represented by the `FnOnce` trait.
+/// to owned by value variables.
+///
+/// Note: `move` closures may still implement [`Fn`] or [`FnMut`], even though
+/// they capture variables by `move`. This is because the traits implemented by
+/// a closure type are determined by *what* the closure does with captured
+/// values, not *how* it captures them.
 ///
 /// ```rust
 /// let capture = "hello";
