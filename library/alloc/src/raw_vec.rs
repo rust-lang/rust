@@ -203,13 +203,15 @@ impl<T, A: AllocRef> RawVec<T, A> {
     ///
     /// # Safety
     ///
-    /// The `ptr` must be allocated (via the given allocator `a`), and with the given `capacity`.
+    /// The `ptr` must be allocated (via the given allocator `alloc`), and with the given
+    /// `capacity`.
     /// The `capacity` cannot exceed `isize::MAX` for sized types. (only a concern on 32-bit
     /// systems). ZST vectors may have a capacity up to `usize::MAX`.
-    /// If the `ptr` and `capacity` come from a `RawVec` created via `a`, then this is guaranteed.
+    /// If the `ptr` and `capacity` come from a `RawVec` created via `alloc`, then this is
+    /// guaranteed.
     #[inline]
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, a: A) -> Self {
-        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc: a }
+    pub unsafe fn from_raw_parts_in(ptr: *mut T, capacity: usize, alloc: A) -> Self {
+        Self { ptr: unsafe { Unique::new_unchecked(ptr) }, cap: capacity, alloc }
     }
 
     /// Gets a raw pointer to the start of the allocation. Note that this is
