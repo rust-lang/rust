@@ -2933,8 +2933,7 @@ impl<T> FusedIterator for Drain<'_, T> {}
 
 /// A splicing iterator for `Vec`.
 ///
-/// This struct is created by the [`splice()`] method on [`Vec`]. See its
-/// documentation for more.
+/// This struct is created by the [`splice()`] method on [`Vec`].
 ///
 /// [`splice()`]: struct.Vec.html#method.splice
 /// [`Vec`]: struct.Vec.html
