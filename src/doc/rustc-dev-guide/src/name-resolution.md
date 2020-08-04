@@ -13,7 +13,7 @@ resolve a name once, since no new names can be added. If we fail to resolve a
 name now, then it is a compiler error.
 
 Name resolution can be complex. There are a few different namespaces (e.g.
-macros, values, types, lifetimes), and names my be valid at different (nested)
+macros, values, types, lifetimes), and names may be valid at different (nested)
 scopes. Also, different types of names can fail to be resolved differently, and
 failures can happen differently at different scopes. For example, for a module
 scope, failure means no unexpanded macros and no unresolved glob imports in
