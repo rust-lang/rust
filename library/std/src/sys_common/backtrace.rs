@@ -74,6 +74,8 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     bt_fmt.add_context()?;
     let mut idx = 0;
     let mut res = Ok(());
+    // Start immediately if we're not using a short backtrace.
+    let mut start = print_fmt != PrintFmt::Short;
     backtrace_rs::trace_unsynchronized(|frame| {
         if print_fmt == PrintFmt::Short && idx > MAX_NB_FRAMES {
             return false;
@@ -89,16 +91,24 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                         stop = true;
                         return;
                     }
+                    if sym.contains("__rust_end_short_backtrace") {
+                        start = true;
+                        return;
+                    }
                 }
             }
 
-            res = bt_fmt.frame().symbol(frame, symbol);
+            if start {
+                res = bt_fmt.frame().symbol(frame, symbol);
+            }
         });
         if stop {
             return false;
         }
         if !hit {
-            res = bt_fmt.frame().print_raw(frame.ip(), None, None, None);
+            if start {
+                res = bt_fmt.frame().print_raw(frame.ip(), None, None, None);
+            }
         }
 
         idx += 1;
@@ -123,10 +133,29 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
 pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
 where
     F: FnOnce() -> T,
-    F: Send,
-    T: Send,
 {
-    f()
+    let result = f();
+
+    // prevent this frame from being tail-call optimised away
+    crate::hint::black_box(());
+
+    result
+}
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
+/// this is only inline(never) when backtraces in libstd are enabled, otherwise
+/// it's fine to optimize away.
+#[cfg_attr(feature = "backtrace", inline(never))]
+pub fn __rust_end_short_backtrace<F, T>(f: F) -> T
+where
+    F: FnOnce() -> T,
+{
+    let result = f();
+
+    // prevent this frame from being tail-call optimised away
+    crate::hint::black_box(());
+
+    result
 }
 
 pub enum RustBacktrace {

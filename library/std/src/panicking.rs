@@ -434,7 +434,9 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
     let msg = info.message().unwrap(); // The current implementation always returns Some
-    rust_panic_with_hook(&mut PanicPayload::new(msg), info.message(), loc);
+    crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
+        rust_panic_with_hook(&mut PanicPayload::new(msg), info.message(), loc);
+    })
 }
 
 /// This is the entry point of panicking for the non-format-string variants of
@@ -453,7 +455,10 @@ pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
         intrinsics::abort()
     }
 
-    rust_panic_with_hook(&mut PanicPayload::new(msg), None, Location::caller());
+    let loc = Location::caller();
+    return crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
+        rust_panic_with_hook(&mut PanicPayload::new(msg), None, loc)
+    });
 
     struct PanicPayload<A> {
         inner: Option<A>,

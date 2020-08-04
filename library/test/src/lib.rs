@@ -514,7 +514,10 @@ pub fn run_test(
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
 #[inline(never)]
 fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
-    f()
+    f();
+
+    // prevent this frame from being tail-call optimised away
+    black_box(());
 }
 
 fn run_test_in_process(
