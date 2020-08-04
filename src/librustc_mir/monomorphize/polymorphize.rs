@@ -36,6 +36,13 @@ fn unused_generic_params(tcx: TyCtxt<'_>, def_id: DefId) -> FiniteBitSet<u32> {
         return FiniteBitSet::new_empty();
     }
 
+    // Polymorphization results are stored in cross-crate metadata only when there are unused
+    // parameters, so assume that non-local items must have only used parameters (else this query
+    // would not be invoked, and the cross-crate metadata used instead).
+    if !def_id.is_local() {
+        return FiniteBitSet::new_empty();
+    }
+
     let generics = tcx.generics_of(def_id);
     debug!("unused_generic_params: generics={:?}", generics);
 
