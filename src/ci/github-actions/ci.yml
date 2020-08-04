@@ -587,6 +587,7 @@ jobs:
       <<: [*shared-ci-variables, *dummy-variables]
     if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
     strategy:
+      fail-fast: false
       matrix:
         include:
           #############################
