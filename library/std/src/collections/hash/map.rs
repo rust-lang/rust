@@ -3213,6 +3213,30 @@ mod test_map {
     }
 
     #[test]
+    fn test_into_keys() {
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let map: HashMap<_, _> = vec.into_iter().collect();
+        let keys: Vec<_> = map.into_keys().collect();
+
+        assert_eq!(keys.len(), 3);
+        assert!(keys.contains(&1));
+        assert!(keys.contains(&2));
+        assert!(keys.contains(&3));
+    }
+
+    #[test]
+    fn test_into_values() {
+        let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+        let map: HashMap<_, _> = vec.into_iter().collect();
+        let values: Vec<_> = map.into_values().collect();
+
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&'a'));
+        assert!(values.contains(&'b'));
+        assert!(values.contains(&'c'));
+    }
+
+    #[test]
     fn test_find() {
         let mut m = HashMap::new();
         assert!(m.get(&1).is_none());
