@@ -65,7 +65,7 @@ use std::mem;
 #[derive(Clone, Copy)]
 #[repr(C)] // So we can transmute to a `u64`.
 pub struct Span {
-    // We can transmute `SpanBaseOrIndex` to an `u32` as it is internally
+    // We can transmute `SpanBaseOrIndex` to `u32` as it is internally
     // represented as a scalar value.
     base_or_index: SpanBaseOrIndex,
     len_or_tag: u16,
