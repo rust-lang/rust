@@ -172,6 +172,7 @@ impl<'a> StringReader<'a> {
                 let string = self.str_from(start);
                 if let Some(attr_style) = comments::line_doc_comment_style(string) {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in doc-comment");
+                    // Opening delimiter of the length 3 is not included into the symbol.
                     token::DocComment(CommentKind::Line, attr_style, Symbol::intern(&string[3..]))
                 } else {
                     token::Comment
@@ -201,6 +202,8 @@ impl<'a> StringReader<'a> {
 
                 if let Some(attr_style) = attr_style {
                     self.forbid_bare_cr(start, string, "bare CR not allowed in block doc-comment");
+                    // Opening delimiter of the length 3 and closing delimiter of the length 2
+                    // are not included into the symbol.
                     token::DocComment(
                         CommentKind::Block,
                         attr_style,

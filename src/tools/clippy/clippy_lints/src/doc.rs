@@ -264,6 +264,7 @@ pub fn strip_doc_comment_decoration(doc: &str, comment_kind: CommentKind, span: 
         let mut doc = doc.to_owned();
         doc.push('\n');
         let len = doc.len();
+        // +3 skips the opening delimiter
         return (doc, vec![(len, span.with_lo(span.lo() + BytePos(3)))]);
     }
 
@@ -273,7 +274,7 @@ pub fn strip_doc_comment_decoration(doc: &str, comment_kind: CommentKind, span: 
         let offset = line.as_ptr() as usize - doc.as_ptr() as usize;
         debug_assert_eq!(offset as u32 as usize, offset);
         contains_initial_stars |= line.trim_start().starts_with('*');
-        // +1 for the newline
+        // +1 adds the newline, +3 skips the opening delimiter
         sizes.push((line.len() + 1, span.with_lo(span.lo() + BytePos(3 + offset as u32))));
     }
     if !contains_initial_stars {

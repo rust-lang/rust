@@ -1,0 +1,54 @@
+PRINT-BANG INPUT (DISPLAY): /**
+*******
+* DOC *
+* DOC *
+* DOC *
+*******
+*/
+ pub struct S ;
+PRINT-BANG RE-COLLECTED (DISPLAY): #[doc = "\n*******\n* DOC *\n* DOC *\n* DOC *\n*******\n"] pub struct S ;
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: #0 bytes(LO..HI),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "doc",
+                span: #0 bytes(LO..HI),
+            },
+            Punct {
+                ch: '=',
+                spacing: Alone,
+                span: #0 bytes(LO..HI),
+            },
+            Literal {
+                kind: Str,
+                symbol: "\n*******\n* DOC *\n* DOC *\n* DOC *\n*******\n",
+                suffix: None,
+                span: #0 bytes(LO..HI),
+            },
+        ],
+        span: #0 bytes(LO..HI),
+    },
+    Ident {
+        ident: "pub",
+        span: #0 bytes(LO..HI),
+    },
+    Ident {
+        ident: "struct",
+        span: #0 bytes(LO..HI),
+    },
+    Ident {
+        ident: "S",
+        span: #0 bytes(LO..HI),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #0 bytes(LO..HI),
+    },
+]
