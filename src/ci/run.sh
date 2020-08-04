@@ -132,11 +132,11 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   rm -rf build
 fi
 
-$SRC/configure $RUST_CONFIGURE_ARGS
+# $SRC/configure $RUST_CONFIGURE_ARGS
 
-retry make prepare
+# retry make prepare
 
-make check-bootstrap
+# make check-bootstrap
 
 # Display the CPU and memory information. This helps us know why the CI timing
 # is fluctuating.
@@ -150,17 +150,22 @@ else
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
 
-if [ ! -z "$SCRIPT" ]; then
-  sh -x -c "$SCRIPT"
-else
-  do_make() {
-    echo "make -j $ncpus $1"
-    make -j $ncpus $1
-    local retval=$?
-    return $retval
-  }
+# if [ ! -z "$SCRIPT" ]; then
+#   sh -x -c "$SCRIPT"
+# else
+#   do_make() {
+#     echo "make -j $ncpus $1"
+#     make -j $ncpus $1
+#     local retval=$?
+#     return $retval
+#   }
 
-  do_make "$RUST_CHECK_TARGET"
-fi
+#   do_make "$RUST_CHECK_TARGET"
+# fi
+export CARGO_HOME=/checkout/obj/chome
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y --profile=minimal
+source /checkout/obj/chome/env
+CARGO_TARGET_DIR=/checkout/obj/target cargo +nightly test --manifest-path=/checkout/src/tools/cargo/Cargo.toml --test testsuite -- close_output
+
 
 sccache --show-stats || true
