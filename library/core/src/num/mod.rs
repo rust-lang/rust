@@ -1602,6 +1602,29 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Computes the absolute value of `self` without any wrapping
+or panicking.
+
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "#![feature(unsigned_abs)]
+assert_eq!(100", stringify!($SelfT), ".unsigned_abs(), 100", stringify!($UnsignedT), ");
+assert_eq!((-100", stringify!($SelfT), ").unsigned_abs(), 100", stringify!($UnsignedT), ");
+assert_eq!((-128i8).unsigned_abs(), 128u8);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "unsigned_abs", issue = "74913")]
+            #[inline]
+            pub const fn unsigned_abs(self) -> $UnsignedT {
+                 self.wrapping_abs() as $UnsignedT
+            }
+        }
+
+        doc_comment! {
             concat!("Wrapping (modular) exponentiation. Computes `self.pow(exp)`,
 wrapping around at the boundary of the type.
 

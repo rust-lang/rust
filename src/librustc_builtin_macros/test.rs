@@ -336,7 +336,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                 Some(list) => {
                     let msg = list
                         .iter()
-                        .find(|mi| mi.check_name(sym::expected))
+                        .find(|mi| mi.has_name(sym::expected))
                         .and_then(|mi| mi.meta_item())
                         .and_then(|mi| mi.value_str());
                     if list.len() != 1 || msg.is_none() {

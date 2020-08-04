@@ -235,7 +235,7 @@ impl EarlyLintPass for Return {
 }
 
 fn attr_is_cfg(attr: &ast::Attribute) -> bool {
-    attr.meta_item_list().is_some() && attr.check_name(sym!(cfg))
+    attr.meta_item_list().is_some() && attr.has_name(sym!(cfg))
 }
 
 // get the def site

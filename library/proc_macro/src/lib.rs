@@ -848,7 +848,7 @@ impl Ident {
     /// Creates a new `Ident` with the given `string` as well as the specified
     /// `span`.
     /// The `string` argument must be a valid identifier permitted by the
-    /// language, otherwise the function will panic.
+    /// language (including keywords, e.g. `self` or `fn`). Otherwise, the function will panic.
     ///
     /// Note that `span`, currently in rustc, configures the hygiene information
     /// for this identifier.
@@ -870,7 +870,10 @@ impl Ident {
     }
 
     /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
-    #[unstable(feature = "proc_macro_raw_ident", issue = "54723")]
+    /// The `string` argument be a valid identifier permitted by the language
+    /// (including keywords, e.g. `fn`). Keywords which are usable in path segments
+    /// (e.g. `self`, `super`) are not supported, and will cause a panic.
+    #[stable(feature = "proc_macro_raw_ident", since = "1.47.0")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
         Ident(bridge::client::Ident::new(string, span.0, true))
     }

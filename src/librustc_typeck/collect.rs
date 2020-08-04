@@ -2231,7 +2231,7 @@ fn from_target_feature(
     let rust_features = tcx.features();
     for item in list {
         // Only `enable = ...` is accepted in the meta-item list.
-        if !item.check_name(sym::enable) {
+        if !item.has_name(sym::enable) {
             bad_item(item.span());
             continue;
         }
@@ -2483,11 +2483,11 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             no_sanitize_span = Some(attr.span);
             if let Some(list) = attr.meta_item_list() {
                 for item in list.iter() {
-                    if item.check_name(sym::address) {
+                    if item.has_name(sym::address) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::ADDRESS;
-                    } else if item.check_name(sym::memory) {
+                    } else if item.has_name(sym::memory) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
-                    } else if item.check_name(sym::thread) {
+                    } else if item.has_name(sym::thread) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
                     } else {
                         tcx.sess

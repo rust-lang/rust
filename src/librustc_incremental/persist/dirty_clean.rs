@@ -231,7 +231,7 @@ impl DirtyCleanVisitor<'tcx> {
 
     fn labels(&self, attr: &Attribute) -> Option<Labels> {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-            if item.check_name(LABEL) {
+            if item.has_name(LABEL) {
                 let value = expect_associated_value(self.tcx, &item);
                 return Some(self.resolve_labels(&item, value));
             }
@@ -242,7 +242,7 @@ impl DirtyCleanVisitor<'tcx> {
     /// `except=` attribute value
     fn except(&self, attr: &Attribute) -> Labels {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-            if item.check_name(EXCEPT) {
+            if item.has_name(EXCEPT) {
                 let value = expect_associated_value(self.tcx, &item);
                 return self.resolve_labels(&item, value);
             }
@@ -474,15 +474,15 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     debug!("check_config: config={:?}", config);
     let (mut cfg, mut except, mut label) = (None, false, false);
     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-        if item.check_name(CFG) {
+        if item.has_name(CFG) {
             let value = expect_associated_value(tcx, &item);
             debug!("check_config: searching for cfg {:?}", value);
             cfg = Some(config.contains(&(value, None)));
         }
-        if item.check_name(LABEL) {
+        if item.has_name(LABEL) {
             label = true;
         }
-        if item.check_name(EXCEPT) {
+        if item.has_name(EXCEPT) {
             except = true;
         }
     }
