@@ -1,5 +1,3 @@
-use std::io::{self, Write};
-
 use log::trace;
 
 use rustc_middle::mir;
@@ -76,9 +74,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let count = this.read_scalar(n)?.to_machine_usize(this)?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, count);
                 let result = this.write(fd, buf, count)?;
-                if fd == 1 {
-                    io::stdout().flush().unwrap();
-                }
                 // Now, `result` is the value we return back to the program.
                 this.write_scalar(Scalar::from_machine_isize(result, this), dest)?;
             }

@@ -76,7 +76,15 @@ impl<'tcx> FileDescriptor<'tcx> for io::Stdout {
     }
 
     fn write(&mut self, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
-        Ok(Write::write(self, bytes))
+        let result = Write::write(self, bytes);
+        // Stdout is buffered, flush to make sure it appears on the
+        // screen.  This is the write() syscall of the interpreted
+        // program, we want it to correspond to a write() syscall on
+        // the host -- there is no good in adding extra buffering
+        // here.
+        io::stdout().flush().unwrap();
+
+        Ok(result)
     }
 
     fn seek(&mut self, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
