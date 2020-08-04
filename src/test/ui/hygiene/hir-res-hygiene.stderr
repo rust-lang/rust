@@ -1,0 +1,49 @@
+error[E0433]: failed to resolve: could not find `future` in `std`
+
+error[E0433]: failed to resolve: could not find `pin` in `std`
+
+error[E0433]: failed to resolve: could not find `future` in `std`
+
+error[E0433]: failed to resolve: could not find `future` in `std`
+
+error[E0433]: failed to resolve: could not find `task` in `std`
+
+error[E0433]: failed to resolve: could not find `task` in `std`
+
+error[E0433]: failed to resolve: could not find `future` in `std`
+
+error[E0433]: failed to resolve: could not find `future` in `std`
+
+error[E0433]: failed to resolve: could not find `ops` in `std`
+
+error[E0433]: failed to resolve: could not find `option` in `std`
+
+error[E0433]: failed to resolve: could not find `option` in `std`
+
+error[E0433]: failed to resolve: could not find `iter` in `std`
+
+error[E0433]: failed to resolve: could not find `iter` in `std`
+
+error[E0433]: failed to resolve: could not find `ops` in `std`
+
+error[E0433]: failed to resolve: could not find `option` in `std`
+
+error[E0433]: failed to resolve: could not find `option` in `std`
+
+error[E0433]: failed to resolve: could not find `iter` in `std`
+
+error[E0433]: failed to resolve: could not find `iter` in `std`
+
+error[E0433]: failed to resolve: could not find `ops` in `std`
+
+error[E0433]: failed to resolve: could not find `result` in `std`
+
+error[E0433]: failed to resolve: could not find `convert` in `std`
+
+error[E0433]: failed to resolve: could not find `ops` in `std`
+
+error[E0433]: failed to resolve: could not find `result` in `std`
+
+error: aborting due to 23 previous errors
+
+For more information about this error, try `rustc --explain E0433`.
