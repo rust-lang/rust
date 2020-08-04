@@ -381,6 +381,15 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     Ok(unsafe { from_utf8_unchecked_mut(v) })
 }
 
+
+#[repr(C)]
+union StrOrSlice<'a> {
+    str: &'a str,
+    slice: &'a [u8],
+}
+
+
+
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
@@ -414,13 +423,15 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
-    // SAFETY: the caller must guarantee that the bytes `v`
-    // are valid UTF-8, thus the cast to `*const str` is safe.
-    // Also, the pointer dereference is safe because that pointer
-    // comes from a reference which is guaranteed to be valid for reads.
-    unsafe { &*(v as *const [u8] as *const str) }
+#[rustc_const_unstable(feature = "const_str_from_utf8_unchecked", issue = "none")]
+#[allow(unused_attributes)]
+#[allow_internal_unstable(const_fn_union)]
+pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
+    // SAFETY: the caller must guarantee that the bytes `v` are valid UTF-8.
+    // Also relies on `&str` and `&[u8]` having the same layout.
+    unsafe{ StrOrSlice{ slice: v }.str }
 }
+
 
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8; mutable version.
@@ -2350,13 +2361,9 @@ impl str {
     #[allow(unused_attributes)]
     #[allow_internal_unstable(const_fn_union)]
     pub const fn as_bytes(&self) -> &[u8] {
-        #[repr(C)]
-        union Slices<'a> {
-            str: &'a str,
-            slice: &'a [u8],
-        }
+        
         // SAFETY: const sound because we transmute two types with the same layout
-        unsafe { Slices { str: self }.slice }
+        unsafe { StrOrSlice { str: self }.slice }
     }
 
     /// Converts a mutable string slice to a mutable byte slice.
