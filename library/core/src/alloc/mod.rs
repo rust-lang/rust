@@ -128,7 +128,7 @@ pub unsafe trait AllocRef {
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
         let ptr = self.alloc(layout)?;
-        // SAFETY: `alloc` returns a valid memory slice
+        // SAFETY: `alloc` returns a valid memory block
         unsafe { ptr.as_non_null_ptr().as_ptr().write_bytes(0, ptr.len()) }
         Ok(ptr)
     }
