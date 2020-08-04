@@ -42,13 +42,13 @@ impl fmt::Display for AllocErr {
 ///
 /// ### Currently allocated memory
 ///
-/// Some of the methods require that a memory slice be *currently allocated* via an allocator. This
+/// Some of the methods require that a memory block be *currently allocated* via an allocator. This
 /// means that:
 ///
-/// * the starting address for that memory slice was previously returned by [`alloc`], [`grow`], or
+/// * the starting address for that memory block was previously returned by [`alloc`], [`grow`], or
 ///   [`shrink`], and
 ///
-/// * the memory slice has not been subsequently deallocated, where slices are either deallocated
+/// * the memory block has not been subsequently deallocated, where blocks are either deallocated
 ///   directly by being passed to [`dealloc`] or were changed by being passed to [`grow`] or
 ///   [`shrink`] that returns `Ok`. If `grow` or `shrink` have returned `Err`, the passed pointer
 ///   remains valid.
@@ -60,14 +60,14 @@ impl fmt::Display for AllocErr {
 ///
 /// ### Memory fitting
 ///
-/// Some of the methods require that a layout *fit* a memory slice. What it means for a layout to
-/// "fit" a memory slice means (or equivalently, for a memory slice to "fit" a layout) is that the
+/// Some of the methods require that a layout *fit* a memory block. What it means for a layout to
+/// "fit" a memory block means (or equivalently, for a memory block to "fit" a layout) is that the
 /// following conditions must hold:
 ///
-/// * The slice must be allocated with the same alignment as [`layout.align()`], and
+/// * The block must be allocated with the same alignment as [`layout.align()`], and
 ///
 /// * The provided [`layout.size()`] must fall in the range `min ..= max`, where:
-///   - `min` is the size of the layout most recently used to allocate the slice, and
+///   - `min` is the size of the layout most recently used to allocate the block, and
 ///   - `max` is the latest actual size returned from [`alloc`], [`grow`], or [`shrink`].
 ///
 /// [`layout.align()`]: Layout::align
@@ -75,23 +75,23 @@ impl fmt::Display for AllocErr {
 ///
 /// # Safety
 ///
-/// * Memory slices returned from an allocator must point to valid memory and retain their validity
+/// * Memory blocks returned from an allocator must point to valid memory and retain their validity
 ///   until the instance and all of its clones are dropped,
 ///
-/// * cloning or moving the allocator must not invalidate memory slices returned from this
+/// * cloning or moving the allocator must not invalidate memory blocks returned from this
 ///   allocator. A cloned allocator must behave like the same allocator, and
 ///
-/// * any pointer to a memory slice which is [*currently allocated*] may be passed to any other
+/// * any pointer to a memory block which is [*currently allocated*] may be passed to any other
 ///   method of the allocator.
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait AllocRef {
-    /// Attempts to allocate a slice of memory.
+    /// Attempts to allocate a block of memory.
     ///
     /// On success, returns a [`NonNull<[u8]>`] meeting the size and alignment guarantees of `layout`.
     ///
-    /// The returned slice may have a larger size than specified by `layout.size()`, and may or may
+    /// The returned block may have a larger size than specified by `layout.size()`, and may or may
     /// not have its contents initialized.
     ///
     /// [`NonNull<[u8]>`]: NonNull
@@ -133,18 +133,18 @@ pub unsafe trait AllocRef {
         Ok(ptr)
     }
 
-    /// Deallocates the memory slice referenced by `ptr`.
+    /// Deallocates the memory referenced by `ptr`.
     ///
     /// # Safety
     ///
-    /// * `ptr` must denote a slice of memory [*currently allocated*] via this allocator, and
-    /// * `layout` must [*fit*] that slice of memory.
+    /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator, and
+    /// * `layout` must [*fit*] that block of memory.
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
     unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout);
 
-    /// Attempts to extend the memory slice.
+    /// Attempts to extend the memory block.
     ///
     /// Returns a new [`NonNull<[u8]>`] containing a pointer and the actual size of the allocated
     /// memory. The pointer is suitable for holding data described by a new layout with `layout`’s
@@ -293,27 +293,27 @@ pub unsafe trait AllocRef {
         }
     }
 
-    /// Attempts to shrink the memory slice.
+    /// Attempts to shrink the memory block.
     ///
     /// Returns a new [`NonNull<[u8]>`] containing a pointer and the actual size of the allocated
     /// memory. The pointer is suitable for holding data described by a new layout with `layout`’s
     /// alignment and a size given by `new_size`. To accomplish this, the allocator may shrink the
     /// allocation referenced by `ptr` to fit the new layout.
     ///
-    /// If this returns `Ok`, then ownership of the memory slice referenced by `ptr` has been
+    /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
     /// transferred to this allocator. The memory may or may not have been freed, and should be
     /// considered unusable unless it was transferred back to the caller again via the
     /// return value of this method.
     ///
-    /// If this method returns `Err`, then ownership of the memory slice has not been transferred to
-    /// this allocator, and the contents of the memory slice are unaltered.
+    /// If this method returns `Err`, then ownership of the memory block has not been transferred to
+    /// this allocator, and the contents of the memory block are unaltered.
     ///
     /// [`NonNull<[u8]>`]: NonNull
     ///
     /// # Safety
     ///
-    /// * `ptr` must denote a slice of memory [*currently allocated*] via this allocator,
-    /// * `layout` must [*fit*] that slice of memory (The `new_size` argument need not fit it.), and
+    /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator,
+    /// * `layout` must [*fit*] that block of memory (The `new_size` argument need not fit it.), and
     /// * `new_size` must be smaller than or equal to `layout.size()`.
     // Note: We can't require that `new_size` is strictly smaller than `layout.size()` because of ZSTs.
     // alternative: `new_size` must be smaller than `layout.size()` or both are zero
