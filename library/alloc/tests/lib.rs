@@ -4,6 +4,7 @@
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(map_first_last)]
+#![feature(map_into_keys_values)]
 #![feature(new_uninit)]
 #![feature(pattern)]
 #![feature(str_split_once)]
