@@ -290,34 +290,34 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::Fn(..) => {
-                if attr::contains_name(&it.attrs, sym::no_mangle) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                     self.report_overriden_symbol_name(
                         cx,
-                        it.ident.span,
+                        attr.span,
                         "declaration of a `no_mangle` function",
                     );
                 }
-                if attr::contains_name(&it.attrs, sym::export_name) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
                     self.report_overriden_symbol_name(
                         cx,
-                        it.ident.span,
+                        attr.span,
                         "declaration of a function with `export_name`",
                     );
                 }
             }
 
             ast::ItemKind::Static(..) => {
-                if attr::contains_name(&it.attrs, sym::no_mangle) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                     self.report_overriden_symbol_name(
                         cx,
-                        it.ident.span,
+                        attr.span,
                         "declaration of a `no_mangle` static",
                     );
                 }
-                if attr::contains_name(&it.attrs, sym::export_name) {
+                if let Some(attr) = attr::find_by_name(&it.attrs, sym::export_name) {
                     self.report_overriden_symbol_name(
                         cx,
-                        it.ident.span,
+                        attr.span,
                         "declaration of a static with `export_name`",
                     );
                 }
