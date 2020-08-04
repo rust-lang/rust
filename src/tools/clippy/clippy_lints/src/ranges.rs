@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
                     if let ExprKind::MethodCall(ref iter_path, _, ref iter_args , _) = *iter;
                     if iter_path.ident.name == sym!(iter);
                     // range expression in `.zip()` call: `0..x.len()`
-                    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(cx, zip_arg);
+                    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg);
                     if is_integer_const(cx, start, 0);
                     // `.len()` call
                     if let ExprKind::MethodCall(ref len_path, _, ref len_args, _) = end.kind;
@@ -180,7 +180,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             start,
             end: Some(end),
             limits: RangeLimits::HalfOpen
-        }) = higher::range(cx, expr);
+        }) = higher::range(expr);
         if let Some(y) = y_plus_one(cx, end);
         then {
             let span = if expr.span.from_expansion() {
@@ -225,7 +225,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
 // inclusive range minus one: `x..=(y-1)`
 fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
-        if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(cx, expr);
+        if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(expr);
         if let Some(y) = y_minus_one(cx, end);
         then {
             span_lint_and_then(
@@ -279,7 +279,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 
     if_chain! {
-        if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(cx, expr);
+        if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(expr);
         let ty = cx.typeck_results().expr_ty(start);
         if let ty::Int(_) | ty::Uint(_) = ty.kind;
         if let Some((start_idx, _)) = constant(cx, cx.typeck_results(), start);

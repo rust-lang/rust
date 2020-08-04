@@ -2271,7 +2271,7 @@ fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_
         if_chain! {
             if let hir::ExprKind::Index(ref caller_var, ref index_expr) = &caller_expr.kind;
             if let Some(higher::Range { start: Some(start_expr), end: None, limits: ast::RangeLimits::HalfOpen })
-                = higher::range(cx, index_expr);
+                = higher::range(index_expr);
             if let hir::ExprKind::Lit(ref start_lit) = &start_expr.kind;
             if let ast::LitKind::Int(start_idx, _) = start_lit.node;
             then {

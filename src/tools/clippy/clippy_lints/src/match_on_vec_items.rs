@@ -1,7 +1,8 @@
-use crate::utils::{self, is_type_diagnostic_item, match_type, snippet, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{is_type_diagnostic_item, is_type_lang_item, snippet, span_lint_and_sugg};
+use crate::utils::walk_ptrs_ty;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, MatchSource};
+use rustc_hir::{Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -96,5 +97,5 @@ fn is_vector(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 fn is_full_range(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
     let ty = walk_ptrs_ty(ty);
-    match_type(cx, ty, &utils::paths::RANGE_FULL)
+    is_type_lang_item(cx, ty, LangItem::RangeFull)
 }
