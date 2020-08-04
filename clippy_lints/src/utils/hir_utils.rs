@@ -3,9 +3,9 @@ use crate::utils::differing_macro_contexts;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::{
-    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, Field, FnRetTy, GenericArg,
-    GenericArgs, Guard, InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatKind, Path, PathSegment, QPath,
-    Stmt, StmtKind, Ty, TyKind, TypeBinding,
+    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, Field, FieldPat,
+    FnRetTy, GenericArg, GenericArgs, Guard, InlineAsmOperand, Lifetime, LifetimeName, ParamName,
+    Pat, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ich::StableHashingContextProvider;
@@ -185,10 +185,20 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         left.name == right.name
     }
 
+    pub fn eq_fieldpat(&mut self, left: &FieldPat<'_>, right: &FieldPat<'_>) -> bool {
+        match (&left, &right) {
+            (FieldPat { ident: li, pat: lp, .. }, FieldPat { ident: ri, pat: rp, .. }) =>
+                li.name.as_str() == ri.name.as_str() && self.eq_pat(lp, rp),
+        }
+    }
+
     /// Checks whether two patterns are the same.
     pub fn eq_pat(&mut self, left: &Pat<'_>, right: &Pat<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&PatKind::Box(ref l), &PatKind::Box(ref r)) => self.eq_pat(l, r),
+            (&PatKind::Struct(ref lp, ref la, ..), &PatKind::Struct(ref rp, ref ra, ..)) => {
+                self.eq_qpath(lp, rp) && over(la, ra, |l, r| self.eq_fieldpat(l, r))
+            },
             (&PatKind::TupleStruct(ref lp, ref la, ls), &PatKind::TupleStruct(ref rp, ref ra, rs)) => {
                 self.eq_qpath(lp, rp) && over(la, ra, |l, r| self.eq_pat(l, r)) && ls == rs
             },
@@ -223,6 +233,8 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             (&QPath::TypeRelative(ref lty, ref lseg), &QPath::TypeRelative(ref rty, ref rseg)) => {
                 self.eq_ty(lty, rty) && self.eq_path_segment(lseg, rseg)
             },
+            (&QPath::LangItem(llang_item, _), &QPath::LangItem(rlang_item, _)) =>
+                llang_item == rlang_item,
             _ => false,
         }
     }
@@ -601,6 +613,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             QPath::TypeRelative(_, ref path) => {
                 self.hash_name(path.ident.name);
             },
+            QPath::LangItem(lang_item, ..) => {
+                lang_item.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+            }
         }
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
     }
@@ -710,6 +725,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                     segment.ident.name.hash(&mut self.s);
                 },
+                QPath::LangItem(lang_item, ..) => {
+                    lang_item.hash(&mut self.s);
+                }
             },
             TyKind::OpaqueDef(_, arg_list) => {
                 self.hash_generic_args(arg_list);

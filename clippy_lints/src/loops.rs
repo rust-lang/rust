@@ -1003,7 +1003,7 @@ fn detect_manual_memcpy<'tcx>(
         start: Some(start),
         end: Some(end),
         limits,
-    }) = higher::range(cx, arg)
+    }) = higher::range(arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.kind {
@@ -1177,7 +1177,7 @@ fn check_for_loop_range<'tcx>(
         start: Some(start),
         ref end,
         limits,
-    }) = higher::range(cx, arg)
+    }) = higher::range(arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, ident, _) = pat.kind {
@@ -1679,7 +1679,7 @@ fn check_for_mut_range_bound(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'
         start: Some(start),
         end: Some(end),
         ..
-    }) = higher::range(cx, arg)
+    }) = higher::range(arg)
     {
         let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
         if mut_ids[0].is_some() || mut_ids[1].is_some() {

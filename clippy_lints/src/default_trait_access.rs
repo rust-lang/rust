@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultTraitAccess {
                             );
                          }
                     },
-                    QPath::TypeRelative(..) => {},
+                    QPath::TypeRelative(..) | QPath::LangItem(..) => {},
                 }
             }
         }
