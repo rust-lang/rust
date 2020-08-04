@@ -13,7 +13,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable_Generic;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -1495,58 +1495,28 @@ impl Expr<'_> {
 
 /// Checks if the specified expression is a built-in range literal.
 /// (See: `LoweringContext::lower_expr()`).
-///
-/// FIXME(#60607): This function is a hack. If and when we have `QPath::Lang(...)`,
-/// we can use that instead as simpler, more reliable mechanism, as opposed to using `SourceMap`.
-pub fn is_range_literal(sm: &SourceMap, expr: &Expr<'_>) -> bool {
-    // Returns whether the given path represents a (desugared) range,
-    // either in std or core, i.e. has either a `::std::ops::Range` or
-    // `::core::ops::Range` prefix.
-    fn is_range_path(path: &Path<'_>) -> bool {
-        let segs: Vec<_> = path.segments.iter().map(|seg| seg.ident.to_string()).collect();
-        let segs: Vec<_> = segs.iter().map(|seg| &**seg).collect();
-
-        // "{{root}}" is the equivalent of `::` prefix in `Path`.
-        if let ["{{root}}", std_core, "ops", range] = segs.as_slice() {
-            (*std_core == "std" || *std_core == "core") && range.starts_with("Range")
-        } else {
-            false
-        }
-    };
-
-    // Check whether a span corresponding to a range expression is a
-    // range literal, rather than an explicit struct or `new()` call.
-    fn is_lit(sm: &SourceMap, span: &Span) -> bool {
-        sm.span_to_snippet(*span).map(|range_src| range_src.contains("..")).unwrap_or(false)
-    };
-
+pub fn is_range_literal(expr: &Expr<'_>) -> bool {
     match expr.kind {
         // All built-in range literals but `..=` and `..` desugar to `Struct`s.
-        ExprKind::Struct(ref qpath, _, _) => {
-            if let QPath::Resolved(None, ref path) = **qpath {
-                return is_range_path(&path) && is_lit(sm, &expr.span);
-            }
-        }
-
-        // `..` desugars to its struct path.
-        ExprKind::Path(QPath::Resolved(None, ref path)) => {
-            return is_range_path(&path) && is_lit(sm, &expr.span);
-        }
+        ExprKind::Struct(ref qpath, _, _) => matches!(
+            **qpath,
+            QPath::LangItem(
+                LangItem::Range
+                | LangItem::RangeTo
+                | LangItem::RangeFrom
+                | LangItem::RangeFull
+                | LangItem::RangeToInclusive,
+                _,
+            )
+        ),
 
         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
         ExprKind::Call(ref func, _) => {
-            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.kind {
-                if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.kind {
-                    let new_call = segment.ident.name == sym::new;
-                    return is_range_path(&path) && is_lit(sm, &expr.span) && new_call;
-                }
-            }
+            matches!(func.kind, ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, _)))
         }
 
-        _ => {}
+        _ => false,
     }
-
-    false
 }
 
 #[derive(Debug, HashStable_Generic)]

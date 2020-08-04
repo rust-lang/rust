@@ -485,7 +485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // parenthesize if needed (Issue #46756)
                             hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
                             // parenthesize borrows of range literals (Issue #54505)
-                            _ if is_range_literal(self.tcx.sess.source_map(), expr) => true,
+                            _ if is_range_literal(expr) => true,
                             _ => false,
                         };
                         let sugg_expr = if needs_parens { format!("({})", src) } else { src };
