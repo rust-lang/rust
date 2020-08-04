@@ -643,4 +643,46 @@ fn main() {
     ",
         );
     }
+
+    #[test]
+    fn does_not_replace_pub_use() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+pub use std::fmt;
+
+impl std::io<|> for Foo {
+}
+    ",
+            r"
+use std::io;
+
+pub use std::fmt;
+
+impl io for Foo {
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn does_not_replace_pub_crate_use() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+pub(crate) use std::fmt;
+
+impl std::io<|> for Foo {
+}
+    ",
+            r"
+use std::io;
+
+pub(crate) use std::fmt;
+
+impl io for Foo {
+}
+    ",
+        );
+    }
 }
