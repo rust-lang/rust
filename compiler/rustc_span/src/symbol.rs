@@ -11,6 +11,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cmp::{Ord, PartialEq, PartialOrd};
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::str;
 
 use crate::{Span, DUMMY_SP, SESSION_GLOBALS};
@@ -1377,13 +1378,69 @@ impl fmt::Display for MacroRulesNormalizedIdent {
 
 /// An interned string.
 ///
-/// Internally, a `Symbol` is implemented as an index, and all operations
-/// (including hashing, equality, and ordering) operate on that index. The use
-/// of `rustc_index::newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
-/// because `rustc_index::newtype_index!` reserves the last 256 values for tagging purposes.
+/// Internally, a `Symbol` is implemented as a u32, and all operations
+/// (including hashing, equality, and ordering) operate on that u32. The use of
+/// `rustc_index::newtype_index!` means that `Option<Symbol>` only takes up 4
+/// bytes, because `rustc_index::newtype_index!` reserves the last 256 values
+/// for tagging purposes.
 ///
-/// Note that `Symbol` cannot directly be a `rustc_index::newtype_index!` because it
-/// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
+/// Note that `Symbol` cannot directly be a `rustc_index::newtype_index!`
+/// because it implements `fmt::Debug`, `Encodable`, and `Decodable` in special
+/// ways.
+///
+/// For the interner in `SESSION_GLOBALS`, we use a two-part encoding. Strings
+/// of length 4 or less (with some exceptions due to two encoding constraints
+/// described below) are "inlined", i.e. stored within the u32 itself. Other
+/// strings are "tabled", i.e. stored in the interner's table and the u32 is an
+/// index. This helps performance because strings of length 4 are common
+/// (roughly 50% of cases in practice) and those ones avoid the need to lock
+/// and search the hash table.
+///
+/// The details of the encoding are as follows.
+///
+/// - The highest bit of the u32 is a tag bit.
+///
+/// - If the tag bit is 0, the symbol is inlined. The string bytes
+///   (`s`) are encoded into the u32 (`u`) in a little-endian fashion:
+///   - Byte 0 of `u` holds `s[0]`, or zero if `s.len()` is < 1.
+///   - Byte 1 of `u` holds `s[1]`, or zero if `s.len()` is < 2.
+///   - Byte 2 of `u` holds `s[2]`, or zero if `s.len()` is < 3.
+///   - Byte 3 of `u` holds `s[3]`, or zero if `s.len()` is < 4.
+///
+///   Some examples:
+///   - ""     -> 0x00_00_00_00
+///   - "a"    -> 0x00_00_00_61
+///   - "ab"   -> 0x00_00_62_61
+///   - "abc"  -> 0x00_63_62_61
+///   - "abcd" -> 0x64_63_62_61
+///
+///   Because byte 3 contains the tag bit, for a string of length four to be
+///   inlined its final byte must be < 0x80. For example, "cdé" can not be
+///   inlined because in UTF-8 it is a four byte sequence `[0x64, 0x65, 0xc3,
+///   0xa9]` and byte 3 is > 0x7f. (This is the first of the abovementioned
+///   encoding constraints.)
+///
+///   The length of the string is not explicitly encoded. Rather, it is equal
+///   to the index of the most-significant zero byte, or four if there are no
+///   zero bytes. (For example, in 0x00_63_62_61 the most significant zero byte
+///   is byte 3, and so the length is 3.) Because of this, a string whose final
+///   char is a NUL char cannot be represented inline. For example, none of
+///   "\0", "a\0", "ab\0", and "abc\0" can be inlined. (This is the second of
+///   the abovementioned encoding constraints.)
+///
+/// - If the tag bit is 1, the symbol is tabled. The high bit must be removed
+///   before being used as an index. For example, the fifth tabled symbol will
+///   have the value 0x80_00_00_05.
+///
+///   The maximum value of a `newtype_index` is 0xff_ff_ff_00, due to highest
+///   256 values being reserved. Therefore, the maximum index representable is
+///   0x7f_ff_ff_00 (2,147,483,392). Given that the maximum number of bytes in
+///   a crate is 0xff_ff_ff_ff, this should be more than enough for tabled
+///   symbols.
+///
+/// For interners other than the one in `SESSION_GLOBALS` (which are rare and
+/// not that performance-critical) all symbols are interned, i.e. the u32 is an
+/// index into the interner's table with its high bit set.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
 
@@ -1391,30 +1448,51 @@ rustc_index::newtype_index! {
     pub struct SymbolIndex { .. }
 }
 
+/// These `Symbol` methods work with just the `Symbol` itself, and do not
+/// involve `SESSION_GLOBALS`.
 impl Symbol {
-    const fn new(n: u32) -> Self {
-        Symbol(SymbolIndex::from_u32(n))
+    /// Try to create an inlined symbol from a string.
+    /// WARNING: this function must behave equivalently to `is_inlinable()` in
+    /// `librustc_macros/src/symbol.rs`.
+    const fn try_new_inlined(s: &str) -> Option<Self> {
+        let len = s.len();
+        let s = s.as_bytes();
+        let n = if len == 4 && s[3] != 0 && s[3] < 0x80 {
+            s[0] as u32 | ((s[1] as u32) << 8) | ((s[2] as u32) << 16) | ((s[3] as u32) << 24)
+        } else if len == 3 && s[2] != 0 {
+            s[0] as u32 | ((s[1] as u32) << 8) | ((s[2] as u32) << 16)
+        } else if len == 2 && s[1] != 0 {
+            s[0] as u32 | ((s[1] as u32) << 8)
+        } else if len == 1 && s[0] != 0 {
+            s[0] as u32
+        } else if len == 0 {
+            0u32
+        } else {
+            return None;
+        };
+        Some(Symbol(SymbolIndex::from_u32(n)))
     }
 
-    /// Maps a string to its interned representation.
-    pub fn intern(string: &str) -> Self {
-        with_interner(|interner| interner.intern(string))
+    /// Create an inlined symbol from a string. Panic if that's not possible.
+    const fn new_inlined(s: &str) -> Self {
+        match Symbol::try_new_inlined(s) {
+            Some(s) => s,
+            None => panic!("non-inlinable string"),
+        }
     }
 
-    /// Access the symbol's chars. This is a slowish operation because it
-    /// requires locking the symbol interner.
-    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        with_interner(|interner| f(interner.get(self)))
+    /// Create a tabled symbol from an interner index.
+    const fn new_tabled(index: u32) -> Self {
+        Symbol(SymbolIndex::from_u32(0x80000000 | index))
     }
 
-    /// Convert to a `SymbolStr`. This is a slowish operation because it
-    /// requires locking the symbol interner.
-    pub fn as_str(self) -> SymbolStr {
-        with_interner(|interner| unsafe {
-            SymbolStr { string: std::mem::transmute::<&str, &str>(interner.get(self)) }
-        })
+    /// Convert a tabled symbol to an index for the interner.
+    fn as_tabled_index(self) -> usize {
+        debug_assert_ne!(self.0.as_u32() & 0x80000000, 0);
+        (self.0.as_u32() & !0x80000000) as usize
     }
 
+    /// Extract the inner u32 value.
     pub fn as_u32(self) -> u32 {
         self.0.as_u32()
     }
@@ -1425,6 +1503,51 @@ impl Symbol {
     /// or edition, so we have to guess the rawness using the global edition.
     pub fn to_ident_string(self) -> String {
         Ident::with_dummy_span(self).to_string()
+    }
+}
+
+// These `Symbol` methods are for accessing symbols via `SESSION_GLOBALS`.
+impl Symbol {
+    /// Map a string to its symbol representation, using the interner's table
+    /// from `SESSION_GLOBALS` if necessary (a relatively slow operation).
+    pub fn intern(string: &str) -> Self {
+        if let Some(sym) = Symbol::try_new_inlined(string) {
+            sym
+        } else {
+            with_interner(|interner| interner.intern(string))
+        }
+    }
+
+    /// Access the symbol's chars, using the interner's table from
+    /// `SESSION_GLOBALS` if necessary (a relatively slow operation).
+    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
+        f(self.as_str().deref())
+    }
+
+    /// Convert to a `SymbolStr`, using the interner's table from
+    /// `SESSION_GLOBALS` if necessary (a relatively slow operation).
+    pub fn as_str(self) -> SymbolStr {
+        if self.0.as_u32() & 0x80000000 == 0 {
+            // The high bit is clear, it's an inlined symbol.
+            let bytes = self.0.as_u32().to_le_bytes();
+            let len = if bytes[3] != 0 {
+                4
+            } else if bytes[2] != 0 {
+                3
+            } else if bytes[1] != 0 {
+                2
+            } else if bytes[0] != 0 {
+                1
+            } else {
+                0
+            };
+            SymbolStr::Inlined { bytes, len }
+        } else {
+            // The high bit is set, it's a tabled symbol.
+            with_interner(|interner| unsafe {
+                SymbolStr::Tabled { string: std::mem::transmute::<&str, &str>(interner.get(self)) }
+            })
+        }
     }
 }
 
@@ -1469,6 +1592,9 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
     }
 }
 
+/// A string interner. The interner in `SESSION_GLOBALS` can (and should) be
+/// accessed via `Symbol` methods. Non-global interners can use `Interner`
+/// methods directly.
 // The `&'static str`s in this type actually point into the arena.
 //
 // The `FxHashMap`+`Vec` pair could be replaced by `FxIndexSet`, but #75278
@@ -1482,24 +1608,33 @@ pub struct Interner {
 }
 
 impl Interner {
-    fn prefill(init: &[&'static str]) -> Self {
+    /// Prefill the interner table with static symbols. This should only be
+    /// done for the `SESSION_GLOBALS` interner.
+    fn prefill_tabled(init: &[&'static str]) -> Self {
         Interner {
             strings: init.into(),
-            names: init.iter().copied().zip((0..).map(Symbol::new)).collect(),
+            names: init
+                .iter()
+                .inspect(|s| assert_eq!(Symbol::try_new_inlined(s), None))
+                .copied()
+                .zip((0..).map(Symbol::new_tabled))
+                .collect(),
             ..Default::default()
         }
     }
 
-    #[inline]
+    /// Map a string to its symbol representation, using this interner's table
+    /// if necessary. For the interner in `SESSION_GLOBALS`, `Symbol::intern()`
+    /// should be used in preference to this function.
     pub fn intern(&mut self, string: &str) -> Symbol {
         if let Some(&name) = self.names.get(string) {
             return name;
         }
 
-        let name = Symbol::new(self.strings.len() as u32);
+        let name = Symbol::new_tabled(self.strings.len() as u32);
 
-        // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
-        // UTF-8.
+        // SAFETY: `from_utf8_unchecked` is safe because the input is a copy of
+        // `string` which is a `&str` and therefore must be UTF-8.
         let string: &str =
             unsafe { str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes())) };
         // It is safe to extend the arena allocation to `'static` because we only access
@@ -1510,10 +1645,11 @@ impl Interner {
         name
     }
 
-    // Get the symbol as a string. `Symbol::as_str()` should be used in
-    // preference to this function.
+    // Get the symbol as a string. For the interner in `SESSION_GLOBALS`,
+    // `Symbol::as_str()` or `Symbol::with()` should be used in preference to
+    // this function.
     pub fn get(&self, symbol: Symbol) -> &str {
-        self.strings[symbol.0.as_usize()]
+        self.strings[symbol.as_tabled_index()]
     }
 }
 
@@ -1630,15 +1766,20 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 // FIXME: ensure that the interner outlives any thread which uses `SymbolStr`,
 // by creating a new thread right after constructing the interner.
 #[derive(Clone, Eq, PartialOrd, Ord)]
-pub struct SymbolStr {
-    string: &'static str,
+pub enum SymbolStr {
+    /// For an inlined symbol this type needs its own bytes, because the
+    /// original bytes are embedded in the u32 within the `Symbol`.
+    Inlined { bytes: [u8; 4], len: usize },
+
+    /// For a tabled symbol a `&str` suffices.
+    Tabled { string: &'static str },
 }
 
 // This impl allows a `SymbolStr` to be directly equated with a `String` or
 // `&str`.
 impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for SymbolStr {
     fn eq(&self, other: &T) -> bool {
-        self.string == other.deref()
+        self.deref() == other.deref()
     }
 }
 
@@ -1654,26 +1795,32 @@ impl std::ops::Deref for SymbolStr {
     type Target = str;
     #[inline]
     fn deref(&self) -> &str {
-        self.string
+        match self {
+            // SAFETY: the bytes originally came from a `&str`.
+            SymbolStr::Inlined { bytes, len } => unsafe {
+                std::str::from_utf8_unchecked(&bytes[0..*len])
+            },
+            SymbolStr::Tabled { string } => string,
+        }
     }
 }
 
 impl fmt::Debug for SymbolStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self.string, f)
+        fmt::Debug::fmt(self.deref(), f)
     }
 }
 
 impl fmt::Display for SymbolStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.string, f)
+        fmt::Display::fmt(self.deref(), f)
     }
 }
 
 impl<CTX> HashStable<CTX> for SymbolStr {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.string.hash_stable(hcx, hasher)
+        self.deref().hash_stable(hcx, hasher)
     }
 }
 

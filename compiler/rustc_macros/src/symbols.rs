@@ -102,15 +102,25 @@ impl Parse for Input {
     }
 }
 
+/// WARNING: this function must behave equivalently to
+/// `Symbol::try_new_inlined()`. It does, modulo the fact that it accepts fewer
+/// inputs, panicking on any string containing non-ASCII or NUL bytes. This is
+/// fine because static symbols never contain such bytes. Once those bytes are
+/// excluded, it reduces to a mere length check.
+fn is_inlinable(s: &str) -> bool {
+    assert!(s.as_bytes().iter().all(|&b| 0 < b && b < 0x80));
+    s.len() <= 4
+}
+
 pub fn symbols(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as Input);
 
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
     let mut digits_stream = quote! {};
-    let mut prefill_stream = quote! {};
+    let mut prefill_tabled_stream = quote! {};
+    let mut tabled_counter = 0u32;
     let mut keyword_class_stream = quote! {};
-    let mut counter = 0u32;
     let mut keys = HashSet::<String>::new();
     let mut prev_key: Option<String> = None;
     let mut errors = Vec::<String>::new();
@@ -136,18 +146,26 @@ pub fn symbols(input: TokenStream) -> TokenStream {
         for keyword in keywords {
             let name = &keyword.name;
             let value = &keyword.value;
-            check_dup(&value.value(), &mut errors);
-            prefill_stream.extend(quote! {
-                #value,
-            });
-            keyword_stream.extend(quote! {
-                #[allow(non_upper_case_globals)]
-                pub const #name: Symbol = Symbol::new(#counter);
-            });
+            let v = value.value();
+            check_dup(&v, &mut errors);
+            if is_inlinable(&v) {
+                keyword_stream.extend(quote! {
+                    #[allow(non_upper_case_globals)]
+                    pub const #name: Symbol = Symbol::new_inlined(#value);
+                });
+            } else {
+                prefill_tabled_stream.extend(quote! {
+                    #value,
+                });
+                keyword_stream.extend(quote! {
+                    #[allow(non_upper_case_globals)]
+                    pub const #name: Symbol = Symbol::new_tabled(#tabled_counter);
+                });
+                tabled_counter += 1;
+            }
             class_stream.extend(quote! {
                 | kw::#name
             });
-            counter += 1;
         }
         if let Some(class) = class {
             keyword_class_stream.extend(quote! {
@@ -170,28 +188,32 @@ pub fn symbols(input: TokenStream) -> TokenStream {
         };
         check_dup(&value, &mut errors);
         check_order(&name.to_string(), &mut errors);
-        prefill_stream.extend(quote! {
-            #value,
-        });
-        symbols_stream.extend(quote! {
-            #[allow(rustc::default_hash_types)]
-            #[allow(non_upper_case_globals)]
-            pub const #name: Symbol = Symbol::new(#counter);
-        });
-        counter += 1;
+        if is_inlinable(&value) {
+            symbols_stream.extend(quote! {
+                #[allow(rustc::default_hash_types)]
+                #[allow(non_upper_case_globals)]
+                pub const #name: Symbol = Symbol::new_inlined(#value);
+            });
+        } else {
+            prefill_tabled_stream.extend(quote! {
+                #value,
+            });
+            symbols_stream.extend(quote! {
+                #[allow(rustc::default_hash_types)]
+                #[allow(non_upper_case_globals)]
+                pub const #name: Symbol = Symbol::new_tabled(#tabled_counter);
+            });
+            tabled_counter += 1;
+        }
     }
 
     // Generate symbols for the strings "0", "1", ..., "9".
     for n in 0..10 {
         let n = n.to_string();
         check_dup(&n, &mut errors);
-        prefill_stream.extend(quote! {
-            #n,
-        });
         digits_stream.extend(quote! {
-            Symbol::new(#counter),
+            Symbol::new_inlined(#n),
         });
-        counter += 1;
     }
 
     if !errors.is_empty() {
@@ -221,8 +243,8 @@ pub fn symbols(input: TokenStream) -> TokenStream {
 
         impl Interner {
             pub fn fresh() -> Self {
-                Interner::prefill(&[
-                    #prefill_stream
+                Interner::prefill_tabled(&[
+                    #prefill_tabled_stream
                 ])
             }
         }
