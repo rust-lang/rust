@@ -220,7 +220,7 @@ fn default_hook(info: &PanicInfo<'_>) {
 
     if let Some(mut local) = set_panic(None) {
         // NB. In `cfg(test)` this uses the forwarding impl
-        // for `Box<dyn (::realstd::io::Write) + Send>`.
+        // for `dyn ::realstd::io::LocalOutput`.
         write(&mut local);
         set_panic(Some(local));
     } else if let Some(mut out) = panic_output() {

@@ -6,11 +6,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[derive(Clone)]
 pub struct Sink(Arc<Mutex<Vec<u8>>>);
 
 impl Sink {
     pub fn new_boxed(data: &Arc<Mutex<Vec<u8>>>) -> Box<Self> {
         Box::new(Self(data.clone()))
+    }
+}
+
+impl io::LocalOutput for Sink {
+    fn clone_box(&self) -> Box<dyn io::LocalOutput> {
+        Box::new(self.clone())
     }
 }
 
