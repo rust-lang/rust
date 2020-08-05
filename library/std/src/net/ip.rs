@@ -319,15 +319,9 @@ impl Ipv4Addr {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ipv4", since = "1.32.0")]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
-        // FIXME: should just be u32::from_be_bytes([a, b, c, d]),
-        // once that method is no longer rustc_const_unstable
-        Ipv4Addr {
-            inner: c::in_addr {
-                s_addr: u32::to_be(
-                    ((a as u32) << 24) | ((b as u32) << 16) | ((c as u32) << 8) | (d as u32),
-                ),
-            },
-        }
+        // `s_addr` is stored as BE on all machine and the array is in BE order.
+        // So the native endian conversion method is used so that it's never swapped.
+        Ipv4Addr { inner: c::in_addr { s_addr: u32::from_ne_bytes([a, b, c, d]) } }
     }
 
     /// An IPv4 address with the address pointing to localhost: 127.0.0.1.
