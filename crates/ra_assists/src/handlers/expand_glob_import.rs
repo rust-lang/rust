@@ -1,14 +1,16 @@
-use hir::{MacroDef, ModuleDef, Name, PathResolution, ScopeDef, SemanticsScope};
+use hir::{AssocItem, MacroDef, ModuleDef, Name, PathResolution, ScopeDef, SemanticsScope};
 use ra_ide_db::{
     defs::{classify_name_ref, Definition, NameRefClass},
     RootDatabase,
 };
-use ra_syntax::{ast, match_ast, AstNode, SyntaxNode, SyntaxToken, T};
+use ra_syntax::{algo, ast, match_ast, AstNode, SyntaxNode, SyntaxToken, T};
 
 use crate::{
     assist_context::{AssistBuilder, AssistContext, Assists},
     AssistId, AssistKind,
 };
+
+use either::Either;
 
 // Assist: expand_glob_import
 //
@@ -122,7 +124,19 @@ fn find_used_names(
 
     defs_in_mod
         .iter()
-        .filter(|d| defs_in_source_file.contains(d))
+        .filter(|def| {
+            if let Def::ModuleDef(ModuleDef::Trait(tr)) = def {
+                for item in tr.items(ctx.db()) {
+                    if let AssocItem::Function(f) = item {
+                        if defs_in_source_file.contains(&Def::ModuleDef(ModuleDef::Function(f))) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            defs_in_source_file.contains(def)
+        })
         .filter_map(|d| d.name(ctx.db()))
         .collect()
 }
@@ -133,27 +147,37 @@ fn replace_ast(
     path: ast::Path,
     used_names: Vec<Name>,
 ) {
-    let new_use_tree_list = ast::make::use_tree_list(used_names.iter().map(|n| {
-        ast::make::use_tree(ast::make::path_from_text(&n.to_string()), None, None, false)
-    }));
+    let replacement: Either<ast::UseTree, ast::UseTreeList> = if used_names.len() == 1 {
+        Either::Left(ast::make::use_tree(
+            ast::make::path_from_text(&format!("{}::{}", path, used_names.first().unwrap())),
+            None,
+            None,
+            false,
+        ))
+    } else {
+        Either::Right(ast::make::use_tree_list(used_names.iter().map(|n| {
+            ast::make::use_tree(ast::make::path_from_text(&n.to_string()), None, None, false)
+        })))
+    };
+
+    let mut replace_node = |replacement: Either<ast::UseTree, ast::UseTreeList>| {
+        algo::diff(node, &replacement.either(|u| u.syntax().clone(), |ut| ut.syntax().clone()))
+            .into_text_edit(builder.text_edit_builder());
+    };
 
     match_ast! {
         match node {
             ast::UseTree(use_tree) => {
-                builder.replace_ast(use_tree, make_use_tree(path, new_use_tree_list));
+                replace_node(replacement);
             },
             ast::UseTreeList(use_tree_list) => {
-                builder.replace_ast(use_tree_list, new_use_tree_list);
+                replace_node(replacement);
             },
             ast::Use(use_item) => {
-                builder.replace_ast(use_item, ast::make::use_item(make_use_tree(path, new_use_tree_list)));
+                builder.replace_ast(use_item, ast::make::use_item(replacement.left_or_else(|ut| ast::make::use_tree(path, Some(ut), None, false))));
             },
             _ => {},
         }
-    }
-
-    fn make_use_tree(path: ast::Path, use_tree_list: ast::UseTreeList) -> ast::UseTree {
-        ast::make::use_tree(path, Some(use_tree_list), None, false)
     }
 }
 
@@ -315,6 +339,34 @@ use foo::{bar, baz};
 fn main() {
     bar!();
     baz();
+}
+",
+        )
+    }
+
+    #[test]
+    fn expanding_glob_import_with_trait_method_uses() {
+        check_assist(
+            expand_glob_import,
+            r"
+//- /lib.rs crate:foo
+pub trait Tr {
+    fn method(&self) {}
+}
+impl Tr for () {}
+
+//- /main.rs crate:main deps:foo
+use foo::*<|>;
+
+fn main() {
+    ().method();
+}
+",
+            r"
+use foo::Tr;
+
+fn main() {
+    ().method();
 }
 ",
         )
