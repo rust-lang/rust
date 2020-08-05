@@ -47,9 +47,9 @@ extern crate tracing;
 
 use std::default::Default;
 use std::env;
-use std::panic;
 use std::process;
 
+use rustc_errors::ErrorReported;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
@@ -82,22 +82,14 @@ struct Output {
 }
 
 pub fn main() {
-    let thread_stack_size: usize = if cfg!(target_os = "haiku") {
-        16_000_000 // 16MB on Haiku
-    } else {
-        32_000_000 // 32MB on other platforms
-    };
     rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
     rustc_driver::init_env_logger("RUSTDOC_LOG");
-
-    let res = std::thread::Builder::new()
-        .stack_size(thread_stack_size)
-        .spawn(move || get_args().map(|args| main_args(&args)).unwrap_or(1))
-        .unwrap()
-        .join()
-        .unwrap_or(rustc_driver::EXIT_FAILURE);
-    process::exit(res);
+    let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
+        Some(args) => main_args(&args),
+        _ => Err(ErrorReported),
+    });
+    process::exit(exit_code);
 }
 
 fn get_args() -> Option<Vec<String>> {
@@ -418,7 +410,10 @@ fn usage(argv0: &str) {
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
 }
 
-fn main_args(args: &[String]) -> i32 {
+/// A result type used by several functions under `main()`.
+type MainResult = Result<(), ErrorReported>;
+
+fn main_args(args: &[String]) -> MainResult {
     let mut options = getopts::Options::new();
     for option in opts() {
         (option.apply)(&mut options);
@@ -429,24 +424,27 @@ fn main_args(args: &[String]) -> i32 {
             early_error(ErrorOutputType::default(), &err.to_string());
         }
     };
+
+    // Note that we discard any distinction between different non-zero exit
+    // codes from `from_matches` here.
     let options = match config::Options::from_matches(&matches) {
         Ok(opts) => opts,
-        Err(code) => return code,
+        Err(code) => return if code == 0 { Ok(()) } else { Err(ErrorReported) },
     };
-    rustc_interface::interface::setup_callbacks_and_run_in_default_thread_pool_with_globals(
+    rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals(
         options.edition,
+        1, // this runs single-threaded, even in a parallel compiler
+        &None,
         move || main_options(options),
     )
 }
 
-fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> i32 {
+fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
     match res {
-        Ok(()) => 0,
+        Ok(()) => Ok(()),
         Err(err) => {
-            if !err.is_empty() {
-                diag.struct_err(&err).emit();
-            }
-            1
+            diag.struct_err(&err).emit();
+            Err(ErrorReported)
         }
     }
 }
@@ -457,9 +455,9 @@ fn run_renderer<T: formats::FormatRenderer>(
     render_info: config::RenderInfo,
     diag: &rustc_errors::Handler,
     edition: rustc_span::edition::Edition,
-) -> i32 {
+) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition) {
-        Ok(_) => rustc_driver::EXIT_SUCCESS,
+        Ok(_) => Ok(()),
         Err(e) => {
             let mut msg = diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
@@ -468,17 +466,17 @@ fn run_renderer<T: formats::FormatRenderer>(
             } else {
                 msg.note(&format!("failed to create or modify \"{}\"", file)).emit()
             }
-            rustc_driver::EXIT_FAILURE
+            Err(ErrorReported)
         }
     }
 }
 
-fn main_options(options: config::Options) -> i32 {
+fn main_options(options: config::Options) -> MainResult {
     let diag = core::new_handler(options.error_format, None, &options.debugging_options);
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
-        (true, false) => return wrap_return(&diag, test::run(options)),
+        (true, false) => return test::run(options),
         (false, true) => {
             return wrap_return(
                 &diag,
@@ -500,44 +498,37 @@ fn main_options(options: config::Options) -> i32 {
     // compiler all the way through the analysis passes. The rustdoc output is
     // then generated from the cleaned AST of the crate. This runs all the
     // plug/cleaning passes.
-    let result = rustc_driver::catch_fatal_errors(move || {
-        let crate_name = options.crate_name.clone();
-        let crate_version = options.crate_version.clone();
-        let output_format = options.output_format;
-        let (mut krate, renderinfo, renderopts) = core::run_core(options);
+    let crate_name = options.crate_name.clone();
+    let crate_version = options.crate_version.clone();
+    let output_format = options.output_format;
+    let (mut krate, renderinfo, renderopts) = core::run_core(options);
 
-        info!("finished with rustc");
+    info!("finished with rustc");
 
-        if let Some(name) = crate_name {
-            krate.name = name
+    if let Some(name) = crate_name {
+        krate.name = name
+    }
+
+    krate.version = crate_version;
+
+    let out = Output { krate, renderinfo, renderopts };
+
+    if show_coverage {
+        // if we ran coverage, bail early, we don't need to also generate docs at this point
+        // (also we didn't load in any of the useful passes)
+        return Ok(());
+    }
+
+    let Output { krate, renderinfo, renderopts } = out;
+    info!("going to format");
+    let (error_format, edition, debugging_options) = diag_opts;
+    let diag = core::new_handler(error_format, None, &debugging_options);
+    match output_format {
+        None | Some(config::OutputFormat::Html) => {
+            run_renderer::<html::render::Context>(krate, renderopts, renderinfo, &diag, edition)
         }
-
-        krate.version = crate_version;
-
-        let out = Output { krate, renderinfo, renderopts };
-
-        if show_coverage {
-            // if we ran coverage, bail early, we don't need to also generate docs at this point
-            // (also we didn't load in any of the useful passes)
-            return rustc_driver::EXIT_SUCCESS;
+        Some(config::OutputFormat::Json) => {
+            run_renderer::<json::JsonRenderer>(krate, renderopts, renderinfo, &diag, edition)
         }
-
-        let Output { krate, renderinfo, renderopts } = out;
-        info!("going to format");
-        let (error_format, edition, debugging_options) = diag_opts;
-        let diag = core::new_handler(error_format, None, &debugging_options);
-        match output_format {
-            None | Some(config::OutputFormat::Html) => {
-                run_renderer::<html::render::Context>(krate, renderopts, renderinfo, &diag, edition)
-            }
-            Some(config::OutputFormat::Json) => {
-                run_renderer::<json::JsonRenderer>(krate, renderopts, renderinfo, &diag, edition)
-            }
-        }
-    });
-
-    match result {
-        Ok(output) => output,
-        Err(_) => panic::resume_unwind(Box::new(rustc_errors::FatalErrorMarker)),
     }
 }

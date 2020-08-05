@@ -42,7 +42,7 @@ pub struct TestOptions {
     pub attrs: Vec<String>,
 }
 
-pub fn run(options: Options) -> Result<(), String> {
+pub fn run(options: Options) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -150,7 +150,7 @@ pub fn run(options: Options) -> Result<(), String> {
     });
     let tests = match tests {
         Ok(tests) => tests,
-        Err(ErrorReported) => return Err(String::new()),
+        Err(ErrorReported) => return Err(ErrorReported),
     };
 
     test_args.insert(0, "rustdoctest".to_string());
