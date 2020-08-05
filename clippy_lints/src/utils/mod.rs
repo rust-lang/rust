@@ -1377,6 +1377,36 @@ pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bo
     })
 }
 
+/// Returns true iff the given type is a primitive (a bool or char, any integer or floating-point
+/// number type, a str, or an array, slice, or tuple of those types).
+pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
+    match ty.kind {
+        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
+        ty::Ref(_, inner, _) if inner.kind == ty::Str => true,
+        ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
+        ty::Tuple(inner_types) => inner_types.types().all(is_recursively_primitive_type),
+        _ => false,
+    }
+}
+
+/// Returns true iff the given expression is a slice of primitives (as defined in the
+/// `is_recursively_primitive_type` function).
+pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
+    match expr_type.kind {
+        ty::Slice(ref element_type)
+        | ty::Ref(
+            _,
+            ty::TyS {
+                kind: ty::Slice(ref element_type),
+                ..
+            },
+            _,
+        ) => is_recursively_primitive_type(element_type),
+        _ => false,
+    }
+}
+
 #[macro_export]
 macro_rules! unwrap_cargo_metadata {
     ($cx: ident, $lint: ident, $deps: expr) => {{
