@@ -57,9 +57,3 @@ ENV SCRIPT python2.7 ../x.py --stage 2 test --exclude src/tools/tidy && \
            python2.7 ../x.py --stage 2 test src/test/ui --pass=check && \
            # Run tidy at the very end, after all the other tests.
            python2.7 ../x.py --stage 2 test src/tools/tidy
-
-# The purpose of this container isn't to test with debug assertions and
-# this is run on all PRs, so let's get speedier builds by disabling these extra
-# checks.
-ENV NO_DEBUG_ASSERTIONS=1
-ENV NO_LLVM_ASSERTIONS=1
