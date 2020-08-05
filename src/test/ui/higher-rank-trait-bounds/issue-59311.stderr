@@ -1,5 +1,5 @@
 error: higher-ranked subtype error
-  --> $DIR/issue-59311.rs:13:9
+  --> $DIR/issue-59311.rs:17:9
    |
 LL |     v.t(|| {});
    |         ^^^^^
