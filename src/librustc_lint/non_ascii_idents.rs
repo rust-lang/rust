@@ -58,6 +58,12 @@ impl EarlyLintPass for NonAsciiIdents {
 
         let mut has_non_ascii_idents = false;
         let symbols = cx.sess.parse_sess.symbol_gallery.symbols.lock();
+
+        // Sort by `Span` so that error messages make sense with respect to the
+        // order of identifier locations in the code.
+        let mut symbols: Vec<_> = symbols.iter().collect();
+        symbols.sort_by_key(|k| k.1);
+
         for (symbol, &sp) in symbols.iter() {
             let symbol_str = symbol.as_str();
             if symbol_str.is_ascii() {
