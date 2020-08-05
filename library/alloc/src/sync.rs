@@ -468,6 +468,40 @@ impl<T> Arc<[T]> {
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         unsafe { Arc::from_ptr(Arc::allocate_for_slice(len)) }
     }
+
+    /// Constructs a new atomically reference-counted slice with uninitialized contents, with the memory being
+    /// filled with `0` bytes.
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let values = Arc::<[u32]>::new_zeroed_slice(3);
+    /// let values = unsafe { values.assume_init() };
+    ///
+    /// assert_eq!(*values, [0, 0, 0])
+    /// ```
+    ///
+    /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
+        unsafe {
+            Arc::from_ptr(Arc::allocate_for_layout(
+                Layout::array::<T>(len).unwrap(),
+                |layout| Global.alloc_zeroed(layout),
+                |mem| {
+                    ptr::slice_from_raw_parts_mut(mem as *mut T, len)
+                        as *mut ArcInner<[mem::MaybeUninit<T>]>
+                },
+            ))
+        }
+    }
 }
 
 impl<T> Arc<mem::MaybeUninit<T>> {
