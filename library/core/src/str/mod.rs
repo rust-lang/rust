@@ -22,7 +22,7 @@ use crate::slice::{self, SliceIndex, Split as SliceSplit};
 
 pub mod pattern;
 
-#[unstable(feature = "str_internals", issue = "75196")]
+#[unstable(feature = "str_internals", issue = "none")]
 #[allow(missing_docs)]
 pub mod lossy;
 
@@ -423,7 +423,7 @@ union StrOrSlice<'a> {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_str_from_utf8_unchecked", issue = "none")]
+#[rustc_const_unstable(feature = "const_str_from_utf8_unchecked", issue = "75196")]
 #[allow(unused_attributes)]
 #[allow_internal_unstable(const_fn_union)]
 pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
