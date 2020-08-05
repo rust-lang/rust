@@ -1697,10 +1697,9 @@ impl<'a, K: 'a, V: 'a> DrainFilterInner<'a, K, V> {
             let (k, v) = kv.kv_mut();
             if pred(k, v) {
                 *self.length -= 1;
-                let RemoveResult { old_kv, pos, emptied_internal_root } = kv.remove_kv_tracking();
+                let (kv, pos) = kv.remove_kv_tracking(|_| self.emptied_internal_root = true);
                 self.cur_leaf_edge = Some(pos);
-                self.emptied_internal_root |= emptied_internal_root;
-                return Some(old_kv);
+                return Some(kv);
             }
             self.cur_leaf_edge = Some(kv.next_leaf_edge());
         }
@@ -2645,23 +2644,10 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     fn remove_kv(self) -> (K, V) {
         *self.length -= 1;
 
-        let RemoveResult { old_kv, pos, emptied_internal_root } = self.handle.remove_kv_tracking();
-        let root = pos.into_node().into_root_mut();
-        if emptied_internal_root {
-            root.pop_internal_level();
-        }
+        let (old_kv, _) =
+            self.handle.remove_kv_tracking(|root| root.into_root_mut().pop_internal_level());
         old_kv
     }
-}
-
-struct RemoveResult<'a, K, V> {
-    // Key and value removed.
-    old_kv: (K, V),
-    // Unique location at the leaf level that the removed KV lopgically collapsed into.
-    pos: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
-    // Whether the remove left behind and empty internal root node, that should be removed
-    // using `pop_internal_level`.
-    emptied_internal_root: bool,
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
@@ -2669,11 +2655,17 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
     /// the leaf edge corresponding to that former pair. It's possible this leaves
     /// an empty internal root node, which the caller should subsequently pop from
     /// the map holding the tree. The caller should also decrement the map's length.
-    fn remove_kv_tracking(self) -> RemoveResult<'a, K, V> {
-        let (mut pos, old_key, old_val, was_internal) = match self.force() {
+    fn remove_kv_tracking<F>(
+        self,
+        handle_emptied_internal_root: F,
+    ) -> ((K, V), Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>)
+    where
+        F: FnOnce(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
+    {
+        let (old_kv, mut pos, was_internal) = match self.force() {
             Leaf(leaf) => {
-                let (hole, old_key, old_val) = leaf.remove();
-                (hole, old_key, old_val, false)
+                let (old_kv, pos) = leaf.remove();
+                (old_kv, pos, false)
             }
             Internal(mut internal) => {
                 // Replace the location freed in the internal node with the next KV,
@@ -2688,17 +2680,16 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
                 let to_remove = internal.left_edge().descend().last_leaf_edge().left_kv().ok();
                 let to_remove = unsafe { unwrap_unchecked(to_remove) };
 
-                let (hole, key, val) = to_remove.remove();
+                let (kv, pos) = to_remove.remove();
 
-                let old_key = unsafe { mem::replace(&mut *key_loc, key) };
-                let old_val = unsafe { mem::replace(&mut *val_loc, val) };
+                let old_key = unsafe { mem::replace(&mut *key_loc, kv.0) };
+                let old_val = unsafe { mem::replace(&mut *val_loc, kv.1) };
 
-                (hole, old_key, old_val, true)
+                ((old_key, old_val), pos, true)
             }
         };
 
         // Handle underflow
-        let mut emptied_internal_root = false;
         let mut cur_node = unsafe { ptr::read(&pos).into_node().forget_type() };
         let mut at_leaf = true;
         while cur_node.len() < node::MIN_LEN {
@@ -2719,8 +2710,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
 
                     let parent = edge.into_node();
                     if parent.len() == 0 {
-                        // This empty parent must be the root, and should be popped off the tree.
-                        emptied_internal_root = true;
+                        // The parent that was just emptied must be the root,
+                        // because nodes on a lower level would not have been
+                        // left underfull. It has to be popped off the tree soon.
+                        handle_emptied_internal_root(parent);
                         break;
                     } else {
                         cur_node = parent.forget_type();
@@ -2747,7 +2740,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
             pos = unsafe { unwrap_unchecked(pos.next_kv().ok()).next_leaf_edge() };
         }
 
-        RemoveResult { old_kv: (old_key, old_val), pos, emptied_internal_root }
+        (old_kv, pos)
     }
 }
 
