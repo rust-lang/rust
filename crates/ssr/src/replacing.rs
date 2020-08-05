@@ -118,6 +118,27 @@ impl ReplacementRenderer<'_> {
                 let range = &placeholder_value.range.range;
                 let mut matched_text =
                     self.file_src[usize::from(range.start())..usize::from(range.end())].to_owned();
+                // If a method call is performed directly on the placeholder, then autoderef and
+                // autoref will apply, so we can just substitute whatever the placeholder matched to
+                // directly. If we're not applying a method call, then we need to add explicitly
+                // deref and ref in order to match whatever was being done implicitly at the match
+                // site.
+                if !token_is_method_call_receiver(token)
+                    && (placeholder_value.autoderef_count > 0
+                        || placeholder_value.autoref_kind != ast::SelfParamKind::Owned)
+                {
+                    let ref_kind = match placeholder_value.autoref_kind {
+                        ast::SelfParamKind::Owned => "",
+                        ast::SelfParamKind::Ref => "&",
+                        ast::SelfParamKind::MutRef => "&mut ",
+                    };
+                    matched_text = format!(
+                        "{}{}{}",
+                        ref_kind,
+                        "*".repeat(placeholder_value.autoderef_count),
+                        matched_text
+                    );
+                }
                 let edit = matches_to_edit_at_offset(
                     &placeholder_value.inner_matches,
                     self.file_src,
@@ -176,6 +197,31 @@ impl ReplacementRenderer<'_> {
             self.remove_node_ranges(child);
         }
     }
+}
+
+/// Returns whether token is the receiver of a method call. Note, being within the receiver of a
+/// method call doesn't count. e.g. if the token is `$a`, then `$a.foo()` will return true, while
+/// `($a + $b).foo()` or `x.foo($a)` will return false.
+fn token_is_method_call_receiver(token: &SyntaxToken) -> bool {
+    use syntax::ast::AstNode;
+    // Find the first method call among the ancestors of `token`, then check if the only token
+    // within the receiver is `token`.
+    if let Some(receiver) = token
+        .ancestors()
+        .find(|node| node.kind() == SyntaxKind::METHOD_CALL_EXPR)
+        .and_then(|node| ast::MethodCallExpr::cast(node).unwrap().expr())
+    {
+        let mut tokens = receiver.syntax().descendants_with_tokens().filter_map(|node_or_token| {
+            match node_or_token {
+                SyntaxElement::Token(t) => Some(t),
+                _ => None,
+            }
+        });
+        if let (Some(only_token), None) = (tokens.next(), tokens.next()) {
+            return only_token == *token;
+        }
+    }
+    false
 }
 
 fn parse_as_kind(code: &str, kind: SyntaxKind) -> Option<SyntaxNode> {

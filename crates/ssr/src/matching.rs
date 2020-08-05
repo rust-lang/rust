@@ -65,6 +65,10 @@ pub(crate) struct PlaceholderMatch {
     pub(crate) range: FileRange,
     /// More matches, found within `node`.
     pub(crate) inner_matches: SsrMatches,
+    /// How many times the code that the placeholder matched needed to be dereferenced. Will only be
+    /// non-zero if the placeholder matched to the receiver of a method call.
+    pub(crate) autoderef_count: usize,
+    pub(crate) autoref_kind: ast::SelfParamKind,
 }
 
 #[derive(Debug)]
@@ -169,7 +173,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         code: &SyntaxNode,
     ) -> Result<(), MatchFailed> {
         // Handle placeholders.
-        if let Some(placeholder) = self.get_placeholder(&SyntaxElement::Node(pattern.clone())) {
+        if let Some(placeholder) = self.get_placeholder_for_node(pattern) {
             for constraint in &placeholder.constraints {
                 self.check_constraint(constraint, code)?;
             }
@@ -178,9 +182,10 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 // We validated the range for the node when we started the match, so the placeholder
                 // probably can't fail range validation, but just to be safe...
                 self.validate_range(&original_range)?;
-                matches_out
-                    .placeholder_values
-                    .insert(placeholder.ident.clone(), PlaceholderMatch::new(code, original_range));
+                matches_out.placeholder_values.insert(
+                    placeholder.ident.clone(),
+                    PlaceholderMatch::new(Some(code), original_range),
+                );
             }
             return Ok(());
         }
@@ -531,18 +536,40 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         if pattern_ufcs.function != code_resolved_function {
             fail_match!("Method call resolved to a different function");
         }
-        if code_resolved_function.has_self_param(self.sema.db) {
-            if let (Some(pattern_type), Some(expr)) = (&pattern_ufcs.qualifier_type, &code.expr()) {
-                self.check_expr_type(pattern_type, expr)?;
-            }
-        }
         // Check arguments.
         let mut pattern_args = pattern_ufcs
             .call_expr
             .arg_list()
             .ok_or_else(|| match_error!("Pattern function call has no args"))?
             .args();
-        self.attempt_match_opt(phase, pattern_args.next(), code.expr())?;
+        // If the function we're calling takes a self parameter, then we store additional
+        // information on the placeholder match about autoderef and autoref. This allows us to use
+        // the placeholder in a context where autoderef and autoref don't apply.
+        if code_resolved_function.has_self_param(self.sema.db) {
+            if let (Some(pattern_type), Some(expr)) = (&pattern_ufcs.qualifier_type, &code.expr()) {
+                let deref_count = self.check_expr_type(pattern_type, expr)?;
+                let pattern_receiver = pattern_args.next();
+                self.attempt_match_opt(phase, pattern_receiver.clone(), code.expr())?;
+                if let Phase::Second(match_out) = phase {
+                    if let Some(placeholder_value) = pattern_receiver
+                        .and_then(|n| self.get_placeholder_for_node(n.syntax()))
+                        .and_then(|placeholder| {
+                            match_out.placeholder_values.get_mut(&placeholder.ident)
+                        })
+                    {
+                        placeholder_value.autoderef_count = deref_count;
+                        placeholder_value.autoref_kind = self
+                            .sema
+                            .resolve_method_call_as_callable(code)
+                            .and_then(|callable| callable.receiver_param(self.sema.db))
+                            .map(|self_param| self_param.kind())
+                            .unwrap_or(ast::SelfParamKind::Owned);
+                    }
+                }
+            }
+        } else {
+            self.attempt_match_opt(phase, pattern_args.next(), code.expr())?;
+        }
         let mut code_args =
             code.arg_list().ok_or_else(|| match_error!("Code method call has no args"))?.args();
         loop {
@@ -570,26 +597,35 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         self.attempt_match_node_children(phase, pattern_ufcs.call_expr.syntax(), code.syntax())
     }
 
+    /// Verifies that `expr` matches `pattern_type`, possibly after dereferencing some number of
+    /// times. Returns the number of times it needed to be dereferenced.
     fn check_expr_type(
         &self,
         pattern_type: &hir::Type,
         expr: &ast::Expr,
-    ) -> Result<(), MatchFailed> {
+    ) -> Result<usize, MatchFailed> {
         use hir::HirDisplay;
         let code_type = self.sema.type_of_expr(&expr).ok_or_else(|| {
             match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
         })?;
-        if !code_type
+        // Temporary needed to make the borrow checker happy.
+        let res = code_type
             .autoderef(self.sema.db)
-            .any(|deref_code_type| *pattern_type == deref_code_type)
-        {
-            fail_match!(
-                "Pattern type `{}` didn't match code type `{}`",
-                pattern_type.display(self.sema.db),
-                code_type.display(self.sema.db)
-            );
-        }
-        Ok(())
+            .enumerate()
+            .find(|(_, deref_code_type)| pattern_type == deref_code_type)
+            .map(|(count, _)| count)
+            .ok_or_else(|| {
+                match_error!(
+                    "Pattern type `{}` didn't match code type `{}`",
+                    pattern_type.display(self.sema.db),
+                    code_type.display(self.sema.db)
+                )
+            });
+        res
+    }
+
+    fn get_placeholder_for_node(&self, node: &SyntaxNode) -> Option<&Placeholder> {
+        self.get_placeholder(&SyntaxElement::Node(node.clone()))
     }
 
     fn get_placeholder(&self, element: &SyntaxElement) -> Option<&Placeholder> {
@@ -671,12 +707,18 @@ fn recording_match_fail_reasons() -> bool {
 }
 
 impl PlaceholderMatch {
-    fn new(node: &SyntaxNode, range: FileRange) -> Self {
-        Self { node: Some(node.clone()), range, inner_matches: SsrMatches::default() }
+    fn new(node: Option<&SyntaxNode>, range: FileRange) -> Self {
+        Self {
+            node: node.cloned(),
+            range,
+            inner_matches: SsrMatches::default(),
+            autoderef_count: 0,
+            autoref_kind: ast::SelfParamKind::Owned,
+        }
     }
 
     fn from_range(range: FileRange) -> Self {
-        Self { node: None, range, inner_matches: SsrMatches::default() }
+        Self::new(None, range)
     }
 }
 
