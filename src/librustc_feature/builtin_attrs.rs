@@ -345,7 +345,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // RFC 2867
     gated!(
-        instruction_set, AssumeUsed, template!(List: "set"), experimental!(isa_attribute),
+        instruction_set, AssumedUsed, template!(List: "set"), experimental!(isa_attribute),
     ),
 
     // ==========================================================================
