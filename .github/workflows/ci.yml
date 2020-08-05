@@ -431,7 +431,7 @@ jobs:
           - name: x86_64-mingw-1
             env:
               SCRIPT: make ci-mingw-subset-1
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
               CUSTOM_MINGW: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_LLVM_ASSERTIONS: 1
@@ -439,7 +439,7 @@ jobs:
           - name: x86_64-mingw-2
             env:
               SCRIPT: make ci-mingw-subset-2
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
               CUSTOM_MINGW: 1
             os: windows-latest-xl
           - name: dist-x86_64-msvc
