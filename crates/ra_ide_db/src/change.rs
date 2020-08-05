@@ -190,11 +190,24 @@ impl RootDatabase {
                 let q: $q = Default::default();
                 let name = format!("{:?} (deps)", q);
                 acc.push((name, before - after));
+
+                let before = memory_usage().allocated;
+                $q.in_db(self).purge();
+                let after = memory_usage().allocated;
+                let q: $q = Default::default();
+                let name = format!("{:?} (purge)", q);
+                acc.push((name, before - after));
             )*}
         }
         sweep_each_query![
             // SourceDatabase
             ra_db::ParseQuery
+            ra_db::CrateGraphQuery
+
+            // SourceDatabaseExt
+            ra_db::FileTextQuery
+            ra_db::FileSourceRootQuery
+            ra_db::SourceRootQuery
             ra_db::SourceRootCratesQuery
 
             // AstDatabase
@@ -242,15 +255,24 @@ impl RootDatabase {
             hir::db::TraitImplsInCrateQuery
             hir::db::TraitImplsInDepsQuery
             hir::db::AssociatedTyDataQuery
+            hir::db::AssociatedTyDataQuery
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
             hir::db::ImplDatumQuery
+            hir::db::FnDefDatumQuery
+            hir::db::ReturnTypeImplTraitsQuery
+            hir::db::InternCallableDefQuery
+            hir::db::InternTypeParamIdQuery
+            hir::db::InternImplTraitIdQuery
+            hir::db::InternClosureQuery
             hir::db::AssociatedTyValueQuery
             hir::db::TraitSolveQuery
-            hir::db::ReturnTypeImplTraitsQuery
 
             // SymbolsDatabase
             crate::symbol_index::FileSymbolsQuery
+            crate::symbol_index::LibrarySymbolsQuery
+            crate::symbol_index::LocalRootsQuery
+            crate::symbol_index::LibraryRootsQuery
 
             // LineIndexDatabase
             crate::LineIndexQuery
