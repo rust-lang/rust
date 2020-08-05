@@ -621,7 +621,7 @@ fn single_node(element: impl Into<SyntaxElement>) -> RangeInclusive<SyntaxElemen
 #[test]
 fn test_increase_indent() {
     let arm_list = {
-        let arm = make::match_arm(iter::once(make::placeholder_pat().into()), make::expr_unit());
+        let arm = make::match_arm(iter::once(make::wildcard_pat().into()), make::expr_unit());
         make::match_arm_list(vec![arm.clone(), arm])
     };
     assert_eq!(

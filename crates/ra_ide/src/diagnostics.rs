@@ -78,8 +78,10 @@ pub(crate) fn diagnostics(
             } else {
                 let mut field_list = d.ast(db);
                 for f in d.missed_fields.iter() {
-                    let field =
-                        make::record_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
+                    let field = make::record_expr_field(
+                        make::name_ref(&f.to_string()),
+                        Some(make::expr_unit()),
+                    );
                     field_list = field_list.append_field(&field);
                 }
 
@@ -178,9 +180,9 @@ fn missing_struct_field_fix(
     if new_field_type.is_unknown() {
         return None;
     }
-    let new_field = make::record_field_def(
+    let new_field = make::record_field(
         record_expr.field_name()?,
-        make::type_ref(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
+        make::ty(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
     );
 
     let last_field = record_fields.fields().last()?;

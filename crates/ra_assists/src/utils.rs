@@ -181,10 +181,10 @@ impl TryEnum {
         match self {
             TryEnum::Result => make::tuple_struct_pat(
                 make::path_unqualified(make::path_segment(make::name_ref("Err"))),
-                iter::once(make::placeholder_pat().into()),
+                iter::once(make::wildcard_pat().into()),
             )
             .into(),
-            TryEnum::Option => make::bind_pat(make::name("None")).into(),
+            TryEnum::Option => make::ident_pat(make::name("None")).into(),
         }
     }
 

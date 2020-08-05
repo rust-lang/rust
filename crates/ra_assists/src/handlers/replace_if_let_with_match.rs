@@ -65,7 +65,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                         .type_of_pat(&pat)
                         .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty))
                         .map(|it| it.sad_pattern())
-                        .unwrap_or_else(|| make::placeholder_pat().into());
+                        .unwrap_or_else(|| make::wildcard_pat().into());
                     let else_expr = unwrap_trivial_block(else_block);
                     make::match_arm(vec![pattern], else_expr)
                 };
