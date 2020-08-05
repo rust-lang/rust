@@ -2971,10 +2971,18 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
                 match v.inner {
                     clean::VariantItem(ref var) => match var.kind {
                         clean::VariantKind::CLike => {
-                            write!(w, "<a href=\"#variant.{}\" class=\"variant\">{}</a>", name, name);
+                            write!(
+                                w,
+                                "<a href=\"#variant.{}\" class=\"variant\">{}</a>",
+                                name, name
+                            );
                         }
                         clean::VariantKind::Tuple(ref tys) => {
-                            write!(w, "<a href=\"#variant.{}\" class=\"variant\">{}</a>(", name, name);
+                            write!(
+                                w,
+                                "<a href=\"#variant.{}\" class=\"variant\">{}</a>(",
+                                name, name
+                            );
                             for (i, ty) in tys.iter().enumerate() {
                                 if i > 0 {
                                     write!(w, ",&nbsp;")
@@ -3134,7 +3142,12 @@ fn render_struct(
     // If this is an enum variant we should not write `struct` and the
     // name should be a link to the description of the variant.
     if enum_variant {
-        write!(w, "<a href=\"#variant.{}\" class=\"variant\">{}</a>", it.name.as_ref().unwrap(), it.name.as_ref().unwrap());
+        write!(
+            w,
+            "<a href=\"#variant.{}\" class=\"variant\">{}</a>",
+            it.name.as_ref().unwrap(),
+            it.name.as_ref().unwrap()
+        );
     } else {
         write!(w, "struct {} ", it.name.as_ref().unwrap());
     }
