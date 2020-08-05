@@ -579,6 +579,9 @@ declare_features! (
     /// Alloc calling `transmute` in const fn
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
+    /// The smallest useful subset of `const_generics`.
+    (active, min_const_generics, "1.46.0", None, None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
