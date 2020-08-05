@@ -109,6 +109,44 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         application_ty: &chalk_ir::ApplicationTy<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
+        match application_ty.name {
+            chalk_ir::TypeName::Ref(mutbl) => {
+                let data = application_ty.substitution.interned();
+                let lifetime = match &**data[0].interned() {
+                    chalk_ir::GenericArgData::Lifetime(t) => t,
+                    _ => unreachable!(),
+                };
+                let ty = match &**data[1].interned() {
+                    chalk_ir::GenericArgData::Ty(t) => t,
+                    _ => unreachable!(),
+                };
+                return Some(match mutbl {
+                    chalk_ir::Mutability::Not => write!(fmt, "(&{:?} {:?})", lifetime, ty),
+                    chalk_ir::Mutability::Mut => write!(fmt, "(&{:?} mut {:?})", lifetime, ty),
+                });
+            }
+            chalk_ir::TypeName::Array => {
+                let data = application_ty.substitution.interned();
+                let ty = match &**data[0].interned() {
+                    chalk_ir::GenericArgData::Ty(t) => t,
+                    _ => unreachable!(),
+                };
+                let len = match &**data[1].interned() {
+                    chalk_ir::GenericArgData::Const(t) => t,
+                    _ => unreachable!(),
+                };
+                return Some(write!(fmt, "[{:?}; {:?}]", ty, len));
+            }
+            chalk_ir::TypeName::Slice => {
+                let data = application_ty.substitution.interned();
+                let ty = match &**data[0].interned() {
+                    chalk_ir::GenericArgData::Ty(t) => t,
+                    _ => unreachable!(),
+                };
+                return Some(write!(fmt, "[{:?}]", ty));
+            }
+            _ => {}
+        }
         let chalk_ir::ApplicationTy { name, substitution } = application_ty;
         Some(write!(fmt, "{:?}{:?}", name, chalk_ir::debug::Angle(substitution.interned())))
     }
