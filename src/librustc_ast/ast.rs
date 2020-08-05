@@ -314,6 +314,7 @@ pub enum ParamKindOrd {
     Lifetime,
     Type,
     Const,
+    ConstUnordered,
 }
 
 impl fmt::Display for ParamKindOrd {
@@ -322,6 +323,7 @@ impl fmt::Display for ParamKindOrd {
             ParamKindOrd::Lifetime => "lifetime".fmt(f),
             ParamKindOrd::Type => "type".fmt(f),
             ParamKindOrd::Const => "const".fmt(f),
+            ParamKindOrd::ConstUnordered => "const".fmt(f),
         }
     }
 }
