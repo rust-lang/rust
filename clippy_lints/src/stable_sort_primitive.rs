@@ -43,30 +43,30 @@ declare_lint_pass!(StableSortPrimitive => [STABLE_SORT_PRIMITIVE]);
 /// The three "kinds" of sorts
 enum SortingKind {
     Vanilla,
-    // The other kinds of lint are currently commented out because they
-    // can map distinct values to equal ones. If the key function is
-    // provably one-to-one, or if the Cmp function conserves equality,
-    // then they could be linted on, but I don't know if we can check
-    // for that.
+    /* The other kinds of lint are currently commented out because they
+     * can map distinct values to equal ones. If the key function is
+     * provably one-to-one, or if the Cmp function conserves equality,
+     * then they could be linted on, but I don't know if we can check
+     * for that. */
 
-    // ByKey,
-    // ByCmp,
+    /* ByKey,
+     * ByCmp, */
 }
 impl SortingKind {
     /// The name of the stable version of this kind of sort
     fn stable_name(&self) -> &str {
         match self {
             SortingKind::Vanilla => "sort",
-            // SortingKind::ByKey => "sort_by_key",
-            // SortingKind::ByCmp => "sort_by",
+            /* SortingKind::ByKey => "sort_by_key",
+             * SortingKind::ByCmp => "sort_by", */
         }
     }
     /// The name of the unstable version of this kind of sort
     fn unstable_name(&self) -> &str {
         match self {
             SortingKind::Vanilla => "sort_unstable",
-            // SortingKind::ByKey => "sort_unstable_by_key",
-            // SortingKind::ByCmp => "sort_unstable_by",
+            /* SortingKind::ByKey => "sort_unstable_by_key",
+             * SortingKind::ByCmp => "sort_unstable_by", */
         }
     }
     /// Takes the name of a function call and returns the kind of sort
