@@ -343,6 +343,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         experimental!(register_tool),
     ),
 
+    // RFC 2867
+    gated!(
+        instruction_set, AssumeUsed, template!(List: "set"), experimental!(isa_attribute),
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
