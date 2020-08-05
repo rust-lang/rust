@@ -948,10 +948,14 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         // Only impose the restrictions of `ConstRibKind` for an
                                         // actual constant expression in a provided default.
                                         if let Some(expr) = default {
-                                            this.with_constant_rib(
-                                                expr.is_potential_trivial_const_param(),
-                                                |this| this.visit_expr(expr),
-                                            );
+                                            // We allow arbitrary const expressions inside of associated consts,
+                                            // even if they are potentially not const evaluatable.
+                                            //
+                                            // Type parameters can already be used and as associated consts are
+                                            // not used as part of the type system, this is far less surprising.
+                                            this.with_constant_rib(true, |this| {
+                                                this.visit_expr(expr)
+                                            });
                                         }
                                     }
                                     AssocItemKind::Fn(_, _, generics, _) => {
@@ -1225,7 +1229,7 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                 for item in impl_items {
                                     use crate::ResolutionError::*;
                                     match &item.kind {
-                                        AssocItemKind::Const(_default, _ty, expr) => {
+                                        AssocItemKind::Const(_default, _ty, _expr) => {
                                             debug!("resolve_implementation AssocItemKind::Const",);
                                             // If this is a trait impl, ensure the const
                                             // exists in trait
@@ -1236,18 +1240,14 @@ impl<'a, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 |n, s| ConstNotMemberOfTrait(n, s),
                                             );
 
-                                            this.with_constant_rib(
-                                                expr.as_ref().map_or(false, |e| {
-                                                    e.is_potential_trivial_const_param()
-                                                }),
-                                                |this| {
-                                                    visit::walk_assoc_item(
-                                                        this,
-                                                        item,
-                                                        AssocCtxt::Impl,
-                                                    )
-                                                },
-                                            );
+                                            // We allow arbitrary const expressions inside of associated consts,
+                                            // even if they are potentially not const evaluatable.
+                                            //
+                                            // Type parameters can already be used and as associated consts are
+                                            // not used as part of the type system, this is far less surprising.
+                                            this.with_constant_rib(true, |this| {
+                                                visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                                            });
                                         }
                                         AssocItemKind::Fn(_, _, generics, _) => {
                                             // We also need a new scope for the impl item type parameters.

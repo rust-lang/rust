@@ -26,12 +26,4 @@ trait Foo {
     const ASSOC: usize;
 }
 
-impl<const N: usize> Foo for [u8; N] {
-    const ASSOC: usize = N + 1;
-    //~^ ERROR generic parameters must not be used inside of non trivial constant values
-    // FIXME(min_const_generics): We probably have to allow this as we can
-    // already allow referencing type parameters here on stable.
-}
-
-
 fn main() {}
