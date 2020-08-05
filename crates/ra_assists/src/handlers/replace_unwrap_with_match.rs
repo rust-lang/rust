@@ -52,7 +52,7 @@ pub(crate) fn replace_unwrap_with_match(acc: &mut Assists, ctx: &AssistContext) 
         target,
         |builder| {
             let ok_path = make::path_unqualified(make::path_segment(make::name_ref(happy_variant)));
-            let it = make::bind_pat(make::name("a")).into();
+            let it = make::ident_pat(make::name("a")).into();
             let ok_tuple = make::tuple_struct_pat(ok_path, iter::once(it)).into();
 
             let bind_path = make::path_unqualified(make::path_segment(make::name_ref("a")));
@@ -60,7 +60,7 @@ pub(crate) fn replace_unwrap_with_match(acc: &mut Assists, ctx: &AssistContext) 
 
             let unreachable_call = make::expr_unreachable();
             let err_arm =
-                make::match_arm(iter::once(make::placeholder_pat().into()), unreachable_call);
+                make::match_arm(iter::once(make::wildcard_pat().into()), unreachable_call);
 
             let match_arm_list = make::match_arm_list(vec![ok_arm, err_arm]);
             let match_expr = make::expr_match(caller.clone(), match_arm_list)

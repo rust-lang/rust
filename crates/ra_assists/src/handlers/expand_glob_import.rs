@@ -173,7 +173,7 @@ fn replace_ast(
                 replace_node(replacement);
             },
             ast::Use(use_item) => {
-                builder.replace_ast(use_item, ast::make::use_item(replacement.left_or_else(|ut| ast::make::use_tree(path, Some(ut), None, false))));
+                builder.replace_ast(use_item, ast::make::use_(replacement.left_or_else(|ut| ast::make::use_tree(path, Some(ut), None, false))));
             },
             _ => {},
         }

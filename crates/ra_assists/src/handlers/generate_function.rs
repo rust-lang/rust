@@ -142,7 +142,7 @@ impl FunctionBuilder {
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
         let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
         let mut fn_def =
-            make::fn_def(visibility, self.fn_name, self.type_params, self.params, fn_body);
+            make::fn_(visibility, self.fn_name, self.type_params, self.params, fn_body);
         let leading_ws;
         let trailing_ws;
 
