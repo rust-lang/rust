@@ -240,7 +240,7 @@ $ cargo run --release -p rust-analyzer -- analysis-bench ../chalk/ --complete ..
 
 Release process is handled by `release`, `dist` and `promote` xtasks, `release` being the main one.
 
-`release` assumes that you have checkouts of `rust-analyzer`, `rust-ananalyzer.github.io`, and `rust-lang/rust` in the same directory:
+`release` assumes that you have checkouts of `rust-analyzer`, `rust-analyzer.github.io`, and `rust-lang/rust` in the same directory:
 
 ```
 ./rust-analyzer
