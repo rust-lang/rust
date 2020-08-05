@@ -197,8 +197,7 @@ impl<T> Box<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
         let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
-        let ptr =
-            Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).ptr.cast();
+        let ptr = Global.alloc(layout).unwrap_or_else(|_| alloc::handle_alloc_error(layout)).cast();
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
 
@@ -226,7 +225,6 @@ impl<T> Box<T> {
         let ptr = Global
             .alloc_zeroed(layout)
             .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
-            .ptr
             .cast();
         unsafe { Box::from_raw(ptr.as_ptr()) }
     }
