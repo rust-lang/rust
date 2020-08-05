@@ -65,34 +65,34 @@ LL |             let c = 21;
  ...
 
 error: this function can be simplified using the `async fn` syntax
-  --> $DIR/manual_async_fn.rs:54:5
+  --> $DIR/manual_async_fn.rs:73:1
    |
-LL |     fn meth_fut(&self) -> impl Future<Output = i32> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn elided(_: &i32) -> impl Future<Output = i32> + '_ {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: make the function `async` and return the output of the future directly
    |
-LL |     async fn meth_fut(&self) -> i32 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | async fn elided(_: &i32) -> i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: move the body of the async block to the enclosing function
    |
-LL |     fn meth_fut(&self) -> impl Future<Output = i32> { 42 }
-   |                                                     ^^^^^^
+LL | fn elided(_: &i32) -> impl Future<Output = i32> + '_ { 42 }
+   |                                                      ^^^^^^
 
 error: this function can be simplified using the `async fn` syntax
-  --> $DIR/manual_async_fn.rs:58:5
+  --> $DIR/manual_async_fn.rs:82:1
    |
-LL |     fn empty_fut(&self) -> impl Future<Output = ()> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + 'a + 'b {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: make the function `async` and remove the return type
+help: make the function `async` and return the output of the future directly
    |
-LL |     async fn empty_fut(&self)  {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | async fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: move the body of the async block to the enclosing function
    |
-LL |     fn empty_fut(&self) -> impl Future<Output = ()> {}
-   |                                                     ^^
+LL | fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + 'a + 'b { 42 }
+   |                                                                                    ^^^^^^
 
 error: aborting due to 6 previous errors
 
