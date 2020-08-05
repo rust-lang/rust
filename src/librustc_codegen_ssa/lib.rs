@@ -17,7 +17,7 @@
 //! have to be implemented by each backends.
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 

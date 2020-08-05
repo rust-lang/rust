@@ -1,7 +1,6 @@
 use crate::abi::FnAbi;
 use crate::common::*;
 use crate::type_::Type;
-use log::debug;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{FnAbiExt, TyAndLayout};
@@ -10,6 +9,7 @@ use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_target::abi::{Abi, AddressSpace, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
 use rustc_target::abi::{LayoutOf, PointeeInfo, Scalar, Size, TyAndLayoutMethods, Variants};
+use tracing::debug;
 
 use std::fmt::Write;
 

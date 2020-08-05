@@ -9,8 +9,8 @@ use crate::attributes;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
-use log::debug;
 use rustc_codegen_ssa::traits::*;
+use tracing::debug;
 
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, TypeFoldable};

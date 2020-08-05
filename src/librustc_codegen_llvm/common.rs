@@ -19,7 +19,7 @@ use rustc_span::symbol::Symbol;
 use rustc_target::abi::{self, AddressSpace, HasDataLayout, LayoutOf, Pointer, Size};
 
 use libc::{c_char, c_uint};
-use log::debug;
+use tracing::debug;
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".

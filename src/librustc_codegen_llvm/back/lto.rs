@@ -4,7 +4,6 @@ use crate::back::write::{
 use crate::llvm::archive_ro::ArchiveRO;
 use crate::llvm::{self, False, True};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
-use log::{debug, info};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
@@ -18,6 +17,7 @@ use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, CrateType, Lto};
+use tracing::{debug, info};
 
 use std::ffi::{CStr, CString};
 use std::fs::File;
