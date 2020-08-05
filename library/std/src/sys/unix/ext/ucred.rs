@@ -42,7 +42,7 @@ pub mod impl_linux {
 
         // Trivial sanity checks.
         assert!(mem::size_of::<u32>() <= mem::size_of::<usize>());
-        assert!(ucred_size <= u32::max_value() as usize);
+        assert!(ucred_size <= u32::MAX as usize);
 
         let mut ucred_size = ucred_size as u32;
         let mut ucred: ucred = ucred { pid: 1, uid: 1, gid: 1 };
