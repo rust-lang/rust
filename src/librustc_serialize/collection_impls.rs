@@ -86,11 +86,9 @@ where
 {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         e.emit_map(self.len(), |e| {
-            let mut i = 0;
-            for (key, val) in self {
+            for (i, (key, val)) in self.iter().enumerate() {
                 e.emit_map_elt_key(i, |e| key.encode(e))?;
                 e.emit_map_elt_val(i, |e| val.encode(e))?;
-                i += 1;
             }
             Ok(())
         })
@@ -121,10 +119,8 @@ where
 {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
-            let mut i = 0;
-            for e in self {
+            for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?;
-                i += 1;
             }
             Ok(())
         })
@@ -154,11 +150,9 @@ where
 {
     fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_map(self.len(), |e| {
-            let mut i = 0;
-            for (key, val) in self {
+            for (i, (key, val)) in self.iter().enumerate() {
                 e.emit_map_elt_key(i, |e| key.encode(e))?;
                 e.emit_map_elt_val(i, |e| val.encode(e))?;
-                i += 1;
             }
             Ok(())
         })
@@ -192,10 +186,8 @@ where
 {
     fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
-            let mut i = 0;
-            for e in self {
+            for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?;
-                i += 1;
             }
             Ok(())
         })
@@ -227,11 +219,9 @@ where
 {
     fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_map(self.len(), |e| {
-            let mut i = 0;
-            for (key, val) in self {
+            for (i, (key, val)) in self.iter().enumerate() {
                 e.emit_map_elt_key(i, |e| key.encode(e))?;
                 e.emit_map_elt_val(i, |e| val.encode(e))?;
-                i += 1;
             }
             Ok(())
         })
@@ -265,10 +255,8 @@ where
 {
     fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
-            let mut i = 0;
-            for e in self {
+            for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?;
-                i += 1;
             }
             Ok(())
         })
