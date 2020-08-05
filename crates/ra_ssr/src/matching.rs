@@ -3,7 +3,7 @@
 
 use crate::{
     parsing::{Constraint, NodeKind, Placeholder},
-    resolving::{ResolvedPattern, ResolvedRule},
+    resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
     SsrMatches,
 };
 use hir::Semantics;
@@ -190,11 +190,12 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             return Ok(());
         }
         // We allow a UFCS call to match a method call, provided they resolve to the same function.
-        if let Some(pattern_function) = self.rule.pattern.ufcs_function_calls.get(pattern) {
-            if let (Some(pattern), Some(code)) =
-                (ast::CallExpr::cast(pattern.clone()), ast::MethodCallExpr::cast(code.clone()))
-            {
-                return self.attempt_match_ufcs(phase, &pattern, &code, *pattern_function);
+        if let Some(pattern_ufcs) = self.rule.pattern.ufcs_function_calls.get(pattern) {
+            if let Some(code) = ast::MethodCallExpr::cast(code.clone()) {
+                return self.attempt_match_ufcs_to_method_call(phase, pattern_ufcs, &code);
+            }
+            if let Some(code) = ast::CallExpr::cast(code.clone()) {
+                return self.attempt_match_ufcs_to_ufcs(phase, pattern_ufcs, &code);
             }
         }
         if pattern.kind() != code.kind() {
@@ -521,23 +522,28 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         Ok(())
     }
 
-    fn attempt_match_ufcs(
+    fn attempt_match_ufcs_to_method_call(
         &self,
         phase: &mut Phase,
-        pattern: &ast::CallExpr,
+        pattern_ufcs: &UfcsCallInfo,
         code: &ast::MethodCallExpr,
-        pattern_function: hir::Function,
     ) -> Result<(), MatchFailed> {
         use ast::ArgListOwner;
         let code_resolved_function = self
             .sema
             .resolve_method_call(code)
             .ok_or_else(|| match_error!("Failed to resolve method call"))?;
-        if pattern_function != code_resolved_function {
+        if pattern_ufcs.function != code_resolved_function {
             fail_match!("Method call resolved to a different function");
         }
+        if code_resolved_function.has_self_param(self.sema.db) {
+            if let (Some(pattern_type), Some(expr)) = (&pattern_ufcs.qualifier_type, &code.expr()) {
+                self.check_expr_type(pattern_type, expr)?;
+            }
+        }
         // Check arguments.
-        let mut pattern_args = pattern
+        let mut pattern_args = pattern_ufcs
+            .call_expr
             .arg_list()
             .ok_or_else(|| match_error!("Pattern function call has no args"))?
             .args();
@@ -550,6 +556,45 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 (p, c) => self.attempt_match_opt(phase, p, c)?,
             }
         }
+    }
+
+    fn attempt_match_ufcs_to_ufcs(
+        &self,
+        phase: &mut Phase,
+        pattern_ufcs: &UfcsCallInfo,
+        code: &ast::CallExpr,
+    ) -> Result<(), MatchFailed> {
+        use ast::ArgListOwner;
+        // Check that the first argument is the expected type.
+        if let (Some(pattern_type), Some(expr)) = (
+            &pattern_ufcs.qualifier_type,
+            &code.arg_list().and_then(|code_args| code_args.args().next()),
+        ) {
+            self.check_expr_type(pattern_type, expr)?;
+        }
+        self.attempt_match_node_children(phase, pattern_ufcs.call_expr.syntax(), code.syntax())
+    }
+
+    fn check_expr_type(
+        &self,
+        pattern_type: &hir::Type,
+        expr: &ast::Expr,
+    ) -> Result<(), MatchFailed> {
+        use hir::HirDisplay;
+        let code_type = self.sema.type_of_expr(&expr).ok_or_else(|| {
+            match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
+        })?;
+        if !code_type
+            .autoderef(self.sema.db)
+            .any(|deref_code_type| *pattern_type == deref_code_type)
+        {
+            fail_match!(
+                "Pattern type `{}` didn't match code type `{}`",
+                pattern_type.display(self.sema.db),
+                code_type.display(self.sema.db)
+            );
+        }
+        Ok(())
     }
 
     fn get_placeholder(&self, element: &SyntaxElement) -> Option<&Placeholder> {

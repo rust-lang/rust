@@ -1143,3 +1143,32 @@ fn replace_self() {
         "#]],
     );
 }
+
+#[test]
+fn match_trait_method_call() {
+    // `Bar::foo` and `Bar2::foo` resolve to the same function. Make sure we only match if the type
+    // matches what's in the pattern. Also checks that we handle autoderef.
+    let code = r#"
+        pub struct Bar {}
+        pub struct Bar2 {}
+        pub trait Foo {
+            fn foo(&self, _: i32) {}
+        }
+        impl Foo for Bar {}
+        impl Foo for Bar2 {}
+        fn main() {
+            let v1 = Bar {};
+            let v2 = Bar2 {};
+            let v1_ref = &v1;
+            let v2_ref = &v2;
+            v1.foo(1);
+            v2.foo(2);
+            Bar::foo(&v1, 3);
+            Bar2::foo(&v2, 4);
+            v1_ref.foo(5);
+            v2_ref.foo(6);
+        }
+        "#;
+    assert_matches("Bar::foo($a, $b)", code, &["v1.foo(1)", "Bar::foo(&v1, 3)", "v1_ref.foo(5)"]);
+    assert_matches("Bar2::foo($a, $b)", code, &["v2.foo(2)", "Bar2::foo(&v2, 4)", "v2_ref.foo(6)"]);
+}
