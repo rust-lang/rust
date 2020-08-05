@@ -33,6 +33,15 @@ impl<'db> MatchFinder<'db> {
         usage_cache: &mut UsageCache,
         matches_out: &mut Vec<Match>,
     ) {
+        if rule.pattern.contains_self {
+            // If the pattern contains `self` we restrict the scope of the search to just the
+            // current method. No other method can reference the same `self`. This makes the
+            // behavior of `self` consistent with other variables.
+            if let Some(current_function) = self.resolution_scope.current_function() {
+                self.slow_scan_node(&current_function, rule, &None, matches_out);
+            }
+            return;
+        }
         if pick_path_for_usages(&rule.pattern).is_none() {
             self.slow_scan(rule, matches_out);
             return;

@@ -66,12 +66,7 @@ impl<'db> MatchFinder<'db> {
         restrict_ranges.retain(|range| !range.range.is_empty());
         let sema = Semantics::new(db);
         let resolution_scope = resolving::ResolutionScope::new(&sema, lookup_context);
-        MatchFinder {
-            sema: Semantics::new(db),
-            rules: Vec::new(),
-            resolution_scope,
-            restrict_ranges,
-        }
+        MatchFinder { sema, rules: Vec::new(), resolution_scope, restrict_ranges }
     }
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.

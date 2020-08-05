@@ -11,6 +11,7 @@ use test_utils::mark;
 pub(crate) struct ResolutionScope<'db> {
     scope: hir::SemanticsScope<'db>,
     hygiene: hir::Hygiene,
+    node: SyntaxNode,
 }
 
 pub(crate) struct ResolvedRule {
@@ -25,6 +26,7 @@ pub(crate) struct ResolvedPattern {
     // Paths in `node` that we've resolved.
     pub(crate) resolved_paths: FxHashMap<SyntaxNode, ResolvedPath>,
     pub(crate) ufcs_function_calls: FxHashMap<SyntaxNode, hir::Function>,
+    pub(crate) contains_self: bool,
 }
 
 pub(crate) struct ResolvedPath {
@@ -68,6 +70,7 @@ struct Resolver<'a, 'db> {
 
 impl Resolver<'_, '_> {
     fn resolve_pattern_tree(&self, pattern: SyntaxNode) -> Result<ResolvedPattern, SsrError> {
+        use ra_syntax::{SyntaxElement, T};
         let mut resolved_paths = FxHashMap::default();
         self.resolve(pattern.clone(), 0, &mut resolved_paths)?;
         let ufcs_function_calls = resolved_paths
@@ -85,11 +88,17 @@ impl Resolver<'_, '_> {
                 None
             })
             .collect();
+        let contains_self =
+            pattern.descendants_with_tokens().any(|node_or_token| match node_or_token {
+                SyntaxElement::Token(t) => t.kind() == T![self],
+                _ => false,
+            });
         Ok(ResolvedPattern {
             node: pattern,
             resolved_paths,
             placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
             ufcs_function_calls,
+            contains_self,
         })
     }
 
@@ -101,6 +110,10 @@ impl Resolver<'_, '_> {
     ) -> Result<(), SsrError> {
         use ra_syntax::ast::AstNode;
         if let Some(path) = ast::Path::cast(node.clone()) {
+            if is_self(&path) {
+                // Self cannot be resolved like other paths.
+                return Ok(());
+            }
             // Check if this is an appropriate place in the path to resolve. If the path is
             // something like `a::B::<i32>::c` then we want to resolve `a::B`. If the path contains
             // a placeholder. e.g. `a::$b::c` then we want to resolve `a`.
@@ -157,7 +170,13 @@ impl<'db> ResolutionScope<'db> {
         ResolutionScope {
             scope,
             hygiene: hir::Hygiene::new(sema.db, resolve_context.file_id.into()),
+            node,
         }
+    }
+
+    /// Returns the function in which SSR was invoked, if any.
+    pub(crate) fn current_function(&self) -> Option<SyntaxNode> {
+        self.node.ancestors().find(|node| node.kind() == SyntaxKind::FN).map(|node| node.clone())
     }
 
     fn resolve_path(&self, path: &ast::Path) -> Option<hir::PathResolution> {
@@ -184,6 +203,10 @@ impl<'db> ResolutionScope<'db> {
             None
         }
     }
+}
+
+fn is_self(path: &ast::Path) -> bool {
+    path.segment().map(|segment| segment.self_token().is_some()).unwrap_or(false)
 }
 
 /// Returns a suitable node for resolving paths in the current scope. If we create a scope based on
