@@ -25,6 +25,9 @@ pub mod rustrt3 {
     // importing the same symbol under different types.
     // See https://github.com/rust-lang/rust/issues/32740.
     extern {
+        // NOTE: Allow clashing decl here as we want this test case to catch ICE or LLVM assert
+        // failures if the lint has been allowed.
+        #[allow(clashing_extern_declarations)]
         pub fn rust_get_test_int() -> *const u8;
     }
 }
