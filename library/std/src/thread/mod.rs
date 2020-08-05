@@ -465,10 +465,15 @@ impl Builder {
         let my_packet: Arc<UnsafeCell<Option<Result<T>>>> = Arc::new(UnsafeCell::new(None));
         let their_packet = my_packet.clone();
 
+        let (stdout, stderr) = crate::io::clone_io();
+
         let main = move || {
             if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
             }
+
+            crate::io::set_print(stdout);
+            crate::io::set_panic(stderr);
 
             thread_info::set(imp::guard::current(), their_thread);
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
