@@ -22,7 +22,7 @@ use crate::slice::{self, SliceIndex, Split as SliceSplit};
 
 pub mod pattern;
 
-#[unstable(feature = "str_internals", issue = "none")]
+#[unstable(feature = "str_internals", issue = "75196")]
 #[allow(missing_docs)]
 pub mod lossy;
 
@@ -2361,7 +2361,7 @@ impl str {
     #[allow(unused_attributes)]
     #[allow_internal_unstable(const_fn_union)]
     pub const fn as_bytes(&self) -> &[u8] {
-        
+
         // SAFETY: const sound because we transmute two types with the same layout
         unsafe { StrOrSlice { str: self }.slice }
     }
