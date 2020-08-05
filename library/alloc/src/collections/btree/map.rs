@@ -2669,8 +2669,8 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
         *self.length -= 1;
 
         let RemoveResult { old_kv, pos, emptied_internal_root } = self.handle.remove_kv_tracking();
-        let root = pos.into_node().into_root_mut();
         if emptied_internal_root {
+            let root = pos.into_node().into_root_mut();
             root.pop_internal_level();
         }
         old_kv
