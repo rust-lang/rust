@@ -229,6 +229,33 @@ fn main() {
 }
 
 #[test]
+fn doctest_expand_glob_import() {
+    check_doc_test(
+        "expand_glob_import",
+        r#####"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+}
+
+use foo::*<|>;
+
+fn qux(bar: Bar, baz: Baz) {}
+"#####,
+        r#####"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+}
+
+use foo::{Baz, Bar};
+
+fn qux(bar: Bar, baz: Baz) {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_struct_from_enum_variant() {
     check_doc_test(
         "extract_struct_from_enum_variant",
