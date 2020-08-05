@@ -982,8 +982,8 @@ impl From<Ipv4Addr> for u32 {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::new(13, 12, 11, 10);
-    /// assert_eq!(0x0d0c0b0au32, u32::from(addr));
+    /// let addr = Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe);
+    /// assert_eq!(0xcafebabe, u32::from(addr));
     /// ```
     fn from(ip: Ipv4Addr) -> u32 {
         let ip = ip.octets();
@@ -1000,8 +1000,8 @@ impl From<u32> for Ipv4Addr {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::from(0x0d0c0b0au32);
-    /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
+    /// let addr = Ipv4Addr::from(0xcafebabe);
+    /// assert_eq!(Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe), addr);
     /// ```
     fn from(ip: u32) -> Ipv4Addr {
         Ipv4Addr::from(ip.to_be_bytes())
