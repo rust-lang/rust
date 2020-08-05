@@ -250,11 +250,11 @@ mod mut_mut;
 mod mut_reference;
 mod mutable_debug_assertion;
 mod mutex_atomic;
+mod needless_arbitrary_self_type;
 mod needless_bool;
 mod needless_borrow;
 mod needless_borrowed_ref;
 mod needless_continue;
-mod needless_fn_self_type;
 mod needless_pass_by_value;
 mod needless_update;
 mod neg_cmp_op_on_partial_ord;
@@ -718,12 +718,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &mutable_debug_assertion::DEBUG_ASSERT_WITH_MUT_CALL,
         &mutex_atomic::MUTEX_ATOMIC,
         &mutex_atomic::MUTEX_INTEGER,
+        &needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE,
         &needless_bool::BOOL_COMPARISON,
         &needless_bool::NEEDLESS_BOOL,
         &needless_borrow::NEEDLESS_BORROW,
         &needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         &needless_continue::NEEDLESS_CONTINUE,
-        &needless_fn_self_type::NEEDLESS_FN_SELF_TYPE,
         &needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
         &needless_update::NEEDLESS_UPDATE,
         &neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD,
@@ -1029,7 +1029,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box items_after_statements::ItemsAfterStatements);
     store.register_early_pass(|| box precedence::Precedence);
     store.register_early_pass(|| box needless_continue::NeedlessContinue);
-    store.register_early_pass(|| box needless_fn_self_type::NeedlessFnSelfType);
+    store.register_early_pass(|| box needless_arbitrary_self_type::NeedlessArbitrarySelfType);
     store.register_early_pass(|| box redundant_static_lifetimes::RedundantStaticLifetimes);
     store.register_late_pass(|| box cargo_common_metadata::CargoCommonMetadata);
     store.register_late_pass(|| box multiple_crate_versions::MultipleCrateVersions);
@@ -1374,10 +1374,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&mut_key::MUTABLE_KEY_TYPE),
         LintId::of(&mut_reference::UNNECESSARY_MUT_PASSED),
         LintId::of(&mutex_atomic::MUTEX_ATOMIC),
+        LintId::of(&needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE),
         LintId::of(&needless_bool::BOOL_COMPARISON),
         LintId::of(&needless_bool::NEEDLESS_BOOL),
         LintId::of(&needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),
-        LintId::of(&needless_fn_self_type::NEEDLESS_FN_SELF_TYPE),
         LintId::of(&needless_update::NEEDLESS_UPDATE),
         LintId::of(&neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD),
         LintId::of(&neg_multiply::NEG_MULTIPLY),
@@ -1538,7 +1538,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc_early::MIXED_CASE_HEX_LITERALS),
         LintId::of(&misc_early::REDUNDANT_PATTERN),
         LintId::of(&mut_reference::UNNECESSARY_MUT_PASSED),
-        LintId::of(&needless_fn_self_type::NEEDLESS_FN_SELF_TYPE),
         LintId::of(&neg_multiply::NEG_MULTIPLY),
         LintId::of(&new_without_default::NEW_WITHOUT_DEFAULT),
         LintId::of(&non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
@@ -1607,6 +1606,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc::SHORT_CIRCUIT_STATEMENT),
         LintId::of(&misc_early::UNNEEDED_WILDCARD_PATTERN),
         LintId::of(&misc_early::ZERO_PREFIXED_LITERAL),
+        LintId::of(&needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE),
         LintId::of(&needless_bool::BOOL_COMPARISON),
         LintId::of(&needless_bool::NEEDLESS_BOOL),
         LintId::of(&needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE),

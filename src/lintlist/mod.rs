@@ -1460,6 +1460,13 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         module: "bytecount",
     },
     Lint {
+        name: "needless_arbitrary_self_type",
+        group: "complexity",
+        desc: "type of `self` parameter is already by default `Self`",
+        deprecation: None,
+        module: "needless_arbitrary_self_type",
+    },
+    Lint {
         name: "needless_bool",
         group: "complexity",
         desc: "if-statements with plain booleans in the then- and else-clause, e.g., `if p { true } else { false }`",
@@ -1500,13 +1507,6 @@ pub static ref ALL_LINTS: Vec<Lint> = vec![
         desc: "presence of `fn main() {` in code examples",
         deprecation: None,
         module: "doc",
-    },
-    Lint {
-        name: "needless_fn_self_type",
-        group: "style",
-        desc: "type of `self` parameter is already by default `Self`",
-        deprecation: None,
-        module: "needless_fn_self_type",
     },
     Lint {
         name: "needless_lifetimes",
