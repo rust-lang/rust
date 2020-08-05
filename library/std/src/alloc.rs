@@ -140,7 +140,7 @@ pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl AllocRef for System {
     #[inline]
-    fn alloc(&mut self, layout: Layout) -> Result<MemoryBlock, AllocErr> {
+    fn alloc(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
         let size = layout.size();
         let ptr = if size == 0 {
             layout.dangling()
@@ -148,11 +148,11 @@ unsafe impl AllocRef for System {
             // SAFETY: `layout` is non-zero in size,
             unsafe { NonNull::new(GlobalAlloc::alloc(&System, layout)).ok_or(AllocErr)? }
         };
-        Ok(MemoryBlock { ptr, size })
+        Ok(NonNull::slice_from_raw_parts(ptr, size))
     }
 
     #[inline]
-    fn alloc_zeroed(&mut self, layout: Layout) -> Result<MemoryBlock, AllocErr> {
+    fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<[u8]>, AllocErr> {
         let size = layout.size();
         let ptr = if size == 0 {
             layout.dangling()
@@ -160,7 +160,7 @@ unsafe impl AllocRef for System {
             // SAFETY: `layout` is non-zero in size,
             unsafe { NonNull::new(GlobalAlloc::alloc_zeroed(&System, layout)).ok_or(AllocErr)? }
         };
-        Ok(MemoryBlock { ptr, size })
+        Ok(NonNull::slice_from_raw_parts(ptr, size))
     }
 
     #[inline]
@@ -178,7 +178,7 @@ unsafe impl AllocRef for System {
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-    ) -> Result<MemoryBlock, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocErr> {
         debug_assert!(
             new_size >= layout.size(),
             "`new_size` must be greater than or equal to `layout.size()`"
@@ -188,14 +188,16 @@ unsafe impl AllocRef for System {
         // Other conditions must be upheld by the caller
         unsafe {
             match layout.size() {
-                old_size if old_size == new_size => Ok(MemoryBlock { ptr, size: new_size }),
+                old_size if old_size == new_size => {
+                    Ok(NonNull::slice_from_raw_parts(ptr, new_size))
+                }
                 0 => self.alloc(Layout::from_size_align_unchecked(new_size, layout.align())),
                 old_size => {
                     // `realloc` probably checks for `new_size > size` or something similar.
                     intrinsics::assume(new_size > old_size);
                     let raw_ptr = GlobalAlloc::realloc(&System, ptr.as_ptr(), layout, new_size);
                     let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
-                    Ok(MemoryBlock { ptr, size: new_size })
+                    Ok(NonNull::slice_from_raw_parts(ptr, new_size))
                 }
             }
         }
@@ -207,7 +209,7 @@ unsafe impl AllocRef for System {
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-    ) -> Result<MemoryBlock, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocErr> {
         debug_assert!(
             new_size >= layout.size(),
             "`new_size` must be greater than or equal to `layout.size()`"
@@ -217,7 +219,9 @@ unsafe impl AllocRef for System {
         // Other conditions must be upheld by the caller
         unsafe {
             match layout.size() {
-                old_size if old_size == new_size => Ok(MemoryBlock { ptr, size: new_size }),
+                old_size if old_size == new_size => {
+                    Ok(NonNull::slice_from_raw_parts(ptr, new_size))
+                }
                 0 => self.alloc_zeroed(Layout::from_size_align_unchecked(new_size, layout.align())),
                 old_size => {
                     // `realloc` probably checks for `new_size > size` or something similar.
@@ -225,7 +229,7 @@ unsafe impl AllocRef for System {
                     let raw_ptr = GlobalAlloc::realloc(&System, ptr.as_ptr(), layout, new_size);
                     raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
                     let ptr = NonNull::new(raw_ptr).ok_or(AllocErr)?;
-                    Ok(MemoryBlock { ptr, size: new_size })
+                    Ok(NonNull::slice_from_raw_parts(ptr, new_size))
                 }
             }
         }
@@ -237,7 +241,7 @@ unsafe impl AllocRef for System {
         ptr: NonNull<u8>,
         layout: Layout,
         new_size: usize,
-    ) -> Result<MemoryBlock, AllocErr> {
+    ) -> Result<NonNull<[u8]>, AllocErr> {
         let old_size = layout.size();
         debug_assert!(
             new_size <= old_size,
@@ -264,7 +268,7 @@ unsafe impl AllocRef for System {
             NonNull::new(raw_ptr).ok_or(AllocErr)?
         };
 
-        Ok(MemoryBlock { ptr, size: new_size })
+        Ok(NonNull::slice_from_raw_parts(ptr, new_size))
     }
 }
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
