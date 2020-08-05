@@ -443,9 +443,7 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
     match res {
         Ok(()) => Ok(()),
         Err(err) => {
-            if !err.is_empty() {
-                diag.struct_err(&err).emit();
-            }
+            diag.struct_err(&err).emit();
             Err(ErrorReported)
         }
     }
@@ -478,7 +476,7 @@ fn main_options(options: config::Options) -> MainResult {
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
-        (true, false) => return wrap_return(&diag, test::run(options)),
+        (true, false) => return test::run(options),
         (false, true) => {
             return wrap_return(
                 &diag,
