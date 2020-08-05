@@ -31,7 +31,6 @@ pub use self::impl_bsd::peer_cred;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub mod impl_linux {
     use super::UCred;
-    use crate::mem::MaybeUninit;
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;
     use crate::{io, mem};
@@ -46,9 +45,9 @@ pub mod impl_linux {
         assert!(ucred_size <= u32::max_value() as usize);
 
         let mut ucred_size = ucred_size as u32;
+        let mut ucred: ucred = ucred { pid: 1, uid: 1, gid: 1 };
 
         unsafe {
-            let mut ucred: ucred = MaybeUninit::uninit().assume_init();
             let ret = libc::getsockopt(
                 socket.as_raw_fd(),
                 libc::SOL_SOCKET,
@@ -76,14 +75,12 @@ pub mod impl_linux {
 pub mod impl_bsd {
     use super::UCred;
     use crate::io;
-    use crate::mem::MaybeUninit;
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;
 
     pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
+        let mut cred = UCred { uid: 1, gid: 1 };
         unsafe {
-            // Create `cred` and attempt to populate it.
-            let mut cred: UCred = MaybeUninit::uninit().assume_init();
             let ret = libc::getpeereid(socket.as_raw_fd(), &mut cred.uid, &mut cred.gid);
 
             if ret == 0 { Ok(cred) } else { Err(io::Error::last_os_error()) }

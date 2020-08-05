@@ -433,6 +433,7 @@ impl UnixStream {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(peer_credentials_unix_socket)]
     /// use std::os::unix::net::UnixStream;
     ///
     /// fn main() -> std::io::Result<()> {
