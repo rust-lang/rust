@@ -579,6 +579,9 @@ declare_features! (
     /// Alloc calling `transmute` in const fn
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
+    /// Instruction set declarations for functions (RFC 2867)
+    (active, isa_attribute, "1.47.0", Some(74727), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
