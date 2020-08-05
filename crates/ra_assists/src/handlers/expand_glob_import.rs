@@ -147,17 +147,16 @@ fn replace_ast(
     path: ast::Path,
     used_names: Vec<Name>,
 ) {
-    let replacement: Either<ast::UseTree, ast::UseTreeList> = if used_names.len() == 1 {
-        Either::Left(ast::make::use_tree(
-            ast::make::path_from_text(&format!("{}::{}", path, used_names.first().unwrap())),
+    let replacement: Either<ast::UseTree, ast::UseTreeList> = match used_names.as_slice() {
+        [name] => Either::Left(ast::make::use_tree(
+            ast::make::path_from_text(&format!("{}::{}", path, name)),
             None,
             None,
             false,
-        ))
-    } else {
-        Either::Right(ast::make::use_tree_list(used_names.iter().map(|n| {
+        )),
+        names => Either::Right(ast::make::use_tree_list(names.iter().map(|n| {
             ast::make::use_tree(ast::make::path_from_text(&n.to_string()), None, None, false)
-        })))
+        }))),
     };
 
     let mut replace_node = |replacement: Either<ast::UseTree, ast::UseTreeList>| {
