@@ -709,11 +709,6 @@ pub(crate) fn handle_formatting(
         }
     };
 
-    if let Ok(path) = params.text_document.uri.to_file_path() {
-        if let Some(parent) = path.parent() {
-            rustfmt.current_dir(parent);
-        }
-    }
     let mut rustfmt = rustfmt.stdin(Stdio::piped()).stdout(Stdio::piped()).spawn()?;
 
     rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
