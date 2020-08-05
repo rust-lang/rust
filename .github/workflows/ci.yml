@@ -321,8 +321,6 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
               SCRIPT: make ci-subset-1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             os: windows-latest-xl
           - name: x86_64-msvc-2
             env:
@@ -333,23 +331,17 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc"
               SCRIPT: make ci-subset-1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             os: windows-latest-xl
           - name: i686-msvc-2
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-msvc"
               SCRIPT: make ci-subset-2
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             os: windows-latest-xl
           - name: x86_64-msvc-cargo
             env:
               SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-lld"
               VCVARS_BAT: vcvars64.bat
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             os: windows-latest-xl
           - name: x86_64-msvc-tools
             env:
@@ -361,8 +353,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
               SCRIPT: make ci-mingw-subset-1
               CUSTOM_MINGW: 1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             os: windows-latest-xl
           - name: i686-mingw-2
             env:
@@ -375,8 +365,6 @@ jobs:
               SCRIPT: make ci-mingw-subset-1
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
               CUSTOM_MINGW: 1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_LLVM_ASSERTIONS: 1
             os: windows-latest-xl
           - name: x86_64-mingw-2
             env:
