@@ -12,7 +12,7 @@ use hir::{
 use ra_prof::profile;
 use ra_syntax::{
     ast::{self, AstNode},
-    match_ast,
+    match_ast, SyntaxNode,
 };
 
 use crate::RootDatabase;
@@ -123,8 +123,27 @@ pub fn classify_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option
                 let use_tree = it.syntax().parent().and_then(ast::UseTree::cast)?;
                 let path = use_tree.path()?;
                 let path_segment = path.segment()?;
-                let name_ref = path_segment.name_ref()?;
-                let name_ref_class = classify_name_ref(sema, &name_ref)?;
+                let name_ref_class = path_segment
+                    .name_ref()
+                    // The rename might be from a `self` token, so fallback to the name higher
+                    // in the use tree.
+                    .or_else(||{
+                        if path_segment.self_token().is_none() {
+                            return None;
+                        }
+
+                        let use_tree = use_tree
+                            .syntax()
+                            .parent()
+                            .as_ref()
+                            // Skip over UseTreeList
+                            .and_then(SyntaxNode::parent)
+                            .and_then(ast::UseTree::cast)?;
+                        let path = use_tree.path()?;
+                        let path_segment = path.segment()?;
+                        path_segment.name_ref()
+                    })
+                    .and_then(|name_ref| classify_name_ref(sema, &name_ref))?;
 
                 Some(NameClass::Definition(name_ref_class.definition()))
             },

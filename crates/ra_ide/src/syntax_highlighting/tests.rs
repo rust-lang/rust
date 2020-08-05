@@ -9,6 +9,9 @@ use crate::{mock_analysis::single_file, FileRange, TextRange};
 fn test_highlighting() {
     check_highlighting(
         r#"
+use inner::{self as inner_mod};
+mod inner {}
+
 #[derive(Clone, Debug)]
 struct Foo {
     pub x: i32,
