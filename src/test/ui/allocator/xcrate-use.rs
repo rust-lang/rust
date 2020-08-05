@@ -5,6 +5,7 @@
 // no-prefer-dynamic
 
 #![feature(allocator_api)]
+#![feature(slice_ptr_get)]
 
 extern crate custom;
 extern crate helper;
@@ -21,15 +22,15 @@ fn main() {
         let layout = Layout::from_size_align(4, 2).unwrap();
 
         let memory = Global.alloc(layout.clone()).unwrap();
-        helper::work_with(&memory.ptr);
+        helper::work_with(&memory);
         assert_eq!(GLOBAL.0.load(Ordering::SeqCst), n + 1);
-        Global.dealloc(memory.ptr, layout);
+        Global.dealloc(memory.as_non_null_ptr(), layout);
         assert_eq!(GLOBAL.0.load(Ordering::SeqCst), n + 2);
 
         let memory = System.alloc(layout.clone()).unwrap();
         assert_eq!(GLOBAL.0.load(Ordering::SeqCst), n + 2);
-        helper::work_with(&memory.ptr);
-        System.dealloc(memory.ptr, layout);
+        helper::work_with(&memory);
+        System.dealloc(memory.as_non_null_ptr(), layout);
         assert_eq!(GLOBAL.0.load(Ordering::SeqCst), n + 2);
     }
 }

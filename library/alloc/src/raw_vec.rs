@@ -1,7 +1,7 @@
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
 #![doc(hidden)]
 
-use core::alloc::{LayoutErr, MemoryBlock};
+use core::alloc::LayoutErr;
 use core::cmp;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
@@ -186,14 +186,14 @@ impl<T, A: AllocRef> RawVec<T, A> {
                 AllocInit::Uninitialized => alloc.alloc(layout),
                 AllocInit::Zeroed => alloc.alloc_zeroed(layout),
             };
-            let memory = match result {
-                Ok(memory) => memory,
+            let ptr = match result {
+                Ok(ptr) => ptr,
                 Err(_) => handle_alloc_error(layout),
             };
 
             Self {
-                ptr: unsafe { Unique::new_unchecked(memory.ptr.cast().as_ptr()) },
-                cap: Self::capacity_from_bytes(memory.size),
+                ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
+                cap: Self::capacity_from_bytes(ptr.len()),
                 alloc,
             }
         }
@@ -384,9 +384,9 @@ impl<T, A: AllocRef> RawVec<T, A> {
         excess / mem::size_of::<T>()
     }
 
-    fn set_memory(&mut self, memory: MemoryBlock) {
-        self.ptr = unsafe { Unique::new_unchecked(memory.ptr.cast().as_ptr()) };
-        self.cap = Self::capacity_from_bytes(memory.size);
+    fn set_ptr(&mut self, ptr: NonNull<[u8]>) {
+        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
+        self.cap = Self::capacity_from_bytes(ptr.len());
     }
 
     // This method is usually instantiated many times. So we want it to be as
@@ -432,8 +432,8 @@ impl<T, A: AllocRef> RawVec<T, A> {
         let new_layout = Layout::array::<T>(cap);
 
         // `finish_grow` is non-generic over `T`.
-        let memory = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        self.set_memory(memory);
+        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        self.set_ptr(ptr);
         Ok(())
     }
 
@@ -451,8 +451,8 @@ impl<T, A: AllocRef> RawVec<T, A> {
         let new_layout = Layout::array::<T>(cap);
 
         // `finish_grow` is non-generic over `T`.
-        let memory = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        self.set_memory(memory);
+        let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
+        self.set_ptr(ptr);
         Ok(())
     }
 
@@ -462,13 +462,13 @@ impl<T, A: AllocRef> RawVec<T, A> {
         let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
         let new_size = amount * mem::size_of::<T>();
 
-        let memory = unsafe {
+        let ptr = unsafe {
             self.alloc.shrink(ptr, layout, new_size).map_err(|_| TryReserveError::AllocError {
                 layout: Layout::from_size_align_unchecked(new_size, layout.align()),
                 non_exhaustive: (),
             })?
         };
-        self.set_memory(memory);
+        self.set_ptr(ptr);
         Ok(())
     }
 }
@@ -481,7 +481,7 @@ fn finish_grow<A>(
     new_layout: Result<Layout, LayoutErr>,
     current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
-) -> Result<MemoryBlock, TryReserveError>
+) -> Result<NonNull<[u8]>, TryReserveError>
 where
     A: AllocRef,
 {

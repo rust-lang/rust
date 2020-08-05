@@ -5,6 +5,7 @@
 // well enough to reproduce (and illustrate) the bug from #16687.
 
 #![feature(allocator_api)]
+#![feature(slice_ptr_get)]
 
 use std::alloc::{handle_alloc_error, AllocRef, Global, Layout};
 use std::ptr::{self, NonNull};
@@ -41,13 +42,13 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?})", layout);
         }
 
-        let memory = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
+        let ptr = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         if PRINT {
-            println!("allocate({:?}) = {:?}", layout, memory.ptr);
+            println!("allocate({:?}) = {:?}", layout, ptr);
         }
 
-        memory.ptr.cast().as_ptr()
+        ptr.as_non_null_ptr().as_ptr()
     }
 
     unsafe fn deallocate(ptr: *mut u8, layout: Layout) {
@@ -73,14 +74,14 @@ unsafe fn test_triangle() -> bool {
             Global.shrink(NonNull::new_unchecked(ptr), old, new.size())
         };
 
-        let memory = memory.unwrap_or_else(|_| {
+        let ptr = memory.unwrap_or_else(|_| {
             handle_alloc_error(Layout::from_size_align_unchecked(new.size(), old.align()))
         });
 
         if PRINT {
-            println!("reallocate({:?}, old={:?}, new={:?}) = {:?}", ptr, old, new, memory.ptr);
+            println!("reallocate({:?}, old={:?}, new={:?}) = {:?}", ptr, old, new, ptr);
         }
-        memory.ptr.cast().as_ptr()
+        ptr.as_non_null_ptr().as_ptr()
     }
 
     fn idx_to_size(i: usize) -> usize {
