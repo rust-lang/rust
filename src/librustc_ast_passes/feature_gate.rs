@@ -530,7 +530,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 &self,
                 |x: &Features| x.const_generics || x.min_const_generics,
                 param.ident.span,
-                sym::const_generics,
+                sym::min_const_generics,
                 "const generics are unstable"
             );
         }

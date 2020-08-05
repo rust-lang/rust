@@ -330,6 +330,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 let err = if tcx.features().min_const_generics {
                     match ty.kind {
                         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => None,
+                        ty::FnPtr(_) => Some("function pointers"),
+                        ty::RawPtr(_) => Some("raw pointers"),
                         _ => {
                             err_ty_str = format!("`{}`", ty);
                             Some(err_ty_str.as_str())
@@ -352,7 +354,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     );
 
                     if tcx.features().min_const_generics {
-                        err.note("the only supported types are integers, `bool` and `char`").emit()
+                        err.note("the only supported types are integers, `bool` and `char`")
+                        .note("more complex types are supported with `#[feature(const_generics)]`").emit()
                     } else {
                         err.emit();
                     }
