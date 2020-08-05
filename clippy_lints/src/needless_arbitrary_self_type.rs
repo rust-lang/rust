@@ -82,7 +82,7 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
                 cx,
                 NEEDLESS_ARBITRARY_SELF_TYPE,
                 span,
-                "the type of the `self` parameter is arbitrary",
+                "the type of the `self` parameter does not need to be arbitrary",
                 "consider to change this parameter to",
                 self_param,
                 Applicability::MachineApplicable,

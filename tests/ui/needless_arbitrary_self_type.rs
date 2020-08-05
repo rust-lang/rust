@@ -29,11 +29,15 @@ impl ValType {
         unimplemented!();
     }
 
+    pub fn ref_good(&self) {
+        unimplemented!();
+    }
+
     pub fn ref_bad_with_lifetime<'a>(self: &'a Self) {
         unimplemented!();
     }
 
-    pub fn ref_good(&self) {
+    pub fn ref_good_with_lifetime<'a>(&'a self) {
         unimplemented!();
     }
 
@@ -41,11 +45,15 @@ impl ValType {
         unimplemented!();
     }
 
+    pub fn mut_ref_good(&mut self) {
+        unimplemented!();
+    }
+
     pub fn mut_ref_bad_with_lifetime<'a>(self: &'a mut Self) {
         unimplemented!();
     }
 
-    pub fn mut_ref_good(&mut self) {
+    pub fn mut_ref_good_with_lifetime<'a>(&'a mut self) {
         unimplemented!();
     }
 
