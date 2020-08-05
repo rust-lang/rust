@@ -1018,6 +1018,16 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Immut<'a>, K, V, NodeTyp
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
+    pub fn into_key_mut(self) -> &'a mut K {
+        let keys = self.node.into_key_slice_mut();
+        unsafe { keys.get_unchecked_mut(self.idx) }
+    }
+
+    pub fn into_val_mut(self) -> &'a mut V {
+        let vals = self.node.into_val_slice_mut();
+        unsafe { vals.get_unchecked_mut(self.idx) }
+    }
+
     pub fn into_kv_mut(self) -> (&'a mut K, &'a mut V) {
         unsafe {
             let (keys, vals) = self.node.into_slices_mut();
@@ -1216,8 +1226,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         unsafe {
             let (k, v, edge) = self.reborrow_mut().left_edge().descend().pop();
 
-            let k = mem::replace(self.reborrow_mut().into_kv_mut().0, k);
-            let v = mem::replace(self.reborrow_mut().into_kv_mut().1, v);
+            let k = mem::replace(self.kv_mut().0, k);
+            let v = mem::replace(self.kv_mut().1, v);
 
             match self.reborrow_mut().right_edge().descend().force() {
                 ForceResult::Leaf(mut leaf) => leaf.push_front(k, v),
@@ -1233,8 +1243,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         unsafe {
             let (k, v, edge) = self.reborrow_mut().right_edge().descend().pop_front();
 
-            let k = mem::replace(self.reborrow_mut().into_kv_mut().0, k);
-            let v = mem::replace(self.reborrow_mut().into_kv_mut().1, v);
+            let k = mem::replace(self.kv_mut().0, k);
+            let v = mem::replace(self.kv_mut().1, v);
 
             match self.reborrow_mut().left_edge().descend().force() {
                 ForceResult::Leaf(mut leaf) => leaf.push(k, v),
@@ -1262,7 +1272,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();
                 let right_kv = right_node.reborrow_mut().into_kv_pointers_mut();
                 let parent_kv = {
-                    let kv = self.reborrow_mut().into_kv_mut();
+                    let kv = self.kv_mut();
                     (kv.0 as *mut K, kv.1 as *mut V)
                 };
 
@@ -1319,7 +1329,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();
                 let right_kv = right_node.reborrow_mut().into_kv_pointers_mut();
                 let parent_kv = {
-                    let kv = self.reborrow_mut().into_kv_mut();
+                    let kv = self.kv_mut();
                     (kv.0 as *mut K, kv.1 as *mut V)
                 };
 
