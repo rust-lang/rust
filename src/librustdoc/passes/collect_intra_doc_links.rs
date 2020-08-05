@@ -174,7 +174,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     fn resolve(
         &self,
         path_str: &str,
-        disambiguator: Option<&str>,
+        disambiguator: Option<Disambiguator>,
         ns: Namespace,
         current_item: &Option<String>,
         parent_id: Option<DefId>,
@@ -214,7 +214,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     Res::Def(DefKind::Mod, _) => {
                         // This resolved to a module, but if we were passed `type@`,
                         // we want primitive types to take precedence instead.
-                        if disambiguator == Some("type") {
+                        if disambiguator == Some(Disambiguator::Namespace(Namespace::TypeNS)) {
                             if let Some(prim) = is_primitive(path_str, ns) {
                                 if extra_fragment.is_some() {
                                     return Err(ErrorKind::AnchorFailure(AnchorFailure::Primitive));
@@ -575,47 +575,14 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             };
             let resolved_self;
             let mut path_str;
-            let mut disambiguator = None;
+            let disambiguator;
             let (res, fragment) = {
-                let mut kind = None;
-                path_str = if let Some(prefix) =
-                    ["struct@", "enum@", "type@", "trait@", "union@", "module@", "mod@"]
-                        .iter()
-                        .find(|p| link.starts_with(**p))
-                {
-                    kind = Some(TypeNS);
-                    disambiguator = Some(&prefix[..prefix.len() - 1]);
-                    link.trim_start_matches(prefix)
-                } else if let Some(prefix) =
-                    ["const@", "static@", "value@", "function@", "fn@", "method@"]
-                        .iter()
-                        .find(|p| link.starts_with(**p))
-                {
-                    kind = Some(ValueNS);
-                    disambiguator = Some(&prefix[..prefix.len() - 1]);
-                    link.trim_start_matches(prefix)
-                } else if link.ends_with("!()") {
-                    kind = Some(MacroNS);
-                    disambiguator = Some("bang");
-                    link.trim_end_matches("!()")
-                } else if link.ends_with("()") {
-                    kind = Some(ValueNS);
-                    disambiguator = Some("fn");
-                    link.trim_end_matches("()")
-                } else if link.starts_with("macro@") {
-                    kind = Some(MacroNS);
-                    disambiguator = Some("macro");
-                    link.trim_start_matches("macro@")
-                } else if link.starts_with("derive@") {
-                    kind = Some(MacroNS);
-                    disambiguator = Some("derive");
-                    link.trim_start_matches("derive@")
-                } else if link.ends_with('!') {
-                    kind = Some(MacroNS);
-                    disambiguator = Some("bang");
-                    link.trim_end_matches('!')
+                path_str = if let Ok((d, path)) = Disambiguator::from_str(&link) {
+                    disambiguator = Some(d);
+                    path
                 } else {
-                    &link[..]
+                    disambiguator = None;
+                    &link
                 }
                 .trim();
 
@@ -648,7 +615,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                 }
 
-                match kind {
+                match disambiguator.map(Disambiguator::ns) {
                     Some(ns @ ValueNS) => {
                         match self.resolve(
                             path_str,
@@ -796,34 +763,31 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
                     // NOTE: this relies on the fact that `''` is never parsed as a disambiguator
                     // NOTE: this needs to be kept in sync with the disambiguator parsing
-                    match (kind, disambiguator.unwrap_or_default().trim_end_matches("@")) {
-                        | (DefKind::Struct, "struct")
-                        | (DefKind::Enum, "enum")
-                        | (DefKind::Trait, "trait")
-                        | (DefKind::Union, "union")
-                        | (DefKind::Mod, "mod" | "module")
-                        | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, "const")
-                        | (DefKind::Static, "static")
+                    match (kind, disambiguator) {
+                        | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
                         // NOTE: this allows 'method' to mean both normal functions and associated functions
                         // This can't cause ambiguity because both are in the same namespace.
-                        | (DefKind::Fn | DefKind::AssocFn, "fn" | "function" | "method")
-                        | (DefKind::Macro(MacroKind::Bang), "bang")
-                        | (DefKind::Macro(MacroKind::Derive), "derive")
+                        | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
                         // These are namespaces; allow anything in the namespace to match
-                        | (_, "type" | "macro" | "value")
+                        | (_, Some(Disambiguator::Namespace(_)))
                         // If no disambiguator given, allow anything
-                        | (_, "")
+                        | (_, None)
                         // All of these are valid, so do nothing
                         => {}
-                        (_, disambiguator) => {
+                        (_, Some(Disambiguator::Kind(expected))) if kind == expected => {}
+                        (_, Some(expected)) => {
                             // The resolved item did not match the disambiguator; give a better error than 'not found'
                             let msg = format!("unresolved link to `{}`", path_str);
                             report_diagnostic(cx, &msg, &item, &dox, link_range, |diag, sp| {
-                                let msg = format!("this link resolved to {} {}, which did not match the disambiguator '{}'", kind.article(), kind.descr(id), disambiguator);
+                                // HACK(jynelson): by looking at the source I saw the DefId we pass
+                                // for `expected.descr()` doesn't matter, since it's not a crate
+                                let note = format!("this link resolved to {} {}, which is not {} {}", kind.article(), kind.descr(id), expected.article(), expected.descr(id));
+                                let suggestion = Disambiguator::display_for(kind, path_str);
+                                let help_msg = format!("to link to the {}, use its disambiguator", kind.descr(id));
+                                diag.note(&note);
                                 if let Some(sp) = sp {
-                                    diag.span_note(sp, &msg);
-                                } else {
-                                    diag.note(&msg);
+                                    diag.span_suggestion(sp, &help_msg, suggestion, Applicability::MaybeIncorrect);
+                                    diag.set_sort_span(sp);
                                 }
                             });
                             continue;
@@ -876,6 +840,109 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         c.module = c.module.take().and_then(|module| self.fold_item(module));
 
         c
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Disambiguator {
+    Kind(DefKind),
+    Namespace(Namespace),
+}
+
+impl Disambiguator {
+    /// (disambiguator, path_str)
+    fn from_str(link: &str) -> Result<(Self, &str), ()> {
+        use Disambiguator::{Kind, Namespace as NS};
+
+        let find_suffix = || {
+            let suffixes = [
+                ("!()", DefKind::Macro(MacroKind::Bang)),
+                ("()", DefKind::Fn),
+                ("!", DefKind::Macro(MacroKind::Bang)),
+            ];
+            for &(suffix, kind) in &suffixes {
+                if link.ends_with(suffix) {
+                    return Ok((Kind(kind), link.trim_end_matches(suffix)));
+                }
+            }
+            Err(())
+        };
+
+        if let Some(idx) = link.find('@') {
+            let (prefix, rest) = link.split_at(idx);
+            let d = match prefix {
+                "struct" => Kind(DefKind::Struct),
+                "enum" => Kind(DefKind::Enum),
+                "trait" => Kind(DefKind::Trait),
+                "union" => Kind(DefKind::Union),
+                "module" | "mod" => Kind(DefKind::Mod),
+                "const" | "constant" => Kind(DefKind::Const),
+                "static" => Kind(DefKind::Static),
+                "function" | "fn" | "method" => Kind(DefKind::Fn),
+                "derive" => Kind(DefKind::Macro(MacroKind::Derive)),
+                "type" => NS(Namespace::TypeNS),
+                "value" => NS(Namespace::ValueNS),
+                "macro" => NS(Namespace::MacroNS),
+                _ => return find_suffix(),
+            };
+            Ok((d, &rest[1..]))
+        } else {
+            find_suffix()
+        }
+    }
+
+    fn display_for(kind: DefKind, path_str: &str) -> String {
+        if kind == DefKind::Macro(MacroKind::Bang) {
+            return format!("{}!", path_str);
+        }
+        let prefix = match kind {
+            DefKind::Struct => "struct",
+            DefKind::Enum => "enum",
+            DefKind::Trait => "trait",
+            DefKind::Union => "union",
+            DefKind::Mod => "mod",
+            DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
+                "const"
+            }
+            DefKind::Static => "static",
+            DefKind::Fn | DefKind::AssocFn => "fn",
+            DefKind::Macro(MacroKind::Derive) => "derive",
+            // Now handle things that don't have a specific disambiguator
+            _ => match kind
+                .ns()
+                .expect("tried to calculate a disambiguator for a def without a namespace?")
+            {
+                Namespace::TypeNS => "type",
+                Namespace::ValueNS => "value",
+                Namespace::MacroNS => "macro",
+            },
+        };
+        format!("{}@{}", prefix, path_str)
+    }
+
+    fn ns(self) -> Namespace {
+        match self {
+            Self::Namespace(n) => n,
+            Self::Kind(k) => {
+                k.ns().expect("only DefKinds with a valid namespace can be disambiguators")
+            }
+        }
+    }
+
+    fn article(&self) -> &'static str {
+        match self {
+            Self::Namespace(_) => "a",
+            Self::Kind(kind) => kind.article(),
+        }
+    }
+
+    fn descr(&self, def_id: DefId) -> &'static str {
+        match self {
+            Self::Namespace(Namespace::TypeNS) => "type",
+            Self::Namespace(Namespace::ValueNS) => "value",
+            Self::Namespace(Namespace::MacroNS) => "macro",
+            Self::Kind(kind) => kind.descr(def_id),
+        }
     }
 }
 
