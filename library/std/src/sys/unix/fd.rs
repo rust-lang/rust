@@ -3,6 +3,7 @@
 use crate::cmp;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
 use crate::mem;
+#[cfg(not(any(target_os = "redox", target_env = "newlib")))]
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::cvt;
 use crate::sys_common::AsInner;
@@ -27,6 +28,7 @@ const READ_LIMIT: usize = c_int::MAX as usize - 1;
 #[cfg(not(target_os = "macos"))]
 const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
 
+#[cfg(not(any(target_os = "redox", target_env = "newlib")))]
 fn max_iov() -> usize {
     static LIM: AtomicUsize = AtomicUsize::new(0);
 
@@ -40,6 +42,11 @@ fn max_iov() -> usize {
     }
 
     lim
+}
+
+#[cfg(any(target_os = "redox", target_env = "newlib"))]
+fn max_iov() -> usize {
+    16 // The minimum value required by POSIX.
 }
 
 impl FileDesc {
