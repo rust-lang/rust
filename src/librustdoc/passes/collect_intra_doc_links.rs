@@ -777,7 +777,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         (_, Some(Disambiguator::Kind(expected))) if kind == expected => {}
                         (_, Some(expected)) => {
                             // The resolved item did not match the disambiguator; give a better error than 'not found'
-                            let msg = format!("unresolved link to `{}`", path_str);
+                            let msg = format!("incompatible link kind for `{}`", path_str);
                             report_diagnostic(cx, &msg, &item, &dox, link_range, |diag, sp| {
                                 // HACK(jynelson): by looking at the source I saw the DefId we pass
                                 // for `expected.descr()` doesn't matter, since it's not a crate
@@ -787,7 +787,6 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 diag.note(&note);
                                 if let Some(sp) = sp {
                                     diag.span_suggestion(sp, &help_msg, suggestion, Applicability::MaybeIncorrect);
-                                    diag.set_sort_span(sp);
                                 }
                             });
                             continue;

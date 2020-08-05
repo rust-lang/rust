@@ -1,4 +1,4 @@
-error: unresolved link to `S`
+error: incompatible link kind for `S`
   --> $DIR/intra-links-disambiguator-mismatch.rs:14:14
    |
 LL | /// Link to [struct@S]
@@ -11,7 +11,7 @@ LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
    = note: this link resolved to an enum, which is not a struct
 
-error: unresolved link to `S`
+error: incompatible link kind for `S`
   --> $DIR/intra-links-disambiguator-mismatch.rs:19:14
    |
 LL | /// Link to [mod@S]
@@ -19,7 +19,7 @@ LL | /// Link to [mod@S]
    |
    = note: this link resolved to an enum, which is not a module
 
-error: unresolved link to `S`
+error: incompatible link kind for `S`
   --> $DIR/intra-links-disambiguator-mismatch.rs:24:14
    |
 LL | /// Link to [union@S]
@@ -27,7 +27,7 @@ LL | /// Link to [union@S]
    |
    = note: this link resolved to an enum, which is not a union
 
-error: unresolved link to `S`
+error: incompatible link kind for `S`
   --> $DIR/intra-links-disambiguator-mismatch.rs:29:14
    |
 LL | /// Link to [trait@S]
@@ -35,7 +35,7 @@ LL | /// Link to [trait@S]
    |
    = note: this link resolved to an enum, which is not a trait
 
-error: unresolved link to `T`
+error: incompatible link kind for `T`
   --> $DIR/intra-links-disambiguator-mismatch.rs:34:14
    |
 LL | /// Link to [struct@T]
@@ -43,7 +43,7 @@ LL | /// Link to [struct@T]
    |
    = note: this link resolved to a trait, which is not a struct
 
-error: unresolved link to `m`
+error: incompatible link kind for `m`
   --> $DIR/intra-links-disambiguator-mismatch.rs:39:14
    |
 LL | /// Link to [derive@m]
@@ -51,7 +51,7 @@ LL | /// Link to [derive@m]
    |
    = note: this link resolved to a macro, which is not a derive macro
 
-error: unresolved link to `s`
+error: incompatible link kind for `s`
   --> $DIR/intra-links-disambiguator-mismatch.rs:44:14
    |
 LL | /// Link to [const@s]
@@ -59,7 +59,7 @@ LL | /// Link to [const@s]
    |
    = note: this link resolved to a static, which is not a constant
 
-error: unresolved link to `c`
+error: incompatible link kind for `c`
   --> $DIR/intra-links-disambiguator-mismatch.rs:49:14
    |
 LL | /// Link to [static@c]
@@ -67,7 +67,7 @@ LL | /// Link to [static@c]
    |
    = note: this link resolved to a constant, which is not a static
 
-error: unresolved link to `c`
+error: incompatible link kind for `c`
   --> $DIR/intra-links-disambiguator-mismatch.rs:54:14
    |
 LL | /// Link to [fn@c]
@@ -75,7 +75,7 @@ LL | /// Link to [fn@c]
    |
    = note: this link resolved to a constant, which is not a function
 
-error: unresolved link to `c`
+error: incompatible link kind for `c`
   --> $DIR/intra-links-disambiguator-mismatch.rs:59:14
    |
 LL | /// Link to [c()]
