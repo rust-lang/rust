@@ -235,3 +235,34 @@ For measuring time of incremental analysis, use either of these:
 $ cargo run --release -p rust-analyzer -- analysis-bench ../chalk/ --highlight ../chalk/chalk-engine/src/logic.rs
 $ cargo run --release -p rust-analyzer -- analysis-bench ../chalk/ --complete ../chalk/chalk-engine/src/logic.rs:94:0
 ```
+
+# Release Process
+
+Release process is handled by `release`, `dist` and `promote` xtasks, `release` being the main one.
+
+`release` assumes that you have checkouts of `rust-analyzer`, `rust-ananalyzer.github.io`, and `rust-lang/rust` in the same directory:
+
+```
+./rust-analyzer
+./rust-analyzer.github.io
+./rust-rust-analyzer  # Note the name!
+```
+
+Additionally, it assumes that remote for `rust-analyzer` is called `upstream` (I use `origin` to point to my fork).
+
+Release steps:
+
+1. Inside rust-analyzer, run `cargo xtask release`. This will:
+   * checkout the `release` branch
+   * reset it to `upstream/nightly`
+   * push it to `upstream`. This triggers GitHub Actions which:
+    ** runs `cargo xtask dist` to package binaries and VS Code extension
+    ** makes a GitHub release
+    ** pushes VS Code extension to the marketplace
+   * create new changelog in `rust-analyzer.github.io`
+   * create `rust-analyzer.github.io/git.log` file with the log of merge commits since last release
+2. While the release is in progress, fill-in the changelog using `git.log`
+3. Commit & push the changelog
+4. Tweet
+5. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's submodule.
+   Self-approve the PR.
