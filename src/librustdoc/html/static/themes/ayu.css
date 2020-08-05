@@ -181,6 +181,9 @@ pre {
 .content span.enum, .content a.enum {
 	color: #99e0c9;
 }
+.content span.variant, .content a.variant {
+	color: #6380a0;
+}
 .content span.trait, .content a.trait {
 	color: #39AFD7;
 }

@@ -137,6 +137,7 @@ pre {
 .content .stability::before { color: #ccc; }
 
 .content span.enum, .content a.enum, .block a.current.enum { color: #508157; }
+.content span.variant, .content a.variant, .block a.current.variant { color: #546e8a; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #ad448e; }
 .content span.type, .content a.type, .block a.current.type { color: #ba5d00; }
 .content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #cd00e2; }

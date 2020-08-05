@@ -2857,7 +2857,7 @@ fn item_struct(w: &mut Buffer, cx: &Context, it: &clean::Item, s: &clean::Struct
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust struct'>");
         render_attributes(w, it, true);
-        render_struct(w, it, Some(&s.generics), s.struct_type, &s.fields, "", true);
+        render_struct(w, it, Some(&s.generics), s.struct_type, &s.fields, "", false);
         write!(w, "</pre>")
     });
 
@@ -2970,9 +2970,11 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
                 let name = v.name.as_ref().unwrap();
                 match v.inner {
                     clean::VariantItem(ref var) => match var.kind {
-                        clean::VariantKind::CLike => write!(w, "{}", name),
+                        clean::VariantKind::CLike => {
+                            write!(w, "<a href=\"#variant.{}\" class=\"variant\">{}</a>", name, name);
+                        }
                         clean::VariantKind::Tuple(ref tys) => {
-                            write!(w, "{}(", name);
+                            write!(w, "<a href=\"#variant.{}\" class=\"variant\">{}</a>(", name, name);
                             for (i, ty) in tys.iter().enumerate() {
                                 if i > 0 {
                                     write!(w, ",&nbsp;")
@@ -2982,7 +2984,7 @@ fn item_enum(w: &mut Buffer, cx: &Context, it: &clean::Item, e: &clean::Enum, ca
                             write!(w, ")");
                         }
                         clean::VariantKind::Struct(ref s) => {
-                            render_struct(w, v, None, s.struct_type, &s.fields, "    ", false);
+                            render_struct(w, v, None, s.struct_type, &s.fields, "    ", true);
                         }
                     },
                     _ => unreachable!(),
@@ -3126,15 +3128,16 @@ fn render_struct(
     ty: doctree::StructType,
     fields: &[clean::Item],
     tab: &str,
-    structhead: bool,
+    enum_variant: bool,
 ) {
-    write!(
-        w,
-        "{}{}{}",
-        it.visibility.print_with_space(),
-        if structhead { "struct " } else { "" },
-        it.name.as_ref().unwrap()
-    );
+    write!(w, "{}", it.visibility.print_with_space());
+    // If this is an enum variant we should not write `struct` and the
+    // name should be a link to the description of the variant.
+    if enum_variant {
+        write!(w, "<a href=\"#variant.{}\" class=\"variant\">{}</a>", it.name.as_ref().unwrap(), it.name.as_ref().unwrap());
+    } else {
+        write!(w, "struct {} ", it.name.as_ref().unwrap());
+    }
     if let Some(g) = g {
         write!(w, "{}", g.print())
     }
