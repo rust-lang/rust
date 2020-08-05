@@ -13,7 +13,7 @@ use rustc_ast::ast;
 use rustc_codegen_ssa::base::{compare_simd_types, to_immediate, wants_msvc_seh};
 use rustc_codegen_ssa::common::span_invalid_monomorphization_error;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-use rustc_codegen_ssa::coverageinfo::ExprKind;
+use rustc_codegen_ssa::coverageinfo;
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -93,64 +93,64 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let mut is_codegen_intrinsic = true;
         // Set `is_codegen_intrinsic` to `false` to bypass `codegen_intrinsic_call()`.
 
-        if self.tcx.sess.opts.debugging_opts.instrument_coverage {
-            // If the intrinsic is from the local MIR, add the coverage information to the Codegen
-            // context, to be encoded into the local crate's coverage map.
-            if caller_instance.def_id().is_local() {
-                // FIXME(richkadel): Make sure to add coverage analysis tests on a crate with
-                // external crate dependencies, where:
-                //   1. Both binary and dependent crates are compiled with `-Zinstrument-coverage`
-                //   2. Only binary is compiled with `-Zinstrument-coverage`
-                //   3. Only dependent crates are compiled with `-Zinstrument-coverage`
-                match intrinsic {
-                    sym::count_code_region => {
-                        use coverage::count_code_region_args::*;
-                        self.add_counter_region(
-                            caller_instance,
-                            op_to_u64(&args[FUNCTION_SOURCE_HASH]),
-                            op_to_u32(&args[COUNTER_ID]),
-                            op_to_u32(&args[START_BYTE_POS]),
-                            op_to_u32(&args[END_BYTE_POS]),
-                        );
-                    }
-                    sym::coverage_counter_add | sym::coverage_counter_subtract => {
-                        use coverage::coverage_counter_expression_args::*;
-                        self.add_counter_expression_region(
-                            caller_instance,
-                            op_to_u32(&args[EXPRESSION_ID]),
-                            op_to_u32(&args[LEFT_ID]),
-                            if intrinsic == sym::coverage_counter_add {
-                                ExprKind::Add
-                            } else {
-                                ExprKind::Subtract
-                            },
-                            op_to_u32(&args[RIGHT_ID]),
-                            op_to_u32(&args[START_BYTE_POS]),
-                            op_to_u32(&args[END_BYTE_POS]),
-                        );
-                    }
-                    sym::coverage_unreachable => {
-                        use coverage::coverage_unreachable_args::*;
-                        self.add_unreachable_region(
-                            caller_instance,
-                            op_to_u32(&args[START_BYTE_POS]),
-                            op_to_u32(&args[END_BYTE_POS]),
-                        );
-                    }
-                    _ => {}
-                }
+        // FIXME(richkadel): Make sure to add coverage analysis tests on a crate with
+        // external crate dependencies, where:
+        //   1. Both binary and dependent crates are compiled with `-Zinstrument-coverage`
+        //   2. Only binary is compiled with `-Zinstrument-coverage`
+        //   3. Only dependent crates are compiled with `-Zinstrument-coverage`
+        match intrinsic {
+            sym::count_code_region => {
+                use coverage::count_code_region_args::*;
+                self.add_counter_region(
+                    caller_instance,
+                    op_to_u64(&args[FUNCTION_SOURCE_HASH]),
+                    op_to_u32(&args[COUNTER_ID]),
+                    coverageinfo::Region::new(
+                        op_to_str_slice(&args[FILE_NAME]),
+                        op_to_u32(&args[START_LINE]),
+                        op_to_u32(&args[START_COL]),
+                        op_to_u32(&args[END_LINE]),
+                        op_to_u32(&args[END_COL]),
+                    ),
+                );
             }
-
-            // Only the `count_code_region` coverage intrinsic is translated into an actual LLVM
-            // intrinsic call (local or not); otherwise, set `is_codegen_intrinsic` to `false`.
-            match intrinsic {
-                sym::coverage_counter_add
-                | sym::coverage_counter_subtract
-                | sym::coverage_unreachable => {
-                    is_codegen_intrinsic = false;
-                }
-                _ => {}
+            sym::coverage_counter_add | sym::coverage_counter_subtract => {
+                is_codegen_intrinsic = false;
+                use coverage::coverage_counter_expression_args::*;
+                self.add_counter_expression_region(
+                    caller_instance,
+                    op_to_u32(&args[EXPRESSION_ID]),
+                    op_to_u32(&args[LEFT_ID]),
+                    if intrinsic == sym::coverage_counter_add {
+                        coverageinfo::ExprKind::Add
+                    } else {
+                        coverageinfo::ExprKind::Subtract
+                    },
+                    op_to_u32(&args[RIGHT_ID]),
+                    coverageinfo::Region::new(
+                        op_to_str_slice(&args[FILE_NAME]),
+                        op_to_u32(&args[START_LINE]),
+                        op_to_u32(&args[START_COL]),
+                        op_to_u32(&args[END_LINE]),
+                        op_to_u32(&args[END_COL]),
+                    ),
+                );
             }
+            sym::coverage_unreachable => {
+                is_codegen_intrinsic = false;
+                use coverage::coverage_unreachable_args::*;
+                self.add_unreachable_region(
+                    caller_instance,
+                    coverageinfo::Region::new(
+                        op_to_str_slice(&args[FILE_NAME]),
+                        op_to_u32(&args[START_LINE]),
+                        op_to_u32(&args[START_COL]),
+                        op_to_u32(&args[END_LINE]),
+                        op_to_u32(&args[END_COL]),
+                    ),
+                );
+            }
+            _ => {}
         }
         is_codegen_intrinsic
     }
@@ -215,9 +215,6 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(llfn, &[], None)
             }
             sym::count_code_region => {
-                // FIXME(richkadel): The current implementation assumes the MIR for the given
-                // caller_instance represents a single function. Validate and/or correct if inlining
-                // and/or monomorphization invalidates these assumptions.
                 let coverageinfo = tcx.coverageinfo(caller_instance.def_id());
                 let mangled_fn = tcx.symbol_name(caller_instance);
                 let (mangled_fn_name, _len_val) = self.const_str(Symbol::intern(mangled_fn.name));
@@ -2241,6 +2238,10 @@ fn float_type_width(ty: Ty<'_>) -> Option<u64> {
         ty::Float(t) => Some(t.bit_width()),
         _ => None,
     }
+}
+
+fn op_to_str_slice<'tcx>(op: &Operand<'tcx>) -> &'tcx str {
+    Operand::value_from_const(op).try_to_str_slice().expect("Value is &str")
 }
 
 fn op_to_u32<'tcx>(op: &Operand<'tcx>) -> u32 {

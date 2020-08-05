@@ -1,5 +1,5 @@
 use super::BackendTypes;
-use crate::coverageinfo::ExprKind;
+use crate::coverageinfo::{ExprKind, Region};
 use rustc_middle::ty::Instance;
 
 pub trait CoverageInfoMethods: BackendTypes {
@@ -12,8 +12,7 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
         instance: Instance<'tcx>,
         function_source_hash: u64,
         index: u32,
-        start_byte_pos: u32,
-        end_byte_pos: u32,
+        region: Region<'tcx>,
     );
 
     fn add_counter_expression_region(
@@ -23,14 +22,8 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
         lhs: u32,
         op: ExprKind,
         rhs: u32,
-        start_byte_pos: u32,
-        end_byte_pos: u32,
+        region: Region<'tcx>,
     );
 
-    fn add_unreachable_region(
-        &mut self,
-        instance: Instance<'tcx>,
-        start_byte_pos: u32,
-        end_byte_pos: u32,
-    );
+    fn add_unreachable_region(&mut self, instance: Instance<'tcx>, region: Region<'tcx>);
 }
