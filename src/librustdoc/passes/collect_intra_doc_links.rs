@@ -787,6 +787,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 diag.note(&note);
                                 if let Some(sp) = sp {
                                     diag.span_suggestion(sp, &help_msg, suggestion, Applicability::MaybeIncorrect);
+                                } else {
+                                    diag.help(&format!("{}: {}", help_msg, suggestion));
                                 }
                             });
                             continue;
