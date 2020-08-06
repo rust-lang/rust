@@ -1828,9 +1828,9 @@ macro_rules! sty_debug_print {
                         ty::Error(_) => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
-                    let lt = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
-                    let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
-                    let ct = t.flags.intersects(ty::TypeFlags::HAS_CT_INFER);
+                    let lt = t.flags().intersects(ty::TypeFlags::HAS_RE_INFER);
+                    let ty = t.flags().intersects(ty::TypeFlags::HAS_TY_INFER);
+                    let ct = t.flags().intersects(ty::TypeFlags::HAS_CT_INFER);
 
                     variant.total += 1;
                     total.total += 1;

@@ -583,7 +583,9 @@ pub struct TyS<'tcx> {
     /// This field shouldn't be used directly and may be removed in the future.
     /// Use `TyS::kind()` instead.
     kind: TyKind<'tcx>,
-    pub flags: TypeFlags,
+    /// This field shouldn't be used directly and may be removed in the future.
+    /// Use `TyS::flags()` instead.
+    flags: TypeFlags,
 
     /// This is a kind of confusing thing: it stores the smallest
     /// binder such that

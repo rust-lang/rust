@@ -1748,6 +1748,11 @@ impl<'tcx> TyS<'tcx> {
         &self.kind
     }
 
+    #[inline(always)]
+    pub fn flags(&self) -> TypeFlags {
+        self.flags
+    }
+
     #[inline]
     pub fn is_unit(&self) -> bool {
         match self.kind() {

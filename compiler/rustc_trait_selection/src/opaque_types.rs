@@ -708,7 +708,7 @@ where
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         // We're only interested in types involving regions
-        if !ty.flags.intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
+        if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
             return false; // keep visiting
         }
 
