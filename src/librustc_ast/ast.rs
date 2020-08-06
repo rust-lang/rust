@@ -313,8 +313,7 @@ pub type GenericBounds = Vec<GenericBound>;
 pub enum ParamKindOrd {
     Lifetime,
     Type,
-    Const,
-    ConstUnordered,
+    Const { unordered: bool },
 }
 
 impl fmt::Display for ParamKindOrd {
@@ -322,8 +321,7 @@ impl fmt::Display for ParamKindOrd {
         match self {
             ParamKindOrd::Lifetime => "lifetime".fmt(f),
             ParamKindOrd::Type => "type".fmt(f),
-            ParamKindOrd::Const => "const".fmt(f),
-            ParamKindOrd::ConstUnordered => "const".fmt(f),
+            ParamKindOrd::Const { .. } => "const".fmt(f),
         }
     }
 }

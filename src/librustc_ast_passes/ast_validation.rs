@@ -735,7 +735,7 @@ fn validate_generic_param_order<'a>(
         }
         let max_param = &mut max_param;
         match max_param {
-            Some(ParamKindOrd::ConstUnordered) if kind != ParamKindOrd::Lifetime => (),
+            Some(ParamKindOrd::Const { unordered: true }) if kind != ParamKindOrd::Lifetime => (),
             Some(max_param) if *max_param > kind => {
                 let entry = out_of_order.entry(kind).or_insert((*max_param, vec![]));
                 entry.1.push(span);
@@ -1159,7 +1159,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
                     GenericParamKind::Const { ref ty, kw_span: _ } => {
                         let ty = pprust::ty_to_string(ty);
-                        (ParamKindOrd::Const, Some(format!("const {}: {}", param.ident, ty)))
+                        let unordered = self.session.features_untracked().const_generics;
+                        (
+                            ParamKindOrd::Const { unordered },
+                            Some(format!("const {}: {}", param.ident, ty)),
+                        )
                     }
                 };
                 (kind, Some(&*param.bounds), param.ident.span, ident)
