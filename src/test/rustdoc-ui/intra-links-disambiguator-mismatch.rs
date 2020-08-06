@@ -60,4 +60,9 @@ trait T {}
 //~^ ERROR incompatible link kind for `c`
 //~| NOTE this link resolved
 //~| HELP use its disambiguator
+
+/// Link to [const@f]
+//~^ ERROR incompatible link kind for `f`
+//~| NOTE this link resolved
+//~| HELP use its disambiguator
 pub fn f() {}

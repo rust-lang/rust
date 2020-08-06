@@ -893,6 +893,8 @@ impl Disambiguator {
     fn display_for(kind: DefKind, path_str: &str) -> String {
         if kind == DefKind::Macro(MacroKind::Bang) {
             return format!("{}!", path_str);
+        } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
+            return format!("{}()", path_str);
         }
         let prefix = match kind {
             DefKind::Struct => "struct",
@@ -904,7 +906,6 @@ impl Disambiguator {
                 "const"
             }
             DefKind::Static => "static",
-            DefKind::Fn | DefKind::AssocFn => "fn",
             DefKind::Macro(MacroKind::Derive) => "derive",
             // Now handle things that don't have a specific disambiguator
             _ => match kind

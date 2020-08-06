@@ -83,5 +83,13 @@ LL | /// Link to [c()]
    |
    = note: this link resolved to a constant, which is not a function
 
-error: aborting due to 10 previous errors
+error: incompatible link kind for `f`
+  --> $DIR/intra-links-disambiguator-mismatch.rs:64:14
+   |
+LL | /// Link to [const@f]
+   |              ^^^^^^^ help: to link to the function, use its disambiguator: `f()`
+   |
+   = note: this link resolved to a function, which is not a constant
+
+error: aborting due to 11 previous errors
 
