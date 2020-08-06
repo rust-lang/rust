@@ -1,4 +1,3 @@
-// check-pass
 #![feature(lazy_normalization_consts)]
 #![allow(incomplete_features)]
 
@@ -10,5 +9,6 @@ impl<T: ?Sized> L<T> {
 }
 
 impl<T> X<T, [u8; L::<T>::S]> {}
+//~^ ERROR constant expression depends on a generic parameter
 
 fn main() {}

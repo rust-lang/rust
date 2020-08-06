@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-70453-polymorphic-ctfe.rs:9:15
+   |
+LL |     Some(T) = core::mem::size_of::<*mut T>(),
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+

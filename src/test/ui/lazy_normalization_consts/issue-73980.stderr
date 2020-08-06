@@ -1,0 +1,10 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-73980.rs:11:9
+   |
+LL | impl<T> X<T, [u8; L::<T>::S]> {}
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to previous error
+
