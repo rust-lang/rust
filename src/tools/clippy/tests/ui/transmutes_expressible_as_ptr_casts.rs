@@ -63,3 +63,14 @@ fn main() {
     };
     let usize_from_fn_ptr = foo as *const usize;
 }
+
+// If a ref-to-ptr cast of this form where the pointer type points to a type other
+// than the referenced type, calling `CastCheck::do_check` has been observed to
+// cause an ICE error message. `do_check` is currently called inside the
+// `transmutes_expressible_as_ptr_casts` check, but other, more specific lints
+// currently prevent it from being called in these cases. This test is meant to
+// fail if the ordering of the checks ever changes enough to cause these cases to
+// fall through into `do_check`.
+fn trigger_do_check_to_emit_error(in_param: &[i32; 1]) -> *const u8 {
+    unsafe { transmute::<&[i32; 1], *const u8>(in_param) }
+}
