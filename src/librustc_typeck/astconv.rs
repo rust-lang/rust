@@ -504,14 +504,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             GenericArg::Const(_) => ParamKindOrd::Const { unordered },
         };
 
-        // This note will be true as long as generic parameters are strictly ordered by their kind.
-        let (first, last) =
-            if kind_ord < arg_ord { (kind, arg.descr()) } else { (arg.descr(), kind) };
-        err.note(&format!("{} arguments must be provided before {} arguments", first, last));
-
-        if let Some(help) = help {
-            err.help(help);
+        // This note is only true when generic parameters are strictly ordered by their kind.
+        if kind_ord.cmp(&arg_ord) != core::cmp::Ordering::Equal {
+            let (first, last) =
+                if kind_ord < arg_ord { (kind, arg.descr()) } else { (arg.descr(), kind) };
+            err.note(&format!("{} arguments must be provided before {} arguments", first, last));
+            if let Some(help) = help {
+                err.help(help);
+            }
         }
+
         err.emit();
     }
 
