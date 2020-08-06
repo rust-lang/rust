@@ -372,27 +372,28 @@ impl<T, const N: usize> [T; N] {
     ///
     /// # Examples
     /// ```
-    /// let x = [1,2,3];
+    /// # #![feature(array_map)]
+    /// let x = [1, 2, 3];
     /// let y = x.map(|v| v + 1);
-    /// assert_eq!(y, [2,3,4]);
+    /// assert_eq!(y, [2, 3, 4]);
     /// ```
     #[unstable(feature = "array_map", issue = "77777")]
-    pub fn map<F, S>(self, mut f: F) -> [S; N]
+    pub fn map<F, U>(self, mut f: F) -> [U; N]
     where
-        F: FnMut(T) -> S,
+        F: FnMut(T) -> U,
     {
         use crate::mem::MaybeUninit;
         struct Guard<T, const N: usize> {
             dst: *mut T,
-            curr_init: usize,
+            initialized: usize,
         }
 
         impl<T, const N: usize> Drop for Guard<T, N> {
             fn drop(&mut self) {
-                debug_assert!(self.curr_init <= N);
+                debug_assert!(self.initialized <= N);
 
                 let initialized_part =
-                    crate::ptr::slice_from_raw_parts_mut(self.dst, self.curr_init);
+                    crate::ptr::slice_from_raw_parts_mut(self.dst, self.initialized);
                 // SAFETY: this raw slice will contain only initialized objects
                 // that's why, it is allowed to drop it.
                 unsafe {
@@ -401,16 +402,16 @@ impl<T, const N: usize> [T; N] {
             }
         }
         let mut dst = MaybeUninit::uninit_array::<N>();
-        let mut guard: Guard<S, N> = Guard { dst: &mut dst as *mut _ as *mut S, curr_init: 0 };
-        for (i, e) in IntoIter::new(self).enumerate() {
-            dst[i] = MaybeUninit::new(f(e));
-            guard.curr_init += 1;
+        let mut guard: Guard<U, N> = Guard { dst: &mut dst as *mut _ as *mut U, initialized: 0 };
+        for (src, dst) in IntoIter::new(self).zip(&mut dst) {
+            dst.write(f(src));
+            guard.initialized += 1;
         }
-        // FIXME convert to crate::mem::transmute when works with generics
-        // unsafe { crate::mem::transmute::<[MaybeUninit<S>; N], [S; N]>(dst) }
+        // FIXME: Convert to crate::mem::transmute once it works with generics.
+        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
         crate::mem::forget(guard);
         // SAFETY: At this point we've properly initialized the whole array
-        // and we just need to cast it to the correct type
-        unsafe { (&mut dst as *mut _ as *mut [S; N]).read() }
+        // and we just need to cast it to the correct type.
+        unsafe { (&mut dst as *mut _ as *mut [U; N]).read() }
     }
 }

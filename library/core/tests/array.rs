@@ -296,4 +296,8 @@ fn array_map() {
     let a = [1, 2, 3];
     let b = a.map(|v| v + 1);
     assert_eq!(b, [2, 3, 4]);
+
+    let a = [1u8, 2, 3];
+    let b = a.map(|v| v as u64);
+    assert_eq!(b, [1, 2, 3]);
 }
