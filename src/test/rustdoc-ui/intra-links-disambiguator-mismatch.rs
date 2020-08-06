@@ -2,6 +2,10 @@
 //~^ NOTE lint level is defined
 pub enum S {}
 
+impl S {
+    fn assoc_fn() {}
+}
+
 macro_rules! m {
     () => {};
 }
@@ -65,4 +69,6 @@ trait T {}
 //~^ ERROR incompatible link kind for `f`
 //~| NOTE this link resolved
 //~| HELP use its disambiguator
+
+/// Link to [S::assoc_fn()]
 pub fn f() {}

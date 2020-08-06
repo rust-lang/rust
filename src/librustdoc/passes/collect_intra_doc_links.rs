@@ -17,6 +17,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
 
+use std::cell::Cell;
 use std::ops::Range;
 
 use crate::clean::*;
@@ -62,11 +63,12 @@ struct LinkCollector<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
     // NOTE: this may not necessarily be a module in the current crate
     mod_ids: Vec<DefId>,
+    kind_side_channel: Cell<Option<DefKind>>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     fn new(cx: &'a DocContext<'tcx>) -> Self {
-        LinkCollector { cx, mod_ids: Vec::new() }
+        LinkCollector { cx, mod_ids: Vec::new(), kind_side_channel: Cell::new(None) }
     }
 
     fn variant_field(
@@ -347,6 +349,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                 AnchorFailure::AssocConstant
                             }))
                         } else {
+                            // HACK(jynelson): `clean` expects the type, not the associated item.
+                            // but the disambiguator logic expects the associated item.
+                            // Store the kind in a side channel so that only the disambiguator logic looks at it.
+                            self.kind_side_channel.replace(Some(item.kind.as_def_kind()));
                             Ok((ty_res, Some(format!("{}.{}", out, item_name))))
                         }
                     } else {
@@ -763,7 +769,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
                     // NOTE: this relies on the fact that `''` is never parsed as a disambiguator
                     // NOTE: this needs to be kept in sync with the disambiguator parsing
-                    match (kind, disambiguator) {
+                    match (self.kind_side_channel.take().unwrap_or(kind), disambiguator) {
                         | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
                         // NOTE: this allows 'method' to mean both normal functions and associated functions
                         // This can't cause ambiguity because both are in the same namespace.
