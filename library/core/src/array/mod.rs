@@ -377,7 +377,7 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(y, [2,3,4]);
     /// ```
     #[unstable(feature = "array_map", issue = "77777")]
-    fn map<F, S>(self, f: F) -> [S; N]
+    fn map<F, S>(self, mut f: F) -> [S; N]
     where
         F: FnMut(T) -> S,
     {
@@ -406,14 +406,16 @@ impl<T, const N: usize> [T; N] {
                 }
             }
         }
-        let dst = MaybeUninit::uninit_array::<N>();
+        let mut dst = MaybeUninit::uninit_array::<N>();
         let mut guard = Guard::new(&mut dst);
-        for (i, e) in self.into_iter().enumerate() {
+        for (i, e) in IntoIter::new(self).enumerate() {
             dst[i] = MaybeUninit::new(f(e));
             guard.curr_init += 1;
         }
         // FIXME convert to crate::mem::transmute when works with generics
         // unsafe { crate::mem::transmute::<[MaybeUninit<S>; N], [S; N]>(dst) }
-        unsafe { (&mut dst as *mut _ as *mut [S; N]).read() }
+        let mapped = unsafe { (&mut dst as *mut _ as *mut [S; N]).read() };
+        crate::mem::forget(guard);
+        mapped
     }
 }
