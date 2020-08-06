@@ -697,7 +697,7 @@ fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx>, to: Ty<'
 /// Check if the the type conversion can be expressed as a pointer cast, instead of
 /// a transmute. In certain cases, including some invalid casts from array
 /// references to pointers, this may cause additional errors to be emitted and/or
-/// ICE error messages.
+/// ICE error messages. This function will panic if that occurs.
 fn can_be_expressed_as_pointer_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> bool {
     use CastKind::*;
     matches!(
@@ -716,7 +716,7 @@ fn can_be_expressed_as_pointer_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<
 /// If a cast from from_ty to to_ty is valid, returns an Ok containing the kind of
 /// the cast. In certain cases, including some invalid casts from array references
 /// to pointers, this may cause additional errors to be emitted and/or ICE error
-/// messages.
+/// messages. This function will panic if that occurs.
 fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> Option<CastKind> {
     let hir_id = e.hir_id;
     let local_def_id = hir_id.owner;
@@ -743,11 +743,17 @@ fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>
             DUMMY_SP,
             DUMMY_SP,
         ) {
-            check.do_check(&fn_ctxt)
-                .ok()
-                // do_check's documentation says that it might return Ok and create
-                // errors in the fcx instead of returing Err in some cases.
-                .filter(|_| !fn_ctxt.errors_reported_since_creation())
+            let res = check.do_check(&fn_ctxt);
+
+            // do_check's documentation says that it might return Ok and create
+            // errors in the fcx instead of returing Err in some cases. Those cases
+            // should be filtered out before getting here.
+            assert!(
+                !fn_ctxt.errors_reported_since_creation(),
+                "`fn_ctxt` contained errors after cast check!"
+            );
+
+            res.ok()
         } else {
             None
         }
