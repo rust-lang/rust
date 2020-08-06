@@ -1,7 +1,7 @@
+// ignore-endian-big
 extern "C" {
     static X: i32;
 }
-
 static Y: i32 = 42;
 
 // EMIT_MIR const_promotion_extern_static.BAR.PromoteTemps.diff
