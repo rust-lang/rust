@@ -290,3 +290,10 @@ fn empty_array_is_always_default() {
 
     let _arr = <[DoesNotImplDefault; 0]>::default();
 }
+
+#[test]
+fn array_map() {
+    let a = [1, 2, 3];
+    let b = a.map(|v| v + 1);
+    assert_eq!(b, [2, 3, 4]);
+}
