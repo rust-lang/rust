@@ -356,7 +356,6 @@ impl<T> [T] {
     ///
     /// [`get_unchecked`]: #method.get_unchecked
     /// [`get_unchecked_mut`]: #method.get_unchecked_mut
-    /// [`Range`]: ops/struct.Range.html
     ///
     /// # Panics
     ///
@@ -393,7 +392,7 @@ impl<T> [T] {
     /// [10, 40, 30].check_range(1..=usize::MAX);
     /// ```
     ///
-    /// [`Index::index`]: ops/trait.Index.html#tymethod.index
+    /// [`Index::index`]: ops::Index::index
     #[track_caller]
     #[unstable(feature = "slice_check_range", issue = "none")]
     pub fn check_range<R: RangeBounds<usize>>(&self, range: R) -> Range<usize> {
