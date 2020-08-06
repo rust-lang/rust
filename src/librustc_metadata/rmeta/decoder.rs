@@ -78,7 +78,8 @@ crate struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls: FxHashMap<(u32, DefIndex), Lazy<[DefIndex]>>,
+    trait_impls:
+        FxHashMap<(u32, DefIndex), Lazy<[(DefIndex, Option<ty::fast_reject::SimplifiedType>)]>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
@@ -1289,7 +1290,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self,
         tcx: TyCtxt<'tcx>,
         filter: Option<DefId>,
-    ) -> &'tcx [DefId] {
+    ) -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
         if self.root.is_proc_macro_crate() {
             // proc-macro crates export no trait impls.
             return &[];
@@ -1305,16 +1306,20 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         if let Some(filter) = filter {
             if let Some(impls) = self.trait_impls.get(&filter) {
-                tcx.arena.alloc_from_iter(impls.decode(self).map(|idx| self.local_def_id(idx)))
+                tcx.arena.alloc_from_iter(
+                    impls.decode(self).map(|(idx, simplified_self_ty)| {
+                        (self.local_def_id(idx), simplified_self_ty)
+                    }),
+                )
             } else {
                 &[]
             }
         } else {
-            tcx.arena.alloc_from_iter(
-                self.trait_impls
-                    .values()
-                    .flat_map(|impls| impls.decode(self).map(|idx| self.local_def_id(idx))),
-            )
+            tcx.arena.alloc_from_iter(self.trait_impls.values().flat_map(|impls| {
+                impls
+                    .decode(self)
+                    .map(|(idx, simplified_self_ty)| (self.local_def_id(idx), simplified_self_ty))
+            }))
         }
     }
 
