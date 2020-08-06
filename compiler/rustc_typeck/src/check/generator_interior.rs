@@ -8,9 +8,9 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, ExprKind, Pat, PatKind, Arm, Guard, HirId};
 use rustc_hir::hir_id::HirIdSet;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
 use rustc_middle::middle::region::{self, YieldData};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -64,7 +64,9 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         yield_data.expr_and_pat_count, self.expr_count, source_span
                     );
 
-                    if guard_borrowing_from_pattern || yield_data.expr_and_pat_count >= self.expr_count {
+                    if guard_borrowing_from_pattern
+                        || yield_data.expr_and_pat_count >= self.expr_count
+                    {
                         Some(yield_data)
                     } else {
                         None
@@ -239,7 +241,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
             let mut scope_var_ids =
                 self.nested_scope_of_guards.pop().expect("should have pushed at least one earlier");
             for var_id in scope_var_ids.drain(..) {
-                assert!(self.current_scope_of_guards.remove(&var_id), "variable should be placed in scope earlier");
+                assert!(
+                    self.current_scope_of_guards.remove(&var_id),
+                    "variable should be placed in scope earlier"
+                );
             }
             self.arm_has_guard = false;
         }
@@ -289,7 +294,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                     }
                 }
                 _ => intravisit::walk_expr(self, expr),
-            }
+            },
             ExprKind::Path(qpath) => {
                 intravisit::walk_expr(self, expr);
                 let res = self.fcx.typeck_results.borrow().qpath_res(qpath, expr.hir_id);
