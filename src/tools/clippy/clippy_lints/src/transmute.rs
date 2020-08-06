@@ -640,7 +640,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                         |diag| {
                             if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
                                 let sugg = arg.as_ty(&to_ty.to_string()).to_string();
-                                diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
+                                diag.span_suggestion(e.span, "try", sugg, Applicability::MachineApplicable);
                             }
                         }
                     ),
@@ -694,7 +694,7 @@ fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx>, to: Ty<'
     }
 }
 
-/// Check if the the type conversion can be expressed as a pointer cast, instead of
+/// Check if the type conversion can be expressed as a pointer cast, instead of
 /// a transmute. In certain cases, including some invalid casts from array
 /// references to pointers, this may cause additional errors to be emitted and/or
 /// ICE error messages. This function will panic if that occurs.
