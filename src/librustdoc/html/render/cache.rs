@@ -48,7 +48,7 @@ pub fn extern_location(
     // external crate
     e.attrs
         .lists(sym::doc)
-        .filter(|a| a.check_name(sym::html_root_url))
+        .filter(|a| a.has_name(sym::html_root_url))
         .filter_map(|a| a.value_str())
         .map(|url| {
             let mut url = url.to_string();

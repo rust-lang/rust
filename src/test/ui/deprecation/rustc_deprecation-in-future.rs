@@ -11,5 +11,5 @@
 pub struct S;
 
 fn main() {
-    let _ = S; //~ ERROR use of item 'S' that will be deprecated in future version 99.99.99: effectively never
+    let _ = S; //~ ERROR use of unit struct `S` that will be deprecated in future version 99.99.99: effectively never
 }

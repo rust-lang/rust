@@ -10,18 +10,20 @@ use std::thread;
 pub unsafe fn handle_deadlock() {
     let registry = rayon_core::Registry::current();
 
-    let gcx_ptr = tls::GCX_PTR.with(|gcx_ptr| gcx_ptr as *const _);
-    let gcx_ptr = &*gcx_ptr;
+    let context = tls::get_tlv();
+    assert!(context != 0);
+    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
+    let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
 
     let span_session_globals = rustc_span::SESSION_GLOBALS.with(|ssg| ssg as *const _);
     let span_session_globals = &*span_session_globals;
     let ast_session_globals = rustc_ast::attr::SESSION_GLOBALS.with(|asg| asg as *const _);
     let ast_session_globals = &*ast_session_globals;
     thread::spawn(move || {
-        tls::GCX_PTR.set(gcx_ptr, || {
+        tls::enter_context(icx, |_| {
             rustc_ast::attr::SESSION_GLOBALS.set(ast_session_globals, || {
                 rustc_span::SESSION_GLOBALS
-                    .set(span_session_globals, || tls::with_global(|tcx| deadlock(tcx, &registry)))
+                    .set(span_session_globals, || tls::with(|tcx| deadlock(tcx, &registry)))
             });
         })
     });

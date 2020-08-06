@@ -1,4 +1,4 @@
-warning: use of deprecated item 'deprecated_future': text
+warning: use of deprecated function `deprecated_future`: text
   --> $DIR/deprecation-in-future.rs:9:5
    |
 LL |     deprecated_future(); // ok; deprecated_in_future only applies to rustc_deprecated

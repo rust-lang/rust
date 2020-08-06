@@ -1,16 +1,17 @@
 pub mod attr;
+mod diagnostics;
 mod expr;
+mod generics;
 mod item;
+mod nonterminal;
 mod pat;
 mod path;
-mod ty;
-pub use path::PathStyle;
-mod diagnostics;
-mod generics;
 mod stmt;
-use diagnostics::Error;
+mod ty;
 
 use crate::lexer::UnmatchedBrace;
+use diagnostics::Error;
+pub use path::PathStyle;
 
 use log::debug;
 use rustc_ast::ast::DUMMY_NODE_ID;
@@ -958,7 +959,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a single token tree from the input.
-    pub fn parse_token_tree(&mut self) -> TokenTree {
+    pub(crate) fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
             token::OpenDelim(..) => {
                 let frame = mem::replace(
@@ -1017,7 +1018,7 @@ impl<'a> Parser<'a> {
     /// If the following element can't be a tuple (i.e., it's a function definition), then
     /// it's not a tuple struct field), and the contents within the parentheses isn't valid,
     /// so emit a proper diagnostic.
-    pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
+    pub(crate) fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
         maybe_whole!(self, NtVis, |x| x);
 
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));

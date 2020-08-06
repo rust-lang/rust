@@ -7,14 +7,16 @@
 #![feature(or_patterns)]
 
 use rustc_ast::ast;
-use rustc_ast::token::{self, Nonterminal};
+use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
 use rustc_ast::tokenstream::{self, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
-use rustc_span::{FileName, SourceFile, Span};
+use rustc_span::{symbol::kw, FileName, SourceFile, Span, DUMMY_SP};
 
+use smallvec::SmallVec;
+use std::mem;
 use std::path::Path;
 use std::str;
 
@@ -306,7 +308,7 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
     // modifications, including adding/removing typically non-semantic
     // tokens such as extra braces and commas, don't happen.
     if let Some(tokens) = tokens {
-        if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
+        if tokenstream_probably_equal_for_proc_macro(&tokens, &tokens_for_real) {
             return tokens;
         }
         info!(
@@ -317,6 +319,186 @@ pub fn nt_to_tokenstream(nt: &Nonterminal, sess: &ParseSess, span: Span) -> Toke
         info!("reparsed tokens: {:?}", tokens_for_real);
     }
     tokens_for_real
+}
+
+// See comments in `Nonterminal::to_tokenstream` for why we care about
+// *probably* equal here rather than actual equality
+//
+// This is otherwise the same as `eq_unspanned`, only recursing with a
+// different method.
+pub fn tokenstream_probably_equal_for_proc_macro(first: &TokenStream, other: &TokenStream) -> bool {
+    // When checking for `probably_eq`, we ignore certain tokens that aren't
+    // preserved in the AST. Because they are not preserved, the pretty
+    // printer arbitrarily adds or removes them when printing as token
+    // streams, making a comparison between a token stream generated from an
+    // AST and a token stream which was parsed into an AST more reliable.
+    fn semantic_tree(tree: &TokenTree) -> bool {
+        if let TokenTree::Token(token) = tree {
+            if let
+                // The pretty printer tends to add trailing commas to
+                // everything, and in particular, after struct fields.
+                | token::Comma
+                // The pretty printer emits `NoDelim` as whitespace.
+                | token::OpenDelim(DelimToken::NoDelim)
+                | token::CloseDelim(DelimToken::NoDelim)
+                // The pretty printer collapses many semicolons into one.
+                | token::Semi
+                // The pretty printer collapses whitespace arbitrarily and can
+                // introduce whitespace from `NoDelim`.
+                | token::Whitespace
+                // The pretty printer can turn `$crate` into `::crate_name`
+                | token::ModSep = token.kind {
+                return false;
+            }
+        }
+        true
+    }
+
+    // When comparing two `TokenStream`s, we ignore the `IsJoint` information.
+    //
+    // However, `rustc_parse::lexer::tokentrees::TokenStreamBuilder` will
+    // use `Token.glue` on adjacent tokens with the proper `IsJoint`.
+    // Since we are ignoreing `IsJoint`, a 'glued' token (e.g. `BinOp(Shr)`)
+    // and its 'split'/'unglued' compoenents (e.g. `Gt, Gt`) are equivalent
+    // when determining if two `TokenStream`s are 'probably equal'.
+    //
+    // Therefore, we use `break_two_token_op` to convert all tokens
+    // to the 'unglued' form (if it exists). This ensures that two
+    // `TokenStream`s which differ only in how their tokens are glued
+    // will be considered 'probably equal', which allows us to keep spans.
+    //
+    // This is important when the original `TokenStream` contained
+    // extra spaces (e.g. `f :: < Vec < _ > > ( ) ;'). These extra spaces
+    // will be omitted when we pretty-print, which can cause the original
+    // and reparsed `TokenStream`s to differ in the assignment of `IsJoint`,
+    // leading to some tokens being 'glued' together in one stream but not
+    // the other. See #68489 for more details.
+    fn break_tokens(tree: TokenTree) -> impl Iterator<Item = TokenTree> {
+        // In almost all cases, we should have either zero or one levels
+        // of 'unglueing'. However, in some unusual cases, we may need
+        // to iterate breaking tokens mutliple times. For example:
+        // '[BinOpEq(Shr)] => [Gt, Ge] -> [Gt, Gt, Eq]'
+        let mut token_trees: SmallVec<[_; 2]>;
+        if let TokenTree::Token(token) = &tree {
+            let mut out = SmallVec::<[_; 2]>::new();
+            out.push(token.clone());
+            // Iterate to fixpoint:
+            // * We start off with 'out' containing our initial token, and `temp` empty
+            // * If we are able to break any tokens in `out`, then `out` will have
+            //   at least one more element than 'temp', so we will try to break tokens
+            //   again.
+            // * If we cannot break any tokens in 'out', we are done
+            loop {
+                let mut temp = SmallVec::<[_; 2]>::new();
+                let mut changed = false;
+
+                for token in out.into_iter() {
+                    if let Some((first, second)) = token.kind.break_two_token_op() {
+                        temp.push(Token::new(first, DUMMY_SP));
+                        temp.push(Token::new(second, DUMMY_SP));
+                        changed = true;
+                    } else {
+                        temp.push(token);
+                    }
+                }
+                out = temp;
+                if !changed {
+                    break;
+                }
+            }
+            token_trees = out.into_iter().map(TokenTree::Token).collect();
+            if token_trees.len() != 1 {
+                debug!("break_tokens: broke {:?} to {:?}", tree, token_trees);
+            }
+        } else {
+            token_trees = SmallVec::new();
+            token_trees.push(tree);
+        }
+        token_trees.into_iter()
+    }
+
+    let mut t1 = first.trees().filter(semantic_tree).flat_map(break_tokens);
+    let mut t2 = other.trees().filter(semantic_tree).flat_map(break_tokens);
+    for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
+        if !tokentree_probably_equal_for_proc_macro(&t1, &t2) {
+            return false;
+        }
+    }
+    t1.next().is_none() && t2.next().is_none()
+}
+
+// See comments in `Nonterminal::to_tokenstream` for why we care about
+// *probably* equal here rather than actual equality
+//
+// This is otherwise the same as `eq_unspanned`, only recursing with a
+// different method.
+fn tokentree_probably_equal_for_proc_macro(first: &TokenTree, other: &TokenTree) -> bool {
+    match (first, other) {
+        (TokenTree::Token(token), TokenTree::Token(token2)) => {
+            token_probably_equal_for_proc_macro(token, token2)
+        }
+        (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
+            delim == delim2 && tokenstream_probably_equal_for_proc_macro(&tts, &tts2)
+        }
+        _ => false,
+    }
+}
+
+// See comments in `Nonterminal::to_tokenstream` for why we care about
+// *probably* equal here rather than actual equality
+fn token_probably_equal_for_proc_macro(first: &Token, other: &Token) -> bool {
+    if mem::discriminant(&first.kind) != mem::discriminant(&other.kind) {
+        return false;
+    }
+    use rustc_ast::token::TokenKind::*;
+    match (&first.kind, &other.kind) {
+        (&Eq, &Eq)
+        | (&Lt, &Lt)
+        | (&Le, &Le)
+        | (&EqEq, &EqEq)
+        | (&Ne, &Ne)
+        | (&Ge, &Ge)
+        | (&Gt, &Gt)
+        | (&AndAnd, &AndAnd)
+        | (&OrOr, &OrOr)
+        | (&Not, &Not)
+        | (&Tilde, &Tilde)
+        | (&At, &At)
+        | (&Dot, &Dot)
+        | (&DotDot, &DotDot)
+        | (&DotDotDot, &DotDotDot)
+        | (&DotDotEq, &DotDotEq)
+        | (&Comma, &Comma)
+        | (&Semi, &Semi)
+        | (&Colon, &Colon)
+        | (&ModSep, &ModSep)
+        | (&RArrow, &RArrow)
+        | (&LArrow, &LArrow)
+        | (&FatArrow, &FatArrow)
+        | (&Pound, &Pound)
+        | (&Dollar, &Dollar)
+        | (&Question, &Question)
+        | (&Whitespace, &Whitespace)
+        | (&Comment, &Comment)
+        | (&Eof, &Eof) => true,
+
+        (&BinOp(a), &BinOp(b)) | (&BinOpEq(a), &BinOpEq(b)) => a == b,
+
+        (&OpenDelim(a), &OpenDelim(b)) | (&CloseDelim(a), &CloseDelim(b)) => a == b,
+
+        (&DocComment(a), &DocComment(b)) | (&Shebang(a), &Shebang(b)) => a == b,
+
+        (&Literal(a), &Literal(b)) => a == b,
+
+        (&Lifetime(a), &Lifetime(b)) => a == b,
+        (&Ident(a, b), &Ident(c, d)) => {
+            b == d && (a == c || a == kw::DollarCrate || c == kw::DollarCrate)
+        }
+
+        (&Interpolated(..), &Interpolated(..)) => false,
+
+        _ => panic!("forgot to add a token?"),
+    }
 }
 
 fn prepend_attrs(

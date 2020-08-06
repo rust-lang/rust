@@ -133,7 +133,7 @@ crate enum PatKind<'tcx> {
         var: hir::HirId,
         ty: Ty<'tcx>,
         subpattern: Option<Pat<'tcx>>,
-        /// Is this the leftmost occurance of the binding, i.e., is `var` the
+        /// Is this the leftmost occurrence of the binding, i.e., is `var` the
         /// `HirId` of this pattern?
         is_primary: bool,
     },

@@ -12,8 +12,8 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use log::debug;
 use smallvec::smallvec;
+use tracing::debug;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     crate fn lower_qpath(

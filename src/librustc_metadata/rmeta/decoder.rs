@@ -78,7 +78,8 @@ crate struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls: FxHashMap<(u32, DefIndex), Lazy<[DefIndex]>>,
+    trait_impls:
+        FxHashMap<(u32, DefIndex), Lazy<[(DefIndex, Option<ty::fast_reject::SimplifiedType>)]>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
@@ -100,7 +101,7 @@ crate struct CrateMetadata {
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
     dependencies: Lock<Vec<CrateNum>>,
     /// How to link (or not link) this crate to the currently compiled crate.
-    dep_kind: Lock<DepKind>,
+    dep_kind: Lock<CrateDepKind>,
     /// Filesystem location of this crate.
     source: CrateSource,
     /// Whether or not this crate should be consider a private dependency
@@ -1150,7 +1151,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, tcx))
     }
 
-    fn get_unused_generic_params(&self, id: DefIndex) -> FiniteBitSet<u64> {
+    fn get_unused_generic_params(&self, id: DefIndex) -> FiniteBitSet<u32> {
         self.root
             .tables
             .unused_generic_params
@@ -1289,7 +1290,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self,
         tcx: TyCtxt<'tcx>,
         filter: Option<DefId>,
-    ) -> &'tcx [DefId] {
+    ) -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
         if self.root.is_proc_macro_crate() {
             // proc-macro crates export no trait impls.
             return &[];
@@ -1305,16 +1306,20 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         if let Some(filter) = filter {
             if let Some(impls) = self.trait_impls.get(&filter) {
-                tcx.arena.alloc_from_iter(impls.decode(self).map(|idx| self.local_def_id(idx)))
+                tcx.arena.alloc_from_iter(
+                    impls.decode(self).map(|(idx, simplified_self_ty)| {
+                        (self.local_def_id(idx), simplified_self_ty)
+                    }),
+                )
             } else {
                 &[]
             }
         } else {
-            tcx.arena.alloc_from_iter(
-                self.trait_impls
-                    .values()
-                    .flat_map(|impls| impls.decode(self).map(|idx| self.local_def_id(idx))),
-            )
+            tcx.arena.alloc_from_iter(self.trait_impls.values().flat_map(|impls| {
+                impls
+                    .decode(self)
+                    .map(|(idx, simplified_self_ty)| (self.local_def_id(idx), simplified_self_ty))
+            }))
         }
     }
 
@@ -1669,7 +1674,7 @@ impl CrateMetadata {
         raw_proc_macros: Option<&'static [ProcMacro]>,
         cnum: CrateNum,
         cnum_map: CrateNumMap,
-        dep_kind: DepKind,
+        dep_kind: CrateDepKind,
         source: CrateSource,
         private_dep: bool,
         host_hash: Option<Svh>,
@@ -1727,11 +1732,11 @@ impl CrateMetadata {
         &self.source
     }
 
-    crate fn dep_kind(&self) -> DepKind {
+    crate fn dep_kind(&self) -> CrateDepKind {
         *self.dep_kind.lock()
     }
 
-    crate fn update_dep_kind(&self, f: impl FnOnce(DepKind) -> DepKind) {
+    crate fn update_dep_kind(&self, f: impl FnOnce(CrateDepKind) -> CrateDepKind) {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
     }
 

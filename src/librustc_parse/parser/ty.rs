@@ -610,13 +610,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn check_lifetime(&mut self) -> bool {
+    pub(super) fn check_lifetime(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Lifetime);
         self.token.is_lifetime()
     }
 
     /// Parses a single lifetime `'a` or panics.
-    pub fn expect_lifetime(&mut self) -> Lifetime {
+    pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some(ident) = self.token.lifetime() {
             self.bump();
             Lifetime { ident, id: ast::DUMMY_NODE_ID }

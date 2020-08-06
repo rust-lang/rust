@@ -58,7 +58,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
             let mut kind_specified = false;
 
             for item in items.iter() {
-                if item.check_name(sym::kind) {
+                if item.has_name(sym::kind) {
                     kind_specified = true;
                     let kind = match item.value_str() {
                         Some(name) => name,
@@ -84,9 +84,9 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                             NativeLibKind::Unspecified
                         }
                     };
-                } else if item.check_name(sym::name) {
+                } else if item.has_name(sym::name) {
                     lib.name = item.value_str();
-                } else if item.check_name(sym::cfg) {
+                } else if item.has_name(sym::cfg) {
                     let cfg = match item.meta_item_list() {
                         Some(list) => list,
                         None => continue, // skip like historical compilers
@@ -98,7 +98,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                     } else {
                         self.tcx.sess.span_err(cfg[0].span(), "invalid argument for `cfg(..)`");
                     }
-                } else if item.check_name(sym::wasm_import_module) {
+                } else if item.has_name(sym::wasm_import_module) {
                     match item.value_str() {
                         Some(s) => lib.wasm_import_module = Some(s),
                         None => {

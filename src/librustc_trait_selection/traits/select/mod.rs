@@ -51,6 +51,47 @@ pub use rustc_middle::traits::select::*;
 mod candidate_assembly;
 mod confirmation;
 
+#[derive(Clone, Debug)]
+pub enum IntercrateAmbiguityCause {
+    DownstreamCrate { trait_desc: String, self_desc: Option<String> },
+    UpstreamCrateUpdate { trait_desc: String, self_desc: Option<String> },
+    ReservationImpl { message: String },
+}
+
+impl IntercrateAmbiguityCause {
+    /// Emits notes when the overlap is caused by complex intercrate ambiguities.
+    /// See #23980 for details.
+    pub fn add_intercrate_ambiguity_hint(&self, err: &mut rustc_errors::DiagnosticBuilder<'_>) {
+        err.note(&self.intercrate_ambiguity_hint());
+    }
+
+    pub fn intercrate_ambiguity_hint(&self) -> String {
+        match self {
+            &IntercrateAmbiguityCause::DownstreamCrate { ref trait_desc, ref self_desc } => {
+                let self_desc = if let &Some(ref ty) = self_desc {
+                    format!(" for type `{}`", ty)
+                } else {
+                    String::new()
+                };
+                format!("downstream crates may implement trait `{}`{}", trait_desc, self_desc)
+            }
+            &IntercrateAmbiguityCause::UpstreamCrateUpdate { ref trait_desc, ref self_desc } => {
+                let self_desc = if let &Some(ref ty) = self_desc {
+                    format!(" for type `{}`", ty)
+                } else {
+                    String::new()
+                };
+                format!(
+                    "upstream crates may add a new impl of trait `{}`{} \
+                     in future versions",
+                    trait_desc, self_desc
+                )
+            }
+            &IntercrateAmbiguityCause::ReservationImpl { ref message } => message.clone(),
+        }
+    }
+}
+
 pub struct SelectionContext<'cx, 'tcx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
 
@@ -833,17 +874,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Option<EvaluationResult> {
         let tcx = self.tcx();
         if self.can_use_global_caches(param_env) {
-            let cache = tcx.evaluation_cache.hashmap.borrow();
-            if let Some(cached) = cache.get(&param_env.and(trait_ref)) {
-                return Some(cached.get(tcx));
+            if let Some(res) = tcx.evaluation_cache.get(&param_env.and(trait_ref), tcx) {
+                return Some(res);
             }
         }
-        self.infcx
-            .evaluation_cache
-            .hashmap
-            .borrow()
-            .get(&param_env.and(trait_ref))
-            .map(|v| v.get(tcx))
+        self.infcx.evaluation_cache.get(&param_env.and(trait_ref), tcx)
     }
 
     fn insert_evaluation_cache(
@@ -869,21 +904,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // FIXME: Due to #50507 this overwrites the different values
                 // This should be changed to use HashMapExt::insert_same
                 // when that is fixed
-                self.tcx()
-                    .evaluation_cache
-                    .hashmap
-                    .borrow_mut()
-                    .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, result));
+                self.tcx().evaluation_cache.insert(param_env.and(trait_ref), dep_node, result);
                 return;
             }
         }
 
         debug!("insert_evaluation_cache(trait_ref={:?}, candidate={:?})", trait_ref, result,);
-        self.infcx
-            .evaluation_cache
-            .hashmap
-            .borrow_mut()
-            .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, result));
+        self.infcx.evaluation_cache.insert(param_env.and(trait_ref), dep_node, result);
     }
 
     /// For various reasons, it's possible for a subobligation
@@ -1180,17 +1207,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let trait_ref = &cache_fresh_trait_pred.skip_binder().trait_ref;
         if self.can_use_global_caches(param_env) {
-            let cache = tcx.selection_cache.hashmap.borrow();
-            if let Some(cached) = cache.get(&param_env.and(*trait_ref)) {
-                return Some(cached.get(tcx));
+            if let Some(res) = tcx.selection_cache.get(&param_env.and(*trait_ref), tcx) {
+                return Some(res);
             }
         }
-        self.infcx
-            .selection_cache
-            .hashmap
-            .borrow()
-            .get(&param_env.and(*trait_ref))
-            .map(|v| v.get(tcx))
+        self.infcx.selection_cache.get(&param_env.and(*trait_ref), tcx)
     }
 
     /// Determines whether can we safely cache the result
@@ -1248,10 +1269,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         trait_ref, candidate,
                     );
                     // This may overwrite the cache with the same value.
-                    tcx.selection_cache
-                        .hashmap
-                        .borrow_mut()
-                        .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, candidate));
+                    tcx.selection_cache.insert(param_env.and(trait_ref), dep_node, candidate);
                     return;
                 }
             }
@@ -1261,11 +1279,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             "insert_candidate_cache(trait_ref={:?}, candidate={:?}) local",
             trait_ref, candidate,
         );
-        self.infcx
-            .selection_cache
-            .hashmap
-            .borrow_mut()
-            .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, candidate));
+        self.infcx.selection_cache.insert(param_env.and(trait_ref), dep_node, candidate);
     }
 
     fn match_projection_obligation_against_definition_bounds(

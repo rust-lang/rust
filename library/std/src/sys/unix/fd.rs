@@ -3,6 +3,8 @@
 use crate::cmp;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
 use crate::mem;
+#[cfg(not(any(target_os = "redox", target_env = "newlib")))]
+use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::cvt;
 use crate::sys_common::AsInner;
 
@@ -25,6 +27,27 @@ pub struct FileDesc {
 const READ_LIMIT: usize = c_int::MAX as usize - 1;
 #[cfg(not(target_os = "macos"))]
 const READ_LIMIT: usize = libc::ssize_t::MAX as usize;
+
+#[cfg(not(any(target_os = "redox", target_env = "newlib")))]
+fn max_iov() -> usize {
+    static LIM: AtomicUsize = AtomicUsize::new(0);
+
+    let mut lim = LIM.load(Ordering::Relaxed);
+    if lim == 0 {
+        let ret = unsafe { libc::sysconf(libc::_SC_IOV_MAX) };
+
+        // 16 is the minimum value required by POSIX.
+        lim = if ret > 0 { ret as usize } else { 16 };
+        LIM.store(lim, Ordering::Relaxed);
+    }
+
+    lim
+}
+
+#[cfg(any(target_os = "redox", target_env = "newlib"))]
+fn max_iov() -> usize {
+    16 // The minimum value required by POSIX.
+}
 
 impl FileDesc {
     pub fn new(fd: c_int) -> FileDesc {
@@ -54,7 +77,7 @@ impl FileDesc {
             libc::readv(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
+                cmp::min(bufs.len(), max_iov()) as c_int,
             )
         })?;
         Ok(ret as usize)
@@ -111,7 +134,7 @@ impl FileDesc {
             libc::writev(
                 self.fd,
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), c_int::MAX as usize) as c_int,
+                cmp::min(bufs.len(), max_iov()) as c_int,
             )
         })?;
         Ok(ret as usize)
@@ -254,5 +277,18 @@ impl Drop for FileDesc {
         // something like EINTR), we might close another valid file descriptor
         // opened after we closed ours.
         let _ = unsafe { libc::close(self.fd) };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FileDesc, IoSlice};
+
+    #[test]
+    fn limit_vector_count() {
+        let stdout = FileDesc { fd: 1 };
+        let bufs = (0..1500).map(|_| IoSlice::new(&[])).collect::<Vec<_>>();
+
+        assert!(stdout.write_vectored(&bufs).is_ok());
     }
 }

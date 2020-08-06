@@ -673,62 +673,6 @@ impl Token {
 
         Some(Token::new(kind, self.span.to(joint.span)))
     }
-
-    // See comments in `Nonterminal::to_tokenstream` for why we care about
-    // *probably* equal here rather than actual equality
-    crate fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
-        if mem::discriminant(&self.kind) != mem::discriminant(&other.kind) {
-            return false;
-        }
-        match (&self.kind, &other.kind) {
-            (&Eq, &Eq)
-            | (&Lt, &Lt)
-            | (&Le, &Le)
-            | (&EqEq, &EqEq)
-            | (&Ne, &Ne)
-            | (&Ge, &Ge)
-            | (&Gt, &Gt)
-            | (&AndAnd, &AndAnd)
-            | (&OrOr, &OrOr)
-            | (&Not, &Not)
-            | (&Tilde, &Tilde)
-            | (&At, &At)
-            | (&Dot, &Dot)
-            | (&DotDot, &DotDot)
-            | (&DotDotDot, &DotDotDot)
-            | (&DotDotEq, &DotDotEq)
-            | (&Comma, &Comma)
-            | (&Semi, &Semi)
-            | (&Colon, &Colon)
-            | (&ModSep, &ModSep)
-            | (&RArrow, &RArrow)
-            | (&LArrow, &LArrow)
-            | (&FatArrow, &FatArrow)
-            | (&Pound, &Pound)
-            | (&Dollar, &Dollar)
-            | (&Question, &Question)
-            | (&Whitespace, &Whitespace)
-            | (&Comment, &Comment)
-            | (&Eof, &Eof) => true,
-
-            (&BinOp(a), &BinOp(b)) | (&BinOpEq(a), &BinOpEq(b)) => a == b,
-
-            (&OpenDelim(a), &OpenDelim(b)) | (&CloseDelim(a), &CloseDelim(b)) => a == b,
-
-            (&DocComment(a), &DocComment(b)) | (&Shebang(a), &Shebang(b)) => a == b,
-
-            (&Literal(a), &Literal(b)) => a == b,
-
-            (&Lifetime(a), &Lifetime(b)) => a == b,
-            (&Ident(a, b), &Ident(c, d)) => {
-                b == d && (a == c || a == kw::DollarCrate || c == kw::DollarCrate)
-            }
-
-            (&Interpolated(..), &Interpolated(..)) => false,
-
-            _ => panic!("forgot to add a token?"),
-        }
-    }
 }
 
 impl PartialEq<TokenKind> for Token {
@@ -759,6 +703,67 @@ pub enum Nonterminal {
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(Nonterminal, 40);
+
+#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum NonterminalKind {
+    Item,
+    Block,
+    Stmt,
+    Pat,
+    Expr,
+    Ty,
+    Ident,
+    Lifetime,
+    Literal,
+    Meta,
+    Path,
+    Vis,
+    TT,
+}
+
+impl NonterminalKind {
+    pub fn from_symbol(symbol: Symbol) -> Option<NonterminalKind> {
+        Some(match symbol {
+            sym::item => NonterminalKind::Item,
+            sym::block => NonterminalKind::Block,
+            sym::stmt => NonterminalKind::Stmt,
+            sym::pat => NonterminalKind::Pat,
+            sym::expr => NonterminalKind::Expr,
+            sym::ty => NonterminalKind::Ty,
+            sym::ident => NonterminalKind::Ident,
+            sym::lifetime => NonterminalKind::Lifetime,
+            sym::literal => NonterminalKind::Literal,
+            sym::meta => NonterminalKind::Meta,
+            sym::path => NonterminalKind::Path,
+            sym::vis => NonterminalKind::Vis,
+            sym::tt => NonterminalKind::TT,
+            _ => return None,
+        })
+    }
+    fn symbol(self) -> Symbol {
+        match self {
+            NonterminalKind::Item => sym::item,
+            NonterminalKind::Block => sym::block,
+            NonterminalKind::Stmt => sym::stmt,
+            NonterminalKind::Pat => sym::pat,
+            NonterminalKind::Expr => sym::expr,
+            NonterminalKind::Ty => sym::ty,
+            NonterminalKind::Ident => sym::ident,
+            NonterminalKind::Lifetime => sym::lifetime,
+            NonterminalKind::Literal => sym::literal,
+            NonterminalKind::Meta => sym::meta,
+            NonterminalKind::Path => sym::path,
+            NonterminalKind::Vis => sym::vis,
+            NonterminalKind::TT => sym::tt,
+        }
+    }
+}
+
+impl fmt::Display for NonterminalKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.symbol())
+    }
+}
 
 impl Nonterminal {
     fn span(&self) -> Span {

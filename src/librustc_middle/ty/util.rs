@@ -585,7 +585,7 @@ struct OpaqueTypeExpander<'tcx> {
     found_recursion: bool,
     /// Whether or not to check for recursive opaque types.
     /// This is `true` when we're explicitly checking for opaque type
-    /// recursion, and 'false' otherwise to avoid unecessary work.
+    /// recursion, and 'false' otherwise to avoid unnecessary work.
     check_recursion: bool,
     tcx: TyCtxt<'tcx>,
 }

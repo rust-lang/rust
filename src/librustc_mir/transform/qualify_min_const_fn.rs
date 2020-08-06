@@ -193,7 +193,15 @@ fn check_rvalue(
             _,
         ) => Err((span, "function pointer casts are not allowed in const fn".into())),
         Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), op, cast_ty) => {
-            let pointee_ty = cast_ty.builtin_deref(true).unwrap().ty;
+            let pointee_ty = if let Some(deref_ty) = cast_ty.builtin_deref(true) {
+                deref_ty.ty
+            } else {
+                // We cannot allow this for now.
+                return Err((
+                    span,
+                    "unsizing casts are only allowed for references right now".into(),
+                ));
+            };
             let unsized_ty = tcx.struct_tail_erasing_lifetimes(pointee_ty, tcx.param_env(def_id));
             if let ty::Slice(_) | ty::Str = unsized_ty.kind {
                 check_operand(tcx, op, span, def_id, body)?;

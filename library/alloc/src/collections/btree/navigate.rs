@@ -19,7 +19,7 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::E
                 Ok(internal_kv) => return Ok(internal_kv),
                 Err(last_edge) => match last_edge.into_node().ascend() {
                     Ok(parent_edge) => parent_edge.forget_node_type(),
-                    Err(root) => return Err(root.forget_type()),
+                    Err(root) => return Err(root),
                 },
             }
         }
@@ -40,7 +40,7 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::E
                 Ok(internal_kv) => return Ok(internal_kv),
                 Err(last_edge) => match last_edge.into_node().ascend() {
                     Ok(parent_edge) => parent_edge.forget_node_type(),
-                    Err(root) => return Err(root.forget_type()),
+                    Err(root) => return Err(root),
                 },
             }
         }

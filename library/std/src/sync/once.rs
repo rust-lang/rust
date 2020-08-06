@@ -81,7 +81,7 @@
 //   see the changes to drop the `Waiter` struct correctly.
 // * There is one place where the two atomics `Once.state_and_queue` and
 //   `Waiter.signaled` come together, and might be reordered by the compiler or
-//   processor. Because both use Aquire ordering such a reordering is not
+//   processor. Because both use Acquire ordering such a reordering is not
 //   allowed, so no need for SeqCst.
 
 use crate::cell::Cell;

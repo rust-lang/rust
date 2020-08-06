@@ -752,7 +752,8 @@ impl<'tcx> QueryContext<'tcx> {
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
-        ty::tls::enter_global(self.0, f)
+        let icx = ty::tls::ImplicitCtxt::new(self.0);
+        ty::tls::enter_context(&icx, |_| f(icx.tcx))
     }
 
     pub fn print_stats(&mut self) {
@@ -811,8 +812,9 @@ pub fn create_global_ctxt<'tcx>(
     });
 
     // Do some initialization of the DepGraph that can only be done with the tcx available.
-    ty::tls::enter_global(&gcx, |tcx| {
-        tcx.sess.time("dep_graph_tcx_init", || rustc_incremental::dep_graph_tcx_init(tcx));
+    let icx = ty::tls::ImplicitCtxt::new(&gcx);
+    ty::tls::enter_context(&icx, |_| {
+        icx.tcx.sess.time("dep_graph_tcx_init", || rustc_incremental::dep_graph_tcx_init(icx.tcx));
     });
 
     QueryContext(gcx)

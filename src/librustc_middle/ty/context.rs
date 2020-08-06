@@ -1632,7 +1632,6 @@ pub mod tls {
     use crate::ty::query;
     use rustc_data_structures::sync::{self, Lock};
     use rustc_data_structures::thin_vec::ThinVec;
-    use rustc_data_structures::OnDrop;
     use rustc_errors::Diagnostic;
     use std::mem;
 
@@ -1649,8 +1648,7 @@ pub mod tls {
     /// in this module.
     #[derive(Clone)]
     pub struct ImplicitCtxt<'a, 'tcx> {
-        /// The current `TyCtxt`. Initially created by `enter_global` and updated
-        /// by `enter_local` with a new local interner.
+        /// The current `TyCtxt`.
         pub tcx: TyCtxt<'tcx>,
 
         /// The current query job, if any. This is updated by `JobOwner::start` in
@@ -1669,6 +1667,13 @@ pub mod tls {
         pub task_deps: Option<&'a Lock<TaskDeps>>,
     }
 
+    impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
+        pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
+            let tcx = TyCtxt { gcx };
+            ImplicitCtxt { tcx, query: None, diagnostics: None, layout_depth: 0, task_deps: None }
+        }
+    }
+
     /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
     /// to `value` during the call to `f`. It is restored to its previous value after.
     /// This is used to set the pointer to the new `ImplicitCtxt`.
@@ -1682,7 +1687,7 @@ pub mod tls {
     /// This is used to get the pointer to the current `ImplicitCtxt`.
     #[cfg(parallel_compiler)]
     #[inline]
-    fn get_tlv() -> usize {
+    pub fn get_tlv() -> usize {
         rayon_core::tlv::get()
     }
 
@@ -1699,7 +1704,7 @@ pub mod tls {
     #[inline]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
-        let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
+        let _reset = rustc_data_structures::OnDrop(move || TLV.with(|tlv| tlv.set(old)));
         TLV.with(|tlv| tlv.set(value));
         f()
     }
@@ -1718,50 +1723,6 @@ pub mod tls {
         F: FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
     {
         set_tlv(context as *const _ as usize, || f(&context))
-    }
-
-    /// Enters `GlobalCtxt` by setting up librustc_ast callbacks and
-    /// creating a initial `TyCtxt` and `ImplicitCtxt`.
-    /// This happens once per rustc session and `TyCtxt`s only exists
-    /// inside the `f` function.
-    pub fn enter_global<'tcx, F, R>(gcx: &'tcx GlobalCtxt<'tcx>, f: F) -> R
-    where
-        F: FnOnce(TyCtxt<'tcx>) -> R,
-    {
-        // Update `GCX_PTR` to indicate there's a `GlobalCtxt` available.
-        GCX_PTR.with(|lock| {
-            *lock.lock() = gcx as *const _ as usize;
-        });
-        // Set `GCX_PTR` back to 0 when we exit.
-        let _on_drop = OnDrop(move || {
-            GCX_PTR.with(|lock| *lock.lock() = 0);
-        });
-
-        let tcx = TyCtxt { gcx };
-        let icx =
-            ImplicitCtxt { tcx, query: None, diagnostics: None, layout_depth: 0, task_deps: None };
-        enter_context(&icx, |_| f(tcx))
-    }
-
-    scoped_thread_local! {
-        /// Stores a pointer to the `GlobalCtxt` if one is available.
-        /// This is used to access the `GlobalCtxt` in the deadlock handler given to Rayon.
-        pub static GCX_PTR: Lock<usize>
-    }
-
-    /// Creates a `TyCtxt` and `ImplicitCtxt` based on the `GCX_PTR` thread local.
-    /// This is used in the deadlock handler.
-    pub unsafe fn with_global<F, R>(f: F) -> R
-    where
-        F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> R,
-    {
-        let gcx = GCX_PTR.with(|lock| *lock.lock());
-        assert!(gcx != 0);
-        let gcx = &*(gcx as *const GlobalCtxt<'_>);
-        let tcx = TyCtxt { gcx };
-        let icx =
-            ImplicitCtxt { query: None, diagnostics: None, tcx, layout_depth: 0, task_deps: None };
-        enter_context(&icx, |_| f(tcx))
     }
 
     /// Allows access to the current `ImplicitCtxt` in a closure if one is available.

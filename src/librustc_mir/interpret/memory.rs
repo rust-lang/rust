@@ -952,7 +952,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         if compressed.no_bytes_init() {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
-            // is marked as unititialized but we otherwise omit changing the byte representation which may
+            // is marked as uninitialized but we otherwise omit changing the byte representation which may
             // be arbitrary for uninitialized bytes.
             // This also avoids writing to the target bytes so that the backing allocation is never
             // touched if the bytes stay uninitialized for the whole interpreter execution. On contemporary

@@ -1,30 +1,12 @@
 error: casts cannot be followed by a function call
-  --> $DIR/issue-60933.rs:2:20
+  --> $DIR/issue-60933.rs:3:20
    |
-LL |     let u: usize = std::mem:size_of::<u32>();
+LL |     let _: usize = std::mem:size_of::<u32>();
    |                    ^^^^^^^^-^^^^^^^^^^^^^^
    |                            |
    |                            help: maybe write a path separator here: `::`
    |
    = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
 
-error[E0423]: expected value, found module `std::mem`
-  --> $DIR/issue-60933.rs:2:20
-   |
-LL |     let u: usize = std::mem:size_of::<u32>();
-   |                    ^^^^^^^^- help: maybe you meant to write a path separator here: `::`
-   |                    |
-   |                    not a value
+error: aborting due to previous error
 
-error[E0412]: cannot find type `size_of` in this scope
-  --> $DIR/issue-60933.rs:2:29
-   |
-LL |     let u: usize = std::mem:size_of::<u32>();
-   |                            -^^^^^^^ not found in this scope
-   |                            |
-   |                            help: maybe you meant to write a path separator here: `::`
-
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0412, E0423.
-For more information about an error, try `rustc --explain E0412`.

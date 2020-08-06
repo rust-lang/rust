@@ -333,6 +333,7 @@ impl<'a> Parser<'a> {
                         Applicability::MachineApplicable
                     },
                 );
+                self.sess.type_ascription_path_suggestions.borrow_mut().insert(sp);
             } else if op_pos.line != next_pos.line && maybe_expected_semicolon {
                 err.span_suggestion(
                     sp,

@@ -95,27 +95,27 @@ impl<'tcx> OnUnimplementedDirective {
         };
 
         for item in item_iter {
-            if item.check_name(sym::message) && message.is_none() {
+            if item.has_name(sym::message) && message.is_none() {
                 if let Some(message_) = item.value_str() {
                     message = parse_value(message_)?;
                     continue;
                 }
-            } else if item.check_name(sym::label) && label.is_none() {
+            } else if item.has_name(sym::label) && label.is_none() {
                 if let Some(label_) = item.value_str() {
                     label = parse_value(label_)?;
                     continue;
                 }
-            } else if item.check_name(sym::note) && note.is_none() {
+            } else if item.has_name(sym::note) && note.is_none() {
                 if let Some(note_) = item.value_str() {
                     note = parse_value(note_)?;
                     continue;
                 }
-            } else if item.check_name(sym::enclosing_scope) && enclosing_scope.is_none() {
+            } else if item.has_name(sym::enclosing_scope) && enclosing_scope.is_none() {
                 if let Some(enclosing_scope_) = item.value_str() {
                     enclosing_scope = parse_value(enclosing_scope_)?;
                     continue;
                 }
-            } else if item.check_name(sym::on)
+            } else if item.has_name(sym::on)
                 && is_root
                 && message.is_none()
                 && label.is_none()

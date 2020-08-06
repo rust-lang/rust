@@ -1,0 +1,12 @@
+error[E0723]: unsizing casts are only allowed for references right now
+  --> $DIR/unsizing-cast-non-null.rs:6:5
+   |
+LL |     NonNull::<[T; 0]>::dangling()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0723`.

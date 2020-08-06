@@ -250,7 +250,7 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
-use crate::alloc::{box_free, handle_alloc_error, AllocInit, AllocRef, Global, Layout};
+use crate::alloc::{box_free, handle_alloc_error, AllocRef, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::string::String;
 use crate::vec::Vec;
@@ -928,12 +928,10 @@ impl<T: ?Sized> Rc<T> {
         let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
 
         // Allocate for the layout.
-        let mem = Global
-            .alloc(layout, AllocInit::Uninitialized)
-            .unwrap_or_else(|_| handle_alloc_error(layout));
+        let ptr = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the RcBox
-        let inner = mem_to_rcbox(mem.ptr.as_ptr());
+        let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
         unsafe {
             debug_assert_eq!(Layout::for_value(&*inner), layout);
 
@@ -2101,7 +2099,7 @@ impl<T: ?Sized> Unpin for Rc<T> {}
 ///
 /// - This function is safe for any argument if `T` is sized, and
 /// - if `T` is unsized, the pointer must have appropriate pointer metadata
-///   aquired from the real instance that you are getting this offset for.
+///   acquired from the real instance that you are getting this offset for.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
     // Align the unsized value to the end of the `RcBox`.
     // Because it is ?Sized, it will always be the last field in memory.

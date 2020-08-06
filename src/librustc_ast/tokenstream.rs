@@ -21,8 +21,6 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
-use log::debug;
-
 use std::{iter, mem};
 
 /// When the main rust parser encounters a syntax-extension invocation, it
@@ -63,23 +61,6 @@ impl TokenTree {
             (TokenTree::Token(token), TokenTree::Token(token2)) => token.kind == token2.kind,
             (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
                 delim == delim2 && tts.eq_unspanned(&tts2)
-            }
-            _ => false,
-        }
-    }
-
-    // See comments in `Nonterminal::to_tokenstream` for why we care about
-    // *probably* equal here rather than actual equality
-    //
-    // This is otherwise the same as `eq_unspanned`, only recursing with a
-    // different method.
-    pub fn probably_equal_for_proc_macro(&self, other: &TokenTree) -> bool {
-        match (self, other) {
-            (TokenTree::Token(token), TokenTree::Token(token2)) => {
-                token.probably_equal_for_proc_macro(token2)
-            }
-            (TokenTree::Delimited(_, delim, tts), TokenTree::Delimited(_, delim2, tts2)) => {
-                delim == delim2 && tts.probably_equal_for_proc_macro(&tts2)
             }
             _ => false,
         }
@@ -301,112 +282,6 @@ impl TokenStream {
         let mut t2 = other.trees();
         for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
             if !t1.eq_unspanned(&t2) {
-                return false;
-            }
-        }
-        t1.next().is_none() && t2.next().is_none()
-    }
-
-    // See comments in `Nonterminal::to_tokenstream` for why we care about
-    // *probably* equal here rather than actual equality
-    //
-    // This is otherwise the same as `eq_unspanned`, only recursing with a
-    // different method.
-    pub fn probably_equal_for_proc_macro(&self, other: &TokenStream) -> bool {
-        // When checking for `probably_eq`, we ignore certain tokens that aren't
-        // preserved in the AST. Because they are not preserved, the pretty
-        // printer arbitrarily adds or removes them when printing as token
-        // streams, making a comparison between a token stream generated from an
-        // AST and a token stream which was parsed into an AST more reliable.
-        fn semantic_tree(tree: &TokenTree) -> bool {
-            if let TokenTree::Token(token) = tree {
-                if let
-                    // The pretty printer tends to add trailing commas to
-                    // everything, and in particular, after struct fields.
-                    | token::Comma
-                    // The pretty printer emits `NoDelim` as whitespace.
-                    | token::OpenDelim(DelimToken::NoDelim)
-                    | token::CloseDelim(DelimToken::NoDelim)
-                    // The pretty printer collapses many semicolons into one.
-                    | token::Semi
-                    // The pretty printer collapses whitespace arbitrarily and can
-                    // introduce whitespace from `NoDelim`.
-                    | token::Whitespace
-                    // The pretty printer can turn `$crate` into `::crate_name`
-                    | token::ModSep = token.kind {
-                    return false;
-                }
-            }
-            true
-        }
-
-        // When comparing two `TokenStream`s, we ignore the `IsJoint` information.
-        //
-        // However, `rustc_parse::lexer::tokentrees::TokenStreamBuilder` will
-        // use `Token.glue` on adjacent tokens with the proper `IsJoint`.
-        // Since we are ignoreing `IsJoint`, a 'glued' token (e.g. `BinOp(Shr)`)
-        // and its 'split'/'unglued' compoenents (e.g. `Gt, Gt`) are equivalent
-        // when determining if two `TokenStream`s are 'probably equal'.
-        //
-        // Therefore, we use `break_two_token_op` to convert all tokens
-        // to the 'unglued' form (if it exists). This ensures that two
-        // `TokenStream`s which differ only in how their tokens are glued
-        // will be considered 'probably equal', which allows us to keep spans.
-        //
-        // This is important when the original `TokenStream` contained
-        // extra spaces (e.g. `f :: < Vec < _ > > ( ) ;'). These extra spaces
-        // will be omitted when we pretty-print, which can cause the original
-        // and reparsed `TokenStream`s to differ in the assignment of `IsJoint`,
-        // leading to some tokens being 'glued' together in one stream but not
-        // the other. See #68489 for more details.
-        fn break_tokens(tree: TokenTree) -> impl Iterator<Item = TokenTree> {
-            // In almost all cases, we should have either zero or one levels
-            // of 'unglueing'. However, in some unusual cases, we may need
-            // to iterate breaking tokens mutliple times. For example:
-            // '[BinOpEq(Shr)] => [Gt, Ge] -> [Gt, Gt, Eq]'
-            let mut token_trees: SmallVec<[_; 2]>;
-            if let TokenTree::Token(token) = &tree {
-                let mut out = SmallVec::<[_; 2]>::new();
-                out.push(token.clone());
-                // Iterate to fixpoint:
-                // * We start off with 'out' containing our initial token, and `temp` empty
-                // * If we are able to break any tokens in `out`, then `out` will have
-                //   at least one more element than 'temp', so we will try to break tokens
-                //   again.
-                // * If we cannot break any tokens in 'out', we are done
-                loop {
-                    let mut temp = SmallVec::<[_; 2]>::new();
-                    let mut changed = false;
-
-                    for token in out.into_iter() {
-                        if let Some((first, second)) = token.kind.break_two_token_op() {
-                            temp.push(Token::new(first, DUMMY_SP));
-                            temp.push(Token::new(second, DUMMY_SP));
-                            changed = true;
-                        } else {
-                            temp.push(token);
-                        }
-                    }
-                    out = temp;
-                    if !changed {
-                        break;
-                    }
-                }
-                token_trees = out.into_iter().map(TokenTree::Token).collect();
-                if token_trees.len() != 1 {
-                    debug!("break_tokens: broke {:?} to {:?}", tree, token_trees);
-                }
-            } else {
-                token_trees = SmallVec::new();
-                token_trees.push(tree);
-            }
-            token_trees.into_iter()
-        }
-
-        let mut t1 = self.trees().filter(semantic_tree).flat_map(break_tokens);
-        let mut t2 = other.trees().filter(semantic_tree).flat_map(break_tokens);
-        for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
-            if !t1.probably_equal_for_proc_macro(&t2) {
                 return false;
             }
         }
