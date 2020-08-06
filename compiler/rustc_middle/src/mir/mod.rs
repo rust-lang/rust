@@ -197,6 +197,10 @@ pub struct Body<'tcx> {
     ///     let _ = [0; std::mem::size_of::<*mut T>()];
     /// }
     /// ```
+    ///
+    /// **WARNING**: Do not change this flags after the MIR was originally created, even if an optimization
+    /// removed the last mention of all generic params. We do not want to rely on optimizations and
+    /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
     pub is_polymorphic: bool,
 
     predecessor_cache: PredecessorCache,

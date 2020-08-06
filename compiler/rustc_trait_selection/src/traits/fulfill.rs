@@ -459,17 +459,16 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 }
 
                 ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
-                    const_evaluatable::is_const_evaluatable(
+                    match const_evaluatable::is_const_evaluatable(
                         self.selcx.infcx(),
                         def_id,
                         substs,
                         obligation.param_env,
                         obligation.cause.span,
-                    )
-                    .map_or_else(
-                        |e| ProcessResult::Error(CodeSelectionError(ConstEvalFailure(e))),
-                        |()| ProcessResult::Changed(vec![]),
-                    )
+                    ) {
+                        Ok(()) => ProcessResult::Changed(vec![]),
+                        Err(e) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(e))),
+                    }
                 }
 
                 ty::PredicateAtom::ConstEquate(c1, c2) => {

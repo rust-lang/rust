@@ -543,18 +543,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::PredicateAtom::ConstEvaluatable(def_id, substs) => {
-                const_evaluatable::is_const_evaluatable(
+                match const_evaluatable::is_const_evaluatable(
                     self.infcx,
                     def_id,
                     substs,
                     obligation.param_env,
                     obligation.cause.span,
-                )
-                .map(|()| EvaluatedToOk)
-                .or_else(|e| match e {
-                    ErrorHandled::TooGeneric => Ok(EvaluatedToAmbig),
-                    _ => Ok(EvaluatedToErr),
-                })
+                ) {
+                    Ok(()) => Ok(EvaluatedToOk),
+                    Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
+                    Err(_) => Ok(EvaluatedToErr),
+                }
             }
 
             ty::PredicateAtom::ConstEquate(c1, c2) => {
