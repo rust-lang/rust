@@ -1,5 +1,5 @@
 error: type parameters with a default must be trailing
-  --> $DIR/wrong-order.rs:3:10
+  --> $DIR/wrong-order.rs:5:10
    |
 LL | struct A<T = u32, const N: usize> {
    |          ^
@@ -7,10 +7,10 @@ LL | struct A<T = u32, const N: usize> {
    = note: using type defaults and const parameters in the same parameter list is currently not permitted
 
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/wrong-order.rs:1:12
+  --> $DIR/wrong-order.rs:2:27
    |
-LL | #![feature(const_generics)]
-   |            ^^^^^^^^^^^^^^
+LL | #![cfg_attr(full, feature(const_generics))]
+   |                           ^^^^^^^^^^^^^^
    |
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information

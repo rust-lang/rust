@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `T: std::marker::Copy` is not satisfied
+  --> $DIR/issue-61336.rs:10:5
+   |
+LL |     [x; N]
+   |     ^^^^^^ the trait `std::marker::Copy` is not implemented for `T`
+   |
+   = note: the `Copy` trait is required because the repeated element will be copied
+help: consider restricting type parameter `T`
+   |
+LL | fn g<T: std::marker::Copy, const N: usize>(x: T) -> [T; N] {
+   |       ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
