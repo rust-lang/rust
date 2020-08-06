@@ -37,7 +37,7 @@ macro_rules! provide {
                 def_id_arg: ty::query::query_keys::$name<$lt>,
             ) -> ty::query::query_values::$name<$lt> {
                 let _prof_timer =
-                    $tcx.prof.generic_activity("metadata_decode_entry");
+                    $tcx.prof.generic_activity(concat!("metadata_decode_entry_", stringify!($name)));
 
                 #[allow(unused_variables)]
                 let ($def_id, $other) = def_id_arg.into_args();
