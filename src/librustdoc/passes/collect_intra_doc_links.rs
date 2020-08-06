@@ -779,7 +779,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         // All of these are valid, so do nothing
                         => {}
                         (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
-                        (_, Some(expected)) => {
+                        (_, Some(Disambiguator::Kind(expected))) => {
                             // The resolved item did not match the disambiguator; give a better error than 'not found'
                             let msg = format!("incompatible link kind for `{}`", path_str);
                             report_diagnostic(cx, &msg, &item, &dox, link_range, |diag, sp| {
@@ -932,22 +932,6 @@ impl Disambiguator {
             Self::Kind(k) => {
                 k.ns().expect("only DefKinds with a valid namespace can be disambiguators")
             }
-        }
-    }
-
-    fn article(&self) -> &'static str {
-        match self {
-            Self::Namespace(_) => "a",
-            Self::Kind(kind) => kind.article(),
-        }
-    }
-
-    fn descr(&self, def_id: DefId) -> &'static str {
-        match self {
-            Self::Namespace(Namespace::TypeNS) => "type",
-            Self::Namespace(Namespace::ValueNS) => "value",
-            Self::Namespace(Namespace::MacroNS) => "macro",
-            Self::Kind(kind) => kind.descr(def_id),
         }
     }
 }
