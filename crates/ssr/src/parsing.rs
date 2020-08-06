@@ -8,7 +8,7 @@
 use crate::errors::bail;
 use crate::{SsrError, SsrPattern, SsrRule};
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 use syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
 use test_utils::mark;
 
@@ -34,11 +34,15 @@ pub(crate) enum PatternElement {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Placeholder {
     /// The name of this placeholder. e.g. for "$a", this would be "a"
-    pub(crate) ident: SmolStr,
+    pub(crate) ident: Var,
     /// A unique name used in place of this placeholder when we parse the pattern as Rust code.
     stand_in_name: String,
     pub(crate) constraints: Vec<Constraint>,
 }
+
+/// Represents a `$var` in an SSR query.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct Var(pub String);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Constraint {
@@ -205,7 +209,7 @@ fn parse_pattern(pattern_str: &str) -> Result<Vec<PatternElement>, SsrError> {
         if token.kind == T![$] {
             let placeholder = parse_placeholder(&mut tokens)?;
             if !placeholder_names.insert(placeholder.ident.clone()) {
-                bail!("Name `{}` repeats more than once", placeholder.ident);
+                bail!("Placeholder `{}` repeats more than once", placeholder.ident);
             }
             res.push(PatternElement::Placeholder(placeholder));
         } else {
@@ -228,7 +232,7 @@ fn validate_rule(rule: &SsrRule) -> Result<(), SsrError> {
     for p in &rule.template.tokens {
         if let PatternElement::Placeholder(placeholder) = p {
             if !defined_placeholders.contains(&placeholder.ident) {
-                undefined.push(format!("${}", placeholder.ident));
+                undefined.push(placeholder.ident.to_string());
             }
             if !placeholder.constraints.is_empty() {
                 bail!("Replacement placeholders cannot have constraints");
@@ -344,7 +348,17 @@ impl NodeKind {
 
 impl Placeholder {
     fn new(name: SmolStr, constraints: Vec<Constraint>) -> Self {
-        Self { stand_in_name: format!("__placeholder_{}", name), constraints, ident: name }
+        Self {
+            stand_in_name: format!("__placeholder_{}", name),
+            constraints,
+            ident: Var(name.to_string()),
+        }
+    }
+}
+
+impl Display for Var {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "${}", self.0)
     }
 }
 

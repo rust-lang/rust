@@ -1,6 +1,5 @@
 //! Code for applying replacement templates for matches that have previously been found.
 
-use crate::matching::Var;
 use crate::{resolving::ResolvedRule, Match, SsrMatches};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast::{self, AstToken};
@@ -114,7 +113,7 @@ impl ReplacementRenderer<'_> {
     fn render_token(&mut self, token: &SyntaxToken) {
         if let Some(placeholder) = self.rule.get_placeholder(&token) {
             if let Some(placeholder_value) =
-                self.match_info.placeholder_values.get(&Var(placeholder.ident.to_string()))
+                self.match_info.placeholder_values.get(&placeholder.ident)
             {
                 let range = &placeholder_value.range.range;
                 let mut matched_text =

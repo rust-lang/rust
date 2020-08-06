@@ -2,7 +2,7 @@
 //! process of matching, placeholder values are recorded.
 
 use crate::{
-    parsing::{Constraint, NodeKind, Placeholder},
+    parsing::{Constraint, NodeKind, Placeholder, Var},
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
     SsrMatches,
 };
@@ -55,10 +55,6 @@ pub struct Match {
     // Each path in the template rendered for the module in which the match was found.
     pub(crate) rendered_template_paths: FxHashMap<SyntaxNode, hir::ModPath>,
 }
-
-/// Represents a `$var` in an SSR query.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Var(pub String);
 
 /// Information about a placeholder bound in a match.
 #[derive(Debug)]
@@ -182,10 +178,9 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 // We validated the range for the node when we started the match, so the placeholder
                 // probably can't fail range validation, but just to be safe...
                 self.validate_range(&original_range)?;
-                matches_out.placeholder_values.insert(
-                    Var(placeholder.ident.to_string()),
-                    PlaceholderMatch::new(code, original_range),
-                );
+                matches_out
+                    .placeholder_values
+                    .insert(placeholder.ident.clone(), PlaceholderMatch::new(code, original_range));
             }
             return Ok(());
         }
@@ -487,7 +482,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 }
                 if let Phase::Second(match_out) = phase {
                     match_out.placeholder_values.insert(
-                        Var(placeholder.ident.to_string()),
+                        placeholder.ident.clone(),
                         PlaceholderMatch::from_range(FileRange {
                             file_id: self.sema.original_range(code).file_id,
                             range: first_matched_token

@@ -31,7 +31,7 @@ fn parser_two_delimiters() {
 fn parser_repeated_name() {
     assert_eq!(
         parse_error_text("foo($a, $a) ==>>"),
-        "Parse error: Name `a` repeats more than once"
+        "Parse error: Placeholder `$a` repeats more than once"
     );
 }
 
