@@ -1,10 +1,12 @@
-error: constant expression depends on a generic parameter
-  --> $DIR/issue-73980.rs:11:9
+warning: cannot use constants which depend on generic parameters in types
+  --> $DIR/issue-73980.rs:12:9
    |
 LL | impl<T> X<T, [u8; L::<T>::S]> {}
    |         ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this may fail depending on what value the parameter takes
+   = note: `#[warn(const_evaluatable_unchecked)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see TODO
 
-error: aborting due to previous error
+warning: 1 warning emitted
 

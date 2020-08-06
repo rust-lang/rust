@@ -1,10 +1,12 @@
-error: constant expression depends on a generic parameter
-  --> $DIR/issue-70453-polymorphic-ctfe.rs:9:15
+warning: cannot use constants which depend on generic parameters in types
+  --> $DIR/issue-70453-polymorphic-ctfe.rs:10:15
    |
 LL |     Some(T) = core::mem::size_of::<*mut T>(),
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this may fail depending on what value the parameter takes
+   = note: `#[warn(const_evaluatable_unchecked)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see TODO
 
-error: aborting due to previous error
+warning: 1 warning emitted
 
